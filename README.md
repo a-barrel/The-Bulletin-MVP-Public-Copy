@@ -11,7 +11,8 @@ Darrel was here
 }
 ```
 Andy was here
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Troy
+
+AAAAA - Troy
 
 Citlally was here <3
 
