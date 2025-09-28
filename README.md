@@ -50,27 +50,25 @@ VITE_FIREBASE_CONFIG=your_firebase_config
 ### Installation
 
 1. Clone the repository
-2. Install dependencies:
+2. Install all dependencies (root, server, and client):
    ```bash
-   # Install server dependencies
-   cd server
-   npm install
-
-   # Install client dependencies
-   cd ../client
-   npm install
+   npm run install:all
    ```
 
-3. Start the development servers:
+3. Start both development servers from the root directory:
    ```bash
-   # Start backend server
-   cd server
-   npm run dev
-
-   # Start frontend server
-   cd ../client
    npm run dev
    ```
+
+   This will start both the backend server (port 5000) and frontend development server (port 5173) concurrently.
+
+### Alternative Commands
+
+- **Development mode**: `npm run dev` - Starts both frontend and backend in development mode
+- **Production mode**: `npm run start` - Starts backend in production mode and serves built frontend
+- **Server only**: `npm run server` - Starts only the backend server
+- **Client only**: `npm run client` - Starts only the frontend development server
+- **Build frontend**: `npm run build` - Builds the frontend for production
 
 ## Features
 
@@ -79,25 +77,6 @@ VITE_FIREBASE_CONFIG=your_firebase_config
 - Interactive map display using OpenStreetMap
 - Real-time updates
 - User profiles
-
-## The Team
-
-Darrel was here
-```
-{
-	"firstName": "Max",
-	"lastName": "Ju",
-	"age": 74
-}
-```
-Andy was here
-
-AAAAA - Troy
-
-Citlally was here <3
-
-hi - Wai
-
 
 ## License
 
