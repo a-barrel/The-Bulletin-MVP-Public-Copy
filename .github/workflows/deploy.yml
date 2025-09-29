@@ -1,24 +1,67 @@
-# .github/workflows/deploy.yml
-
 name: Deploy to Vercel
 
 on:
   push:
-    branches:
-      - main  # Or whichever branch you want to deploy
+    branches: [ main ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      # --- Vercel auth/IDs (from repo secrets) ---
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+
+      # --- Force Vercel "Git" metadata to Darrel (deployment author) ---
+      VERCEL_GIT_COMMIT_AUTHOR_LOGIN: a-barrel
+      VERCEL_GIT_COMMIT_AUTHOR_NAME: Darrel Dennis
+      VERCEL_GIT_COMMIT_AUTHOR_EMAIL: darrelmd2000@gmail.com
+      # (optional) pass through real SHA/message so deploy links still useful:
+      VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
+      VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+      VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
+      VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          show-progress: false
+
+      # Optional: remove git metadata so Vercel can’t infer author from .git
+      - name: Remove git metadata
+        run: rm -rf .git
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
       - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+        run: npm i -g vercel@latest
 
-      - name: Deploy to Vercel Production
-        run: vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
+      # Pull project + env from Vercel
+      - name: Vercel Pull
+        run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
         env:
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ env.VERCEL_ORG_ID }}
+
+      # Build
+      - name: Build
+        run: vercel build --token "$VERCEL_TOKEN"
+
+      # Deploy (also set meta redundantly to be extra explicit)
+      - name: Deploy to Production
+        run: >
+          vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
+          --meta commitAuthorLogin=$VERCEL_GIT_COMMIT_AUTHOR_LOGIN
+          --meta commitAuthorName="$VERCEL_GIT_COMMIT_AUTHOR_NAME"
+          --meta commitAuthorEmail="$VERCEL_GIT_COMMIT_AUTHOR_EMAIL"
+          --meta commitSha="$VERCEL_GIT_COMMIT_SHA"
+          --meta commitMessage="$VERCEL_GIT_COMMIT_MESSAGE"
+          --meta repoOwner="$VERCEL_GIT_REPO_OWNER"
+          --meta repoSlug="$VERCEL_GIT_REPO_SLUG"
