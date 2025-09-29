@@ -1,24 +1,35 @@
-# .github/workflows/deploy.yml
-
 name: Deploy to Vercel
 
 on:
   push:
-    branches:
-      - main  # Or whichever branch you want to deploy
+    branches: [ main ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
       - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+        run: npm i -g vercel@latest
 
-      - name: Deploy to Vercel Production
-        run: vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
+      # Pull project + env vars from Vercel (uses your IDs)
+      - name: Vercel Pull
+        run: vercel pull --yes --environment=production --token ${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+
+      # Optional: your app build (if not using Vercel’s framework auto-detect)
+      - name: Build
+        run: vercel build --token ${{ secrets.VERCEL_TOKEN }}
+
+      # Deploy the prebuilt output
+      - name: Deploy
+        run: vercel deploy --prebuilt --prod --token ${{ secrets.VERCEL_TOKEN }}
