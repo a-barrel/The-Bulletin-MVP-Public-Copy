@@ -1,3 +1,7 @@
+
+HELLO VERCEL CAN I AUTO DEPLOY NOW - TEST?
+
+
 # The Bulletin - Location-Based Social Media MVP 📌
 
 A cost-effective social media platform that incorporates GPS features, allowing users to share their locations and connect with others nearby.
