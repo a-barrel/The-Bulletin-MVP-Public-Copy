@@ -1,23 +1,24 @@
-name: Deploy to Vercel
+name: Deploy to Vercel (Normal Build)
 
 on:
   push:
-    branches:
-      - main   # or your deploy branch
+    branches: [ main ]   # change if needed
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      # ---- Vercel auth ----
+      # ---- Vercel auth / IDs ----
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
 
-      # ---- Force Vercel to show Darrel as the author of the deployment ----
-      VERCEL_GIT_COMMIT_AUTHOR_LOGIN: a-barrel
-      VERCEL_GIT_COMMIT_AUTHOR_NAME: Darrel Dennis
-      VERCEL_GIT_COMMIT_AUTHOR_EMAIL: darrelmd2000@gmail.com
+      # ---- Deployment author metadata (from secrets) ----
+      VERCEL_GIT_COMMIT_AUTHOR_LOGIN: ${{ secrets.VERCEL_AUTHOR_LOGIN }}
+      VERCEL_GIT_COMMIT_AUTHOR_NAME:  ${{ secrets.VERCEL_AUTHOR_NAME }}
+      VERCEL_GIT_COMMIT_AUTHOR_EMAIL: ${{ secrets.VERCEL_AUTHOR_EMAIL }}
+
+      # ---- Standard commit info from GitHub ----
       VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
       VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
       VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
@@ -31,10 +32,6 @@ jobs:
           persist-credentials: false
           show-progress: false
 
-      # Optional: remove git metadata so Vercel can’t infer another author
-      - name: Remove git metadata
-        run: rm -rf .git
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -43,23 +40,17 @@ jobs:
       - name: Install Vercel CLI
         run: npm i -g vercel@latest
 
-      # Pull production environment + secrets from Vercel
-      - name: Vercel Pull
+      # Pull production environment/config
+      - name: Vercel Pull (prod)
         run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
         env:
           VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
           VERCEL_ORG_ID: ${{ env.VERCEL_ORG_ID }}
 
-      # Build the production output
-      - name: Build (production)
-        run: |
-          rm -rf .vercel/output   # avoid stale preview builds
-          vercel build --prod --token "$VERCEL_TOKEN"
-
-      # Deploy the production build
-      - name: Deploy to Production
+      # Deploy (Vercel builds itself)
+      - name: Deploy (normal prod build on Vercel)
         run: >
-          vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
+          vercel --prod --token "$VERCEL_TOKEN"
           --meta commitAuthorLogin=$VERCEL_GIT_COMMIT_AUTHOR_LOGIN
           --meta commitAuthorName="$VERCEL_GIT_COMMIT_AUTHOR_NAME"
           --meta commitAuthorEmail="$VERCEL_GIT_COMMIT_AUTHOR_EMAIL"
