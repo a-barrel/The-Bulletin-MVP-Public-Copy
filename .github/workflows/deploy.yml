@@ -22,13 +22,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          persist-credentials: false
-          show-progress: false
-
-      - name: Remove git metadata
-        run: rm -rf .git
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -42,14 +35,16 @@ jobs:
         working-directory: ./client
         run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
 
-      - name: Build
+      - name: Install Dependencies and Build
         working-directory: ./client
-        run: vercel build --token "$VERCEL_TOKEN"
+        run: |
+          npm install
+          npm run build
 
-      - name: Deploy to Production
+      - name: Deploy to Vercel
         working-directory: ./client
         run: >
-          vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
+          vercel deploy ./dist --prebuilt --prod --token "$VERCEL_TOKEN"
           --meta commitAuthorLogin=$VERCEL_GIT_COMMIT_AUTHOR_LOGIN
           --meta commitAuthorName="$VERCEL_GIT_COMMIT_AUTHOR_NAME"
           --meta commitAuthorEmail="$VERCEL_GIT_COMMIT_AUTHOR_EMAIL"
