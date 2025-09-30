@@ -1,4 +1,26 @@
-steps:
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+
+      VERCEL_GIT_COMMIT_AUTHOR_LOGIN: ${{ secrets.VERCEL_AUTHOR_LOGIN }}
+      VERCEL_GIT_COMMIT_AUTHOR_NAME:  ${{ secrets.VERCEL_AUTHOR_NAME }}
+      VERCEL_GIT_COMMIT_AUTHOR_EMAIL: ${{ secrets.VERCEL_AUTHOR_EMAIL }}
+      VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
+      VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+      VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
+      VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
+
+    steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
