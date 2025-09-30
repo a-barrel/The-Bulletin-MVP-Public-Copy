@@ -1,14 +1,39 @@
-WERIUFHIEUFHIU
+﻿# Pinpoint Client
 
-# React + Vite
+This React + Vite workspace now ships with a schema layer that mirrors the MongoDB collections used by the backend. Runtime validation is handled with [Zod](https://zod.dev), giving components a single source of truth for data shape while keeping form builders and API helpers consistent.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Available Schemas
 
-Currently, two official plugins are available:
+All schemas live in `src/schemas` and are re-exported through `src/schemas/index.js`.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Common primitives: object ids, ISO dates, GeoJSON points, media assets, pagination helpers.
+- Users: public profile, preferences, stats, roles, and blocking information.
+- Pins: shared fields plus event and discussion specialisations.
+- Bookmarks: saved pins and optional collections/groupings.
+- Replies: threaded chat entries that sit under event and discussion detail pages.
+- Proximity chat: rooms, presences, and live messages for the dedicated proximity chat surface.
+- Updates: feed entries for the Updates page (bookmarked activity, popular pins, system notices).
+- Location updates: payloads returned by `/api/locations` and nearby user lookups.
 
-## Expanding the ESLint configuration
+## Example Usage
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```js
+import { PinSchema } from './schemas';
+
+async function fetchPin(pinId) {
+  const res = await fetch(`/api/pins/${pinId}`);
+  const json = await res.json();
+  return PinSchema.parse(json);
+}
+```
+
+To add new collections or extend existing ones, create a new file inside `src/schemas`, define the Zod objects, then update `src/schemas/index.js` so everything stays discoverable.
+## Direct MongoDB Access (Data API)
+
+For lightweight testing without the Node server, the client can talk to MongoDB Atlas through the Data API.
+
+1. Duplicate `.env.example` to `.env` and fill in your Atlas Data API URL, API key, data source, database, and collection name.
+2. Ensure your `locations` collection has a `2dsphere` index on `coordinates` so `$geoNear` queries succeed.
+3. Run `npm run dev` and toggle the "Share Location" switch in the map view. The app will call the Data API to insert the device location and fetch nearby users, validating every response with the Zod schemas in `src/schemas`.
+
+**Heads up:** Data API keys act like passwords. Only use this setup for prototyping. For production you should move the Data API calls back behind the server so secrets stay private.
