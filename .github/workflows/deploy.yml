@@ -40,6 +40,10 @@ jobs:
       - name: Deploy to Production
         run: >
           vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
-          --meta commitAuthorLogin=$VERCEL_GIT_COMMIT_AUTHOR_LOGIN
-          --meta commitAuthorName="$VERCEL_GIT_COMMIT_AUTHOR_NAME"
-          --meta commitAuthorEmail="$VERCEL
+          --meta commitAuthorLogin="${VERCEL_GIT_COMMIT_AUTHOR_LOGIN}"
+          --meta commitAuthorName="${VERCEL_GIT_COMMIT_AUTHOR_NAME}"
+          --meta commitAuthorEmail="${VERCEL_GIT_COMMIT_AUTHOR_EMAIL}"
+          --meta commitSha="${VERCEL_GIT_COMMIT_SHA}"
+          --meta commitMessage="${VERCEL_GIT_COMMIT_MESSAGE}"
+          --meta repoOwner="${VERCEL_GIT_REPO_OWNER}"
+          --meta repoSlug="${VERCEL_GIT_REPO_SLUG}"
