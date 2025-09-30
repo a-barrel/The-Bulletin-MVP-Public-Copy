@@ -57,7 +57,7 @@ jobs:
       # Deploy (also set meta redundantly to be extra explicit)
       - name: Deploy to Production
         run: >
-          vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
+          vercel deploy --prebuilt --token "$VERCEL_TOKEN"
           --meta commitAuthorLogin=$VERCEL_GIT_COMMIT_AUTHOR_LOGIN
           --meta commitAuthorName="$VERCEL_GIT_COMMIT_AUTHOR_NAME"
           --meta commitAuthorEmail="$VERCEL_GIT_COMMIT_AUTHOR_EMAIL"
