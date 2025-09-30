@@ -32,19 +32,14 @@ jobs:
         run: npm i -g vercel@latest
 
       - name: Vercel Pull
-        working-directory: ./client
         run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
 
-      - name: Install Dependencies and Build
-        working-directory: ./client
-        run: |
-          npm install
-          npm run build
+      - name: Build
+        run: vercel build --token "$VERCEL_TOKEN"
 
-      - name: Deploy to Vercel
-        working-directory: ./client
+      - name: Deploy to Production
         run: >
-          vercel deploy . --prod --token "$VERCEL_TOKEN"
+          vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
           --meta commitAuthorLogin=$VERCEL_GIT_COMMIT_AUTHOR_LOGIN
           --meta commitAuthorName="$VERCEL_GIT_COMMIT_AUTHOR_NAME"
           --meta commitAuthorEmail="$VERCEL_GIT_COMMIT_AUTHOR_EMAIL"
