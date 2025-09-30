@@ -1,29 +1,4 @@
-name: Deploy to Vercel
-
-on:
-  push:
-    branches: [ main ]
-
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    env:
-      # --- Vercel auth/IDs (from repo secrets) ---
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-
-      VERCEL_GIT_COMMIT_AUTHOR_LOGIN: ${{ secrets.VERCEL_AUTHOR_LOGIN }}
-      VERCEL_GIT_COMMIT_AUTHOR_NAME:  ${{ secrets.VERCEL_AUTHOR_NAME }}
-      VERCEL_GIT_COMMIT_AUTHOR_EMAIL: ${{ secrets.VERCEL_AUTHOR_EMAIL }}
-      # (optional) pass through real SHA/message so deploy links still useful:
-      VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
-      VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-      VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
-      VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
-
-    steps:
+steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -31,7 +6,6 @@ jobs:
           persist-credentials: false
           show-progress: false
 
-      # Optional: remove git metadata so Vercel can’t infer author from .git
       - name: Remove git metadata
         run: rm -rf .git
 
@@ -45,6 +19,7 @@ jobs:
 
       # Pull project + env from Vercel
       - name: Vercel Pull
+        working-directory: ./root/client
         run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
         env:
           VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
@@ -52,6 +27,7 @@ jobs:
 
       # Build
       - name: Build
+        working-directory: ./root/client
         run: vercel build --token "$VERCEL_TOKEN"
 
       # Deploy (also set meta redundantly to be extra explicit)
