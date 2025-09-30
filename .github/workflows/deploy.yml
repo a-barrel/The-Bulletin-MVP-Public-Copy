@@ -41,7 +41,7 @@ jobs:
 
       # Pull project + env from Vercel
       - name: Vercel Pull
-        working-directory: ./root/client
+        working-directory: ./client
         run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
         env:
           VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
@@ -49,12 +49,12 @@ jobs:
 
       # Build
       - name: Build
-        working-directory: ./root/client
+        working-directory: ./client
         run: vercel build --token "$VERCEL_TOKEN"
 
       # Deploy (also set meta redundantly to be extra explicit)
       - name: Deploy to Production
-        working-directory: ./root/client
+        working-directory: ./client
         run: >
           vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
           --meta commitAuthorLogin=$VERCEL_GIT_COMMIT_AUTHOR_LOGIN
