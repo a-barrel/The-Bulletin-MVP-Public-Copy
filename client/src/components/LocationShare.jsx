@@ -4,10 +4,6 @@ const LocationShare = ({ isSharing, onToggle, disabled = false, helperText }) =>
   return (
     <Box
       sx={{
-        position: 'absolute',
-        top: 16,
-        right: 16,
-        zIndex: 2,
         backgroundColor: 'rgba(0, 0, 0, 0.7)',
         padding: 2,
         borderRadius: 1,
