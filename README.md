@@ -1,4 +1,5 @@
-# 📌 The Bulletin - Location-Based Social Media MVP 📌 (Barrel branch test)
+# 📌 The Bulletin - Location-Based Social Media MVP 📌 
+-# (Barrel branch test[if this txt is still here, i forgor 2 del :( )])
 
 A cost-effective social media platform that incorporates GPS features, allowing users to share their locations and connect with others nearby.
 
