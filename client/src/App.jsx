@@ -10,7 +10,7 @@ import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Map from './components/Map';
 import LocationShare from './components/LocationShare';
-import { insertLocationUpdate, fetchNearbyUsers, isMongoDataApiConfigured } from './api/mongoDataApi.js';
+import { insertLocationUpdate, fetchNearbyUsers } from './api/mongoDataApi.js';
 
 const theme = createTheme({
   palette: {
@@ -33,7 +33,6 @@ function App() {
   const [isSharing, setIsSharing] = useState(false);
   const [isLoadingNearby, setIsLoadingNearby] = useState(false);
   const [error, setError] = useState(null);
-  const [dataApiConfigured] = useState(() => isMongoDataApiConfigured());
 
   useEffect(() => {
     if ('geolocation' in navigator) {
@@ -51,12 +50,6 @@ function App() {
       setError('Geolocation is not supported in this browser.');
     }
   }, []);
-
-  useEffect(() => {
-    if (!dataApiConfigured) {
-      setError((prev) => prev ?? 'MongoDB Data API environment variables are missing. Update client/.env to enable sharing.');
-    }
-  }, [dataApiConfigured]);
 
   const refreshNearby = useCallback(async () => {
     if (!userLocation) return;
@@ -83,6 +76,7 @@ function App() {
 
     setIsSharing(true);
     try {
+      const now = new Date().toISOString();
       await insertLocationUpdate({
         userId: DEMO_USER_ID,
         coordinates: {
@@ -90,7 +84,8 @@ function App() {
           coordinates: [userLocation.longitude, userLocation.latitude]
         },
         isPublic: true,
-        createdAt: new Date().toISOString()
+        createdAt: now,
+        lastSeenAt: now
       });
       await refreshNearby();
     } catch (err) {
@@ -100,11 +95,9 @@ function App() {
     }
   }, [userLocation, refreshNearby]);
 
-  const shareDisabledReason = !dataApiConfigured
-    ? 'Configure MongoDB Data API settings to enable sharing.'
-    : !userLocation
-      ? 'Waiting for your device location...'
-      : null;
+  const shareDisabledReason = !userLocation
+    ? 'Waiting for your device location...'
+    : null;
 
   const handleStopSharing = useCallback(() => {
     setIsSharing(false);
@@ -180,5 +173,3 @@ function App() {
 }
 
 export default App;
-
-

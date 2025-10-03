@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "server",
   "version": "1.0.0",
   "description": "Backend server for Social GPS application",
@@ -16,7 +16,8 @@
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "firebase-admin": "^11.5.0",
-    "mongoose": "^7.0.3"
+    "mongoose": "^7.0.3",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "nodemon": "^2.0.22"

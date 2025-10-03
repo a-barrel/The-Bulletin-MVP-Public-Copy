@@ -1,8 +1,8 @@
-﻿import { z } from 'zod';
-import { IsoDateStringSchema, ObjectIdSchema } from './common.js';
-import { PinPreviewSchema } from './pin.js';
+﻿const { z } = require('zod');
+const { IsoDateStringSchema, ObjectIdSchema } = require('./common');
+const { PinPreviewSchema } = require('./pin');
 
-export const BookmarkSchema = z.object({
+const BookmarkSchema = z.object({
   _id: ObjectIdSchema,
   userId: ObjectIdSchema,
   pinId: ObjectIdSchema,
@@ -12,7 +12,7 @@ export const BookmarkSchema = z.object({
   pin: PinPreviewSchema.optional()
 });
 
-export const BookmarkCollectionSchema = z.object({
+const BookmarkCollectionSchema = z.object({
   _id: ObjectIdSchema,
   name: z.string().min(1),
   description: z.string().max(500).optional(),
@@ -21,3 +21,8 @@ export const BookmarkCollectionSchema = z.object({
   updatedAt: IsoDateStringSchema,
   bookmarks: z.array(BookmarkSchema).default([])
 });
+
+module.exports = {
+  BookmarkSchema,
+  BookmarkCollectionSchema
+};

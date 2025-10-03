@@ -1,7 +1,7 @@
-﻿import { z } from 'zod';
-import { MediaAssetSchema, ObjectIdSchema, IsoDateStringSchema } from './common.js';
+﻿const { z } = require('zod');
+const { MediaAssetSchema, ObjectIdSchema, IsoDateStringSchema } = require('./common');
 
-export const UserPreferencesSchema = z.object({
+const UserPreferencesSchema = z.object({
   theme: z.enum(['system', 'light', 'dark']).default('system'),
   notifications: z.object({
     proximity: z.boolean().default(true),
@@ -11,7 +11,7 @@ export const UserPreferencesSchema = z.object({
   radiusPreferenceMeters: z.number().int().positive().default(16093).optional()
 });
 
-export const UserStatsSchema = z.object({
+const UserStatsSchema = z.object({
   eventsHosted: z.number().int().nonnegative().default(0),
   eventsAttended: z.number().int().nonnegative().default(0),
   posts: z.number().int().nonnegative().default(0),
@@ -20,7 +20,7 @@ export const UserStatsSchema = z.object({
   following: z.number().int().nonnegative().default(0)
 });
 
-export const PublicUserSchema = z.object({
+const PublicUserSchema = z.object({
   _id: ObjectIdSchema,
   username: z.string().min(3),
   displayName: z.string().min(1),
@@ -29,7 +29,7 @@ export const PublicUserSchema = z.object({
   badges: z.array(z.string()).default([])
 });
 
-export const UserProfileSchema = PublicUserSchema.extend({
+const UserProfileSchema = PublicUserSchema.extend({
   email: z.string().email().optional(),
   bio: z.string().max(500).optional(),
   banner: MediaAssetSchema.optional(),
@@ -40,3 +40,10 @@ export const UserProfileSchema = PublicUserSchema.extend({
   createdAt: IsoDateStringSchema,
   updatedAt: IsoDateStringSchema
 });
+
+module.exports = {
+  UserPreferencesSchema,
+  UserStatsSchema,
+  PublicUserSchema,
+  UserProfileSchema
+};

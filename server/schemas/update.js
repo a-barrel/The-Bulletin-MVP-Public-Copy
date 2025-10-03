@@ -1,8 +1,8 @@
-﻿import { z } from 'zod';
-import { IsoDateStringSchema, ObjectIdSchema } from './common.js';
-import { PinPreviewSchema } from './pin.js';
+﻿const { z } = require('zod');
+const { IsoDateStringSchema, ObjectIdSchema } = require('./common');
+const { PinPreviewSchema } = require('./pin');
 
-export const UpdatePayloadSchema = z.object({
+const UpdatePayloadSchema = z.object({
   type: z.enum([
     'new-pin',
     'pin-update',
@@ -17,10 +17,15 @@ export const UpdatePayloadSchema = z.object({
   metadata: z.record(z.any()).optional()
 });
 
-export const UpdateSchema = z.object({
+const UpdateSchema = z.object({
   _id: ObjectIdSchema,
   userId: ObjectIdSchema,
   payload: UpdatePayloadSchema,
   createdAt: IsoDateStringSchema,
   readAt: IsoDateStringSchema.optional()
 });
+
+module.exports = {
+  UpdatePayloadSchema,
+  UpdateSchema
+};

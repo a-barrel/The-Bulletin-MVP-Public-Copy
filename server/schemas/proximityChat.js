@@ -1,8 +1,8 @@
-﻿import { z } from 'zod';
-import { GeoPointSchema, IsoDateStringSchema, MediaAssetSchema, ObjectIdSchema } from './common.js';
-import { PublicUserSchema } from './user.js';
+﻿const { z } = require('zod');
+const { GeoPointSchema, IsoDateStringSchema, MediaAssetSchema, ObjectIdSchema } = require('./common');
+const { PublicUserSchema } = require('./user');
 
-export const ProximityChatRoomSchema = z.object({
+const ProximityChatRoomSchema = z.object({
   _id: ObjectIdSchema,
   name: z.string().min(1),
   description: z.string().max(500).optional(),
@@ -13,7 +13,7 @@ export const ProximityChatRoomSchema = z.object({
   updatedAt: IsoDateStringSchema
 });
 
-export const ProximityChatMessageSchema = z.object({
+const ProximityChatMessageSchema = z.object({
   _id: ObjectIdSchema,
   roomId: ObjectIdSchema,
   author: PublicUserSchema,
@@ -24,9 +24,15 @@ export const ProximityChatMessageSchema = z.object({
   updatedAt: IsoDateStringSchema
 });
 
-export const ProximityChatPresenceSchema = z.object({
+const ProximityChatPresenceSchema = z.object({
   roomId: ObjectIdSchema,
   userId: ObjectIdSchema,
   joinedAt: IsoDateStringSchema,
   lastActiveAt: IsoDateStringSchema
 });
+
+module.exports = {
+  ProximityChatRoomSchema,
+  ProximityChatMessageSchema,
+  ProximityChatPresenceSchema
+};

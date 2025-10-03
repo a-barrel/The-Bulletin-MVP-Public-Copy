@@ -1,33 +1,55 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 
-const locationSchema = new mongoose.Schema({
-  userId: {
-    type: String,
-    required: true,
-    index: true
-  },
-  coordinates: {
-    type: {
+const locationSchema = new mongoose.Schema(
+  {
+    userId: {
       type: String,
-      enum: ['Point'],
-      default: 'Point'
+      required: true,
+      index: true
     },
     coordinates: {
-      type: [Number], // [longitude, latitude]
-      required: true
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point'
+      },
+      coordinates: {
+        type: [Number],
+        required: true,
+        validate: {
+          validator: (value) => Array.isArray(value) && value.length === 2,
+          message: 'Coordinates must be a [longitude, latitude] tuple'
+        }
+      }
+    },
+    accuracy: {
+      type: Number,
+      min: 0,
+      max: 5000
+    },
+    isPublic: {
+      type: Boolean,
+      default: true
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    lastSeenAt: {
+      type: Date,
+      default: Date.now,
+      index: true
+    },
+    expiresAt: {
+      type: Date
     }
   },
-  timestamp: {
-    type: Date,
-    default: Date.now
-  },
-  isPublic: {
-    type: Boolean,
-    default: true
+  {
+    minimize: false
   }
-});
+);
 
-// Create a 2dsphere index for geospatial queries
 locationSchema.index({ coordinates: '2dsphere' });
+locationSchema.index({ lastSeenAt: -1 });
 
-module.exports = mongoose.model('Location', locationSchema); 
+module.exports = mongoose.model('Location', locationSchema);

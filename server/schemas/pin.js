@@ -1,12 +1,12 @@
-﻿import { z } from 'zod';
-import {
+﻿const { z } = require('zod');
+const {
   ApproximateAddressSchema,
   GeoPointSchema,
   IsoDateStringSchema,
   MediaAssetSchema,
   ObjectIdSchema
-} from './common.js';
-import { PublicUserSchema } from './user.js';
+} = require('./common');
+const { PublicUserSchema } = require('./user');
 
 const BasePinSchema = z.object({
   _id: ObjectIdSchema,
@@ -25,7 +25,7 @@ const BasePinSchema = z.object({
   replyCount: z.number().int().nonnegative().default(0)
 });
 
-export const EventPinSchema = BasePinSchema.extend({
+const EventPinSchema = BasePinSchema.extend({
   type: z.literal('event'),
   startDate: IsoDateStringSchema,
   endDate: IsoDateStringSchema,
@@ -46,16 +46,16 @@ export const EventPinSchema = BasePinSchema.extend({
   attendable: z.boolean().default(true)
 });
 
-export const DiscussionPinSchema = BasePinSchema.extend({
+const DiscussionPinSchema = BasePinSchema.extend({
   type: z.literal('discussion'),
   approximateAddress: ApproximateAddressSchema,
   expiresAt: IsoDateStringSchema,
   autoDelete: z.boolean().default(true)
 });
 
-export const PinSchema = z.discriminatedUnion('type', [EventPinSchema, DiscussionPinSchema]);
+const PinSchema = z.discriminatedUnion('type', [EventPinSchema, DiscussionPinSchema]);
 
-export const PinPreviewSchema = z.object({
+const PinPreviewSchema = z.object({
   _id: ObjectIdSchema,
   type: z.enum(['event', 'discussion']),
   title: z.string().min(1),
@@ -67,8 +67,17 @@ export const PinPreviewSchema = z.object({
   expiresAt: IsoDateStringSchema.optional()
 });
 
-export const PinListItemSchema = PinPreviewSchema.extend({
+const PinListItemSchema = PinPreviewSchema.extend({
   distanceMeters: z.number().nonnegative().optional(),
   isBookmarked: z.boolean().optional(),
   replyCount: z.number().int().nonnegative().optional()
 });
+
+module.exports = {
+  BasePinSchema,
+  EventPinSchema,
+  DiscussionPinSchema,
+  PinSchema,
+  PinPreviewSchema,
+  PinListItemSchema
+};

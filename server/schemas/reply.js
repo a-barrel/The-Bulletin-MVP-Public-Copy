@@ -1,8 +1,8 @@
-﻿import { z } from 'zod';
-import { MediaAssetSchema, ObjectIdSchema, ReactionSchema, IsoDateStringSchema } from './common.js';
-import { PublicUserSchema } from './user.js';
+﻿const { z } = require('zod');
+const { MediaAssetSchema, ObjectIdSchema, ReactionSchema, IsoDateStringSchema } = require('./common');
+const { PublicUserSchema } = require('./user');
 
-export const PinReplySchema = z.object({
+const PinReplySchema = z.object({
   _id: ObjectIdSchema,
   pinId: ObjectIdSchema,
   parentReplyId: ObjectIdSchema.optional(),
@@ -14,9 +14,14 @@ export const PinReplySchema = z.object({
   updatedAt: IsoDateStringSchema
 });
 
-export const ReplyPayloadSchema = PinReplySchema.pick({
+const ReplyPayloadSchema = PinReplySchema.pick({
   pinId: true,
   parentReplyId: true,
   message: true,
   attachments: true
 });
+
+module.exports = {
+  PinReplySchema,
+  ReplyPayloadSchema
+};
