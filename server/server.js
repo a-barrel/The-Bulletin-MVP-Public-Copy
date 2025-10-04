@@ -1,10 +1,25 @@
-﻿const express = require('express');
+const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const admin = require('firebase-admin');
 
 // Load environment variables
 dotenv.config();
+
+if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+  admin.initializeApp();
+} else {
+  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)
+    : undefined;
+
+  admin.initializeApp({
+    credential: serviceAccount
+      ? admin.credential.cert(serviceAccount)
+      : admin.credential.applicationDefault(),
+  });
+}
 
 const Location = require('./models/Location');
 
@@ -32,13 +47,15 @@ app.get('/', (req, res) => {
   res.json({ message: 'Welcome to Social GPS API' });
 });
 
+const verifyToken = require('./middleware/verifyToken');
+
 // API routes
-app.use('/api/locations', require('./routes/locations'));
+app.use('/api/locations', verifyToken, require('./routes/locations'));
 app.use('/api/users', require('./routes/users'));
-app.use('/api/pins', require('./routes/pins'));
-app.use('/api/bookmarks', require('./routes/bookmarks'));
-app.use('/api/chats', require('./routes/chats'));
-app.use('/api/updates', require('./routes/updates'));
+app.use('/api/pins', verifyToken, require('./routes/pins'));
+app.use('/api/bookmarks', verifyToken, require('./routes/bookmarks'));
+app.use('/api/chats', verifyToken, require('./routes/chats'));
+app.use('/api/updates', verifyToken, require('./routes/updates'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
