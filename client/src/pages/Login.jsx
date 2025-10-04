@@ -6,13 +6,13 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth';
-
+    
 function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
-
+    
   const handleLogin = async (e) => {
     e.preventDefault();
     setError(null);
@@ -23,7 +23,7 @@ function LoginPage() {
       setError(error.message);
     }
   };
-
+    
   const handleGoogleSignIn = async () => {
     setError(null);
     try {
@@ -34,7 +34,7 @@ function LoginPage() {
       setError(error.message);
     }
   };
-
+    
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
       <h1>Login Page</h1>
@@ -64,6 +64,6 @@ function LoginPage() {
       {error && <p style={{ color: 'red' }}>{error}</p>}
     </div>
   );
-}
-
+}   
+    
 export default LoginPage;

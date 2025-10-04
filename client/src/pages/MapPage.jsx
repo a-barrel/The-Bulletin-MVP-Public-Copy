@@ -10,7 +10,7 @@ import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import Map from '../components/Map';
 import LocationShare from '../components/LocationShare';
-
+  
 const theme = createTheme({
   palette: {
     mode: 'dark',
@@ -22,11 +22,11 @@ const theme = createTheme({
     }
   }
 });
-
+  
 function MapPage() {
   const [userLocation, setUserLocation] = useState(null);
   const [error, setError] = useState(null);
-
+  
   useEffect(() => {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -43,7 +43,7 @@ function MapPage() {
       setError('Geolocation is not supported in this browser.');
     }
   }, []);
-
+  
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -53,8 +53,6 @@ function MapPage() {
             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
               Pinpoint
             </Typography>
-            <Link to="/list" style={{ color: 'white', textDecoration: 'none', marginRight: '10px' }}>List</Link>
-            <Link to="/login" style={{ color: 'white', textDecoration: 'none' }}>Login</Link>
             {userLocation && (
               <Typography variant="body2" sx={{ mr: 2 }}>
                 Location sharing is paused
@@ -62,7 +60,7 @@ function MapPage() {
             )}
           </Toolbar>
         </AppBar>
-
+  
         <Container maxWidth={false} sx={{ flexGrow: 1, p: 0 }}>
           {userLocation ? (
             <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -74,7 +72,7 @@ function MapPage() {
                   helperText="Location sharing is temporarily disabled."
                 />
               </Box>
-
+  
               {error && (
                 <Box sx={{ position: 'absolute', top: 90, right: 16, zIndex: 1000, maxWidth: 320 }}>
                   <Alert severity="error" onClose={() => setError(null)}>
@@ -82,7 +80,12 @@ function MapPage() {
                   </Alert>
                 </Box>
               )}
-
+  
+              <Box>
+                <Link to="/list" style={{ color: 'white', textDecoration: 'none', marginRight: '10px' }}>List</Link>
+                <Link to="/login" style={{ color: 'white', textDecoration: 'none' }}>Login</Link>
+              </Box>
+  
               <Map userLocation={userLocation} nearbyUsers={[]} />
             </Box>
           ) : (
@@ -101,6 +104,6 @@ function MapPage() {
       </Box>
     </ThemeProvider>
   );
-}
-
+} 
+  
 export default MapPage;

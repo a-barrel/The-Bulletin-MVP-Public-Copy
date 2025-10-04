@@ -1,4 +1,4 @@
-{
+{ 
   "name": "bulletintest",
   "version": "1.0.0",
   "description": "Social GPS application with React frontend and Node.js backend",
@@ -25,4 +25,4 @@
   "devDependencies": {
     "concurrently": "^8.2.2"
   }
-}
+} 
