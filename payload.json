@@ -1,0 +1,11 @@
+﻿{
+  "userId": "64f92b88e13ff0c123456789",
+  "coordinates": {
+    "type": "Point",
+    "coordinates": [-118.1136, 33.7838],
+    "accuracy": 25
+  },
+  "isPublic": true,
+  "createdAt": "2025-10-03T20:00:00.000Z",
+  "lastSeenAt": "2025-10-03T20:00:00.000Z"
+}
