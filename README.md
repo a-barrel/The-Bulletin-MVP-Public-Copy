@@ -69,8 +69,13 @@ VITE_FIREBASE_CONFIG={"apiKey": "AIzaSyAkVlj0uQu2Xdc1Y99lAd1bPbFlawEM6pA","authD
    ```bash
    npm run install:all
    ```
+   ```bash
+   npm install -g firebase-tools
+   ```
 
-3. Start both development servers from the root directory:
+3. Ensure .env exsists within the server and client folders. (see above for template)
+
+4. Start both development servers from the root directory:
    ```bash
    npm run dev
    ```
