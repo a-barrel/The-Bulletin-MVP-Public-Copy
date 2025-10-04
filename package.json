@@ -1,22 +1,29 @@
-{
-  "name": "bulletintest",
-  "version": "1.0.0",
-  "description": "Social GPS application with React frontend and Node.js backend",
-  "main": "index.js",
-  "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "cd server && npm run dev",
-    "client": "cd client && npm run dev",
-    "build": "cd client && npm run build",
-    "start": "concurrently \"npm run server:start\" \"npm run client:preview\"",
-    "server:start": "cd server && npm start",
-    "client:preview": "cd client && npm run preview",
-    "install:all": "npm install && cd server && npm install && cd ../client && npm install"
-  },
-  "keywords": ["social", "gps", "location", "react", "node"],
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "concurrently": "^8.2.2"
-  }
+﻿{
+    "name":  "bulletintest",
+    "version":  "1.0.0",
+    "description":  "Social GPS application with React frontend and Node.js backend",
+    "main":  "index.js",
+    "scripts":  {
+                    "dev":  "concurrently \"npm run server\" \"npm run client\"",
+                    "server":  "cd server \u0026\u0026 npm run dev",
+                    "client":  "cd client \u0026\u0026 npm run dev",
+                    "build":  "cd client \u0026\u0026 npm run build",
+                    "start":  "concurrently \"npm run server:start\" \"npm run client:preview\"",
+                    "server:start":  "cd server \u0026\u0026 npm start",
+                    "client:preview":  "cd client \u0026\u0026 npm run preview",
+                    "install:all":  "npm install \u0026\u0026 cd server \u0026\u0026 npm install \u0026\u0026 cd ../client \u0026\u0026 npm install",
+                    "seed":  "node scripts/seed.js"
+                },
+    "keywords":  [
+                     "social",
+                     "gps",
+                     "location",
+                     "react",
+                     "node"
+                 ],
+    "author":  "",
+    "license":  "ISC",
+    "devDependencies":  {
+                            "concurrently":  "^8.2.2"
+                        }
 }
