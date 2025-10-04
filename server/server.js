@@ -25,20 +25,20 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/social-gp
       console.error('Failed to sync location indexes:', error);
     }
   })
-  .catch(err => console.error('MongoDB connection error:', err));
+  .catch((err) => console.error('MongoDB connection error:', err));
 
 // Basic route
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to Social GPS API' });
 });
 
-// Location routes
-const locationRoutes = require('./routes/locations');
-app.use('/api/locations', locationRoutes);
-
-// User routes
-const userRoutes = require('./routes/users');
-app.use('/api/users', userRoutes);
+// API routes
+app.use('/api/locations', require('./routes/locations'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/pins', require('./routes/pins'));
+app.use('/api/bookmarks', require('./routes/bookmarks'));
+app.use('/api/chats', require('./routes/chats'));
+app.use('/api/updates', require('./routes/updates'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

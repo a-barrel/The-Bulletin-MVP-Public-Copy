@@ -1,21 +1,35 @@
 ﻿const { z } = require('zod');
 const { GeoPointSchema, IsoDateStringSchema, ObjectIdSchema } = require('./common');
 
+const LocationSourceSchema = z.enum(['web', 'ios', 'android', 'background']);
+
 const LocationUpdateSchema = z.object({
   _id: ObjectIdSchema.optional(),
   userId: ObjectIdSchema,
   coordinates: GeoPointSchema,
   isPublic: z.boolean().default(true),
   accuracy: z.number().min(0).max(5000).optional(),
+  altitudeMeters: z.number().optional(),
+  speedMetersPerSecond: z.number().min(0).optional(),
+  headingDegrees: z.number().min(0).max(360).optional(),
+  sessionId: ObjectIdSchema.optional(),
+  deviceId: ObjectIdSchema.optional(),
+  source: LocationSourceSchema.default('web'),
+  appVersion: z.string().optional(),
   createdAt: IsoDateStringSchema,
-  expiresAt: IsoDateStringSchema.optional()
+  lastSeenAt: IsoDateStringSchema.optional(),
+  expiresAt: IsoDateStringSchema.optional(),
+  linkedPinIds: z.array(ObjectIdSchema).default([])
 });
 
 const NearbyUserSchema = z.object({
   userId: ObjectIdSchema,
   coordinates: GeoPointSchema,
   distanceMeters: z.number().nonnegative(),
-  lastSeenAt: IsoDateStringSchema
+  lastSeenAt: IsoDateStringSchema,
+  sessionId: ObjectIdSchema.optional(),
+  source: LocationSourceSchema.optional(),
+  linkedPinIds: z.array(ObjectIdSchema).default([])
 });
 
 const LocationQuerySchema = z.object({
@@ -29,12 +43,21 @@ const LocationWriteSchema = z.object({
   coordinates: GeoPointSchema,
   isPublic: z.boolean().default(true),
   accuracy: z.number().min(0).max(5000).optional(),
+  altitudeMeters: z.number().optional(),
+  speedMetersPerSecond: z.number().min(0).optional(),
+  headingDegrees: z.number().min(0).max(360).optional(),
+  sessionId: ObjectIdSchema.optional(),
+  deviceId: ObjectIdSchema.optional(),
+  source: LocationSourceSchema.default('web'),
+  appVersion: z.string().optional(),
   createdAt: IsoDateStringSchema.optional(),
   lastSeenAt: IsoDateStringSchema.optional(),
-  expiresAt: IsoDateStringSchema.optional()
+  expiresAt: IsoDateStringSchema.optional(),
+  linkedPinIds: z.array(ObjectIdSchema).default([])
 });
 
 module.exports = {
+  LocationSourceSchema,
   LocationUpdateSchema,
   NearbyUserSchema,
   LocationQuerySchema,

@@ -9,6 +9,31 @@ const TimestampSchema = z.object({
   updatedAt: IsoDateStringSchema
 });
 
+const AuditMetadataSchema = TimestampSchema.extend({
+  createdBy: ObjectIdSchema.optional(),
+  updatedBy: ObjectIdSchema.optional()
+});
+
+const VisibilityLevelSchema = z.enum(['public', 'friends', 'private']);
+
+const EntityTypeSchema = z.enum([
+  'user',
+  'pin',
+  'bookmark',
+  'reply',
+  'location',
+  'chat-room',
+  'update',
+  'collection'
+]);
+
+const EntityReferenceSchema = z.object({
+  id: ObjectIdSchema,
+  type: EntityTypeSchema,
+  label: z.string().min(1).optional(),
+  summary: z.string().optional()
+});
+
 const GeoPointSchema = z.object({
   type: z.literal('Point'),
   coordinates: z.tuple([
@@ -48,7 +73,8 @@ const MediaAssetSchema = z.object({
   height: z.number().int().positive().optional(),
   mimeType: z.string().optional(),
   description: z.string().optional(),
-  uploadedAt: IsoDateStringSchema.optional()
+  uploadedAt: IsoDateStringSchema.optional(),
+  uploadedBy: ObjectIdSchema.optional()
 });
 
 const PaginationSchema = z.object({
@@ -72,6 +98,10 @@ module.exports = {
   IsoDateStringSchema,
   ObjectIdSchema,
   TimestampSchema,
+  AuditMetadataSchema,
+  VisibilityLevelSchema,
+  EntityTypeSchema,
+  EntityReferenceSchema,
   GeoPointSchema,
   LocationBoundsSchema,
   AddressSchema,

@@ -7,43 +7,46 @@ const {
   LocationQuerySchema,
   NearbyUserSchema
 } = require('../schemas/location');
-
-const verifyToken = async (req, res, next) => {
-  const token = req.headers.authorization?.split('Bearer ')[1];
-  if (!token) {
-    return res.status(401).json({ message: 'No token provided' });
-  }
-  try {
-    // TODO: Add real Firebase token verification when ready.
-    next();
-  } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
-  }
-};
+const verifyToken = require('../middleware/verifyToken');
 
 const toISOString = (value) => (value ? new Date(value).toISOString() : undefined);
+const toIdString = (value) => {
+  if (!value) return undefined;
+  if (typeof value === 'string') return value;
+  if (value.toString) return value.toString();
+  return `${value}`;
+};
 
 const mapLocationToDto = (location) => {
-  const accuracy = location.accuracy ?? undefined;
-  const dto = {
+  const coordinates = {
+    type: 'Point',
+    coordinates: location.coordinates.coordinates
+  };
+
+  if (location.accuracy !== undefined && location.accuracy !== null) {
+    coordinates.accuracy = location.accuracy;
+  }
+
+  return {
     _id: location._id.toString(),
     userId: location.userId,
-    coordinates: {
-      type: 'Point',
-      coordinates: location.coordinates.coordinates
-    },
+    coordinates,
     isPublic: location.isPublic,
+    accuracy: location.accuracy ?? undefined,
+    altitudeMeters: location.altitudeMeters ?? undefined,
+    speedMetersPerSecond: location.speedMetersPerSecond ?? undefined,
+    headingDegrees: location.headingDegrees ?? undefined,
+    sessionId: toIdString(location.sessionId),
+    deviceId: toIdString(location.deviceId),
+    source: location.source ?? undefined,
+    appVersion: location.appVersion ?? undefined,
+    linkedPinIds: Array.isArray(location.linkedPinIds)
+      ? location.linkedPinIds.map(toIdString)
+      : [],
     createdAt: toISOString(location.createdAt),
     lastSeenAt: toISOString(location.lastSeenAt),
     expiresAt: toISOString(location.expiresAt)
   };
-
-  if (accuracy !== undefined) {
-    dto.coordinates.accuracy = accuracy;
-    dto.accuracy = accuracy;
-  }
-
-  return dto;
 };
 
 router.post('/', verifyToken, async (req, res) => {
@@ -61,7 +64,9 @@ router.post('/', verifyToken, async (req, res) => {
           coordinates: parsed.coordinates.coordinates
         },
         isPublic: parsed.isPublic ?? true,
-        lastSeenAt
+        lastSeenAt,
+        source: parsed.source,
+        linkedPinIds: parsed.linkedPinIds ? parsed.linkedPinIds.map(String) : []
       },
       $setOnInsert: {
         userId: parsed.userId,
@@ -69,16 +74,56 @@ router.post('/', verifyToken, async (req, res) => {
       }
     };
 
+    const ensureUnset = (field) => {
+      update.$unset = { ...(update.$unset || {}), [field]: '' };
+    };
+
     if (parsed.accuracy !== undefined) {
       update.$set.accuracy = parsed.accuracy;
     } else {
-      update.$unset = { ...(update.$unset || {}), accuracy: '' };
+      ensureUnset('accuracy');
+    }
+
+    if (parsed.altitudeMeters !== undefined) {
+      update.$set.altitudeMeters = parsed.altitudeMeters;
+    } else {
+      ensureUnset('altitudeMeters');
+    }
+
+    if (parsed.speedMetersPerSecond !== undefined) {
+      update.$set.speedMetersPerSecond = parsed.speedMetersPerSecond;
+    } else {
+      ensureUnset('speedMetersPerSecond');
+    }
+
+    if (parsed.headingDegrees !== undefined) {
+      update.$set.headingDegrees = parsed.headingDegrees;
+    } else {
+      ensureUnset('headingDegrees');
+    }
+
+    if (parsed.sessionId !== undefined) {
+      update.$set.sessionId = parsed.sessionId;
+    } else {
+      ensureUnset('sessionId');
+    }
+
+    if (parsed.deviceId !== undefined) {
+      update.$set.deviceId = parsed.deviceId;
+    } else {
+      ensureUnset('deviceId');
+    }
+
+    if (parsed.appVersion !== undefined) {
+      update.$set.appVersion = parsed.appVersion;
+    } else {
+      ensureUnset('appVersion');
     }
 
     if (parsed.expiresAt) {
       update.$set.expiresAt = new Date(parsed.expiresAt);
     } else {
-      update.$unset = { ...(update.$unset || {}), expiresAt: '' };
+      ensureUnset('expiresAt');
     }
 
     const location = await Location.findOneAndUpdate(
@@ -132,7 +177,10 @@ router.get('/nearby', verifyToken, async (req, res) => {
           coordinates: '$coordinates.coordinates',
           accuracy: '$accuracy',
           lastSeenAt: 1,
-          distanceMeters: 1
+          distanceMeters: 1,
+          sessionId: 1,
+          source: 1,
+          linkedPinIds: 1
         }
       },
       { $limit: 50 }
@@ -154,7 +202,12 @@ router.get('/nearby', verifyToken, async (req, res) => {
         userId: doc.userId,
         coordinates,
         distanceMeters: doc.distanceMeters,
-        lastSeenAt: toISOString(doc.lastSeenAt) || toISOString(new Date())
+        lastSeenAt: toISOString(doc.lastSeenAt) || toISOString(new Date()),
+        sessionId: toIdString(doc.sessionId),
+        source: doc.source || undefined,
+        linkedPinIds: Array.isArray(doc.linkedPinIds)
+          ? doc.linkedPinIds.map(toIdString)
+          : []
       };
     });
 

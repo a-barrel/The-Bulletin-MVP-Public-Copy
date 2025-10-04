@@ -4,25 +4,42 @@ const {
   GeoPointSchema,
   IsoDateStringSchema,
   MediaAssetSchema,
-  ObjectIdSchema
+  ObjectIdSchema,
+  VisibilityLevelSchema,
+  AuditMetadataSchema
 } = require('./common');
 const { PublicUserSchema } = require('./user');
 
+const PinStatsSchema = z.object({
+  bookmarkCount: z.number().int().nonnegative().default(0),
+  replyCount: z.number().int().nonnegative().default(0),
+  shareCount: z.number().int().nonnegative().default(0),
+  viewCount: z.number().int().nonnegative().default(0)
+});
+
 const BasePinSchema = z.object({
   _id: ObjectIdSchema,
+  creatorId: ObjectIdSchema,
+  creator: PublicUserSchema.optional(),
   title: z.string().min(1),
   description: z.string().max(4000),
   coordinates: GeoPointSchema,
   proximityRadiusMeters: z.number().int().positive().default(1609),
   photos: z.array(MediaAssetSchema).default([]),
+  coverPhoto: MediaAssetSchema.optional(),
+  tagIds: z.array(ObjectIdSchema).default([]),
   tags: z.array(z.string()).default([]),
-  creator: PublicUserSchema,
-  visibility: z.enum(['public', 'friends', 'private']).default('public'),
+  relatedPinIds: z.array(ObjectIdSchema).default([]),
+  linkedLocationId: ObjectIdSchema.optional(),
+  linkedChatRoomId: ObjectIdSchema.optional(),
+  visibility: VisibilityLevelSchema.default('public'),
   isActive: z.boolean().default(true),
+  stats: PinStatsSchema.default({ bookmarkCount: 0, replyCount: 0, shareCount: 0, viewCount: 0 }),
+  bookmarkCount: z.number().int().nonnegative().default(0),
+  replyCount: z.number().int().nonnegative().default(0),
   createdAt: IsoDateStringSchema,
   updatedAt: IsoDateStringSchema,
-  bookmarkCount: z.number().int().nonnegative().default(0),
-  replyCount: z.number().int().nonnegative().default(0)
+  audit: AuditMetadataSchema.optional()
 });
 
 const EventPinSchema = BasePinSchema.extend({
@@ -43,6 +60,7 @@ const EventPinSchema = BasePinSchema.extend({
   participantCount: z.number().int().nonnegative().default(0),
   participantLimit: z.number().int().positive().optional(),
   attendingUserIds: z.array(ObjectIdSchema).optional(),
+  attendeeWaitlistIds: z.array(ObjectIdSchema).default([]),
   attendable: z.boolean().default(true)
 });
 
@@ -58,10 +76,13 @@ const PinSchema = z.discriminatedUnion('type', [EventPinSchema, DiscussionPinSch
 const PinPreviewSchema = z.object({
   _id: ObjectIdSchema,
   type: z.enum(['event', 'discussion']),
+  creatorId: ObjectIdSchema,
+  creator: PublicUserSchema.optional(),
   title: z.string().min(1),
   coordinates: GeoPointSchema,
   proximityRadiusMeters: z.number().int().positive(),
-  creator: PublicUserSchema,
+  linkedLocationId: ObjectIdSchema.optional(),
+  linkedChatRoomId: ObjectIdSchema.optional(),
   startDate: IsoDateStringSchema.optional(),
   endDate: IsoDateStringSchema.optional(),
   expiresAt: IsoDateStringSchema.optional()
@@ -70,10 +91,12 @@ const PinPreviewSchema = z.object({
 const PinListItemSchema = PinPreviewSchema.extend({
   distanceMeters: z.number().nonnegative().optional(),
   isBookmarked: z.boolean().optional(),
-  replyCount: z.number().int().nonnegative().optional()
+  replyCount: z.number().int().nonnegative().optional(),
+  stats: PinStatsSchema.optional()
 });
 
 module.exports = {
+  PinStatsSchema,
   BasePinSchema,
   EventPinSchema,
   DiscussionPinSchema,
