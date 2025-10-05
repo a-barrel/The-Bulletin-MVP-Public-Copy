@@ -40,7 +40,7 @@ These colors are used to differentiate content and highlight interactive element
 
 **4. Accent Blue**
 * **Hex:** `#3EB8F0`
-* **Usage Notes:** This bright, clear blue is the perfect accent for interactive elements. It would be used for hyperlinks, the user's own chat bubbles, and as a background highlight for another category of events (like "Superman Premiere").
+* **Usage Notes:** This bright, clear blue is the perfect accent for interactive elements. It would be used for hyperlinks, the user's own chat bubbles, and as a background highlight for another category of discussions (like "Superman Premiere").
 
 ---
 
