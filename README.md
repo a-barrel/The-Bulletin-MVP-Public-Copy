@@ -1,4 +1,5 @@
-# 📌 The Bulletin - Location-Based Social Media MVP 📌
+# 📌 The Bulletin - Location-Based Social Media MVP 📌 
+-# (Barrel branch test[if this txt is still here, i forgor 2 del :( )])
 
 A cost-effective social media platform that incorporates GPS features, allowing users to share their locations and connect with others nearby.
 
@@ -36,15 +37,29 @@ Create `.env` files in both client and server directories:
 
 #### Server (.env)
 ```
-MONGODB_URI=your_mongodb_uri
+# Firebase service account credentials (JSON format)
+# Required for production, but can be left blank if using Firebase emulators
+FIREBASE_SERVICE_ACCOUNT_JSON=
+
+# Firebase Auth emulator host
+# Comment the following line to not use the Firebase Auth emulator (e.g. comment it out for Real Depoloyment)
+FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
+
+# MongoDB connection URI
+MONGODB_URI=mongodb://localhost:27017/social-gps
+
+# Server port
 PORT=5000
-FIREBASE_ADMIN_CONFIG=your_firebase_admin_config
 ```
 
 #### Client (.env)
 ```
+# The URL of the backend server
 VITE_API_URL=http://localhost:5000
-VITE_FIREBASE_CONFIG=your_firebase_config
+
+# Your web app's Firebase configuration
+# (This config is public and can be exposed in the client-side code and thus safe to include here on the git repo)
+VITE_FIREBASE_CONFIG={"apiKey": "AIzaSyAkVlj0uQu2Xdc1Y99lAd1bPbFlawEM6pA","authDomain": "bulletin app-6548a.firebaseapp.com","projectId": "bulletin-app-6548a","storageBucket": "bulletin-app-6548a.firebasestorage.app","messagingSenderId": "772158261487","appId": "1:772158261487:web:a9eef2f733426ded44331a","measurementId": "G-H3PW6CFB6L"}
 ```
 
 ### Installation
@@ -54,8 +69,13 @@ VITE_FIREBASE_CONFIG=your_firebase_config
    ```bash
    npm run install:all
    ```
+   ```bash
+   npm install -g firebase-tools
+   ```
 
-3. Start both development servers from the root directory:
+3. Ensure .env exsists within the server and client folders. (see above for template)
+
+4. Start both development servers from the root directory:
    ```bash
    npm run dev
    ```
