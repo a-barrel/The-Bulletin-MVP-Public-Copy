@@ -80,3 +80,38 @@ export async function fetchNearbyUsers(query) {
 
   return payload;
 }
+
+export async function createPin(input) {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/pins`, {
+    method: 'POST',
+    headers: buildHeaders(),
+    body: JSON.stringify(input)
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to create pin');
+  }
+
+  return payload;
+}
+
+export async function fetchPinById(pinId) {
+  if (!pinId) {
+    throw new Error('Pin id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}`, {
+    method: 'GET',
+    headers: buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load pin');
+  }
+
+  return payload;
+}

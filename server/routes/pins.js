@@ -2,6 +2,7 @@
 const mongoose = require('mongoose');
 const { z, ZodError } = require('zod');
 const Pin = require('../models/Pin');
+const User = require('../models/User');
 const Reply = require('../models/Reply');
 const { PinListItemSchema, PinSchema, PinPreviewSchema } = require('../schemas/pin');
 const { PinReplySchema } = require('../schemas/reply');
@@ -163,6 +164,132 @@ const mapReply = (replyDoc, author) => {
     audit: doc.audit ? buildAudit(doc.audit, replyDoc.createdAt, replyDoc.updatedAt) : undefined
   });
 };
+
+const CoordinatesSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180)
+});
+
+const BaseCreatePinSchema = z.object({
+  type: z.enum(['event', 'discussion']),
+  title: z.string().trim().min(1).max(120),
+  description: z.string().trim().min(1).max(4000),
+  coordinates: CoordinatesSchema,
+  proximityRadiusMeters: z.number().int().positive().max(50000).optional(),
+  creatorId: z.string().optional()
+});
+
+const EventAddressSchema = z.object({
+  precise: z.string().trim().min(1),
+  components: z.object({
+    line1: z.string().trim().min(1),
+    line2: z.string().trim().optional(),
+    city: z.string().trim().min(1),
+    state: z.string().trim().min(1),
+    postalCode: z.string().trim().min(1),
+    country: z.string().trim().min(2)
+  }).optional()
+});
+
+const EventPinCreateSchema = BaseCreatePinSchema.extend({
+  type: z.literal('event'),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
+  address: EventAddressSchema.optional()
+});
+
+const ApproximateAddressInputSchema = z.object({
+  city: z.string().trim().optional(),
+  state: z.string().trim().optional(),
+  country: z.string().trim().optional(),
+  formatted: z.string().trim().optional()
+});
+
+const DiscussionPinCreateSchema = BaseCreatePinSchema.extend({
+  type: z.literal('discussion'),
+  expiresAt: z.coerce.date(),
+  autoDelete: z.boolean().optional(),
+  approximateAddress: ApproximateAddressInputSchema.optional()
+});
+
+const CreatePinSchema = z.discriminatedUnion('type', [
+  EventPinCreateSchema,
+  DiscussionPinCreateSchema
+]);
+
+router.post('/', verifyToken, async (req, res) => {
+  try {
+    const input = CreatePinSchema.parse(req.body);
+
+    if (input.type === 'event' && input.endDate < input.startDate) {
+      return res.status(400).json({ message: 'endDate must be after startDate' });
+    }
+
+    let creatorObjectId;
+    if (input.creatorId) {
+      if (!mongoose.Types.ObjectId.isValid(input.creatorId)) {
+        return res.status(400).json({ message: 'Invalid creator id' });
+      }
+      creatorObjectId = new mongoose.Types.ObjectId(input.creatorId);
+    } else {
+      const fallbackUser = await User.findOne().sort({ createdAt: 1 });
+      if (!fallbackUser) {
+        return res.status(400).json({ message: 'No users available to assign as pin creator' });
+      }
+      creatorObjectId = fallbackUser._id;
+    }
+
+    const coordinates = {
+      type: 'Point',
+      coordinates: [input.coordinates.longitude, input.coordinates.latitude]
+    };
+
+    const pinData = {
+      type: input.type,
+      creatorId: creatorObjectId,
+      title: input.title,
+      description: input.description,
+      coordinates,
+      proximityRadiusMeters: input.proximityRadiusMeters ?? 1609,
+      visibility: 'public'
+    };
+
+    if (input.type === 'event') {
+      pinData.startDate = input.startDate;
+      pinData.endDate = input.endDate;
+      pinData.address = input.address
+        ? {
+            precise: input.address.precise,
+            components: input.address.components
+          }
+        : undefined;
+    } else if (input.type === 'discussion') {
+      pinData.expiresAt = input.expiresAt;
+      pinData.autoDelete = input.autoDelete ?? true;
+      pinData.approximateAddress = input.approximateAddress
+        ? {
+            city: input.approximateAddress.city,
+            state: input.approximateAddress.state,
+            country: input.approximateAddress.country,
+            formatted: input.approximateAddress.formatted
+          }
+        : undefined;
+    }
+
+    const pin = await Pin.create(pinData);
+    const hydrated = await Pin.findById(pin._id).populate('creatorId');
+    const sourcePin = hydrated ?? pin;
+    const creatorPublic = hydrated ? mapUserToPublic(hydrated.creatorId) : undefined;
+    const payload = mapPinToFull(sourcePin, creatorPublic);
+    res.status(201).json(payload);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid pin payload', issues: error.errors });
+    }
+    console.error('Failed to create pin:', error);
+    res.status(500).json({ message: 'Failed to create pin' });
+  }
+});
 
 router.get('/', verifyToken, async (req, res) => {
   try {
