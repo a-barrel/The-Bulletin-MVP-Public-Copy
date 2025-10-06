@@ -1,5 +1,5 @@
-﻿const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
-const FALLBACK_TOKEN = import.meta.env.VITE_API_ACCESS_TOKEN ?? 'demo-token';
+﻿const API_BASE_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
+const FALLBACK_TOKEN = import.meta.env.VITE_API_ACCESS_TOKEN ?? 'demo-token'; //unsure if this exsists in the .env or what this is suppost to be at all :(
 
 function resolveApiBaseUrl() {
   if (API_BASE_URL) {
