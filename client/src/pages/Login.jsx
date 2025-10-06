@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import {
@@ -6,24 +6,61 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth';
-    
+import './Login.css';
+
 function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(false);
+  const [shake, setShake] = useState(false);
   const [error, setError] = useState(null);
-    
+
+  useEffect(() => {
+  if (error) {
+    const timer = setTimeout(() => setError(null), 3000); // hide after 3 seconds
+    return () => clearTimeout(timer);
+  }
+}, [error]);
+  
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setError(null);
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigate('/map');
-    } catch (error) {
-      setError(error.message);
+  e.preventDefault();
+  setError(null);
+
+  // Check for empty fields before calling Firebase
+  if (!email || !password) {
+    setError('Please enter both email and password.');
+    return;
+  }
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    navigate('/map');
+  } catch (error) {
+    // Customize the messages for better UX
+
+    switch (error.code) {
+      case 'auth/invalid-email':
+        setError('Please enter a valid email address.');
+        break;
+      case 'auth/user-not-found':
+        setError('No account found with this email.');
+        break;
+      case 'auth/wrong-password':
+        setError('Incorrect password. Try again.');
+        break;
+      case 'auth/missing-password':
+        setError('Please enter your password.');
+        break;
+      default:
+        setError('Login failed. Please try again.');
+        break;
     }
-  };
-    
+    setShake(true);
+    setTimeout(() => setShake(false), 300);
+  }
+};
+
   const handleGoogleSignIn = async () => {
     setError(null);
     try {
@@ -34,36 +71,76 @@ function LoginPage() {
       setError(error.message);
     }
   };
-    
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-      <h1>Login Page</h1>
-      <form onSubmit={handleLogin}>
-        <div>
+    <div className={`login-page ${shake ? 'shake' : ''}`}>
+      <div className="phone-frame">
+        <h1 className="login-title">The Bulletin</h1>
+
+        {/*Put actual Bulletin logo here later*/}
+        <div className="bulletin-image">
+          <span>[ Placeholder ]</span>
+        </div>
+
+        {error && (
+          <div className="error-overlay" onClick={() => setError(null)}>
+            <div className="error-box">
+              <p>{error}</p>
+            </div>
+          </div>
+        )}
+        <form onSubmit={handleLogin} className={"login-form"}>
           <input
             type="email"
-            placeholder="Email"
+            placeholder="Enter Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            required
           />
-        </div>
-        <div>
+
           <input
             type="password"
-            placeholder="Password"
+            placeholder="Enter Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            required
           />
-        </div>
-        <button type="submit">Login</button>
-      </form>
-      <hr />
-      <button onClick={handleGoogleSignIn}>Sign in with Google</button>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+
+          <div className="options">
+            <label>
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={() => setRemember(!remember)}
+              />
+              Remember me
+            </label>
+            {/*NOTE: This doesn't navigate anywhere currently*/}
+            <span
+              className="forgot-password"
+              onClick={() => navigate('/forgot-password')}
+            > 
+              Forgot Password?
+            </span>
+          </div>
+
+          <button type="submit" className="login-btn">Login</button>
+        </form>
+
+        <button className="google-btn" onClick={handleGoogleSignIn}>
+          <img
+            src="https://www.svgrepo.com/show/475656/google-color.svg"
+            alt="Google logo"
+            className="google-icon"
+          />
+          Sign in with Google
+        </button>
+        {/*NOTE: This doesn't navigate anywhere currently*/}
+        <p className="getting-started-text">Getting started?</p>
+          <button className="register-btn" onClick={() => navigate('/register')}>
+          Register Here
+          </button>
+      </div>
     </div>
   );
-}   
-    
+}
+
 export default LoginPage;
