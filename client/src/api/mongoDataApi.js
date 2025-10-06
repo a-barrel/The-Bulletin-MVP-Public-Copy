@@ -1,5 +1,5 @@
-﻿const API_BASE_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
-const FALLBACK_TOKEN = import.meta.env.VITE_API_ACCESS_TOKEN ?? 'demo-token'; //unsure if this exsists in the .env or what this is suppost to be at all :(
+﻿import { auth } from '../firebase';
+const API_BASE_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
 
 function resolveApiBaseUrl() {
   if (API_BASE_URL) {
@@ -14,19 +14,18 @@ function resolveApiBaseUrl() {
   return '';
 }
 
-function resolveAuthToken() {
-  if (typeof window !== 'undefined' && window.localStorage) {
-    const stored = window.localStorage.getItem('pinpointAuthToken');
-    if (stored) {
-      return stored;
-    }
+async function resolveAuthToken() {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    return null;
   }
 
-  return FALLBACK_TOKEN;
+  // TODO: Should we cache this token and refresh it in the background?
+  return currentUser.getIdToken();
 }
 
-function buildHeaders(extra = {}) {
-  const token = resolveAuthToken();
+async function buildHeaders(extra = {}) {
+  const token = await resolveAuthToken();
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -45,7 +44,7 @@ export async function insertLocationUpdate(input) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/locations`, {
     method: 'POST',
-    headers: buildHeaders(),
+    headers: await buildHeaders(),
     body: JSON.stringify(input)
   });
 
@@ -70,7 +69,7 @@ export async function fetchNearbyUsers(query) {
 
   const response = await fetch(`${baseUrl}/api/locations/nearby?${params.toString()}`, {
     method: 'GET',
-    headers: buildHeaders()
+    headers: await buildHeaders()
   });
 
   const payload = await response.json().catch(() => []);
@@ -85,7 +84,7 @@ export async function createPin(input) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/pins`, {
     method: 'POST',
-    headers: buildHeaders(),
+    headers: await buildHeaders(),
     body: JSON.stringify(input)
   });
 
@@ -105,7 +104,7 @@ export async function fetchPinById(pinId) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}`, {
     method: 'GET',
-    headers: buildHeaders()
+    headers: await buildHeaders()
   });
 
   const payload = await response.json().catch(() => ({}));
