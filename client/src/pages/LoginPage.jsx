@@ -6,7 +6,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth';
-import './Login.css';
+import './LoginPage.css';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -79,7 +79,7 @@ function LoginPage() {
 
         {/*Put actual Bulletin logo here later*/}
         <div className="bulletin-image">
-          <span>[ Placeholder ]</span>
+          <span>[ Skibidi ]</span>
         </div>
 
         {error && (
@@ -113,6 +113,7 @@ function LoginPage() {
               />
               Remember me
             </label>
+            
             {/*NOTE: This doesn't navigate anywhere currently*/}
             <span
               className="forgot-password"
@@ -133,6 +134,7 @@ function LoginPage() {
           />
           Sign in with Google
         </button>
+
         {/*NOTE: This doesn't navigate anywhere currently*/}
         <p className="getting-started-text">Getting started?</p>
           <button className="register-btn" onClick={() => navigate('/register')}>
