@@ -58,12 +58,18 @@ const AddressSchema = z.object({
   formatted: z.string().optional()
 });
 
-const ApproximateAddressSchema = z.object({
-  city: z.string().min(1),
-  state: z.string().min(1).optional(),
-  country: z.string().min(2).optional(),
-  formatted: z.string().optional()
-});
+const ApproximateAddressSchema = z
+  .object({
+    city: z.string().min(1),
+    state: z.string().min(1),
+    country: z.string().min(2),
+    formatted: z.string()
+  })
+  .partial()
+  .refine(
+    (address) => Object.values(address).some((value) => value !== undefined),
+    'Approximate address must include at least one field'
+  );
 
 const MediaAssetSchema = z.object({
   _id: ObjectIdSchema.optional(),

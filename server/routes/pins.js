@@ -31,6 +31,8 @@ const toIdString = (value) => {
   return String(value);
 };
 
+const METERS_PER_MILE = 1609.34;
+
 const mapUserToPublic = (user) => {
   if (!user) return undefined;
   const doc = user.toObject ? user.toObject() : user;
@@ -170,6 +172,26 @@ const CoordinatesSchema = z.object({
   longitude: z.number().min(-180).max(180)
 });
 
+const NearbyPinsQuerySchema = z.object({
+  latitude: z.coerce.number().min(-90).max(90),
+  longitude: z.coerce.number().min(-180).max(180),
+  distanceMiles: z.coerce.number().positive().max(250),
+  limit: z.coerce.number().int().positive().max(50).default(20),
+  type: z.enum(['event', 'discussion']).optional()
+});
+
+const haversineDistanceMeters = (lat1, lon1, lat2, lon2) => {
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const earthRadiusMeters = 6371000;
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusMeters * c;
+};
+
 const BaseCreatePinSchema = z.object({
   type: z.enum(['event', 'discussion']),
   title: z.string().trim().min(1).max(120),
@@ -179,16 +201,24 @@ const BaseCreatePinSchema = z.object({
   creatorId: z.string().optional()
 });
 
-const EventAddressSchema = z.object({
-  precise: z.string().trim().min(1),
-  components: z.object({
+const EventAddressComponentsSchema = z
+  .object({
     line1: z.string().trim().min(1),
     line2: z.string().trim().optional(),
     city: z.string().trim().min(1),
     state: z.string().trim().min(1),
     postalCode: z.string().trim().min(1),
     country: z.string().trim().min(2)
-  }).optional()
+  })
+  .partial()
+  .refine(
+    (components) => Object.values(components).some((value) => value !== undefined),
+    'Address components must include at least one field'
+  );
+
+const EventAddressSchema = z.object({
+  precise: z.string().trim().min(1),
+  components: EventAddressComponentsSchema.optional()
 });
 
 const EventPinCreateSchema = BaseCreatePinSchema.extend({
@@ -232,9 +262,18 @@ router.post('/', verifyToken, async (req, res) => {
       }
       creatorObjectId = new mongoose.Types.ObjectId(input.creatorId);
     } else {
-      const fallbackUser = await User.findOne().sort({ createdAt: 1 });
+      let fallbackUser = await User.findOne().sort({ createdAt: 1 });
       if (!fallbackUser) {
-        return res.status(400).json({ message: 'No users available to assign as pin creator' });
+        fallbackUser = await User.findOneAndUpdate(
+          { username: 'offline-demo' },
+          {
+            username: 'offline-demo',
+            displayName: 'Offline Demo User',
+            email: 'offline@example.com',
+            accountStatus: 'active'
+          },
+          { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
       }
       creatorObjectId = fallbackUser._id;
     }
@@ -288,6 +327,49 @@ router.post('/', verifyToken, async (req, res) => {
     }
     console.error('Failed to create pin:', error);
     res.status(500).json({ message: 'Failed to create pin' });
+  }
+});
+
+router.get('/nearby', verifyToken, async (req, res) => {
+  try {
+    const { latitude, longitude, distanceMiles, limit, type } = NearbyPinsQuerySchema.parse(req.query);
+    const maxDistanceMeters = distanceMiles * METERS_PER_MILE;
+
+    const geoQuery = {
+      coordinates: {
+        $near: {
+          $geometry: { type: 'Point', coordinates: [longitude, latitude] },
+          $maxDistance: maxDistanceMeters
+        }
+      }
+    };
+
+    if (type) {
+      geoQuery.type = type;
+    }
+
+    const pins = await Pin.find(geoQuery)
+      .limit(limit)
+      .populate('creatorId');
+
+    const payload = pins.map((pinDoc) => {
+      const creatorPublic = mapUserToPublic(pinDoc.creatorId);
+      const listItem = mapPinToListItem(pinDoc, creatorPublic);
+      const [pinLongitude, pinLatitude] = pinDoc.coordinates.coordinates;
+      const distanceMeters = haversineDistanceMeters(latitude, longitude, pinLatitude, pinLongitude);
+      return {
+        ...listItem,
+        distanceMeters
+      };
+    });
+
+    res.json(payload);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid nearby pins query', issues: error.errors });
+    }
+    console.error('Failed to load nearby pins:', error);
+    res.status(500).json({ message: 'Failed to load nearby pins' });
   }
 });
 

@@ -4,20 +4,31 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const admin = require('firebase-admin');
 
-// Load environment variables
+// Load environment variables before reading runtime config
 dotenv.config();
 
-if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
-  admin.initializeApp();
+const runtime = require('./config/runtime');
+
+console.log(`Pinpoint server running in ${runtime.mode} mode`);
+
+if (runtime.isOffline) {
+  // Default to the local emulator host unless one is already set.
+  if (!process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    process.env.FIREBASE_AUTH_EMULATOR_HOST = runtime.firebase.emulatorHost;
+  }
+
+  const projectId = process.env.FIREBASE_PROJECT_ID || 'pinpoint-offline';
+  admin.initializeApp({ projectId });
+  console.log(`Firebase Auth emulator enabled at ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
 } else {
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
-    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)
+  const serviceAccount = runtime.firebase.serviceAccountJson
+    ? JSON.parse(runtime.firebase.serviceAccountJson)
     : undefined;
 
   admin.initializeApp({
     credential: serviceAccount
       ? admin.credential.cert(serviceAccount)
-      : admin.credential.applicationDefault(),
+      : admin.credential.applicationDefault()
   });
 }
 
@@ -30,9 +41,11 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/social-gps')
+mongoose
+  .connect(runtime.mongoUri)
   .then(async () => {
-    console.log('Connected to MongoDB');
+    const mongoLabel = runtime.isOffline ? runtime.mongoUri : 'online cluster';
+    console.log(`Connected to MongoDB (${mongoLabel})`);
     try {
       await Location.syncIndexes();
       console.log('Location indexes synced');

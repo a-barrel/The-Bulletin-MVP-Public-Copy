@@ -1,13 +1,15 @@
-﻿import { auth } from '../firebase';
-const API_BASE_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
+import { auth } from '../firebase';
+import runtimeConfig from '../config/runtime';
+
+const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
 
 function resolveApiBaseUrl() {
   if (API_BASE_URL) {
     return API_BASE_URL;
   }
 
-  // In development we proxy to the local server.
-  if (import.meta.env.DEV) {
+  // In offline/dev mode we proxy to the local server.
+  if (runtimeConfig.isOffline || import.meta.env.DEV) {
     return '';
   }
 
@@ -15,12 +17,15 @@ function resolveApiBaseUrl() {
 }
 
 async function resolveAuthToken() {
+  if (runtimeConfig.isOffline) {
+    return runtimeConfig.fallbackToken;
+  }
+
   const currentUser = auth.currentUser;
   if (!currentUser) {
     return null;
   }
 
-  // TODO: Should we cache this token and refresh it in the background?
   return currentUser.getIdToken();
 }
 
@@ -34,8 +39,10 @@ async function buildHeaders(extra = {}) {
 }
 
 export function isMongoDataApiConfigured() {
-  if (!API_BASE_URL && !import.meta.env.DEV) {
-    console.warn('Using relative API base URL. Set VITE_API_BASE_URL to your Render backend when deploying.');
+  if (!API_BASE_URL && runtimeConfig.isOnline) {
+    console.warn(
+      'Using relative API base URL while in online mode. Set VITE_API_BASE_URL (or legacy VITE_API_URL) to your Render backend when deploying.'
+    );
   }
   return true;
 }
@@ -75,6 +82,35 @@ export async function fetchNearbyUsers(query) {
   const payload = await response.json().catch(() => []);
   if (!response.ok) {
     throw new Error(payload?.message || 'Failed to load nearby users');
+  }
+
+  return payload;
+}
+
+export async function fetchPinsNearby({ latitude, longitude, distanceMiles, limit }) {
+  if (latitude === undefined || longitude === undefined) {
+    throw new Error('Latitude and longitude are required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const params = new URLSearchParams({
+    latitude: String(latitude),
+    longitude: String(longitude),
+    distanceMiles: String(distanceMiles)
+  });
+
+  if (limit !== undefined) {
+    params.set('limit', String(limit));
+  }
+
+  const response = await fetch(`${baseUrl}/api/pins/nearby?${params.toString()}`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => []);
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load nearby pins');
   }
 
   return payload;

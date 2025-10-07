@@ -15,7 +15,7 @@ import EventNoteIcon from '@mui/icons-material/EventNote';
 import ForumIcon from '@mui/icons-material/Forum';
 import MapIcon from '@mui/icons-material/Map';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { createPin, fetchPinById } from '../api/mongoDataApi';
+import { createPin, fetchPinById, fetchPinsNearby } from '../api/mongoDataApi';
 
 export const pageConfig = {
   id: 'create-pin',
@@ -31,6 +31,14 @@ const INITIAL_COORDINATES = {
   latitude: '33.7838',
   longitude: '-118.1136'
 };
+
+const formatDateTimeLocal = (date) => {
+  const timezoneOffsetMs = date.getTimezoneOffset() * 60000;
+  const localDate = new Date(date.getTime() - timezoneOffsetMs);
+  return localDate.toISOString().slice(0, 16);
+};
+
+const METERS_PER_MILE = 1609.34;
 
 function CreatePinPage() {
   const [pinType, setPinType] = useState('event');
@@ -58,6 +66,9 @@ function CreatePinPage() {
   const [pinIdInput, setPinIdInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFetchingPin, setIsFetchingPin] = useState(false);
+  const [distanceMiles, setDistanceMiles] = useState('5');
+  const [nearbyPins, setNearbyPins] = useState([]);
+  const [isFetchingNearby, setIsFetchingNearby] = useState(false);
 
   const isEvent = useMemo(() => pinType === 'event', [pinType]);
 
@@ -74,6 +85,118 @@ function CreatePinPage() {
       ...prev,
       [field]: value
     }));
+  };
+
+  const applyPreset = (type, values) => {
+    setStatus(null);
+    setPinType(type);
+    setFormState((prev) => ({
+      ...prev,
+      ...values
+    }));
+  };
+
+  const handleAutofillEvent = () => {
+    const now = new Date();
+    const start = new Date(now.getTime() + 60 * 60 * 1000);
+    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+
+    applyPreset('event', {
+      title: 'Community Beach Cleanup',
+      description:
+        'Help us tidy the shoreline this weekend. Gloves, bags, and refreshments provided.',
+      latitude: '33.7683',
+      longitude: '-118.1956',
+      proximityRadiusMeters: '1200',
+      startDate: formatDateTimeLocal(start),
+      endDate: formatDateTimeLocal(end),
+      expiresAt: '',
+      addressPrecise: 'Long Beach Shoreline Marina',
+      addressCity: 'Long Beach',
+      addressState: 'CA',
+      addressPostalCode: '90802',
+      addressCountry: 'USA',
+      approximateCity: '',
+      approximateState: '',
+      approximateCountry: '',
+      approximateFormatted: ''
+    });
+  };
+
+const handleAutofillDiscussion = () => {
+  const expires = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+  applyPreset('discussion', {
+    title: 'Neighborhood Watch Check-in',
+      description:
+        'Share recent observations around the neighborhood so we can coordinate patrols.',
+      latitude: '33.7838',
+      longitude: '-118.1136',
+      proximityRadiusMeters: '800',
+      startDate: '',
+      endDate: '',
+      expiresAt: formatDateTimeLocal(expires),
+      addressPrecise: '',
+      addressCity: '',
+      addressState: '',
+      addressPostalCode: '',
+      addressCountry: '',
+      approximateCity: 'Long Beach',
+      approximateState: 'CA',
+      approximateCountry: 'USA',
+    approximateFormatted: 'Long Beach, CA'
+  });
+};
+
+  const handleDistanceChange = (event) => {
+    setDistanceMiles(event.target.value);
+  };
+
+  const handleFetchNearbyPins = async () => {
+    setStatus(null);
+    const miles = Number.parseFloat(distanceMiles);
+    if (Number.isNaN(miles) || miles <= 0) {
+      setStatus({ type: 'error', message: 'Provide a distance in miles greater than 0.' });
+      return;
+    }
+
+    let latitude;
+    let longitude;
+    try {
+      latitude = parseCoordinate(formState.latitude, 'Latitude');
+      longitude = parseCoordinate(formState.longitude, 'Longitude');
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
+      return;
+    }
+
+    try {
+      setIsFetchingNearby(true);
+      setNearbyPins([]);
+      const pins = await fetchPinsNearby({
+        latitude,
+        longitude,
+        distanceMiles: miles
+      });
+      setNearbyPins(pins);
+      setStatus({
+        type: 'success',
+        message: pins.length
+          ? `Loaded ${pins.length} pin${pins.length === 1 ? '' : 's'} within ${miles} miles.`
+          : `No pins found within ${miles} miles.`
+      });
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message || 'Failed to fetch nearby pins.' });
+    } finally {
+      setIsFetchingNearby(false);
+    }
+  };
+
+  const formatDistanceMiles = (meters) => {
+    if (meters === undefined || meters === null) {
+      return null;
+    }
+    return (meters / METERS_PER_MILE).toFixed(1);
   };
 
   const parseCoordinate = (value, label) => {
@@ -169,7 +292,20 @@ function CreatePinPage() {
       const result = await createPin(payload);
       setCreatedPin(result);
       setPinIdInput(result?._id ?? '');
-      setStatus({ type: 'success', message: 'Pin created successfully.' });
+      let statusMessage = 'Pin created successfully.';
+
+      if (result?._id) {
+        try {
+          const persistedPin = await fetchPinById(result._id);
+          setCreatedPin(persistedPin);
+          statusMessage = 'Pin created and loaded from MongoDB.';
+        } catch (reloadError) {
+          console.warn('Failed to reload pin after creation', reloadError);
+          statusMessage = 'Pin created successfully. Reloading from MongoDB failed.';
+        }
+      }
+
+      setStatus({ type: 'success', message: statusMessage });
     } catch (error) {
       setStatus({ type: 'error', message: error.message || 'Failed to create pin.' });
     } finally {
@@ -246,6 +382,32 @@ function CreatePinPage() {
                 </Stack>
               </ToggleButton>
             </ToggleButtonGroup>
+          </Stack>
+
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1}
+            justifyContent="flex-end"
+            alignItems={{ xs: 'stretch', sm: 'center' }}
+          >
+            <Button
+              type="button"
+              variant="outlined"
+              size="small"
+              startIcon={<EventNoteIcon fontSize="small" />}
+              onClick={handleAutofillEvent}
+            >
+              Autofill Event
+            </Button>
+            <Button
+              type="button"
+              variant="outlined"
+              size="small"
+              startIcon={<ForumIcon fontSize="small" />}
+              onClick={handleAutofillDiscussion}
+            >
+              Autofill Discussion
+            </Button>
           </Stack>
 
           <TextField
@@ -434,6 +596,60 @@ function CreatePinPage() {
             <Box component="pre" sx={{ mt: 2, backgroundColor: 'grey.900', p: 2, borderRadius: 2, overflowX: 'auto' }}>
               {JSON.stringify(createdPin, null, 2)}
             </Box>
+          )}
+        </Paper>
+
+        <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Typography variant="h6">Find nearby pins</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Search for pins near the coordinates above to verify radius queries.
+          </Typography>
+
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+            <TextField
+              label="Distance (miles)"
+              value={distanceMiles}
+              onChange={handleDistanceChange}
+              InputProps={{ inputMode: 'decimal' }}
+              sx={{ width: { xs: '100%', sm: 200 } }}
+            />
+            <Button
+              type="button"
+              variant="outlined"
+              startIcon={<MapIcon />}
+              onClick={handleFetchNearbyPins}
+              disabled={isFetchingNearby}
+            >
+              {isFetchingNearby ? 'Searching…' : 'Fetch nearby pins'}
+            </Button>
+          </Stack>
+
+          {nearbyPins.length > 0 ? (
+            <Stack spacing={1}>
+              {nearbyPins.map((pin) => {
+                const distanceLabel = formatDistanceMiles(pin.distanceMeters);
+                return (
+                  <Paper key={pin._id} variant="outlined" sx={{ p: 2 }}>
+                    <Stack spacing={0.5}>
+                      <Typography variant="subtitle1">{pin.title}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {(pin.type === 'event' ? 'Event' : 'Discussion') + ' pin'}
+                        {distanceLabel ? ` • ${distanceLabel} mi away` : ''}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {pin._id}
+                      </Typography>
+                    </Stack>
+                  </Paper>
+                );
+              })}
+            </Stack>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              {isFetchingNearby
+                ? 'Searching for pins…'
+                : 'Enter a distance and fetch to list pins near the provided coordinates.'}
+            </Typography>
           )}
         </Paper>
       </Stack>

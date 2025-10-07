@@ -60,6 +60,22 @@ Query params: `type`, `creatorId`, `limit`
 ### `GET /api/pins/:pinId`
 Full pin payload with address/participants (events) or expiration (discussions).
 
+### `GET /api/pins/nearby`
+Query params: `latitude`, `longitude`, `distanceMiles`, `limit`
+
+```json
+[
+  {
+    "_id": "68e061721329566a22d474c5",
+    "type": "event",
+    "title": "Shoreline Cycle Loop",
+    "coordinates": { "type": "Point", "coordinates": [-118.0265, 33.7838] },
+    "proximityRadiusMeters": 804,
+    "distanceMeters": 8047.48
+  }
+]
+```
+
 ### `GET /api/pins/:pinId/replies`
 ```json
 [

@@ -36,16 +36,19 @@ Create `.env` files in both client and server directories:
 
 #### Server (.env)
 ```
+# Optional: force a mode override (defaults to offline locally, online in production)
+# PINPOINT_RUNTIME_MODE=online
+
+# MongoDB connection URIs
+MONGODB_URI=
+MONGODB_URI_OFFLINE=mongodb://127.0.0.1:27017/pinpoint
+
 # Firebase service account credentials (JSON format)
-# Required for production, but can be left blank if using Firebase emulators
+# Required for Render/production deployments
 FIREBASE_SERVICE_ACCOUNT_JSON=
 
-# Firebase Auth emulator host
-# Comment the following line to not use the Firebase Auth emulator (e.g. comment it out for Real Depoloyment)
-FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
-
-# MongoDB connection URI
-MONGODB_URI=mongodb://localhost:27017/social-gps
+# Demo bearer token accepted while in offline mode
+PINPOINT_OFFLINE_DEMO_TOKEN=demo-token
 
 # Server port
 PORT=5000
@@ -53,13 +56,32 @@ PORT=5000
 
 #### Client (.env)
 ```
-# The URL of the backend server
-VITE_API_URL=http://localhost:5000
+# Optional: override runtime mode (defaults to offline in dev)
+# VITE_RUNTIME_MODE=online
+
+# Backend API base URLs
+# (leave blank for relative /api calls when working offline)
+VITE_API_BASE_URL=
+VITE_API_BASE_URL_OFFLINE=
 
 # Your web app's Firebase configuration
 # (This config is public and can be exposed in the client-side code and thus safe to include here on the git repo)
-VITE_FIREBASE_CONFIG={"apiKey": "AIzaSyAkVlj0uQu2Xdc1Y99lAd1bPbFlawEM6pA","authDomain": "bulletin app-6548a.firebaseapp.com","projectId": "bulletin-app-6548a","storageBucket": "bulletin-app-6548a.firebasestorage.app","messagingSenderId": "772158261487","appId": "1:772158261487:web:a9eef2f733426ded44331a","measurementId": "G-H3PW6CFB6L"}
+VITE_FIREBASE_CONFIG={"apiKey": "...","authDomain": "...","projectId": "...","storageBucket": "...","messagingSenderId": "...","appId": "...","measurementId": "..."}
+# Optional offline Firebase config (falls back to VITE_FIREBASE_CONFIG if omitted)
+# VITE_FIREBASE_CONFIG_OFFLINE={"projectId": "pinpoint-offline"}
+# Optional auth emulator URL (default http://localhost:9099)
+# VITE_FIREBASE_AUTH_EMULATOR_URL=http://localhost:9099
 ```
+
+### Runtime modes
+
+- `npm run dev` (or any non-production start) defaults to **offline** mode:
+  - API calls target the local Express server via relative `/api` URLs.
+  - MongoDB connects to `mongodb://127.0.0.1:27017/pinpoint`.
+  - Firebase Auth automatically connects to the local emulator (http://localhost:9099).
+  - Requests include the configurable `PINPOINT_OFFLINE_DEMO_TOKEN` bearer when no user is signed in.
+- Render/Vercel builds automatically run in **online** mode (`NODE_ENV=production`), using the hosted MongoDB URI and Firebase credentials.
+- Override the behavior at any time by setting `PINPOINT_RUNTIME_MODE` / `VITE_RUNTIME_MODE` to `online` or `offline`.
 
 ### Installation
 
