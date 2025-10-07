@@ -47,7 +47,7 @@ function CreatePinPage() {
     description: '',
     latitude: INITIAL_COORDINATES.latitude,
     longitude: INITIAL_COORDINATES.longitude,
-    proximityRadiusMeters: '1609',
+    proximityRadiusMiles: '1',
     startDate: '',
     endDate: '',
     expiresAt: '',
@@ -107,7 +107,7 @@ function CreatePinPage() {
         'Help us tidy the shoreline this weekend. Gloves, bags, and refreshments provided.',
       latitude: '33.7683',
       longitude: '-118.1956',
-      proximityRadiusMeters: '1200',
+      proximityRadiusMiles: '0.75',
       startDate: formatDateTimeLocal(start),
       endDate: formatDateTimeLocal(end),
       expiresAt: '',
@@ -132,7 +132,7 @@ const handleAutofillDiscussion = () => {
         'Share recent observations around the neighborhood so we can coordinate patrols.',
       latitude: '33.7838',
       longitude: '-118.1136',
-      proximityRadiusMeters: '800',
+      proximityRadiusMiles: '0.5',
       startDate: '',
       endDate: '',
       expiresAt: formatDateTimeLocal(expires),
@@ -226,12 +226,15 @@ const handleAutofillDiscussion = () => {
     try {
       const latitude = parseCoordinate(formState.latitude, 'Latitude');
       const longitude = parseCoordinate(formState.longitude, 'Longitude');
-      const proximityRadius = formState.proximityRadiusMeters
-        ? Number.parseInt(formState.proximityRadiusMeters, 10)
+      const proximityRadius = formState.proximityRadiusMiles
+        ? Number.parseFloat(formState.proximityRadiusMiles)
         : undefined;
 
       if (proximityRadius !== undefined && Number.isNaN(proximityRadius)) {
         throw new Error('Proximity radius must be a valid number');
+      }
+      if (proximityRadius !== undefined && proximityRadius <= 0) {
+        throw new Error('Proximity radius must be greater than 0 miles');
       }
 
       payload = {
@@ -242,7 +245,7 @@ const handleAutofillDiscussion = () => {
           latitude,
           longitude
         },
-        proximityRadiusMeters: proximityRadius
+        proximityRadiusMeters: proximityRadius !== undefined ? Math.round(proximityRadius * METERS_PER_MILE) : undefined
       };
 
       if (!payload.title) {
@@ -444,10 +447,11 @@ const handleAutofillDiscussion = () => {
               InputProps={{ inputMode: 'decimal' }}
             />
             <TextField
-              label="Proximity radius (meters)"
-              value={formState.proximityRadiusMeters}
-              onChange={handleFieldChange('proximityRadiusMeters')}
-              helperText="Defaults to ~1 mile if left blank"
+              label="Proximity radius (miles)"
+              value={formState.proximityRadiusMiles}
+              onChange={handleFieldChange('proximityRadiusMiles')}
+              helperText="Defaults to 1 mile if left blank"
+              InputProps={{ inputMode: 'decimal' }}
             />
           </Stack>
 
