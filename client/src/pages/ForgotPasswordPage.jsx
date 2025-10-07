@@ -6,8 +6,6 @@ import './ForgotPasswordPage.css';
 function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [error, setError] = useState(null);
   
     useEffect(() => {
@@ -27,10 +25,11 @@ function ForgotPasswordPage() {
       return;
     }
   
-  // Change later
+  // TODO: Find actual firebase method and also add reset password page and routing for it
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigate('/map');
+      await signInWithEmail(auth, email);
+      //add later
+      navigate('/reset-password');
     } catch (error) {
       switch (error.code) {
         case 'auth/invalid-email':
@@ -38,15 +37,6 @@ function ForgotPasswordPage() {
           break;
         case 'auth/user-not-found':
           setError('No account found with this email.');
-          break;
-        case 'auth/wrong-password':
-          setError('Incorrect password. Try again.');
-          break;
-        case 'auth/missing-password':
-          setError('Please enter your password.');
-          break;
-        default:
-          setError('Login failed. Please try again.');
           break;
       }
       setShake(true);
@@ -78,7 +68,7 @@ function ForgotPasswordPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-        <button type="submit" className="submit-email-btn">Submit</button>
+        <button type="submit" className="submit-email-btn" onClick={() => navigate('/reset-password')}>Submit</button>
         </form>
         <button type="submit" className="back-btn" onClick={() => navigate('/login')}>
           Cancel
