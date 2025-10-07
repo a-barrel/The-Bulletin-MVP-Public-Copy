@@ -1,15 +1,41 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import './PinDetails.css';
 
 function PinDetails() {
   const { pinId } = useParams();
+  const [bookmarked, setBookmarked] = useState(false);
   
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+    <div className='pin-details'>
       <header className='header'>
-        <h1>Events</h1>
+        <button className='back-button'>
+          <img 
+            src='https://www.svgrepo.com/show/326886/arrow-back-sharp.svg' 
+            className='back-arrow'
+          />
+        </button>
+
+        <h2>pin type here</h2>
+
+        <button 
+          className='bookmark-button' 
+          onClick={() => setBookmarked(!bookmarked)}
+        >
+          <img 
+            src={
+              bookmarked 
+                ? 'https://www.svgrepo.com/show/357397/bookmark-full.svg'
+                : 'https://www.svgrepo.com/show/347684/bookmark-fill.svg'
+            }
+            className='bookmark'
+          />
+        </button>
       </header>
+
+      <div className='name'>
+        do event name here
+      </div>
 
       <div className='map-section'>
         do map here
@@ -43,9 +69,8 @@ function PinDetails() {
         do comment button and place on bottom right
       </button>
 
-
-
-      <h1>Pin Details for Pin {pinId}</h1>
+      {/* delete here later, for debugging */}
+      <p>Pin Details for Pin {pinId}</p>
       <Link to="/list">Go to List</Link>
     </div>
   );

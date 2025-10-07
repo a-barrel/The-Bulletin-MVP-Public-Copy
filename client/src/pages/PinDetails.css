@@ -1,1 +1,62 @@
-/* fill in later */
+/* pin-details */
+.pin-details {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    background-color: #CDAEF2;
+}
+
+/* header */
+.header {
+    background-color: #9B5DE5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0.25rem 1rem;
+    box-sizing: border-box;
+    border-bottom: 1px solid black;
+}
+
+.header h2 {
+    margin: 0;
+}
+
+/* back-button */
+.back-button {
+    background-color: #9B5DE5;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.back-arrow {
+    width: 30px;
+    height: 30px;
+    filter: brightness(0) saturate(100%) invert(23%) sepia(36%) saturate(1825%) hue-rotate(236deg) brightness(94%) contrast(90%);
+}
+
+/* bookmark-button */
+.bookmark-button {
+    background-color: #9B5DE5;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bookmark {
+    width: 30px;
+    height: 30px;
+    filter: brightness(0) saturate(100%) invert(23%) sepia(36%) saturate(1825%) hue-rotate(236deg) brightness(94%) contrast(90%);
+}
