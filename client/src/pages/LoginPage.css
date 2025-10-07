@@ -11,7 +11,7 @@
 .phone-frame {
   width: 390px;
   height: 844px;
-  background: white;
+  background: rgb(250, 0, 0);
   border-radius: 40px;
   box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
   text-align: center;
@@ -27,6 +27,7 @@
   font-family: 'Helvetica Neue', Arial, sans-serif;
   font-weight: 300;
   font-size: 2.5rem;
+  color: black;
   margin-top: 1.5rem;
   margin-bottom: 1rem;
 }
@@ -53,14 +54,21 @@
   width: 100%;
 }
 
+/* For the textbox inputs*/
 .login-form input {
   width: 80%;
   padding: 10px;
   border: 1.5px solid #888;
+  color: white;
   border-radius: 6px;
   font-size: 0.95rem;
-  text-align: center;
+  text-align: left;
   transition: 0.2s;
+}
+
+/* The 'Enter Email' and 'Enter Password' */
+.login-form input::placeholder {
+  color: #c0c0c0;
 }
 
 .login-form input:focus {
@@ -68,40 +76,36 @@
   outline: none;
 }
 
-/* Options row */
-.options {
+/* CSS for 'Remember me' and 'Forgot password' */
+.additional-options {
   display: flex;
-  color: black;
   justify-content: space-between;
   align-items: center;
-  width: 80%;
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
+  width: 85%;
+  margin-top: 0.25rem;
 }
 
-.options label {
+.additional-options .remember-me-checkbox {
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: flex-start;
+  gap: 3px;
+  color: #111;
+  font-size: 0.9rem;
   white-space: nowrap;
 }
 
-.options a {
-  color: #666;
-  text-decoration: none;
-}
-
-.options a:hover {
-  text-decoration: underline;
-}
-
-.forgot-password {
-  color: #666;
-  text-decoration: none;
+.additional-options .forgot-password-link {
   cursor: pointer;
+  font-size: 0.9rem;
 }
 
-.forgot-password:hover {
+.additional-options .forgot-password-clickable {
+  color: #2b8eff;
+  text-decoration: none;
+}
+
+.additional-options .forgot-password-clickable:hover {
   text-decoration: underline;
 }
 
@@ -172,7 +176,7 @@
 
 /* Error message */
 .error-msg {
-  color: #d32f2f; /* red tone */
+  color: #d32f2f; 
   background-color: #ffeaea;
   border: 1px solid #f5c2c2;
   border-radius: 6px;

@@ -37,8 +37,6 @@ function LoginPage() {
     await signInWithEmailAndPassword(auth, email, password);
     navigate('/map');
   } catch (error) {
-    // Customize the messages for better UX
-
     switch (error.code) {
       case 'auth/invalid-email':
         setError('Please enter a valid email address.');
@@ -103,25 +101,28 @@ function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-
-          <div className="options">
-            <label>
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={() => setRemember(!remember)}
-              />
-              Remember me
-            </label>
+          <div className="additional-options">
+            {/*NOTE: This doesn't do anything currently*/}
+            <label className="remember-me-checkbox">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={() => setRemember(!remember)}
+                />
+                Remember me
+              </label>
             
             {/*NOTE: This doesn't navigate anywhere currently*/}
-            <span
-              className="forgot-password"
-              onClick={() => navigate('/forgot-password')}
-            > 
-              Forgot Password?
-            </span>
+            <div className="forgot-password-link">
+              <span
+                className="forgot-password-clickable"
+                onClick={() => navigate('/forgot-password')}
+              > 
+                Forgot Password?
+              </span>
+            </div>
           </div>
+          
 
           <button type="submit" className="login-btn">Login</button>
         </form>
