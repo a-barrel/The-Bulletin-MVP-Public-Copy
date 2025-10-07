@@ -52,6 +52,12 @@ PINPOINT_OFFLINE_DEMO_TOKEN=demo-token
 
 # Server port
 PORT=5000
+
+# Firebase emulator defaults (used automatically in offline mode)
+USE_FIREBASE_EMULATOR=true
+FIREBASE_PROJECT_ID=pinpoint-local
+FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
 ```
 
 #### Client (.env)
