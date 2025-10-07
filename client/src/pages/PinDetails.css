@@ -5,6 +5,7 @@
     align-items: center;
     flex-direction: column;
     background-color: #CDAEF2;
+    color: black;
 }
 
 /* header */
@@ -17,6 +18,7 @@
     padding: 0.25rem 1rem;
     box-sizing: border-box;
     border-bottom: 1px solid black;
+    color: #5d3889
 }
 
 .header h2 {
@@ -59,4 +61,26 @@
     width: 30px;
     height: 30px;
     filter: brightness(0) saturate(100%) invert(23%) sepia(36%) saturate(1825%) hue-rotate(236deg) brightness(94%) contrast(90%);
+}
+
+/* attendance button */
+.attendance {
+    display: flex;
+    justify-content: center;
+    margin: 1rem;
+}
+
+.attend-button {
+    background-color: #9B5DE5;
+    border: none;
+    padding: 0.5rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 300px;
+}
+
+.attend-button.attending {
+    background-color: #F15BB5;
 }

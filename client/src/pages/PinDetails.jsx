@@ -5,6 +5,7 @@ import './PinDetails.css';
 function PinDetails() {
   const { pinId } = useParams();
   const [bookmarked, setBookmarked] = useState(false);
+  const [attending, setAttending] = useState(false);
   
   return (
     <div className='pin-details'>
@@ -25,8 +26,8 @@ function PinDetails() {
           <img 
             src={
               bookmarked 
-                ? 'https://www.svgrepo.com/show/357397/bookmark-full.svg'
-                : 'https://www.svgrepo.com/show/347684/bookmark-fill.svg'
+                ? 'https://www.svgrepo.com/show/357397/bookmark-full.svg' // not bookmarked
+                : 'https://www.svgrepo.com/show/347684/bookmark-fill.svg' // bookmarked
             }
             className='bookmark'
           />
@@ -57,9 +58,14 @@ function PinDetails() {
         do post location, occurance, and attendees list here
       </div>
 
-      <button className='attendance-button'>
-        do attendance button here
-      </button>
+      <div className='attendance'>
+        <button 
+          className={`attend-button ${attending ? 'attending' : ''}`}
+          onClick={() => setAttending(!attending)}
+        >
+          {attending ? 'Attending!' : 'Attend'}
+        </button>
+      </div>      
 
       <div className='comments-section'>
         do comments section here
