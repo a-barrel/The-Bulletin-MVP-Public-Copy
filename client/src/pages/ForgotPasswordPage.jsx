@@ -40,7 +40,7 @@ function ForgotPasswordPage() {
           setError('No account found with this email.');
           break;
         default:
-          setError("Error sending reset email:", errorCode, errorMessage);
+          setError(`Error sending reset email: ${error.code} - ${error.message}`);
           break;
       }
     }
