@@ -38,7 +38,7 @@ Create `.env` files in both client and server directories:
 #### Server (.env)
 ```
 # Optional: force a mode override (defaults to offline locally, online in production)
-# PINPOINT_RUNTIME_MODE=online
+PINPOINT_RUNTIME_MODE=offline
 
 # MongoDB connection URIs
 MONGODB_URI=
@@ -64,16 +64,16 @@ FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
 #### Client (.env)
 ```
 # Optional: override runtime mode (defaults to offline in dev)
-# VITE_RUNTIME_MODE=online
+VITE_RUNTIME_MODE=offline
 
 # Backend API base URLs
 # (leave blank for relative /api calls when working offline)
 VITE_API_BASE_URL=
-VITE_API_BASE_URL_OFFLINE=
+VITE_API_BASE_URL_OFFLINE=http://localhost:5000
 
 # Your web app's Firebase configuration
 # (This config is public and can be exposed in the client-side code and thus safe to include here on the git repo)
-VITE_FIREBASE_CONFIG={"apiKey": "...","authDomain": "...","projectId": "...","storageBucket": "...","messagingSenderId": "...","appId": "...","measurementId": "..."}
+VITE_FIREBASE_CONFIG={"apiKey": "AIzaSyAkVlj0uQu2Xdc1Y99lAd1bPbFlawEM6pA","authDomain": "bulletin app-6548a.firebaseapp.com","projectId": "bulletin-app-6548a","storageBucket": "bulletin-app-6548a.firebasestorage.app","messagingSenderId": "772158261487","appId": "1:772158261487:web:a9eef2f733426ded44331a","measurementId": "G-H3PW6CFB6L"}
 # Optional offline Firebase config (falls back to VITE_FIREBASE_CONFIG if omitted)
 # VITE_FIREBASE_CONFIG_OFFLINE={"projectId": "pinpoint-offline"}
 # Optional auth emulator URL (default http://localhost:9099)
