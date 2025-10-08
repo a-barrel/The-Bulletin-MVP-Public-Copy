@@ -30,6 +30,8 @@ function LoginPage() {
   // Check for empty fields before calling Firebase
   if (!email || !password) {
     setError('Please enter both email and password.');
+    setShake(true);
+    setTimeout(() => setShake(false), 300);
     return;
   }
 
