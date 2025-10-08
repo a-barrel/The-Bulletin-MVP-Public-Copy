@@ -10,6 +10,8 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Divider from '@mui/material/Divider';
 import InputAdornment from '@mui/material/InputAdornment';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import ForumIcon from '@mui/icons-material/Forum';
@@ -18,10 +20,10 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import { createPin, fetchPinById, fetchPinsNearby } from '../api/mongoDataApi';
 
 export const pageConfig = {
-  id: 'create-pin',
-  label: 'Create Pin',
+  id: 'debug-console',
+  label: 'DEBUG_CONSOLE',
   icon: AddLocationAltIcon,
-  path: '/create-pin',
+  path: '/debug-console',
   order: 2,
   protected: true,
   showInNav: true
@@ -39,8 +41,14 @@ const formatDateTimeLocal = (date) => {
 };
 
 const METERS_PER_MILE = 1609.34;
+const TAB_OPTIONS = [
+  { id: 'pin', label: 'Pin/Event Creation' },
+  { id: 'profile', label: 'Profile' },
+  { id: 'chat', label: 'Chat' }
+];
 
-function CreatePinPage() {
+function DebugConsolePage() {
+  const [activeTab, setActiveTab] = useState(0);
   const [pinType, setPinType] = useState('event');
   const [formState, setFormState] = useState({
     title: '',
@@ -71,6 +79,10 @@ function CreatePinPage() {
   const [isFetchingNearby, setIsFetchingNearby] = useState(false);
 
   const isEvent = useMemo(() => pinType === 'event', [pinType]);
+
+  const handleTabChange = (_event, newValue) => {
+    setActiveTab(newValue);
+  };
 
   const handlePinTypeChange = (_event, value) => {
     if (value) {
@@ -347,20 +359,47 @@ const handleAutofillDiscussion = () => {
     >
       <Stack spacing={3} sx={{ width: '100%', maxWidth: 960 }}>
         <Typography variant="h4" component="h1">
-          Prototype: Create a Pin
+          DEBUG_CONSOLE
         </Typography>
 
-        {status && (
-          <Alert severity={status.type} onClose={() => setStatus(null)}>
-            {status.message}
-          </Alert>
-        )}
-
-        <Paper
-          component="form"
-          onSubmit={handleSubmit}
-          sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 3 }}
+        <Tabs
+          value={activeTab}
+          onChange={handleTabChange}
+          aria-label="Debug console sections"
+          textColor="primary"
+          indicatorColor="primary"
+          variant="scrollable"
+          allowScrollButtonsMobile
         >
+          {TAB_OPTIONS.map((tab, index) => (
+            <Tab
+              key={tab.id}
+              label={tab.label}
+              value={index}
+              id={`debug-tab-${tab.id}`}
+              aria-controls={`debug-tabpanel-${tab.id}`}
+            />
+          ))}
+        </Tabs>
+
+        <Box
+          role="tabpanel"
+          hidden={activeTab !== 0}
+          id="debug-tabpanel-pin"
+          aria-labelledby="debug-tab-pin"
+          sx={{ display: activeTab === 0 ? 'contents' : 'none' }}
+        >
+          {status && (
+            <Alert severity={status.type} onClose={() => setStatus(null)}>
+              {status.message}
+            </Alert>
+          )}
+
+          <Paper
+            component="form"
+            onSubmit={handleSubmit}
+            sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 3 }}
+          >
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
             <Typography variant="h6" sx={{ flexGrow: 1 }}>
               Pin Details
@@ -562,103 +601,136 @@ const handleAutofillDiscussion = () => {
               {isSubmitting ? 'Posting…' : 'Post Pin'}
             </Button>
           </Stack>
-        </Paper>
+          </Paper>
 
-        <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Typography variant="h6">Test saved pin</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Use this section to fetch the pin you just created directly from MongoDB via the API.
-          </Typography>
-
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-            <TextField
-              label="Pin ID"
-              value={pinIdInput}
-              onChange={(event) => setPinIdInput(event.target.value)}
-              placeholder="Paste a pin id"
-              fullWidth
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <MapIcon fontSize="small" color="action" />
-                  </InputAdornment>
-                )
-              }}
-            />
-            <Button
-              type="button"
-              variant="outlined"
-              startIcon={<RefreshIcon />}
-              onClick={handleFetchPin}
-              disabled={isFetchingPin}
-            >
-              {isFetchingPin ? 'Loading…' : 'Fetch Pin'}
-            </Button>
-          </Stack>
-
-          {createdPin && (
-            <Box component="pre" sx={{ mt: 2, backgroundColor: 'grey.900', p: 2, borderRadius: 2, overflowX: 'auto' }}>
-              {JSON.stringify(createdPin, null, 2)}
-            </Box>
-          )}
-        </Paper>
-
-        <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Typography variant="h6">Find nearby pins</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Search for pins near the coordinates above to verify radius queries.
-          </Typography>
-
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-            <TextField
-              label="Distance (miles)"
-              value={distanceMiles}
-              onChange={handleDistanceChange}
-              InputProps={{ inputMode: 'decimal' }}
-              sx={{ width: { xs: '100%', sm: 200 } }}
-            />
-            <Button
-              type="button"
-              variant="outlined"
-              startIcon={<MapIcon />}
-              onClick={handleFetchNearbyPins}
-              disabled={isFetchingNearby}
-            >
-              {isFetchingNearby ? 'Searching…' : 'Fetch nearby pins'}
-            </Button>
-          </Stack>
-
-          {nearbyPins.length > 0 ? (
-            <Stack spacing={1}>
-              {nearbyPins.map((pin) => {
-                const distanceLabel = formatDistanceMiles(pin.distanceMeters);
-                return (
-                  <Paper key={pin._id} variant="outlined" sx={{ p: 2 }}>
-                    <Stack spacing={0.5}>
-                      <Typography variant="subtitle1">{pin.title}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {(pin.type === 'event' ? 'Event' : 'Discussion') + ' pin'}
-                        {distanceLabel ? ` • ${distanceLabel} mi away` : ''}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {pin._id}
-                      </Typography>
-                    </Stack>
-                  </Paper>
-                );
-              })}
-            </Stack>
-          ) : (
+          <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="h6">Test saved pin</Typography>
             <Typography variant="body2" color="text.secondary">
-              {isFetchingNearby
-                ? 'Searching for pins…'
-                : 'Enter a distance and fetch to list pins near the provided coordinates.'}
+              Use this section to fetch the pin you just created directly from MongoDB via the API.
             </Typography>
-          )}
-        </Paper>
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+              <TextField
+                label="Pin ID"
+                value={pinIdInput}
+                onChange={(event) => setPinIdInput(event.target.value)}
+                placeholder="Paste a pin id"
+                fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <MapIcon fontSize="small" color="action" />
+                    </InputAdornment>
+                  )
+                }}
+              />
+              <Button
+                type="button"
+                variant="outlined"
+                startIcon={<RefreshIcon />}
+                onClick={handleFetchPin}
+                disabled={isFetchingPin}
+              >
+                {isFetchingPin ? 'Loading…' : 'Fetch Pin'}
+              </Button>
+            </Stack>
+
+            {createdPin && (
+              <Box component="pre" sx={{ mt: 2, backgroundColor: 'grey.900', p: 2, borderRadius: 2, overflowX: 'auto' }}>
+                {JSON.stringify(createdPin, null, 2)}
+              </Box>
+            )}
+          </Paper>
+
+          <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="h6">Find nearby pins</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Search for pins near the coordinates above to verify radius queries.
+            </Typography>
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+              <TextField
+                label="Distance (miles)"
+                value={distanceMiles}
+                onChange={handleDistanceChange}
+                InputProps={{ inputMode: 'decimal' }}
+                sx={{ width: { xs: '100%', sm: 200 } }}
+              />
+              <Button
+                type="button"
+                variant="outlined"
+                startIcon={<MapIcon />}
+                onClick={handleFetchNearbyPins}
+                disabled={isFetchingNearby}
+              >
+                {isFetchingNearby ? 'Searching…' : 'Fetch nearby pins'}
+              </Button>
+            </Stack>
+
+            {nearbyPins.length > 0 ? (
+              <Stack spacing={1}>
+                {nearbyPins.map((pin) => {
+                  const distanceLabel = formatDistanceMiles(pin.distanceMeters);
+                  return (
+                    <Paper key={pin._id} variant="outlined" sx={{ p: 2 }}>
+                      <Stack spacing={0.5}>
+                        <Typography variant="subtitle1">{pin.title}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {(pin.type === 'event' ? 'Event' : 'Discussion') + ' pin'}
+                          {distanceLabel ? ` • ${distanceLabel} mi away` : ''}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {pin._id}
+                        </Typography>
+                      </Stack>
+                    </Paper>
+                  );
+                })}
+              </Stack>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                {isFetchingNearby
+                  ? 'Searching for pins…'
+                  : 'Enter a distance and fetch to list pins near the provided coordinates.'}
+              </Typography>
+            )}
+          </Paper>
+        </Box>
+
+        <Box
+          role="tabpanel"
+          hidden={activeTab !== 1}
+          id="debug-tabpanel-profile"
+          aria-labelledby="debug-tab-profile"
+          sx={{ display: activeTab === 1 ? 'block' : 'none' }}
+        >
+          <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="h6">Profile</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Profile-focused debugging tools will go here. Add temporary auth overrides, mocked identity payloads, or
+              user preference experiments as they are built out.
+            </Typography>
+          </Paper>
+        </Box>
+
+        <Box
+          role="tabpanel"
+          hidden={activeTab !== 2}
+          id="debug-tabpanel-chat"
+          aria-labelledby="debug-tab-chat"
+          sx={{ display: activeTab === 2 ? 'block' : 'none' }}
+        >
+          <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="h6">Chat</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Chat diagnostics coming soon. Reserve this space for proximity chat simulations, socket health probes, or
+              message playback once the messaging stack is ready.
+            </Typography>
+          </Paper>
+        </Box>
       </Stack>
     </Box>
   );
 }
 
-export default CreatePinPage;
+export default DebugConsolePage;

@@ -1,4 +1,4 @@
-import { auth } from '../firebase';
+﻿import { auth } from '../firebase';
 import runtimeConfig from '../config/runtime';
 
 const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');

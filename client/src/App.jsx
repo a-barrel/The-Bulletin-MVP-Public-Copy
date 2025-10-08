@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   Routes,
   Route,
@@ -11,8 +11,11 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
-import BottomNavigation from '@mui/material/BottomNavigation';
-import BottomNavigationAction from '@mui/material/BottomNavigationAction';
+import Modal from '@mui/material/Modal';
+import Fade from '@mui/material/Fade';
+import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
+import Divider from '@mui/material/Divider';
 import ArticleIcon from '@mui/icons-material/Article';
 import Typography from '@mui/material/Typography';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -110,6 +113,7 @@ function App() {
   const pages = useMemo(loadPages, []);
   const location = useLocation();
   const navigate = useNavigate();
+  const [navOverlayOpen, setNavOverlayOpen] = useState(false);
 
   const navPages = useMemo(
     () => pages.filter((page) => page.showInNav),
@@ -141,6 +145,37 @@ function App() {
 
     return matched?.path ?? null;
   }, [location.pathname, navPages]);
+
+  const closeOverlay = useCallback(() => {
+    setNavOverlayOpen(false);
+  }, []);
+
+  const handleNavigate = useCallback(
+    (targetPath) => {
+      if (typeof targetPath === 'string' && targetPath.length > 0) {
+        navigate(targetPath);
+        setNavOverlayOpen(false);
+      }
+    },
+    [navigate]
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === '`' || event.key === '~') {
+        event.preventDefault();
+        event.stopPropagation();
+        setNavOverlayOpen((prev) => !prev);
+      } else if (event.key === 'Escape') {
+        setNavOverlayOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   return (
     <ThemeProvider theme={theme}>
@@ -199,31 +234,74 @@ function App() {
           )}
         </Box>
 
-        {navPages.length > 0 && (
-          <Paper elevation={8} component="nav">
-            <BottomNavigation
-              showLabels
-              value={currentNavPath}
-              onChange={(event, newValue) => {
-                if (typeof newValue === 'string' && newValue.length > 0) {
-                  navigate(newValue);
-                }
+        <Modal open={navOverlayOpen} onClose={closeOverlay} closeAfterTransition keepMounted>
+          <Fade in={navOverlayOpen}>
+            <Box
+              sx={{
+                position: 'fixed',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                p: 2,
+                pointerEvents: 'none'
               }}
             >
-              {navPages.map((page) => {
-                const IconComponent = page.icon ?? ArticleIcon;
-                return (
-                  <BottomNavigationAction
-                    key={page.id}
-                    label={page.label}
-                    value={page.path}
-                    icon={<IconComponent fontSize="medium" />}
-                  />
-                );
-              })}
-            </BottomNavigation>
-          </Paper>
-        )}
+              <Paper
+                elevation={16}
+                sx={(theme) => ({
+                  width: 'min(420px, 90vw)',
+                  maxHeight: '80vh',
+                  overflow: 'hidden',
+                  pointerEvents: 'auto',
+                  outline: 'none',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                  p: 3,
+                  borderRadius: 3,
+                  backgroundColor: theme.palette.background.paper
+                })}
+              >
+                <Stack spacing={1.5}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="h6" component="h2">
+                      Navigation Console
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Press ` or Esc to close
+                    </Typography>
+                  </Box>
+                  <Divider />
+                  {navPages.length > 0 ? (
+                    <Stack spacing={1}>
+                      {navPages.map((page) => {
+                        const IconComponent = page.icon ?? ArticleIcon;
+                        const isActive = page.path === currentNavPath;
+                        return (
+                          <Button
+                            key={page.id}
+                            onClick={() => handleNavigate(page.path)}
+                            variant={isActive ? 'contained' : 'outlined'}
+                            color={isActive ? 'primary' : 'inherit'}
+                            startIcon={<IconComponent fontSize="small" />}
+                            sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+                          >
+                            {page.label}
+                          </Button>
+                        );
+                      })}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Add a new page under `src/pages` to populate the navigation.
+                    </Typography>
+                  )}
+                </Stack>
+              </Paper>
+            </Box>
+          </Fade>
+        </Modal>
       </Box>
     </ThemeProvider>
   );
