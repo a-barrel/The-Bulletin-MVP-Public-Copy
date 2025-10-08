@@ -1,5 +1,11 @@
+/* This imports the 'Urbanist' font and applies it globally to all text */
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap');
+
+body, input, button, textarea, select, input::placeholder {
+  font-family: 'Urbanist', sans-serif;
+}
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 

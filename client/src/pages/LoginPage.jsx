@@ -30,6 +30,8 @@ function LoginPage() {
   // Check for empty fields before calling Firebase
   if (!email || !password) {
     setError('Please enter both email and password.');
+    setShake(true);
+    setTimeout(() => setShake(false), 300);
     return;
   }
 
@@ -72,7 +74,7 @@ function LoginPage() {
 
   return (
     <div className={`login-page ${shake ? 'shake' : ''}`}>
-      <div className="phone-frame">
+      <div className="login-frame">
         <h1 className="login-title">The Bulletin</h1>
 
         {/*Put actual Bulletin logo here later*/}
