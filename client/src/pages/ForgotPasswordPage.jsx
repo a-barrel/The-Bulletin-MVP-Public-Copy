@@ -2,31 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import './ForgotPasswordPage.css';
-import { sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
+import { sendPasswordResetEmail } from 'firebase/auth';
 
-function handlePasswordReset(email) {
-  sendPasswordResetEmail(auth, email)
-    .then(() => {
-      // Password reset email sent!
-      // Display a success message to the user (e.g., "Check your email for a reset link.")
-      console.log("Password reset email sent to:", email);
-    })
-    .catch((error) => {
-      const errorCode = error.code;
-      const errorMessage = error.message;
-      // Handle specific errors
-      if (errorCode === 'auth/user-not-found') {
-        // NOTE: For security, many production apps show a generic success message
-        // even if the user is not found, to prevent email enumeration attacks.
-        console.error("No user found for that email address.");
-      } else {
-        console.error("Error sending reset email:", errorCode, errorMessage);
-      }
-      // You should provide feedback to the user based on the error
-      setShake(true);
-      setTimeout(() => setShake(false), 300);
-    });
-}
+
+
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
