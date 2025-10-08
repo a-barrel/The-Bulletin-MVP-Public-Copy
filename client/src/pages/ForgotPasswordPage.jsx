@@ -4,9 +4,6 @@ import { auth } from '../firebase';
 import './ForgotPasswordPage.css';
 import { sendPasswordResetEmail } from 'firebase/auth';
 
-
-
-
 function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -32,28 +29,25 @@ function ForgotPasswordPage() {
       return;
     }
   
-    sendPasswordResetEmail(auth, email)
-      .then(() => {
-        // Password reset email sent!
-        // Display a success message to the user (e.g., "Check your email for a reset link.")
-        setError("Password reset email sent to:", email);
-      })
-      .catch((error) => {
-        const errorCode = error.code;
-        const errorMessage = error.message;
+    // TODO: DARREL - Messy implementation, it does send a email, refactor later. 
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setError('Password reset email sent. Please check your inbox.'); // DARREL - This works, but not sure if you wana have a different popup for success
+    } catch (error) {
+      switch (error.code) {
+        case 'auth/invalid-email':
+          setError('Please enter a valid email address.');
+          break;
+        case 'auth/user-not-found':
+          setError('No account found with this email.');
+          break;
+        default:
+          setError(`Error sending reset email: ${error.code} - ${error.message}`);
+          break;
+      }
+    }
+};
 
-        // Handle specific errors
-        if (errorCode === 'auth/user-not-found') {
-          // NOTE: For security, many production apps show a generic success message
-          // even if the user is not found, to prevent email enumeration attacks.
-          setError("No user found for that email address.");
-        } else {
-          setError("Error sending reset email:", errorMessage, errorMessage);
-        }
-        setShake(true);
-        setTimeout(() => setShake(false), 300);
-      });
-  }
   return (
     <div className={`forgot-password-page ${shake ? 'shake' : ''}`}>
       <div className="forgot-password-frame">
