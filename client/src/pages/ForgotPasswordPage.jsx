@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import './ForgotPasswordPage.css';
 
+import { sendPasswordResetEmail } from "firebase/auth";
+
 function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -27,9 +29,8 @@ function ForgotPasswordPage() {
   
   // TODO: Find actual firebase method and also add reset password page and routing for it
     try {
-      await signInWithEmail(auth, email);
-      //add later
-      navigate('/reset-password');
+      await sendPasswordResetEmail(auth, email);
+      setError('Password reset email sent. Please check your inbox.');
     } catch (error) {
       switch (error.code) {
         case 'auth/invalid-email':
@@ -37,6 +38,9 @@ function ForgotPasswordPage() {
           break;
         case 'auth/user-not-found':
           setError('No account found with this email.');
+          break;
+        default:
+          setError("Error sending reset email:", errorCode, errorMessage);
           break;
       }
       setShake(true);
@@ -68,7 +72,7 @@ function ForgotPasswordPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-        <button type="submit" className="submit-email-btn" onClick={() => navigate('/reset-password')}>Submit</button>
+        <button type="submit" className="submit-email-btn">Submit</button>
         </form>
         <button type="submit" className="back-btn" onClick={() => navigate('/login')}>
           Cancel
