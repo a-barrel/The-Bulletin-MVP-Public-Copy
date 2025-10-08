@@ -27,10 +27,10 @@ function ForgotPasswordPage() {
       return;
     }
   
-  // TODO: DARREL - Messy implementation, refactor later. 
+  // TODO: DARREL - Messy implementation, it does send a email, refactor later. 
   try {
       await sendPasswordResetEmail(auth, email);
-      setError('Password reset email sent. Please check your inbox.');
+      setError('Password reset email sent. Please check your inbox.'); // DARREL - This works, but not sure if you wana have a different popup for success
     } catch (error) {
       switch (error.code) {
         case 'auth/invalid-email':
