@@ -33,9 +33,9 @@ function ForgotPasswordPage() {
   // DARREL - Made errors the same to avoid email enumeration
   try {
       await sendPasswordResetEmail(auth, email);
-      setError('If this email is in use, a password reset email will be sent.');
+      setError('If this email is in use, a password reset email will be sent!');
     } catch (error) {
-      setError('If this email is in use, a password reset email will be sent.');
+      setError('If this email is in use, a password reset email will be sent!');
     }
 };
 
