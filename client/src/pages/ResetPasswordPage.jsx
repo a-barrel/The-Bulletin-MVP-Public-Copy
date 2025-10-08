@@ -25,11 +25,15 @@ function ResetPasswordPage() {
   // Check for empty fields before calling Firebase
   if (!newPassword || !confirmNewPassword) {
     setError('Please enter a password and confirm it in the fields.');
+    setShake(true);
+    setTimeout(() => setShake(false), 300);
     return;
   }
 
   if (newPassword != confirmNewPassword) {
     setError('Passwords are not matching. Please re-enter them again.');
+    setShake(true);
+    setTimeout(() => setShake(false), 300);
     return;
   }
 

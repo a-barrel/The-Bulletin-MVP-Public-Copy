@@ -4,6 +4,30 @@ import { auth } from '../firebase';
 import './ForgotPasswordPage.css';
 import { sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
 
+function handlePasswordReset(email) {
+  sendPasswordResetEmail(auth, email)
+    .then(() => {
+      // Password reset email sent!
+      // Display a success message to the user (e.g., "Check your email for a reset link.")
+      console.log("Password reset email sent to:", email);
+    })
+    .catch((error) => {
+      const errorCode = error.code;
+      const errorMessage = error.message;
+      // Handle specific errors
+      if (errorCode === 'auth/user-not-found') {
+        // NOTE: For security, many production apps show a generic success message
+        // even if the user is not found, to prevent email enumeration attacks.
+        console.error("No user found for that email address.");
+      } else {
+        console.error("Error sending reset email:", errorCode, errorMessage);
+      }
+      // You should provide feedback to the user based on the error
+      setShake(true);
+      setTimeout(() => setShake(false), 300);
+    });
+}
+
 function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -24,30 +48,33 @@ function ForgotPasswordPage() {
   // Check for empty fields before calling Firebase
     if (!email) {
       setError('Please enter an email.');
+      setShake(true);
+      setTimeout(() => setShake(false), 300);
       return;
     }
   
-    try {
-      //await sendPasswordResetEmail(auth, email); 
-      setError("A password reset link has been sent to your email. Please check your inbox. Redirecting to reset page...");
-      const timer = setTimeout(() => navigate('/reset-password'), 2000);
-    } catch (error) {
-      switch (error.code) {
-        case 'auth/invalid-email':
-          setError('Please enter a valid email address.');
-          break;
-        case 'auth/user-not-found':
-          setError('No account found with this email.');
-          break;
-        default:
-          setError('Something went wrong. Please try again.');
-          break;
-      }
-      setShake(true);
-      setTimeout(() => setShake(false), 300);
-    }
-  };
+    sendPasswordResetEmail(auth, email)
+      .then(() => {
+        // Password reset email sent!
+        // Display a success message to the user (e.g., "Check your email for a reset link.")
+        setError("Password reset email sent to:", email);
+      })
+      .catch((error) => {
+        const errorCode = error.code;
+        const errorMessage = error.message;
 
+        // Handle specific errors
+        if (errorCode === 'auth/user-not-found') {
+          // NOTE: For security, many production apps show a generic success message
+          // even if the user is not found, to prevent email enumeration attacks.
+          setError("No user found for that email address.");
+        } else {
+          setError("Error sending reset email:", errorMessage, errorMessage);
+        }
+        setShake(true);
+        setTimeout(() => setShake(false), 300);
+      });
+  }
   return (
     <div className={`forgot-password-page ${shake ? 'shake' : ''}`}>
       <div className="forgot-password-frame">
