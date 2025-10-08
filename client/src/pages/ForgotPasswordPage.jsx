@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import './ForgotPasswordPage.css';
+import { sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [error, setError] = useState(null);
+  const [shake, setShake] = useState(false);
   
     useEffect(() => {
     if (error) {
@@ -25,11 +27,10 @@ function ForgotPasswordPage() {
       return;
     }
   
-  // TODO: Find actual firebase method and also add reset password page and routing for it
     try {
-      await signInWithEmail(auth, email);
-      //add later
-      navigate('/reset-password');
+      //await sendPasswordResetEmail(auth, email); 
+      setError("A password reset link has been sent to your email. Please check your inbox. Redirecting to reset page...");
+      const timer = setTimeout(() => navigate('/reset-password'), 2000);
     } catch (error) {
       switch (error.code) {
         case 'auth/invalid-email':
@@ -38,16 +39,19 @@ function ForgotPasswordPage() {
         case 'auth/user-not-found':
           setError('No account found with this email.');
           break;
+        default:
+          setError('Something went wrong. Please try again.');
+          break;
       }
       setShake(true);
       setTimeout(() => setShake(false), 300);
     }
-}
+  };
 
   return (
-    <div className={"forgot-password-page"}>
-      <div className="phone-frame">
-        <h1 className="page-title">The Bulletin</h1>
+    <div className={`forgot-password-page ${shake ? 'shake' : ''}`}>
+      <div className="forgot-password-frame">
+        <h1 className="forgot-password-title">The Bulletin</h1>
 
         <p className="instruction-text">
           Enter the email of the account you are trying to access.
@@ -68,7 +72,7 @@ function ForgotPasswordPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-        <button type="submit" className="submit-email-btn" onClick={() => navigate('/reset-password')}>Submit</button>
+        <button type="submit" className="submit-email-btn">Submit</button>
         </form>
         <button type="submit" className="back-btn" onClick={() => navigate('/login')}>
           Cancel

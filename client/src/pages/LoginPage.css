@@ -4,18 +4,19 @@
   justify-content: center;
   align-items: center;
   background-color: #111;
+  width: 100vw;
   height: 100vh;
 }
 
 /* Phone-like frame */
-.phone-frame {
-  width: 90%;
-  max-width: 390px;
+.login-frame {
+  width: 80vw;
+  max-width: 950px;
   height: 90vh;
-  max-height: 844;
   background: white;
   border-radius: 40px;
   box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
+  text-align: center;
   padding: 2rem 1.5rem;
   display: flex;
   flex-direction: column;
@@ -25,10 +26,9 @@
 
 /* Title */
 .login-title {
-  font-family: 'Helvetica Neue', Arial, sans-serif;
+  color: black;
   font-weight: 300;
   font-size: 2.5rem;
-  color: black;
   margin-top: 1.5rem;
   margin-bottom: 1rem;
 }
@@ -60,7 +60,8 @@
   width: 80%;
   padding: 10px;
   border: 1.5px solid #888;
-  color: white;
+  background-color: white;
+  color: black;
   border-radius: 6px;
   font-size: 0.95rem;
   text-align: left;

@@ -72,7 +72,7 @@ function LoginPage() {
 
   return (
     <div className={`login-page ${shake ? 'shake' : ''}`}>
-      <div className="phone-frame">
+      <div className="login-frame">
         <h1 className="login-title">The Bulletin</h1>
 
         {/*Put actual Bulletin logo here later*/}

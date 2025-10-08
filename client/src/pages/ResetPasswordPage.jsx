@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, use } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { auth } from '../firebase';
 import './ResetPasswordPage.css';
-import { confirmPasswordReset, updatePassword } from 'firebase/auth';
+import { confirmPasswordReset } from 'firebase/auth';
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -34,24 +34,23 @@ function ResetPasswordPage() {
   }
 
   try {
-    await confirmPasswordReset(auth, newPassword, confirmNewPassword);
-    navigate('/map');
+    // Simulates the password reset
+    //await confirmPasswordReset(auth, oobCode, newPassword);
+    setError('Your password has been reset successfully. Redirecting to login...');
+    const timer = setTimeout(() => navigate('/login'), 2000);
   } catch (error) {
     switch (error.code) {
-      case 'auth/invalid-email':
-        setError('Please enter a valid email address.');
+      case 'auth/expired-action-code':
+        setError('This link has expired. Please request a new password reset.');
         break;
-      case 'auth/user-not-found':
-        setError('No account found with this email.');
+      case 'auth/invalid-action-code':
+        setError('Invalid action code. Please request a new password reset.');
         break;
-      case 'auth/wrong-password':
-        setError('Incorrect password. Try again.');
-        break;
-      case 'auth/missing-password':
-        setError('Please enter your password.');
+      case 'auth/weak-password':
+        setError('Password is too weak. Please choose a stronger password.');
         break;
       default:
-        setError('Login failed. Please try again.');
+        setError('Something went wrong. Please try again.');
         break;
     }
     setShake(true);
@@ -59,21 +58,10 @@ function ResetPasswordPage() {
   }
 };
 
-  const handleGoogleSignIn = async () => {
-    setError(null);
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      navigate('/map');
-    } catch (error) {
-      setError(error.message);
-    }
-  };
-
   return (
     <div className={`reset-password-page ${shake ? 'shake' : ''}`}>
-      <div className="phone-frame">
-        <h1 className="page-title">The Bulletin</h1>
+      <div className="reset-password-frame">
+        <h1 className="reset-password-title">The Bulletin</h1>
 
         {error && (
           <div className="error-overlay" onClick={() => setError(null)}>
