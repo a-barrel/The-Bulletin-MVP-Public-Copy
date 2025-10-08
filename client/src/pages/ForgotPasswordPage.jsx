@@ -5,6 +5,30 @@ import './ForgotPasswordPage.css';
 
 import { sendPasswordResetEmail } from "firebase/auth";
 
+function handlePasswordReset(email) {
+  sendPasswordResetEmail(auth, email)
+    .then(() => {
+      // Password reset email sent!
+      // Display a success message to the user (e.g., "Check your email for a reset link.")
+      console.log("Password reset email sent to:", email);
+    })
+    .catch((error) => {
+      const errorCode = error.code;
+      const errorMessage = error.message;
+
+      // Handle specific errors
+      if (errorCode === 'auth/user-not-found') {
+        // NOTE: For security, many production apps show a generic success message
+        // even if the user is not found, to prevent email enumeration attacks.
+        console.error("No user found for that email address.");
+      } else {
+        console.error("Error sending reset email:", errorCode, errorMessage);
+      }
+      
+      // You should provide feedback to the user based on the error
+    });
+}
+
 function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -28,6 +52,29 @@ function ForgotPasswordPage() {
     }
   
   // TODO: Find actual firebase method and also add reset password page and routing for it
+    sendPasswordResetEmail(auth, email)
+    .then(() => {
+      // Password reset email sent!
+      // Display a success message to the user (e.g., "Check your email for a reset link.")
+      setError("Password reset email sent to:", email);
+    })
+    .catch((error) => {
+      const errorCode = error.code;
+      const errorMessage = error.message;
+
+      // Handle specific errors
+      if (errorCode === 'auth/user-not-found') {
+        // NOTE: For security, many production apps show a generic success message
+        // even if the user is not found, to prevent email enumeration attacks.
+        setError("No user found for that email address.");
+      } else {
+        setError("Error sending reset email:", errorCode, errorMessage);
+      }
+    });
+      
+      
+
+    /*
     try {
       await sendPasswordResetEmail(auth, email);
       setError('Password reset email sent. Please check your inbox.');
@@ -46,6 +93,7 @@ function ForgotPasswordPage() {
       setShake(true);
       setTimeout(() => setShake(false), 300);
     }
+    */
 }
 
   return (
