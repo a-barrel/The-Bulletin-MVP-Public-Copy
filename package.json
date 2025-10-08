@@ -4,7 +4,7 @@
   "description": "Social GPS application with React frontend and Node.js backend",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\" \"firebase emulators:start\"",
+    "dev": "concurrently \"npm run server\" \"npm run client\" \"firebase emulators:start --import ./emulator-data\"",
     "server": "cd server && npm run dev",
     "client": "cd client && npm run dev",
     "build": "cd client && npm run build",
