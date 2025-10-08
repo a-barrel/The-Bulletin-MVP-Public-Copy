@@ -28,21 +28,12 @@ function ForgotPasswordPage() {
     }
   
   // TODO: DARREL - Messy implementation, it does send a email, refactor later. 
+  // DARREL - Made errors the same to avoid email enumeration
   try {
       await sendPasswordResetEmail(auth, email);
-      setError('Password reset email sent. Please check your inbox.'); // DARREL - This works, but not sure if you wana have a different popup for success
+      setError('If this email is in use, a password reset email will be sent.');
     } catch (error) {
-      switch (error.code) {
-        case 'auth/invalid-email':
-          setError('Please enter a valid email address.');
-          break;
-        case 'auth/user-not-found':
-          setError('No account found with this email.');
-          break;
-        default:
-          setError(`Error sending reset email: ${error.code} - ${error.message}`);
-          break;
-      }
+      setError('If this email is in use, a password reset email will be sent.');
     }
 };
 
