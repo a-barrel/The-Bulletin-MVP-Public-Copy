@@ -4,13 +4,13 @@
     justify-content: center;
     align-items: center;
     flex-direction: column;
-    background-color: #CDAEF2;
+    background-color: #ECF8FE;
     color: black;
 }
 
 /* header */
 .header {
-    background-color: #9B5DE5;
+    background-color: #CDAEF2;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -71,7 +71,7 @@
 }
 
 .attend-button {
-    background-color: #9B5DE5;
+    background-color: #CDAEF2;
     border: none;
     padding: 0.5rem 1.5rem;
     border-radius: 8px;
@@ -79,8 +79,28 @@
     cursor: pointer;
     transition: all 0.2s ease;
     width: 300px;
+    border: 1px solid black;
 }
 
 .attend-button.attending {
     background-color: #F15BB5;
+}
+
+/* comments-header */
+.comments-header {
+    background-color: #FFFFFF;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+    border-top: 1px solid black;
+    color: #5d3889;
+    font: bold;
+}
+
+.comment-icon {
+    width: 30px;
+    height: 30px;
+    filter: brightness(0) saturate(100%) invert(23%) sepia(36%) saturate(1825%) hue-rotate(236deg) brightness(94%) contrast(90%);
 }

@@ -26,8 +26,8 @@ function PinDetails() {
           <img 
             src={
               bookmarked 
-                ? 'https://www.svgrepo.com/show/357397/bookmark-full.svg' // not bookmarked
-                : 'https://www.svgrepo.com/show/347684/bookmark-fill.svg' // bookmarked
+                ? 'https://www.svgrepo.com/show/347684/bookmark-fill.svg' // bookmarked 
+                : 'https://www.svgrepo.com/show/357397/bookmark-full.svg' // not bookmarked
             }
             className='bookmark'
           />
@@ -67,8 +67,16 @@ function PinDetails() {
         </button>
       </div>      
 
+      <div className='comments-header'>
+        <img 
+          src='https://www.svgrepo.com/show/361088/comment-discussion.svg'
+          className='comment-icon'
+        />
+        <p>Comments (n)</p> {/* n is for number of comments later */}
+      </div>
+
       <div className='comments-section'>
-        do comments section here
+        do commnets section here
       </div>
 
       <button className='create-comment'>
