@@ -8,8 +8,8 @@ function getPasswordStrength(password) {
   let score = 0;
 
   // Checks password length
-  if (password.length > 8) score += 1;
-  if (password.length > 12) score += 1;
+  if (password.length >= 8) score += 1;
+  if (password.length >= 12) score += 1;
 
   // Checks if password contains lowercase
   if (/[a-z]/.test(password)) score += 1;
@@ -23,36 +23,41 @@ function getPasswordStrength(password) {
   // Checks if password contains special characters
   if (/[^A-Za-z0-9]/.test(password)) score += 1;
 
-  switch (score) {
-    case 0:
-    case 1:
-    case 2:
-      return "Weak";
-    
-    case 3:
-    case 4:
-      return "Medium";
+  let label = "Weak";
+  if (score <= 2) label = "Weak";
+  else if (score <= 4) label = "Medium";
+  else label = "Strong";
 
-    case 5:
-    case 6:
-      return "Strong";
-  }
+  return { label, score };
 }
 
-function getPasswordStrengthColor(strength) {
-    if (strength == "Weak") return "red";
-    if (strength == "Medium") return "orange";
-    else return "green";
+function getPasswordStrengthColor(score) {
+    if (score == 0) return "grey";
+    if (score <= 2) return "red";
+    if (score <= 4) return "orange";
+    return "green";
   }
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [strength, setStrength] = useState('');
+  const [strength, setStrength] = useState({ label: "", score: 0});
   const [strengthColor, setStrengthColor] = useState('');
   const [shake, setShake] = useState(false);
   const [error, setError] = useState(null);
+  const passwordRequirements = [
+    { label: "An uppercase letter", test: (pw) => /[A-Z]/.test(pw) },
+    { label: "A lowercase letter", test: (pw) => /[a-z]/.test(pw) },
+    { label: "A number", test: (pw) => /\d/.test(pw) },
+    { label: "A special character", test: (pw) => /[^A-Za-z0-9]/.test(pw) },
+    { label: "At least 8 characters long", test: (pw) => pw.length >= 8 }
+  ];
+
+  useEffect(() => {
+    const s = getPasswordStrength(newPassword);
+    setStrength(s);
+  }, [newPassword]);
 
   useEffect(() => {
   if (error) {
@@ -112,6 +117,9 @@ function ResetPasswordPage() {
   }
 };
 
+  const fillPercent = (strength.score / 6) * 100;
+  const fillColor = getPasswordStrengthColor(strength.score);
+
   return (
     <div className={`reset-password-page ${shake ? 'shake' : ''}`}>
       <div className="reset-password-frame">
@@ -125,26 +133,12 @@ function ResetPasswordPage() {
           </div>
         )}
 
-        {/* TODO: UN-CENTER THIS S%@* */}
-        <div className="reset-password-strength">
-          <small
-            className="reset-password-label"
-            style={{ color: strengthColor }}
-          >
-            Password strength: {strength || "-"}
-          </small>
-        </div>
-
         <form onSubmit={handlePasswordReset} className={"reset-password-form"}>
           <input
             type="password"
             placeholder="Enter New Password"
             value={newPassword}
-            onChange={(e) => {
-              setNewPassword(e.target.value);
-              setStrength(getPasswordStrength(e.target.value));
-              setStrengthColor(getPasswordStrengthColor(strength));
-            }}
+            onChange={(e) => setNewPassword(e.target.value)}
           />
 
           <input
@@ -152,11 +146,50 @@ function ResetPasswordPage() {
             placeholder="Confirm Password"
             value={confirmNewPassword}
             onChange={(e) => setConfirmNewPassword(e.target.value)}
-          />    
+          />
 
+          <div className="password-strength-container">
+            <small className="password-strength-label">
+              Password strength:{' '}
+              <span 
+                style={{ 
+                  className: "password-strength-text",
+                  color: newPassword ? fillColor : 'grey',
+                }}
+              >
+                {strength.label || 'N/A'}
+              </span>
+            </small>
+
+            <div className="password-strength-bar" aria-hidden>
+              <div 
+              className="password-strength-fill" 
+              style={{ 
+                width: `${fillPercent}%`, 
+                backgroundColor: newPassword ? fillColor : 'grey' 
+                }}>
+              </div>
+            </div>
+        </div>
+
+          <div className="password-req">Make sure your password meets the following:
+            <ul className="password-req-list">
+              {passwordRequirements.map((req, index) => {
+                const passed = req.test(newPassword);
+                return (
+                  <li 
+                    key={index} 
+                    style={{ color: passed ? 'green' : 'red', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  >
+                    {passed ? '✅' : '❌'} {req.label}
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+          
           <button type="submit" className="submit-password-btn">Submit</button>
         </form>
-
       </div>
     </div>
   );
