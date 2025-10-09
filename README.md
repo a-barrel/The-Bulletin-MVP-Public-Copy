@@ -45,6 +45,7 @@ FIREBASE_SERVICE_ACCOUNT_JSON=
 FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
 
 # MongoDB connection URI
+# This one you may need to edit depending on how you created your database!
 MONGODB_URI=mongodb://localhost:27017/social-gps
 
 # Server port
@@ -65,6 +66,9 @@ VITE_FIREBASE_CONFIG={"apiKey": "AIzaSyAkVlj0uQu2Xdc1Y99lAd1bPbFlawEM6pA","authD
 
 1. Clone the repository
 2. Install all dependencies (root, server, and client):
+
+   You can do so by running theses commands on the root folder:
+
    ```bash
    npm run install:all
    ```
