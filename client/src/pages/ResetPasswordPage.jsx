@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { auth } from '../firebase';
 import './ResetPasswordPage.css';
 import { confirmPasswordReset } from 'firebase/auth';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 function getPasswordStrength(password) {
   let score = 0;
@@ -46,6 +47,8 @@ function ResetPasswordPage() {
   const [strengthColor, setStrengthColor] = useState('');
   const [shake, setShake] = useState(false);
   const [error, setError] = useState(null);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
   const passwordRequirements = [
     { label: "An uppercase letter", test: (pw) => /[A-Z]/.test(pw) },
     { label: "A lowercase letter", test: (pw) => /[a-z]/.test(pw) },
@@ -134,19 +137,39 @@ function ResetPasswordPage() {
         )}
 
         <form onSubmit={handlePasswordReset} className={"reset-password-form"}>
-          <input
-            type="password"
-            placeholder="Enter New Password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-          />
+          <div className="new-password-input-container">
+            <input
+              type={showNewPassword ? "text" : "password"}
+              placeholder="Enter New Password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+            />
 
-          <input
-            type="password"
-            placeholder="Confirm Password"
-            value={confirmNewPassword}
-            onChange={(e) => setConfirmNewPassword(e.target.value)}
-          />
+              <button
+                type="button"
+                className="toggle-new-password-btn"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+              >
+                {showNewPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+          </div>
+
+          <div className="confirm-new-password-input-container">
+            <input
+              type={showConfirmNewPassword ? "text" : "password"}
+              placeholder="Confirm Password"
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
+            />
+
+              <button
+                type="button"
+                className="toggle-confirm-new-password-btn"
+                onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+              >
+                {showConfirmNewPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+          </div>
 
           <div className="password-strength-container">
             <small className="password-strength-label">
