@@ -35,7 +35,7 @@ function PinDetails() {
       </header>
 
       <div className='name'>
-        do event name here
+        <h2>Event Name</h2>
       </div>
 
       <div className='map-section'>
@@ -43,11 +43,15 @@ function PinDetails() {
       </div>
 
       <div className='post-creator'>
-        do post creator pfp with username here
+        <img 
+          src='https://www.svgrepo.com/show/343494/profile-user-account.svg'
+          className='profile-icon'
+        />
+        <p>Username123</p>
       </div>
 
       <div className='post-description'>
-        do post description here
+        do post description here: Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
       </div>
 
       <div className='post-images'>
@@ -80,7 +84,10 @@ function PinDetails() {
       </div>
 
       <button className='create-comment'>
-        do comment button and place on bottom right
+        <img 
+          src='https://www.svgrepo.com/show/489238/add-comment.svg'
+          className='create-comment-button'
+        />
       </button>
 
       {/* delete here later, for debugging */}

@@ -1,16 +1,17 @@
 /* pin-details */
 .pin-details {
     display: flex;
-    justify-content: center;
     align-items: center;
     flex-direction: column;
-    background-color: #ECF8FE;
+    background-color: #CDAEF2;
     color: black;
+    width: 100vw;
+    height: 100vh;
 }
 
 /* header */
 .header {
-    background-color: #CDAEF2;
+    background-color: #9B5DE5;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -27,7 +28,6 @@
 
 /* back-button */
 .back-button {
-    background-color: #9B5DE5;
     background: none;
     border: none;
     padding: 0;
@@ -41,12 +41,11 @@
 .back-arrow {
     width: 30px;
     height: 30px;
-    filter: brightness(0) saturate(100%) invert(23%) sepia(36%) saturate(1825%) hue-rotate(236deg) brightness(94%) contrast(90%);
+    filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
 }
 
 /* bookmark-button */
 .bookmark-button {
-    background-color: #9B5DE5;
     background: none;
     border: none;
     padding: 0;
@@ -60,7 +59,57 @@
 .bookmark {
     width: 30px;
     height: 30px;
-    filter: brightness(0) saturate(100%) invert(23%) sepia(36%) saturate(1825%) hue-rotate(236deg) brightness(94%) contrast(90%);
+    filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
+}
+
+/* event name */
+.name {
+    background-color: #FFFFFF;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0.25rem 1rem;
+    box-sizing: border-box;
+    border-bottom: 1px solid black;
+    flex-direction: column;
+}
+
+.name h2 {
+    margin: 0;
+}
+
+/* map */
+.map-section {
+    background-color: lightblue;
+    width: 100%;
+    border-bottom: 1px solid black;
+}
+
+/* post-creator */
+.post-creator {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0 1rem;
+    box-sizing: border-box;
+    color: #F15BB5;
+    gap: 0.5rem;
+    font-weight: bold;
+}
+
+.profile-icon {
+    width: 30px;
+    height: 30px;
+    filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
+}
+
+/* post-description */
+.post-description {
+    display: block; 
+    text-align: left; 
+    width: calc(100% - 2rem); /* subtract left and right margins */
+    margin: 0 1rem;
 }
 
 /* attendance button */
@@ -71,14 +120,14 @@
 }
 
 .attend-button {
-    background-color: #CDAEF2;
+    background-color: #9B5DE5;
     border: none;
     padding: 0.5rem 1.5rem;
     border-radius: 8px;
     font-size: 1.5rem;
     cursor: pointer;
     transition: all 0.2s ease;
-    width: 300px;
+    width: 1000px;
     border: 1px solid black;
 }
 
@@ -97,10 +146,34 @@
     border-top: 1px solid black;
     color: #5d3889;
     font: bold;
+    line-height: 0.80;
+    gap: 0.5rem;
 }
 
 .comment-icon {
-    width: 30px;
-    height: 30px;
-    filter: brightness(0) saturate(100%) invert(23%) sepia(36%) saturate(1825%) hue-rotate(236deg) brightness(94%) contrast(90%);
+    width: 25px;
+    height: 25px;
+    filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
+}
+
+/* create-comment */
+.create-comment {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.create-comment-button {
+    width: 50px;
+    height: 50px;
+    filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
 }
