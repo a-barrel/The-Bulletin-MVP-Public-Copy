@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-// import { auth } from "../firebase";
-// import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import "./Registration.css";
 
 function RegistrationPage() {
@@ -50,15 +50,15 @@ function RegistrationPage() {
     e.preventDefault();
     if (!validate()) return;
 
-    // If using Firebase later, uncomment:
-    // try {
-    //   await createUserWithEmailAndPassword(auth, form.email, form.password);
-    //   // optionally save username/phone to your DB here
-    //   navigate("/login");
-    // } catch (err) {
-    //   // map Firebase errors if desired
-    //   alert(err.message);
-    // }
+     // If using Firebase later, uncomment:
+     try {
+       await createUserWithEmailAndPassword(auth, form.email, form.password);
+       // optionally save username/phone to your DB here
+       navigate("/login");
+     } catch (err) {
+       // map Firebase errors if desired
+       alert(err.message);
+     }
 
     // For now just go back to login to match your ask:
     navigate("/login");
