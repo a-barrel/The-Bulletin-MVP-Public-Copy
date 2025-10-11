@@ -51,15 +51,6 @@ import {
   fetchReplies
 } from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
-import FeedPrototype from '../components/FeedPrototype';
-import EventPrototype from '../components/EventPrototype';
-import ChatPrototype from '../components/ChatPrototype';
-import DiscussionPrototype from '../components/DiscussionPrototype';
-import BookmarksPrototype from '../components/BookmarksPrototype';
-import PinCreationPrototype from '../components/PinCreationPrototype';
-import ProfilePrototype from '../components/ProfilePrototype';
-import SettingsPrototype from '../components/SettingsPrototype';
-import UpdatesPrototype from '../components/UpdatesPrototype';
 
 export const pageConfig = {
   id: 'debug-console',
@@ -71,20 +62,10 @@ export const pageConfig = {
   showInNav: true
 };
 
-const EXPERIMENT_ENABLED = runtimeConfig.troyExperimentEnabled;
+const EXPERIMENT_SCREENS = [];
+const EXPERIMENT_ENABLED = runtimeConfig.troyExperimentEnabled && EXPERIMENT_SCREENS.length > 0;
 const EXPERIMENT_TAB_ID = 'troy-experiment';
 const EXPERIMENT_TITLE = "Troy's Dumb Experiment";
-const EXPERIMENT_SCREENS = [
-  { id: 'feed', label: 'Feed', Component: FeedPrototype },
-  { id: 'event', label: 'Event', Component: EventPrototype },
-  { id: 'chat', label: 'Chat', Component: ChatPrototype },
-  { id: 'discussion', label: 'Discussion', Component: DiscussionPrototype },
-  { id: 'bookmarks', label: 'Bookmarks', Component: BookmarksPrototype },
-  { id: 'pin-create', label: 'Pin Creation', Component: PinCreationPrototype },
-  { id: 'profile', label: 'Profile', Component: ProfilePrototype },
-  { id: 'settings', label: 'Settings', Component: SettingsPrototype },
-  { id: 'updates', label: 'Updates', Component: UpdatesPrototype }
-];
 
 const INITIAL_COORDINATES = {
   latitude: '33.7838',
@@ -920,13 +901,15 @@ const handleAutofillDiscussion = () => {
 }
 
 function ExperimentTab() {
-  const [selectedScreen, setSelectedScreen] = useState(EXPERIMENT_SCREENS[0].id);
+  const defaultScreenId = EXPERIMENT_SCREENS[0]?.id ?? null;
+  const [selectedScreen, setSelectedScreen] = useState(defaultScreenId);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const activeScreen = useMemo(() => {
-    return (
-      EXPERIMENT_SCREENS.find((screen) => screen.id === selectedScreen) ?? EXPERIMENT_SCREENS[0]
-    );
+    if (!selectedScreen) {
+      return null;
+    }
+    return EXPERIMENT_SCREENS.find((screen) => screen.id === selectedScreen) ?? null;
   }, [selectedScreen]);
 
   const ScreenComponent = activeScreen?.Component ?? null;
@@ -966,14 +949,25 @@ function ExperimentTab() {
           orientation="horizontal"
           sx={{ flexWrap: 'wrap', gap: 1, '& .MuiToggleButton-root': { flexGrow: 1 } }}
         >
-          {EXPERIMENT_SCREENS.map((screen) => (
-            <ToggleButton key={screen.id} value={screen.id} aria-label={screen.label}>
-              {screen.label}
+          {EXPERIMENT_SCREENS.length > 0 ? (
+            EXPERIMENT_SCREENS.map((screen) => (
+              <ToggleButton key={screen.id} value={screen.id} aria-label={screen.label}>
+                {screen.label}
+              </ToggleButton>
+            ))
+          ) : (
+            <ToggleButton value="placeholder" disabled>
+              Screens archived locally
             </ToggleButton>
-          ))}
+          )}
         </ToggleButtonGroup>
 
-        <Button type="button" variant="contained" onClick={handleOpenPreview}>
+        <Button
+          type="button"
+          variant="contained"
+          onClick={handleOpenPreview}
+          disabled={!ScreenComponent}
+        >
           Open Preview
         </Button>
       </Paper>
