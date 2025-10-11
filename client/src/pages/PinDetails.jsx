@@ -58,8 +58,42 @@ function PinDetails() {
         do post images here
       </div>
 
-      <div className='post-information'>
-        do post location, occurance, and attendees list here
+      <div className='post-info'>
+        <div className='post-location'>
+          <img 
+            src='https://www.svgrepo.com/show/345061/pin.svg'
+            className='pin-icon'
+          />
+          <span className='location-text'>
+            Location:<br />
+            Location Name, City, State
+          </span>
+        </div>
+        
+        <div className='post-occurance'>
+          <img 
+            src='https://www.svgrepo.com/show/533378/calendar.svg'
+            className='calendar-icon'
+          />
+          <span className='occurance-text'>
+            Occurs:<br />
+            Oct 14, 1:30 PM - 5:00 PM
+          </span>
+        </div>
+
+        <div className='post-attendance'>
+          <img
+            src='https://www.svgrepo.com/show/511192/user-check.svg'
+            className='attendance-icon'
+          />
+          <span className='attendance-text'>
+            n Attending<br />
+            <img 
+              src='https://www.svgrepo.com/show/343494/profile-user-account.svg'
+              className='attending-icons'
+            />
+          </span>
+        </div>
       </div>
 
       <div className='attendance'>
@@ -80,7 +114,22 @@ function PinDetails() {
       </div>
 
       <div className='comments-section'>
-        do commnets section here
+        <div className='comment'>
+          <div className='comment-header'>
+            <img
+              src='https://www.svgrepo.com/show/343494/profile-user-account.svg'
+              className='commenter-pfp'
+            />
+            <span className='commenter-info'>
+              Username987<br />
+              Oct 11, 1:11 PM
+            </span>
+          </div>
+
+          <div className='comment-body'>
+            <p>This is a comment</p>
+          </div>
+        </div>
       </div>
 
       <button className='create-comment'>
@@ -91,8 +140,10 @@ function PinDetails() {
       </button>
 
       {/* delete here later, for debugging */}
-      <p>Pin Details for Pin {pinId}</p>
-      <Link to="/list">Go to List</Link>
+      <div className='debugging'>
+        <p>Pin Details for Pin {pinId}</p> 
+        <Link to="/list">Go to List</Link>
+      </div>
     </div>
   );
 }
