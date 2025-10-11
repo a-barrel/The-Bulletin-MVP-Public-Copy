@@ -13,5 +13,35 @@
     },
     "createdAt": { "$date": "2025-09-18T18:44:00.000Z" },
     "updatedAt": { "$date": "2025-09-25T20:12:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47542" },
+    "userId": { "$oid": "68e061721329566a22d47510" },
+    "pinId": { "$oid": "68e061721329566a22d47530" },
+    "collectionId": { "$oid": "68e061721329566a22d47540" },
+    "notes": "Follow up with the robotics club on their solar drone demo slot.",
+    "reminderAt": { "$date": "2025-10-16T17:00:00.000Z" },
+    "tagIds": [],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d47510" },
+      "updatedBy": { "$oid": "68e061721329566a22d47510" }
+    },
+    "createdAt": { "$date": "2025-09-30T21:05:00.000Z" },
+    "updatedAt": { "$date": "2025-10-05T18:10:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47543" },
+    "userId": { "$oid": "68e061721329566a22d47511" },
+    "pinId": { "$oid": "68e061721329566a22d474c7" },
+    "collectionId": { "$oid": "68e061721329566a22d47541" },
+    "notes": "Coordinate carpools for the early runners' warmup.",
+    "reminderAt": { "$date": "2025-10-24T03:00:00.000Z" },
+    "tagIds": [],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d47511" },
+      "updatedBy": { "$oid": "68e061721329566a22d47511" }
+    },
+    "createdAt": { "$date": "2025-10-02T18:10:00.000Z" },
+    "updatedAt": { "$date": "2025-10-08T17:40:00.000Z" }
   }
 ]

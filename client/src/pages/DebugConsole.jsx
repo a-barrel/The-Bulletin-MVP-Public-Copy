@@ -28,6 +28,7 @@ import {
   createPin,
   fetchPinById,
   fetchPinsNearby,
+  listPins,
   insertLocationUpdate,
   fetchNearbyUsers,
   fetchLocationHistory,
@@ -50,6 +51,7 @@ import {
   createReply,
   fetchReplies
 } from '../api/mongoDataApi';
+import LeafletMap from '../components/Map';
 import runtimeConfig from '../config/runtime';
 
 export const pageConfig = {
@@ -163,6 +165,18 @@ const parseJsonField = (value, label) => {
   }
 };
 
+const extractPinLocation = (pin) => {
+  const coordinates = pin?.coordinates?.coordinates;
+  if (!Array.isArray(coordinates) || coordinates.length < 2) {
+    return null;
+  }
+  const [longitude, latitude] = coordinates;
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+  return { latitude, longitude };
+};
+
 function JsonPreview({ data }) {
   if (data === null || data === undefined) {
     return null;
@@ -205,6 +219,56 @@ function DebugConsolePage() {
   const [distanceMiles, setDistanceMiles] = useState('5');
   const [nearbyPins, setNearbyPins] = useState([]);
   const [isFetchingNearby, setIsFetchingNearby] = useState(false);
+  const [allPins, setAllPins] = useState([]);
+  const [isFetchingAllPins, setIsFetchingAllPins] = useState(false);
+  const [allPinsLimit, setAllPinsLimit] = useState('20');
+  const [expiringPins, setExpiringPins] = useState([]);
+  const [isFetchingExpiringPins, setIsFetchingExpiringPins] = useState(false);
+  const [expiringDays, setExpiringDays] = useState('3');
+  const [selectedPinId, setSelectedPinId] = useState(null);
+  const [mapFocusLocation, setMapFocusLocation] = useState(null);
+
+  const searchCenterLocation = useMemo(() => {
+    const latitude = Number.parseFloat(formState.latitude);
+    const longitude = Number.parseFloat(formState.longitude);
+    if (!Number.isNaN(latitude) && !Number.isNaN(longitude) && Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      return { latitude, longitude };
+    }
+    return null;
+  }, [formState.latitude, formState.longitude]);
+
+  const mapPins = useMemo(() => {
+    const seen = new globalThis.Map();
+    const append = (pin) => {
+      if (!pin) {
+        return;
+      }
+      const coordinates = pin?.coordinates?.coordinates;
+      if (!Array.isArray(coordinates) || coordinates.length < 2) {
+        return;
+      }
+      const [longitude, latitude] = coordinates;
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        return;
+      }
+      const key = pin._id ?? `${latitude}-${longitude}`;
+      if (!seen.has(key) || (!seen.get(key).distanceMeters && pin.distanceMeters)) {
+        seen.set(key, { ...pin });
+      }
+    };
+
+    append(createdPin);
+    (Array.isArray(nearbyPins) ? nearbyPins : []).forEach(append);
+    (Array.isArray(allPins) ? allPins : []).forEach(append);
+    (Array.isArray(expiringPins) ? expiringPins : []).forEach(append);
+    return Array.from(seen.values());
+  }, [createdPin, nearbyPins, allPins, expiringPins]);
+
+  const latestCreatedPinLocation = useMemo(() => extractPinLocation(createdPin), [createdPin]);
+  const mapCenterOverride = useMemo(
+    () => mapFocusLocation ?? latestCreatedPinLocation ?? searchCenterLocation ?? null,
+    [mapFocusLocation, latestCreatedPinLocation, searchCenterLocation]
+  );
 
   const isEvent = useMemo(() => pinType === 'event', [pinType]);
 
@@ -310,25 +374,144 @@ const handleAutofillDiscussion = () => {
       return;
     }
 
-    try {
-      setIsFetchingNearby(true);
-      setNearbyPins([]);
-      const pins = await fetchPinsNearby({
-        latitude,
-        longitude,
-        distanceMiles: miles
-      });
-      setNearbyPins(pins);
-      setStatus({
-        type: 'success',
-        message: pins.length
-          ? `Loaded ${pins.length} pin${pins.length === 1 ? '' : 's'} within ${miles} miles.`
-          : `No pins found within ${miles} miles.`
+  try {
+    setIsFetchingNearby(true);
+    setNearbyPins([]);
+    if (searchCenterLocation) {
+      setMapFocusLocation(searchCenterLocation);
+    }
+    const pins = await fetchPinsNearby({
+      latitude,
+      longitude,
+      distanceMiles: miles
+    });
+    setNearbyPins(pins);
+    if (pins.length > 0) {
+      const focus = extractPinLocation(pins[0]);
+      if (focus) {
+        setMapFocusLocation(focus);
+      }
+    }
+    setStatus({
+      type: 'success',
+      message: pins.length
+        ? `Loaded ${pins.length} pin${pins.length === 1 ? '' : 's'} within ${miles} miles.`
+        : `No pins found within ${miles} miles.`
       });
     } catch (error) {
       setStatus({ type: 'error', message: error.message || 'Failed to fetch nearby pins.' });
     } finally {
       setIsFetchingNearby(false);
+    }
+  };
+
+  const handleAllPinsLimitChange = (event) => {
+    setAllPinsLimit(event.target.value);
+  };
+
+  const handleFetchAllPins = async () => {
+    setStatus(null);
+    let limitValue;
+    try {
+      limitValue = parseOptionalNumber(allPinsLimit, 'Limit');
+      if (limitValue === undefined) {
+        limitValue = 20;
+      }
+      if (!Number.isFinite(limitValue) || limitValue <= 0) {
+        throw new Error('Limit must be greater than 0.');
+      }
+      if (limitValue > 50) {
+        throw new Error('Limit cannot exceed 50.');
+      }
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
+      return;
+    }
+
+    try {
+      setIsFetchingAllPins(true);
+      const pins = await listPins({ limit: limitValue });
+      setAllPins(pins);
+      if (pins.length > 0) {
+        const focus = extractPinLocation(pins[0]);
+        if (focus) {
+          setMapFocusLocation(focus);
+        }
+        if (pins[0]?._id) {
+          setSelectedPinId(pins[0]._id);
+          setPinIdInput(pins[0]._id);
+        }
+      }
+      setStatus({
+        type: pins.length ? 'success' : 'info',
+        message: pins.length
+          ? `Loaded ${pins.length} pin${pins.length === 1 ? '' : 's'} (latest first).`
+          : 'No pins found.'
+      });
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message || 'Failed to load pins.' });
+    } finally {
+      setIsFetchingAllPins(false);
+    }
+  };
+
+  const handleExpiringDaysChange = (event) => {
+    setExpiringDays(event.target.value);
+  };
+
+  const handleFetchExpiringPins = async () => {
+    setStatus(null);
+    let daysValue;
+    try {
+      daysValue = parseOptionalNumber(expiringDays, 'Days');
+      if (daysValue === undefined) {
+        throw new Error('Provide the number of days to use for the expiration window.');
+      }
+      if (!Number.isFinite(daysValue) || daysValue <= 0) {
+        throw new Error('Days must be greater than 0.');
+      }
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
+      return;
+    }
+
+    try {
+      setIsFetchingExpiringPins(true);
+      const pins = await listPins({ limit: 50 });
+      const now = new Date();
+      const cutoff = new Date(now.getTime() + daysValue * 24 * 60 * 60 * 1000);
+      const filtered = pins.filter((pin) => {
+        const iso = pin?.expiresAt ?? pin?.endDate ?? null;
+        if (!iso) {
+          return false;
+        }
+        const expiry = new Date(iso);
+        if (Number.isNaN(expiry.getTime())) {
+          return false;
+        }
+        return expiry >= now && expiry <= cutoff;
+      });
+      setExpiringPins(filtered);
+      if (filtered.length > 0) {
+        const focus = extractPinLocation(filtered[0]);
+        if (focus) {
+          setMapFocusLocation(focus);
+        }
+        if (filtered[0]?._id) {
+          setSelectedPinId(filtered[0]._id);
+          setPinIdInput(filtered[0]._id);
+        }
+      }
+      setStatus({
+        type: filtered.length ? 'success' : 'info',
+        message: filtered.length
+          ? `Found ${filtered.length} pin${filtered.length === 1 ? '' : 's'} expiring in the next ${daysValue} day${daysValue === 1 ? '' : 's'}.`
+          : `No pins expire within the next ${daysValue} day${daysValue === 1 ? '' : 's'}.`
+      });
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message || 'Failed to load expiring pins.' });
+    } finally {
+      setIsFetchingExpiringPins(false);
     }
   };
 
@@ -347,18 +530,18 @@ const handleAutofillDiscussion = () => {
     return numeric;
   };
 
-  const parseDate = (value, label) => {
-    if (!value) {
-      throw new Error(`${label} is required`);
-    }
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) {
-      throw new Error(`${label} must be a valid date`);
-    }
-    return parsed.toISOString();
-  };
+const parseDate = (value, label) => {
+  if (!value) {
+    throw new Error(`${label} is required`);
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`${label} must be a valid date`);
+  }
+  return parsed.toISOString();
+};
 
-  const handleSubmit = async (event) => {
+const handleSubmit = async (event) => {
     event.preventDefault();
     setStatus(null);
 
@@ -434,6 +617,13 @@ const handleAutofillDiscussion = () => {
       setIsSubmitting(true);
       const result = await createPin(payload);
       setCreatedPin(result);
+      setSelectedPinId(result?._id ?? null);
+      const resultLocation = extractPinLocation(result);
+      if (resultLocation) {
+        setMapFocusLocation(resultLocation);
+      } else if (searchCenterLocation) {
+        setMapFocusLocation(searchCenterLocation);
+      }
       setPinIdInput(result?._id ?? '');
       let statusMessage = 'Pin created successfully.';
 
@@ -441,6 +631,11 @@ const handleAutofillDiscussion = () => {
         try {
           const persistedPin = await fetchPinById(result._id);
           setCreatedPin(persistedPin);
+          setSelectedPinId(persistedPin?._id ?? null);
+          const persistedLocation = extractPinLocation(persistedPin);
+          if (persistedLocation) {
+            setMapFocusLocation(persistedLocation);
+          }
           statusMessage = 'Pin created and loaded from MongoDB.';
         } catch (reloadError) {
           console.warn('Failed to reload pin after creation', reloadError);
@@ -467,6 +662,11 @@ const handleAutofillDiscussion = () => {
       setIsFetchingPin(true);
       const pin = await fetchPinById(pinId);
       setCreatedPin(pin);
+      setSelectedPinId(pin?._id ?? null);
+      const pinLocation = extractPinLocation(pin);
+      if (pinLocation) {
+        setMapFocusLocation(pinLocation);
+      }
       setStatus({ type: 'success', message: 'Pin loaded from MongoDB.' });
     } catch (error) {
       setStatus({ type: 'error', message: error.message || 'Failed to fetch pin.' });
@@ -823,6 +1023,172 @@ const handleAutofillDiscussion = () => {
               </Typography>
             )}
           </Paper>
+
+          <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="h6">Load recent pins</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Fetch the most recently updated pins regardless of distance.
+            </Typography>
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+              <TextField
+                label="Limit (max 50)"
+                value={allPinsLimit}
+                onChange={handleAllPinsLimitChange}
+                InputProps={{ inputMode: 'numeric' }}
+                sx={{ width: { xs: '100%', sm: 200 } }}
+              />
+              <Button
+                type="button"
+                variant="outlined"
+                startIcon={<MapIcon />}
+                onClick={handleFetchAllPins}
+                disabled={isFetchingAllPins}
+              >
+                {isFetchingAllPins ? 'Loading...' : 'Fetch recent pins'}
+              </Button>
+            </Stack>
+
+            {allPins.length > 0 ? (
+              <Stack spacing={1}>
+                {allPins.map((pin) => (
+                  <Paper
+                    key={pin._id}
+                    variant="outlined"
+                    sx={{ p: 2, cursor: 'pointer' }}
+                    onClick={() => {
+                      if (!pin?._id) {
+                        return;
+                      }
+                      setSelectedPinId(pin._id);
+                      setPinIdInput(pin._id);
+                      const focus = extractPinLocation(pin);
+                      if (focus) {
+                        setMapFocusLocation(focus);
+                      }
+                    }}
+                  >
+                    <Stack spacing={0.5}>
+                      <Typography variant="subtitle1">{pin.title}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {(pin.type === 'event' ? 'Event' : 'Discussion') + ' pin'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {pin._id}
+                      </Typography>
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                {isFetchingAllPins ? 'Loading...' : 'Results will appear here after fetching.'}
+              </Typography>
+            )}
+          </Paper>
+
+          <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="h6">Pins expiring soon</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Filter pins whose <em>expiresAt</em> (discussions) or end date (events) falls within the next N days.
+            </Typography>
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+              <TextField
+                label="Days ahead"
+                value={expiringDays}
+                onChange={handleExpiringDaysChange}
+                InputProps={{ inputMode: 'numeric' }}
+                sx={{ width: { xs: '100%', sm: 200 } }}
+              />
+              <Button
+                type="button"
+                variant="outlined"
+                startIcon={<EventNoteIcon />}
+                onClick={handleFetchExpiringPins}
+                disabled={isFetchingExpiringPins}
+              >
+                {isFetchingExpiringPins ? 'Scanning...' : 'Fetch expiring pins'}
+              </Button>
+            </Stack>
+
+            {expiringPins.length > 0 ? (
+              <Stack spacing={1}>
+                {expiringPins.map((pin) => (
+                  <Paper
+                    key={pin._id}
+                    variant="outlined"
+                    sx={{ p: 2, cursor: 'pointer' }}
+                    onClick={() => {
+                      if (!pin?._id) {
+                        return;
+                      }
+                      setSelectedPinId(pin._id);
+                      setPinIdInput(pin._id);
+                      const focus = extractPinLocation(pin);
+                      if (focus) {
+                        setMapFocusLocation(focus);
+                      }
+                    }}
+                  >
+                    <Stack spacing={0.5}>
+                      <Typography variant="subtitle1">{pin.title}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {(pin.type === 'event' ? 'Event' : 'Discussion') + ' pin'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Expires{' '}
+                        {(() => {
+                          const iso = pin?.expiresAt ?? pin?.endDate ?? null;
+                          if (!iso) {
+                            return 'Unknown';
+                          }
+                          const parsed = new Date(iso);
+                          if (Number.isNaN(parsed.getTime())) {
+                            return 'Unknown';
+                          }
+                          return parsed.toLocaleString();
+                        })()}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {pin._id}
+                      </Typography>
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                {isFetchingExpiringPins ? 'Scanning...' : 'Results will appear here after fetching.'}
+              </Typography>
+            )}
+          </Paper>
+
+          <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="h6">Map preview</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Markers reflect the pins returned above. Click a marker to populate its ID for quick lookups.
+            </Typography>
+            <Box sx={{ height: 360, mt: 1, borderRadius: 2, overflow: 'hidden' }}>
+              <LeafletMap
+                userLocation={searchCenterLocation ?? undefined}
+                centerOverride={mapCenterOverride ?? undefined}
+                pins={mapPins}
+                selectedPinId={selectedPinId ?? undefined}
+                onPinSelect={(pin) => {
+                  if (!pin?._id) {
+                    return;
+                  }
+                  setPinIdInput(pin._id);
+                  setSelectedPinId(pin._id);
+                  const focus = extractPinLocation(pin);
+                  if (focus) {
+                    setMapFocusLocation(focus);
+                  }
+                }}
+              />
+            </Box>
+          </Paper>
         </Box>
 
         <Box
@@ -1038,6 +1404,10 @@ function ProfilesTab() {
   const [searchStatus, setSearchStatus] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState(null);
+  const [allProfiles, setAllProfiles] = useState(null);
+  const [allProfilesStatus, setAllProfilesStatus] = useState(null);
+  const [isFetchingAllProfiles, setIsFetchingAllProfiles] = useState(false);
+  const [allProfilesLimit, setAllProfilesLimit] = useState('20');
 
   const buildEditForm = (profile) => ({
     username: profile?.username ?? '',
@@ -1193,6 +1563,42 @@ function ProfilesTab() {
       setSearchStatus({ type: 'error', message: error.message || 'Failed to search users.' });
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const handleFetchAllProfiles = async () => {
+    setAllProfilesStatus(null);
+    let limitValue;
+    try {
+      limitValue = parseOptionalNumber(allProfilesLimit, 'Limit');
+      if (limitValue === undefined) {
+        limitValue = 20;
+      }
+      if (!Number.isFinite(limitValue) || limitValue <= 0) {
+        throw new Error('Limit must be greater than 0.');
+      }
+      if (limitValue > 50) {
+        throw new Error('Limit cannot exceed 50.');
+      }
+    } catch (error) {
+      setAllProfilesStatus({ type: 'error', message: error.message });
+      return;
+    }
+
+    try {
+      setIsFetchingAllProfiles(true);
+      const users = await fetchUsers({ limit: limitValue });
+      setAllProfiles(users);
+      setAllProfilesStatus({
+        type: users.length ? 'success' : 'info',
+        message: users.length
+          ? `Loaded ${users.length} profile${users.length === 1 ? '' : 's'}.`
+          : 'No profiles were returned.'
+      });
+    } catch (error) {
+      setAllProfilesStatus({ type: 'error', message: error.message || 'Failed to load profiles.' });
+    } finally {
+      setIsFetchingAllProfiles(false);
     }
   };
 
@@ -1427,14 +1833,46 @@ function ProfilesTab() {
               </Button>
             </Stack>
           </Stack>
-        </Paper>
-      )}
+      </Paper>
+    )}
 
-      <Paper
-        component="form"
-        onSubmit={handleSearchUsers}
-        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
-      >
+    <Paper
+      sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+    >
+      <Typography variant="h6">Fetch profiles</Typography>
+      <Typography variant="body2" color="text.secondary">
+        Load the most recent user profiles without filtering.
+      </Typography>
+      {allProfilesStatus && (
+        <Alert severity={allProfilesStatus.type} onClose={() => setAllProfilesStatus(null)}>
+          {allProfilesStatus.message}
+        </Alert>
+      )}
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        <TextField
+          label="Limit"
+          value={allProfilesLimit}
+          onChange={(event) => setAllProfilesLimit(event.target.value)}
+          InputProps={{ inputMode: 'numeric' }}
+          sx={{ width: { xs: '100%', sm: 120 } }}
+        />
+        <Button
+          type="button"
+          variant="outlined"
+          disabled={isFetchingAllProfiles}
+          onClick={handleFetchAllProfiles}
+        >
+          {isFetchingAllProfiles ? 'Loading...' : 'Fetch'}
+        </Button>
+      </Stack>
+      <JsonPreview data={allProfiles} />
+    </Paper>
+
+    <Paper
+      component="form"
+      onSubmit={handleSearchUsers}
+      sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+    >
         <Typography variant="h6">Search users</Typography>
         <Typography variant="body2" color="text.secondary">
           Explore existing users and copy their IDs quickly.

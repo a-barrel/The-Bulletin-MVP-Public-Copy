@@ -17,5 +17,43 @@
     },
     "createdAt": { "$date": "2025-10-03T23:20:00.000Z" },
     "updatedAt": { "$date": "2025-10-03T23:20:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47571" },
+    "roomId": { "$oid": "68e061721329566a22d47570" },
+    "pinId": { "$oid": "68e061721329566a22d47530" },
+    "authorId": { "$oid": "68e061721329566a22d47510" },
+    "replyToMessageId": null,
+    "message": "Reminder: vendor load-in starts at 4:00 PM near the union loading dock.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [-118.1146, 33.7779],
+      "accuracy": 8
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d47510" }
+    },
+    "createdAt": { "$date": "2025-10-09T18:50:00.000Z" },
+    "updatedAt": { "$date": "2025-10-09T18:50:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47572" },
+    "roomId": { "$oid": "68e061721329566a22d47570" },
+    "pinId": { "$oid": "68e061721329566a22d47530" },
+    "authorId": { "$oid": "68e061721329566a22d474a7" },
+    "replyToMessageId": { "$oid": "68e061721329566a22d47571" },
+    "message": "I'll bring surge protectors and extra gaffer tape for the booth row.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [-118.1144, 33.7777],
+      "accuracy": 9
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d474a7" }
+    },
+    "createdAt": { "$date": "2025-10-09T18:55:00.000Z" },
+    "updatedAt": { "$date": "2025-10-09T18:55:00.000Z" }
   }
 ]

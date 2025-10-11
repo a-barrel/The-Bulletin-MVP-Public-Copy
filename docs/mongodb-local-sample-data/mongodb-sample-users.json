@@ -35,13 +35,16 @@
     "relationships": {
       "followerIds": [
         { "$oid": "68e061721329566a22d474a8" },
-        { "$oid": "68e061721329566a22d474a9" }
+        { "$oid": "68e061721329566a22d474a9" },
+        { "$oid": "68e061721329566a22d47510" },
+        { "$oid": "68e061721329566a22d47511" }
       ],
       "followingIds": [
         { "$oid": "68e061721329566a22d474a8" }
       ],
       "friendIds": [
-        { "$oid": "68e061721329566a22d474a8" }
+        { "$oid": "68e061721329566a22d474a8" },
+        { "$oid": "68e061721329566a22d47510" }
       ],
       "mutedUserIds": [],
       "blockedUserIds": []
@@ -50,17 +53,20 @@
     "primaryLocationId": { "$oid": "68e061721329566a22d474c1" },
     "pinnedPinIds": [
       { "$oid": "68e061721329566a22d474aa" },
-      { "$oid": "68e061721329566a22d474c5" }
+      { "$oid": "68e061721329566a22d474c5" },
+      { "$oid": "68e061721329566a22d47532" }
     ],
     "ownedPinIds": [
       { "$oid": "68e061721329566a22d474aa" },
-      { "$oid": "68e061721329566a22d474c5" }
+      { "$oid": "68e061721329566a22d474c5" },
+      { "$oid": "68e061721329566a22d47532" }
     ],
     "bookmarkCollectionIds": [
       { "$oid": "68e061721329566a22d474ad" }
     ],
     "proximityChatRoomIds": [
-      { "$oid": "68e061721329566a22d474b3" }
+      { "$oid": "68e061721329566a22d474b3" },
+      { "$oid": "68e061721329566a22d47570" }
     ],
     "recentLocationIds": [
       { "$oid": "68e061721329566a22d474c1" }
@@ -111,14 +117,17 @@
     "relationships": {
       "followerIds": [
         { "$oid": "68e061721329566a22d474a7" },
-        { "$oid": "68e061721329566a22d474a9" }
+        { "$oid": "68e061721329566a22d474a9" },
+        { "$oid": "68e061721329566a22d47510" }
       ],
       "followingIds": [
         { "$oid": "68e061721329566a22d474a7" },
-        { "$oid": "68e061721329566a22d474a9" }
+        { "$oid": "68e061721329566a22d474a9" },
+        { "$oid": "68e061721329566a22d47510" }
       ],
       "friendIds": [
-        { "$oid": "68e061721329566a22d474a7" }
+        { "$oid": "68e061721329566a22d474a7" },
+        { "$oid": "68e061721329566a22d47510" }
       ],
       "mutedUserIds": [],
       "blockedUserIds": []
@@ -127,7 +136,8 @@
     "primaryLocationId": { "$oid": "68e061721329566a22d474c2" },
     "pinnedPinIds": [
       { "$oid": "68e061721329566a22d474ab" },
-      { "$oid": "68e061721329566a22d474c6" }
+      { "$oid": "68e061721329566a22d474c6" },
+      { "$oid": "68e061721329566a22d47530" }
     ],
     "ownedPinIds": [
       { "$oid": "68e061721329566a22d474ab" },
@@ -135,7 +145,8 @@
     ],
     "bookmarkCollectionIds": [],
     "proximityChatRoomIds": [
-      { "$oid": "68e061721329566a22d474b3" }
+      { "$oid": "68e061721329566a22d474b3" },
+      { "$oid": "68e061721329566a22d47570" }
     ],
     "recentLocationIds": [
       { "$oid": "68e061721329566a22d474c2" }
@@ -209,5 +220,155 @@
     ],
     "createdAt": { "$date": "2025-08-17T14:32:00.000Z" },
     "updatedAt": { "$date": "2025-10-03T23:45:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47510" },
+    "username": "sofianguyen",
+    "displayName": "Sofia Nguyen",
+    "email": "sofia@pinpoint.dev",
+    "bio": "Engineering student mapping zero-waste resources around campus.",
+    "avatar": {
+      "url": "https://images.pinpoint.dev/avatars/sofia-nguyen.png",
+      "thumbnailUrl": "https://images.pinpoint.dev/avatars/sofia-nguyen-thumb.png",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/png",
+      "uploadedAt": { "$date": "2025-09-04T16:18:00.000Z" }
+    },
+    "banner": {
+      "url": "https://images.pinpoint.dev/banners/zero-waste-route.png",
+      "width": 1200,
+      "height": 400,
+      "mimeType": "image/png",
+      "uploadedAt": { "$date": "2025-09-20T03:45:00.000Z" }
+    },
+    "roles": ["user"],
+    "accountStatus": "active",
+    "preferences": {
+      "theme": "dark",
+      "notifications": {
+        "proximity": true,
+        "updates": true,
+        "marketing": false
+      },
+      "radiusPreferenceMeters": 10000
+    },
+    "stats": {
+      "eventsHosted": 1,
+      "eventsAttended": 5,
+      "posts": 9,
+      "bookmarks": 4,
+      "followers": 17,
+      "following": 12
+    },
+    "relationships": {
+      "followerIds": [
+        { "$oid": "68e061721329566a22d474a7" },
+        { "$oid": "68e061721329566a22d47511" }
+      ],
+      "followingIds": [
+        { "$oid": "68e061721329566a22d474a7" },
+        { "$oid": "68e061721329566a22d474a8" },
+        { "$oid": "68e061721329566a22d47511" }
+      ],
+      "friendIds": [
+        { "$oid": "68e061721329566a22d474a8" },
+        { "$oid": "68e061721329566a22d47511" }
+      ],
+      "mutedUserIds": [],
+      "blockedUserIds": []
+    },
+    "locationSharingEnabled": true,
+    "primaryLocationId": { "$oid": "68e061721329566a22d47520" },
+    "pinnedPinIds": [
+      { "$oid": "68e061721329566a22d47530" },
+      { "$oid": "68e061721329566a22d47532" }
+    ],
+    "ownedPinIds": [
+      { "$oid": "68e061721329566a22d47530" }
+    ],
+    "bookmarkCollectionIds": [
+      { "$oid": "68e061721329566a22d47540" }
+    ],
+    "proximityChatRoomIds": [
+      { "$oid": "68e061721329566a22d47570" }
+    ],
+    "recentLocationIds": [
+      { "$oid": "68e061721329566a22d47520" }
+    ],
+    "createdAt": { "$date": "2025-09-05T18:45:00.000Z" },
+    "updatedAt": { "$date": "2025-10-09T19:10:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47511" },
+    "username": "jamaldouglas",
+    "displayName": "Jamal Douglas",
+    "email": "jamal@pinpoint.dev",
+    "bio": "Public health advocate rallying students to stay active every weekend.",
+    "avatar": {
+      "url": "https://images.pinpoint.dev/avatars/jamal-douglas.png",
+      "thumbnailUrl": "https://images.pinpoint.dev/avatars/jamal-douglas-thumb.png",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/png",
+      "uploadedAt": { "$date": "2025-09-06T19:05:00.000Z" }
+    },
+    "roles": ["user"],
+    "accountStatus": "active",
+    "preferences": {
+      "theme": "system",
+      "notifications": {
+        "proximity": true,
+        "updates": true,
+        "marketing": true
+      },
+      "radiusPreferenceMeters": 16093
+    },
+    "stats": {
+      "eventsHosted": 2,
+      "eventsAttended": 7,
+      "posts": 13,
+      "bookmarks": 5,
+      "followers": 22,
+      "following": 19
+    },
+    "relationships": {
+      "followerIds": [
+        { "$oid": "68e061721329566a22d474a7" },
+        { "$oid": "68e061721329566a22d474a9" },
+        { "$oid": "68e061721329566a22d47510" }
+      ],
+      "followingIds": [
+        { "$oid": "68e061721329566a22d474a7" },
+        { "$oid": "68e061721329566a22d474a8" },
+        { "$oid": "68e061721329566a22d47510" }
+      ],
+      "friendIds": [
+        { "$oid": "68e061721329566a22d474a9" },
+        { "$oid": "68e061721329566a22d47510" }
+      ],
+      "mutedUserIds": [],
+      "blockedUserIds": []
+    },
+    "locationSharingEnabled": true,
+    "primaryLocationId": { "$oid": "68e061721329566a22d47521" },
+    "pinnedPinIds": [
+      { "$oid": "68e061721329566a22d47531" },
+      { "$oid": "68e061721329566a22d474ac" }
+    ],
+    "ownedPinIds": [
+      { "$oid": "68e061721329566a22d47531" }
+    ],
+    "bookmarkCollectionIds": [
+      { "$oid": "68e061721329566a22d47541" }
+    ],
+    "proximityChatRoomIds": [
+      { "$oid": "68e061721329566a22d47570" }
+    ],
+    "recentLocationIds": [
+      { "$oid": "68e061721329566a22d47521" }
+    ],
+    "createdAt": { "$date": "2025-09-09T17:20:00.000Z" },
+    "updatedAt": { "$date": "2025-10-09T18:05:00.000Z" }
   }
 ]

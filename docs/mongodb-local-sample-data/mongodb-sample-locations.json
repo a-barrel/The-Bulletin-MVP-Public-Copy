@@ -49,5 +49,40 @@
     "createdAt": { "$date": "2025-10-03T22:30:00.000Z" },
     "lastSeenAt": { "$date": "2025-10-03T23:30:00.000Z" },
     "expiresAt": { "$date": "2025-10-04T05:30:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47520" },
+    "userId": "68e061721329566a22d47510",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [-118.1185, 33.7812]
+    },
+    "accuracy": 7,
+    "source": "ios",
+    "linkedPinIds": [
+      { "$oid": "68e061721329566a22d47530" },
+      { "$oid": "68e061721329566a22d47532" }
+    ],
+    "isPublic": true,
+    "createdAt": { "$date": "2025-10-03T22:55:00.000Z" },
+    "lastSeenAt": { "$date": "2025-10-03T23:50:00.000Z" },
+    "expiresAt": { "$date": "2025-10-04T05:50:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47521" },
+    "userId": "68e061721329566a22d47511",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [-118.1456, 33.7894]
+    },
+    "accuracy": 10,
+    "source": "android",
+    "linkedPinIds": [
+      { "$oid": "68e061721329566a22d47531" }
+    ],
+    "isPublic": true,
+    "createdAt": { "$date": "2025-10-03T22:20:00.000Z" },
+    "lastSeenAt": { "$date": "2025-10-03T23:25:00.000Z" },
+    "expiresAt": { "$date": "2025-10-04T05:25:00.000Z" }
   }
 ]
