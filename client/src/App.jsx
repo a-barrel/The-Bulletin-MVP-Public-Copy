@@ -43,16 +43,15 @@ const AUTH_ROUTES = new Set(['/login', '/forgot-password', '/reset-password']);
 
 const pageModules = import.meta.glob('./pages/**/*.{jsx,tsx}', { eager: true });
 
-const deriveIdFromPath = (path) => path
-  .replace(/^\.\/pages\//, '')
-  .replace(/\.\w+$/, '')
-  .replace(/[\\/]+/g, '-');
+const deriveIdFromPath = (path) =>
+  path.replace(/^\.\/pages\//, '').replace(/\.\w+$/, '').replace(/[\\/]+/g, '-');
 
-const deriveLabelFromId = (id) => id
-  .split(/[-_]/g)
-  .filter(Boolean)
-  .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-  .join(' ') || 'Page';
+const deriveLabelFromId = (id) =>
+  id
+    .split(/[-_]/g)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ') || 'Page';
 
 const normalizePath = (value) => {
   if (!value || typeof value !== 'string') {
@@ -65,54 +64,56 @@ const normalizePath = (value) => {
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 };
 
-const loadPages = () => Object.entries(pageModules)
-  .map(([path, module]) => {
-    const Component = module.default;
-    if (typeof Component !== 'function') {
-      return null;
-    }
+const loadPages = () =>
+  Object.entries(pageModules)
+    .map(([path, module]) => {
+      const Component = module.default;
+      if (typeof Component !== 'function') {
+        return null;
+      }
 
-    const config = module.pageConfig || module.navConfig || {};
-    const id = typeof config.id === 'string' && config.id.trim().length > 0
-      ? config.id.trim()
-      : deriveIdFromPath(path);
-    const label = typeof config.label === 'string' && config.label.trim().length > 0
-      ? config.label.trim()
-      : deriveLabelFromId(id);
-    const order = Number.isFinite(config.order) ? config.order : Number.POSITIVE_INFINITY;
-    const IconComponent = config.icon;
-    const pathValue = normalizePath(config.path ?? `/${id.toLowerCase()}`);
-    const aliases = Array.isArray(config.aliases)
-      ? config.aliases.map(normalizePath).filter(Boolean)
-      : [];
-    const showInNav = config.showInNav === true;
-    const isDefault = Boolean(config.isDefault);
-    const isProtected = config.protected !== false;
+      const config = module.pageConfig || module.navConfig || {};
+      const id =
+        typeof config.id === 'string' && config.id.trim().length > 0
+          ? config.id.trim()
+          : deriveIdFromPath(path);
+      const label =
+        typeof config.label === 'string' && config.label.trim().length > 0
+          ? config.label.trim()
+          : deriveLabelFromId(id);
+      const order = Number.isFinite(config.order) ? config.order : Number.POSITIVE_INFINITY;
+      const IconComponent = config.icon;
+      const pathValue = normalizePath(config.path ?? `/${id.toLowerCase()}`);
+      const aliases = Array.isArray(config.aliases)
+        ? config.aliases.map(normalizePath).filter(Boolean)
+        : [];
+      const showInNav = config.showInNav === true;
+      const isDefault = Boolean(config.isDefault);
+      const isProtected = config.protected !== false;
 
-    return {
-      id,
-      label,
-      order,
-      icon: IconComponent,
-      path: pathValue,
-      aliases,
-      showInNav,
-      isDefault,
-      isProtected,
-      Component
-    };
-  })
-  .filter((page) => Boolean(page?.Component && page.path))
-  .sort((a, b) => {
-    if (a.order !== b.order) {
-      return a.order - b.order;
-    }
-    return a.label.localeCompare(b.label);
-  });
+      return {
+        id,
+        label,
+        order,
+        icon: IconComponent,
+        path: pathValue,
+        aliases,
+        showInNav,
+        isDefault,
+        isProtected,
+        Component
+      };
+    })
+    .filter((page) => Boolean(page?.Component && page.path))
+    .sort((a, b) => {
+      if (a.order !== b.order) {
+        return a.order - b.order;
+      }
+      return a.label.localeCompare(b.label);
+    });
 
-const wrapWithProtection = (page, element) => (
-  page.isProtected ? <ProtectedRoute>{element}</ProtectedRoute> : element
-);
+const wrapWithProtection = (page, element) =>
+  page.isProtected ? <ProtectedRoute>{element}</ProtectedRoute> : element;
 
 function App() {
   const pages = useMemo(loadPages, []);
@@ -126,10 +127,12 @@ function App() {
   );
 
   const defaultNavPage = useMemo(() => {
-    return navPages.find((page) => page.isDefault)
-      ?? navPages[0]
-      ?? pages.find((page) => page.isDefault)
-      ?? null;
+    return (
+      navPages.find((page) => page.isDefault) ??
+      navPages[0] ??
+      pages.find((page) => page.isDefault) ??
+      null
+    );
   }, [navPages, pages]);
 
   const currentNavPath = useMemo(() => {
@@ -143,9 +146,7 @@ function App() {
         return true;
       }
 
-      return aliases.some(
-        (alias) => alias && matchPath({ path: alias, end: alias === '/' }, location.pathname)
-      );
+      return aliases.some((alias) => alias && matchPath({ path: alias, end: alias === '/' }, location.pathname));
     });
 
     return matched?.path ?? null;
@@ -285,9 +286,11 @@ function App() {
         <Route
           path="*"
           element={
-            defaultNavPage
-              ? <Navigate to={defaultNavPage.path} replace />
-              : <Navigate to="/login" replace />
+            defaultNavPage ? (
+              <Navigate to={defaultNavPage.path} replace />
+            ) : (
+              <Navigate to="/login" replace />
+            )
           }
         />
       </Routes>
