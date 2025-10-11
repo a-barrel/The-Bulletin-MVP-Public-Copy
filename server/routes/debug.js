@@ -1,0 +1,763 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const { z, ZodError } = require('zod');
+
+const User = require('../models/User');
+const { Bookmark, BookmarkCollection } = require('../models/Bookmark');
+const {
+  ProximityChatRoom,
+  ProximityChatMessage,
+  ProximityChatPresence
+} = require('../models/ProximityChat');
+const Update = require('../models/Update');
+const Reply = require('../models/Reply');
+const Pin = require('../models/Pin');
+const verifyToken = require('../middleware/verifyToken');
+const { UserProfileSchema } = require('../schemas/user');
+const { BookmarkSchema, BookmarkCollectionSchema } = require('../schemas/bookmark');
+const { ProximityChatRoomSchema, ProximityChatMessageSchema, ProximityChatPresenceSchema } = require('../schemas/proximityChat');
+const { UpdateSchema } = require('../schemas/update');
+const { PinReplySchema } = require('../schemas/reply');
+const { PinPreviewSchema } = require('../schemas/pin');
+
+const router = express.Router();
+
+const ObjectIdString = z
+  .string()
+  .refine((value) => mongoose.Types.ObjectId.isValid(value), { message: 'Invalid object id' });
+
+const toObjectId = (value) => (value ? new mongoose.Types.ObjectId(value) : undefined);
+
+const toIdString = (value) => {
+  if (!value) return undefined;
+  if (typeof value === 'string') return value;
+  if (value instanceof mongoose.Types.ObjectId) return value.toString();
+  if (value._id) return value._id.toString();
+  return String(value);
+};
+
+const buildAudit = (audit, createdAt, updatedAt) => ({
+  createdAt: createdAt.toISOString(),
+  updatedAt: updatedAt.toISOString(),
+  createdBy: audit?.createdBy ? toIdString(audit.createdBy) : undefined,
+  updatedBy: audit?.updatedBy ? toIdString(audit.updatedBy) : undefined
+});
+
+const mapUserToProfile = (userDoc) => {
+  const doc = userDoc.toObject();
+  return UserProfileSchema.parse({
+    _id: toIdString(doc._id),
+    username: doc.username,
+    displayName: doc.displayName,
+    avatar: doc.avatar || undefined,
+    stats: doc.stats || undefined,
+    badges: doc.badges || [],
+    primaryLocationId: toIdString(doc.primaryLocationId),
+    accountStatus: doc.accountStatus || 'active',
+    email: doc.email || undefined,
+    bio: doc.bio || undefined,
+    banner: doc.banner || undefined,
+    preferences: doc.preferences || undefined,
+    relationships: doc.relationships || undefined,
+    locationSharingEnabled: Boolean(doc.locationSharingEnabled),
+    pinnedPinIds: (doc.pinnedPinIds || []).map(toIdString),
+    ownedPinIds: (doc.ownedPinIds || []).map(toIdString),
+    bookmarkCollectionIds: (doc.bookmarkCollectionIds || []).map(toIdString),
+    proximityChatRoomIds: (doc.proximityChatRoomIds || []).map(toIdString),
+    recentLocationIds: (doc.recentLocationIds || []).map(toIdString),
+    createdAt: userDoc.createdAt.toISOString(),
+    updatedAt: userDoc.updatedAt.toISOString(),
+    audit: undefined
+  });
+};
+
+const mapBookmark = (bookmarkDoc, pinPreview) => {
+  const doc = bookmarkDoc.toObject();
+  return BookmarkSchema.parse({
+    _id: toIdString(doc._id),
+    userId: toIdString(doc.userId),
+    pinId: toIdString(doc.pinId),
+    collectionId: toIdString(doc.collectionId),
+    createdAt: bookmarkDoc.createdAt.toISOString(),
+    notes: doc.notes || undefined,
+    reminderAt: doc.reminderAt ? doc.reminderAt.toISOString() : undefined,
+    tagIds: (doc.tagIds || []).map(toIdString),
+    pin: pinPreview,
+    audit: buildAudit(doc.audit, bookmarkDoc.createdAt, bookmarkDoc.updatedAt)
+  });
+};
+
+const mapCollection = (collectionDoc, bookmarks) => {
+  const doc = collectionDoc.toObject();
+  return BookmarkCollectionSchema.parse({
+    _id: toIdString(doc._id),
+    name: doc.name,
+    description: doc.description || undefined,
+    userId: toIdString(doc.userId),
+    bookmarkIds: (doc.bookmarkIds || []).map(toIdString),
+    followerIds: (doc.followerIds || []).map(toIdString),
+    createdAt: collectionDoc.createdAt.toISOString(),
+    updatedAt: collectionDoc.updatedAt.toISOString(),
+    bookmarks
+  });
+};
+
+const mapChatRoom = (roomDoc) => {
+  const doc = roomDoc.toObject();
+  return ProximityChatRoomSchema.parse({
+    _id: toIdString(doc._id),
+    ownerId: toIdString(doc.ownerId),
+    name: doc.name,
+    description: doc.description || undefined,
+    coordinates: {
+      type: 'Point',
+      coordinates: doc.coordinates.coordinates,
+      accuracy: doc.coordinates.accuracy ?? undefined
+    },
+    radiusMeters: doc.radiusMeters,
+    participantCount: doc.participantCount ?? 0,
+    participantIds: (doc.participantIds || []).map(toIdString),
+    moderatorIds: (doc.moderatorIds || []).map(toIdString),
+    pinId: toIdString(doc.pinId),
+    createdAt: roomDoc.createdAt.toISOString(),
+    updatedAt: roomDoc.updatedAt.toISOString(),
+    audit: doc.audit ? buildAudit(doc.audit, roomDoc.createdAt, roomDoc.updatedAt) : undefined
+  });
+};
+
+const mapChatMessage = (messageDoc) => {
+  const doc = messageDoc.toObject();
+  const coordinates = doc.coordinates && Array.isArray(doc.coordinates.coordinates) && doc.coordinates.coordinates.length === 2
+    ? {
+        type: 'Point',
+        coordinates: doc.coordinates.coordinates,
+        accuracy: doc.coordinates.accuracy ?? undefined
+      }
+    : undefined;
+
+  return ProximityChatMessageSchema.parse({
+    _id: toIdString(doc._id),
+    roomId: toIdString(doc.roomId),
+    pinId: toIdString(doc.pinId),
+    authorId: toIdString(doc.authorId),
+    author: doc.authorId && doc.authorId.username
+      ? {
+          _id: toIdString(doc.authorId._id),
+          username: doc.authorId.username,
+          displayName: doc.authorId.displayName,
+          avatar: doc.authorId.avatar || undefined,
+          stats: doc.authorId.stats || undefined,
+          badges: doc.authorId.badges || [],
+          primaryLocationId: toIdString(doc.authorId.primaryLocationId),
+          accountStatus: doc.authorId.accountStatus || 'active'
+        }
+      : undefined,
+    replyToMessageId: toIdString(doc.replyToMessageId),
+    message: doc.message,
+    coordinates,
+    attachments: doc.attachments || [],
+    createdAt: messageDoc.createdAt.toISOString(),
+    updatedAt: messageDoc.updatedAt.toISOString(),
+    audit: doc.audit ? buildAudit(doc.audit, messageDoc.createdAt, messageDoc.updatedAt) : undefined
+  });
+};
+
+const mapChatPresence = (presenceDoc) => {
+  const doc = presenceDoc.toObject();
+  return ProximityChatPresenceSchema.parse({
+    roomId: toIdString(doc.roomId),
+    userId: toIdString(doc.userId),
+    sessionId: toIdString(doc.sessionId),
+    joinedAt: doc.joinedAt.toISOString(),
+    lastActiveAt: doc.lastActiveAt.toISOString()
+  });
+};
+
+const mapUpdate = (updateDoc) => {
+  const doc = updateDoc.toObject();
+  return UpdateSchema.parse({
+    _id: toIdString(doc._id),
+    userId: toIdString(doc.userId),
+    sourceUserId: toIdString(doc.sourceUserId),
+    targetUserIds: (doc.targetUserIds || []).map(toIdString),
+    payload: doc.payload,
+    createdAt: updateDoc.createdAt.toISOString(),
+    deliveredAt: doc.deliveredAt ? doc.deliveredAt.toISOString() : undefined,
+    readAt: doc.readAt ? doc.readAt.toISOString() : undefined
+  });
+};
+
+const mapReply = (replyDoc) => {
+  const doc = replyDoc.toObject();
+  const author = doc.authorId && doc.authorId.username
+    ? {
+        _id: toIdString(doc.authorId._id),
+        username: doc.authorId.username,
+        displayName: doc.authorId.displayName,
+        avatar: doc.authorId.avatar || undefined,
+        stats: doc.authorId.stats || undefined,
+        badges: doc.authorId.badges || [],
+        primaryLocationId: toIdString(doc.authorId.primaryLocationId),
+        accountStatus: doc.authorId.accountStatus || 'active'
+      }
+    : undefined;
+
+  return PinReplySchema.parse({
+    _id: toIdString(doc._id),
+    pinId: toIdString(doc.pinId),
+    parentReplyId: toIdString(doc.parentReplyId),
+    authorId: toIdString(doc.authorId),
+    author,
+    message: doc.message,
+    attachments: doc.attachments || [],
+    reactions: (doc.reactions || []).map((reaction) => ({
+      userId: toIdString(reaction.userId),
+      type: reaction.type,
+      reactedAt: reaction.reactedAt ? reaction.reactedAt.toISOString() : undefined
+    })),
+    mentionedUserIds: (doc.mentionedUserIds || []).map(toIdString),
+    createdAt: replyDoc.createdAt.toISOString(),
+    updatedAt: replyDoc.updatedAt.toISOString(),
+    audit: doc.audit ? buildAudit(doc.audit, replyDoc.createdAt, replyDoc.updatedAt) : undefined
+  });
+};
+
+router.use(verifyToken);
+
+router.post('/users', async (req, res) => {
+  const CreateUserSchema = z.object({
+    username: z.string().min(3),
+    displayName: z.string().min(1),
+    email: z.string().email().optional(),
+    bio: z.string().max(500).optional(),
+    accountStatus: z.enum(['active', 'inactive', 'suspended', 'deleted']).optional(),
+    locationSharingEnabled: z.boolean().optional(),
+    roles: z.array(z.string()).optional()
+  });
+
+  try {
+    const input = CreateUserSchema.parse(req.body);
+    const user = await User.create({
+      username: input.username,
+      displayName: input.displayName,
+      email: input.email,
+      bio: input.bio,
+      accountStatus: input.accountStatus || 'active',
+      locationSharingEnabled: input.locationSharingEnabled ?? false,
+      roles: input.roles && input.roles.length ? input.roles : undefined
+    });
+
+    const payload = mapUserToProfile(user);
+    res.status(201).json(payload);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid user payload', issues: error.errors });
+    }
+    if (error.code === 11000) {
+      return res.status(409).json({ message: 'Username already exists' });
+    }
+    res.status(500).json({ message: 'Failed to create user' });
+  }
+});
+
+router.patch('/users/:userId', async (req, res) => {
+  const UpdateUserSchema = z
+    .object({
+      username: z.string().min(3).optional(),
+      displayName: z.string().min(1).optional(),
+      email: z.union([z.string().email(), z.literal(null)]).optional(),
+      bio: z.union([z.string().max(500), z.literal(null)]).optional(),
+      accountStatus: z.enum(['active', 'inactive', 'suspended', 'deleted']).optional(),
+      locationSharingEnabled: z.boolean().optional(),
+      roles: z.array(z.string()).optional()
+    })
+    .refine((value) => Object.keys(value).length > 0, {
+      message: 'Provide at least one field to update.'
+    });
+
+  try {
+    const { userId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user id' });
+    }
+
+    const input = UpdateUserSchema.parse(req.body);
+
+    const setDoc = {};
+    const unsetDoc = {};
+    const applyNullable = (field, value) => {
+      if (value === undefined) {
+        return;
+      }
+      if (value === null) {
+        unsetDoc[field] = '';
+      } else {
+        setDoc[field] = value;
+      }
+    };
+
+    if (input.username !== undefined) {
+      setDoc.username = input.username;
+    }
+    if (input.displayName !== undefined) {
+      setDoc.displayName = input.displayName;
+    }
+    applyNullable('email', input.email);
+    applyNullable('bio', input.bio);
+    if (input.accountStatus !== undefined) {
+      setDoc.accountStatus = input.accountStatus;
+    }
+    if (input.locationSharingEnabled !== undefined) {
+      setDoc.locationSharingEnabled = input.locationSharingEnabled;
+    }
+    if (input.roles !== undefined) {
+      setDoc.roles = input.roles;
+    }
+
+    const updateOps = {};
+    if (Object.keys(setDoc).length > 0) {
+      updateOps.$set = setDoc;
+    }
+    if (Object.keys(unsetDoc).length > 0) {
+      updateOps.$unset = unsetDoc;
+    }
+
+    if (Object.keys(updateOps).length === 0) {
+      return res.status(400).json({ message: 'No updates to apply.' });
+    }
+
+    const user = await User.findByIdAndUpdate(userId, updateOps, {
+      new: true,
+      runValidators: true
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const payload = mapUserToProfile(user);
+    res.json(payload);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid update payload', issues: error.errors });
+    }
+    if (error.code === 11000) {
+      return res.status(409).json({ message: 'Username already exists' });
+    }
+    res.status(500).json({ message: 'Failed to update user' });
+  }
+});
+
+router.post('/bookmarks', async (req, res) => {
+  const CreateBookmarkSchema = z.object({
+    userId: ObjectIdString,
+    pinId: ObjectIdString,
+    collectionId: ObjectIdString.optional(),
+    notes: z.string().optional(),
+    reminderAt: z.string().datetime().optional(),
+    tagIds: z.array(ObjectIdString).optional()
+  });
+
+  try {
+    const input = CreateBookmarkSchema.parse(req.body);
+    const bookmark = await Bookmark.create({
+      userId: toObjectId(input.userId),
+      pinId: toObjectId(input.pinId),
+      collectionId: toObjectId(input.collectionId),
+      notes: input.notes,
+      reminderAt: input.reminderAt ? new Date(input.reminderAt) : undefined,
+      tagIds: input.tagIds ? input.tagIds.map(toObjectId) : []
+    });
+
+    const populated = await bookmark.populate({ path: 'pinId', populate: { path: 'creatorId' } });
+    const pinPreview = populated.pinId
+      ? PinPreviewSchema.parse({
+          _id: toIdString(populated.pinId._id),
+          type: populated.pinId.type,
+          creatorId: toIdString(populated.pinId.creatorId?._id || populated.pinId.creatorId),
+          creator: populated.pinId.creatorId && populated.pinId.creatorId.username
+            ? {
+                _id: toIdString(populated.pinId.creatorId._id),
+                username: populated.pinId.creatorId.username,
+                displayName: populated.pinId.creatorId.displayName,
+                avatar: populated.pinId.creatorId.avatar || undefined,
+                stats: populated.pinId.creatorId.stats || undefined,
+                badges: populated.pinId.creatorId.badges || [],
+                primaryLocationId: toIdString(populated.pinId.creatorId.primaryLocationId),
+                accountStatus: populated.pinId.creatorId.accountStatus || 'active'
+              }
+            : undefined,
+          title: populated.pinId.title,
+          coordinates: {
+            type: 'Point',
+            coordinates: populated.pinId.coordinates.coordinates,
+            accuracy: populated.pinId.coordinates.accuracy ?? undefined
+          },
+          proximityRadiusMeters: populated.pinId.proximityRadiusMeters,
+          linkedLocationId: toIdString(populated.pinId.linkedLocationId),
+          linkedChatRoomId: toIdString(populated.pinId.linkedChatRoomId),
+          startDate: populated.pinId.startDate ? populated.pinId.startDate.toISOString() : undefined,
+          endDate: populated.pinId.endDate ? populated.pinId.endDate.toISOString() : undefined,
+          expiresAt: populated.pinId.expiresAt ? populated.pinId.expiresAt.toISOString() : undefined
+        })
+      : undefined;
+
+    res.status(201).json(mapBookmark(populated, pinPreview));
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid bookmark payload', issues: error.errors });
+    }
+    if (error.code === 11000) {
+      return res.status(409).json({ message: 'Bookmark already exists for this user & pin' });
+    }
+    res.status(500).json({ message: 'Failed to create bookmark' });
+  }
+});
+
+router.post('/bookmark-collections', async (req, res) => {
+  const CreateCollectionSchema = z.object({
+    userId: ObjectIdString,
+    name: z.string().min(1),
+    description: z.string().optional(),
+    bookmarkIds: z.array(ObjectIdString).optional()
+  });
+
+  try {
+    const input = CreateCollectionSchema.parse(req.body);
+    const collection = await BookmarkCollection.create({
+      userId: toObjectId(input.userId),
+      name: input.name,
+      description: input.description,
+      bookmarkIds: input.bookmarkIds ? input.bookmarkIds.map(toObjectId) : []
+    });
+
+    const bookmarks = input.bookmarkIds && input.bookmarkIds.length
+      ? await Bookmark.find({ _id: { $in: input.bookmarkIds.map(toObjectId) } }).populate({
+          path: 'pinId',
+          populate: { path: 'creatorId' }
+        })
+      : [];
+
+    const bookmarksById = new Map(bookmarks.map((bookmark) => [bookmark._id.toString(), bookmark]));
+    const mappedBookmarks = (collection.bookmarkIds || []).map((bookmarkId) => {
+      const bookmark = bookmarksById.get(bookmarkId.toString());
+      if (!bookmark) return undefined;
+      const pinPreview = bookmark.pinId
+        ? PinPreviewSchema.parse({
+            _id: toIdString(bookmark.pinId._id),
+            type: bookmark.pinId.type,
+            creatorId: toIdString(bookmark.pinId.creatorId?._id || bookmark.pinId.creatorId),
+            creator: bookmark.pinId.creatorId && bookmark.pinId.creatorId.username
+              ? {
+                  _id: toIdString(bookmark.pinId.creatorId._id),
+                  username: bookmark.pinId.creatorId.username,
+                  displayName: bookmark.pinId.creatorId.displayName,
+                  avatar: bookmark.pinId.creatorId.avatar || undefined,
+                  stats: bookmark.pinId.creatorId.stats || undefined,
+                  badges: bookmark.pinId.creatorId.badges || [],
+                  primaryLocationId: toIdString(bookmark.pinId.creatorId.primaryLocationId),
+                  accountStatus: bookmark.pinId.creatorId.accountStatus || 'active'
+                }
+              : undefined,
+            title: bookmark.pinId.title,
+            coordinates: {
+              type: 'Point',
+              coordinates: bookmark.pinId.coordinates.coordinates,
+              accuracy: bookmark.pinId.coordinates.accuracy ?? undefined
+            },
+            proximityRadiusMeters: bookmark.pinId.proximityRadiusMeters,
+            linkedLocationId: toIdString(bookmark.pinId.linkedLocationId),
+            linkedChatRoomId: toIdString(bookmark.pinId.linkedChatRoomId),
+            startDate: bookmark.pinId.startDate ? bookmark.pinId.startDate.toISOString() : undefined,
+            endDate: bookmark.pinId.endDate ? bookmark.pinId.endDate.toISOString() : undefined,
+            expiresAt: bookmark.pinId.expiresAt ? bookmark.pinId.expiresAt.toISOString() : undefined
+          })
+        : undefined;
+      return bookmark ? mapBookmark(bookmark, pinPreview) : undefined;
+    }).filter(Boolean);
+
+    res.status(201).json(mapCollection(collection, mappedBookmarks));
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid collection payload', issues: error.errors });
+    }
+    res.status(500).json({ message: 'Failed to create bookmark collection' });
+  }
+});
+
+router.post('/chat-rooms', async (req, res) => {
+  const CreateRoomSchema = z.object({
+    ownerId: ObjectIdString,
+    name: z.string().min(1),
+    description: z.string().optional(),
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+    accuracy: z.number().nonnegative().optional(),
+    radiusMeters: z.number().positive(),
+    pinId: ObjectIdString.optional(),
+    participantIds: z.array(ObjectIdString).optional(),
+    moderatorIds: z.array(ObjectIdString).optional()
+  });
+
+  try {
+    const input = CreateRoomSchema.parse(req.body);
+    const room = await ProximityChatRoom.create({
+      ownerId: toObjectId(input.ownerId),
+      name: input.name,
+      description: input.description,
+      coordinates: {
+        type: 'Point',
+        coordinates: [input.longitude, input.latitude],
+        accuracy: input.accuracy
+      },
+      radiusMeters: input.radiusMeters,
+      participantIds: input.participantIds ? input.participantIds.map(toObjectId) : [],
+      participantCount: input.participantIds ? input.participantIds.length : 0,
+      moderatorIds: input.moderatorIds ? input.moderatorIds.map(toObjectId) : [],
+      pinId: toObjectId(input.pinId)
+    });
+
+    res.status(201).json(mapChatRoom(room));
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid chat room payload', issues: error.errors });
+    }
+    res.status(500).json({ message: 'Failed to create chat room' });
+  }
+});
+
+router.post('/chat-messages', async (req, res) => {
+  const CreateMessageSchema = z.object({
+    roomId: ObjectIdString,
+    authorId: ObjectIdString,
+    message: z.string().min(1),
+    pinId: ObjectIdString.optional(),
+    replyToMessageId: ObjectIdString.optional(),
+    latitude: z.number().min(-90).max(90).optional(),
+    longitude: z.number().min(-180).max(180).optional(),
+    accuracy: z.number().nonnegative().optional()
+  });
+
+  try {
+    const input = CreateMessageSchema.parse(req.body);
+
+    let coordinates;
+    if (input.latitude !== undefined && input.longitude !== undefined) {
+      coordinates = {
+        type: 'Point',
+        coordinates: [input.longitude, input.latitude],
+        accuracy: input.accuracy
+      };
+    }
+
+    const message = await ProximityChatMessage.create({
+      roomId: toObjectId(input.roomId),
+      pinId: toObjectId(input.pinId),
+      authorId: toObjectId(input.authorId),
+      replyToMessageId: toObjectId(input.replyToMessageId),
+      message: input.message,
+      coordinates
+    });
+
+    const populated = await message.populate('authorId');
+    res.status(201).json(mapChatMessage(populated));
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid chat message payload', issues: error.errors });
+    }
+    res.status(500).json({ message: 'Failed to create chat message' });
+  }
+});
+
+router.post('/chat-presence', async (req, res) => {
+  const CreatePresenceSchema = z.object({
+    roomId: ObjectIdString,
+    userId: ObjectIdString,
+    sessionId: ObjectIdString.optional(),
+    joinedAt: z.string().datetime().optional(),
+    lastActiveAt: z.string().datetime().optional()
+  });
+
+  try {
+    const input = CreatePresenceSchema.parse(req.body);
+    const now = new Date();
+    const joinedAt = input.joinedAt ? new Date(input.joinedAt) : now;
+    const lastActiveAt = input.lastActiveAt ? new Date(input.lastActiveAt) : now;
+
+    const presence = await ProximityChatPresence.findOneAndUpdate(
+      {
+        roomId: toObjectId(input.roomId),
+        userId: toObjectId(input.userId)
+      },
+      {
+        roomId: toObjectId(input.roomId),
+        userId: toObjectId(input.userId),
+        sessionId: toObjectId(input.sessionId),
+        joinedAt,
+        lastActiveAt
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.status(201).json(mapChatPresence(presence));
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid chat presence payload', issues: error.errors });
+    }
+    res.status(500).json({ message: 'Failed to create chat presence' });
+  }
+});
+
+router.post('/updates', async (req, res) => {
+  const CreateUpdateSchema = z.object({
+    userId: ObjectIdString,
+    sourceUserId: ObjectIdString.optional(),
+    targetUserIds: z.array(ObjectIdString).optional(),
+    payload: z.object({
+      type: z.enum([
+        'new-pin',
+        'pin-update',
+        'event-starting-soon',
+        'popular-pin',
+        'bookmark-update',
+        'system',
+        'chat-message',
+        'friend-request'
+      ]),
+      title: z.string().min(1),
+      body: z.string().optional(),
+      metadata: z.record(z.any()).optional(),
+      relatedEntities: z
+        .array(
+          z.object({
+            id: ObjectIdString,
+            type: z.string().min(1),
+            label: z.string().optional(),
+            summary: z.string().optional()
+          })
+        )
+        .optional(),
+      pinId: ObjectIdString.optional(),
+      pinPreview: z
+        .object({
+          _id: ObjectIdString,
+          type: z.enum(['event', 'discussion']),
+          creatorId: ObjectIdString,
+          title: z.string().min(1),
+          latitude: z.number().optional(),
+          longitude: z.number().optional(),
+          proximityRadiusMeters: z.number().optional(),
+          startDate: z.string().datetime().optional(),
+          endDate: z.string().datetime().optional(),
+          expiresAt: z.string().datetime().optional()
+        })
+        .optional()
+    })
+  });
+
+  try {
+    const input = CreateUpdateSchema.parse(req.body);
+
+    let pinPreview;
+    if (input.payload.pinPreview) {
+      const coordinates =
+        input.payload.pinPreview.latitude !== undefined &&
+        input.payload.pinPreview.longitude !== undefined
+          ? {
+              type: 'Point',
+              coordinates: [input.payload.pinPreview.longitude, input.payload.pinPreview.latitude]
+            }
+          : undefined;
+
+      pinPreview = {
+        _id: toObjectId(input.payload.pinPreview._id),
+        type: input.payload.pinPreview.type,
+        creatorId: toObjectId(input.payload.pinPreview.creatorId),
+        title: input.payload.pinPreview.title,
+        coordinates,
+        proximityRadiusMeters: input.payload.pinPreview.proximityRadiusMeters,
+        startDate: input.payload.pinPreview.startDate ? new Date(input.payload.pinPreview.startDate) : undefined,
+        endDate: input.payload.pinPreview.endDate ? new Date(input.payload.pinPreview.endDate) : undefined,
+        expiresAt: input.payload.pinPreview.expiresAt ? new Date(input.payload.pinPreview.expiresAt) : undefined
+      };
+    } else if (input.payload.pinId) {
+      const pin = await Pin.findById(input.payload.pinId);
+      if (pin) {
+        pinPreview = {
+          _id: pin._id,
+          type: pin.type,
+          creatorId: pin.creatorId,
+          title: pin.title,
+          coordinates: {
+            type: 'Point',
+            coordinates: pin.coordinates.coordinates,
+            accuracy: pin.coordinates.accuracy ?? undefined
+          },
+          proximityRadiusMeters: pin.proximityRadiusMeters,
+          linkedLocationId: pin.linkedLocationId,
+          linkedChatRoomId: pin.linkedChatRoomId,
+          startDate: pin.startDate,
+          endDate: pin.endDate,
+          expiresAt: pin.expiresAt
+        };
+      }
+    }
+
+    const update = await Update.create({
+      userId: toObjectId(input.userId),
+      sourceUserId: toObjectId(input.sourceUserId),
+      targetUserIds: input.targetUserIds ? input.targetUserIds.map(toObjectId) : [],
+      payload: {
+        type: input.payload.type,
+        title: input.payload.title,
+        body: input.payload.body,
+        metadata: input.payload.metadata,
+        relatedEntities: (input.payload.relatedEntities || []).map((entity) => ({
+          id: toObjectId(entity.id),
+          type: entity.type,
+          label: entity.label,
+          summary: entity.summary
+        })),
+        pin: pinPreview
+      }
+    });
+
+    res.status(201).json(mapUpdate(update));
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid update payload', issues: error.errors });
+    }
+    res.status(500).json({ message: 'Failed to create update' });
+  }
+});
+
+router.post('/replies', async (req, res) => {
+  const CreateReplySchema = z.object({
+    pinId: ObjectIdString,
+    authorId: ObjectIdString,
+    message: z.string().min(1),
+    parentReplyId: ObjectIdString.optional(),
+    mentionedUserIds: z.array(ObjectIdString).optional()
+  });
+
+  try {
+    const input = CreateReplySchema.parse(req.body);
+    const reply = await Reply.create({
+      pinId: toObjectId(input.pinId),
+      authorId: toObjectId(input.authorId),
+      message: input.message,
+      parentReplyId: toObjectId(input.parentReplyId),
+      mentionedUserIds: input.mentionedUserIds ? input.mentionedUserIds.map(toObjectId) : []
+    });
+
+    const populated = await reply.populate('authorId');
+    res.status(201).json(mapReply(populated));
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid reply payload', issues: error.errors });
+    }
+    res.status(500).json({ message: 'Failed to create reply' });
+  }
+});
+
+module.exports = router;

@@ -1,0 +1,16 @@
+[
+  {
+    "_id": { "$oid": "68e061721329566a22d474ad" },
+    "userId": { "$oid": "68e061721329566a22d474a7" },
+    "name": "Weekend Events",
+    "description": "Pins I want to visit over the next two weekends.",
+    "bookmarkIds": [
+      { "$oid": "68e061721329566a22d474af" }
+    ],
+    "followerIds": [
+      { "$oid": "68e061721329566a22d474a8" }
+    ],
+    "createdAt": { "$date": "2025-09-01T17:00:00.000Z" },
+    "updatedAt": { "$date": "2025-10-03T23:20:00.000Z" }
+  }
+]
