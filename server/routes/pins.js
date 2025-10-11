@@ -36,11 +36,12 @@ const METERS_PER_MILE = 1609.34;
 const mapUserToPublic = (user) => {
   if (!user) return undefined;
   const doc = user.toObject ? user.toObject() : user;
+  const avatar = doc.avatar ? mapMediaAssetResponse(doc.avatar) : undefined;
   return PublicUserSchema.parse({
     _id: toIdString(doc._id),
     username: doc.username,
     displayName: doc.displayName,
-    avatar: doc.avatar || undefined,
+    avatar,
     stats: doc.stats || undefined,
     badges: doc.badges || [],
     primaryLocationId: toIdString(doc.primaryLocationId),
@@ -96,8 +97,8 @@ const mapPinToFull = (pinDoc, creator) => {
       accuracy: doc.coordinates.accuracy ?? undefined
     },
     proximityRadiusMeters: doc.proximityRadiusMeters,
-    photos: doc.photos || [],
-    coverPhoto: doc.coverPhoto || undefined,
+    photos: Array.isArray(doc.photos) ? doc.photos.map(mapMediaAssetResponse) : [],
+    coverPhoto: mapMediaAssetResponse(doc.coverPhoto),
     tagIds: (doc.tagIds || []).map(toIdString),
     tags: doc.tags || [],
     relatedPinIds: (doc.relatedPinIds || []).map(toIdString),
@@ -172,6 +173,42 @@ const CoordinatesSchema = z.object({
   longitude: z.number().min(-180).max(180)
 });
 
+const MediaAssetInputSchema = z.object({
+  url: z.string().url(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  mimeType: z.string().optional(),
+  description: z.string().optional()
+});
+
+const normaliseMediaAsset = (asset, uploadedBy) => ({
+  url: asset.url,
+  width: asset.width,
+  height: asset.height,
+  mimeType: asset.mimeType ?? 'image/jpeg',
+  description: asset.description,
+  uploadedAt: new Date(),
+  uploadedBy
+});
+
+const mapMediaAssetResponse = (asset) => {
+  if (!asset) {
+    return undefined;
+  }
+
+  const doc = asset.toObject ? asset.toObject() : asset;
+  return {
+    url: doc.url,
+    thumbnailUrl: doc.thumbnailUrl || undefined,
+    width: doc.width ?? undefined,
+    height: doc.height ?? undefined,
+    mimeType: doc.mimeType || undefined,
+    description: doc.description || undefined,
+    uploadedAt: doc.uploadedAt ? doc.uploadedAt.toISOString() : undefined,
+    uploadedBy: doc.uploadedBy ? toIdString(doc.uploadedBy) : undefined
+  };
+};
+
 const NearbyPinsQuerySchema = z.object({
   latitude: z.coerce.number().min(-90).max(90),
   longitude: z.coerce.number().min(-180).max(180),
@@ -198,7 +235,9 @@ const BaseCreatePinSchema = z.object({
   description: z.string().trim().min(1).max(4000),
   coordinates: CoordinatesSchema,
   proximityRadiusMeters: z.number().int().positive().max(50000).optional(),
-  creatorId: z.string().optional()
+  creatorId: z.string().optional(),
+  photos: z.array(MediaAssetInputSchema).max(10).optional(),
+  coverPhoto: MediaAssetInputSchema.optional()
 });
 
 const EventAddressComponentsSchema = z
@@ -313,6 +352,16 @@ router.post('/', verifyToken, async (req, res) => {
             formatted: input.approximateAddress.formatted
           }
         : undefined;
+    }
+
+    if (input.photos?.length) {
+      pinData.photos = input.photos.map((photo) => normaliseMediaAsset(photo, creatorObjectId));
+    }
+
+    if (input.coverPhoto) {
+      pinData.coverPhoto = normaliseMediaAsset(input.coverPhoto, creatorObjectId);
+    } else if (pinData.photos?.length) {
+      pinData.coverPhoto = pinData.photos[0];
     }
 
     const pin = await Pin.create(pinData);
@@ -438,6 +487,99 @@ router.get('/:pinId/replies', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Invalid pin id', issues: error.errors });
     }
     res.status(500).json({ message: 'Failed to load replies' });
+  }
+});
+
+router.put('/:pinId', verifyToken, async (req, res) => {
+  try {
+    const { pinId } = PinIdSchema.parse(req.params);
+    const input = CreatePinSchema.parse(req.body);
+
+    const pin = await Pin.findById(pinId).populate('creatorId');
+    if (!pin) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    if (input.type === 'event' && input.endDate < input.startDate) {
+      return res.status(400).json({ message: 'endDate must be after startDate' });
+    }
+
+    if (input.type === 'discussion' && input.proximityRadiusMeters && input.proximityRadiusMeters <= 0) {
+      return res.status(400).json({ message: 'proximityRadiusMeters must be greater than zero' });
+    }
+
+    let creatorObjectId = pin.creatorId?._id ? pin.creatorId._id : pin.creatorId;
+    if (input.creatorId) {
+      if (!mongoose.Types.ObjectId.isValid(input.creatorId)) {
+        return res.status(400).json({ message: 'Invalid creator id' });
+      }
+      creatorObjectId = new mongoose.Types.ObjectId(input.creatorId);
+    }
+
+    const coordinates = {
+      type: 'Point',
+      coordinates: [input.coordinates.longitude, input.coordinates.latitude]
+    };
+
+    pin.type = input.type;
+    pin.creatorId = creatorObjectId;
+    pin.title = input.title;
+    pin.description = input.description;
+    pin.coordinates = coordinates;
+    pin.proximityRadiusMeters = input.proximityRadiusMeters ?? pin.proximityRadiusMeters ?? 1609;
+
+    if (input.type === 'event') {
+      pin.startDate = input.startDate;
+      pin.endDate = input.endDate;
+      pin.address = input.address
+        ? {
+            precise: input.address.precise,
+            components: input.address.components
+          }
+        : undefined;
+      pin.expiresAt = undefined;
+      pin.autoDelete = undefined;
+      pin.approximateAddress = undefined;
+    } else if (input.type === 'discussion') {
+      pin.expiresAt = input.expiresAt;
+      pin.autoDelete = input.autoDelete ?? true;
+      pin.approximateAddress = input.approximateAddress
+        ? {
+            city: input.approximateAddress.city,
+            state: input.approximateAddress.state,
+            country: input.approximateAddress.country,
+            formatted: input.approximateAddress.formatted
+          }
+        : undefined;
+      pin.startDate = undefined;
+      pin.endDate = undefined;
+      pin.address = undefined;
+    }
+
+    if (Array.isArray(input.photos)) {
+      pin.photos = input.photos.map((photo) => normaliseMediaAsset(photo, creatorObjectId));
+    }
+
+    if (input.coverPhoto) {
+      pin.coverPhoto = normaliseMediaAsset(input.coverPhoto, creatorObjectId);
+    } else if (pin.photos.length > 0) {
+      pin.coverPhoto = pin.photos[0];
+    } else {
+      pin.coverPhoto = undefined;
+    }
+
+    await pin.save();
+    const hydrated = await Pin.findById(pin._id).populate('creatorId');
+    const sourcePin = hydrated ?? pin;
+    const creatorPublic = hydrated ? mapUserToPublic(hydrated.creatorId) : mapUserToPublic(pin.creatorId);
+    const payload = mapPinToFull(sourcePin, creatorPublic);
+    res.json(payload);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid pin payload', issues: error.errors });
+    }
+    console.error('Failed to update pin:', error);
+    res.status(500).json({ message: 'Failed to update pin' });
   }
 });
 

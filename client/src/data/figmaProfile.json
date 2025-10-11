@@ -1,0 +1,64 @@
+{
+  "source": "figma_file.json",
+  "collectedAt": "2025-10-09T18:16:24.053Z",
+  "header": {
+    "title": "Profile",
+    "time": "9:41"
+  },
+  "profile": {
+    "username": "SportsFan83",
+    "description": "I'm SportsFan83, a die-hard sports lover who's always up for a game, whether it's playing on the court or cheering on my favorite teams from the couch. You'll usually find me glued to NFL and NBA games, and if it's game day, I'm all in. When I'm not watching sports, I'm staying active with outdoor activities like hiking, cycling, or hitting the gym. I'm also a huge fan of sports video games, especially ones that let me get in the action. I love a good rivalry and enjoy the competitive side of things, whether it's sports, games, or just friendly debates with friends. If you're into sports memes, hot takes, or game predictions, we'll get along great!",
+    "joined": "Joined August 12 2026",
+    "backgroundColor": "#f5effd",
+    "cardColor": "#cdaef2",
+    "avatar": {
+      "letter": "A",
+      "backgroundColor": "#cdaef2",
+      "foregroundColor": "#5d3889"
+    }
+  },
+  "stats": [
+    {
+      "label": "Post Count:",
+      "value": "17"
+    },
+    {
+      "label": "Events Attended:",
+      "value": "4"
+    },
+    {
+      "label": "Events Hosted:",
+      "value": "0"
+    }
+  ],
+  "actions": [
+    {
+      "id": "add-friend",
+      "label": "Add friend",
+      "variant": "primary",
+      "backgroundColor": "#f15bb5",
+      "textColor": "#000000"
+    },
+    {
+      "id": "message",
+      "label": "Message",
+      "variant": "secondary",
+      "backgroundColor": "#cdaef2",
+      "textColor": "#000000"
+    },
+    {
+      "id": "report",
+      "label": "Report",
+      "variant": "secondary",
+      "backgroundColor": "#cdaef2",
+      "textColor": "#000000"
+    },
+    {
+      "id": "block",
+      "label": "Block",
+      "variant": "secondary",
+      "backgroundColor": "#cdaef2",
+      "textColor": "#000000"
+    }
+  ]
+}

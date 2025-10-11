@@ -66,12 +66,15 @@ const firebaseAuthEmulatorUrl = isOffline
   ? import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_URL ?? 'http://localhost:9099'
   : undefined;
 
+const troyExperimentEnabled = import.meta.env.VITE_ENABLE_TROY_EXPERIMENT === 'true';
+
 export const runtimeConfig = {
   mode,
   isOffline,
   isOnline: !isOffline,
   apiBaseUrl,
   fallbackToken,
+  troyExperimentEnabled,
   firebase: {
     config: firebaseConfig,
     authEmulatorUrl: firebaseAuthEmulatorUrl

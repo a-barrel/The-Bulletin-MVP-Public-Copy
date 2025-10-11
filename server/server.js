@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const admin = require('firebase-admin');
+const path = require('path');
+const fs = require('fs');
 
 // Load environment variables before reading runtime config
 dotenv.config();
@@ -40,6 +42,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const uploadsDir = path.join(__dirname, 'uploads');
+const imagesDir = path.join(uploadsDir, 'images');
+fs.mkdirSync(imagesDir, { recursive: true });
+app.set('uploadsDir', uploadsDir);
+app.set('imagesDir', imagesDir);
+app.use('/images', express.static(imagesDir));
+
 // MongoDB connection
 mongoose
   .connect(runtime.mongoUri)
@@ -69,6 +78,8 @@ app.use('/api/pins', verifyToken, require('./routes/pins'));
 app.use('/api/bookmarks', verifyToken, require('./routes/bookmarks'));
 app.use('/api/chats', verifyToken, require('./routes/chats'));
 app.use('/api/updates', verifyToken, require('./routes/updates'));
+app.use('/api/media', verifyToken, require('./routes/media'));
+app.use('/api/debug', require('./routes/debug'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

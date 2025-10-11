@@ -48,8 +48,17 @@ MONGODB_URI_OFFLINE=mongodb://127.0.0.1:27017/pinpoint
 # Required for Render/production deployments
 FIREBASE_SERVICE_ACCOUNT_JSON=
 
+<<<<<<< HEAD
 # Demo bearer token accepted while in offline mode
 PINPOINT_OFFLINE_DEMO_TOKEN=demo-token
+
+# Firebase Auth emulator host
+# Comment the following line to disable the Firebase Auth emulator (e.g. for production deployments)
+FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
+
+# MongoDB connection URI
+# Update this value to point at your local or hosted MongoDB deployment
+MONGODB_URI=mongodb://localhost:27017/social-gps
 
 # Server port
 PORT=5000
@@ -94,6 +103,9 @@ VITE_FIREBASE_CONFIG={"apiKey": "AIzaSyAkVlj0uQu2Xdc1Y99lAd1bPbFlawEM6pA","authD
 
 1. Clone the repository
 2. Install all dependencies (root, server, and client):
+
+   You can do so by running theses commands on the root folder:
+
    ```bash
    npm run install:all
    ```

@@ -12,12 +12,54 @@ import Divider from '@mui/material/Divider';
 import InputAdornment from '@mui/material/InputAdornment';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
+import MenuItem from '@mui/material/MenuItem';
+import Switch from '@mui/material/Switch';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import ForumIcon from '@mui/icons-material/Forum';
 import MapIcon from '@mui/icons-material/Map';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { createPin, fetchPinById, fetchPinsNearby } from '../api/mongoDataApi';
+import {
+  createPin,
+  fetchPinById,
+  fetchPinsNearby,
+  insertLocationUpdate,
+  fetchNearbyUsers,
+  fetchLocationHistory,
+  createUserProfile,
+  fetchUsers,
+  fetchUserProfile,
+  updateUserProfile,
+  createBookmark,
+  fetchBookmarks,
+  createBookmarkCollection,
+  fetchBookmarkCollections,
+  createProximityChatRoom,
+  fetchChatRooms,
+  createProximityChatMessage,
+  fetchChatMessages,
+  createProximityChatPresence,
+  fetchChatPresence,
+  createUpdate,
+  fetchUpdates,
+  createReply,
+  fetchReplies
+} from '../api/mongoDataApi';
+import runtimeConfig from '../config/runtime';
+import FeedPrototype from '../components/FeedPrototype';
+import EventPrototype from '../components/EventPrototype';
+import ChatPrototype from '../components/ChatPrototype';
+import DiscussionPrototype from '../components/DiscussionPrototype';
+import BookmarksPrototype from '../components/BookmarksPrototype';
+import PinCreationPrototype from '../components/PinCreationPrototype';
+import ProfilePrototype from '../components/ProfilePrototype';
+import SettingsPrototype from '../components/SettingsPrototype';
+import UpdatesPrototype from '../components/UpdatesPrototype';
 
 export const pageConfig = {
   id: 'debug-console',
@@ -28,6 +70,21 @@ export const pageConfig = {
   protected: true,
   showInNav: true
 };
+
+const EXPERIMENT_ENABLED = runtimeConfig.troyExperimentEnabled;
+const EXPERIMENT_TAB_ID = 'troy-experiment';
+const EXPERIMENT_TITLE = "Troy's Dumb Experiment";
+const EXPERIMENT_SCREENS = [
+  { id: 'feed', label: 'Feed', Component: FeedPrototype },
+  { id: 'event', label: 'Event', Component: EventPrototype },
+  { id: 'chat', label: 'Chat', Component: ChatPrototype },
+  { id: 'discussion', label: 'Discussion', Component: DiscussionPrototype },
+  { id: 'bookmarks', label: 'Bookmarks', Component: BookmarksPrototype },
+  { id: 'pin-create', label: 'Pin Creation', Component: PinCreationPrototype },
+  { id: 'profile', label: 'Profile', Component: ProfilePrototype },
+  { id: 'settings', label: 'Settings', Component: SettingsPrototype },
+  { id: 'updates', label: 'Updates', Component: UpdatesPrototype }
+];
 
 const INITIAL_COORDINATES = {
   latitude: '33.7838',
@@ -42,10 +99,100 @@ const formatDateTimeLocal = (date) => {
 
 const METERS_PER_MILE = 1609.34;
 const TAB_OPTIONS = [
-  { id: 'pin', label: 'Pin/Event Creation' },
-  { id: 'profile', label: 'Profile' },
-  { id: 'chat', label: 'Chat' }
+  { id: 'pin', label: 'Pins & Events' },
+  { id: 'profile', label: 'Profiles' },
+  { id: 'locations', label: 'Locations' },
+  { id: 'bookmarks', label: 'Bookmarks' },
+  { id: 'chat', label: 'Chat' },
+  { id: 'updates', label: 'Updates' },
+  { id: 'replies', label: 'Replies' },
+  ...(EXPERIMENT_ENABLED ? [{ id: EXPERIMENT_TAB_ID, label: EXPERIMENT_TITLE }] : [])
 ];
+const EXPERIMENT_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === EXPERIMENT_TAB_ID);
+
+const ACCOUNT_STATUS_OPTIONS = ['active', 'inactive', 'suspended', 'deleted'];
+const UPDATE_TYPE_OPTIONS = [
+  'new-pin',
+  'pin-update',
+  'event-starting-soon',
+  'popular-pin',
+  'bookmark-update',
+  'system',
+  'chat-message',
+  'friend-request'
+];
+const LOCATION_SOURCE_OPTIONS = ['web', 'ios', 'android', 'background'];
+
+const JSON_PREVIEW_SX = { mt: 2, backgroundColor: 'grey.900', p: 2, borderRadius: 2, overflowX: 'auto' };
+
+const parseCommaSeparated = (value) =>
+  `${value ?? ''}`
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+const parseRequiredNumber = (value, label) => {
+  const trimmed = `${value ?? ''}`.trim();
+  if (!trimmed) {
+    throw new Error(`${label} is required.`);
+  }
+  const parsed = Number(trimmed);
+  if (Number.isNaN(parsed)) {
+    throw new Error(`${label} must be a valid number.`);
+  }
+  return parsed;
+};
+
+const parseOptionalNumber = (value, label) => {
+  const trimmed = `${value ?? ''}`.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const parsed = Number(trimmed);
+  if (Number.isNaN(parsed)) {
+    throw new Error(`${label} must be a valid number.`);
+  }
+  return parsed;
+};
+
+const parseOptionalDate = (value, label) => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  const trimmed = `${value}`.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`${label} must be a valid date/time.`);
+  }
+  return date.toISOString();
+};
+
+const parseJsonField = (value, label) => {
+  const trimmed = `${value ?? ''}`.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(trimmed);
+  } catch (error) {
+    throw new Error(`Invalid ${label} JSON: ${error.message}`);
+  }
+};
+
+function JsonPreview({ data }) {
+  if (data === null || data === undefined) {
+    return null;
+  }
+
+  return (
+    <Box component="pre" sx={JSON_PREVIEW_SX}>
+      {JSON.stringify(data, null, 2)}
+    </Box>
+  );
+}
 
 function DebugConsolePage() {
   const [activeTab, setActiveTab] = useState(0);
@@ -598,7 +745,7 @@ const handleAutofillDiscussion = () => {
               startIcon={<AddLocationAltIcon />}
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Posting…' : 'Post Pin'}
+              {isSubmitting ? 'Posting...' : 'Post Pin'}
             </Button>
           </Stack>
           </Paper>
@@ -631,7 +778,7 @@ const handleAutofillDiscussion = () => {
                 onClick={handleFetchPin}
                 disabled={isFetchingPin}
               >
-                {isFetchingPin ? 'Loading…' : 'Fetch Pin'}
+                {isFetchingPin ? 'Loading...' : 'Fetch Pin'}
               </Button>
             </Stack>
 
@@ -663,7 +810,7 @@ const handleAutofillDiscussion = () => {
                 onClick={handleFetchNearbyPins}
                 disabled={isFetchingNearby}
               >
-                {isFetchingNearby ? 'Searching…' : 'Fetch nearby pins'}
+                {isFetchingNearby ? 'Searching...' : 'Fetch nearby pins'}
               </Button>
             </Stack>
 
@@ -677,7 +824,7 @@ const handleAutofillDiscussion = () => {
                         <Typography variant="subtitle1">{pin.title}</Typography>
                         <Typography variant="body2" color="text.secondary">
                           {(pin.type === 'event' ? 'Event' : 'Discussion') + ' pin'}
-                          {distanceLabel ? ` • ${distanceLabel} mi away` : ''}
+                          {distanceLabel ? ` - ${distanceLabel} mi away` : ''}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           {pin._id}
@@ -690,7 +837,7 @@ const handleAutofillDiscussion = () => {
             ) : (
               <Typography variant="body2" color="text.secondary">
                 {isFetchingNearby
-                  ? 'Searching for pins…'
+                  ? 'Searching for pins...'
                   : 'Enter a distance and fetch to list pins near the provided coordinates.'}
               </Typography>
             )}
@@ -704,32 +851,2539 @@ const handleAutofillDiscussion = () => {
           aria-labelledby="debug-tab-profile"
           sx={{ display: activeTab === 1 ? 'block' : 'none' }}
         >
-          <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Typography variant="h6">Profile</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Profile-focused debugging tools will go here. Add temporary auth overrides, mocked identity payloads, or
-              user preference experiments as they are built out.
-            </Typography>
-          </Paper>
+          <ProfilesTab />
         </Box>
 
         <Box
           role="tabpanel"
           hidden={activeTab !== 2}
-          id="debug-tabpanel-chat"
-          aria-labelledby="debug-tab-chat"
+          id="debug-tabpanel-locations"
+          aria-labelledby="debug-tab-locations"
           sx={{ display: activeTab === 2 ? 'block' : 'none' }}
         >
-          <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Typography variant="h6">Chat</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Chat diagnostics coming soon. Reserve this space for proximity chat simulations, socket health probes, or
-              message playback once the messaging stack is ready.
-            </Typography>
-          </Paper>
+          <LocationsTab />
         </Box>
+
+        <Box
+          role="tabpanel"
+          hidden={activeTab !== 3}
+          id="debug-tabpanel-bookmarks"
+          aria-labelledby="debug-tab-bookmarks"
+          sx={{ display: activeTab === 3 ? 'block' : 'none' }}
+        >
+          <BookmarksTab />
+        </Box>
+
+        <Box
+          role="tabpanel"
+          hidden={activeTab !== 4}
+          id="debug-tabpanel-chat"
+          aria-labelledby="debug-tab-chat"
+          sx={{ display: activeTab === 4 ? 'block' : 'none' }}
+        >
+          <ChatTab />
+        </Box>
+
+        <Box
+          role="tabpanel"
+          hidden={activeTab !== 5}
+          id="debug-tabpanel-updates"
+          aria-labelledby="debug-tab-updates"
+          sx={{ display: activeTab === 5 ? 'block' : 'none' }}
+        >
+          <UpdatesTab />
+        </Box>
+
+        <Box
+          role="tabpanel"
+          hidden={activeTab !== 6}
+          id="debug-tabpanel-replies"
+          aria-labelledby="debug-tab-replies"
+          sx={{ display: activeTab === 6 ? 'block' : 'none' }}
+        >
+          <RepliesTab />
+        </Box>
+        {EXPERIMENT_ENABLED && (
+          <Box
+            role="tabpanel"
+            hidden={activeTab !== EXPERIMENT_TAB_INDEX}
+            id={`debug-tabpanel-${EXPERIMENT_TAB_ID}`}
+            aria-labelledby={`debug-tab-${EXPERIMENT_TAB_ID}`}
+            sx={{ display: activeTab === EXPERIMENT_TAB_INDEX ? 'block' : 'none' }}
+          >
+            <ExperimentTab />
+          </Box>
+        )}
       </Stack>
     </Box>
+  );
+}
+
+function ExperimentTab() {
+  const [selectedScreen, setSelectedScreen] = useState(EXPERIMENT_SCREENS[0].id);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  const activeScreen = useMemo(() => {
+    return (
+      EXPERIMENT_SCREENS.find((screen) => screen.id === selectedScreen) ?? EXPERIMENT_SCREENS[0]
+    );
+  }, [selectedScreen]);
+
+  const ScreenComponent = activeScreen?.Component ?? null;
+
+  const handleSelectionChange = (_event, value) => {
+    if (value) {
+      setSelectedScreen(value);
+    }
+  };
+
+  const handleOpenPreview = () => setIsPreviewOpen(true);
+  const handleClosePreview = () => setIsPreviewOpen(false);
+
+  return (
+    <>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Typography variant="h6">{EXPERIMENT_TITLE}</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Private sandbox for Troy. Keep this local and off the main repo.
+        </Typography>
+
+        <Alert severity="warning" sx={{ alignItems: 'flex-start' }}>
+          <Stack spacing={0.5}>
+            <Typography variant="subtitle2">Heads up</Typography>
+            <Typography variant="body2">
+              This is a contingency experiment. Do not ship, demo, or commit it upstream.
+            </Typography>
+          </Stack>
+        </Alert>
+
+        <Typography variant="subtitle2">Pick a screen:</Typography>
+        <ToggleButtonGroup
+          value={selectedScreen}
+          exclusive
+          onChange={handleSelectionChange}
+          color="primary"
+          orientation="horizontal"
+          sx={{ flexWrap: 'wrap', gap: 1, '& .MuiToggleButton-root': { flexGrow: 1 } }}
+        >
+          {EXPERIMENT_SCREENS.map((screen) => (
+            <ToggleButton key={screen.id} value={screen.id} aria-label={screen.label}>
+              {screen.label}
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
+
+        <Button type="button" variant="contained" onClick={handleOpenPreview}>
+          Open Preview
+        </Button>
+      </Paper>
+
+      <Dialog
+        open={isPreviewOpen}
+        onClose={handleClosePreview}
+        fullWidth
+        maxWidth="md"
+        aria-labelledby={`${EXPERIMENT_TAB_ID}-dialog-title`}
+      >
+        <DialogTitle id={`${EXPERIMENT_TAB_ID}-dialog-title`}>
+          {EXPERIMENT_TITLE} — {activeScreen?.label}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'flex-start',
+              backgroundColor: 'grey.900',
+              borderRadius: 2,
+              p: { xs: 2, sm: 3 }
+            }}
+          >
+            <Box
+              sx={{
+                width: { xs: '100%', sm: 360 },
+                transform: { xs: 'scale(0.9)', sm: 'none' },
+                transformOrigin: 'top center'
+              }}
+            >
+              {ScreenComponent ? <ScreenComponent /> : null}
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClosePreview}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+}
+function ProfilesTab() {
+  const [createForm, setCreateForm] = useState({
+    username: '',
+    displayName: '',
+    email: '',
+    bio: '',
+    accountStatus: ACCOUNT_STATUS_OPTIONS[0],
+    roles: '',
+    locationSharingEnabled: false
+  });
+  const [createStatus, setCreateStatus] = useState(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createdProfile, setCreatedProfile] = useState(null);
+
+  const [fetchUserId, setFetchUserId] = useState('');
+  const [fetchStatus, setFetchStatus] = useState(null);
+  const [isFetching, setIsFetching] = useState(false);
+  const [fetchedProfile, setFetchedProfile] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [updateStatus, setUpdateStatus] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchLimit, setSearchLimit] = useState('10');
+  const [searchStatus, setSearchStatus] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState(null);
+
+  const buildEditForm = (profile) => ({
+    username: profile?.username ?? '',
+    displayName: profile?.displayName ?? '',
+    email: profile?.email ?? '',
+    bio: profile?.bio ?? '',
+    accountStatus: profile?.accountStatus ?? ACCOUNT_STATUS_OPTIONS[0],
+    locationSharingEnabled: Boolean(profile?.locationSharingEnabled)
+  });
+
+  const handleCreate = async (event) => {
+    event.preventDefault();
+    setCreateStatus(null);
+
+    try {
+      const username = createForm.username.trim();
+      const displayName = createForm.displayName.trim();
+      if (!username || !displayName) {
+        throw new Error('Username and display name are required.');
+      }
+
+      const payload = {
+        username,
+        displayName,
+        accountStatus: createForm.accountStatus,
+        locationSharingEnabled: createForm.locationSharingEnabled
+      };
+
+      const email = createForm.email.trim();
+      if (email) {
+        payload.email = email;
+      }
+
+      const bio = createForm.bio.trim();
+      if (bio) {
+        payload.bio = bio;
+      }
+
+      const roles = parseCommaSeparated(createForm.roles);
+      if (roles.length) {
+        payload.roles = roles;
+      }
+
+      setIsCreating(true);
+      const result = await createUserProfile(payload);
+      setCreatedProfile(result);
+      setCreateStatus({ type: 'success', message: 'User profile created.' });
+      if (result?._id) {
+        setFetchUserId(result._id);
+      }
+    } catch (error) {
+      setCreateStatus({ type: 'error', message: error.message || 'Failed to create user.' });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleFetchProfile = async (event) => {
+    event.preventDefault();
+    setFetchStatus(null);
+    setUpdateStatus(null);
+    const userId = fetchUserId.trim();
+    if (!userId) {
+      setFetchStatus({ type: 'error', message: 'Provide a user ID to fetch.' });
+      return;
+    }
+
+    try {
+      setIsFetching(true);
+      const profile = await fetchUserProfile(userId);
+      setFetchedProfile(profile);
+       setEditForm(buildEditForm(profile));
+      setFetchStatus({ type: 'success', message: 'Profile loaded.' });
+    } catch (error) {
+      setFetchStatus({ type: 'error', message: error.message || 'Failed to fetch profile.' });
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  const handleUpdateProfile = async (event) => {
+    event.preventDefault();
+    setUpdateStatus(null);
+
+    if (!fetchedProfile?._id) {
+      setUpdateStatus({ type: 'error', message: 'Fetch a profile before saving changes.' });
+      return;
+    }
+
+    if (!editForm) {
+      setUpdateStatus({ type: 'error', message: 'Load a profile before updating.' });
+      return;
+    }
+
+    try {
+      const username = (editForm.username ?? '').trim();
+      const displayName = (editForm.displayName ?? '').trim();
+      if (!username || !displayName) {
+        throw new Error('Username and display name are required.');
+      }
+
+      const payload = {
+        username,
+        displayName,
+        accountStatus: editForm.accountStatus,
+        locationSharingEnabled: Boolean(editForm.locationSharingEnabled)
+      };
+
+      const email = (editForm.email ?? '').trim();
+      payload.email = email ? email : null;
+
+      const bio = (editForm.bio ?? '').trim();
+      payload.bio = bio ? bio : null;
+
+      setIsUpdating(true);
+      const updatedProfile = await updateUserProfile(fetchedProfile._id, payload);
+      setFetchedProfile(updatedProfile);
+      setEditForm(buildEditForm(updatedProfile));
+      setUpdateStatus({ type: 'success', message: 'Profile updated.' });
+    } catch (error) {
+      setUpdateStatus({ type: 'error', message: error.message || 'Failed to update profile.' });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleSearchUsers = async (event) => {
+    event.preventDefault();
+    setSearchStatus(null);
+
+    try {
+      const query = {};
+      const term = searchTerm.trim();
+      if (term) {
+        query.search = term;
+      }
+      const limitValue = parseOptionalNumber(searchLimit, 'Limit');
+      if (limitValue !== undefined) {
+        if (limitValue <= 0) {
+          throw new Error('Limit must be greater than 0.');
+        }
+        query.limit = limitValue;
+      }
+
+      setIsSearching(true);
+      const users = await fetchUsers(query);
+      setSearchResults(users);
+      setSearchStatus({
+        type: 'success',
+        message: `Found ${users.length} user${users.length === 1 ? '' : 's'}.`
+      });
+    } catch (error) {
+      setSearchStatus({ type: 'error', message: error.message || 'Failed to search users.' });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  return (
+    <Stack spacing={2}>
+      <Paper
+        component="form"
+        onSubmit={handleCreate}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Create user profile</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Provision a debug identity record for manual testing.
+        </Typography>
+        {createStatus && (
+          <Alert severity={createStatus.type} onClose={() => setCreateStatus(null)}>
+            {createStatus.message}
+          </Alert>
+        )}
+
+        <Stack spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Username"
+              value={createForm.username}
+              onChange={(event) => setCreateForm((prev) => ({ ...prev, username: event.target.value }))}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Display name"
+              value={createForm.displayName}
+              onChange={(event) => setCreateForm((prev) => ({ ...prev, displayName: event.target.value }))}
+              required
+              fullWidth
+            />
+          </Stack>
+
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Email"
+              value={createForm.email}
+              onChange={(event) => setCreateForm((prev) => ({ ...prev, email: event.target.value }))}
+              fullWidth
+            />
+            <TextField
+              label="Account status"
+              value={createForm.accountStatus}
+              onChange={(event) => setCreateForm((prev) => ({ ...prev, accountStatus: event.target.value }))}
+              select
+              sx={{ minWidth: 200 }}
+            >
+              {ACCOUNT_STATUS_OPTIONS.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
+
+          <TextField
+            label="Bio"
+            value={createForm.bio}
+            onChange={(event) => setCreateForm((prev) => ({ ...prev, bio: event.target.value }))}
+            multiline
+            minRows={3}
+            fullWidth
+          />
+
+          <TextField
+            label="Roles (comma separated)"
+            value={createForm.roles}
+            onChange={(event) => setCreateForm((prev) => ({ ...prev, roles: event.target.value }))}
+            fullWidth
+          />
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={createForm.locationSharingEnabled}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, locationSharingEnabled: event.target.checked }))
+                }
+              />
+            }
+            label="Location sharing enabled"
+          />
+
+          <Stack direction="row" spacing={2}>
+            <Button type="submit" variant="contained" disabled={isCreating}>
+              {isCreating ? 'Creating...' : 'Create user'}
+            </Button>
+            <Button
+              type="button"
+              variant="text"
+              onClick={() =>
+                setCreateForm({
+                  username: '',
+                  displayName: '',
+                  email: '',
+                  bio: '',
+                  accountStatus: ACCOUNT_STATUS_OPTIONS[0],
+                  roles: '',
+                  locationSharingEnabled: false
+                })
+              }
+            >
+              Reset
+            </Button>
+          </Stack>
+        </Stack>
+        <JsonPreview data={createdProfile} />
+      </Paper>
+
+      <Paper
+        component="form"
+        onSubmit={handleFetchProfile}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Fetch profile</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Load the latest profile snapshot from MongoDB.
+        </Typography>
+        {fetchStatus && (
+          <Alert severity={fetchStatus.type} onClose={() => setFetchStatus(null)}>
+            {fetchStatus.message}
+          </Alert>
+        )}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <TextField
+            label="User ID"
+            value={fetchUserId}
+            onChange={(event) => setFetchUserId(event.target.value)}
+            required
+            fullWidth
+          />
+          <Button type="submit" variant="outlined" disabled={isFetching}>
+            {isFetching ? 'Loading...' : 'Fetch'}
+          </Button>
+        </Stack>
+        <JsonPreview data={fetchedProfile} />
+      </Paper>
+
+      {fetchedProfile && editForm && (
+        <Paper
+          component="form"
+          onSubmit={handleUpdateProfile}
+          sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+        >
+          <Typography variant="h6">Edit profile</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Make changes to the fetched profile and persist them to MongoDB.
+          </Typography>
+          {updateStatus && (
+            <Alert severity={updateStatus.type} onClose={() => setUpdateStatus(null)}>
+              {updateStatus.message}
+            </Alert>
+          )}
+
+          <Stack spacing={2}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                label="Username"
+                value={editForm.username}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, username: event.target.value }))}
+                required
+                fullWidth
+              />
+              <TextField
+                label="Display name"
+                value={editForm.displayName}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, displayName: event.target.value }))}
+                required
+                fullWidth
+              />
+            </Stack>
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                label="Email"
+                value={editForm.email}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, email: event.target.value }))}
+                fullWidth
+              />
+              <TextField
+                label="Account status"
+                value={editForm.accountStatus}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, accountStatus: event.target.value }))}
+                select
+                sx={{ minWidth: 200 }}
+              >
+                {ACCOUNT_STATUS_OPTIONS.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Stack>
+
+            <TextField
+              label="Bio"
+              value={editForm.bio}
+              onChange={(event) => setEditForm((prev) => ({ ...prev, bio: event.target.value }))}
+              multiline
+              minRows={3}
+              fullWidth
+            />
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={editForm.locationSharingEnabled}
+                  onChange={(event) =>
+                    setEditForm((prev) => ({ ...prev, locationSharingEnabled: event.target.checked }))
+                  }
+                />
+              }
+              label="Location sharing enabled"
+            />
+
+            <Stack direction="row" spacing={2}>
+              <Button type="submit" variant="contained" disabled={isUpdating}>
+                {isUpdating ? 'Saving...' : 'Save changes'}
+              </Button>
+              <Button
+                type="button"
+                variant="text"
+                disabled={isUpdating}
+                onClick={() => setEditForm(buildEditForm(fetchedProfile))}
+              >
+                Reset to fetched profile
+              </Button>
+            </Stack>
+          </Stack>
+        </Paper>
+      )}
+
+      <Paper
+        component="form"
+        onSubmit={handleSearchUsers}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Search users</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Explore existing users and copy their IDs quickly.
+        </Typography>
+        {searchStatus && (
+          <Alert severity={searchStatus.type} onClose={() => setSearchStatus(null)}>
+            {searchStatus.message}
+          </Alert>
+        )}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <TextField
+            label="Search term"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            fullWidth
+          />
+          <TextField
+            label="Limit"
+            value={searchLimit}
+            onChange={(event) => setSearchLimit(event.target.value)}
+            sx={{ width: { xs: '100%', sm: 120 } }}
+          />
+          <Button type="submit" variant="outlined" disabled={isSearching}>
+            {isSearching ? 'Searching...' : 'Search'}
+          </Button>
+        </Stack>
+        <JsonPreview data={searchResults} />
+      </Paper>
+    </Stack>
+  );
+}
+
+function LocationsTab() {
+  const [locationForm, setLocationForm] = useState({
+    userId: '',
+    latitude: '',
+    longitude: '',
+    accuracy: '',
+    source: LOCATION_SOURCE_OPTIONS[0],
+    sessionId: '',
+    deviceId: '',
+    linkedPinIds: '',
+    createdAt: '',
+    lastSeenAt: '',
+    expiresAt: '',
+    isPublic: true
+  });
+  const [locationStatus, setLocationStatus] = useState(null);
+  const [locationResult, setLocationResult] = useState(null);
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
+
+  const [nearbyForm, setNearbyForm] = useState({ latitude: '', longitude: '', maxDistance: '1609' });
+  const [nearbyStatus, setNearbyStatus] = useState(null);
+  const [nearbyResults, setNearbyResults] = useState(null);
+  const [isFetchingNearby, setIsFetchingNearby] = useState(false);
+
+  const [historyUserId, setHistoryUserId] = useState('');
+  const [historyStatus, setHistoryStatus] = useState(null);
+  const [historyResults, setHistoryResults] = useState(null);
+  const [isFetchingHistory, setIsFetchingHistory] = useState(false);
+
+  const handleLocationFieldChange = (field) => (event) => {
+    setLocationForm((prev) => ({
+      ...prev,
+      [field]: event.target.value
+    }));
+  };
+
+  const handleSaveLocation = async (event) => {
+    event.preventDefault();
+    setLocationStatus(null);
+
+    try {
+      const userId = locationForm.userId.trim();
+      if (!userId) {
+        throw new Error('User ID is required.');
+      }
+
+      const latitude = parseRequiredNumber(locationForm.latitude, 'Latitude');
+      const longitude = parseRequiredNumber(locationForm.longitude, 'Longitude');
+
+      const payload = {
+        userId,
+        coordinates: {
+          type: 'Point',
+          coordinates: [longitude, latitude]
+        },
+        isPublic: locationForm.isPublic,
+        source: locationForm.source
+      };
+
+      const accuracy = parseOptionalNumber(locationForm.accuracy, 'Accuracy');
+      if (accuracy !== undefined) {
+        payload.accuracy = accuracy;
+        payload.coordinates.accuracy = accuracy;
+      }
+
+      const sessionId = locationForm.sessionId.trim();
+      if (sessionId) {
+        payload.sessionId = sessionId;
+      }
+
+      const deviceId = locationForm.deviceId.trim();
+      if (deviceId) {
+        payload.deviceId = deviceId;
+      }
+
+      const linkedPinIds = parseCommaSeparated(locationForm.linkedPinIds);
+      if (linkedPinIds.length) {
+        payload.linkedPinIds = linkedPinIds;
+      }
+
+      const createdAt = parseOptionalDate(locationForm.createdAt, 'Created at');
+      if (createdAt) {
+        payload.createdAt = createdAt;
+      }
+
+      const lastSeenAt = parseOptionalDate(locationForm.lastSeenAt, 'Last seen at');
+      if (lastSeenAt) {
+        payload.lastSeenAt = lastSeenAt;
+      }
+
+      const expiresAt = parseOptionalDate(locationForm.expiresAt, 'Expires at');
+      if (expiresAt) {
+        payload.expiresAt = expiresAt;
+      }
+
+      setIsSavingLocation(true);
+      const result = await insertLocationUpdate(payload);
+      setLocationResult(result);
+      setLocationStatus({ type: 'success', message: 'Location update saved.' });
+    } catch (error) {
+      setLocationStatus({ type: 'error', message: error.message || 'Failed to save location update.' });
+    } finally {
+      setIsSavingLocation(false);
+    }
+  };
+
+  const handleFetchNearby = async (event) => {
+    event.preventDefault();
+    setNearbyStatus(null);
+
+    try {
+      const latitude = parseRequiredNumber(nearbyForm.latitude, 'Latitude');
+      const longitude = parseRequiredNumber(nearbyForm.longitude, 'Longitude');
+      const query = { latitude, longitude };
+      const maxDistance = parseOptionalNumber(nearbyForm.maxDistance, 'Max distance');
+      if (maxDistance !== undefined) {
+        query.maxDistance = maxDistance;
+      }
+
+      setIsFetchingNearby(true);
+      const results = await fetchNearbyUsers(query);
+      setNearbyResults(results);
+      setNearbyStatus({
+        type: 'success',
+        message: `Loaded ${results.length} nearby user${results.length === 1 ? '' : 's'}.`
+      });
+    } catch (error) {
+      setNearbyStatus({ type: 'error', message: error.message || 'Failed to load nearby users.' });
+    } finally {
+      setIsFetchingNearby(false);
+    }
+  };
+
+  const handleFetchHistory = async (event) => {
+    event.preventDefault();
+    setHistoryStatus(null);
+    const userId = historyUserId.trim();
+    if (!userId) {
+      setHistoryStatus({ type: 'error', message: 'User ID is required.' });
+      return;
+    }
+
+    try {
+      setIsFetchingHistory(true);
+      const results = await fetchLocationHistory(userId);
+      setHistoryResults(results);
+      setHistoryStatus({
+        type: 'success',
+        message: `Loaded ${results.length} location record${results.length === 1 ? '' : 's'}.`
+      });
+    } catch (error) {
+      setHistoryStatus({ type: 'error', message: error.message || 'Failed to load location history.' });
+    } finally {
+      setIsFetchingHistory(false);
+    }
+  };
+
+  return (
+    <Stack spacing={2}>
+      <Paper
+        component="form"
+        onSubmit={handleSaveLocation}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Insert location update</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Record or refresh a user's proximity anchor.
+        </Typography>
+        {locationStatus && (
+          <Alert severity={locationStatus.type} onClose={() => setLocationStatus(null)}>
+            {locationStatus.message}
+          </Alert>
+        )}
+        <Stack spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="User ID"
+              value={locationForm.userId}
+              onChange={handleLocationFieldChange('userId')}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Source"
+              value={locationForm.source}
+              onChange={handleLocationFieldChange('source')}
+              select
+              sx={{ minWidth: 180 }}
+            >
+              {LOCATION_SOURCE_OPTIONS.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Latitude"
+              value={locationForm.latitude}
+              onChange={handleLocationFieldChange('latitude')}
+              required
+            />
+            <TextField
+              label="Longitude"
+              value={locationForm.longitude}
+              onChange={handleLocationFieldChange('longitude')}
+              required
+            />
+            <TextField
+              label="Accuracy (meters)"
+              value={locationForm.accuracy}
+              onChange={handleLocationFieldChange('accuracy')}
+            />
+          </Stack>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Session ID"
+              value={locationForm.sessionId}
+              onChange={handleLocationFieldChange('sessionId')}
+              fullWidth
+            />
+            <TextField
+              label="Device ID"
+              value={locationForm.deviceId}
+              onChange={handleLocationFieldChange('deviceId')}
+              fullWidth
+            />
+          </Stack>
+          <TextField
+            label="Linked pin IDs (comma separated)"
+            value={locationForm.linkedPinIds}
+            onChange={handleLocationFieldChange('linkedPinIds')}
+            fullWidth
+          />
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Created at"
+              type="datetime-local"
+              value={locationForm.createdAt}
+              onChange={handleLocationFieldChange('createdAt')}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="Last seen at"
+              type="datetime-local"
+              value={locationForm.lastSeenAt}
+              onChange={handleLocationFieldChange('lastSeenAt')}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="Expires at"
+              type="datetime-local"
+              value={locationForm.expiresAt}
+              onChange={handleLocationFieldChange('expiresAt')}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Stack>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={locationForm.isPublic}
+                onChange={(event) => setLocationForm((prev) => ({ ...prev, isPublic: event.target.checked }))}
+              />
+            }
+            label="Allow public proximity lookups"
+          />
+          <Stack direction="row" spacing={2}>
+            <Button type="submit" variant="contained" disabled={isSavingLocation}>
+              {isSavingLocation ? 'Saving...' : 'Save location'}
+            </Button>
+            <Button
+              type="button"
+              variant="text"
+              onClick={() =>
+                setLocationForm({
+                  userId: '',
+                  latitude: '',
+                  longitude: '',
+                  accuracy: '',
+                  source: LOCATION_SOURCE_OPTIONS[0],
+                  sessionId: '',
+                  deviceId: '',
+                  linkedPinIds: '',
+                  createdAt: '',
+                  lastSeenAt: '',
+                  expiresAt: '',
+                  isPublic: true
+                })
+              }
+            >
+              Reset
+            </Button>
+          </Stack>
+        </Stack>
+        <JsonPreview data={locationResult} />
+      </Paper>
+
+      <Paper
+        component="form"
+        onSubmit={handleFetchNearby}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Fetch nearby users</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Inspect who is within range of a coordinate.
+        </Typography>
+        {nearbyStatus && (
+          <Alert severity={nearbyStatus.type} onClose={() => setNearbyStatus(null)}>
+            {nearbyStatus.message}
+          </Alert>
+        )}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <TextField
+            label="Latitude"
+            value={nearbyForm.latitude}
+            onChange={(event) => setNearbyForm((prev) => ({ ...prev, latitude: event.target.value }))}
+            required
+          />
+          <TextField
+            label="Longitude"
+            value={nearbyForm.longitude}
+            onChange={(event) => setNearbyForm((prev) => ({ ...prev, longitude: event.target.value }))}
+            required
+          />
+          <TextField
+            label="Max distance (meters)"
+            value={nearbyForm.maxDistance}
+            onChange={(event) => setNearbyForm((prev) => ({ ...prev, maxDistance: event.target.value }))}
+          />
+        </Stack>
+        <Stack direction="row" spacing={2}>
+          <Button type="submit" variant="outlined" disabled={isFetchingNearby}>
+            {isFetchingNearby ? 'Searching...' : 'Search'}
+          </Button>
+          <Button type="button" variant="text" onClick={() => setNearbyForm({ latitude: '', longitude: '', maxDistance: '1609' })}>
+            Reset
+          </Button>
+        </Stack>
+        <JsonPreview data={nearbyResults} />
+      </Paper>
+
+      <Paper
+        component="form"
+        onSubmit={handleFetchHistory}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Fetch location history</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Review the historical samples associated with a user.
+        </Typography>
+        {historyStatus && (
+          <Alert severity={historyStatus.type} onClose={() => setHistoryStatus(null)}>
+            {historyStatus.message}
+          </Alert>
+        )}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <TextField
+            label="User ID"
+            value={historyUserId}
+            onChange={(event) => setHistoryUserId(event.target.value)}
+            required
+            fullWidth
+          />
+          <Button type="submit" variant="outlined" disabled={isFetchingHistory}>
+            {isFetchingHistory ? 'Loading...' : 'Fetch'}
+          </Button>
+        </Stack>
+        <JsonPreview data={historyResults} />
+      </Paper>
+    </Stack>
+  );
+}
+
+function BookmarksTab() {
+  const [bookmarkForm, setBookmarkForm] = useState({
+    userId: '',
+    pinId: '',
+    collectionId: '',
+    notes: '',
+    reminderAt: '',
+    tagIds: ''
+  });
+  const [bookmarkStatus, setBookmarkStatus] = useState(null);
+  const [bookmarkResult, setBookmarkResult] = useState(null);
+  const [isCreatingBookmark, setIsCreatingBookmark] = useState(false);
+
+  const [collectionForm, setCollectionForm] = useState({
+    userId: '',
+    name: '',
+    description: '',
+    bookmarkIds: ''
+  });
+  const [collectionStatus, setCollectionStatus] = useState(null);
+  const [collectionResult, setCollectionResult] = useState(null);
+  const [isCreatingCollection, setIsCreatingCollection] = useState(false);
+
+  const [bookmarksQuery, setBookmarksQuery] = useState({ userId: '', limit: '20' });
+  const [bookmarksStatus, setBookmarksStatus] = useState(null);
+  const [bookmarksResult, setBookmarksResult] = useState(null);
+  const [isFetchingBookmarks, setIsFetchingBookmarks] = useState(false);
+
+  const [collectionsUserId, setCollectionsUserId] = useState('');
+  const [collectionsStatus, setCollectionsStatus] = useState(null);
+  const [collectionsResult, setCollectionsResult] = useState(null);
+  const [isFetchingCollections, setIsFetchingCollections] = useState(false);
+
+  const handleCreateBookmark = async (event) => {
+    event.preventDefault();
+    setBookmarkStatus(null);
+
+    try {
+      const userId = bookmarkForm.userId.trim();
+      const pinId = bookmarkForm.pinId.trim();
+      if (!userId || !pinId) {
+        throw new Error('User ID and pin ID are required.');
+      }
+
+      const payload = {
+        userId,
+        pinId
+      };
+
+      const collectionId = bookmarkForm.collectionId.trim();
+      if (collectionId) {
+        payload.collectionId = collectionId;
+      }
+
+      const notes = bookmarkForm.notes.trim();
+      if (notes) {
+        payload.notes = notes;
+      }
+
+      const reminderAt = parseOptionalDate(bookmarkForm.reminderAt, 'Reminder at');
+      if (reminderAt) {
+        payload.reminderAt = reminderAt;
+      }
+
+      const tagIds = parseCommaSeparated(bookmarkForm.tagIds);
+      if (tagIds.length) {
+        payload.tagIds = tagIds;
+      }
+
+      setIsCreatingBookmark(true);
+      const result = await createBookmark(payload);
+      setBookmarkResult(result);
+      setBookmarkStatus({ type: 'success', message: 'Bookmark created.' });
+    } catch (error) {
+      setBookmarkStatus({ type: 'error', message: error.message || 'Failed to create bookmark.' });
+    } finally {
+      setIsCreatingBookmark(false);
+    }
+  };
+
+  const handleCreateCollection = async (event) => {
+    event.preventDefault();
+    setCollectionStatus(null);
+
+    try {
+      const userId = collectionForm.userId.trim();
+      const name = collectionForm.name.trim();
+      if (!userId || !name) {
+        throw new Error('User ID and collection name are required.');
+      }
+
+      const payload = {
+        userId,
+        name
+      };
+
+      const description = collectionForm.description.trim();
+      if (description) {
+        payload.description = description;
+      }
+
+      const bookmarkIds = parseCommaSeparated(collectionForm.bookmarkIds);
+      if (bookmarkIds.length) {
+        payload.bookmarkIds = bookmarkIds;
+      }
+
+      setIsCreatingCollection(true);
+      const result = await createBookmarkCollection(payload);
+      setCollectionResult(result);
+      setCollectionStatus({ type: 'success', message: 'Bookmark collection created.' });
+    } catch (error) {
+      setCollectionStatus({ type: 'error', message: error.message || 'Failed to create collection.' });
+    } finally {
+      setIsCreatingCollection(false);
+    }
+  };
+
+  const handleFetchBookmarks = async (event) => {
+    event.preventDefault();
+    setBookmarksStatus(null);
+
+    const userId = bookmarksQuery.userId.trim();
+    if (!userId) {
+      setBookmarksStatus({ type: 'error', message: 'User ID is required.' });
+      return;
+    }
+
+    try {
+      const query = { userId };
+      const limitValue = parseOptionalNumber(bookmarksQuery.limit, 'Limit');
+      if (limitValue !== undefined) {
+        if (limitValue <= 0) {
+          throw new Error('Limit must be greater than 0.');
+        }
+        query.limit = limitValue;
+      }
+
+      setIsFetchingBookmarks(true);
+      const bookmarks = await fetchBookmarks(query);
+      setBookmarksResult(bookmarks);
+      setBookmarksStatus({
+        type: 'success',
+        message: `Loaded ${bookmarks.length} bookmark${bookmarks.length === 1 ? '' : 's'}.`
+      });
+    } catch (error) {
+      setBookmarksStatus({ type: 'error', message: error.message || 'Failed to load bookmarks.' });
+    } finally {
+      setIsFetchingBookmarks(false);
+    }
+  };
+
+  const handleFetchCollections = async (event) => {
+    event.preventDefault();
+    setCollectionsStatus(null);
+    const userId = collectionsUserId.trim();
+    if (!userId) {
+      setCollectionsStatus({ type: 'error', message: 'User ID is required.' });
+      return;
+    }
+
+    try {
+      setIsFetchingCollections(true);
+      const collections = await fetchBookmarkCollections(userId);
+      setCollectionsResult(collections);
+      setCollectionsStatus({
+        type: 'success',
+        message: `Loaded ${collections.length} collection${collections.length === 1 ? '' : 's'}.`
+      });
+    } catch (error) {
+      setCollectionsStatus({ type: 'error', message: error.message || 'Failed to load collections.' });
+    } finally {
+      setIsFetchingCollections(false);
+    }
+  };
+
+  return (
+    <Stack spacing={2}>
+      <Paper
+        component="form"
+        onSubmit={handleCreateBookmark}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Create bookmark</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Store a pin in a user's saved list or collection.
+        </Typography>
+        {bookmarkStatus && (
+          <Alert severity={bookmarkStatus.type} onClose={() => setBookmarkStatus(null)}>
+            {bookmarkStatus.message}
+          </Alert>
+        )}
+        <Stack spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="User ID"
+              value={bookmarkForm.userId}
+              onChange={(event) => setBookmarkForm((prev) => ({ ...prev, userId: event.target.value }))}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Pin ID"
+              value={bookmarkForm.pinId}
+              onChange={(event) => setBookmarkForm((prev) => ({ ...prev, pinId: event.target.value }))}
+              required
+              fullWidth
+            />
+          </Stack>
+          <TextField
+            label="Collection ID (optional)"
+            value={bookmarkForm.collectionId}
+            onChange={(event) => setBookmarkForm((prev) => ({ ...prev, collectionId: event.target.value }))}
+            fullWidth
+          />
+          <TextField
+            label="Notes"
+            value={bookmarkForm.notes}
+            onChange={(event) => setBookmarkForm((prev) => ({ ...prev, notes: event.target.value }))}
+            multiline
+            minRows={2}
+            fullWidth
+          />
+          <TextField
+            label="Reminder at"
+            type="datetime-local"
+            value={bookmarkForm.reminderAt}
+            onChange={(event) => setBookmarkForm((prev) => ({ ...prev, reminderAt: event.target.value }))}
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            label="Tag IDs (comma separated)"
+            value={bookmarkForm.tagIds}
+            onChange={(event) => setBookmarkForm((prev) => ({ ...prev, tagIds: event.target.value }))}
+            fullWidth
+          />
+          <Stack direction="row" spacing={2}>
+            <Button type="submit" variant="contained" disabled={isCreatingBookmark}>
+              {isCreatingBookmark ? 'Creating...' : 'Create bookmark'}
+            </Button>
+            <Button
+              type="button"
+              variant="text"
+              onClick={() =>
+                setBookmarkForm({
+                  userId: '',
+                  pinId: '',
+                  collectionId: '',
+                  notes: '',
+                  reminderAt: '',
+                  tagIds: ''
+                })
+              }
+            >
+              Reset
+            </Button>
+          </Stack>
+        </Stack>
+        <JsonPreview data={bookmarkResult} />
+      </Paper>
+
+      <Paper
+        component="form"
+        onSubmit={handleCreateCollection}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Create bookmark collection</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Group multiple bookmarks together for quick access.
+        </Typography>
+        {collectionStatus && (
+          <Alert severity={collectionStatus.type} onClose={() => setCollectionStatus(null)}>
+            {collectionStatus.message}
+          </Alert>
+        )}
+        <Stack spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="User ID"
+              value={collectionForm.userId}
+              onChange={(event) => setCollectionForm((prev) => ({ ...prev, userId: event.target.value }))}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Name"
+              value={collectionForm.name}
+              onChange={(event) => setCollectionForm((prev) => ({ ...prev, name: event.target.value }))}
+              required
+              fullWidth
+            />
+          </Stack>
+          <TextField
+            label="Description"
+            value={collectionForm.description}
+            onChange={(event) => setCollectionForm((prev) => ({ ...prev, description: event.target.value }))}
+            multiline
+            minRows={2}
+            fullWidth
+          />
+          <TextField
+            label="Bookmark IDs (comma separated)"
+            value={collectionForm.bookmarkIds}
+            onChange={(event) => setCollectionForm((prev) => ({ ...prev, bookmarkIds: event.target.value }))}
+            fullWidth
+          />
+          <Stack direction="row" spacing={2}>
+            <Button type="submit" variant="contained" disabled={isCreatingCollection}>
+              {isCreatingCollection ? 'Creating...' : 'Create collection'}
+            </Button>
+            <Button
+              type="button"
+              variant="text"
+              onClick={() =>
+                setCollectionForm({
+                  userId: '',
+                  name: '',
+                  description: '',
+                  bookmarkIds: ''
+                })
+              }
+            >
+              Reset
+            </Button>
+          </Stack>
+        </Stack>
+        <JsonPreview data={collectionResult} />
+      </Paper>
+
+      <Paper
+        component="form"
+        onSubmit={handleFetchBookmarks}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Fetch bookmarks</Typography>
+        <Typography variant="body2" color="text.secondary">
+          List saved pins for a given user.
+        </Typography>
+        {bookmarksStatus && (
+          <Alert severity={bookmarksStatus.type} onClose={() => setBookmarksStatus(null)}>
+            {bookmarksStatus.message}
+          </Alert>
+        )}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <TextField
+            label="User ID"
+            value={bookmarksQuery.userId}
+            onChange={(event) => setBookmarksQuery((prev) => ({ ...prev, userId: event.target.value }))}
+            required
+            fullWidth
+          />
+          <TextField
+            label="Limit"
+            value={bookmarksQuery.limit}
+            onChange={(event) => setBookmarksQuery((prev) => ({ ...prev, limit: event.target.value }))}
+            sx={{ width: { xs: '100%', sm: 120 } }}
+          />
+          <Button type="submit" variant="outlined" disabled={isFetchingBookmarks}>
+            {isFetchingBookmarks ? 'Loading...' : 'Fetch'}
+          </Button>
+        </Stack>
+        <JsonPreview data={bookmarksResult} />
+      </Paper>
+
+      <Paper
+        component="form"
+        onSubmit={handleFetchCollections}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Fetch collections</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Retrieve bookmark collections owned by a user.
+        </Typography>
+        {collectionsStatus && (
+          <Alert severity={collectionsStatus.type} onClose={() => setCollectionsStatus(null)}>
+            {collectionsStatus.message}
+          </Alert>
+        )}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <TextField
+            label="User ID"
+            value={collectionsUserId}
+            onChange={(event) => setCollectionsUserId(event.target.value)}
+            required
+            fullWidth
+          />
+          <Button type="submit" variant="outlined" disabled={isFetchingCollections}>
+            {isFetchingCollections ? 'Loading...' : 'Fetch'}
+          </Button>
+        </Stack>
+        <JsonPreview data={collectionsResult} />
+      </Paper>
+    </Stack>
+  );
+}
+
+function ChatTab() {
+  const [roomForm, setRoomForm] = useState({
+    ownerId: '',
+    name: '',
+    description: '',
+    latitude: '',
+    longitude: '',
+    radiusMeters: '',
+    accuracy: '',
+    pinId: '',
+    participantIds: '',
+    moderatorIds: ''
+  });
+  const [roomStatus, setRoomStatus] = useState(null);
+  const [roomResult, setRoomResult] = useState(null);
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+
+  const [messageForm, setMessageForm] = useState({
+    roomId: '',
+    authorId: '',
+    message: '',
+    pinId: '',
+    replyToMessageId: '',
+    latitude: '',
+    longitude: '',
+    accuracy: ''
+  });
+  const [messageStatus, setMessageStatus] = useState(null);
+  const [messageResult, setMessageResult] = useState(null);
+  const [isCreatingMessage, setIsCreatingMessage] = useState(false);
+
+  const [presenceForm, setPresenceForm] = useState({
+    roomId: '',
+    userId: '',
+    sessionId: '',
+    joinedAt: '',
+    lastActiveAt: ''
+  });
+  const [presenceStatus, setPresenceStatus] = useState(null);
+  const [presenceResult, setPresenceResult] = useState(null);
+  const [isCreatingPresence, setIsCreatingPresence] = useState(false);
+
+  const [roomsQuery, setRoomsQuery] = useState({ pinId: '', ownerId: '' });
+  const [roomsStatus, setRoomsStatus] = useState(null);
+  const [roomsResult, setRoomsResult] = useState(null);
+  const [isFetchingRooms, setIsFetchingRooms] = useState(false);
+
+  const [messagesRoomId, setMessagesRoomId] = useState('');
+  const [messagesStatus, setMessagesStatus] = useState(null);
+  const [messagesResult, setMessagesResult] = useState(null);
+  const [isFetchingMessages, setIsFetchingMessages] = useState(false);
+
+  const [presenceRoomId, setPresenceRoomId] = useState('');
+  const [presenceLogStatus, setPresenceLogStatus] = useState(null);
+  const [presenceLogResult, setPresenceLogResult] = useState(null);
+  const [isFetchingPresence, setIsFetchingPresence] = useState(false);
+
+  const handleCreateRoom = async (event) => {
+    event.preventDefault();
+    setRoomStatus(null);
+
+    try {
+      const ownerId = roomForm.ownerId.trim();
+      const name = roomForm.name.trim();
+      if (!ownerId || !name) {
+        throw new Error('Owner ID and room name are required.');
+      }
+
+      const latitude = parseRequiredNumber(roomForm.latitude, 'Latitude');
+      const longitude = parseRequiredNumber(roomForm.longitude, 'Longitude');
+      const radiusMeters = parseRequiredNumber(roomForm.radiusMeters, 'Radius (meters)');
+
+      const payload = {
+        ownerId,
+        name,
+        latitude,
+        longitude,
+        radiusMeters
+      };
+
+      const description = roomForm.description.trim();
+      if (description) {
+        payload.description = description;
+      }
+
+      const accuracy = parseOptionalNumber(roomForm.accuracy, 'Accuracy');
+      if (accuracy !== undefined) {
+        payload.accuracy = accuracy;
+      }
+
+      const pinId = roomForm.pinId.trim();
+      if (pinId) {
+        payload.pinId = pinId;
+      }
+
+      const participantIds = parseCommaSeparated(roomForm.participantIds);
+      if (participantIds.length) {
+        payload.participantIds = participantIds;
+      }
+
+      const moderatorIds = parseCommaSeparated(roomForm.moderatorIds);
+      if (moderatorIds.length) {
+        payload.moderatorIds = moderatorIds;
+      }
+
+      setIsCreatingRoom(true);
+      const result = await createProximityChatRoom(payload);
+      setRoomResult(result);
+      setRoomStatus({ type: 'success', message: 'Chat room created.' });
+    } catch (error) {
+      setRoomStatus({ type: 'error', message: error.message || 'Failed to create chat room.' });
+    } finally {
+      setIsCreatingRoom(false);
+    }
+  };
+
+  const handleCreateMessage = async (event) => {
+    event.preventDefault();
+    setMessageStatus(null);
+
+    try {
+      const roomId = messageForm.roomId.trim();
+      const authorId = messageForm.authorId.trim();
+      const content = messageForm.message.trim();
+      if (!roomId || !authorId || !content) {
+        throw new Error('Room ID, author ID, and message are required.');
+      }
+
+      const payload = {
+        roomId,
+        authorId,
+        message: content
+      };
+
+      const pinId = messageForm.pinId.trim();
+      if (pinId) {
+        payload.pinId = pinId;
+      }
+
+      const replyToMessageId = messageForm.replyToMessageId.trim();
+      if (replyToMessageId) {
+        payload.replyToMessageId = replyToMessageId;
+      }
+
+      const latitudeRaw = messageForm.latitude.trim();
+      const longitudeRaw = messageForm.longitude.trim();
+      if (latitudeRaw || longitudeRaw) {
+        payload.latitude = parseRequiredNumber(latitudeRaw, 'Latitude');
+        payload.longitude = parseRequiredNumber(longitudeRaw, 'Longitude');
+        const accuracy = parseOptionalNumber(messageForm.accuracy, 'Accuracy');
+        if (accuracy !== undefined) {
+          payload.accuracy = accuracy;
+        }
+      }
+
+      setIsCreatingMessage(true);
+      const result = await createProximityChatMessage(payload);
+      setMessageResult(result);
+      setMessageStatus({ type: 'success', message: 'Chat message created.' });
+    } catch (error) {
+      setMessageStatus({ type: 'error', message: error.message || 'Failed to create chat message.' });
+    } finally {
+      setIsCreatingMessage(false);
+    }
+  };
+
+  const handleCreatePresence = async (event) => {
+    event.preventDefault();
+    setPresenceStatus(null);
+
+    try {
+      const roomId = presenceForm.roomId.trim();
+      const userId = presenceForm.userId.trim();
+      if (!roomId || !userId) {
+        throw new Error('Room ID and user ID are required.');
+      }
+
+      const payload = {
+        roomId,
+        userId
+      };
+
+      const sessionId = presenceForm.sessionId.trim();
+      if (sessionId) {
+        payload.sessionId = sessionId;
+      }
+
+      const joinedAt = parseOptionalDate(presenceForm.joinedAt, 'Joined at');
+      if (joinedAt) {
+        payload.joinedAt = joinedAt;
+      }
+
+      const lastActiveAt = parseOptionalDate(presenceForm.lastActiveAt, 'Last active at');
+      if (lastActiveAt) {
+        payload.lastActiveAt = lastActiveAt;
+      }
+
+      setIsCreatingPresence(true);
+      const result = await createProximityChatPresence(payload);
+      setPresenceResult(result);
+      setPresenceStatus({ type: 'success', message: 'Presence recorded.' });
+    } catch (error) {
+      setPresenceStatus({ type: 'error', message: error.message || 'Failed to record presence.' });
+    } finally {
+      setIsCreatingPresence(false);
+    }
+  };
+
+  const handleFetchRooms = async (event) => {
+    event.preventDefault();
+    setRoomsStatus(null);
+
+    try {
+      const query = {};
+      const pinId = roomsQuery.pinId.trim();
+      if (pinId) {
+        query.pinId = pinId;
+      }
+      const ownerId = roomsQuery.ownerId.trim();
+      if (ownerId) {
+        query.ownerId = ownerId;
+      }
+
+      setIsFetchingRooms(true);
+      const rooms = await fetchChatRooms(query);
+      setRoomsResult(rooms);
+      setRoomsStatus({
+        type: 'success',
+        message: `Loaded ${rooms.length} room${rooms.length === 1 ? '' : 's'}.`
+      });
+    } catch (error) {
+      setRoomsStatus({ type: 'error', message: error.message || 'Failed to load chat rooms.' });
+    } finally {
+      setIsFetchingRooms(false);
+    }
+  };
+
+  const handleFetchMessages = async (event) => {
+    event.preventDefault();
+    setMessagesStatus(null);
+    const roomId = messagesRoomId.trim();
+    if (!roomId) {
+      setMessagesStatus({ type: 'error', message: 'Room ID is required.' });
+      return;
+    }
+
+    try {
+      setIsFetchingMessages(true);
+      const messages = await fetchChatMessages(roomId);
+      setMessagesResult(messages);
+      setMessagesStatus({
+        type: 'success',
+        message: `Loaded ${messages.length} message${messages.length === 1 ? '' : 's'}.`
+      });
+    } catch (error) {
+      setMessagesStatus({ type: 'error', message: error.message || 'Failed to load chat messages.' });
+    } finally {
+      setIsFetchingMessages(false);
+    }
+  };
+
+  const handleFetchPresenceLog = async (event) => {
+    event.preventDefault();
+    setPresenceLogStatus(null);
+    const roomId = presenceRoomId.trim();
+    if (!roomId) {
+      setPresenceLogStatus({ type: 'error', message: 'Room ID is required.' });
+      return;
+    }
+
+    try {
+      setIsFetchingPresence(true);
+      const entries = await fetchChatPresence(roomId);
+      setPresenceLogResult(entries);
+      setPresenceLogStatus({
+        type: 'success',
+        message: `Loaded ${entries.length} presence entr${entries.length === 1 ? 'y' : 'ies'}.`
+      });
+    } catch (error) {
+      setPresenceLogStatus({ type: 'error', message: error.message || 'Failed to load presence log.' });
+    } finally {
+      setIsFetchingPresence(false);
+    }
+  };
+
+  return (
+    <Stack spacing={2}>
+      <Paper
+        component="form"
+        onSubmit={handleCreateRoom}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Create proximity chat room</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Define a new geofenced chat hub linked to a pin or free-floating area.
+        </Typography>
+        {roomStatus && (
+          <Alert severity={roomStatus.type} onClose={() => setRoomStatus(null)}>
+            {roomStatus.message}
+          </Alert>
+        )}
+        <Stack spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Owner ID"
+              value={roomForm.ownerId}
+              onChange={(event) => setRoomForm((prev) => ({ ...prev, ownerId: event.target.value }))}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Name"
+              value={roomForm.name}
+              onChange={(event) => setRoomForm((prev) => ({ ...prev, name: event.target.value }))}
+              required
+              fullWidth
+            />
+          </Stack>
+          <TextField
+            label="Description"
+            value={roomForm.description}
+            onChange={(event) => setRoomForm((prev) => ({ ...prev, description: event.target.value }))}
+            multiline
+            minRows={2}
+            fullWidth
+          />
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Latitude"
+              value={roomForm.latitude}
+              onChange={(event) => setRoomForm((prev) => ({ ...prev, latitude: event.target.value }))}
+              required
+            />
+            <TextField
+              label="Longitude"
+              value={roomForm.longitude}
+              onChange={(event) => setRoomForm((prev) => ({ ...prev, longitude: event.target.value }))}
+              required
+            />
+            <TextField
+              label="Radius (meters)"
+              value={roomForm.radiusMeters}
+              onChange={(event) => setRoomForm((prev) => ({ ...prev, radiusMeters: event.target.value }))}
+              required
+            />
+            <TextField
+              label="Accuracy"
+              value={roomForm.accuracy}
+              onChange={(event) => setRoomForm((prev) => ({ ...prev, accuracy: event.target.value }))}
+            />
+          </Stack>
+          <TextField
+            label="Pin ID (optional)"
+            value={roomForm.pinId}
+            onChange={(event) => setRoomForm((prev) => ({ ...prev, pinId: event.target.value }))}
+            fullWidth
+          />
+          <TextField
+            label="Participant IDs (comma separated)"
+            value={roomForm.participantIds}
+            onChange={(event) => setRoomForm((prev) => ({ ...prev, participantIds: event.target.value }))}
+            fullWidth
+          />
+          <TextField
+            label="Moderator IDs (comma separated)"
+            value={roomForm.moderatorIds}
+            onChange={(event) => setRoomForm((prev) => ({ ...prev, moderatorIds: event.target.value }))}
+            fullWidth
+          />
+          <Stack direction="row" spacing={2}>
+            <Button type="submit" variant="contained" disabled={isCreatingRoom}>
+              {isCreatingRoom ? 'Creating...' : 'Create room'}
+            </Button>
+            <Button
+              type="button"
+              variant="text"
+              onClick={() =>
+                setRoomForm({
+                  ownerId: '',
+                  name: '',
+                  description: '',
+                  latitude: '',
+                  longitude: '',
+                  radiusMeters: '',
+                  accuracy: '',
+                  pinId: '',
+                  participantIds: '',
+                  moderatorIds: ''
+                })
+              }
+            >
+              Reset
+            </Button>
+          </Stack>
+        </Stack>
+        <JsonPreview data={roomResult} />
+      </Paper>
+
+      <Paper
+        component="form"
+        onSubmit={handleCreateMessage}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Create chat message</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Inject a test message into a room timeline.
+        </Typography>
+        {messageStatus && (
+          <Alert severity={messageStatus.type} onClose={() => setMessageStatus(null)}>
+            {messageStatus.message}
+          </Alert>
+        )}
+        <Stack spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Room ID"
+              value={messageForm.roomId}
+              onChange={(event) => setMessageForm((prev) => ({ ...prev, roomId: event.target.value }))}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Author ID"
+              value={messageForm.authorId}
+              onChange={(event) => setMessageForm((prev) => ({ ...prev, authorId: event.target.value }))}
+              required
+              fullWidth
+            />
+          </Stack>
+          <TextField
+            label="Message"
+            value={messageForm.message}
+            onChange={(event) => setMessageForm((prev) => ({ ...prev, message: event.target.value }))}
+            multiline
+            minRows={2}
+            required
+            fullWidth
+          />
+          <TextField
+            label="Pin ID (optional)"
+            value={messageForm.pinId}
+            onChange={(event) => setMessageForm((prev) => ({ ...prev, pinId: event.target.value }))}
+            fullWidth
+          />
+          <TextField
+            label="Reply to message ID"
+            value={messageForm.replyToMessageId}
+            onChange={(event) => setMessageForm((prev) => ({ ...prev, replyToMessageId: event.target.value }))}
+            fullWidth
+          />
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Latitude"
+              value={messageForm.latitude}
+              onChange={(event) => setMessageForm((prev) => ({ ...prev, latitude: event.target.value }))}
+            />
+            <TextField
+              label="Longitude"
+              value={messageForm.longitude}
+              onChange={(event) => setMessageForm((prev) => ({ ...prev, longitude: event.target.value }))}
+            />
+            <TextField
+              label="Accuracy"
+              value={messageForm.accuracy}
+              onChange={(event) => setMessageForm((prev) => ({ ...prev, accuracy: event.target.value }))}
+            />
+          </Stack>
+          <Stack direction="row" spacing={2}>
+            <Button type="submit" variant="contained" disabled={isCreatingMessage}>
+              {isCreatingMessage ? 'Creating...' : 'Create message'}
+            </Button>
+            <Button
+              type="button"
+              variant="text"
+              onClick={() =>
+                setMessageForm({
+                  roomId: '',
+                  authorId: '',
+                  message: '',
+                  pinId: '',
+                  replyToMessageId: '',
+                  latitude: '',
+                  longitude: '',
+                  accuracy: ''
+                })
+              }
+            >
+              Reset
+            </Button>
+          </Stack>
+        </Stack>
+        <JsonPreview data={messageResult} />
+      </Paper>
+
+      <Paper
+        component="form"
+        onSubmit={handleCreatePresence}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Record presence</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Emulate a user joining or updating active status in a room.
+        </Typography>
+        {presenceStatus && (
+          <Alert severity={presenceStatus.type} onClose={() => setPresenceStatus(null)}>
+            {presenceStatus.message}
+          </Alert>
+        )}
+        <Stack spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Room ID"
+              value={presenceForm.roomId}
+              onChange={(event) => setPresenceForm((prev) => ({ ...prev, roomId: event.target.value }))}
+              required
+              fullWidth
+            />
+            <TextField
+              label="User ID"
+              value={presenceForm.userId}
+              onChange={(event) => setPresenceForm((prev) => ({ ...prev, userId: event.target.value }))}
+              required
+              fullWidth
+            />
+          </Stack>
+          <TextField
+            label="Session ID"
+            value={presenceForm.sessionId}
+            onChange={(event) => setPresenceForm((prev) => ({ ...prev, sessionId: event.target.value }))}
+            fullWidth
+          />
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Joined at"
+              type="datetime-local"
+              value={presenceForm.joinedAt}
+              onChange={(event) => setPresenceForm((prev) => ({ ...prev, joinedAt: event.target.value }))}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="Last active at"
+              type="datetime-local"
+              value={presenceForm.lastActiveAt}
+              onChange={(event) => setPresenceForm((prev) => ({ ...prev, lastActiveAt: event.target.value }))}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Stack>
+          <Stack direction="row" spacing={2}>
+            <Button type="submit" variant="contained" disabled={isCreatingPresence}>
+              {isCreatingPresence ? 'Recording...' : 'Record presence'}
+            </Button>
+            <Button
+              type="button"
+              variant="text"
+              onClick={() =>
+                setPresenceForm({
+                  roomId: '',
+                  userId: '',
+                  sessionId: '',
+                  joinedAt: '',
+                  lastActiveAt: ''
+                })
+              }
+            >
+              Reset
+            </Button>
+          </Stack>
+        </Stack>
+        <JsonPreview data={presenceResult} />
+      </Paper>
+
+      <Paper
+        component="form"
+        onSubmit={handleFetchRooms}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">List chat rooms</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Filter rooms by linked pin or owner.
+        </Typography>
+        {roomsStatus && (
+          <Alert severity={roomsStatus.type} onClose={() => setRoomsStatus(null)}>
+            {roomsStatus.message}
+          </Alert>
+        )}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <TextField
+            label="Pin ID"
+            value={roomsQuery.pinId}
+            onChange={(event) => setRoomsQuery((prev) => ({ ...prev, pinId: event.target.value }))}
+            fullWidth
+          />
+          <TextField
+            label="Owner ID"
+            value={roomsQuery.ownerId}
+            onChange={(event) => setRoomsQuery((prev) => ({ ...prev, ownerId: event.target.value }))}
+            fullWidth
+          />
+          <Button type="submit" variant="outlined" disabled={isFetchingRooms}>
+            {isFetchingRooms ? 'Loading...' : 'Fetch'}
+          </Button>
+        </Stack>
+        <JsonPreview data={roomsResult} />
+      </Paper>
+
+      <Paper
+        component="form"
+        onSubmit={handleFetchMessages}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Fetch chat messages</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Load the current timeline for a room.
+        </Typography>
+        {messagesStatus && (
+          <Alert severity={messagesStatus.type} onClose={() => setMessagesStatus(null)}>
+            {messagesStatus.message}
+          </Alert>
+        )}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <TextField
+            label="Room ID"
+            value={messagesRoomId}
+            onChange={(event) => setMessagesRoomId(event.target.value)}
+            required
+            fullWidth
+          />
+          <Button type="submit" variant="outlined" disabled={isFetchingMessages}>
+            {isFetchingMessages ? 'Loading...' : 'Fetch'}
+          </Button>
+        </Stack>
+        <JsonPreview data={messagesResult} />
+      </Paper>
+
+      <Paper
+        component="form"
+        onSubmit={handleFetchPresenceLog}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Fetch presence log</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Inspect join/leave history for a room session.
+        </Typography>
+        {presenceLogStatus && (
+          <Alert severity={presenceLogStatus.type} onClose={() => setPresenceLogStatus(null)}>
+            {presenceLogStatus.message}
+          </Alert>
+        )}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <TextField
+            label="Room ID"
+            value={presenceRoomId}
+            onChange={(event) => setPresenceRoomId(event.target.value)}
+            required
+            fullWidth
+          />
+          <Button type="submit" variant="outlined" disabled={isFetchingPresence}>
+            {isFetchingPresence ? 'Loading...' : 'Fetch'}
+          </Button>
+        </Stack>
+        <JsonPreview data={presenceLogResult} />
+      </Paper>
+    </Stack>
+  );
+}
+
+function UpdatesTab() {
+  const [updateForm, setUpdateForm] = useState({
+    userId: '',
+    sourceUserId: '',
+    targetUserIds: '',
+    type: UPDATE_TYPE_OPTIONS[0],
+    title: '',
+    body: '',
+    metadata: '',
+    relatedEntities: '',
+    pinId: '',
+    pinPreview: ''
+  });
+  const [updateStatus, setUpdateStatus] = useState(null);
+  const [updateResult, setUpdateResult] = useState(null);
+  const [isCreatingUpdate, setIsCreatingUpdate] = useState(false);
+
+  const [updatesQuery, setUpdatesQuery] = useState({ userId: '', limit: '20' });
+  const [updatesStatus, setUpdatesStatus] = useState(null);
+  const [updatesResult, setUpdatesResult] = useState(null);
+  const [isFetchingUpdates, setIsFetchingUpdates] = useState(false);
+
+  const handleCreateUpdate = async (event) => {
+    event.preventDefault();
+    setUpdateStatus(null);
+
+    try {
+      const userId = updateForm.userId.trim();
+      const title = updateForm.title.trim();
+      if (!userId || !title) {
+        throw new Error('Target user ID and title are required.');
+      }
+
+      const payload = {
+        userId,
+        payload: {
+          type: updateForm.type,
+          title
+        }
+      };
+
+      const sourceUserId = updateForm.sourceUserId.trim();
+      if (sourceUserId) {
+        payload.sourceUserId = sourceUserId;
+      }
+
+      const targetUserIds = parseCommaSeparated(updateForm.targetUserIds);
+      if (targetUserIds.length) {
+        payload.targetUserIds = targetUserIds;
+      }
+
+      const body = updateForm.body.trim();
+      if (body) {
+        payload.payload.body = body;
+      }
+
+      const metadata = parseJsonField(updateForm.metadata, 'metadata');
+      if (metadata !== undefined) {
+        payload.payload.metadata = metadata;
+      }
+
+      const relatedEntities = parseJsonField(updateForm.relatedEntities, 'related entities');
+      if (relatedEntities !== undefined) {
+        payload.payload.relatedEntities = relatedEntities;
+      }
+
+      const pinId = updateForm.pinId.trim();
+      if (pinId) {
+        payload.payload.pinId = pinId;
+      }
+
+      const pinPreview = parseJsonField(updateForm.pinPreview, 'pin preview');
+      if (pinPreview !== undefined) {
+        payload.payload.pinPreview = pinPreview;
+      }
+
+      setIsCreatingUpdate(true);
+      const result = await createUpdate(payload);
+      setUpdateResult(result);
+      setUpdateStatus({ type: 'success', message: 'Update created.' });
+    } catch (error) {
+      setUpdateStatus({ type: 'error', message: error.message || 'Failed to create update.' });
+    } finally {
+      setIsCreatingUpdate(false);
+    }
+  };
+
+  const handleFetchUpdates = async (event) => {
+    event.preventDefault();
+    setUpdatesStatus(null);
+
+    const userId = updatesQuery.userId.trim();
+    if (!userId) {
+      setUpdatesStatus({ type: 'error', message: 'User ID is required.' });
+      return;
+    }
+
+    try {
+      const query = { userId };
+      const limitValue = parseOptionalNumber(updatesQuery.limit, 'Limit');
+      if (limitValue !== undefined) {
+        if (limitValue <= 0) {
+          throw new Error('Limit must be greater than 0.');
+        }
+        query.limit = limitValue;
+      }
+
+      setIsFetchingUpdates(true);
+      const updates = await fetchUpdates(query);
+      setUpdatesResult(updates);
+      setUpdatesStatus({
+        type: 'success',
+        message: `Loaded ${updates.length} update${updates.length === 1 ? '' : 's'}.`
+      });
+    } catch (error) {
+      setUpdatesStatus({ type: 'error', message: error.message || 'Failed to load updates.' });
+    } finally {
+      setIsFetchingUpdates(false);
+    }
+  };
+
+  return (
+    <Stack spacing={2}>
+      <Paper
+        component="form"
+        onSubmit={handleCreateUpdate}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Create user update</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Generate feed notifications for a user to exercise the updates API.
+        </Typography>
+        {updateStatus && (
+          <Alert severity={updateStatus.type} onClose={() => setUpdateStatus(null)}>
+            {updateStatus.message}
+          </Alert>
+        )}
+        <Stack spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Target user ID"
+              value={updateForm.userId}
+              onChange={(event) => setUpdateForm((prev) => ({ ...prev, userId: event.target.value }))}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Source user ID"
+              value={updateForm.sourceUserId}
+              onChange={(event) => setUpdateForm((prev) => ({ ...prev, sourceUserId: event.target.value }))}
+              fullWidth
+            />
+          </Stack>
+          <TextField
+            label="Additional target user IDs (comma separated)"
+            value={updateForm.targetUserIds}
+            onChange={(event) => setUpdateForm((prev) => ({ ...prev, targetUserIds: event.target.value }))}
+            fullWidth
+          />
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Type"
+              value={updateForm.type}
+              onChange={(event) => setUpdateForm((prev) => ({ ...prev, type: event.target.value }))}
+              select
+              sx={{ minWidth: 220 }}
+            >
+              {UPDATE_TYPE_OPTIONS.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label="Title"
+              value={updateForm.title}
+              onChange={(event) => setUpdateForm((prev) => ({ ...prev, title: event.target.value }))}
+              required
+              fullWidth
+            />
+          </Stack>
+          <TextField
+            label="Body"
+            value={updateForm.body}
+            onChange={(event) => setUpdateForm((prev) => ({ ...prev, body: event.target.value }))}
+            multiline
+            minRows={3}
+            fullWidth
+          />
+          <TextField
+            label="Metadata JSON"
+            value={updateForm.metadata}
+            onChange={(event) => setUpdateForm((prev) => ({ ...prev, metadata: event.target.value }))}
+            multiline
+            minRows={3}
+            placeholder='e.g. { "cta": "View pin" }'
+            fullWidth
+          />
+          <TextField
+            label="Related entities JSON"
+            value={updateForm.relatedEntities}
+            onChange={(event) => setUpdateForm((prev) => ({ ...prev, relatedEntities: event.target.value }))}
+            multiline
+            minRows={3}
+            placeholder='e.g. [{ "id": "...", "type": "pin", "label": "Community Cleanup" }]'
+            fullWidth
+          />
+          <TextField
+            label="Pin ID (auto-populate preview)"
+            value={updateForm.pinId}
+            onChange={(event) => setUpdateForm((prev) => ({ ...prev, pinId: event.target.value }))}
+            fullWidth
+          />
+          <TextField
+            label="Pin preview JSON"
+            value={updateForm.pinPreview}
+            onChange={(event) => setUpdateForm((prev) => ({ ...prev, pinPreview: event.target.value }))}
+            multiline
+            minRows={3}
+            placeholder='{ "_id": "...", "type": "event", "creatorId": "...", "title": "...", "latitude": 33.77, "longitude": -118.19 }'
+            fullWidth
+          />
+          <Stack direction="row" spacing={2}>
+            <Button type="submit" variant="contained" disabled={isCreatingUpdate}>
+              {isCreatingUpdate ? 'Creating...' : 'Create update'}
+            </Button>
+            <Button
+              type="button"
+              variant="text"
+              onClick={() =>
+                setUpdateForm({
+                  userId: '',
+                  sourceUserId: '',
+                  targetUserIds: '',
+                  type: UPDATE_TYPE_OPTIONS[0],
+                  title: '',
+                  body: '',
+                  metadata: '',
+                  relatedEntities: '',
+                  pinId: '',
+                  pinPreview: ''
+                })
+              }
+            >
+              Reset
+            </Button>
+          </Stack>
+        </Stack>
+        <JsonPreview data={updateResult} />
+      </Paper>
+
+      <Paper
+        component="form"
+        onSubmit={handleFetchUpdates}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Fetch updates</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Inspect the notification queue for a given user.
+        </Typography>
+        {updatesStatus && (
+          <Alert severity={updatesStatus.type} onClose={() => setUpdatesStatus(null)}>
+            {updatesStatus.message}
+          </Alert>
+        )}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <TextField
+            label="User ID"
+            value={updatesQuery.userId}
+            onChange={(event) => setUpdatesQuery((prev) => ({ ...prev, userId: event.target.value }))}
+            required
+            fullWidth
+          />
+          <TextField
+            label="Limit"
+            value={updatesQuery.limit}
+            onChange={(event) => setUpdatesQuery((prev) => ({ ...prev, limit: event.target.value }))}
+            sx={{ width: { xs: '100%', sm: 120 } }}
+          />
+          <Button type="submit" variant="outlined" disabled={isFetchingUpdates}>
+            {isFetchingUpdates ? 'Loading...' : 'Fetch'}
+          </Button>
+        </Stack>
+        <JsonPreview data={updatesResult} />
+      </Paper>
+    </Stack>
+  );
+}
+
+function RepliesTab() {
+  const [replyForm, setReplyForm] = useState({
+    pinId: '',
+    authorId: '',
+    message: '',
+    parentReplyId: '',
+    mentionedUserIds: ''
+  });
+  const [replyStatus, setReplyStatus] = useState(null);
+  const [replyResult, setReplyResult] = useState(null);
+  const [isCreatingReply, setIsCreatingReply] = useState(false);
+
+  const [repliesPinId, setRepliesPinId] = useState('');
+  const [repliesStatus, setRepliesStatus] = useState(null);
+  const [repliesResult, setRepliesResult] = useState(null);
+  const [isFetchingReplies, setIsFetchingReplies] = useState(false);
+
+  const handleCreateReply = async (event) => {
+    event.preventDefault();
+    setReplyStatus(null);
+
+    try {
+      const pinId = replyForm.pinId.trim();
+      const authorId = replyForm.authorId.trim();
+      const message = replyForm.message.trim();
+      if (!pinId || !authorId || !message) {
+        throw new Error('Pin ID, author ID, and message are required.');
+      }
+
+      const payload = {
+        pinId,
+        authorId,
+        message
+      };
+
+      const parentReplyId = replyForm.parentReplyId.trim();
+      if (parentReplyId) {
+        payload.parentReplyId = parentReplyId;
+      }
+
+      const mentionedUserIds = parseCommaSeparated(replyForm.mentionedUserIds);
+      if (mentionedUserIds.length) {
+        payload.mentionedUserIds = mentionedUserIds;
+      }
+
+      setIsCreatingReply(true);
+      const result = await createReply(payload);
+      setReplyResult(result);
+      setReplyStatus({ type: 'success', message: 'Reply created.' });
+    } catch (error) {
+      setReplyStatus({ type: 'error', message: error.message || 'Failed to create reply.' });
+    } finally {
+      setIsCreatingReply(false);
+    }
+  };
+
+  const handleFetchReplies = async (event) => {
+    event.preventDefault();
+    setRepliesStatus(null);
+    const pinId = repliesPinId.trim();
+    if (!pinId) {
+      setRepliesStatus({ type: 'error', message: 'Pin ID is required.' });
+      return;
+    }
+
+    try {
+      setIsFetchingReplies(true);
+      const replies = await fetchReplies(pinId);
+      setRepliesResult(replies);
+      setRepliesStatus({
+        type: 'success',
+        message: `Loaded ${replies.length} repl${replies.length === 1 ? 'y' : 'ies'}.`
+      });
+    } catch (error) {
+      setRepliesStatus({ type: 'error', message: error.message || 'Failed to load replies.' });
+    } finally {
+      setIsFetchingReplies(false);
+    }
+  };
+
+  return (
+    <Stack spacing={2}>
+      <Paper
+        component="form"
+        onSubmit={handleCreateReply}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Create reply</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Seed conversations on a pin.
+        </Typography>
+        {replyStatus && (
+          <Alert severity={replyStatus.type} onClose={() => setReplyStatus(null)}>
+            {replyStatus.message}
+          </Alert>
+        )}
+        <Stack spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Pin ID"
+              value={replyForm.pinId}
+              onChange={(event) => setReplyForm((prev) => ({ ...prev, pinId: event.target.value }))}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Author ID"
+              value={replyForm.authorId}
+              onChange={(event) => setReplyForm((prev) => ({ ...prev, authorId: event.target.value }))}
+              required
+              fullWidth
+            />
+          </Stack>
+          <TextField
+            label="Message"
+            value={replyForm.message}
+            onChange={(event) => setReplyForm((prev) => ({ ...prev, message: event.target.value }))}
+            multiline
+            minRows={3}
+            required
+            fullWidth
+          />
+          <TextField
+            label="Parent reply ID"
+            value={replyForm.parentReplyId}
+            onChange={(event) => setReplyForm((prev) => ({ ...prev, parentReplyId: event.target.value }))}
+            fullWidth
+          />
+          <TextField
+            label="Mentioned user IDs (comma separated)"
+            value={replyForm.mentionedUserIds}
+            onChange={(event) => setReplyForm((prev) => ({ ...prev, mentionedUserIds: event.target.value }))}
+            fullWidth
+          />
+          <Stack direction="row" spacing={2}>
+            <Button type="submit" variant="contained" disabled={isCreatingReply}>
+              {isCreatingReply ? 'Creating...' : 'Create reply'}
+            </Button>
+            <Button
+              type="button"
+              variant="text"
+              onClick={() =>
+                setReplyForm({
+                  pinId: '',
+                  authorId: '',
+                  message: '',
+                  parentReplyId: '',
+                  mentionedUserIds: ''
+                })
+              }
+            >
+              Reset
+            </Button>
+          </Stack>
+        </Stack>
+        <JsonPreview data={replyResult} />
+      </Paper>
+
+      <Paper
+        component="form"
+        onSubmit={handleFetchReplies}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Fetch replies</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Retrieve threaded discussions for a pin.
+        </Typography>
+        {repliesStatus && (
+          <Alert severity={repliesStatus.type} onClose={() => setRepliesStatus(null)}>
+            {repliesStatus.message}
+          </Alert>
+        )}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <TextField
+            label="Pin ID"
+            value={repliesPinId}
+            onChange={(event) => setRepliesPinId(event.target.value)}
+            required
+            fullWidth
+          />
+          <Button type="submit" variant="outlined" disabled={isFetchingReplies}>
+            {isFetchingReplies ? 'Loading...' : 'Fetch'}
+          </Button>
+        </Stack>
+        <JsonPreview data={repliesResult} />
+      </Paper>
+    </Stack>
   );
 }
 

@@ -1,0 +1,34 @@
+{
+  "source": "figma_file.json",
+  "collectedAt": "2025-10-09T23:22:35.254Z",
+  "header": {
+    "title": "Bookmarks",
+    "time": "9:41"
+  },
+  "cards": [
+    {
+      "title": "Park Potluck",
+      "description": "Hosting a potluck at the park! Come bring your family and friends!",
+      "attendingCount": 8,
+      "viewLabel": "View",
+      "viewButtonColor": "#cdaef2",
+      "backgroundColor": "#f5effd",
+      "accentColor": "#f15bb5",
+      "bookmarkColor": "#9b5de5",
+      "imageCount": 2,
+      "id": "event-bookmark"
+    },
+    {
+      "title": "Superman Premiere",
+      "description": "",
+      "attendingCount": null,
+      "viewLabel": "",
+      "viewButtonColor": null,
+      "backgroundColor": "#ecf8fd",
+      "accentColor": null,
+      "bookmarkColor": null,
+      "imageCount": 0,
+      "id": "discussion-bookmark"
+    }
+  ]
+}

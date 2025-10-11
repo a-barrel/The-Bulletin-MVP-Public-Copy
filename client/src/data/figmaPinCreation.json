@@ -1,0 +1,17 @@
+{
+  "source": "figma_file.json",
+  "collectedAt": "2025-10-09T23:22:35.246Z",
+  "header": {
+    "title": "Event",
+    "time": "9:41",
+    "cta": "Post"
+  },
+  "fields": {
+    "titlePlaceholder": "[Empty] Event Title",
+    "descriptionPlaceholder": "[Empty] Event dets - what's cooking?",
+    "dateLabel": "Oct 17, 2025",
+    "timeLabel": "3:00 PM",
+    "modeLabel": "Event",
+    "locationPrompt": "Tap where the event will take place"
+  }
+}

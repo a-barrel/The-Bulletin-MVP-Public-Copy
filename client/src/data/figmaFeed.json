@@ -1,0 +1,42 @@
+{
+  "source": "figma_file.json",
+  "collectedAt": "2025-10-09T23:22:35.243Z",
+  "header": {
+    "title": "List",
+    "time": "9:41",
+    "notificationCount": "3"
+  },
+  "sortLabel": "Sort by: Distance",
+  "cards": [
+    {
+      "title": "Potluck",
+      "distance": "6 mi",
+      "body": "Hosting a potluck at the park! Come bring your family and friends!",
+      "daysLeft": "In 3 Days",
+      "replies": "2",
+      "attending": "8",
+      "author": "Chicken_Man"
+    },
+    {
+      "title": "Superman Premiere",
+      "distance": "6 mi",
+      "body": "How did everyone feel about the new superman?",
+      "daysLeft": "4 Days Left",
+      "replies": "2",
+      "attending": "",
+      "author": "SportsFan83"
+    }
+  ],
+  "createLabel": "Create or Reply",
+  "navItems": [
+    {
+      "label": "Chat"
+    },
+    {
+      "label": "Map"
+    },
+    {
+      "label": "List"
+    }
+  ]
+}

@@ -9,15 +9,18 @@ import {
 } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import Box from '@mui/material/Box';
-import Paper from '@mui/material/Paper';
 import Modal from '@mui/material/Modal';
 import Fade from '@mui/material/Fade';
+import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
-import ArticleIcon from '@mui/icons-material/Article';
 import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import ArticleIcon from '@mui/icons-material/Article';
+import LoginPage from './pages/LoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const theme = createTheme({
@@ -35,6 +38,8 @@ const theme = createTheme({
     }
   }
 });
+
+const AUTH_ROUTES = new Set(['/login', '/forgot-password', '/reset-password']);
 
 const pageModules = import.meta.glob('./pages/**/*.{jsx,tsx}', { eager: true });
 
@@ -80,9 +85,9 @@ const loadPages = () => Object.entries(pageModules)
     const aliases = Array.isArray(config.aliases)
       ? config.aliases.map(normalizePath).filter(Boolean)
       : [];
-    const showInNav = config.showInNav !== false;
+    const showInNav = config.showInNav === true;
     const isDefault = Boolean(config.isDefault);
-    const isProtected = Boolean(config.protected);
+    const isProtected = config.protected !== false;
 
     return {
       id,
@@ -120,12 +125,12 @@ function App() {
     [pages]
   );
 
-  const defaultPage = useMemo(() => {
-    return pages.find((page) => page.isDefault)
+  const defaultNavPage = useMemo(() => {
+    return navPages.find((page) => page.isDefault)
       ?? navPages[0]
-      ?? pages[0]
+      ?? pages.find((page) => page.isDefault)
       ?? null;
-  }, [pages, navPages]);
+  }, [navPages, pages]);
 
   const currentNavPath = useMemo(() => {
     if (!navPages.length) {
@@ -163,6 +168,9 @@ function App() {
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === '`' || event.key === '~') {
+        if (AUTH_ROUTES.has(location.pathname) || navPages.length === 0) {
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
         setNavOverlayOpen((prev) => !prev);
@@ -175,134 +183,114 @@ function App() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [location.pathname, navPages.length]);
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          backgroundColor: 'background.default'
-        }}
-      >
-        <Box component="main" sx={{ flex: 1, minHeight: 0, position: 'relative' }}>
-          {pages.length > 0 ? (
-            <Routes>
-              {pages.map((page) => (
-                <Route
-                  key={page.id}
-                  path={page.path}
-                  element={wrapWithProtection(page, <page.Component />)}
-                />
-              ))}
 
-              {pages.map((page) =>
-                page.aliases.map((alias) => (
-                  <Route
-                    key={`${page.id}-alias-${alias}`}
-                    path={alias}
-                    element={wrapWithProtection(page, <page.Component />)}
-                  />
-                ))
-              )}
-
-              {defaultPage && defaultPage.path !== '/' && (
-                <Route path="/" element={<Navigate to={defaultPage.path} replace />} />
-              )}
-
-              {defaultPage && (
-                <Route path="*" element={<Navigate to={defaultPage.path} replace />} />
-              )}
-            </Routes>
-          ) : (
-            <Box
-              sx={{
-                height: '100%',
+      <Modal open={navOverlayOpen} onClose={closeOverlay} closeAfterTransition keepMounted>
+        <Fade in={navOverlayOpen}>
+          <Box
+            sx={{
+              position: 'fixed',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              p: 2,
+              pointerEvents: 'none'
+            }}
+          >
+            <Paper
+              elevation={16}
+              sx={(muiTheme) => ({
+                width: 'min(420px, 90vw)',
+                maxHeight: '80vh',
+                overflow: 'hidden',
+                pointerEvents: 'auto',
+                outline: 'none',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                px: 3
-              }}
+                flexDirection: 'column',
+                gap: 2,
+                p: 3,
+                borderRadius: 3,
+                backgroundColor: muiTheme.palette.background.paper
+              })}
             >
-              <Typography variant="body1" color="text.secondary">
-                Add a new page under `src/pages` to populate the navigation.
-              </Typography>
-            </Box>
-          )}
-        </Box>
+              <Stack spacing={1.5}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="h6" component="h2">
+                    Navigation Console
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Press ` or Esc to close
+                  </Typography>
+                </Box>
+                <Divider />
+                {navPages.length > 0 ? (
+                  <Stack spacing={1}>
+                    {navPages.map((page) => {
+                      const IconComponent = page.icon ?? ArticleIcon;
+                      const isActive = page.path === currentNavPath;
+                      return (
+                        <Button
+                          key={page.id}
+                          onClick={() => handleNavigate(page.path)}
+                          variant={isActive ? 'contained' : 'outlined'}
+                          color={isActive ? 'primary' : 'inherit'}
+                          startIcon={<IconComponent fontSize="small" />}
+                          sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+                        >
+                          {page.label}
+                        </Button>
+                      );
+                    })}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Add a new page under `src/pages` with `showInNav: true` to populate this console.
+                  </Typography>
+                )}
+              </Stack>
+            </Paper>
+          </Box>
+        </Fade>
+      </Modal>
 
-        <Modal open={navOverlayOpen} onClose={closeOverlay} closeAfterTransition keepMounted>
-          <Fade in={navOverlayOpen}>
-            <Box
-              sx={{
-                position: 'fixed',
-                inset: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                p: 2,
-                pointerEvents: 'none'
-              }}
-            >
-              <Paper
-                elevation={16}
-                sx={(theme) => ({
-                  width: 'min(420px, 90vw)',
-                  maxHeight: '80vh',
-                  overflow: 'hidden',
-                  pointerEvents: 'auto',
-                  outline: 'none',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 2,
-                  p: 3,
-                  borderRadius: 3,
-                  backgroundColor: theme.palette.background.paper
-                })}
-              >
-                <Stack spacing={1.5}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="h6" component="h2">
-                      Navigation Console
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Press ` or Esc to close
-                    </Typography>
-                  </Box>
-                  <Divider />
-                  {navPages.length > 0 ? (
-                    <Stack spacing={1}>
-                      {navPages.map((page) => {
-                        const IconComponent = page.icon ?? ArticleIcon;
-                        const isActive = page.path === currentNavPath;
-                        return (
-                          <Button
-                            key={page.id}
-                            onClick={() => handleNavigate(page.path)}
-                            variant={isActive ? 'contained' : 'outlined'}
-                            color={isActive ? 'primary' : 'inherit'}
-                            startIcon={<IconComponent fontSize="small" />}
-                            sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-                          >
-                            {page.label}
-                          </Button>
-                        );
-                      })}
-                    </Stack>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      Add a new page under `src/pages` to populate the navigation.
-                    </Typography>
-                  )}
-                </Stack>
-              </Paper>
-            </Box>
-          </Fade>
-        </Modal>
-      </Box>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+        {pages.map((page) => (
+          <Route
+            key={page.id}
+            path={page.path}
+            element={wrapWithProtection(page, <page.Component />)}
+          />
+        ))}
+
+        {pages.map((page) =>
+          page.aliases.map((alias) => (
+            <Route
+              key={`${page.id}-alias-${alias}`}
+              path={alias}
+              element={wrapWithProtection(page, <page.Component />)}
+            />
+          ))
+        )}
+
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route
+          path="*"
+          element={
+            defaultNavPage
+              ? <Navigate to={defaultNavPage.path} replace />
+              : <Navigate to="/login" replace />
+          }
+        />
+      </Routes>
     </ThemeProvider>
   );
 }
