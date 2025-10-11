@@ -22,7 +22,10 @@ async function seed() {
     pins: {
       campusCleanup: new ObjectId(),
       latteLounge: new ObjectId(),
-      nightMarket: new ObjectId()
+      nightMarket: new ObjectId(),
+      shorelineCycle: new ObjectId(),
+      artWalkDiscussion: new ObjectId(),
+      foothillTrail: new ObjectId()
     },
     bookmarkCollections: {
       alexFavorites: new ObjectId(),
@@ -103,8 +106,8 @@ async function seed() {
         blockedUserIds: []
       },
       locationSharingEnabled: true,
-      pinnedPinIds: [ids.pins.campusCleanup],
-      ownedPinIds: [ids.pins.campusCleanup],
+      pinnedPinIds: [ids.pins.campusCleanup, ids.pins.shorelineCycle],
+      ownedPinIds: [ids.pins.campusCleanup, ids.pins.shorelineCycle],
       bookmarkCollectionIds: [ids.bookmarkCollections.alexFavorites],
       proximityChatRoomIds: [ids.chats.campusLounge],
       recentLocationIds: [],
@@ -144,8 +147,8 @@ async function seed() {
         blockedUserIds: []
       },
       locationSharingEnabled: true,
-      pinnedPinIds: [ids.pins.latteLounge],
-      ownedPinIds: [ids.pins.latteLounge],
+      pinnedPinIds: [ids.pins.latteLounge, ids.pins.artWalkDiscussion],
+      ownedPinIds: [ids.pins.latteLounge, ids.pins.artWalkDiscussion],
       bookmarkCollectionIds: [ids.bookmarkCollections.priyaWeekend],
       proximityChatRoomIds: [ids.chats.campusLounge],
       recentLocationIds: [],
@@ -185,8 +188,8 @@ async function seed() {
         blockedUserIds: []
       },
       locationSharingEnabled: false,
-      pinnedPinIds: [ids.pins.nightMarket],
-      ownedPinIds: [ids.pins.nightMarket],
+      pinnedPinIds: [ids.pins.nightMarket, ids.pins.foothillTrail],
+      ownedPinIds: [ids.pins.nightMarket, ids.pins.foothillTrail],
       bookmarkCollectionIds: [],
       proximityChatRoomIds: [],
       recentLocationIds: [],
@@ -299,6 +302,105 @@ async function seed() {
           country: 'US'
         }
       }
+    },
+    {
+      _id: ids.pins.shorelineCycle,
+      type: 'event',
+      creatorId: ids.users.alex,
+      title: 'Shoreline Cycle Loop',
+      description: 'Five-mile coastal ride with a smoothie break before looping back.',
+      coordinates: {
+        type: 'Point',
+        coordinates: [-118.0265, 33.7838],
+        accuracy: 18
+      },
+      proximityRadiusMeters: 804,
+      photos: [],
+      tags: ['cycling', 'outdoors'],
+      relatedPinIds: [ids.pins.campusCleanup],
+      visibility: 'public',
+      stats: { bookmarkCount: 4, replyCount: 1, shareCount: 1, viewCount: 64 },
+      bookmarkCount: 4,
+      replyCount: 1,
+      startDate: new Date('2025-10-18T16:00:00.000Z'),
+      endDate: new Date('2025-10-18T19:00:00.000Z'),
+      address: {
+        precise: 'Belmont Shore Bike Trail Meetup',
+        components: {
+          city: 'Long Beach',
+          state: 'CA',
+          country: 'US'
+        }
+      },
+      participantLimit: 25,
+      participantCount: 9,
+      attendingUserIds: [ids.users.priya],
+      attendeeWaitlistIds: [],
+      attendable: true
+    },
+    {
+      _id: ids.pins.artWalkDiscussion,
+      type: 'discussion',
+      creatorId: ids.users.priya,
+      title: 'North Long Beach Art Walk',
+      description: 'Share carpool spots and highlight installations roughly ten miles north of campus.',
+      coordinates: {
+        type: 'Point',
+        coordinates: [-118.1136, 33.9287],
+        accuracy: 25
+      },
+      proximityRadiusMeters: 1000,
+      photos: [],
+      tags: ['art', 'community'],
+      relatedPinIds: [],
+      visibility: 'public',
+      stats: { bookmarkCount: 6, replyCount: 2, shareCount: 1, viewCount: 92 },
+      bookmarkCount: 6,
+      replyCount: 2,
+      approximateAddress: {
+        city: 'North Long Beach',
+        state: 'CA',
+        country: 'US',
+        formatted: 'North Long Beach, CA'
+      },
+      expiresAt: new Date('2025-10-20T06:00:00.000Z'),
+      autoDelete: true
+    },
+    {
+      _id: ids.pins.foothillTrail,
+      type: 'event',
+      creatorId: ids.users.marcus,
+      title: 'Foothill Trail Run',
+      description: 'Twenty-mile inland trail run with moderate elevation and a post-run stretch session.',
+      coordinates: {
+        type: 'Point',
+        coordinates: [-117.9396, 34.0736],
+        accuracy: 30
+      },
+      proximityRadiusMeters: 1609,
+      photos: [],
+      tags: ['running', 'fitness'],
+      relatedPinIds: [],
+      visibility: 'public',
+      stats: { bookmarkCount: 10, replyCount: 3, shareCount: 2, viewCount: 130 },
+      bookmarkCount: 10,
+      replyCount: 3,
+      startDate: new Date('2025-10-25T14:00:00.000Z'),
+      endDate: new Date('2025-10-25T17:30:00.000Z'),
+      address: {
+        precise: 'Puente Hills Trailhead',
+        components: {
+          city: 'Hacienda Heights',
+          state: 'CA',
+          postalCode: '91745',
+          country: 'US'
+        }
+      },
+      participantLimit: 80,
+      participantCount: 32,
+      attendingUserIds: [ids.users.alex, ids.users.priya],
+      attendeeWaitlistIds: [],
+      attendable: true
     }
   ];
 

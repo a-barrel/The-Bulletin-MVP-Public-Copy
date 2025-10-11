@@ -47,3 +47,10 @@ Thumbs.db
 
 # Render
 .render
+
+# Debug uploads
+server/uploads/images/
+
+# Firebase emulator exports
+emulator-data/
+
