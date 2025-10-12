@@ -1,32 +1,59 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import './PinDetails.css';
+import PlaceIcon from '@mui/icons-material/Place'; // used only for pageConfig
+import DebugPin from '../models/DebugPin';
+import { fetchPinById } from '../api/mongoDataApi';
+
+export const pageConfig = {
+  id: 'pin-details',
+  label: 'Pin Details',
+  icon: PlaceIcon,
+  path: '/pin/:pinId',
+  order: 3,
+  showInNav: false
+};
 
 function PinDetails() {
   const { pinId } = useParams();
+  const [pin, setPin] = useState(null);
   const [bookmarked, setBookmarked] = useState(false);
   const [attending, setAttending] = useState(false);
-  
+
+  useEffect(() => {
+    async function loadPin() {
+      try {
+        const payload = await fetchPinById(pinId);
+        const pinData = DebugPin.fromApi(payload);
+        setPin(pinData);
+      } catch (error) {
+        console.error('Failed to fetch pin:', error);
+      }
+    }
+    loadPin();
+  }, [pinId]);
+
   return (
     <div className='pin-details'>
+      {/* Header */}
       <header className='header'>
-        <button className='back-button'>
-          <img 
-            src='https://www.svgrepo.com/show/326886/arrow-back-sharp.svg' 
+        <Link to="/list" className="back-button">
+          <img
+            src='https://www.svgrepo.com/show/326886/arrow-back-sharp.svg'
             className='back-arrow'
           />
-        </button>
+        </Link>
 
-        <h2>pin type here</h2>
+        <h2>{pin ? pin.type.charAt(0).toUpperCase() + pin.type.slice(1) : 'Loading...'}</h2>
 
-        <button 
-          className='bookmark-button' 
+        <button
+          className='bookmark-button'
           onClick={() => setBookmarked(!bookmarked)}
         >
-          <img 
+          <img
             src={
-              bookmarked 
-                ? 'https://www.svgrepo.com/show/347684/bookmark-fill.svg' // bookmarked 
+              bookmarked
+                ? 'https://www.svgrepo.com/show/347684/bookmark-fill.svg' // bookmarked
                 : 'https://www.svgrepo.com/show/357397/bookmark-full.svg' // not bookmarked
             }
             className='bookmark'
@@ -34,50 +61,72 @@ function PinDetails() {
         </button>
       </header>
 
+      {/* Event/Discussion Name */}
       <div className='name'>
-        <h2>Event Name</h2>
+        <h2>{pin ? pin.title : 'Loading...'}</h2>
       </div>
 
+      {/* Map section */}
       <div className='map-section'>
         do map here
       </div>
 
+      {/* Post creator */}
       <div className='post-creator'>
-        <img 
+        <img
           src='https://www.svgrepo.com/show/343494/profile-user-account.svg'
           className='profile-icon'
         />
         <p>Username123</p>
       </div>
 
-      <div className='post-description'>
-        do post description here: Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-      </div>
+      {/* Post description */}
+      <div className='post-description'>{pin ? pin.description : "Loading..."}</div>
 
+      {/* Post images */}
       <div className='post-images'>
         do post images here
       </div>
 
+      {/* Post info */}
       <div className='post-info'>
         <div className='post-location'>
-          <img 
+          <img
             src='https://www.svgrepo.com/show/345061/pin.svg'
             className='pin-icon'
           />
           <span className='location-text'>
             Location:<br />
-            Location Name, City, State
+            {pin ? pin.address.components.line1 + ', ' + pin.address.components.city + ', ' + pin.address.components.state : 'Loading...'}
           </span>
         </div>
-        
+
         <div className='post-occurance'>
-          <img 
+          <img
             src='https://www.svgrepo.com/show/533378/calendar.svg'
             className='calendar-icon'
           />
           <span className='occurance-text'>
             Occurs:<br />
-            Oct 14, 1:30 PM - 5:00 PM
+            {pin ? (
+              `${new Date(pin.startDate).toLocaleString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "numeric",
+                hour12: true
+              })} - ${new Date(pin.endDate).toLocaleString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "numeric",
+                hour12: true
+              })}`
+            ) : (
+              "Loading..."
+            )}
           </span>
         </div>
 
@@ -87,8 +136,8 @@ function PinDetails() {
             className='attendance-icon'
           />
           <span className='attendance-text'>
-            n Attending<br />
-            <img 
+            {pin ? `${pin.participantCount ?? 0} Attending` : "Loading..."}<br />
+            <img
               src='https://www.svgrepo.com/show/343494/profile-user-account.svg'
               className='attending-icons'
             />
@@ -96,23 +145,26 @@ function PinDetails() {
         </div>
       </div>
 
+      {/* Attend button */}
       <div className='attendance'>
-        <button 
+        <button
           className={`attend-button ${attending ? 'attending' : ''}`}
           onClick={() => setAttending(!attending)}
         >
           {attending ? 'Attending!' : 'Attend'}
         </button>
-      </div>      
+      </div>
 
+      {/* Comments header */}
       <div className='comments-header'>
-        <img 
+        <img
           src='https://www.svgrepo.com/show/361088/comment-discussion.svg'
           className='comment-icon'
         />
-        <p>Comments (n)</p> {/* n is for number of comments later */}
+        <p>Comments (n)</p>
       </div>
 
+      {/* Comments section */}
       <div className='comments-section'>
         <div className='comment'>
           <div className='comment-header'>
@@ -132,16 +184,17 @@ function PinDetails() {
         </div>
       </div>
 
+      {/* Create comment button */}
       <button className='create-comment'>
-        <img 
+        <img
           src='https://www.svgrepo.com/show/489238/add-comment.svg'
           className='create-comment-button'
         />
       </button>
 
-      {/* delete here later, for debugging */}
+      {/* Debug info, remove later */}
       <div className='debugging'>
-        <p>Pin Details for Pin {pinId}</p> 
+        <p>Pin Details for Pin {pinId}</p>
         <Link to="/list">Go to List</Link>
       </div>
     </div>

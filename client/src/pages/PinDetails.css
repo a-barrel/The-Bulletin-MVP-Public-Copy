@@ -5,8 +5,10 @@
     flex-direction: column;
     background-color: #CDAEF2;
     color: black;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 /* header */
@@ -108,7 +110,7 @@
 .post-description {
     display: block; 
     text-align: left; 
-    width: calc(100% - 2rem); /* subtract left and right margins */
+    width: calc(100% - 2rem); 
     margin: 0 1rem;
 }
 
@@ -301,8 +303,8 @@
 /* create-comment */
 .create-comment {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    bottom: 25px;
+    right: 25px;
     z-index: 1000;
     background: none;
     border: none;
