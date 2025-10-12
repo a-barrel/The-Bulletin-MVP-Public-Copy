@@ -32,4 +32,4 @@ mongoimport --db pinpoint --collection updates --file docs/mongodb-sample-update
 - **Proximity Chat**: a room, a message, and presence records linked to a discussion pin.
 - **Updates**: notification payloads referencing the pins and users.
 
-Feel free to tweak values or add additional documents—the IDs in this dataset match the examples referenced throughout `frontend-api-cheatsheet.md`, so the UI and API playground will line up with the docs out of the box.
+Feel free to tweak values or add additional documents—the IDs in this dataset match the examples referenced throughout `frontend-api-cheatsheet.md`, so the UI and API playground will line up with the docs out of the box..
