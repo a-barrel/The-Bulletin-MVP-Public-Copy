@@ -24,8 +24,9 @@ function PinDetails() {
     async function loadPin() {
       try {
         const payload = await fetchPinById(pinId);
-        const pinData = DebugPin.fromApi(payload);
-        setPin(pinData);
+        // const pinData = DebugPin.fromApi(payload);
+        //console.log('Fetched pin:', payload);   //for debugging
+        setPin(payload);
       } catch (error) {
         console.error('Failed to fetch pin:', error);
       }
@@ -77,7 +78,7 @@ function PinDetails() {
           src='https://www.svgrepo.com/show/343494/profile-user-account.svg'
           className='profile-icon'
         />
-        <p>Username123</p>
+        <p>{pin ? pin.creator.displayName : 'Loading...'}</p>
       </div>
 
       {/* Post description */}
@@ -161,7 +162,7 @@ function PinDetails() {
           src='https://www.svgrepo.com/show/361088/comment-discussion.svg'
           className='comment-icon'
         />
-        <p>Comments (n)</p>
+        <p>Comments ({pin ? pin.stats.replyCount : "Loading..."})</p>
       </div>
 
       {/* Comments section */}
@@ -191,12 +192,6 @@ function PinDetails() {
           className='create-comment-button'
         />
       </button>
-
-      {/* Debug info, remove later */}
-      <div className='debugging'>
-        <p>Pin Details for Pin {pinId}</p>
-        <Link to="/list">Go to List</Link>
-      </div>
     </div>
   );
 }
