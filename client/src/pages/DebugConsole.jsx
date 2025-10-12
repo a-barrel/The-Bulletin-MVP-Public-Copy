@@ -53,7 +53,8 @@ import {
 } from '../api/mongoDataApi';
 import LeafletMap from '../components/Map';
 import runtimeConfig from '../config/runtime';
-
+``
+//protected: true, //Firebase protection, requires login to see page
 export const pageConfig = {
   id: 'debug-console',
   label: 'DEBUG_CONSOLE',

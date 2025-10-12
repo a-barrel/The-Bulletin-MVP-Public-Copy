@@ -11,6 +11,11 @@ const { ProximityChatRoom, ProximityChatMessage, ProximityChatPresence } = requi
 const Update = require('../models/Update');
 const Location = require('../models/Location');
 
+const formatImagePath = (category, index) => {
+  const padded = String(index).padStart(2, '0');
+  return `/images/${category}/${category}-${padded}.jpg`;
+};
+
 async function seed() {
   const ObjectId = mongoose.Types.ObjectId;
   const ids = {
@@ -78,8 +83,11 @@ async function seed() {
       email: 'alex@example.com',
       bio: 'Outdoor enthusiast and community organizer.',
       avatar: {
-        url: 'https://images.pinpoint.dev/avatars/alex.png',
-        thumbnailUrl: 'https://images.pinpoint.dev/avatars/alex-thumb.png'
+        url: formatImagePath('profile', 1),
+        thumbnailUrl: formatImagePath('profile', 1)
+      },
+      banner: {
+        url: formatImagePath('background', 1)
       },
       preferences: {
         theme: 'dark',
@@ -120,7 +128,11 @@ async function seed() {
       email: 'priya@example.com',
       bio: 'Coffee aficionado. Sharing hidden gems around campus.',
       avatar: {
-        url: 'https://images.pinpoint.dev/avatars/priya.png'
+        url: formatImagePath('profile', 2),
+        thumbnailUrl: formatImagePath('profile', 2)
+      },
+      banner: {
+        url: formatImagePath('background', 2)
       },
       preferences: {
         theme: 'light',
@@ -161,7 +173,11 @@ async function seed() {
       email: 'marcus@example.com',
       bio: 'Graphic designer who loves night markets.',
       avatar: {
-        url: 'https://images.pinpoint.dev/avatars/marcus.png'
+        url: formatImagePath('profile', 3),
+        thumbnailUrl: formatImagePath('profile', 3)
+      },
+      banner: {
+        url: formatImagePath('background', 3)
       },
       preferences: {
         theme: 'system',
@@ -212,10 +228,14 @@ async function seed() {
       proximityRadiusMeters: 1200,
       photos: [
         {
-          url: 'https://images.pinpoint.dev/pins/cleanup-hero.jpg',
-          thumbnailUrl: 'https://images.pinpoint.dev/pins/cleanup-thumb.jpg'
+          url: formatImagePath('event', 1),
+          thumbnailUrl: formatImagePath('event', 1)
         }
       ],
+      coverPhoto: {
+        url: formatImagePath('event', 1),
+        thumbnailUrl: formatImagePath('event', 1)
+      },
       tags: ['community', 'volunteer'],
       relatedPinIds: [ids.pins.latteLounge],
       visibility: 'public',
@@ -252,7 +272,16 @@ async function seed() {
         accuracy: 15
       },
       proximityRadiusMeters: 800,
-      photos: [],
+      photos: [
+        {
+          url: formatImagePath('discussion', 1),
+          thumbnailUrl: formatImagePath('discussion', 1)
+        }
+      ],
+      coverPhoto: {
+        url: formatImagePath('discussion', 1),
+        thumbnailUrl: formatImagePath('discussion', 1)
+      },
       tags: ['coffee', 'study'],
       relatedPinIds: [ids.pins.campusCleanup],
       visibility: 'public',
@@ -281,9 +310,14 @@ async function seed() {
       proximityRadiusMeters: 1500,
       photos: [
         {
-          url: 'https://images.pinpoint.dev/pins/nightmarket.jpg'
+          url: formatImagePath('event', 2),
+          thumbnailUrl: formatImagePath('event', 2)
         }
       ],
+      coverPhoto: {
+        url: formatImagePath('event', 2),
+        thumbnailUrl: formatImagePath('event', 2)
+      },
       tags: ['art', 'food'],
       relatedPinIds: [],
       visibility: 'public',
@@ -315,7 +349,16 @@ async function seed() {
         accuracy: 18
       },
       proximityRadiusMeters: 804,
-      photos: [],
+      photos: [
+        {
+          url: formatImagePath('event', 3),
+          thumbnailUrl: formatImagePath('event', 3)
+        }
+      ],
+      coverPhoto: {
+        url: formatImagePath('event', 3),
+        thumbnailUrl: formatImagePath('event', 3)
+      },
       tags: ['cycling', 'outdoors'],
       relatedPinIds: [ids.pins.campusCleanup],
       visibility: 'public',
@@ -350,7 +393,16 @@ async function seed() {
         accuracy: 25
       },
       proximityRadiusMeters: 1000,
-      photos: [],
+      photos: [
+        {
+          url: formatImagePath('discussion', 2),
+          thumbnailUrl: formatImagePath('discussion', 2)
+        }
+      ],
+      coverPhoto: {
+        url: formatImagePath('discussion', 2),
+        thumbnailUrl: formatImagePath('discussion', 2)
+      },
       tags: ['art', 'community'],
       relatedPinIds: [],
       visibility: 'public',
@@ -378,7 +430,16 @@ async function seed() {
         accuracy: 30
       },
       proximityRadiusMeters: 1609,
-      photos: [],
+      photos: [
+        {
+          url: formatImagePath('event', 4),
+          thumbnailUrl: formatImagePath('event', 4)
+        }
+      ],
+      coverPhoto: {
+        url: formatImagePath('event', 4),
+        thumbnailUrl: formatImagePath('event', 4)
+      },
       tags: ['running', 'fitness'],
       relatedPinIds: [],
       visibility: 'public',
