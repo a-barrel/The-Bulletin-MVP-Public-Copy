@@ -1,5 +1,3 @@
-// App.jsx
-import { Routes, Route, Navigate } from 'react-router-dom';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   Routes,
@@ -24,7 +22,7 @@ import LoginPage from './pages/LoginPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ProtectedRoute from './components/ProtectedRoute';
-import RegistrationPage from './pages/Registration';   // ⟵ add this
+import RegistrationPage from './pages/Registration';
 
 const theme = createTheme({
   palette: {
@@ -264,13 +262,9 @@ function App() {
 
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegistrationPage />} />   {/* ⟵ add this */}
+        <Route path="/register" element={<RegistrationPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/map" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
-        <Route path="/list" element={<ListPage />} />
-        <Route path="/pin/:pinId" element={<PinDetails />} />
-        <Route path="/" element={<Navigate to="/login" replace />} />
 
         {pages.map((page) => (
           <Route
