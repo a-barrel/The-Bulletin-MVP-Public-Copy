@@ -1,0 +1,21 @@
+[
+  {
+    "_id": { "$oid": "68e061721329566a22d474b4" },
+    "roomId": { "$oid": "68e061721329566a22d474b3" },
+    "pinId": { "$oid": "68e061721329566a22d474ab" },
+    "authorId": { "$oid": "68e061721329566a22d474a8" },
+    "replyToMessageId": null,
+    "message": "Welcome! Grab a seat near the back patio; we’ll kick off at 6:05.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [-118.1141, 33.7838],
+      "accuracy": 7
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d474a8" }
+    },
+    "createdAt": { "$date": "2025-10-03T23:20:00.000Z" },
+    "updatedAt": { "$date": "2025-10-03T23:20:00.000Z" }
+  }
+]
