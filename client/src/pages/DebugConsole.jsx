@@ -70,6 +70,18 @@ const EXPERIMENT_ENABLED = runtimeConfig.troyExperimentEnabled && EXPERIMENT_SCR
 const EXPERIMENT_TAB_ID = 'troy-experiment';
 const EXPERIMENT_TITLE = "Troy's Dumb Experiment";
 
+const DEFAULT_AVATAR_PATH = '/images/profile/profile-01.jpg';
+const DEFAULT_BANNER_PATH = '/images/background/background-01.jpg';
+const resolveMediaUrl = (value) => {
+  const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+  const target = value && value.trim().length > 0 ? value.trim() : DEFAULT_AVATAR_PATH;
+  if (/^(?:[a-z]+:)?\/\//i.test(target) || target.startsWith('data:')) {
+    return target;
+  }
+  const normalized = target.startsWith('/') ? target : `/${target}`;
+  return base ? `${base}${normalized}` : normalized;
+};
+
 const INITIAL_COORDINATES = {
   latitude: '33.7838',
   longitude: '-118.1136'
@@ -1740,6 +1752,61 @@ function ProfilesTab() {
             {isFetching ? 'Loading...' : 'Fetch'}
           </Button>
         </Stack>
+        {(fetchedProfile?.avatar?.url || fetchedProfile) && (
+          <Stack
+            spacing={2}
+            alignItems="center"
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              background: (theme) =>
+                `linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.background.paper} 60%, rgba(255,255,255,0.06) 100%)`,
+              border: (theme) => `1px solid ${theme.palette.divider}`
+            }}
+          >
+            <Box
+              component="img"
+              src={resolveMediaUrl(fetchedProfile?.banner?.url ?? DEFAULT_BANNER_PATH)}
+              alt="User banner"
+              sx={{
+                width: '100%',
+                maxWidth: 480,
+                height: 120,
+                borderRadius: 2,
+                objectFit: 'fill',
+                border: (theme) => `1px solid ${theme.palette.divider}`
+              }}
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = resolveMediaUrl(DEFAULT_BANNER_PATH);
+              }}
+            />
+            <Box
+              component="img"
+              src={resolveMediaUrl(fetchedProfile?.avatar?.url ?? '')}
+              alt={fetchedProfile?.displayName ? `${fetchedProfile.displayName} avatar` : 'User avatar'}
+              sx={{
+                width: 96,
+                height: 96,
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: (theme) => `1px solid ${theme.palette.divider}`
+              }}
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = resolveMediaUrl('');
+              }}
+            />
+            <Stack spacing={0.5}>
+              <Typography variant="subtitle1">
+                {fetchedProfile?.displayName ?? 'Unknown user'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {fetchedProfile?.username ? `@${fetchedProfile.username}` : 'No username'}
+              </Typography>
+            </Stack>
+          </Stack>
+        )}
         <JsonPreview data={fetchedProfile} />
       </Paper>
 
