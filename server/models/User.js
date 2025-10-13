@@ -16,6 +16,7 @@ const mediaAssetSchema = new mongoose.Schema(
 
 const userSchema = new mongoose.Schema(
   {
+    firebaseUid: { type: String, unique: true, sparse: true },
     username: { type: String, required: true, unique: true },
     displayName: { type: String, required: true },
     email: String,
