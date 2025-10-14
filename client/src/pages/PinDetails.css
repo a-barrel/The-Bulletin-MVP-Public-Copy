@@ -13,7 +13,7 @@
 
 /* header */
 .header {
-    background-color: #9B5DE5;
+    background-color: #CDAEF2;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -66,7 +66,7 @@
 
 /* event name */
 .name {
-    background-color: #FFFFFF;
+    background-color: #F4F0FC;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -90,6 +90,7 @@
 
 /* post-creator */
 .post-creator {
+    background-color: #F4F0FC;
     display: flex;
     align-items: center;
     width: 100%;
@@ -108,10 +109,14 @@
 
 /* post-description */
 .post-description {
+    background-color: #F4F0FC;
     display: block; 
     text-align: left; 
-    width: calc(100% - 2rem); 
-    margin: 0 1rem;
+    width: 100%; 
+    margin: 0;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-bottom: 1rem;
 }
 
 /* post-images */
@@ -122,12 +127,14 @@
 
 /* post-info */
 .post-info {
+    background-color: #F4F0FC;
     display: flex;
     flex-direction: column; 
     gap: 1rem;
     align-items: flex-start;
-    width: calc(100% - 2rem);
-    margin: 0 1rem;
+    width: 100%;
+    margin: 0;
+    padding: 1rem;
 }
 
 /* post-location */
@@ -147,7 +154,7 @@
 }
 
 .location-text {
-    background-color: #9B5DE5;
+    background-color: #CDAEF2;
     padding: 0.2rem 0.5rem;
     border: 1px solid black;
     border-radius: 8px;
@@ -171,7 +178,7 @@
 }
 
 .occurance-text {
-    background-color: #9B5DE5;
+    background-color: #CDAEF2;
     padding: 0.2rem 0.5rem;
     border: 1px solid black;
     border-radius: 8px;
@@ -195,7 +202,7 @@
 }
 
 .attendance-text {
-    background-color: #9B5DE5;
+    background-color: #CDAEF2;
     padding: 0.2rem 0.5rem;
     border: 1px solid black;
     border-radius: 8px;
@@ -211,9 +218,10 @@
 
 /* attendance button */
 .attendance {
+    background-color: #F4F0FC;
     display: flex;
     justify-content: center;
-    margin: 1rem;
+    padding-bottom: 1rem;
     width: 100%;
 }
 
