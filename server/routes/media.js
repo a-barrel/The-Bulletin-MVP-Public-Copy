@@ -12,12 +12,17 @@ const TARGET_DIMENSION = 512;
 
 const resolveRequestBaseUrl = (req) => {
   const forwardedProtoHeader = req.headers['x-forwarded-proto'];
+  const forwardedHostHeader = req.headers['x-forwarded-host'];
+
   const protocol =
     (forwardedProtoHeader ? forwardedProtoHeader.split(',')[0].trim() : undefined) ||
     req.protocol ||
     'http';
 
-  return `${protocol}://${req.get('host')}`;
+  const host =
+    (forwardedHostHeader ? forwardedHostHeader.split(',')[0].trim() : undefined) || req.get('host');
+
+  return `${protocol}://${host}`;
 };
 
 const upload = multer({
