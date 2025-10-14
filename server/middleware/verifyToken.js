@@ -3,7 +3,29 @@ const runtime = require('../config/runtime');
 const { ensureUserForFirebaseAccount } = require('../services/firebaseUserSync');
 
 module.exports = async function verifyToken(req, res, next) {
-  const token = req.headers.authorization?.split('Bearer ')[1];
+  const authorizationHeader = req.headers.authorization;
+  let token = undefined;
+
+  if (authorizationHeader) {
+    const bearerMatch = authorizationHeader.match(/^Bearer\s+(.+)$/i);
+    if (bearerMatch?.[1]) {
+      token = bearerMatch[1].trim();
+    } else {
+      try {
+        const decoded = decodeURIComponent(authorizationHeader);
+        const decodedMatch = decoded.match(/^Bearer\s+(.+)$/i);
+        if (decodedMatch?.[1]) {
+          token = decodedMatch[1].trim();
+        }
+      } catch (error) {
+        // Ignore decode errors; fall back to raw header value.
+      }
+
+      if (!token) {
+        token = authorizationHeader.trim();
+      }
+    }
+  }
 
   if (runtime.isOffline) {
     if (!token || token === runtime.offlineAuthToken) {
