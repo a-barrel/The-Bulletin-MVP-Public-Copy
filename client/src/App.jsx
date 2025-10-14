@@ -23,6 +23,7 @@ import LoginPage from './pages/LoginPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import { NavOverlayProvider } from './contexts/NavOverlayContext';
 
 const theme = createTheme({
   palette: {
@@ -263,6 +264,15 @@ function App() {
     setNavOverlayOpen(false);
   }, [navigate, previousNavPath]);
 
+  const navOverlayContextValue = useMemo(
+    () => ({
+      handleBack,
+      previousNavPath,
+      previousNavPage
+    }),
+    [handleBack, previousNavPage, previousNavPath]
+  );
+
   const handleNavigate = useCallback(
     (targetPath) => {
       if (typeof targetPath === 'string' && targetPath.length > 0) {
@@ -294,10 +304,11 @@ function App() {
   }, [location.pathname, navPages.length]);
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <NavOverlayProvider value={navOverlayContextValue}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
 
-      <Modal open={navOverlayOpen} onClose={closeOverlay} closeAfterTransition keepMounted>
+        <Modal open={navOverlayOpen} onClose={closeOverlay} closeAfterTransition keepMounted>
         <Fade in={navOverlayOpen}>
           <Box
             sx={{
@@ -377,7 +388,7 @@ function App() {
         </Fade>
       </Modal>
 
-      <Routes>
+        <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -411,8 +422,9 @@ function App() {
             )
           }
         />
-      </Routes>
-    </ThemeProvider>
+        </Routes>
+      </ThemeProvider>
+    </NavOverlayProvider>
   );
 }
 

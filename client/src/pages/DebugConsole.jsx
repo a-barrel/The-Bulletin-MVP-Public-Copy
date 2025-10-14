@@ -278,6 +278,26 @@ function DebugConsolePage() {
   }, [createdPin, nearbyPins, allPins, expiringPins]);
 
   const latestCreatedPinLocation = useMemo(() => extractPinLocation(createdPin), [createdPin]);
+  const createdPinMedia = useMemo(() => {
+    if (!createdPin) {
+      return { coverPhotoUrl: null, photoAssets: [] };
+    }
+
+    const coverPhotoUrl = createdPin.coverPhoto?.url ?? null;
+    const photoAssets = Array.isArray(createdPin.photos)
+      ? createdPin.photos.filter((photo) => {
+          if (!photo || !photo.url) {
+            return false;
+          }
+          if (coverPhotoUrl && photo.url === coverPhotoUrl) {
+            return false;
+          }
+          return true;
+        })
+      : [];
+
+    return { coverPhotoUrl, photoAssets };
+  }, [createdPin]);
   const mapCenterOverride = useMemo(
     () => mapFocusLocation ?? latestCreatedPinLocation ?? searchCenterLocation ?? null,
     [mapFocusLocation, latestCreatedPinLocation, searchCenterLocation]
@@ -977,9 +997,65 @@ const handleSubmit = async (event) => {
             </Stack>
 
             {createdPin && (
-              <Box component="pre" sx={{ mt: 2, backgroundColor: 'grey.900', p: 2, borderRadius: 2, overflowX: 'auto' }}>
-                {JSON.stringify(createdPin, null, 2)}
-              </Box>
+              <Stack spacing={2}>
+                {(createdPinMedia.coverPhotoUrl || createdPinMedia.photoAssets.length > 0) && (
+                  <Stack spacing={1}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Linked media
+                    </Typography>
+                    {createdPinMedia.coverPhotoUrl && (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">
+                          Cover photo
+                        </Typography>
+                        <Box
+                          component="img"
+                          src={resolveMediaUrl(createdPinMedia.coverPhotoUrl)}
+                          alt="Pin cover"
+                          sx={{
+                            mt: 1,
+                            width: '100%',
+                            maxHeight: 240,
+                            objectFit: 'contain',
+                            backgroundColor: 'grey.900',
+                            borderRadius: 1,
+                            border: '1px solid',
+                            borderColor: 'divider'
+                          }}
+                        />
+                      </Box>
+                    )}
+                    {createdPinMedia.photoAssets.length > 0 && (
+                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                        {createdPinMedia.photoAssets.map((photo, index) => {
+                          const displayUrl = photo.thumbnailUrl || photo.url;
+                          const key = photo.url || displayUrl || `photo-${index}`;
+                          return (
+                            <Box
+                              key={key}
+                              component="img"
+                              src={resolveMediaUrl(displayUrl)}
+                              alt={`Pin photo ${index + 1}`}
+                              sx={{
+                                width: 120,
+                                height: 120,
+                                objectFit: 'contain',
+                                backgroundColor: 'grey.900',
+                                borderRadius: 1,
+                                border: '1px solid',
+                                borderColor: 'divider'
+                              }}
+                            />
+                          );
+                        })}
+                      </Box>
+                    )}
+                  </Stack>
+                )}
+                <Box component="pre" sx={JSON_PREVIEW_SX}>
+                  {JSON.stringify(createdPin, null, 2)}
+                </Box>
+              </Stack>
             )}
           </Paper>
 
