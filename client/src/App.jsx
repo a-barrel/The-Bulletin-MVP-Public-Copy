@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import {
   Routes,
   Route,
@@ -18,10 +18,12 @@ import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import ArticleIcon from '@mui/icons-material/Article';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LoginPage from './pages/LoginPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import { NavOverlayProvider } from './contexts/NavOverlayContext';
 import RegistrationPage from './pages/Registration';
 
 const theme = createTheme({
@@ -116,6 +118,8 @@ const loadPages = () =>
 const wrapWithProtection = (page, element) =>
   page.isProtected ? <ProtectedRoute>{element}</ProtectedRoute> : element;
 
+const MAX_HISTORY_ENTRIES = 20;
+
 function App() {
   const pages = useMemo(loadPages, []);
   const location = useLocation();
@@ -126,6 +130,28 @@ function App() {
     () => pages.filter((page) => page.showInNav),
     [pages]
   );
+
+  const navPathSet = useMemo(() => {
+    const set = new Set();
+    navPages.forEach((page) => {
+      if (page.path) {
+        set.add(page.path);
+      }
+      if (Array.isArray(page.aliases)) {
+        page.aliases.forEach((alias) => {
+          if (alias) {
+            set.add(alias);
+          }
+        });
+      }
+    });
+    return set;
+  }, [navPages]);
+
+  const [navHistory, setNavHistory] = useState(() =>
+    navPathSet.has(location.pathname) ? [location.pathname] : []
+  );
+  const backTargetRef = useRef(null);
 
   const defaultNavPage = useMemo(() => {
     return (
@@ -153,9 +179,100 @@ function App() {
     return matched?.path ?? null;
   }, [location.pathname, navPages]);
 
+  // Track overlay navigation history so we can surface a back action.
+  useEffect(() => {
+    if (!navPathSet.has(location.pathname)) {
+      backTargetRef.current = null;
+      return;
+    }
+
+    setNavHistory((prev) => {
+      const pendingBackTarget = backTargetRef.current;
+      if (pendingBackTarget) {
+        backTargetRef.current = null;
+        const targetIndex = prev.lastIndexOf(pendingBackTarget);
+        const baseHistory = targetIndex !== -1 ? prev.slice(0, targetIndex + 1) : prev;
+        if (!baseHistory.length) {
+          return [location.pathname];
+        }
+        if (baseHistory[baseHistory.length - 1] === location.pathname) {
+          return baseHistory;
+        }
+        const appended = [...baseHistory, location.pathname];
+        return appended.length > MAX_HISTORY_ENTRIES
+          ? appended.slice(appended.length - MAX_HISTORY_ENTRIES)
+          : appended;
+      }
+
+      if (!prev.length) {
+        return [location.pathname];
+      }
+
+      const last = prev[prev.length - 1];
+      if (last === location.pathname) {
+        return prev;
+      }
+
+      const next = [...prev, location.pathname];
+      return next.length > MAX_HISTORY_ENTRIES
+        ? next.slice(next.length - MAX_HISTORY_ENTRIES)
+        : next;
+    });
+  }, [location.pathname, navPathSet]);
+
+  const previousNavPath = useMemo(() => {
+    if (navHistory.length < 2) {
+      return null;
+    }
+
+    for (let index = navHistory.length - 2; index >= 0; index -= 1) {
+      const candidate = navHistory[index];
+      if (!candidate || candidate === location.pathname) {
+        continue;
+      }
+      if (navPathSet.has(candidate)) {
+        return candidate;
+      }
+    }
+
+    return null;
+  }, [navHistory, location.pathname, navPathSet]);
+
+  const previousNavPage = useMemo(() => {
+    if (!previousNavPath) {
+      return null;
+    }
+
+    return (
+      navPages.find(
+        (page) =>
+          page.path === previousNavPath ||
+          (Array.isArray(page.aliases) && page.aliases.includes(previousNavPath))
+      ) ?? null
+    );
+  }, [navPages, previousNavPath]);
+
   const closeOverlay = useCallback(() => {
     setNavOverlayOpen(false);
   }, []);
+
+  const handleBack = useCallback(() => {
+    if (!previousNavPath) {
+      return;
+    }
+    backTargetRef.current = previousNavPath;
+    navigate(previousNavPath);
+    setNavOverlayOpen(false);
+  }, [navigate, previousNavPath]);
+
+  const navOverlayContextValue = useMemo(
+    () => ({
+      handleBack,
+      previousNavPath,
+      previousNavPage
+    }),
+    [handleBack, previousNavPage, previousNavPath]
+  );
 
   const handleNavigate = useCallback(
     (targetPath) => {
@@ -188,10 +305,11 @@ function App() {
   }, [location.pathname, navPages.length]);
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <NavOverlayProvider value={navOverlayContextValue}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
 
-      <Modal open={navOverlayOpen} onClose={closeOverlay} closeAfterTransition keepMounted>
+        <Modal open={navOverlayOpen} onClose={closeOverlay} closeAfterTransition keepMounted>
         <Fade in={navOverlayOpen}>
           <Box
             sx={{
@@ -232,6 +350,17 @@ function App() {
                 <Divider />
                 {navPages.length > 0 ? (
                   <Stack spacing={1}>
+                    {previousNavPath && (
+                      <Button
+                        onClick={handleBack}
+                        variant="contained"
+                        color="secondary"
+                        startIcon={<ArrowBackIcon fontSize="small" />}
+                        sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+                      >
+                        {previousNavPage ? `Back to ${previousNavPage.label}` : 'Back'}
+                      </Button>
+                    )}
                     {navPages.map((page) => {
                       const IconComponent = page.icon ?? ArticleIcon;
                       const isActive = page.path === currentNavPath;
@@ -260,7 +389,7 @@ function App() {
         </Fade>
       </Modal>
 
-      <Routes>
+        <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegistrationPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -295,8 +424,9 @@ function App() {
             )
           }
         />
-      </Routes>
-    </ThemeProvider>
+        </Routes>
+      </ThemeProvider>
+    </NavOverlayProvider>
   );
 }
 

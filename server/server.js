@@ -35,8 +35,10 @@ if (runtime.isOffline) {
 }
 
 const Location = require('./models/Location');
+const { syncAllFirebaseUsers } = require('./services/firebaseUserSync');
 
 const app = express();
+app.enable('trust proxy');
 
 // Middleware
 app.use(cors());
@@ -60,6 +62,26 @@ mongoose
       console.log('Location indexes synced');
     } catch (error) {
       console.error('Failed to sync location indexes:', error);
+    }
+
+    try {
+      const summary = await syncAllFirebaseUsers({
+        fallbackExportPath: runtime.isOffline
+          ? path.join(__dirname, '..', 'emulator-data', 'auth_export', 'accounts.json')
+          : undefined
+      });
+      console.log(
+        `Firebase users synced (source: ${summary.source}, created: ${summary.created}, linked: ${summary.linked}, updated: ${summary.updated}, unchanged: ${summary.unchanged})`
+      );
+
+      if (summary.errors.length > 0) {
+        console.warn('Some Firebase users could not be synced:', summary.errors);
+      }
+      if (summary.warnings.length > 0) {
+        console.warn('Firebase user sync warnings:', summary.warnings);
+      }
+    } catch (error) {
+      console.error('Failed to synchronize Firebase users with MongoDB:', error);
     }
   })
   .catch((err) => console.error('MongoDB connection error:', err));
