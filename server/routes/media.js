@@ -10,6 +10,16 @@ const router = express.Router();
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB upper bound for debug uploads
 const TARGET_DIMENSION = 512;
 
+const resolveRequestBaseUrl = (req) => {
+  const forwardedProtoHeader = req.headers['x-forwarded-proto'];
+  const protocol =
+    (forwardedProtoHeader ? forwardedProtoHeader.split(',')[0].trim() : undefined) ||
+    req.protocol ||
+    'http';
+
+  return `${protocol}://${req.get('host')}`;
+};
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -67,8 +77,7 @@ router.post('/images', processSingleImage, async (req, res) => {
 
     const { size } = await fs.promises.stat(destinationPath);
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const publicUrl = `${baseUrl}/images/${fileName}`;
+    const publicUrl = `${resolveRequestBaseUrl(req)}/images/${fileName}`;
 
     res.status(201).json({
       url: publicUrl,

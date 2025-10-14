@@ -38,6 +38,7 @@ const Location = require('./models/Location');
 const { syncAllFirebaseUsers } = require('./services/firebaseUserSync');
 
 const app = express();
+app.enable('trust proxy');
 
 // Middleware
 app.use(cors());
