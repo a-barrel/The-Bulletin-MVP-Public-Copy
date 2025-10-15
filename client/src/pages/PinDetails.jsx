@@ -35,164 +35,273 @@ function PinDetails() {
   }, [pinId]);
 
   return (
-    <div className='pin-details'>
-      {/* Header */}
-      <header className='header'>
-        <Link to="/list" className="back-button">
-          <img
-            src='https://www.svgrepo.com/show/326886/arrow-back-sharp.svg'
-            className='back-arrow'
-          />
-        </Link>
+    <div>
+      {!pin ? (
+        <p>Loading...</p>
+      ) : pin.type === 'event' ? (
+        <div className='event-container'>
+          <div className='pin-details'>
+            {/* Header */}
+            <header className='header'>
+              <Link to="/list" className="back-button">
+                <img
+                  src='https://www.svgrepo.com/show/326886/arrow-back-sharp.svg'
+                  className='back-arrow'
+                />
+              </Link>
 
-        <h2>{pin ? pin.type.charAt(0).toUpperCase() + pin.type.slice(1) : 'Loading...'}</h2>
+              <h2>{pin ? pin.type.charAt(0).toUpperCase() + pin.type.slice(1) : 'Loading...'}</h2>
 
-        <button
-          className='bookmark-button'
-          onClick={() => setBookmarked(!bookmarked)}
-        >
-          <img
-            src={
-              bookmarked
-                ? 'https://www.svgrepo.com/show/347684/bookmark-fill.svg' // bookmarked
-                : 'https://www.svgrepo.com/show/357397/bookmark-full.svg' // not bookmarked
-            }
-            className='bookmark'
-          />
-        </button>
-      </header>
+              <button
+                className='bookmark-button'
+                onClick={() => setBookmarked(!bookmarked)}
+              >
+                <img
+                  src={
+                    bookmarked
+                      ? 'https://www.svgrepo.com/show/347684/bookmark-fill.svg' // bookmarked
+                      : 'https://www.svgrepo.com/show/357397/bookmark-full.svg' // not bookmarked
+                  }
+                  className='bookmark'
+                />
+              </button>
+            </header>
 
-      {/* Event/Discussion Name */}
-      <div className='name'>
-        <h2>{pin ? pin.title : 'Loading...'}</h2>
-      </div>
+            {/* Event Name */}
+            <div className='name'>
+              <h2>{pin ? pin.title : 'Loading...'}</h2>
+            </div>
 
-      {/* Map section */}
-      <div className='map-section'>
-        do map here
-      </div>
+            {/* Map section */}
+            <div className='map-section'>
+              do map here
+            </div>
 
-      {/* Post creator */}
-      <div className='post-creator'>
-        <img
-          src='https://www.svgrepo.com/show/343494/profile-user-account.svg'
-          className='profile-icon'
-        />
-        <p>{pin ? pin.creator.displayName : 'Loading...'}</p>
-      </div>
+            {/* Post creator */}
+            <div className='post-creator'>
+              <img
+                src='https://www.svgrepo.com/show/343494/profile-user-account.svg'
+                className='profile-icon'
+              />
+              <p>{pin ? pin.creator.displayName : 'Loading...'}</p>
+            </div>
 
-      {/* Post description */}
-      <div className='post-description'>{pin ? pin.description : "Loading..."}</div>
+            {/* Post description */}
+            <div className='post-description'>{pin ? pin.description : "Loading..."}</div>
 
-      {/* Post images */}
-      <div className='post-images'>
-        do post images here
-      </div>
+            {/* Post images */}
+            <div className='post-images'>
+              do post images here
+            </div>
 
-      {/* Post info */}
-      <div className='post-info'>
-        <div className='post-location'>
-          <img
-            src='https://www.svgrepo.com/show/345061/pin.svg'
-            className='pin-icon'
-          />
-          <span className='location-text'>
-            Location:<br />
-            {pin ? pin.address.components.line1 + ', ' + pin.address.components.city + ', ' + pin.address.components.state : 'Loading...'}
-          </span>
-        </div>
+            {/* Post info */}
+            <div className='post-info'>
+              <div className='post-location'>
+                <img
+                  src='https://www.svgrepo.com/show/345061/pin.svg'
+                  className='pin-icon'
+                />
+                <span className='location-text'>
+                  Location:<br />
+                  {pin ? pin.address.components.line1 + ', ' + pin.address.components.city + ', ' + pin.address.components.state : 'Loading...'}
+                </span>
+              </div>
 
-        <div className='post-occurance'>
-          <img
-            src='https://www.svgrepo.com/show/533378/calendar.svg'
-            className='calendar-icon'
-          />
-          <span className='occurance-text'>
-            Occurs:<br />
-            {pin ? (
-              `${new Date(pin.startDate).toLocaleString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-                hour: "numeric",
-                minute: "numeric",
-                hour12: true
-              })} - ${new Date(pin.endDate).toLocaleString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-                hour: "numeric",
-                minute: "numeric",
-                hour12: true
-              })}`
-            ) : (
-              "Loading..."
-            )}
-          </span>
-        </div>
+              <div className='post-occurance'>
+                <img
+                  src='https://www.svgrepo.com/show/533378/calendar.svg'
+                  className='calendar-icon'
+                />
+                <span className='occurance-text'>
+                  Occurs:<br />
+                  {pin ? (
+                    `${new Date(pin.startDate).toLocaleString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "numeric",
+                      hour12: true
+                    })} - ${new Date(pin.endDate).toLocaleString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "numeric",
+                      hour12: true
+                    })}`
+                  ) : (
+                    "Loading..."
+                  )}
+                </span>
+              </div>
 
-        <div className='post-attendance'>
-          <img
-            src='https://www.svgrepo.com/show/511192/user-check.svg'
-            className='attendance-icon'
-          />
-          <span className='attendance-text'>
-            {pin ? `${pin.participantCount ?? 0} Attending` : "Loading..."}<br />
-            <img
-              src='https://www.svgrepo.com/show/343494/profile-user-account.svg'
-              className='attending-icons'
-            />
-          </span>
-        </div>
-      </div>
+              <div className='post-attendance'>
+                <img
+                  src='https://www.svgrepo.com/show/511192/user-check.svg'
+                  className='attendance-icon'
+                />
+                <span className='attendance-text'>
+                  {pin ? `${pin.participantCount ?? 0} Attending` : "Loading..."}<br />
+                  <img
+                    src='https://www.svgrepo.com/show/343494/profile-user-account.svg'
+                    className='attending-icons'
+                  />
+                </span>
+              </div>
+            </div>
 
-      {/* Attend button */}
-      <div className='attendance'>
-        <button
-          className={`attend-button ${attending ? 'attending' : ''}`}
-          onClick={() => setAttending(!attending)}
-        >
-          {attending ? 'Attending!' : 'Attend'}
-        </button>
-      </div>
+            {/* Attend button */}
+            <div className='attendance'>
+              <button
+                className={`attend-button ${attending ? 'attending' : ''}`}
+                onClick={() => setAttending(!attending)}
+              >
+                {attending ? 'Attending!' : 'Attend'}
+              </button>
+            </div>
 
-      {/* Comments header */}
-      <div className='comments-header'>
-        <img
-          src='https://www.svgrepo.com/show/361088/comment-discussion.svg'
-          className='comment-icon'
-        />
-        <p>Comments ({pin ? pin.stats.replyCount : "Loading..."})</p>
-      </div>
+            {/* Comments header */}
+            <div className='comments-header'>
+              <img
+                src='https://www.svgrepo.com/show/361088/comment-discussion.svg'
+                className='comment-icon'
+              />
+              <p>Comments ({pin ? pin.stats.replyCount : "Loading..."})</p>
+            </div>
 
-      {/* Comments section */}
-      <div className='comments-section'>
-        <div className='comment'>
-          <div className='comment-header'>
-            <img
-              src='https://www.svgrepo.com/show/343494/profile-user-account.svg'
-              className='commenter-pfp'
-            />
-            <span className='commenter-info'>
-              Username987<br />
-              Oct 11, 1:11 PM
-            </span>
+            {/* Comments section */}
+            <div className='comments-section'>
+              <div className='comment'>
+                <div className='comment-header'>
+                  <img
+                    src='https://www.svgrepo.com/show/343494/profile-user-account.svg'
+                    className='commenter-pfp'
+                  />
+                  <span className='commenter-info'>
+                    Username987<br />
+                    Oct 11, 1:11 PM
+                  </span>
+                </div>
+
+                <div className='comment-body'>
+                  <p>This is a comment</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Create comment button */}
+            <button className='create-comment'>
+              <img
+                src='https://www.svgrepo.com/show/489238/add-comment.svg'
+                className='create-comment-button'
+              />
+            </button>
           </div>
+        </div>  
+      ) : (
+        <div className='discussion-container'>
+          <div className='pin-details'>
+            {/* Header */}
+            <header className='header'>
+              <Link to="/list" className="back-button">
+                <img
+                  src='https://www.svgrepo.com/show/326886/arrow-back-sharp.svg'
+                  className='back-arrow'
+                />
+              </Link>
 
-          <div className='comment-body'>
-            <p>This is a comment</p>
-          </div>
+              <h2>{pin ? pin.type.charAt(0).toUpperCase() + pin.type.slice(1) : 'Loading...'}</h2>
+
+              <button
+                className='bookmark-button'
+                onClick={() => setBookmarked(!bookmarked)}
+              >
+                <img
+                  src={
+                    bookmarked
+                      ? 'https://www.svgrepo.com/show/347684/bookmark-fill.svg' // bookmarked
+                      : 'https://www.svgrepo.com/show/357397/bookmark-full.svg' // not bookmarked
+                  }
+                  className='bookmark'
+                />
+              </button>
+            </header>
+
+            {/* Discussion Name */}
+            <div className='name'>
+              <h2>{pin ? pin.title : 'Loading...'}</h2>
+            </div>
+
+            {/* Map section */}
+            <div className='map-section'>
+              do map here
+            </div>
+
+            {/* Post creator */}
+            <div className='post-creator'>
+              <img
+                src='https://www.svgrepo.com/show/343494/profile-user-account.svg'
+                className='profile-icon'
+              />
+              <p>{pin ? pin.creator.displayName : 'Loading...'}</p>
+            </div>
+
+            {/* Post description */}
+            <div className='post-description'>{pin ? pin.description : "Loading..."}</div>
+
+            {/* Post images */}
+            <div className='post-images'>
+              do post images here
+            </div>
+            
+            {/* Post info */}
+            <div className='post-info'>
+              <div className='approx-post-location'>
+                <img
+                  src='https://www.svgrepo.com/show/345061/pin.svg'
+                  className='pin-icon'
+                />
+                <span className='approx-location-text'>
+                  Approximate Location:<br />
+                  {pin ? pin.approximateAddress.city + ', ' + pin.approximateAddress.state : 'Loading...'}
+                </span>
+              </div>
+
+              <div className='post-expiration'>
+                <img
+                  src='https://www.svgrepo.com/show/533378/calendar.svg'
+                  className='calendar-icon'
+                />
+                <span className='expiration-text'>
+                  Expires:<br />
+                  {pin ? (
+                    `${new Date(pin.expiresAt).toLocaleString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "numeric",
+                      hour12: true
+                    })}`
+                  ) : (
+                    "Loading..."
+                  )}
+                </span>
+              </div>
+            </div>
+
+            {/* do comments here later */}
+          </div> 
         </div>
-      </div>
-
-      {/* Create comment button */}
-      <button className='create-comment'>
-        <img
-          src='https://www.svgrepo.com/show/489238/add-comment.svg'
-          className='create-comment-button'
-        />
-      </button>
+      )}
     </div>
+
+
+
+
+
+
   );
 }
 
