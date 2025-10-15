@@ -23,6 +23,7 @@ export const pageConfig = {
 
 const DEMO_USER_ID = 'demo-user';
 const DEFAULT_MAX_DISTANCE_METERS = 16093; // ~10 miles
+const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
 
 function MapPage() {
   const [userLocation, setUserLocation] = useState(null);
@@ -40,7 +41,12 @@ function MapPage() {
         },
         (err) => {
           console.error('Error getting location:', err);
-          setError('We could not access your location. Enable location permissions to continue.');
+          if (err?.code === 1) {
+            setUserLocation(FALLBACK_LOCATION);
+            setError('Using default campus location. Enable location permissions for precise results.');
+          } else {
+            setError('We could not access your location. Enable location permissions to continue.');
+          }
         }
       );
     } else {

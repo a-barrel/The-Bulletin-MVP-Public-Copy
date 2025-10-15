@@ -1,19 +1,25 @@
 [
   {
-    "_id": { "$oid": "68e061721329566a22d474a7" },
+    "_id": {
+      "$oid": "68e061721329566a22d474a7"
+    },
     "username": "alexrivera",
     "displayName": "Alex Rivera",
     "email": "alex@pinpoint.dev",
     "bio": "CSULB senior focused on coastal conservation and community building.",
     "avatar": {
-      "url": "https://images.pinpoint.dev/avatars/alex-rivera.png",
-      "thumbnailUrl": "https://images.pinpoint.dev/avatars/alex-rivera-thumb.png",
-      "width": 512,
-      "height": 512,
-      "mimeType": "image/png",
-      "uploadedAt": { "$date": "2025-08-01T18:12:00.000Z" }
+      "url": "/images/profile/profile-01.jpg",
+      "thumbnailUrl": "/images/profile/profile-01.jpg",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2025-08-01T18:12:00.000Z"
+      }
     },
-    "roles": ["user"],
+    "roles": [
+      "user"
+    ],
     "accountStatus": "active",
     "preferences": {
       "theme": "dark",
@@ -34,62 +40,117 @@
     },
     "relationships": {
       "followerIds": [
-        { "$oid": "68e061721329566a22d474a8" },
-        { "$oid": "68e061721329566a22d474a9" }
+        {
+          "$oid": "68e061721329566a22d474a8"
+        },
+        {
+          "$oid": "68e061721329566a22d474a9"
+        },
+        {
+          "$oid": "68e061721329566a22d47510"
+        },
+        {
+          "$oid": "68e061721329566a22d47511"
+        }
       ],
       "followingIds": [
-        { "$oid": "68e061721329566a22d474a8" }
+        {
+          "$oid": "68e061721329566a22d474a8"
+        }
       ],
       "friendIds": [
-        { "$oid": "68e061721329566a22d474a8" }
+        {
+          "$oid": "68e061721329566a22d474a8"
+        },
+        {
+          "$oid": "68e061721329566a22d47510"
+        }
       ],
       "mutedUserIds": [],
       "blockedUserIds": []
     },
     "locationSharingEnabled": true,
-    "primaryLocationId": { "$oid": "68e061721329566a22d474c1" },
+    "primaryLocationId": {
+      "$oid": "68e061721329566a22d474c1"
+    },
     "pinnedPinIds": [
-      { "$oid": "68e061721329566a22d474aa" },
-      { "$oid": "68e061721329566a22d474c5" }
+      {
+        "$oid": "68e061721329566a22d474aa"
+      },
+      {
+        "$oid": "68e061721329566a22d474c5"
+      },
+      {
+        "$oid": "68e061721329566a22d47532"
+      }
     ],
     "ownedPinIds": [
-      { "$oid": "68e061721329566a22d474aa" },
-      { "$oid": "68e061721329566a22d474c5" }
+      {
+        "$oid": "68e061721329566a22d474aa"
+      },
+      {
+        "$oid": "68e061721329566a22d474c5"
+      },
+      {
+        "$oid": "68e061721329566a22d47532"
+      }
     ],
     "bookmarkCollectionIds": [
-      { "$oid": "68e061721329566a22d474ad" }
+      {
+        "$oid": "68e061721329566a22d474ad"
+      }
     ],
     "proximityChatRoomIds": [
-      { "$oid": "68e061721329566a22d474b3" }
+      {
+        "$oid": "68e061721329566a22d474b3"
+      },
+      {
+        "$oid": "68e061721329566a22d47570"
+      }
     ],
     "recentLocationIds": [
-      { "$oid": "68e061721329566a22d474c1" }
+      {
+        "$oid": "68e061721329566a22d474c1"
+      }
     ],
-    "createdAt": { "$date": "2025-08-15T19:21:10.000Z" },
-    "updatedAt": { "$date": "2025-10-03T23:20:00.000Z" }
+    "createdAt": {
+      "$date": "2025-08-15T19:21:10.000Z"
+    },
+    "updatedAt": {
+      "$date": "2025-10-03T23:20:00.000Z"
+    }
   },
   {
-    "_id": { "$oid": "68e061721329566a22d474a8" },
+    "_id": {
+      "$oid": "68e061721329566a22d474a8"
+    },
     "username": "priyadesai",
     "displayName": "Priya Desai",
     "email": "priya@pinpoint.dev",
     "bio": "Urban design enthusiast organizing weekly study circles.",
     "avatar": {
-      "url": "https://images.pinpoint.dev/avatars/priya-desai.png",
-      "thumbnailUrl": "https://images.pinpoint.dev/avatars/priya-desai-thumb.png",
-      "width": 512,
-      "height": 512,
-      "mimeType": "image/png",
-      "uploadedAt": { "$date": "2025-08-01T18:12:30.000Z" }
+      "url": "/images/profile/profile-02.jpg",
+      "thumbnailUrl": "/images/profile/profile-02.jpg",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2025-08-01T18:12:30.000Z"
+      }
     },
     "banner": {
-      "url": "https://images.pinpoint.dev/banners/study-circle.png",
-      "width": 1200,
-      "height": 400,
-      "mimeType": "image/png",
-      "uploadedAt": { "$date": "2025-09-01T18:12:00.000Z" }
+      "url": "/images/background/background-02.jpg",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2025-09-01T18:12:00.000Z"
+      },
+      "thumbnailUrl": "/images/background/background-02.jpg"
     },
-    "roles": ["user"],
+    "roles": [
+      "user"
+    ],
     "accountStatus": "active",
     "preferences": {
       "theme": "light",
@@ -110,54 +171,103 @@
     },
     "relationships": {
       "followerIds": [
-        { "$oid": "68e061721329566a22d474a7" },
-        { "$oid": "68e061721329566a22d474a9" }
+        {
+          "$oid": "68e061721329566a22d474a7"
+        },
+        {
+          "$oid": "68e061721329566a22d474a9"
+        },
+        {
+          "$oid": "68e061721329566a22d47510"
+        }
       ],
       "followingIds": [
-        { "$oid": "68e061721329566a22d474a7" },
-        { "$oid": "68e061721329566a22d474a9" }
+        {
+          "$oid": "68e061721329566a22d474a7"
+        },
+        {
+          "$oid": "68e061721329566a22d474a9"
+        },
+        {
+          "$oid": "68e061721329566a22d47510"
+        }
       ],
       "friendIds": [
-        { "$oid": "68e061721329566a22d474a7" }
+        {
+          "$oid": "68e061721329566a22d474a7"
+        },
+        {
+          "$oid": "68e061721329566a22d47510"
+        }
       ],
       "mutedUserIds": [],
       "blockedUserIds": []
     },
     "locationSharingEnabled": true,
-    "primaryLocationId": { "$oid": "68e061721329566a22d474c2" },
+    "primaryLocationId": {
+      "$oid": "68e061721329566a22d474c2"
+    },
     "pinnedPinIds": [
-      { "$oid": "68e061721329566a22d474ab" },
-      { "$oid": "68e061721329566a22d474c6" }
+      {
+        "$oid": "68e061721329566a22d474ab"
+      },
+      {
+        "$oid": "68e061721329566a22d474c6"
+      },
+      {
+        "$oid": "68e061721329566a22d47530"
+      }
     ],
     "ownedPinIds": [
-      { "$oid": "68e061721329566a22d474ab" },
-      { "$oid": "68e061721329566a22d474c6" }
+      {
+        "$oid": "68e061721329566a22d474ab"
+      },
+      {
+        "$oid": "68e061721329566a22d474c6"
+      }
     ],
     "bookmarkCollectionIds": [],
     "proximityChatRoomIds": [
-      { "$oid": "68e061721329566a22d474b3" }
+      {
+        "$oid": "68e061721329566a22d474b3"
+      },
+      {
+        "$oid": "68e061721329566a22d47570"
+      }
     ],
     "recentLocationIds": [
-      { "$oid": "68e061721329566a22d474c2" }
+      {
+        "$oid": "68e061721329566a22d474c2"
+      }
     ],
-    "createdAt": { "$date": "2025-08-16T10:05:00.000Z" },
-    "updatedAt": { "$date": "2025-10-03T23:40:00.000Z" }
+    "createdAt": {
+      "$date": "2025-08-16T10:05:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2025-10-03T23:40:00.000Z"
+    }
   },
   {
-    "_id": { "$oid": "68e061721329566a22d474a9" },
+    "_id": {
+      "$oid": "68e061721329566a22d474a9"
+    },
     "username": "marcussoto",
     "displayName": "Marcus Soto",
     "email": "marcus@pinpoint.dev",
     "bio": "Bringing together food trucks and night markets around Long Beach.",
     "avatar": {
-      "url": "https://images.pinpoint.dev/avatars/marcus-soto.png",
-      "thumbnailUrl": "https://images.pinpoint.dev/avatars/marcus-soto-thumb.png",
-      "width": 512,
-      "height": 512,
-      "mimeType": "image/png",
-      "uploadedAt": { "$date": "2025-08-01T18:13:00.000Z" }
+      "url": "/images/profile/profile-03.jpg",
+      "thumbnailUrl": "/images/profile/profile-03.jpg",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2025-08-01T18:13:00.000Z"
+      }
     },
-    "roles": ["user"],
+    "roles": [
+      "user"
+    ],
     "accountStatus": "active",
     "preferences": {
       "theme": "system",
@@ -178,36 +288,293 @@
     },
     "relationships": {
       "followerIds": [
-        { "$oid": "68e061721329566a22d474a7" }
+        {
+          "$oid": "68e061721329566a22d474a7"
+        }
       ],
       "followingIds": [
-        { "$oid": "68e061721329566a22d474a7" },
-        { "$oid": "68e061721329566a22d474a8" }
+        {
+          "$oid": "68e061721329566a22d474a7"
+        },
+        {
+          "$oid": "68e061721329566a22d474a8"
+        }
       ],
       "friendIds": [
-        { "$oid": "68e061721329566a22d474a8" }
+        {
+          "$oid": "68e061721329566a22d474a8"
+        }
       ],
       "mutedUserIds": [],
       "blockedUserIds": []
     },
     "locationSharingEnabled": false,
-    "primaryLocationId": { "$oid": "68e061721329566a22d474c3" },
+    "primaryLocationId": {
+      "$oid": "68e061721329566a22d474c3"
+    },
     "pinnedPinIds": [
-      { "$oid": "68e061721329566a22d474ac" },
-      { "$oid": "68e061721329566a22d474c7" }
+      {
+        "$oid": "68e061721329566a22d474ac"
+      },
+      {
+        "$oid": "68e061721329566a22d474c7"
+      }
     ],
     "ownedPinIds": [
-      { "$oid": "68e061721329566a22d474ac" },
-      { "$oid": "68e061721329566a22d474c7" }
+      {
+        "$oid": "68e061721329566a22d474ac"
+      },
+      {
+        "$oid": "68e061721329566a22d474c7"
+      }
     ],
     "bookmarkCollectionIds": [],
     "proximityChatRoomIds": [
-      { "$oid": "68e061721329566a22d474b3" }
+      {
+        "$oid": "68e061721329566a22d474b3"
+      }
     ],
     "recentLocationIds": [
-      { "$oid": "68e061721329566a22d474c3" }
+      {
+        "$oid": "68e061721329566a22d474c3"
+      }
     ],
-    "createdAt": { "$date": "2025-08-17T14:32:00.000Z" },
-    "updatedAt": { "$date": "2025-10-03T23:45:00.000Z" }
+    "createdAt": {
+      "$date": "2025-08-17T14:32:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2025-10-03T23:45:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47510"
+    },
+    "username": "sofianguyen",
+    "displayName": "Sofia Nguyen",
+    "email": "sofia@pinpoint.dev",
+    "bio": "Engineering student mapping zero-waste resources around campus.",
+    "avatar": {
+      "url": "/images/profile/profile-04.jpg",
+      "thumbnailUrl": "/images/profile/profile-04.jpg",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2025-09-04T16:18:00.000Z"
+      }
+    },
+    "banner": {
+      "url": "/images/background/background-04.jpg",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2025-09-20T03:45:00.000Z"
+      },
+      "thumbnailUrl": "/images/background/background-04.jpg"
+    },
+    "roles": [
+      "user"
+    ],
+    "accountStatus": "active",
+    "preferences": {
+      "theme": "dark",
+      "notifications": {
+        "proximity": true,
+        "updates": true,
+        "marketing": false
+      },
+      "radiusPreferenceMeters": 10000
+    },
+    "stats": {
+      "eventsHosted": 1,
+      "eventsAttended": 5,
+      "posts": 9,
+      "bookmarks": 4,
+      "followers": 17,
+      "following": 12
+    },
+    "relationships": {
+      "followerIds": [
+        {
+          "$oid": "68e061721329566a22d474a7"
+        },
+        {
+          "$oid": "68e061721329566a22d47511"
+        }
+      ],
+      "followingIds": [
+        {
+          "$oid": "68e061721329566a22d474a7"
+        },
+        {
+          "$oid": "68e061721329566a22d474a8"
+        },
+        {
+          "$oid": "68e061721329566a22d47511"
+        }
+      ],
+      "friendIds": [
+        {
+          "$oid": "68e061721329566a22d474a8"
+        },
+        {
+          "$oid": "68e061721329566a22d47511"
+        }
+      ],
+      "mutedUserIds": [],
+      "blockedUserIds": []
+    },
+    "locationSharingEnabled": true,
+    "primaryLocationId": {
+      "$oid": "68e061721329566a22d47520"
+    },
+    "pinnedPinIds": [
+      {
+        "$oid": "68e061721329566a22d47530"
+      },
+      {
+        "$oid": "68e061721329566a22d47532"
+      }
+    ],
+    "ownedPinIds": [
+      {
+        "$oid": "68e061721329566a22d47530"
+      }
+    ],
+    "bookmarkCollectionIds": [
+      {
+        "$oid": "68e061721329566a22d47540"
+      }
+    ],
+    "proximityChatRoomIds": [
+      {
+        "$oid": "68e061721329566a22d47570"
+      }
+    ],
+    "recentLocationIds": [
+      {
+        "$oid": "68e061721329566a22d47520"
+      }
+    ],
+    "createdAt": {
+      "$date": "2025-09-05T18:45:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2025-10-09T19:10:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47511"
+    },
+    "username": "jamaldouglas",
+    "displayName": "Jamal Douglas",
+    "email": "jamal@pinpoint.dev",
+    "bio": "Public health advocate rallying students to stay active every weekend.",
+    "avatar": {
+      "url": "/images/profile/profile-05.jpg",
+      "thumbnailUrl": "/images/profile/profile-05.jpg",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2025-09-06T19:05:00.000Z"
+      }
+    },
+    "roles": [
+      "user"
+    ],
+    "accountStatus": "active",
+    "preferences": {
+      "theme": "system",
+      "notifications": {
+        "proximity": true,
+        "updates": true,
+        "marketing": true
+      },
+      "radiusPreferenceMeters": 16093
+    },
+    "stats": {
+      "eventsHosted": 2,
+      "eventsAttended": 7,
+      "posts": 13,
+      "bookmarks": 5,
+      "followers": 22,
+      "following": 19
+    },
+    "relationships": {
+      "followerIds": [
+        {
+          "$oid": "68e061721329566a22d474a7"
+        },
+        {
+          "$oid": "68e061721329566a22d474a9"
+        },
+        {
+          "$oid": "68e061721329566a22d47510"
+        }
+      ],
+      "followingIds": [
+        {
+          "$oid": "68e061721329566a22d474a7"
+        },
+        {
+          "$oid": "68e061721329566a22d474a8"
+        },
+        {
+          "$oid": "68e061721329566a22d47510"
+        }
+      ],
+      "friendIds": [
+        {
+          "$oid": "68e061721329566a22d474a9"
+        },
+        {
+          "$oid": "68e061721329566a22d47510"
+        }
+      ],
+      "mutedUserIds": [],
+      "blockedUserIds": []
+    },
+    "locationSharingEnabled": true,
+    "primaryLocationId": {
+      "$oid": "68e061721329566a22d47521"
+    },
+    "pinnedPinIds": [
+      {
+        "$oid": "68e061721329566a22d47531"
+      },
+      {
+        "$oid": "68e061721329566a22d474ac"
+      }
+    ],
+    "ownedPinIds": [
+      {
+        "$oid": "68e061721329566a22d47531"
+      }
+    ],
+    "bookmarkCollectionIds": [
+      {
+        "$oid": "68e061721329566a22d47541"
+      }
+    ],
+    "proximityChatRoomIds": [
+      {
+        "$oid": "68e061721329566a22d47570"
+      }
+    ],
+    "recentLocationIds": [
+      {
+        "$oid": "68e061721329566a22d47521"
+      }
+    ],
+    "createdAt": {
+      "$date": "2025-09-09T17:20:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2025-10-09T18:05:00.000Z"
+    }
   }
 ]

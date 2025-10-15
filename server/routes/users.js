@@ -26,46 +26,105 @@ const toIdString = (value) => {
   return String(value);
 };
 
+const toIsoDateString = (value) => {
+  if (!value) return undefined;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value.toISOString === 'function') return value.toISOString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+};
+
+const mapMediaAssetResponse = (asset) => {
+  if (!asset) {
+    return undefined;
+  }
+
+  const doc = asset.toObject ? asset.toObject() : asset;
+  return {
+    url: doc.url,
+    thumbnailUrl: doc.thumbnailUrl || undefined,
+    width: doc.width ?? undefined,
+    height: doc.height ?? undefined,
+    mimeType: doc.mimeType || undefined,
+    description: doc.description || undefined,
+    uploadedAt: toIsoDateString(doc.uploadedAt),
+    uploadedBy: toIdString(doc.uploadedBy)
+  };
+};
+
+const mapRelationships = (relationships) => {
+  if (!relationships) {
+    return undefined;
+  }
+
+  return {
+    followerIds: (relationships.followerIds || []).map(toIdString),
+    followingIds: (relationships.followingIds || []).map(toIdString),
+    friendIds: (relationships.friendIds || []).map(toIdString),
+    mutedUserIds: (relationships.mutedUserIds || []).map(toIdString),
+    blockedUserIds: (relationships.blockedUserIds || []).map(toIdString)
+  };
+};
+
 const mapUserToPublic = (userDoc) => {
   const doc = userDoc.toObject ? userDoc.toObject() : userDoc;
-  return PublicUserSchema.parse({
+  const result = PublicUserSchema.safeParse({
     _id: toIdString(doc._id),
     username: doc.username,
     displayName: doc.displayName,
-    avatar: doc.avatar || undefined,
+    avatar: mapMediaAssetResponse(doc.avatar),
     stats: doc.stats || undefined,
     badges: doc.badges || [],
     primaryLocationId: toIdString(doc.primaryLocationId),
     accountStatus: doc.accountStatus || 'active'
   });
+
+  if (!result.success) {
+    const error = result.error;
+    error.userId = toIdString(doc._id);
+    throw error;
+  }
+
+  return result.data;
 };
 
 const mapUserToProfile = (userDoc) => {
   const doc = userDoc.toObject();
-  return UserProfileSchema.parse({
+  const createdAt = toIsoDateString(userDoc.createdAt) ?? toIsoDateString(userDoc._id?.getTimestamp?.());
+  const updatedAt = toIsoDateString(userDoc.updatedAt) ?? createdAt ?? new Date().toISOString();
+  const result = UserProfileSchema.safeParse({
     _id: toIdString(doc._id),
     username: doc.username,
     displayName: doc.displayName,
-    avatar: doc.avatar || undefined,
+    avatar: mapMediaAssetResponse(doc.avatar),
     stats: doc.stats || undefined,
     badges: doc.badges || [],
     primaryLocationId: toIdString(doc.primaryLocationId),
     accountStatus: doc.accountStatus || 'active',
     email: doc.email || undefined,
     bio: doc.bio || undefined,
-    banner: doc.banner || undefined,
+    banner: mapMediaAssetResponse(doc.banner),
     preferences: doc.preferences || undefined,
-    relationships: doc.relationships || undefined,
+    relationships: mapRelationships(doc.relationships),
     locationSharingEnabled: Boolean(doc.locationSharingEnabled),
     pinnedPinIds: (doc.pinnedPinIds || []).map(toIdString),
     ownedPinIds: (doc.ownedPinIds || []).map(toIdString),
     bookmarkCollectionIds: (doc.bookmarkCollectionIds || []).map(toIdString),
     proximityChatRoomIds: (doc.proximityChatRoomIds || []).map(toIdString),
     recentLocationIds: (doc.recentLocationIds || []).map(toIdString),
-    createdAt: userDoc.createdAt.toISOString(),
-    updatedAt: userDoc.updatedAt.toISOString(),
+    createdAt: createdAt ?? new Date().toISOString(),
+    updatedAt,
     audit: undefined
   });
+
+  if (!result.success) {
+    const error = result.error;
+    error.userId = toIdString(doc._id);
+    throw error;
+  }
+
+  return result.data;
 };
 
 const mapPinToListItem = (pinDoc, creator) => {
@@ -103,11 +162,30 @@ router.get('/', verifyToken, async (req, res) => {
       criteria.$or = [{ username: regex }, { displayName: regex }];
     }
 
-    const users = await User.find(criteria)
-      .sort({ updatedAt: -1 })
-      .limit(query.limit);
+    const users = await User.find(criteria).sort({ updatedAt: -1 }).limit(query.limit);
 
-    const payload = users.map(mapUserToPublic);
+    const payload = [];
+    const skippedUsers = [];
+
+    for (const user of users) {
+      try {
+        payload.push(mapUserToPublic(user));
+      } catch (error) {
+        if (error instanceof ZodError) {
+          skippedUsers.push({
+            userId: toIdString(user._id),
+            issues: error.errors
+          });
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    if (skippedUsers.length > 0) {
+      console.warn('Skipped malformed user documents', skippedUsers);
+    }
+
     res.json(payload);
   } catch (error) {
     if (error instanceof ZodError) {
@@ -129,8 +207,19 @@ router.get('/:userId', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const payload = mapUserToProfile(user);
-    res.json(payload);
+    try {
+      const payload = mapUserToProfile(user);
+      res.json(payload);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(500).json({
+          message: 'User profile data is malformed',
+          issues: error.errors,
+          userId: userId
+        });
+      }
+      throw error;
+    }
   } catch (error) {
     res.status(500).json({ message: 'Failed to load user profile' });
   }

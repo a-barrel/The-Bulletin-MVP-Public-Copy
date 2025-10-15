@@ -1,16 +1,48 @@
 const admin = require('firebase-admin');
 const runtime = require('../config/runtime');
+const { ensureUserForFirebaseAccount } = require('../services/firebaseUserSync');
 
 module.exports = async function verifyToken(req, res, next) {
-  const token = req.headers.authorization?.split('Bearer ')[1];
+  const authorizationHeader = req.headers.authorization;
+  let token = undefined;
+
+  if (authorizationHeader) {
+    const bearerMatch = authorizationHeader.match(/^Bearer\s+(.+)$/i);
+    if (bearerMatch?.[1]) {
+      token = bearerMatch[1].trim();
+    } else {
+      try {
+        const decoded = decodeURIComponent(authorizationHeader);
+        const decodedMatch = decoded.match(/^Bearer\s+(.+)$/i);
+        if (decodedMatch?.[1]) {
+          token = decodedMatch[1].trim();
+        }
+      } catch (error) {
+        // Ignore decode errors; fall back to raw header value.
+      }
+
+      if (!token) {
+        token = authorizationHeader.trim();
+      }
+    }
+  }
 
   if (runtime.isOffline) {
     if (!token || token === runtime.offlineAuthToken) {
-      req.user = {
+      const offlineUser = {
         uid: 'offline-demo-user',
         mode: 'offline',
         email: 'offline@example.com'
       };
+      req.user = offlineUser;
+
+      try {
+        await ensureUserForFirebaseAccount(offlineUser);
+      } catch (error) {
+        console.error('Failed to sync offline demo user with MongoDB', error);
+        return res.status(500).json({ message: 'Failed to provision offline user' });
+      }
+
       return next();
     }
 
@@ -24,6 +56,14 @@ module.exports = async function verifyToken(req, res, next) {
   try {
     const decodedToken = await admin.auth().verifyIdToken(token);
     req.user = decodedToken;
+
+    try {
+      await ensureUserForFirebaseAccount(decodedToken);
+    } catch (error) {
+      console.error('Failed to sync Firebase user with MongoDB', error);
+      return res.status(500).json({ message: 'Failed to sync Firebase user' });
+    }
+
     next();
   } catch (error) {
     res.status(401).json({ message: 'Invalid token' });
