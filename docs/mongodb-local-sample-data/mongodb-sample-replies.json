@@ -42,5 +42,116 @@
     },
     "createdAt": { "$date": "2025-10-03T23:55:30.000Z" },
     "updatedAt": { "$date": "2025-10-03T23:56:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47560" },
+    "pinId": { "$oid": "68e061721329566a22d47530" },
+    "parentReplyId": null,
+    "authorId": { "$oid": "68e061721329566a22d474a8" },
+    "message": "I can draft the expo layout and share it in chat before Thursday.",
+    "attachments": [],
+    "reactions": [
+      {
+        "userId": { "$oid": "68e061721329566a22d47510" },
+        "type": "like",
+        "reactedAt": { "$date": "2025-10-09T19:15:00.000Z" }
+      }
+    ],
+    "mentionedUserIds": [
+      { "$oid": "68e061721329566a22d47510" }
+    ],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d474a8" }
+    },
+    "createdAt": { "$date": "2025-10-09T19:10:00.000Z" },
+    "updatedAt": { "$date": "2025-10-09T19:15:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47561" },
+    "pinId": { "$oid": "68e061721329566a22d47530" },
+    "parentReplyId": { "$oid": "68e061721329566a22d47560" },
+    "authorId": { "$oid": "68e061721329566a22d47511" },
+    "message": "Count on a hydration station and first-aid kit next to the solar workshop table.",
+    "attachments": [],
+    "reactions": [
+      {
+        "userId": { "$oid": "68e061721329566a22d474a7" },
+        "type": "celebrate",
+        "reactedAt": { "$date": "2025-10-09T19:18:00.000Z" }
+      }
+    ],
+    "mentionedUserIds": [
+      { "$oid": "68e061721329566a22d474a8" }
+    ],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d47511" }
+    },
+    "createdAt": { "$date": "2025-10-09T19:12:00.000Z" },
+    "updatedAt": { "$date": "2025-10-09T19:18:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47562" },
+    "pinId": { "$oid": "68e061721329566a22d47532" },
+    "parentReplyId": null,
+    "authorId": { "$oid": "68e061721329566a22d47510" },
+    "message": "I'll bring extra ND filters if anyone wants to experiment with longer exposures.",
+    "attachments": [],
+    "reactions": [
+      {
+        "userId": { "$oid": "68e061721329566a22d474a8" },
+        "type": "like",
+        "reactedAt": { "$date": "2025-10-08T22:40:00.000Z" }
+      }
+    ],
+    "mentionedUserIds": [],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d47510" }
+    },
+    "createdAt": { "$date": "2025-10-08T22:35:00.000Z" },
+    "updatedAt": { "$date": "2025-10-08T22:40:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47563" },
+    "pinId": { "$oid": "68e061721329566a22d47530" },
+    "parentReplyId": { "$oid": "68e061721329566a22d47561" },
+    "authorId": { "$oid": "68e061721329566a22d474a7" },
+    "message": "Love it. I'll coordinate signage so volunteers can point folks to your booth.",
+    "attachments": [],
+    "reactions": [
+      {
+        "userId": { "$oid": "68e061721329566a22d47510" },
+        "type": "support",
+        "reactedAt": { "$date": "2025-10-09T19:21:00.000Z" }
+      }
+    ],
+    "mentionedUserIds": [
+      { "$oid": "68e061721329566a22d47511" }
+    ],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d474a7" }
+    },
+    "createdAt": { "$date": "2025-10-09T19:19:00.000Z" },
+    "updatedAt": { "$date": "2025-10-09T19:21:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47564" },
+    "pinId": { "$oid": "68e061721329566a22d47532" },
+    "parentReplyId": { "$oid": "68e061721329566a22d47562" },
+    "authorId": { "$oid": "68e061721329566a22d474a8" },
+    "message": "I'll pack a reflector and spare batteries for anyone needing them.",
+    "attachments": [],
+    "reactions": [
+      {
+        "userId": { "$oid": "68e061721329566a22d474a7" },
+        "type": "like",
+        "reactedAt": { "$date": "2025-10-08T22:45:00.000Z" }
+      }
+    ],
+    "mentionedUserIds": [],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d474a8" }
+    },
+    "createdAt": { "$date": "2025-10-08T22:42:00.000Z" },
+    "updatedAt": { "$date": "2025-10-08T22:45:00.000Z" }
   }
 ]

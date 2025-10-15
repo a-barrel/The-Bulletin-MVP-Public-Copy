@@ -92,11 +92,13 @@ npm run dev
 This launches the Express backend on port 5000 and the Vite dev server on port 5173. Offline mode proxies API calls to `/api`, connects MongoDB to `mongodb://127.0.0.1:27017/pinpoint`, and uses the Firebase Auth emulator automatically.
 
 ### Additional Commands
-- `npm run server` – backend only (development)
-- `npm run client` – frontend only (development)
-- `npm run build` – builds the frontend
-- `npm run start` – runs backend + frontend preview in production mode
+- `npm run server` - backend only (development)
+- `npm run client` - frontend only (development)
+- `npm run build` - builds the frontend
+- `npm run start` - runs backend + frontend preview in production mode
+- `cd server && npm run sync:firebase-users` - one-off sync to mirror Firebase Auth accounts into MongoDB
 
+See `docs/firebase-auth-sync.md` for a deeper explanation of how Firebase accounts are provisioned locally and in production.
 ## Features
 - Firebase authentication (email/password + Google)
 - Location sharing via MongoDB geospatial queries

@@ -24,12 +24,12 @@ mongoimport --db pinpoint --collection updates --file docs/mongodb-sample-update
 
 ## What's Included
 
-- **Users**: three active accounts (Alex, Priya, Marcus) with stats, preferences, and relationships.
-- **Pins**: six total pins (event + discussion) including new examples ~5, ~10, and ~20 miles from the campus coordinates for distance testing.
-- **Bookmarks**: one collection and bookmark wired to the sample pins.
-- **Replies**: threaded comments tied to the event pin with reactions.
-- **Locations**: recent location pings for each user.
-- **Proximity Chat**: a room, a message, and presence records linked to a discussion pin.
-- **Updates**: notification payloads referencing the pins and users.
+- **Users**: five active accounts (Alex, Priya, Marcus, Sofia, Jamal) with stats, preferences, and relationships.
+- **Pins**: nine total pins spanning events and discussions, including new sustainability, arts, and sports meetups for distance testing.
+- **Bookmarks**: three collections and bookmarks aligned to the expanded pin set.
+- **Replies**: threaded comments across cleanup, expo, and photo walk pins with varied reactions.
+- **Locations**: recent location pings for all five users tied back to their pins.
+- **Proximity Chat**: two rooms, three chat messages, and presence records linked to discussion and planning pins.
+- **Updates**: four notification payloads covering new pin launches and reminders.
 
-Feel free to tweak values or add additional documents—the IDs in this dataset match the examples referenced throughout `frontend-api-cheatsheet.md`, so the UI and API playground will line up with the docs out of the box.
+Feel free to tweak values or add additional documents - the IDs in this dataset match the examples referenced throughout `frontend-api-cheatsheet.md`, so the UI and API playground will line up with the docs out of the box.

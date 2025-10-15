@@ -52,5 +52,5 @@ Thumbs.db
 server/uploads/images/
 
 # Firebase emulator exports
-emulator-data/
+# Keep emulator-data committed so the team shares a consistent Auth seed.
 

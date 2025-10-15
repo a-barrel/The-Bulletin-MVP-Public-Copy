@@ -95,5 +95,109 @@
     "readAt": null,
     "createdAt": { "$date": "2025-10-11T00:30:00.000Z" },
     "updatedAt": { "$date": "2025-10-11T00:30:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47550" },
+    "userId": { "$oid": "68e061721329566a22d474a8" },
+    "sourceUserId": { "$oid": "68e061721329566a22d47510" },
+    "targetUserIds": [
+      { "$oid": "68e061721329566a22d474a8" },
+      { "$oid": "68e061721329566a22d474a7" }
+    ],
+    "payload": {
+      "type": "pin-update",
+      "title": "Sofia added Green Tech Expo",
+      "body": "Check out the zero-waste prototypes at the Student Union this Friday.",
+      "pin": {
+        "_id": { "$oid": "68e061721329566a22d47530" },
+        "type": "event",
+        "creatorId": { "$oid": "68e061721329566a22d47510" },
+        "title": "Green Tech Expo",
+        "coordinates": {
+          "type": "Point",
+          "coordinates": [-118.1145, 33.7778],
+          "accuracy": 6
+        },
+        "proximityRadiusMeters": 800,
+        "linkedLocationId": { "$oid": "68e061721329566a22d47520" },
+        "linkedChatRoomId": { "$oid": "68e061721329566a22d47570" },
+        "startDate": { "$date": "2025-10-17T18:00:00.000Z" },
+        "endDate": { "$date": "2025-10-17T23:00:00.000Z" },
+        "expiresAt": null
+      },
+      "metadata": {
+        "cta": "open-pin",
+        "priority": "standard"
+      },
+      "relatedEntities": [
+        {
+          "id": { "$oid": "68e061721329566a22d47510" },
+          "type": "user",
+          "label": "Sofia",
+          "summary": "Pin organizer"
+        },
+        {
+          "id": { "$oid": "68e061721329566a22d47530" },
+          "type": "pin",
+          "label": "Green Tech Expo"
+        }
+      ]
+    },
+    "deliveredAt": { "$date": "2025-10-09T19:05:00.000Z" },
+    "readAt": null,
+    "createdAt": { "$date": "2025-10-09T19:05:00.000Z" },
+    "updatedAt": { "$date": "2025-10-09T19:05:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47551" },
+    "userId": { "$oid": "68e061721329566a22d474a7" },
+    "sourceUserId": { "$oid": "68e061721329566a22d47511" },
+    "targetUserIds": [
+      { "$oid": "68e061721329566a22d474a7" },
+      { "$oid": "68e061721329566a22d47510" }
+    ],
+    "payload": {
+      "type": "event-reminder",
+      "title": "Pickup Soccer RSVP closes tonight",
+      "body": "Jamal is locking rosters for the Recreation Park scrimmage. Add your name if you want in.",
+      "pin": {
+        "_id": { "$oid": "68e061721329566a22d47531" },
+        "type": "event",
+        "creatorId": { "$oid": "68e061721329566a22d47511" },
+        "title": "Recreation Park Pickup Soccer",
+        "coordinates": {
+          "type": "Point",
+          "coordinates": [-118.1452, 33.7898],
+          "accuracy": 12
+        },
+        "proximityRadiusMeters": 1000,
+        "linkedLocationId": { "$oid": "68e061721329566a22d47521" },
+        "linkedChatRoomId": null,
+        "startDate": { "$date": "2025-10-19T16:30:00.000Z" },
+        "endDate": { "$date": "2025-10-19T18:30:00.000Z" },
+        "expiresAt": null
+      },
+      "metadata": {
+        "cta": "open-pin",
+        "priority": "high"
+      },
+      "relatedEntities": [
+        {
+          "id": { "$oid": "68e061721329566a22d47511" },
+          "type": "user",
+          "label": "Jamal",
+          "summary": "Event host"
+        },
+        {
+          "id": { "$oid": "68e061721329566a22d47531" },
+          "type": "pin",
+          "label": "Recreation Park Pickup Soccer"
+        }
+      ]
+    },
+    "deliveredAt": { "$date": "2025-10-08T02:15:00.000Z" },
+    "readAt": null,
+    "createdAt": { "$date": "2025-10-08T02:15:00.000Z" },
+    "updatedAt": { "$date": "2025-10-08T02:15:00.000Z" }
   }
 ]
