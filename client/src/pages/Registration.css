@@ -1,0 +1,150 @@
+/* Outer background */
+.register-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: black;
+  width: 100vw;
+  height: 100dvh; 
+}
+
+/* Phone-like frame */
+.register-frame {
+  width: 80vw;
+  max-width: 950px;
+  height: 90vh;
+  background: white;
+  border: 0.1rem solid black;
+  border-radius: 40px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  position: relative;
+}
+
+.back-btn {
+  position: absolute;
+  top: 20px;
+  left: 16px;
+  width: 38px;
+  height: 38px;
+  border: none;
+  background: none;
+  color: black;
+  font-size: 2rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Takes away orange hover color that's default in browser*/
+.back-btn:hover,
+.back-btn:focus,
+.back-btn:active {
+  outline: none;
+  background: none;
+  box-shadow: none;
+}
+
+/* Title */
+.register-title {
+  color: black;
+  font-weight: 300;
+  font-size: 2.5rem;
+  margin: 1.25rem 0 1rem;
+}
+
+/* Form */
+.register-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Inputs */
+.field { width: 80%; }
+.input {
+  width: 95%;
+  padding: 12px 14px;
+  margin-left: -10px;
+  border: 1.5px solid black;
+  border-radius: 10px;
+  background: white;
+  color: black;
+  font-size: 0.95rem;
+  transition: border-color .2s;
+}
+.input::placeholder { color: #c0c0c0; }
+.input:focus { border-color: #b68de8; outline: none; }
+
+/* Inline error */
+.helper-error {
+  color: #d32f2f;
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+  text-align: left;      
+  width: 85%;            
+}
+
+/* Submit */
+.register-submit {
+  background: #CDAEF2;
+  color: black;
+  border: 0.1rem solid black;
+  border-radius: 25px;
+  padding: 10px 90px;
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: background .2s;
+}
+.register-submit:hover { background: #9a7fff; }
+
+/* Tablets */
+@media (max-width: 768px) {
+  .register-frame {
+    width: 80%;
+    min-height: 90dvh;
+    border-radius: 36px;          
+  }
+  .register-title { font-size: 1.8rem; }
+  .field { width: 90%; }
+  .register-submit { width: 90%; padding: 10px; }
+  .back-btn { top: 28px; left: 5px; width: 44px; height: 44px; font-size: 2rem; }
+}
+
+/* Phones */
+@media (max-width: 480px) {
+  .register-page {
+    justify-content: flex-start;      
+    align-items: center; 
+    background: #111;
+    height: 100vh;
+    overflow: hidden;        
+    margin-top: -1.5vh;
+  }
+
+  .register-frame {
+    width: 82%;
+    height: 85vh;            
+    border-radius: 40px;   
+    transform: scale(0.98);  
+    transition: transform 0.2s ease;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .field { width: 90%; }
+  .register-submit { width: 90%; padding: 10px; }
+
+  .back-btn {
+    top: 10px;
+    left: 18px;
+    width: 34px;
+    height: 34px;
+    font-size: 2rem;
+  }
+}
