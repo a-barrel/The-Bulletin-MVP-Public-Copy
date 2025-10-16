@@ -1,6 +1,21 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import ListAltIcon from '@mui/icons-material/ListAlt';
+import MapIcon from '@mui/icons-material/Map';
 import PinListItem from '../components/PinListItem';
+
+export const pageConfig = {
+  id: 'list',
+  label: 'List',
+  icon: ListAltIcon,
+  path: '/list',
+  order: 2,
+  showInNav: true
+};
 
 function ListPage() {
   const navigate = useNavigate();
@@ -15,16 +30,42 @@ function ListPage() {
   };
 
   return (
-    <div style={{ padding: '1rem', maxWidth: 600, margin: '0 auto' }}>
-      <h1>List Page</h1>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        {pins.map((pin) => (
-          <PinListItem key={pin._id} pin={pin} onClick={handleOpenPin} />
-        ))}
-      </div>
-      <br />
-      <Link to="/map">Go to Map</Link>
-    </div>
+    <Box
+      component="section"
+      sx={{
+        py: 4,
+        px: 2
+      }}
+    >
+      <Stack
+        spacing={2}
+        sx={{
+          width: '100%',
+          maxWidth: 600,
+          mx: 'auto'
+        }}
+      >
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h4" component="h1">
+            Pins
+          </Typography>
+          <Button
+            component={RouterLink}
+            to="/map"
+            variant="contained"
+            startIcon={<MapIcon />}
+          >
+            View Map
+          </Button>
+        </Stack>
+
+        <Stack spacing={1.5}>
+          {pins.map((pin) => (
+            <PinListItem key={pin._id} pin={pin} onClick={handleOpenPin} />
+          ))}
+        </Stack>
+      </Stack>
+    </Box>
   );
 }
 

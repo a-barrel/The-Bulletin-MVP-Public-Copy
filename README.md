@@ -1,103 +1,109 @@
-# 📌 The Bulletin - Location-Based Social Media MVP 📌 
+# The Bulletin – Location-Based Social Media MVP
 
-A cost-effective social media platform that incorporates GPS features, allowing users to share their locations and connect with others nearby.
+The Bulletin is a cost-effective social platform that uses GPS features so people can share their locations and connect with others nearby.
 
 ## Tech Stack
-
-- **Frontend**: React.js with Vite
-- **Backend**: Node.js with Express
-- **Database**: MongoDB Atlas
-- **Authentication**: Firebase Auth
-- **Maps**: OpenStreetMap with Leaflet (free and open-source)
-- **Hosting**: 
-  - Frontend: Vercel
-  - Backend: Render
+- React (Vite) frontend
+- Node.js / Express backend
+- MongoDB Atlas
+- Firebase Auth
+- Leaflet (OpenStreetMap)
+- Hosting: Vercel (frontend) + Render (backend)
 
 ## Project Structure
-
-```
-social-gps/
-├── client/             # React frontend
-├── server/             # Node.js backend
-├── .gitignore         # Git ignore file
-└── README.md          # Project documentation
-```
+- `client/` – React frontend
+- `server/` – Node.js backend
+- `.gitignore`
+- `README.md`
 
 ## Setup Instructions
 
 ### Prerequisites
-- Node.js (v16 or higher)
+- Node.js v16 or higher
 - npm
-- MongoDB Atlas account
-- Firebase account
+- MongoDB Atlas (or a local MongoDB instance)
+- Firebase project
 
 ### Environment Variables
-Create `.env` files in both client and server directories:
+Create `.env` files in both `server` and `client` directories.
 
-#### Server (.env)
+#### Server (`server/.env`)
 ```
-# Firebase service account credentials (JSON format)
-# Required for production, but can be left blank if using Firebase emulators
+# Optional: override runtime mode (defaults to offline locally, online in production)
+PINPOINT_RUNTIME_MODE=offline
+
+# MongoDB connection URIs
+MONGODB_URI=
+MONGODB_URI_OFFLINE=mongodb://127.0.0.1:27017/pinpoint
+
+# Firebase service account JSON (required for Render/production deployments)
 FIREBASE_SERVICE_ACCOUNT_JSON=
 
-# Firebase Auth emulator host
-# Comment the following line to not use the Firebase Auth emulator (e.g. comment it out for Real Depoloyment)
-FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
+# Demo bearer token accepted while running offline
+PINPOINT_OFFLINE_DEMO_TOKEN=demo-token
 
-# MongoDB connection URI
-MONGODB_URI=mongodb://localhost:27017/social-gps
+# Firebase emulator defaults (used automatically in offline mode)
+USE_FIREBASE_EMULATOR=true
+FIREBASE_PROJECT_ID=pinpoint-local
+FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
 
 # Server port
 PORT=5000
 ```
 
-#### Client (.env)
+#### Client (`client/.env`)
 ```
-# The URL of the backend server
-VITE_API_URL=http://localhost:5000
+# Optional: override runtime mode (defaults to offline in dev)
+VITE_RUNTIME_MODE=offline
 
-# Your web app's Firebase configuration
-# (This config is public and can be exposed in the client-side code and thus safe to include here on the git repo)
-VITE_FIREBASE_CONFIG={"apiKey": "AIzaSyAkVlj0uQu2Xdc1Y99lAd1bPbFlawEM6pA","authDomain": "bulletin app-6548a.firebaseapp.com","projectId": "bulletin-app-6548a","storageBucket": "bulletin-app-6548a.firebasestorage.app","messagingSenderId": "772158261487","appId": "1:772158261487:web:a9eef2f733426ded44331a","measurementId": "G-H3PW6CFB6L"}
+# Backend API base URLs
+VITE_API_BASE_URL=
+VITE_API_BASE_URL_OFFLINE=http://localhost:5000
+
+# Optional API access tokens (used when running offline without Firebase auth)
+# VITE_API_ACCESS_TOKEN=
+# VITE_API_ACCESS_TOKEN_OFFLINE=demo-token
+
+# Firebase configuration (public)
+VITE_FIREBASE_CONFIG={"apiKey":"AIzaSyAkVlj0uQu2Xdc1Y99lAd1bPbFlawEM6pA","authDomain":"bulletin app-6548a.firebaseapp.com","projectId":"bulletin-app-6548a","storageBucket":"bulletin-app-6548a.firebasestorage.app","messagingSenderId":"772158261487","appId":"1:772158261487:web:a9eef2f733426ded44331a","measurementId":"G-H3PW6CFB6L"}
+
+# Optional offline Firebase overrides
+# VITE_FIREBASE_CONFIG_OFFLINE={"projectId":"pinpoint-offline"}
+# VITE_FIREBASE_AUTH_EMULATOR_URL=http://localhost:9099
 ```
 
 ### Installation
-
-1. Clone the repository
-2. Install all dependencies (root, server, and client):
+1. Install dependencies at the repo root:
    ```bash
    npm run install:all
    ```
+2. (Optional) Install Firebase CLI tools:
    ```bash
    npm install -g firebase-tools
    ```
+3. Ensure `.env` files exist in both `server/` and `client/`.
 
-3. Ensure .env exsists within the server and client folders. (see above for template)
+### Running Locally
+Start both servers from the project root:
+```bash
+npm run dev
+```
+This launches the Express backend on port 5000 and the Vite dev server on port 5173. Offline mode proxies API calls to `/api`, connects MongoDB to `mongodb://127.0.0.1:27017/pinpoint`, and uses the Firebase Auth emulator automatically.
 
-4. Start both development servers from the root directory:
-   ```bash
-   npm run dev
-   ```
+### Additional Commands
+- `npm run server` - backend only (development)
+- `npm run client` - frontend only (development)
+- `npm run build` - builds the frontend
+- `npm run start` - runs backend + frontend preview in production mode
+- `cd server && npm run sync:firebase-users` - one-off sync to mirror Firebase Auth accounts into MongoDB
 
-   This will start both the backend server (port 5000) and frontend development server (port 5173) concurrently.
-
-### Alternative Commands
-
-- **Development mode**: `npm run dev` - Starts both frontend and backend in development mode
-- **Production mode**: `npm run start` - Starts backend in production mode and serves built frontend
-- **Server only**: `npm run server` - Starts only the backend server
-- **Client only**: `npm run client` - Starts only the frontend development server
-- **Build frontend**: `npm run build` - Builds the frontend for production
-
+See `docs/firebase-auth-sync.md` for a deeper explanation of how Firebase accounts are provisioned locally and in production.
 ## Features
-
-- User authentication
-- Location sharing
-- Interactive map display using OpenStreetMap
-- Real-time updates
-- User profiles
+- Firebase authentication (email/password + Google)
+- Location sharing via MongoDB geospatial queries
+- Interactive map powered by Leaflet
+- Real-time style updates and user profiles
 
 ## License
-
-MIT 
-
+MIT

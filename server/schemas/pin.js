@@ -42,21 +42,31 @@ const BasePinSchema = z.object({
   audit: AuditMetadataSchema.optional()
 });
 
+const EventAddressComponentsSchema = z
+  .object({
+    line1: z.string().min(1),
+    line2: z.string().optional(),
+    city: z.string().min(1),
+    state: z.string().min(1),
+    postalCode: z.string().min(1),
+    country: z.string().min(2)
+  })
+  .partial()
+  .refine(
+    (components) => Object.values(components).some((value) => value !== undefined),
+    'Address components must include at least one field'
+  );
+
+const EventAddressSchema = z.object({
+  precise: z.string().min(1),
+  components: EventAddressComponentsSchema.optional()
+});
+
 const EventPinSchema = BasePinSchema.extend({
   type: z.literal('event'),
   startDate: IsoDateStringSchema,
   endDate: IsoDateStringSchema,
-  address: z.object({
-    precise: z.string().min(1),
-    components: z.object({
-      line1: z.string().min(1),
-      line2: z.string().optional(),
-      city: z.string().min(1),
-      state: z.string().min(1),
-      postalCode: z.string().min(1),
-      country: z.string().min(2)
-    }).optional()
-  }),
+  address: EventAddressSchema.optional(),
   participantCount: z.number().int().nonnegative().default(0),
   participantLimit: z.number().int().positive().optional(),
   attendingUserIds: z.array(ObjectIdSchema).optional(),
@@ -66,7 +76,7 @@ const EventPinSchema = BasePinSchema.extend({
 
 const DiscussionPinSchema = BasePinSchema.extend({
   type: z.literal('discussion'),
-  approximateAddress: ApproximateAddressSchema,
+  approximateAddress: ApproximateAddressSchema.optional(),
   expiresAt: IsoDateStringSchema,
   autoDelete: z.boolean().default(true)
 });

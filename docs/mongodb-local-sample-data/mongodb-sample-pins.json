@@ -1,0 +1,793 @@
+[
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d474aa"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "title": "Community Beach Cleanup",
+    "description": "Join fellow students for a shoreline cleanup followed by coffee at the marina. Gloves, bags, and refreshments provided.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1956,
+        33.7683
+      ],
+      "accuracy": 12
+    },
+    "proximityRadiusMeters": 1200,
+    "photos": [
+      {
+        "url": "/images/event/event-01.jpg",
+        "thumbnailUrl": "/images/event/event-01.jpg",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-01.jpg",
+      "thumbnailUrl": "/images/event/event-01.jpg",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "clean-up",
+      "volunteer",
+      "outdoors"
+    ],
+    "relatedPinIds": [
+      {
+        "$oid": "68e061721329566a22d474ab"
+      }
+    ],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c1"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 12,
+      "replyCount": 4,
+      "shareCount": 3,
+      "viewCount": 148
+    },
+    "bookmarkCount": 12,
+    "replyCount": 2,
+    "startDate": {
+      "$date": "2025-10-04T23:51:14.276Z"
+    },
+    "endDate": {
+      "$date": "2025-10-05T02:51:14.276Z"
+    },
+    "address": {
+      "precise": "Long Beach Shoreline Marina",
+      "components": {
+        "line1": "450 E Shoreline Dr",
+        "city": "Long Beach",
+        "state": "CA",
+        "postalCode": "90802",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 50,
+    "participantCount": 18,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      {
+        "$oid": "68e061721329566a22d474a9"
+      }
+    ],
+    "attendeeWaitlistIds": [],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2025-09-25T18:31:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2025-10-03T23:51:14.276Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d474ab"
+    },
+    "type": "discussion",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
+    "title": "Latte Lounge Study Circle",
+    "description": "Drop in to share notes and study together. Seating map is posted in chat each week.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1142,
+        33.7839
+      ],
+      "accuracy": 8
+    },
+    "proximityRadiusMeters": 600,
+    "photos": [
+      {
+        "url": "/images/discussion/discussion-01.jpg",
+        "thumbnailUrl": "/images/discussion/discussion-01.jpg",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/discussion/discussion-01.jpg",
+      "thumbnailUrl": "/images/discussion/discussion-01.jpg",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "study",
+      "coffee"
+    ],
+    "relatedPinIds": [
+      {
+        "$oid": "68e061721329566a22d474ac"
+      }
+    ],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c2"
+    },
+    "linkedChatRoomId": {
+      "$oid": "68e061721329566a22d474b3"
+    },
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 8,
+      "replyCount": 5,
+      "shareCount": 2,
+      "viewCount": 203
+    },
+    "bookmarkCount": 8,
+    "replyCount": 0,
+    "approximateAddress": {
+      "city": "Long Beach",
+      "state": "CA",
+      "country": "USA",
+      "formatted": "Long Beach, CA"
+    },
+    "expiresAt": {
+      "$date": "2025-10-06T05:51:14.276Z"
+    },
+    "autoDelete": true,
+    "createdAt": {
+      "$date": "2025-09-20T16:10:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2025-10-03T23:51:14.276Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d474ac"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a9"
+    },
+    "title": "Night Market Pop-up",
+    "description": "Food trucks, live music, and local artisans lighting up Pine Avenue for one night only.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1927,
+        33.7719
+      ],
+      "accuracy": 15
+    },
+    "proximityRadiusMeters": 1500,
+    "photos": [
+      {
+        "url": "/images/event/event-02.jpg",
+        "thumbnailUrl": "/images/event/event-02.jpg",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-02.jpg",
+      "thumbnailUrl": "/images/event/event-02.jpg",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "market",
+      "food",
+      "music"
+    ],
+    "relatedPinIds": [
+      {
+        "$oid": "68e061721329566a22d474aa"
+      }
+    ],
+    "linkedLocationId": null,
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 21,
+      "replyCount": 7,
+      "shareCount": 9,
+      "viewCount": 412
+    },
+    "bookmarkCount": 21,
+    "replyCount": 1,
+    "startDate": {
+      "$date": "2025-10-12T01:00:00.000Z"
+    },
+    "endDate": {
+      "$date": "2025-10-12T06:00:00.000Z"
+    },
+    "address": {
+      "precise": "Pine Avenue & Broadway",
+      "components": {
+        "line1": "245 Pine Ave",
+        "city": "Long Beach",
+        "state": "CA",
+        "postalCode": "90802",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 300,
+    "participantCount": 185,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d474a8"
+      }
+    ],
+    "attendeeWaitlistIds": [],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2025-09-05T14:30:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2025-10-03T23:51:14.276Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d474c5"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "title": "Shoreline Cycle Loop",
+    "description": "Casual bike ride along the coast with a stop for smoothies at the five-mile mark.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.0265,
+        33.7838
+      ],
+      "accuracy": 18
+    },
+    "proximityRadiusMeters": 804,
+    "photos": [
+      {
+        "url": "/images/event/event-03.jpg",
+        "thumbnailUrl": "/images/event/event-03.jpg",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-03.jpg",
+      "thumbnailUrl": "/images/event/event-03.jpg",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "cycling",
+      "outdoors"
+    ],
+    "relatedPinIds": [],
+    "linkedLocationId": null,
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 4,
+      "replyCount": 1,
+      "shareCount": 1,
+      "viewCount": 62
+    },
+    "bookmarkCount": 4,
+    "replyCount": 1,
+    "startDate": {
+      "$date": "2025-10-18T16:00:00.000Z"
+    },
+    "endDate": {
+      "$date": "2025-10-18T19:00:00.000Z"
+    },
+    "address": {
+      "precise": "Belmont Shore Bike Trail Meetup",
+      "components": {
+        "city": "Long Beach",
+        "state": "CA",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 25,
+    "participantCount": 9,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d474a8"
+      }
+    ],
+    "attendeeWaitlistIds": [],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2025-10-01T18:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2025-10-03T23:51:14.276Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d474c6"
+    },
+    "type": "discussion",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
+    "title": "North Long Beach Art Walk",
+    "description": "Coordinate carpools and share must-see installations for the art walk about 10 miles north.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1136,
+        33.9287
+      ],
+      "accuracy": 25
+    },
+    "proximityRadiusMeters": 1000,
+    "photos": [
+      {
+        "url": "/images/discussion/discussion-02.jpg",
+        "thumbnailUrl": "/images/discussion/discussion-02.jpg",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/discussion/discussion-02.jpg",
+      "thumbnailUrl": "/images/discussion/discussion-02.jpg",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "art",
+      "community"
+    ],
+    "relatedPinIds": [],
+    "linkedLocationId": null,
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 6,
+      "replyCount": 2,
+      "shareCount": 1,
+      "viewCount": 94
+    },
+    "bookmarkCount": 6,
+    "replyCount": 0,
+    "approximateAddress": {
+      "city": "North Long Beach",
+      "state": "CA",
+      "country": "USA",
+      "formatted": "North Long Beach, CA"
+    },
+    "expiresAt": {
+      "$date": "2025-10-20T06:00:00.000Z"
+    },
+    "autoDelete": true,
+    "createdAt": {
+      "$date": "2025-09-29T21:30:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2025-10-03T23:51:14.276Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d474c7"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a9"
+    },
+    "title": "Foothill Trail Run",
+    "description": "Morning trail run through the foothills about twenty miles inland. Expect moderate elevation gain.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -117.9396,
+        34.0736
+      ],
+      "accuracy": 30
+    },
+    "proximityRadiusMeters": 1609,
+    "photos": [
+      {
+        "url": "/images/event/event-04.jpg",
+        "thumbnailUrl": "/images/event/event-04.jpg",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-04.jpg",
+      "thumbnailUrl": "/images/event/event-04.jpg",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "running",
+      "fitness"
+    ],
+    "relatedPinIds": [],
+    "linkedLocationId": null,
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 10,
+      "replyCount": 3,
+      "shareCount": 2,
+      "viewCount": 128
+    },
+    "bookmarkCount": 10,
+    "replyCount": 1,
+    "startDate": {
+      "$date": "2025-10-25T14:00:00.000Z"
+    },
+    "endDate": {
+      "$date": "2025-10-25T17:30:00.000Z"
+    },
+    "address": {
+      "precise": "Puente Hills Trailhead",
+      "components": {
+        "city": "Hacienda Heights",
+        "state": "CA",
+        "postalCode": "91745",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 80,
+    "participantCount": 32,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d474a8"
+      }
+    ],
+    "attendeeWaitlistIds": [],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2025-09-28T20:45:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2025-10-03T23:51:14.276Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47530"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d47510"
+    },
+    "title": "Green Tech Expo",
+    "description": "Hands-on demos of campus sustainability projects, electric mobility, and zero-waste startups.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1145,
+        33.7778
+      ],
+      "accuracy": 6
+    },
+    "proximityRadiusMeters": 800,
+    "photos": [
+      {
+        "url": "/images/event/event-05.jpg",
+        "thumbnailUrl": "/images/event/event-05.jpg",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-05.jpg",
+      "thumbnailUrl": "/images/event/event-05.jpg",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "sustainability",
+      "expo",
+      "innovation"
+    ],
+    "relatedPinIds": [
+      {
+        "$oid": "68e061721329566a22d474aa"
+      }
+    ],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d47520"
+    },
+    "linkedChatRoomId": {
+      "$oid": "68e061721329566a22d47570"
+    },
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 9,
+      "replyCount": 3,
+      "shareCount": 4,
+      "viewCount": 187
+    },
+    "bookmarkCount": 9,
+    "replyCount": 3,
+    "startDate": {
+      "$date": "2025-10-17T18:00:00.000Z"
+    },
+    "endDate": {
+      "$date": "2025-10-17T23:00:00.000Z"
+    },
+    "address": {
+      "precise": "University Student Union Plaza",
+      "components": {
+        "line1": "1212 N Bellflower Blvd",
+        "city": "Long Beach",
+        "state": "CA",
+        "postalCode": "90840",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 120,
+    "participantCount": 54,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d47510"
+      },
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      {
+        "$oid": "68e061721329566a22d47511"
+      }
+    ],
+    "attendeeWaitlistIds": [
+      {
+        "$oid": "68e061721329566a22d474a9"
+      }
+    ],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2025-09-30T20:15:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2025-10-09T19:00:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47531"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d47511"
+    },
+    "title": "Recreation Park Pickup Soccer",
+    "description": "Saturday morning co-ed soccer scrimmage. All skill levels welcome - bring a light and dark shirt.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1452,
+        33.7898
+      ],
+      "accuracy": 12
+    },
+    "proximityRadiusMeters": 1000,
+    "photos": [
+      {
+        "url": "/images/event/event-01.jpg",
+        "thumbnailUrl": "/images/event/event-01.jpg",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-01.jpg",
+      "thumbnailUrl": "/images/event/event-01.jpg",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "sports",
+      "outdoors"
+    ],
+    "relatedPinIds": [
+      {
+        "$oid": "68e061721329566a22d474c7"
+      }
+    ],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d47521"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 7,
+      "replyCount": 2,
+      "shareCount": 1,
+      "viewCount": 96
+    },
+    "bookmarkCount": 7,
+    "replyCount": 1,
+    "startDate": {
+      "$date": "2025-10-19T16:30:00.000Z"
+    },
+    "endDate": {
+      "$date": "2025-10-19T18:30:00.000Z"
+    },
+    "address": {
+      "precise": "Recreation Park Soccer Fields",
+      "components": {
+        "line1": "4900 E 7th St",
+        "city": "Long Beach",
+        "state": "CA",
+        "postalCode": "90814",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 30,
+    "participantCount": 16,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d47511"
+      },
+      {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      {
+        "$oid": "68e061721329566a22d47510"
+      }
+    ],
+    "attendeeWaitlistIds": [
+      {
+        "$oid": "68e061721329566a22d474a7"
+      }
+    ],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2025-10-02T18:05:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2025-10-08T17:45:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47532"
+    },
+    "type": "discussion",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "title": "Sunrise Photo Walk",
+    "description": "Meet on the bluff before dawn to capture golden hour along the shoreline. Bring a tripod if you have one.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.155,
+        33.763
+      ],
+      "accuracy": 9
+    },
+    "proximityRadiusMeters": 400,
+    "photos": [
+      {
+        "url": "/images/discussion/discussion-03.jpg",
+        "thumbnailUrl": "/images/discussion/discussion-03.jpg",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/discussion/discussion-03.jpg",
+      "thumbnailUrl": "/images/discussion/discussion-03.jpg",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "photography",
+      "sunrise",
+      "community"
+    ],
+    "relatedPinIds": [
+      {
+        "$oid": "68e061721329566a22d47530"
+      }
+    ],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c1"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 5,
+      "replyCount": 2,
+      "shareCount": 2,
+      "viewCount": 83
+    },
+    "bookmarkCount": 5,
+    "replyCount": 2,
+    "approximateAddress": {
+      "city": "Long Beach",
+      "state": "CA",
+      "country": "USA",
+      "formatted": "Long Beach Bluff Park"
+    },
+    "expiresAt": {
+      "$date": "2025-10-21T14:30:00.000Z"
+    },
+    "autoDelete": true,
+    "createdAt": {
+      "$date": "2025-10-02T13:15:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2025-10-08T22:30:00.000Z"
+    }
+  }
+]
