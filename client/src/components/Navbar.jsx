@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import "./Navbar.css";
 import ChatIcon from "../assets/ChatPage.svg";
 import MapIcon from "../assets/MapPage.svg";
-import ListIcon from "../assets/PinPage.svg"; // ✅ matches your files
+import ListIcon from "../assets/ListPage.svg"; // ✅ matches your files
 
 export default function Navbar() {
   return (
