@@ -1,10 +1,15 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import "./ListPage.css";
 import commentsIcon from "../assets/Comments.png";
 import attendanceIcon from "../assets/AttendanceIcon.png";
 import Navbar from "../components/Navbar";
 import pinIcon from "../assets/PinIcon.png";
 import discussionIcon from "../assets/DiscussionIcon.png";
+import settingsIcon from "../assets/GearIcon.svg";
+import addIcon from "../assets/AddIcon.svg";
+import menuIcon from "../assets/MenuIcon.svg";
+import updatesIcon from "../assets/UpdateIcon.svg";
+
 
 const DUMMY_FEED = [
   {
@@ -49,11 +54,66 @@ const DUMMY_FEED = [
 ];
 
 function ListPage() {
+  const [toggleOn, setToggleOn] = useState(false);
+  const handleToggle = useCallback(() => setToggleOn(v => !v), []);
+  const onToggleKeyDown = useCallback((e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setToggleOn(v => !v);
+    }
+  }, []);
+
   return (
     <div className="list-page">
       <div className="list-frame">
-        <h1 className="list-title">List</h1>
+        {/* 🔹 Top Header Bar */}
+        {/* Fixed purple header bar */}
+        <header className="header-bar">
+          <button className="header-icon-btn" aria-label="Menu">
+            <img src={menuIcon} alt="Menu" className="header-icon" />
+          </button>
 
+          <h1 className="header-title">List</h1>
+
+          <button className="header-icon-btn" aria-label="Notifications">
+            <img src={updatesIcon} alt="Notifications" className="header-icon" />
+          </button>
+        </header>
+
+
+        {/* Topbar (Settings, Toggle, Sort, Add) */}
+        <div className="topbar">
+          <div className="top-left">
+            <button className="icon-btn" type="button" aria-label="Settings">
+              <img src={settingsIcon} alt="Settings" />
+            </button>
+
+            {/* Purple toggle */}
+            <div
+              className={`toggle-container ${toggleOn ? "active" : ""}`}
+              role="switch"
+              aria-checked={toggleOn}
+              tabIndex={0}
+              onClick={handleToggle}
+              onKeyDown={onToggleKeyDown}
+            >
+              <div className="toggle-circle" />
+            </div>
+
+            <div className="sort-row">
+              <span className="sort-label">Sort by:</span>
+              <button className="sort-link" type="button">
+                Distance
+              </button>
+            </div>
+          </div>
+
+          <button className="add-btn" type="button" aria-label="Add">
+            <img src={addIcon} alt="Add" />
+          </button>
+        </div>
+
+        {/* Feed */}
         <div className="feed">
           {DUMMY_FEED.map((item) => (
             <article className={`card ${item.type}`} key={item.id}>
