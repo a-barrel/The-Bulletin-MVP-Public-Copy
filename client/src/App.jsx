@@ -103,6 +103,9 @@ const loadPages = () =>
       const aliases = Array.isArray(config.aliases)
         ? config.aliases.map(normalizePath).filter(Boolean)
         : [];
+      const navTargetPath = normalizePath(config.navTargetPath);
+      const navResolver =
+        typeof config.resolveNavTarget === 'function' ? config.resolveNavTarget : null;
       const showInNav = config.showInNav === true;
       const isDefault = Boolean(config.isDefault);
       const isProtected = config.protected !== false;
@@ -114,6 +117,8 @@ const loadPages = () =>
         icon: IconComponent,
         path: pathValue,
         aliases,
+        navTargetPath,
+        navResolver,
         showInNav,
         isDefault,
         isProtected,
@@ -293,13 +298,38 @@ export default function App() {
   );
 
   const handleNavigate = useCallback(
-    (targetPath) => {
+    (target) => {
+      let targetPath = null;
+
+      if (typeof target === 'string') {
+        targetPath = normalizePath(target) ?? target;
+      } else if (target && typeof target === 'object') {
+        if (typeof target.navResolver === 'function') {
+          try {
+            const resolved = target.navResolver({ currentPath: location.pathname });
+            if (typeof resolved === 'string' && resolved.trim().length > 0) {
+              targetPath = normalizePath(resolved) ?? resolved.trim();
+            }
+          } catch (error) {
+            console.error('Failed to resolve navigation path for page', target.id, error);
+          }
+        }
+
+        if (!targetPath && typeof target.navTargetPath === 'string') {
+          targetPath = target.navTargetPath;
+        }
+
+        if (!targetPath && typeof target.path === 'string') {
+          targetPath = target.path;
+        }
+      }
+
       if (typeof targetPath === 'string' && targetPath.length > 0) {
         navigate(targetPath);
         setNavOverlayOpen(false);
       }
     },
-    [navigate]
+    [location.pathname, navigate]
   );
 
   useEffect(() => {
@@ -390,14 +420,12 @@ export default function App() {
                     <Stack spacing={1}>
                       {previousNavPath && (
                         <Button
-                          onClick={handleBack}
-                          variant="contained"
-                          color="secondary"
-                          startIcon={<ArrowBackIcon fontSize="small" />}
-                          sx={{
-                            justifyContent: 'flex-start',
-                            textTransform: 'none',
-                          }}
+                          key={page.id}
+                          onClick={() => handleNavigate(page)}
+                          variant={isActive ? 'contained' : 'outlined'}
+                          color={isActive ? 'primary' : 'inherit'}
+                          startIcon={<IconComponent fontSize="small" />}
+                          sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
                         >
                           {previousNavPage
                             ? `Back to ${previousNavPage.label}`
