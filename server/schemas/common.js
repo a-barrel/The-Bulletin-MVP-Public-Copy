@@ -58,17 +58,40 @@ const AddressSchema = z.object({
   formatted: z.string().optional()
 });
 
-const ApproximateAddressSchema = z.object({
-  city: z.string().min(1),
-  state: z.string().min(1).optional(),
-  country: z.string().min(2).optional(),
-  formatted: z.string().optional()
-});
+const ApproximateAddressSchema = z
+  .object({
+    city: z.string().min(1),
+    state: z.string().min(1),
+    country: z.string().min(2),
+    formatted: z.string()
+  })
+  .partial()
+  .refine(
+    (address) => Object.values(address).some((value) => value !== undefined),
+    'Approximate address must include at least one field'
+  );
+
+const UrlOrPathSchema = z
+  .string()
+  .min(1, 'Expected URL or path')
+  .refine(
+    (value) => {
+      try {
+        // Accept absolute URLs (including localhost)
+        new URL(value);
+        return true;
+      } catch {
+        // Allow root-relative paths for bundled assets
+        return value.startsWith('/');
+      }
+    },
+    { message: 'Expected absolute URL or root-relative path' }
+  );
 
 const MediaAssetSchema = z.object({
   _id: ObjectIdSchema.optional(),
-  url: z.string().url(),
-  thumbnailUrl: z.string().url().optional(),
+  url: UrlOrPathSchema,
+  thumbnailUrl: UrlOrPathSchema.optional(),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
   mimeType: z.string().optional(),

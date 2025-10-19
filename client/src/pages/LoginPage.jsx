@@ -6,6 +6,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import './LoginPage.css';
 
 function LoginPage() {
@@ -13,6 +14,7 @@ function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [shake, setShake] = useState(false);
   const [error, setError] = useState(null);
 
@@ -89,23 +91,36 @@ function LoginPage() {
             </div>
           </div>
         )}
-        <form onSubmit={handleLogin} className={"login-form"}>
-          <input
-            type="email"
-            placeholder="Enter Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
 
-          <input
-            type="password"
-            placeholder="Enter Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+        <form onSubmit={handleLogin} className={"login-form"}>
+          <div className="email-input-container">
+            <input
+              type="email"
+              placeholder="Enter Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+
+          <div className="password-input-container">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Enter Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />  
+
+            <button
+              type="button"
+              className="toggle-password-btn"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
+
           <div className="additional-options">
-            {/*NOTE: This doesn't do anything currently*/}
-            <label className="remember-me-checkbox">
+            <label className="remember-me-checkbox"> {/*NOTE: This doesn't do anything currently*/}
                 <input
                   type="checkbox"
                   checked={remember}
@@ -114,7 +129,6 @@ function LoginPage() {
                 Remember me
               </label>
             
-            {/*NOTE: This doesn't navigate anywhere currently*/}
             <div className="forgot-password-link">
               <span
                 className="forgot-password-clickable"
@@ -125,24 +139,21 @@ function LoginPage() {
             </div>
           </div>
           
-
           <button type="submit" className="login-btn">Login</button>
-        </form>
 
-        <button className="google-btn" onClick={handleGoogleSignIn}>
+          <button className="google-btn" onClick={handleGoogleSignIn}>
           <img
             src="https://www.svgrepo.com/show/475656/google-color.svg"
             alt="Google logo"
             className="google-icon"
           />
           Sign in with Google
-        </button>
-
-        {/*NOTE: This doesn't navigate anywhere currently*/}
-        <p className="getting-started-text">Getting started?</p>
-          <button className="register-btn" onClick={() => navigate('/register')}>
-          Register Here
           </button>
+          <p className="getting-started-text">Getting started?</p>
+          <button className="register-btn" onClick={() => navigate('/register')}> {/*NOTE: This doesn't navigate anywhere currently*/}
+            Register Here
+          </button>
+        </form>
       </div>
     </div>
   );
