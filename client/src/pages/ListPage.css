@@ -16,30 +16,26 @@
   height: 90vh;
   background: #fff;
   border-radius: 40px;
-  box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
   padding: 1.25rem 1rem 1.5rem;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
 }
 
-
-/* ======= Purple Header Bar ======= */
 .header-bar {
   position: sticky;
   top: 0;
   z-index: 30;
   background-color: #d1b4f5;
-  margin-top: -1.25rem;
+
+  /* already have these */
   margin-left: -1rem;
   margin-right: -1rem;
-  width: 100%;
+  min-height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 72px;          /* your header height */
-  padding: 0.8rem 1.25rem;
-  padding-bottom: 12px;   
+  transform: translateY(-1px);      /* belt-and-suspenders for GPU rounding */
 }
 
 .header-title {
@@ -56,7 +52,7 @@
   font-size: 1.5rem;
   cursor: pointer;
   line-height: 1;
-  padding: .25rem;
+  padding: 2rem;
   transition: transform .2s ease;
 }
 
@@ -150,11 +146,54 @@
 }
 
 /* Footer */
+/* Footer layout tweaks so we can place a middle row */
 .card-footer {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-top: 0.25rem;
+  gap: 1rem;           /* NEW: breathing room */
+}
+
+/* Let the middle section flex while left/right stay tight */
+.author { flex: 0 0 auto; }
+.counts { flex: 0 0 auto; }
+
+/* --- Interested users row (middle) --- */
+.interested-row {
+  flex: 1 1 auto;                  /* takes the middle space */
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;                /* hide anything that would overflow */
+  min-height: 28px;                /* matches bubble height */
+}
+
+.interest-bubble {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid black;     /* purple outline */
+  cursor: pointer;                 /* per your icon buttons */
+  transition: transform .15s ease;
+}
+.interest-bubble:hover { transform: translateY(-1px) scale(1.03); }
+
+/* +N overflow badge */
+.interest-more {
+  font-weight: 600;
+  color: #6a25d7;
+  background: #efe7ff;
+  border: 1px solid #6a25d7;
+  border-radius: 999px;
+  padding: 2px 8px;
+  line-height: 1;
+  font-size: 0.85rem;
+}
+
+/* Mobile polish: slightly smaller */
+@media (max-width: 480px) {
+  .interest-bubble { width: 24px; height: 24px; }
+  .interested-row { gap: 6px; min-height: 24px; }
+  .interest-more { font-size: 0.8rem; padding: 2px 6px; }
 }
 
 .author {
@@ -259,7 +298,7 @@
 /* ------- Top header controls (icon outline style) ------- */
 .topbar {
   position: sticky;
-  top: calc(var(--header-h) + 12px);  /* 72px + the gap above */
+  top: calc(var(--header-h) + -2px);  /* 72px + the gap above */
   z-index: 25;
   background: #fff;
   display: flex;
@@ -425,7 +464,7 @@ button:focus-visible {
   /* Keep "Sort by:" label visible */
   .sort-row .sort-label {
     display: inline;
-    font-size: 0.9rem;
+    font-size: 1rem;
   }
 
   .sort-row {
