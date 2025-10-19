@@ -1,196 +1,194 @@
-﻿# Pinpoint API Reference (Frontend Cheatsheet)
+# Frontend Cheatsheet - Full Pin Payload
 
-All endpoints require `Authorization: Bearer <token>` (use `demo-test-token` in development). Base URL:
+Fetch a pin with `GET /api/pins/:pinId`, run it through `DebugPin.fromApi(payload)` for typed access, and refer to the shapes below when you need every field (including the embedded `creator`). The backend normalises everything before sending JSON, so anything missing from the response is truly unset.
 
-- Local: `http://localhost:5000`
-- Render: `https://bulletin-app.onrender.com`
+## Pin Base Properties
 
----
-## Users
+| Property | Type | Details |
+|----------|------|---------|
+| `_id` | `string` | MongoDB ObjectId for the pin. |
+| `type` | `'event' \| 'discussion'` | Determines which extra fields appear. |
+| `creatorId` | `string` | Owner id; mirrors `creator._id`. |
+| `creator` | `PublicUser` \| `undefined` | See [Creator Object](#creator-object-payloadcreator). Present when the caller is authorised. |
+| `title` | `string` | Display name. |
+| `description` | `string` | Up to 4000 characters of rich text. |
+| `coordinates` | `{ type: 'Point', coordinates: [longitude, latitude], accuracy?: number }` | Long/lat in decimal degrees; `accuracy` is meters. |
+| `proximityRadiusMeters` | `number` | Cluster radius around the pin (default 1609 m / 1 mile). |
+| `photos` | `MediaAsset[]` | Up to 10 uploaded assets (see [Media Asset](#media-asset-shape)). |
+| `coverPhoto` | `MediaAsset` \| `undefined` | Hero image; defaults to first photo if unset. |
+| `tagIds` | `string[]` | ObjectId references to tag records (if any). |
+| `tags` | `string[]` | Denormalised tag labels. |
+| `relatedPinIds` | `string[]` | Other pins linked to this one. |
+| `linkedLocationId` | `string` \| `undefined` | Attached `Location` entity. |
+| `linkedChatRoomId` | `string` \| `undefined` | Associated proximity chat room. |
+| `visibility` | `'public' \| 'friends' \| 'private'` | Sharing scope. |
+| `isActive` | `boolean` | Whether the pin should appear in feeds. |
+| `stats` | `PinStats` \| `undefined` | See [Pin Stats](#pin-stats-payloadstats). |
+| `bookmarkCount` | `number` | Quick access to `stats.bookmarkCount`. |
+| `replyCount` | `number` | Quick access to `stats.replyCount`. |
+| `createdAt` | `string` | ISO-8601 timestamp. |
+| `updatedAt` | `string` | ISO-8601 timestamp. |
+| `audit` | `{ createdAt: string, updatedAt: string, createdBy?: string, updatedBy?: string }` \| `undefined` | Reserved for moderation trails (not currently populated). |
 
-### `GET /api/users`
-List public user profiles.
+## Event-Only Fields (`type === 'event'`)
 
-Query params: `search`, `limit`
+| Property | Type | Details |
+|----------|------|---------|
+| `startDate` | `string` | ISO-8601 start. |
+| `endDate` | `string` | ISO-8601 end. |
+| `address` | `{ precise: string, components?: { line1?, line2?, city?, state?, postalCode?, country? } }` \| `undefined` | Full venue information. |
+| `participantCount` | `number` | Current attendance tally. |
+| `participantLimit` | `number` \| `undefined` | Capacity cap. |
+| `attendingUserIds` | `string[]` \| `undefined` | Users confirmed for the event. |
+| `attendeeWaitlistIds` | `string[]` | Users waiting for a spot. |
+| `attendable` | `boolean` | Whether RSVPs are open. |
 
-```json
-[
-  {
-    "_id": "68e061721329566a22d474a7",
-    "username": "alexrivera",
-    "displayName": "Alex Rivera",
-    "avatar": { "url": "https://..." },
-    "stats": { "eventsHosted": 2, "followers": 23, ... },
-    "badges": [],
-    "accountStatus": "active"
+## Discussion-Only Fields (`type === 'discussion'`)
+
+| Property | Type | Details |
+|----------|------|---------|
+| `approximateAddress` | `{ city?, state?, country?, formatted? }` \| `undefined` | High-level location hints. |
+| `expiresAt` | `string` | ISO-8601 auto-expiry timestamp. |
+| `autoDelete` | `boolean` | If `true`, pin is removed when `expiresAt` passes. |
+
+## Creator Object (`payload.creator`)
+
+| Property | Type | Details |
+|----------|------|---------|
+| `_id` | `string` | Creator id (MongoDB ObjectId). |
+| `username` | `string` | Handle used in mentions/@lookups. |
+| `displayName` | `string` | Friendly name for UI. |
+| `avatar` | `MediaAsset` \| `undefined` | Square profile image. |
+| `stats` | `UserStats` \| `undefined` | See below. |
+| `badges` | `string[]` | Awarded badge slugs. |
+| `primaryLocationId` | `string` \| `undefined` | Home `Location`. |
+| `accountStatus` | `'active' \| 'inactive' \| 'suspended' \| 'deleted'` | Current account state. |
+
+### User Stats (`payload.creator.stats`)
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `eventsHosted` | `number` | Total events published. |
+| `eventsAttended` | `number` | Events joined. |
+| `posts` | `number` | Discussion posts authored. |
+| `bookmarks` | `number` | Pins bookmarked. |
+| `followers` | `number` | Followers count. |
+| `following` | `number` | Following count. |
+
+## Pin Stats (`payload.stats`)
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `bookmarkCount` | `number` | Saved by how many users. |
+| `replyCount` | `number` | Replies (including threads). |
+| `shareCount` | `number` | Shares recorded. |
+| `viewCount` | `number` | Unique view counter. |
+
+## Media Asset Shape
+
+Applies to `photos[]`, `coverPhoto`, and `creator.avatar`.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `url` | `string` | Full-size asset location (required). |
+| `thumbnailUrl` | `string` \| `undefined` | Smaller preview when available. |
+| `width` | `number` \| `undefined` | Pixels. |
+| `height` | `number` \| `undefined` | Pixels. |
+| `mimeType` | `string` \| `undefined` | Usually `image/jpeg`. |
+| `description` | `string` \| `undefined` | Alt text / caption. |
+| `uploadedAt` | `string` \| `undefined` | ISO timestamp for the upload. |
+| `uploadedBy` | `string` \| `undefined` | User id who uploaded. |
+
+## Console Logging Example
+
+```js
+import { DebugPin } from '@/models';
+import { fetchPinById } from '@/api/mongoDataApi';
+
+const payload = await fetchPinById(pinId);
+logPinPayload(payload);
+
+const pin = DebugPin.fromApi(payload);
+console.log('Typed pin title:', pin.title);
+
+function logPinPayload(payload) {
+  if (!payload) {
+    console.log('No pin payload returned.');
+    return;
   }
-]
-```
 
-### `GET /api/users/:userId`
-Returns full profile (preferences, relationships, pinned pin IDs, timestamps).
+  console.log('--- Pin Base ---');
+  console.log('Pin ID:', payload._id ?? 'n/a');
+  console.log('Type:', payload.type ?? 'n/a');
+  console.log('Title:', payload.title ?? 'n/a');
+  console.log('Description:', payload.description ?? 'n/a');
+  console.log('Creator ID:', payload.creatorId ?? 'n/a');
+  console.log('Coordinates:', payload.coordinates ?? 'n/a');
+  console.log('Proximity radius:', payload.proximityRadiusMeters ?? 'n/a');
+  console.log('Photos (urls):', (payload.photos ?? []).map((photo) => photo.url));
+  console.log('Cover photo:', payload.coverPhoto ?? 'n/a');
+  console.log('Tag IDs:', payload.tagIds ?? []);
+  console.log('Tags:', payload.tags ?? []);
+  console.log('Related pin IDs:', payload.relatedPinIds ?? []);
+  console.log('Linked location ID:', payload.linkedLocationId ?? 'n/a');
+  console.log('Linked chat room ID:', payload.linkedChatRoomId ?? 'n/a');
+  console.log('Visibility:', payload.visibility ?? 'n/a');
+  console.log('Is active:', payload.isActive ?? 'n/a');
+  console.log('Stats object:', payload.stats ?? 'n/a');
+  console.log('Bookmark count:', payload.bookmarkCount ?? 0);
+  console.log('Reply count:', payload.replyCount ?? 0);
+  console.log('Created at:', payload.createdAt ?? 'n/a');
+  console.log('Updated at:', payload.updatedAt ?? 'n/a');
+  console.log('Audit:', payload.audit ?? 'n/a');
 
-### `GET /api/users/:userId/pins`
-Pins created by the user. Response matches pin list items below.
-
----
-## Pins
-
-### `GET /api/pins`
-Query params: `type`, `creatorId`, `limit`
-
-```json
-[
-  {
-    "_id": "68e061721329566a22d474aa",
-    "type": "event",
-    "creatorId": "68e061721329566a22d474a7",
-    "creator": { "_id": "68e061..." },
-    "title": "Campus Cleanup & Coffee",
-    "coordinates": { "type": "Point", "coordinates": [-118.115, 33.784], "accuracy": 20 },
-    "proximityRadiusMeters": 1200,
-    "startDate": "2025-10-04T23:51:14.276Z",
-    "endDate": "2025-10-05T02:51:14.276Z",
-    "replyCount": 4,
-    "stats": { "bookmarkCount": 12, "replyCount": 4, ... }
+  if (payload.type === 'event') {
+    console.log('--- Event Fields ---');
+    console.log('Start date:', payload.startDate ?? 'n/a');
+    console.log('End date:', payload.endDate ?? 'n/a');
+    console.log('Address:', payload.address ?? 'n/a');
+    console.log('Participant count:', payload.participantCount ?? 0);
+    console.log('Participant limit:', payload.participantLimit ?? 'n/a');
+    console.log('Attending user IDs:', payload.attendingUserIds ?? []);
+    console.log('Waitlist IDs:', payload.attendeeWaitlistIds ?? []);
+    console.log('Attendable:', payload.attendable ?? true);
   }
-]
-```
 
-### `GET /api/pins/:pinId`
-Full pin payload with address/participants (events) or expiration (discussions).
-
-### `GET /api/pins/:pinId/replies`
-```json
-[
-  {
-    "_id": "68e061721329566a22d474b0",
-    "pinId": "68e061721329566a22d474aa",
-    "author": { "_id": "68e061...", "displayName": "Priya Desai" },
-    "message": "Count me in!",
-    "reactions": [{ "userId": "68e061...", "type": "like", "reactedAt": "2025-10-03T23:51:14.276Z" }],
-    "createdAt": "2025-10-03T23:51:14.276Z"
+  if (payload.type === 'discussion') {
+    console.log('--- Discussion Fields ---');
+    console.log('Approximate address:', payload.approximateAddress ?? 'n/a');
+    console.log('Expires at:', payload.expiresAt ?? 'n/a');
+    console.log('Auto delete:', payload.autoDelete ?? true);
   }
-]
-```
 
----
-## Bookmarks
-
-### `GET /api/bookmarks?userId=<id>`
-```json
-[
-  {
-    "_id": "68e061721329566a22d474af",
-    "pinId": "68e061721329566a22d474ac",
-    "notes": "Invite the design club folks.",
-    "createdAt": "2025-10-03T23:51:16.195Z",
-    "pin": { "_id": "68e061...", "title": "Night Market Pop-up" }
+  if (payload.stats) {
+    console.log('--- Pin Stats ---');
+    console.log('bookmarkCount:', payload.stats.bookmarkCount ?? 0);
+    console.log('replyCount:', payload.stats.replyCount ?? 0);
+    console.log('shareCount:', payload.stats.shareCount ?? 0);
+    console.log('viewCount:', payload.stats.viewCount ?? 0);
   }
-]
-```
 
-### `GET /api/bookmarks/collections?userId=<id>`
-Returns collections including nested bookmarks.
+  if (payload.creator) {
+    console.log('--- Creator ---');
+    console.log('Creator ID:', payload.creator._id ?? 'n/a');
+    console.log('Creator username:', payload.creator.username ?? 'n/a');
+    console.log('Creator display name:', payload.creator.displayName ?? 'Unknown host');
+    console.log('Creator avatar:', payload.creator.avatar ?? 'n/a');
+    console.log('Creator badges:', payload.creator.badges ?? []);
+    console.log('Creator primary location ID:', payload.creator.primaryLocationId ?? 'n/a');
+    console.log('Creator account status:', payload.creator.accountStatus ?? 'n/a');
 
----
-## Chats / Proximity Rooms
-
-### `GET /api/chats/rooms`
-```json
-[
-  {
-    "_id": "68e061721329566a22d474b3",
-    "name": "CSULB Campus Lounge",
-    "coordinates": { "type": "Point", "coordinates": [-118.112, 33.782] },
-    "radiusMeters": 600,
-    "participantIds": ["68e061..."],
-    "moderatorIds": ["68e061..."],
-    "pinId": "68e061721329566a22d474ab"
+    const stats = payload.creator.stats ?? {};
+    console.log('Creator events hosted:', stats.eventsHosted ?? 0);
+    console.log('Creator events attended:', stats.eventsAttended ?? 0);
+    console.log('Creator posts:', stats.posts ?? 0);
+    console.log('Creator bookmarks:', stats.bookmarks ?? 0);
+    console.log('Creator followers:', stats.followers ?? 0);
+    console.log('Creator following:', stats.following ?? 0);
+  } else {
+    console.log('Creator: unavailable (missing or unauthorised).');
   }
-]
-```
-
-### `GET /api/chats/rooms/:roomId/messages`
-```json
-[
-  {
-    "_id": "68e061721329566a22d474b4",
-    "author": { "displayName": "Priya Desai" },
-    "message": "Welcome to the lounge!",
-    "createdAt": "2025-10-03T23:51:14.276Z"
-  }
-]
-```
-
-### `GET /api/chats/rooms/:roomId/presence`
-Presence entries with session IDs and last-active timestamps.
-
----
-## Updates
-
-### `GET /api/updates?userId=<id>`
-```json
-[
-  {
-    "_id": "68e061721329566a22d474b8",
-    "payload": {
-      "type": "new-pin",
-      "title": "Priya started a new study circle",
-      "pin": { "_id": "68e061721329566a22d474ab", "title": "Latte Lounge Study Circle" }
-    },
-    "createdAt": "2025-10-03T23:51:16.544Z",
-    "deliveredAt": "2025-10-03T23:51:14.276Z"
-  }
-]
-```
-
----
-## Locations
-
-### `POST /api/locations`
-Upsert current location (matching `LocationWriteSchema`).
-
-```json
-{
-  "userId": "68e061721329566a22d474a7",
-  "coordinates": { "type": "Point", "coordinates": [-118.1151, 33.7845] },
-  "source": "ios",
-  "linkedPinIds": ["68e061721329566a22d474aa"]
 }
 ```
 
-### `GET /api/locations/nearby`
-Query params: `longitude`, `latitude`, `maxDistance`
-
-```json
-[
-  {
-    "userId": "68e061721329566a22d474a7",
-    "coordinates": { "type": "Point", "coordinates": [-118.1151, 33.7845], "accuracy": 12 },
-    "distanceMeters": 56.4,
-    "linkedPinIds": ["68e061721329566a22d474aa"]
-  }
-]
-```
-
-### `GET /api/locations/history/:userId`
-Most recent 50 locations for that user.
-
----
-## Sample IDs (from seed data)
-
-- Users: Alex `68e061721329566a22d474a7`, Priya `68e061721329566a22d474a8`, Marcus `68e061721329566a22d474a9`
-- Pins: Cleanup `68e061721329566a22d474aa`, Latte Lounge `68e061721329566a22d474ab`, Night Market `68e061721329566a22d474ac`
-- Chat room: `68e061721329566a22d474b3`
-- Bookmark collections: Alex `68e061721329566a22d474ad`
-
----
-## Quick curl examples
-```bash
-curl -H "Authorization: Bearer demo-test-token" \
-  "https://bulletin-app.onrender.com/api/pins"
-
-curl -H "Authorization: Bearer demo-test-token" \
-  "https://bulletin-app.onrender.com/api/bookmarks?userId=68e061721329566a22d474a7"
-```
+**API reminder:** all calls require `Authorization: Bearer <token>` (`demo-test-token` works offline). Base URLs - local: `http://localhost:5000`, production: `https://bulletin-app.onrender.com`. Primary endpoint: `GET /api/pins/:pinId`.
