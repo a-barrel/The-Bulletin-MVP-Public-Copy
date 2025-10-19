@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { Link as RouterLink } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -5,6 +6,7 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import MapIcon from '@mui/icons-material/Map';
+import PinListItem from '../components/PinListItem';
 
 export const pageConfig = {
   id: 'list',
@@ -16,38 +18,37 @@ export const pageConfig = {
 };
 
 function ListPage() {
+  const navigate = useNavigate();
+  const pins = [
+    { _id: '123', title: 'Lost Dog', description: 'Brown lab seen near park.', locationName: 'Central Park', authorName: 'Alex' },
+    { _id: '456', title: 'Free Couch', description: 'On the curb, first come.', locationName: '5th Ave', authorName: 'Sam' },
+    { _id: '789', title: 'Community Cleanup', description: 'Saturday 9am by the river.', locationName: 'Riverside', authorName: 'Taylor' }
+  ];
+
+  const handleOpenPin = (pin) => {
+    navigate(`/pin/${pin._id}`);
+  };
+
   return (
     <Box
       component="section"
       sx={{
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        px: 3
+        py: 4,
+        px: 2
       }}
     >
       <Stack
-        spacing={3}
+        spacing={2}
         sx={{
           width: '100%',
-          maxWidth: 480,
-          backgroundColor: 'background.paper',
-          p: 4,
-          borderRadius: 2,
-          boxShadow: 6
+          maxWidth: 600,
+          mx: 'auto'
         }}
       >
-        <Box>
-          <Typography variant="h5" gutterBottom>
-            Sample Pins
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h4" component="h1">
+            Pins
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            This page is a placeholder list view to test navigation between different screens.
-          </Typography>
-        </Box>
-
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <Button
             component={RouterLink}
             to="/map"
@@ -56,13 +57,12 @@ function ListPage() {
           >
             View Map
           </Button>
-          <Button
-            component={RouterLink}
-            to="/pin/123"
-            variant="outlined"
-          >
-            Open Pin 123
-          </Button>
+        </Stack>
+
+        <Stack spacing={1.5}>
+          {pins.map((pin) => (
+            <PinListItem key={pin._id} pin={pin} onClick={handleOpenPin} />
+          ))}
         </Stack>
       </Stack>
     </Box>
