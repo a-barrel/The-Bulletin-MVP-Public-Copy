@@ -63,9 +63,19 @@ function ForgotPasswordPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <button type="submit" className="submit-email-btn">Submit</button>
+          
+          <button 
+            type="submit" 
+            className="submit-email-btn"
+          >
+            Submit
+          </button>
 
-          <button className="cancel-btn" onClick={() => navigate('/login')}>
+          <button 
+            type="button"
+            className="cancel-btn"
+            onClick={() => navigate('/login')}
+          >
             Cancel
           </button>
         </form>

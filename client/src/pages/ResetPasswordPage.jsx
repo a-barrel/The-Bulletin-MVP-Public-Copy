@@ -162,13 +162,13 @@ function ResetPasswordPage() {
               onChange={(e) => setConfirmNewPassword(e.target.value)}
             />
 
-              <button
-                type="button"
-                className="toggle-confirm-new-password-btn"
-                onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
-              >
-                {showConfirmNewPassword ? <FaEyeSlash /> : <FaEye />}
-              </button>
+            <button
+              type="button"
+              className="toggle-confirm-new-password-btn"
+              onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+            >
+              {showConfirmNewPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
           </div>
 
           <div className="password-strength-container">
