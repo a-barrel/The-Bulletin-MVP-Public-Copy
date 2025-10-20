@@ -21,6 +21,16 @@ const DUMMY_FEED = [
       "https://picsum.photos/seed/pot2/400/260",
     ],
     author: "Chicken__Man",
+    authorName: "Chicken__Man",
+    creatorId: "507f1f77bcf86cd799439011",
+    creator: {
+      _id: "507f1f77bcf86cd799439011",
+      username: "Chicken__Man",
+      displayName: "Chicken__Man",
+      avatar: {
+        url: "https://picsum.photos/seed/chicken/100/100"
+      }
+    },
     comments: 8,
     interested: ["anna", "ben", "cory", "dee", "emma", "finn", "gia", "hank", "ivy", "bob", "stan"],
   },

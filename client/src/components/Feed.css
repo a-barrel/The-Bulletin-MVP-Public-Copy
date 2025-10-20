@@ -154,6 +154,18 @@
 .card-header.pin .tag { color: #d946ef; }
 .card-header.discussion .tag { color: #2563eb; }
 
+/* Clickable author styling */
+.author-clickable {
+  cursor: pointer;
+  color: #6a25d7;
+  text-decoration: underline;
+  transition: color 0.2s ease;
+}
+
+.author-clickable:hover {
+  color: #4a1a9e;
+}
+
 /* Responsive tweaks */
 @media (max-width: 768px) {
   .card { width: 94%; }

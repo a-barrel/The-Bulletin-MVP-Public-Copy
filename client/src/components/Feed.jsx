@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import commentsIcon from "../assets/Comments.png";
 import attendanceIcon from "../assets/AttendanceIcon.png";
 import pinIcon from "../assets/PinIcon.png";
@@ -43,6 +44,16 @@ const InterestedRow = ({ users = [] }) => {
 
 /* ---------- Feed component ---------- */
 export default function Feed({ items = [] }) {
+  const navigate = useNavigate();
+
+  const handleAuthorClick = (e, item) => {
+    e.stopPropagation();
+    if (item.creatorId || item.creator?._id) {
+      const authorId = item.creatorId || item.creator._id;
+      navigate(`/user/${authorId}`);
+    }
+  };
+
   return (
     <div className="feed">
       {items.map((item) => {
@@ -82,7 +93,12 @@ export default function Feed({ items = [] }) {
             <footer className="card-footer">
               <div className="author">
                 <div className="avatar" aria-hidden="true" />
-                <span className="name">@{item.author}</span>
+                <span 
+                  className="name author-clickable"
+                  onClick={(e) => handleAuthorClick(e, item)}
+                >
+                  @{item.creator?.displayName || item.creator?.username || item.author}
+                </span>
               </div>
 
               {/* interested users trail */}
