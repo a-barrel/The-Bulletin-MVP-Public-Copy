@@ -175,7 +175,43 @@
   .card { width: 94%; }
   .media { height: 140px; }
 
-  .interest-bubble { width: 24px; height: 24px; }
-  .interested-row { gap: 6px; min-height: 24px; }
-  .interest-more { font-size: 0.8rem; padding: 2px 6px; }
+  /* Put footer on 2 rows: 
+     row 1 -> author (left) + counts (right)
+     row 2 -> interested bubbles full width */
+  .card-footer {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "author . counts"
+      "interested interested interested";
+    row-gap: 6px;
+    align-items: center;
+  }
+
+  .author { grid-area: author; }
+  .counts { 
+    grid-area: counts; 
+    justify-self: end; 
+    gap: 0.6rem;         /* a bit tighter on phones */
+  }
+
+  .interested-row {
+    grid-area: interested;
+    display: flex;
+    flex-wrap: wrap;      /* wrap to next line if needed */
+    gap: 6px;
+    min-height: 24px;
+    overflow: visible;    /* ensure last bubble isn't clipped */
+  }
+
+  /* Bubble sizing on phones */
+  .interest-bubble { 
+    width: 22px; 
+    height: 22px; 
+    flex: 0 0 22px;       /* prevents squishing */
+  }
+  .interest-more { 
+    font-size: 0.8rem; 
+    padding: 2px 6px; 
+  }
 }
