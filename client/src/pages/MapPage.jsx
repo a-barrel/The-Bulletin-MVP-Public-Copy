@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom'; // 1. Import useNavigate
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -10,7 +9,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import MapIcon from '@mui/icons-material/Map';
 import Map from '../components/Map';
 import LocationShare from '../components/LocationShare';
-import { fetchPinsNearby } from '../api/mongoDataApi.js';
+import { fetchPinsNearby } from '../api/mongoDataApi.js'; // Make sure to import fetchPinsNearby
 import "./ListPage.css";
 import commentsIcon from "../assets/Comments.png";
 import attendanceIcon from "../assets/AttendanceIcon.png";
@@ -36,7 +35,6 @@ const DEFAULT_MAX_DISTANCE_METERS = 16093; // ~10 miles
 const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
 
 function MapPage() {
-  const navigate = useNavigate(); // 2. Initialize useNavigate
   const [toggleOn, setToggleOn] = useState(false);
   const handleToggle = useCallback(() => setToggleOn(v => !v), []);
   const onToggleKeyDown = useCallback((e) => {
@@ -46,11 +44,13 @@ function MapPage() {
     }
   }, []);
 
+  // --- New State Variables ---
   const [userLocation, setUserLocation] = useState(null);
   const [pins, setPins] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // --- New useEffect to get user's location ---
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -75,13 +75,14 @@ function MapPage() {
     }
   }, []);
 
+  // --- New useEffect to fetch pins when location is available ---
   useEffect(() => {
     if (userLocation) {
       setLoading(true);
       fetchPinsNearby({
         latitude: userLocation.latitude,
         longitude: userLocation.longitude,
-        distanceMiles: 10
+        distanceMiles: 10 // You can adjust this distance
       })
         .then(fetchedPins => {
           setPins(fetchedPins);
@@ -98,6 +99,7 @@ function MapPage() {
   return (
     <div className="list-page">
       <div className="list-frame">
+        {/* 🔹 Top Header Bar */}
         <header className="header-bar">
           <button className="header-icon-btn" aria-label="Menu">
             <img src={menuIcon} alt="Menu" className="header-icon" />
@@ -108,18 +110,19 @@ function MapPage() {
           </button>
         </header>
 
+        {/* Topbar (Settings, Toggle, Sort, Add) */}
         <div className="topbar">
           <div className="top-left">
             <button className="icon-btn" type="button" aria-label="Settings">
               <img src={settingsIcon} alt="Settings" />
             </button>
           </div>
-          {/* 3. Add onClick handler */}
-          <button className="add-btn" type="button" aria-label="Add" onClick={() => navigate('/create-pin')}>
+          <button className="add-btn" type="button" aria-label="Add">
             <img src={addIcon} alt="Add" />
           </button>
         </div>
 
+        {/* 🔹 Map Component */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           {error && <Alert severity="error">{error}</Alert>}
           {loading ? (
