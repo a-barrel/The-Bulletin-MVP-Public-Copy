@@ -279,6 +279,7 @@
     color: #5d3889;
     margin-right: 0.5rem;
     flex-shrink: 0;
+    flex-shrink: 0;
 }
 
 .event-container .location-text {
