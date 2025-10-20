@@ -17,6 +17,10 @@ function resolveApiBaseUrl() {
 }
 
 async function resolveAuthToken() {
+  if (runtimeConfig.isOffline) {
+    return runtimeConfig.fallbackToken;
+  }
+
   const currentUser = auth.currentUser;
   if (!currentUser) {
     return null;
