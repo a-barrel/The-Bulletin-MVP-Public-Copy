@@ -54,6 +54,10 @@ export default function Feed({ items = [] }) {
     }
   };
 
+  const handlePinClick = (item) => {
+    navigate(`/pin/${item.id}`);
+  };
+
   return (
     <div className="feed">
       {items.map((item) => {
@@ -61,7 +65,11 @@ export default function Feed({ items = [] }) {
         const attendanceCount = interested.length;
 
         return (
-          <article className={`card ${item.type}`} key={item.id}>
+          <article 
+            className={`card ${item.type}`} 
+            key={item.id}
+            onClick={() => handlePinClick(item)}
+          >
             <header className={`card-header ${item.type}`}>
               <div className="tag">
                 <img
