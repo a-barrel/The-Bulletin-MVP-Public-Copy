@@ -9,7 +9,17 @@ import CircularProgress from '@mui/material/CircularProgress';
 import MapIcon from '@mui/icons-material/Map';
 import Map from '../components/Map';
 import LocationShare from '../components/LocationShare';
-import { insertLocationUpdate, fetchNearbyUsers } from '../api/mongoDataApi.js';
+import { fetchPinsNearby } from '../api/mongoDataApi.js'; // Make sure to import fetchPinsNearby
+import "./ListPage.css";
+import commentsIcon from "../assets/Comments.png";
+import attendanceIcon from "../assets/AttendanceIcon.png";
+import Navbar from "../components/Navbar";
+import pinIcon from "../assets/PinIcon.png";
+import discussionIcon from "../assets/DiscussionIcon.png";
+import settingsIcon from "../assets/GearIcon.svg";
+import addIcon from "../assets/AddIcon.svg";
+import menuIcon from "../assets/MenuIcon.svg";
+import updatesIcon from "../assets/UpdateIcon.svg";
 
 export const pageConfig = {
   id: 'map',
@@ -21,156 +31,115 @@ export const pageConfig = {
   showInNav: true
 };
 
-const DEMO_USER_ID = 'demo-user';
 const DEFAULT_MAX_DISTANCE_METERS = 16093; // ~10 miles
 const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
 
 function MapPage() {
-  const [userLocation, setUserLocation] = useState(null);
-  const [nearbyUsers, setNearbyUsers] = useState([]);
-  const [isSharing, setIsSharing] = useState(false);
-  const [isLoadingNearby, setIsLoadingNearby] = useState(false);
-  const [error, setError] = useState(null);
+  const [toggleOn, setToggleOn] = useState(false);
+  const handleToggle = useCallback(() => setToggleOn(v => !v), []);
+  const onToggleKeyDown = useCallback((e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setToggleOn(v => !v);
+    }
+  }, []);
 
+  // --- New State Variables ---
+  const [userLocation, setUserLocation] = useState(null);
+  const [pins, setPins] = useState([]);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // --- New useEffect to get user's location ---
   useEffect(() => {
-    if ('geolocation' in navigator) {
+    if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const { latitude, longitude } = position.coords;
-          setUserLocation({ latitude, longitude });
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+          setLoading(false);
         },
         (err) => {
-          console.error('Error getting location:', err);
-          if (err?.code === 1) {
-            setUserLocation(FALLBACK_LOCATION);
-            setError('Using default campus location. Enable location permissions for precise results.');
-          } else {
-            setError('We could not access your location. Enable location permissions to continue.');
-          }
+          console.error("Error getting location:", err);
+          setUserLocation(FALLBACK_LOCATION);
+          setError("Could not get your location, using a fallback.");
+          setLoading(false);
         }
       );
     } else {
-      setError('Geolocation is not supported in this browser.');
+      setUserLocation(FALLBACK_LOCATION);
+      setError("Geolocation is not supported by this browser.");
+      setLoading(false);
     }
   }, []);
 
-  const refreshNearby = useCallback(async () => {
-    if (!userLocation) return;
-
-    setIsLoadingNearby(true);
-    try {
-      const results = await fetchNearbyUsers({
-        longitude: userLocation.longitude,
+  // --- New useEffect to fetch pins when location is available ---
+  useEffect(() => {
+    if (userLocation) {
+      setLoading(true);
+      fetchPinsNearby({
         latitude: userLocation.latitude,
-        maxDistance: DEFAULT_MAX_DISTANCE_METERS
-      });
-      setNearbyUsers(results);
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching nearby users:', err);
-      setError(err.message || 'Failed to load nearby users.');
-    } finally {
-      setIsLoadingNearby(false);
+        longitude: userLocation.longitude,
+        distanceMiles: 10 // You can adjust this distance
+      })
+        .then(fetchedPins => {
+          setPins(fetchedPins);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Error fetching nearby pins:", err);
+          setError("Could not fetch nearby pins.");
+          setLoading(false);
+        });
     }
   }, [userLocation]);
 
-  const handleStartSharing = useCallback(async () => {
-    if (!userLocation) return;
-
-    setIsSharing(true);
-    try {
-      const now = new Date().toISOString();
-      await insertLocationUpdate({
-        userId: DEMO_USER_ID,
-        coordinates: {
-          type: 'Point',
-          coordinates: [userLocation.longitude, userLocation.latitude]
-        },
-        isPublic: true,
-        createdAt: now,
-        lastSeenAt: now
-      });
-      await refreshNearby();
-    } catch (err) {
-      console.error('Error sharing location:', err);
-      setError(err.message || 'Failed to share your location.');
-      setIsSharing(false);
-    }
-  }, [userLocation, refreshNearby]);
-
-  const shareDisabledReason = !userLocation
-    ? 'Waiting for your device location...'
-    : null;
-
-  const handleStopSharing = useCallback(() => {
-    setIsSharing(false);
-    setNearbyUsers([]);
-  }, []);
-
-  useEffect(() => {
-    if (!isSharing) return;
-    refreshNearby();
-    const intervalId = window.setInterval(refreshNearby, 60000);
-    return () => window.clearInterval(intervalId);
-  }, [isSharing, refreshNearby]);
-
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Pinpoint
-          </Typography>
-          {userLocation && (
-            <Typography variant="body2" sx={{ mr: 2 }}>
-              {isSharing ? 'Location sharing is active' : 'Location sharing is paused'}
-            </Typography>
-          )}
-        </Toolbar>
-      </AppBar>
+    <div className="list-page">
+      <div className="list-frame">
+        {/* 🔹 Top Header Bar */}
+        <header className="header-bar">
+          <button className="header-icon-btn" aria-label="Menu">
+            <img src={menuIcon} alt="Menu" className="header-icon" />
+          </button>
+          <h1 className="header-title">Map</h1>
+          <button className="header-icon-btn" aria-label="Notifications">
+            <img src={updatesIcon} alt="Notifications" className="header-icon" />
+          </button>
+        </header>
 
-      <Container maxWidth={false} sx={{ flexGrow: 1, p: 0 }}>
-        {userLocation ? (
-          <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
-            <Box sx={{ position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 2 }}>
-              <LocationShare
-                isSharing={isSharing}
-                onToggle={() => (isSharing ? handleStopSharing() : handleStartSharing())}
-                disabled={Boolean(shareDisabledReason)}
-                helperText={shareDisabledReason}
-              />
+        {/* Topbar (Settings, Toggle, Sort, Add) */}
+        <div className="topbar">
+          <div className="top-left">
+            <button className="icon-btn" type="button" aria-label="Settings">
+              <img src={settingsIcon} alt="Settings" />
+            </button>
+          </div>
+          <button className="add-btn" type="button" aria-label="Add">
+            <img src={addIcon} alt="Add" />
+          </button>
+        </div>
+
+        {/* 🔹 Map Component */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          {error && <Alert severity="error">{error}</Alert>}
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+              <CircularProgress />
             </Box>
+          ) : (
+            <Map
+              userLocation={userLocation}
+              pins={pins}
+            />
+          )}
+        </div>
 
-            {error && (
-              <Box sx={{ position: 'absolute', top: 90, right: 16, zIndex: 2, maxWidth: 320 }}>
-                <Alert severity="error" onClose={() => setError(null)}>
-                  {error}
-                </Alert>
-              </Box>
-            )}
-
-            {isLoadingNearby && (
-              <Box sx={{ position: 'absolute', bottom: 24, right: 24, zIndex: 2 }}>
-                <CircularProgress color="primary" size={36} />
-              </Box>
-            )}
-
-            <Map userLocation={userLocation} nearbyUsers={nearbyUsers} />
-          </Box>
-        ) : (
-          <Box sx={{
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Typography variant="h6">
-              Please allow location access to use this app
-            </Typography>
-          </Box>
-        )}
-      </Container>
-    </Box>
+        <Navbar />
+      </div>
+    </div>
   );
 }
 
