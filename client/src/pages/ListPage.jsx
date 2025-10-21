@@ -88,19 +88,26 @@ export default function ListPage() {
     }
   }, []);
 
-  const sortedFeed = useMemo(() => {
-    const items = [...DUMMY_FEED];
+  const filteredAndSortedFeed = useMemo(() => {
+    // Step 1: Filter out expired pins
+    const filteredItems = DUMMY_FEED.filter(pin => {
+      const hoursLeft = hoursUntil(pin.timeLabel);
+      return hoursLeft > 0; // Only show non-expired pins
+    });
+    
+    // Step 2: Sort the filtered items
     if (sortByExpiration) {
-      items.sort((a, b) => {
+      filteredItems.sort((a, b) => {
         const ha = hoursUntil(a.timeLabel);
         const hb = hoursUntil(b.timeLabel);
         if (ha !== hb) return ha - hb;
         return milesFrom(a.distance) - milesFrom(b.distance);
       });
     } else {
-      items.sort((a, b) => milesFrom(a.distance) - milesFrom(b.distance));
+      filteredItems.sort((a, b) => milesFrom(a.distance) - milesFrom(b.distance));
     }
-    return items;
+    
+    return filteredItems;
   }, [sortByExpiration]);
 
   return (
@@ -150,7 +157,7 @@ export default function ListPage() {
         </div>
 
         {/* Feed (now a component) */}
-        <Feed items={sortedFeed} />
+        <Feed items={filteredAndSortedFeed} />
 
         <Navbar />
       </div>
