@@ -1,10 +1,18 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import './PinDetails.css';
 import PlaceIcon from '@mui/icons-material/Place'; // used only for pageConfig
 import LeafletMap from '../components/Map';
 import runtimeConfig from '../config/runtime';
-import { fetchPinById, fetchReplies } from '../api/mongoDataApi';
+import {
+  fetchPinById,
+  fetchReplies,
+  fetchPinAttendees,
+  updatePinAttendance,
+  createPinBookmark,
+  deletePinBookmark,
+  createPinReply
+} from '../api/mongoDataApi';
 
 export const pageConfig = {
   id: 'pin-details',
@@ -139,21 +147,121 @@ const formatMetersToMiles = (meters) => {
   return `${formatted} mi`;
 };
 
+const resolveUserIdentifier = (user) => {
+  if (!user || typeof user !== 'object') {
+    return null;
+  }
+
+  const rawIdentifier =
+    user._id ??
+    user.id ??
+    user.uid ??
+    user.userId ??
+    user.username ??
+    user.email ??
+    user.displayName;
+
+  if (rawIdentifier === undefined || rawIdentifier === null) {
+    return null;
+  }
+
+  const identifierString =
+    typeof rawIdentifier === 'string' ? rawIdentifier.trim() : String(rawIdentifier).trim();
+
+  if (!identifierString) {
+    return null;
+  }
+
+  return identifierString;
+};
+
+const buildUserProfileLink = (user, originPath) => {
+  const identifier = resolveUserIdentifier(user);
+  if (!identifier) {
+    return null;
+  }
+
+  const linkState = user
+    ? {
+        user,
+        ...(originPath ? { from: originPath } : {})
+      }
+    : originPath
+      ? { from: originPath }
+      : undefined;
+
+  return {
+    pathname: `/profile/${encodeURIComponent(identifier)}`,
+    state: linkState
+  };
+};
+
 function PinDetails() {
   const { pinId } = useParams();
+  const location = useLocation();
   const [pin, setPin] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [bookmarked, setBookmarked] = useState(false);
+  const [isUpdatingBookmark, setIsUpdatingBookmark] = useState(false);
+  const [bookmarkError, setBookmarkError] = useState(null);
   const [attending, setAttending] = useState(false);
+  const [isUpdatingAttendance, setIsUpdatingAttendance] = useState(false);
+  const [attendanceError, setAttendanceError] = useState(null);
   const [replies, setReplies] = useState([]);
   const [isLoadingReplies, setIsLoadingReplies] = useState(false);
   const [repliesError, setRepliesError] = useState(null);
+  const [attendeeOverlayOpen, setAttendeeOverlayOpen] = useState(false);
+  const [attendees, setAttendees] = useState([]);
+  const [isLoadingAttendees, setIsLoadingAttendees] = useState(false);
+  const [attendeesError, setAttendeesError] = useState(null);
+  const [replyComposerOpen, setReplyComposerOpen] = useState(false);
+  const [replyMessage, setReplyMessage] = useState('');
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+  const [submitReplyError, setSubmitReplyError] = useState(null);
+  const isEventPin = useMemo(
+    () => (typeof pin?.type === 'string' ? pin.type.toLowerCase() === 'event' : false),
+    [pin?.type]
+  );
 
   useEffect(() => {
     setBookmarked(false);
+    setIsUpdatingBookmark(false);
+    setBookmarkError(null);
     setAttending(false);
+    setIsUpdatingAttendance(false);
+    setAttendanceError(null);
+    setAttendeeOverlayOpen(false);
+    setAttendees([]);
+    setIsLoadingAttendees(false);
+    setAttendeesError(null);
+    setReplyComposerOpen(false);
+    setReplyMessage('');
+    setIsSubmittingReply(false);
+    setSubmitReplyError(null);
   }, [pinId]);
+
+  useEffect(() => {
+    if (!pin) {
+      return;
+    }
+    setBookmarked(Boolean(pin.viewerHasBookmarked));
+  }, [pin?.viewerHasBookmarked]);
+  useEffect(() => {
+    if (!isEventPin) {
+      setAttending(false);
+      setAttendanceError(null);
+      setAttendeeOverlayOpen(false);
+      setAttendees([]);
+      setIsLoadingAttendees(false);
+      setAttendeesError(null);
+      setReplyComposerOpen(false);
+      setReplyMessage('');
+      setSubmitReplyError(null);
+      return;
+    }
+    setAttending(Boolean(pin.viewerIsAttending));
+  }, [pin?.viewerIsAttending, isEventPin]);
 
   useEffect(() => {
     let ignore = false;
@@ -175,6 +283,9 @@ function PinDetails() {
           return;
         }
         setPin(payload);
+        setBookmarked(Boolean(payload.viewerHasBookmarked));
+        setBookmarkError(null);
+        setIsUpdatingBookmark(false);
       } catch (error) {
         if (ignore) {
           return;
@@ -234,6 +345,50 @@ function PinDetails() {
     };
   }, [pinId]);
 
+  useEffect(() => {
+    if (!attendeeOverlayOpen) {
+      return;
+    }
+    if (!pinId || !isEventPin) {
+      setAttendees([]);
+      setIsLoadingAttendees(false);
+      setAttendeesError(null);
+      return;
+    }
+
+    let ignore = false;
+
+    async function loadAttendees() {
+      setIsLoadingAttendees(true);
+      setAttendeesError(null);
+
+      try {
+        const payload = await fetchPinAttendees(pinId);
+        if (ignore) {
+          return;
+        }
+        setAttendees(Array.isArray(payload) ? payload : []);
+      } catch (error) {
+        if (ignore) {
+          return;
+        }
+        console.error('Failed to load attendees:', error);
+        setAttendeesError(error?.message || 'Failed to load attendees.');
+        setAttendees([]);
+      } finally {
+        if (!ignore) {
+          setIsLoadingAttendees(false);
+        }
+      }
+    }
+
+    loadAttendees();
+
+    return () => {
+      ignore = true;
+    };
+  }, [attendeeOverlayOpen, pinId, isEventPin]);
+
   const coverImageUrl = useMemo(
     () => resolveMediaAssetUrl(pin?.coverPhoto, DEFAULT_COVER_PATH),
     [pin]
@@ -278,6 +433,14 @@ function PinDetails() {
     () => resolveMediaAssetUrl(pin?.creator?.avatar, DEFAULT_AVATAR_PATH),
     [pin]
   );
+  const profileReturnPath = useMemo(
+    () => `${location.pathname}${location.search || ''}${location.hash || ''}`,
+    [location.pathname, location.search, location.hash]
+  );
+  const creatorProfileLink = useMemo(
+    () => buildUserProfileLink(pin?.creator, profileReturnPath),
+    [pin, profileReturnPath]
+  );
 
   const coordinates = useMemo(
     () => parseCoordinates(pin?.coordinates?.coordinates),
@@ -305,6 +468,221 @@ function PinDetails() {
     [pin]
   );
 
+  const openAttendeeOverlay = useCallback(() => {
+    if (!isEventPin) {
+      return;
+    }
+    setAttendeesError(null);
+    setAttendeeOverlayOpen(true);
+  }, [isEventPin]);
+
+  const closeAttendeeOverlay = useCallback(() => {
+    setAttendeeOverlayOpen(false);
+  }, []);
+
+  const openReplyComposer = useCallback(() => {
+    if (!pinId) {
+      return;
+    }
+    setSubmitReplyError(null);
+    setReplyComposerOpen(true);
+  }, [pinId]);
+
+  const closeReplyComposer = useCallback(() => {
+    if (isSubmittingReply) {
+      return;
+    }
+    setReplyComposerOpen(false);
+    setSubmitReplyError(null);
+  }, [isSubmittingReply]);
+
+  const handleToggleBookmark = useCallback(async () => {
+    if (!pin || isUpdatingBookmark) {
+      return;
+    }
+
+    setIsUpdatingBookmark(true);
+    setBookmarkError(null);
+
+    try {
+      if (bookmarked) {
+        const response = await deletePinBookmark(pin._id);
+        setPin((prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentCount = prev.bookmarkCount ?? 0;
+          const nextBookmarkCount =
+            typeof response?.bookmarkCount === 'number'
+              ? response.bookmarkCount
+              : Math.max(0, currentCount - 1);
+          const nextViewerHasBookmarked =
+            typeof response?.viewerHasBookmarked === 'boolean'
+              ? response.viewerHasBookmarked
+              : false;
+          const nextStats = prev.stats
+            ? { ...prev.stats, bookmarkCount: nextBookmarkCount }
+            : prev.stats;
+          return {
+            ...prev,
+            bookmarkCount: nextBookmarkCount,
+            stats: nextStats,
+            viewerHasBookmarked: nextViewerHasBookmarked
+          };
+        });
+        setBookmarked(
+          typeof response?.viewerHasBookmarked === 'boolean'
+            ? response.viewerHasBookmarked
+            : false
+        );
+      } else {
+        const response = await createPinBookmark(pin._id);
+        setPin((prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentCount = prev.bookmarkCount ?? 0;
+          const nextBookmarkCount =
+            typeof response?.bookmarkCount === 'number'
+              ? response.bookmarkCount
+              : currentCount + 1;
+          const nextViewerHasBookmarked =
+            typeof response?.viewerHasBookmarked === 'boolean'
+              ? response.viewerHasBookmarked
+              : true;
+          const nextStats = prev.stats
+            ? { ...prev.stats, bookmarkCount: nextBookmarkCount }
+            : prev.stats;
+          return {
+            ...prev,
+            bookmarkCount: nextBookmarkCount,
+            stats: nextStats,
+            viewerHasBookmarked: nextViewerHasBookmarked
+          };
+        });
+        setBookmarked(
+          typeof response?.viewerHasBookmarked === 'boolean'
+            ? response.viewerHasBookmarked
+            : true
+        );
+      }
+    } catch (toggleError) {
+      console.error('Failed to toggle bookmark:', toggleError);
+      setBookmarkError(toggleError?.message || 'Failed to update bookmark.');
+    } finally {
+      setIsUpdatingBookmark(false);
+    }
+  }, [pin, bookmarked, isUpdatingBookmark]);
+
+  const handleToggleAttendance = useCallback(async () => {
+    if (!pin || !isEventPin || isUpdatingAttendance) {
+      return;
+    }
+
+    const nextAttending = !attending;
+
+    if (
+      nextAttending &&
+      pin.participantLimit &&
+      (pin.participantCount ?? 0) >= pin.participantLimit &&
+      !pin.viewerIsAttending
+    ) {
+      setAttendanceError('Participant limit reached.');
+      return;
+    }
+
+    setAttendanceError(null);
+    setIsUpdatingAttendance(true);
+    setAttending(nextAttending);
+
+    setPin((prev) => {
+      if (
+        !prev ||
+        typeof prev.type !== 'string' ||
+        prev.type.toLowerCase() !== 'event'
+      ) {
+        return prev;
+      }
+      const currentCount = prev.participantCount ?? 0;
+      const delta = nextAttending ? 1 : -1;
+      const nextCount = Math.max(0, currentCount + delta);
+      return {
+        ...prev,
+        participantCount: nextCount,
+        viewerIsAttending: nextAttending
+      };
+    });
+
+    try {
+      const updatedPin = await updatePinAttendance(pin._id, nextAttending);
+      setPin(updatedPin);
+      setAttending(Boolean(updatedPin.viewerIsAttending));
+    } catch (updateError) {
+      console.error('Failed to update attendance:', updateError);
+      setAttendanceError(updateError?.message || 'Failed to update attendance.');
+      setPin((prev) => {
+        if (
+          !prev ||
+          typeof prev.type !== 'string' ||
+          prev.type.toLowerCase() !== 'event'
+        ) {
+          return prev;
+        }
+        const currentCount = prev.participantCount ?? 0;
+        const delta = nextAttending ? -1 : 1;
+        const nextCount = Math.max(0, currentCount + delta);
+        return {
+          ...prev,
+          participantCount: nextCount,
+          viewerIsAttending: !nextAttending
+        };
+      });
+      setAttending(!nextAttending);
+    } finally {
+      setIsUpdatingAttendance(false);
+    }
+  }, [pin, attending, isEventPin, isUpdatingAttendance]);
+
+  const handleSubmitReply = useCallback(async () => {
+    if (!pinId || isSubmittingReply) {
+      return;
+    }
+    const trimmedMessage = replyMessage.trim();
+    if (!trimmedMessage) {
+      setSubmitReplyError('Please enter a message before submitting.');
+      return;
+    }
+
+    setIsSubmittingReply(true);
+    setSubmitReplyError(null);
+
+    try {
+      const newReply = await createPinReply(pinId, { message: trimmedMessage });
+
+      setReplies((prev) => [...prev, newReply]);
+      setReplyMessage('');
+      setReplyComposerOpen(false);
+      setPin((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const nextStats = prev.stats
+          ? { ...prev.stats, replyCount: (prev.stats.replyCount ?? 0) + 1 }
+          : prev.stats;
+        return {
+          ...prev,
+          replyCount: (prev.replyCount ?? 0) + 1,
+          stats: nextStats
+        };
+      });
+    } catch (error) {
+      console.error('Failed to create reply:', error);
+      setSubmitReplyError(error?.message || 'Failed to create reply.');
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  }, [pinId, replyMessage, isSubmittingReply]);
+
   const expirationLabel = useMemo(() => formatDateTime(pin?.expiresAt), [pin]);
   const createdAtLabel = useMemo(() => formatDateTime(pin?.createdAt), [pin]);
   const updatedAtLabel = useMemo(() => formatDateTime(pin?.updatedAt), [pin]);
@@ -322,19 +700,29 @@ function PinDetails() {
 
         <h2>{pin ? pin.type.charAt(0).toUpperCase() + pin.type.slice(1) : 'Loading...'}</h2>
 
-        <button
-          className='bookmark-button'
-          onClick={() => setBookmarked(!bookmarked)}
-        >
-          <img
-            src={
-              bookmarked
-                ? 'https://www.svgrepo.com/show/347684/bookmark-fill.svg' // bookmarked
-                : 'https://www.svgrepo.com/show/357397/bookmark-full.svg' // not bookmarked
-            }
-            className='bookmark'
-          />
-        </button>
+        <div className='bookmark-button-wrapper'>
+          <button
+            className='bookmark-button'
+            onClick={handleToggleBookmark}
+            disabled={isUpdatingBookmark || !pin}
+            aria-pressed={bookmarked ? 'true' : 'false'}
+            aria-label={bookmarked ? 'Remove bookmark' : 'Save bookmark'}
+            aria-busy={isUpdatingBookmark ? 'true' : 'false'}
+          >
+            <img
+              src={
+                bookmarked
+                  ? 'https://www.svgrepo.com/show/347684/bookmark-fill.svg'
+                  : 'https://www.svgrepo.com/show/357397/bookmark-full.svg'
+              }
+              className='bookmark'
+              alt={bookmarked ? 'Bookmarked' : 'Bookmark icon'}
+            />
+          </button>
+          {bookmarkError ? (
+            <span className='error-text bookmark-error'>{bookmarkError}</span>
+          ) : null}
+        </div>
       </header>
 
       {/* Event/Discussion Name */}
@@ -382,21 +770,43 @@ function PinDetails() {
           </div>
 
           {/* Post creator */}
-          <div className='post-creator'>
-            <img
-              src={creatorAvatarUrl}
-              className='profile-icon'
-              alt={`${pin.creator?.displayName ?? 'Creator'} avatar`}
-            />
-            <div className="post-creator-details">
-              <span className="creator-name">
-                {pin.creator?.displayName || pin.creator?.username || 'Unknown creator'}
-              </span>
-              {pin.creator?.username ? (
-                <span className="creator-username">@{pin.creator.username}</span>
-              ) : null}
+          {creatorProfileLink ? (
+            <Link
+              to={creatorProfileLink.pathname}
+              state={creatorProfileLink.state}
+              className='post-creator user-link'
+            >
+              <img
+                src={creatorAvatarUrl}
+                className='profile-icon'
+                alt={`${pin.creator?.displayName ?? 'Creator'} avatar`}
+              />
+              <div className="post-creator-details">
+                <span className="creator-name">
+                  {pin.creator?.displayName || pin.creator?.username || 'Unknown creator'}
+                </span>
+                {pin.creator?.username ? (
+                  <span className="creator-username">@{pin.creator.username}</span>
+                ) : null}
+              </div>
+            </Link>
+          ) : (
+            <div className='post-creator'>
+              <img
+                src={creatorAvatarUrl}
+                className='profile-icon'
+                alt={`${pin.creator?.displayName ?? 'Creator'} avatar`}
+              />
+              <div className="post-creator-details">
+                <span className="creator-name">
+                  {pin.creator?.displayName || pin.creator?.username || 'Unknown creator'}
+                </span>
+                {pin.creator?.username ? (
+                  <span className="creator-username">@{pin.creator.username}</span>
+                ) : null}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Post description */}
           <div className='post-description'>
@@ -476,7 +886,7 @@ function PinDetails() {
                 Bookmarks: {pin.bookmarkCount ?? 0}
                 <br />
                 Replies: {pin.replyCount ?? pin.stats?.replyCount ?? 0}
-                {pin.type === 'event' ? (
+                {isEventPin ? (
                   <>
                     <br />
                     Attending: {pin.participantCount ?? 0}
@@ -484,18 +894,35 @@ function PinDetails() {
                   </>
                 ) : null}
               </span>
+              {isEventPin ? (
+                <button
+                  type="button"
+                  className='view-attendees-button'
+                  onClick={openAttendeeOverlay}
+                  disabled={isLoadingAttendees && attendeeOverlayOpen}
+                >
+                  {isLoadingAttendees && attendeeOverlayOpen ? 'Loading attendees...' : 'View Attendees'}
+                </button>
+              ) : null}
             </div>
           </div>
 
           {/* Attend button */}
-          <div className='attendance'>
-            <button
-              className={`attend-button ${attending ? 'attending' : ''}`}
-              onClick={() => setAttending(!attending)}
-            >
-              {attending ? 'Attending!' : 'Attend'}
-            </button>
-          </div>
+          {isEventPin ? (
+            <div className='attendance'>
+              <button
+                className={`attend-button ${attending ? 'attending' : ''}`}
+                onClick={handleToggleAttendance}
+                disabled={isUpdatingAttendance || !pin}
+                aria-busy={isUpdatingAttendance ? 'true' : 'false'}
+              >
+                {isUpdatingAttendance ? 'Updating...' : attending ? 'Attending!' : 'Attend'}
+              </button>
+              {attendanceError ? (
+                <div className="error-text attendance-error">{attendanceError}</div>
+              ) : null}
+            </div>
+          ) : null}
 
           {/* Comments header */}
           <div className='comments-header'>
@@ -529,22 +956,43 @@ function PinDetails() {
                 DEFAULT_AVATAR_PATH
               );
               const createdLabel = formatDateTime(reply.createdAt);
+              const authorProfileLink = buildUserProfileLink(reply.author, profileReturnPath);
 
               return (
                 <div className='comment' key={reply._id}>
-                  <div className='comment-header'>
-                    <img
-                      src={replyAvatar}
-                      className='commenter-pfp'
-                      alt={`${authorName} avatar`}
-                    />
-                    <span className='commenter-info'>
-                      <strong>{authorName}</strong>
-                      {createdLabel ? (
-                        <span className="comment-timestamp">{createdLabel}</span>
-                      ) : null}
-                    </span>
-                  </div>
+                  {authorProfileLink ? (
+                    <Link
+                      to={authorProfileLink.pathname}
+                      state={authorProfileLink.state}
+                      className='comment-header user-link'
+                    >
+                      <img
+                        src={replyAvatar}
+                        className='commenter-pfp'
+                        alt={`${authorName} avatar`}
+                      />
+                      <span className='commenter-info'>
+                        <strong>{authorName}</strong>
+                        {createdLabel ? (
+                          <span className="comment-timestamp">{createdLabel}</span>
+                        ) : null}
+                      </span>
+                    </Link>
+                  ) : (
+                    <div className='comment-header'>
+                      <img
+                        src={replyAvatar}
+                        className='commenter-pfp'
+                        alt={`${authorName} avatar`}
+                      />
+                      <span className='commenter-info'>
+                        <strong>{authorName}</strong>
+                        {createdLabel ? (
+                          <span className="comment-timestamp">{createdLabel}</span>
+                        ) : null}
+                      </span>
+                    </div>
+                  )}
 
                   <div className='comment-body'>
                     <p>{reply.message}</p>
@@ -555,7 +1003,7 @@ function PinDetails() {
           </div>
 
           {/* Create comment button */}
-          <button className='create-comment'>
+          <button className='create-comment' onClick={openReplyComposer} aria-label='Create reply'>
             <img
               src='https://www.svgrepo.com/show/489238/add-comment.svg'
               className='create-comment-button'
@@ -565,8 +1013,144 @@ function PinDetails() {
 
         </>
       ) : null}
+      {replyComposerOpen ? (
+        <div className='reply-overlay'>
+          <div
+            className='reply-overlay-backdrop'
+            onClick={closeReplyComposer}
+            aria-hidden='true'
+          />
+          <div
+            className='reply-overlay-content'
+            role='dialog'
+            aria-modal='true'
+            aria-label='Create reply'
+          >
+            <div className='reply-overlay-header'>
+              <h3>Add a Reply</h3>
+              <button
+                type='button'
+                className='reply-overlay-close'
+                onClick={closeReplyComposer}
+                disabled={isSubmittingReply}
+              >
+                Cancel
+              </button>
+            </div>
+            <div className='reply-overlay-body'>
+              <label htmlFor='reply-message' className='reply-overlay-label'>
+                Share your thoughts
+              </label>
+              <textarea
+                id='reply-message'
+                className='reply-overlay-textarea'
+                value={replyMessage}
+                onChange={(event) => setReplyMessage(event.target.value)}
+                placeholder='Type your reply here...'
+                maxLength={4000}
+                disabled={isSubmittingReply}
+              />
+              <div className='reply-overlay-footer'>
+                <span className='reply-overlay-count'>{replyMessage.length}/4000</span>
+                <button
+                  type='button'
+                  className='reply-overlay-submit'
+                  onClick={handleSubmitReply}
+                  disabled={isSubmittingReply}
+                >
+                  {isSubmittingReply ? 'Posting...' : 'Post Reply'}
+                </button>
+              </div>
+              {submitReplyError ? <div className='error-text'>{submitReplyError}</div> : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {attendeeOverlayOpen ? (
+        <div className='attendee-overlay'>
+          <div
+            className='attendee-overlay-backdrop'
+            onClick={closeAttendeeOverlay}
+            aria-hidden='true'
+          />
+          <div
+            className='attendee-overlay-content'
+            role='dialog'
+            aria-modal='true'
+            aria-label='Event attendees'
+          >
+            <div className='attendee-overlay-header'>
+              <h3>Event Attendees</h3>
+              <button
+                type='button'
+                className='attendee-overlay-close'
+                onClick={closeAttendeeOverlay}
+              >
+                Close
+              </button>
+            </div>
+            <div className='attendee-overlay-body'>
+              {isLoadingAttendees ? (
+                <div className='muted'>Loading attendees...</div>
+              ) : attendeesError ? (
+                <div className='error-text'>{attendeesError}</div>
+              ) : attendees.length === 0 ? (
+                <div className='muted'>No attendees yet.</div>
+              ) : (
+                <ul className='attendee-list'>
+                  {attendees.map((attendee) => {
+                    const attendeeLink = buildUserProfileLink(attendee, profileReturnPath);
+                    const attendeeAvatar = resolveMediaAssetUrl(
+                      attendee?.avatar,
+                      DEFAULT_AVATAR_PATH
+                    );
+                    const attendeeName =
+                      attendee?.displayName || attendee?.username || 'Unknown attendee';
+                    const attendeeKey =
+                      attendee?._id ||
+                      attendee?.id ||
+                      attendee?.uid ||
+                      attendee?.username ||
+                      attendeeName;
+
+                    const content = (
+                      <>
+                        <img
+                          src={attendeeAvatar}
+                          alt={`${attendeeName} avatar`}
+                          className='attendee-avatar'
+                        />
+                        <span className='attendee-name'>{attendeeName}</span>
+                      </>
+                    );
+
+                    return (
+                      <li key={attendeeKey}>
+                        {attendeeLink ? (
+                          <Link
+                            to={attendeeLink.pathname}
+                            state={attendeeLink.state}
+                            className='attendee-list-item user-link'
+                            onClick={closeAttendeeOverlay}
+                          >
+                            {content}
+                          </Link>
+                        ) : (
+                          <div className='attendee-list-item'>{content}</div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
 
 export default PinDetails;
+
+

@@ -1,7 +1,9 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const admin = require('firebase-admin');
 const { z, ZodError } = require('zod');
 
+const runtime = require('../config/runtime');
 const User = require('../models/User');
 const { Bookmark, BookmarkCollection } = require('../models/Bookmark');
 const {
@@ -223,6 +225,84 @@ const mapReply = (replyDoc) => {
 };
 
 router.use(verifyToken);
+
+router.get('/auth/accounts', async (req, res) => {
+  if (!runtime.isOffline) {
+    return res.status(403).json({ message: 'Account swapping is only available in offline mode.' });
+  }
+
+  try {
+    const accounts = [];
+    let nextPageToken = undefined;
+
+    do {
+      // Firebase Admin paginates results; pull everything so the debug UI has the full list.
+      const result = await admin.auth().listUsers(1000, nextPageToken);
+      result.users.forEach((userRecord) => {
+        accounts.push({
+          uid: userRecord.uid,
+          displayName: userRecord.displayName || null,
+          email: userRecord.email || null,
+          photoUrl: userRecord.photoURL || null,
+          disabled: Boolean(userRecord.disabled),
+          providerIds: (userRecord.providerData || []).map((provider) => provider.providerId).filter(Boolean),
+          lastLoginAt: userRecord.metadata?.lastSignInTime || null,
+          createdAt: userRecord.metadata?.creationTime || null
+        });
+      });
+      nextPageToken = result.pageToken;
+    } while (nextPageToken);
+
+    accounts.sort((a, b) => {
+      const labelA = (a.displayName || a.email || a.uid).toLowerCase();
+      const labelB = (b.displayName || b.email || b.uid).toLowerCase();
+      return labelA.localeCompare(labelB);
+    });
+
+    res.json({ accounts });
+  } catch (error) {
+    console.error('Failed to list Firebase accounts for debug swap', error);
+    res.status(500).json({ message: 'Failed to load Firebase accounts' });
+  }
+});
+
+router.post('/auth/swap', async (req, res) => {
+  if (!runtime.isOffline) {
+    return res.status(403).json({ message: 'Account swapping is only available in offline mode.' });
+  }
+
+  const SwapSchema = z.object({
+    uid: z.string().min(1, 'A Firebase UID is required')
+  });
+
+  let input;
+  try {
+    input = SwapSchema.parse(req.body);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid swap payload', issues: error.errors });
+    }
+    return res.status(400).json({ message: 'Invalid swap payload' });
+  }
+
+  try {
+    await admin.auth().getUser(input.uid);
+  } catch (error) {
+    if (error.code === 'auth/user-not-found') {
+      return res.status(404).json({ message: 'Firebase account not found' });
+    }
+    console.error('Failed to verify Firebase account before issuing custom token', error);
+    return res.status(500).json({ message: 'Failed to verify Firebase account' });
+  }
+
+  try {
+    const token = await admin.auth().createCustomToken(input.uid);
+    res.json({ token });
+  } catch (error) {
+    console.error('Failed to issue custom token for debug swap', error);
+    res.status(500).json({ message: 'Failed to issue custom token' });
+  }
+});
 
 router.post('/users', async (req, res) => {
   const CreateUserSchema = z.object({

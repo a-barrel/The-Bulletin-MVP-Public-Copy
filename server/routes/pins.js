@@ -4,6 +4,7 @@ const { z, ZodError } = require('zod');
 const Pin = require('../models/Pin');
 const User = require('../models/User');
 const Reply = require('../models/Reply');
+const { Bookmark } = require('../models/Bookmark');
 const { PinListItemSchema, PinSchema, PinPreviewSchema } = require('../schemas/pin');
 const { PinReplySchema } = require('../schemas/reply');
 const { PublicUserSchema } = require('../schemas/user');
@@ -21,6 +22,25 @@ const PinIdSchema = z.object({
   pinId: z.string().refine((value) => mongoose.Types.ObjectId.isValid(value), {
     message: 'Invalid pin id'
   })
+});
+
+const AttendanceUpdateSchema = z.object({
+  attending: z.boolean()
+});
+
+const CreateReplySchema = z.object({
+  message: z
+    .string()
+    .trim()
+    .min(1, 'Message cannot be empty')
+    .max(4000, 'Message must be 4000 characters or fewer'),
+  parentReplyId: z
+    .string()
+    .trim()
+    .refine((value) => !value || mongoose.Types.ObjectId.isValid(value), {
+      message: 'Invalid parent reply id'
+    })
+    .optional()
 });
 
 const toIdString = (value) => {
@@ -82,7 +102,21 @@ const mapPinToListItem = (pinDoc, creator) => {
   });
 };
 
-const mapPinToFull = (pinDoc, creator) => {
+const resolveViewerUser = async (req) => {
+  if (!req?.user?.uid) {
+    return null;
+  }
+
+  try {
+    const viewer = await User.findOne({ firebaseUid: req.user.uid });
+    return viewer;
+  } catch (error) {
+    console.error('Failed to resolve viewer user for request:', error);
+    return null;
+  }
+};
+
+const mapPinToFull = (pinDoc, creator, options = {}) => {
   const doc = pinDoc.toObject();
   const base = {
     _id: toIdString(doc._id),
@@ -128,12 +162,22 @@ const mapPinToFull = (pinDoc, creator) => {
     base.attendingUserIds = (doc.attendingUserIds || []).map(toIdString);
     base.attendeeWaitlistIds = (doc.attendeeWaitlistIds || []).map(toIdString);
     base.attendable = doc.attendable ?? true;
+    if (options.viewerId) {
+      const viewerId = options.viewerId;
+      base.viewerIsAttending = (doc.attendingUserIds || []).some(
+        (id) => toIdString(id) === viewerId
+      );
+    }
   }
 
   if (doc.type === 'discussion') {
     base.approximateAddress = doc.approximateAddress || undefined;
     base.expiresAt = doc.expiresAt ? doc.expiresAt.toISOString() : undefined;
     base.autoDelete = doc.autoDelete ?? true;
+  }
+
+  if (typeof options.viewerHasBookmarked === 'boolean') {
+    base.viewerHasBookmarked = options.viewerHasBookmarked;
   }
 
   return PinSchema.parse(base);
@@ -368,7 +412,12 @@ router.post('/', verifyToken, async (req, res) => {
     const hydrated = await Pin.findById(pin._id).populate('creatorId');
     const sourcePin = hydrated ?? pin;
     const creatorPublic = hydrated ? mapUserToPublic(hydrated.creatorId) : undefined;
-    const payload = mapPinToFull(sourcePin, creatorPublic);
+    const viewer = await resolveViewerUser(req);
+    const viewerId = viewer ? toIdString(viewer._id) : undefined;
+    const payload = mapPinToFull(sourcePin, creatorPublic, {
+      viewerId,
+      viewerHasBookmarked: false
+    });
     res.status(201).json(payload);
   } catch (error) {
     if (error instanceof ZodError) {
@@ -463,13 +512,212 @@ router.get('/:pinId', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Pin not found' });
     }
 
-    const payload = mapPinToFull(pin, mapUserToPublic(pin.creatorId));
+    const viewer = await resolveViewerUser(req);
+    const viewerId = viewer ? toIdString(viewer._id) : undefined;
+    let viewerHasBookmarked = false;
+    if (viewer) {
+      const bookmarkExists = await Bookmark.exists({ userId: viewer._id, pinId: pin._id });
+      viewerHasBookmarked = Boolean(bookmarkExists);
+    }
+    const payload = mapPinToFull(pin, mapUserToPublic(pin.creatorId), {
+      viewerId,
+      viewerHasBookmarked
+    });
     res.json(payload);
   } catch (error) {
     if (error instanceof ZodError) {
       return res.status(400).json({ message: 'Invalid pin id', issues: error.errors });
     }
     res.status(500).json({ message: 'Failed to load pin' });
+  }
+});
+
+router.post('/:pinId/attendance', verifyToken, async (req, res) => {
+  try {
+    const { pinId } = PinIdSchema.parse(req.params);
+    const { attending } = AttendanceUpdateSchema.parse(req.body);
+
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const pin = await Pin.findById(pinId).populate('creatorId');
+    if (!pin) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    if (pin.type !== 'event') {
+      return res
+        .status(400)
+        .json({ message: 'Only event pins support attendance tracking' });
+    }
+
+    if (pin.attendable === false) {
+      return res.status(400).json({ message: 'This event is not accepting attendees' });
+    }
+
+    if (!Array.isArray(pin.attendingUserIds)) {
+      pin.attendingUserIds = [];
+    }
+
+    const viewerId = toIdString(viewer._id);
+    const attendeeIds = pin.attendingUserIds.map((id) => toIdString(id));
+    const isAlreadyAttending = attendeeIds.includes(viewerId);
+
+    if (attending) {
+      if (!isAlreadyAttending) {
+        if (pin.participantLimit && attendeeIds.length >= pin.participantLimit) {
+          return res.status(409).json({ message: 'Participant limit reached' });
+        }
+        pin.attendingUserIds.push(viewer._id);
+      }
+    } else if (isAlreadyAttending) {
+      pin.attendingUserIds = pin.attendingUserIds.filter(
+        (id) => toIdString(id) !== viewerId
+      );
+      pin.markModified('attendingUserIds');
+    }
+
+    pin.participantCount = pin.attendingUserIds.length;
+
+    await pin.save();
+
+    const bookmarkExists = await Bookmark.exists({ userId: viewer._id, pinId: pin._id });
+    const payload = mapPinToFull(pin, mapUserToPublic(pin.creatorId), {
+      viewerId,
+      viewerHasBookmarked: Boolean(bookmarkExists)
+    });
+    res.json(payload);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid attendance payload', issues: error.errors });
+    }
+    console.error('Failed to update pin attendance:', error);
+    res.status(500).json({ message: 'Failed to update pin attendance' });
+  }
+});
+
+router.get('/:pinId/attendees', verifyToken, async (req, res) => {
+  try {
+    const { pinId } = PinIdSchema.parse(req.params);
+    const pin = await Pin.findById(pinId);
+    if (!pin) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    if (pin.type !== 'event') {
+      return res.status(400).json({ message: 'Only event pins have attendees' });
+    }
+
+    const attendeeIdStrings = (pin.attendingUserIds || []).map(toIdString).filter(Boolean);
+    if (attendeeIdStrings.length === 0) {
+      return res.json([]);
+    }
+
+    const attendeeObjectIds = attendeeIdStrings
+      .map((id) => {
+        if (mongoose.Types.ObjectId.isValid(id)) {
+          return new mongoose.Types.ObjectId(id);
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    if (attendeeObjectIds.length === 0) {
+      return res.json([]);
+    }
+
+    const users = await User.find({ _id: { $in: attendeeObjectIds } });
+    const usersById = new Map(users.map((userDoc) => [toIdString(userDoc._id), userDoc]));
+    const attendees = [];
+    const skippedUsers = [];
+
+    for (const id of attendeeIdStrings) {
+      const userDoc = usersById.get(id);
+      if (!userDoc) {
+        continue;
+      }
+      try {
+        attendees.push(mapUserToPublic(userDoc));
+      } catch (error) {
+        if (error instanceof ZodError) {
+          skippedUsers.push({ userId: id, issues: error.errors });
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    if (skippedUsers.length > 0) {
+      console.warn('Skipped malformed attendee records', skippedUsers);
+    }
+
+    res.json(attendees);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid pin id', issues: error.errors });
+    }
+    console.error('Failed to load pin attendees:', error);
+    res.status(500).json({ message: 'Failed to load pin attendees' });
+  }
+});
+
+router.post('/:pinId/replies', verifyToken, async (req, res) => {
+  try {
+    const { pinId } = PinIdSchema.parse(req.params);
+    const input = CreateReplySchema.parse(req.body);
+
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const pin = await Pin.findById(pinId);
+    if (!pin) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    let parentReplyId = undefined;
+    if (input.parentReplyId) {
+      parentReplyId = new mongoose.Types.ObjectId(input.parentReplyId);
+      const parentExists = await Reply.exists({ _id: parentReplyId, pinId });
+      if (!parentExists) {
+        return res.status(404).json({ message: 'Parent reply not found for this pin' });
+      }
+    }
+
+    const reply = await Reply.create({
+      pinId: pin._id,
+      parentReplyId,
+      authorId: viewer._id,
+      message: input.message.trim(),
+      attachments: [],
+      mentionedUserIds: []
+    });
+
+    pin.replyCount = (pin.replyCount ?? 0) + 1;
+    if (pin.stats) {
+      pin.stats.replyCount = (pin.stats.replyCount ?? 0) + 1;
+    } else {
+      pin.stats = {
+        bookmarkCount: 0,
+        replyCount: 1,
+        shareCount: 0,
+        viewCount: 0
+      };
+    }
+    await pin.save();
+
+    const populatedReply = await Reply.findById(reply._id).populate('authorId');
+    const payload = mapReply(populatedReply ?? reply, mapUserToPublic(populatedReply?.authorId ?? viewer));
+    res.status(201).json(payload);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid reply payload', issues: error.errors });
+    }
+    console.error('Failed to create reply:', error);
+    res.status(500).json({ message: 'Failed to create reply' });
   }
 });
 
@@ -572,7 +820,17 @@ router.put('/:pinId', verifyToken, async (req, res) => {
     const hydrated = await Pin.findById(pin._id).populate('creatorId');
     const sourcePin = hydrated ?? pin;
     const creatorPublic = hydrated ? mapUserToPublic(hydrated.creatorId) : mapUserToPublic(pin.creatorId);
-    const payload = mapPinToFull(sourcePin, creatorPublic);
+    const viewer = await resolveViewerUser(req);
+    const viewerId = viewer ? toIdString(viewer._id) : undefined;
+    let viewerHasBookmarked = false;
+    if (viewer) {
+      const bookmarkExists = await Bookmark.exists({ userId: viewer._id, pinId: sourcePin._id });
+      viewerHasBookmarked = Boolean(bookmarkExists);
+    }
+    const payload = mapPinToFull(sourcePin, creatorPublic, {
+      viewerId,
+      viewerHasBookmarked
+    });
     res.json(payload);
   } catch (error) {
     if (error instanceof ZodError) {

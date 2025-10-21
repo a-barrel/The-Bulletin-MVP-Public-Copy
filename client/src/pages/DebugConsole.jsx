@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { signInWithCustomToken } from 'firebase/auth';
+import { useAuthState } from 'react-firebase-hooks/auth';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -6,6 +8,7 @@ import Paper from '@mui/material/Paper';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
+import Avatar from '@mui/material/Avatar';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Divider from '@mui/material/Divider';
@@ -19,6 +22,14 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemAvatar from '@mui/material/ListItemAvatar';
+import ListItemText from '@mui/material/ListItemText';
+import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import ForumIcon from '@mui/icons-material/Forum';
@@ -49,10 +60,13 @@ import {
   createUpdate,
   fetchUpdates,
   createReply,
-  fetchReplies
+  fetchReplies,
+  fetchDebugAuthAccounts,
+  requestAccountSwap
 } from '../api/mongoDataApi';
 import LeafletMap from '../components/Map';
 import runtimeConfig from '../config/runtime';
+import { auth } from '../firebase';
 ``
 //protected: true, //Firebase protection, requires login to see page
 export const pageConfig = {
@@ -69,6 +83,7 @@ const EXPERIMENT_SCREENS = [];
 const EXPERIMENT_ENABLED = runtimeConfig.troyExperimentEnabled && EXPERIMENT_SCREENS.length > 0;
 const EXPERIMENT_TAB_ID = 'troy-experiment';
 const EXPERIMENT_TITLE = "Troy's Dumb Experiment";
+const ACCOUNT_SWAP_TAB_ID = 'account-swap';
 
 const DEFAULT_AVATAR_PATH = '/images/profile/profile-01.jpg';
 const DEFAULT_BANNER_PATH = '/images/background/background-01.jpg';
@@ -93,6 +108,33 @@ const formatDateTimeLocal = (date) => {
   return localDate.toISOString().slice(0, 16);
 };
 
+const formatReadableTimestamp = (value) => {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString();
+};
+
+const deriveInitials = (value) => {
+  if (!value) {
+    return '?';
+  }
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return '?';
+  }
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  const first = parts[0].charAt(0);
+  const last = parts[parts.length - 1].charAt(0);
+  return `${first}${last}`.toUpperCase();
+};
+
 const METERS_PER_MILE = 1609.34;
 const TAB_OPTIONS = [
   { id: 'pin', label: 'Pins & Events' },
@@ -102,8 +144,10 @@ const TAB_OPTIONS = [
   { id: 'chat', label: 'Chat' },
   { id: 'updates', label: 'Updates' },
   { id: 'replies', label: 'Replies' },
+  { id: ACCOUNT_SWAP_TAB_ID, label: 'Account Swap' },
   ...(EXPERIMENT_ENABLED ? [{ id: EXPERIMENT_TAB_ID, label: EXPERIMENT_TITLE }] : [])
 ];
+const ACCOUNT_SWAP_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === ACCOUNT_SWAP_TAB_ID);
 const EXPERIMENT_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === EXPERIMENT_TAB_ID);
 
 const ACCOUNT_STATUS_OPTIONS = ['active', 'inactive', 'suspended', 'deleted'];
@@ -240,6 +284,9 @@ function DebugConsolePage() {
   const [expiringDays, setExpiringDays] = useState('3');
   const [selectedPinId, setSelectedPinId] = useState(null);
   const [mapFocusLocation, setMapFocusLocation] = useState(null);
+
+  const theme = useTheme();
+  const isCompactTabs = useMediaQuery(theme.breakpoints.down('md'));
 
   const searchCenterLocation = useMemo(() => {
     const latitude = Number.parseFloat(formState.latitude);
@@ -729,8 +776,35 @@ const handleSubmit = async (event) => {
           aria-label="Debug console sections"
           textColor="primary"
           indicatorColor="primary"
-          variant="scrollable"
-          allowScrollButtonsMobile
+          orientation={isCompactTabs ? 'vertical' : 'horizontal'}
+          variant={isCompactTabs ? 'standard' : 'scrollable'}
+          allowScrollButtonsMobile={!isCompactTabs}
+          sx={{
+            width: '100%',
+            ...(isCompactTabs
+              ? {
+                  alignSelf: 'stretch',
+                  '& .MuiTabs-flexContainer': {
+                    flexDirection: 'column',
+                    alignItems: 'stretch',
+                    gap: 1
+                  },
+                  '& .MuiTab-root': {
+                    justifyContent: 'flex-start',
+                    alignItems: 'flex-start',
+                    textAlign: 'left',
+                    minWidth: 'auto'
+                  },
+                  '& .MuiTabs-indicator': {
+                    left: 0
+                  }
+                }
+              : {
+                  '& .MuiTab-root': {
+                    minWidth: 'auto'
+                  }
+                })
+          }}
         >
           {TAB_OPTIONS.map((tab, index) => (
             <Tab
@@ -1339,6 +1413,17 @@ const handleSubmit = async (event) => {
         >
           <RepliesTab />
         </Box>
+        {ACCOUNT_SWAP_TAB_INDEX !== -1 && (
+          <Box
+            role="tabpanel"
+            hidden={activeTab !== ACCOUNT_SWAP_TAB_INDEX}
+            id="debug-tabpanel-account-swap"
+            aria-labelledby="debug-tab-account-swap"
+            sx={{ display: activeTab === ACCOUNT_SWAP_TAB_INDEX ? 'block' : 'none' }}
+          >
+            <AccountSwapTab />
+          </Box>
+        )}
         {EXPERIMENT_ENABLED && (
           <Box
             role="tabpanel"
@@ -1352,6 +1437,194 @@ const handleSubmit = async (event) => {
         )}
       </Stack>
     </Box>
+  );
+}
+
+function AccountSwapTab() {
+  const [accounts, setAccounts] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
+  const [swapStatus, setSwapStatus] = useState(null);
+  const [pendingUid, setPendingUid] = useState(null);
+  const [currentUser] = useAuthState(auth);
+
+  const loadAccounts = useCallback(async () => {
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      const list = await fetchDebugAuthAccounts();
+      setAccounts(list);
+    } catch (error) {
+      setFetchError(error.message || 'Failed to load Firebase accounts.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchDebugAuthAccounts]);
+
+  useEffect(() => {
+    loadAccounts();
+  }, [loadAccounts]);
+
+  const handleSwap = useCallback(
+    async (account) => {
+      setSwapStatus(null);
+      setPendingUid(account.uid);
+      try {
+        const token = await requestAccountSwap(account.uid);
+        await signInWithCustomToken(auth, token);
+        setSwapStatus({
+          type: 'success',
+          message: `Now signed in as ${account.displayName || account.email || account.uid}.`
+        });
+        await loadAccounts();
+      } catch (error) {
+        setSwapStatus({
+          type: 'error',
+          message: error.message || 'Failed to swap accounts.'
+        });
+      } finally {
+        setPendingUid(null);
+      }
+    },
+    [loadAccounts, requestAccountSwap, signInWithCustomToken, auth]
+  );
+
+  const currentUserLabel =
+    currentUser?.displayName || currentUser?.email || currentUser?.uid || 'Unknown user';
+
+  return (
+    <Stack spacing={3}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+        >
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            Account Swap
+          </Typography>
+          <Button
+            type="button"
+            variant="outlined"
+            size="small"
+            startIcon={<RefreshIcon fontSize="small" />}
+            onClick={loadAccounts}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Refreshing...' : 'Refresh'}
+          </Button>
+        </Stack>
+
+        <Typography variant="body2" color="text.secondary">
+          Swap between Firebase Auth emulator accounts for offline testing without leaving the app.
+        </Typography>
+
+        {currentUser && (
+          <Alert severity="info">
+            Current Firebase user: <strong>{currentUserLabel}</strong>
+          </Alert>
+        )}
+
+        {swapStatus && (
+          <Alert severity={swapStatus.type} onClose={() => setSwapStatus(null)}>
+            {swapStatus.message}
+          </Alert>
+        )}
+
+        {fetchError && (
+          <Alert severity="error" onClose={() => setFetchError(null)}>
+            {fetchError}
+          </Alert>
+        )}
+
+        {isLoading && accounts.length === 0 ? (
+          <Stack alignItems="center" py={3}>
+            <CircularProgress size={32} />
+          </Stack>
+        ) : accounts.length === 0 ? (
+          <Alert severity="warning">No Firebase accounts were found in the emulator export.</Alert>
+        ) : (
+          <List disablePadding>
+            {accounts.map((account, index) => {
+              const label = account.displayName || account.email || account.uid;
+              const initials = deriveInitials(label);
+              const isCurrent = currentUser?.uid === account.uid;
+              const isPending = pendingUid === account.uid;
+              const actionDisabled = isCurrent || isPending || Boolean(account.disabled);
+              const lastSignIn = formatReadableTimestamp(account.lastLoginAt);
+
+              return (
+                <ListItem
+                  key={account.uid}
+                  alignItems="flex-start"
+                  divider={index !== accounts.length - 1}
+                  secondaryAction={
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      {isCurrent && <Chip label="Current" color="success" size="small" />}
+                      <Button
+                        type="button"
+                        size="small"
+                        variant="contained"
+                        onClick={() => handleSwap(account)}
+                        disabled={actionDisabled}
+                      >
+                        {isPending ? 'Switching...' : 'Swap to'}
+                      </Button>
+                    </Stack>
+                  }
+                >
+                  <ListItemAvatar>
+                    <Avatar src={account.photoUrl || undefined} alt={label}>
+                      {initials}
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        alignItems="center"
+                        flexWrap="wrap"
+                        useFlexGap
+                      >
+                        <Typography variant="subtitle1">{label}</Typography>
+                        {account.disabled && <Chip label="Disabled" color="warning" size="small" />}
+                      </Stack>
+                    }
+                    primaryTypographyProps={{ component: 'div' }}
+                    secondary={
+                      <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                        {account.email && (
+                          <Typography variant="body2" color="text.secondary" component="span">
+                            {account.email}
+                          </Typography>
+                        )}
+                        <Typography variant="caption" color="text.secondary" component="span">
+                          UID: {account.uid}
+                        </Typography>
+                        {account.providerIds?.length ? (
+                          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                            {account.providerIds.map((providerId) => (
+                              <Chip key={providerId} label={providerId} size="small" variant="outlined" />
+                            ))}
+                          </Stack>
+                        ) : null}
+                        {lastSignIn && (
+                          <Typography variant="caption" color="text.secondary" component="span">
+                            Last sign-in: {lastSignIn}
+                          </Typography>
+                        )}
+                      </Stack>
+                    }
+                    secondaryTypographyProps={{ component: 'div' }}
+                  />
+                </ListItem>
+              );
+            })}
+          </List>
+        )}
+      </Paper>
+    </Stack>
   );
 }
 
