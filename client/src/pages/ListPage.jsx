@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo } from "react";
 import "./ListPage.css";
 import Navbar from "../components/Navbar";
+import SortToggle from "../components/SortToggle";
 import settingsIcon from "../assets/GearIcon.svg";
 import addIcon from "../assets/AddIcon.svg";
 import menuIcon from "../assets/MenuIcon.svg";
@@ -80,12 +81,8 @@ function hoursUntil(label = "") {
 
 export default function ListPage() {
   const [sortByExpiration, setSortByExpiration] = useState(false); // false = distance, true = expiration
-  const handleToggle = useCallback(() => setSortByExpiration(v => !v), []);
-  const onToggleKeyDown = useCallback((e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      setSortByExpiration(v => !v);
-    }
+  const handleSortToggle = useCallback(() => {
+    setSortByExpiration(prev => !prev);
   }, []);
 
   const filteredAndSortedFeed = useMemo(() => {
@@ -130,25 +127,12 @@ export default function ListPage() {
             <button className="icon-btn" type="button" aria-label="Settings">
               <img src={settingsIcon} alt="Settings" />
             </button>
-
-            <div
-              className={`toggle-container ${sortByExpiration ? "active" : ""}`}
-              role="switch"
-              aria-checked={sortByExpiration}
-              tabIndex={0}
-              onClick={handleToggle}
-              onKeyDown={onToggleKeyDown}
-              title="Toggle sort"
-            >
-              <div className="toggle-circle" />
-            </div>
-
-            <div className="sort-row">
-              <span className="sort-label">Sort by:</span>
-              <button className="sort-link" type="button" onClick={handleToggle}>
-                {sortByExpiration ? "Expiration" : "Distance"}
-              </button>
-            </div>
+            
+            {/* Sort Toggle */}
+            <SortToggle 
+              sortByExpiration={sortByExpiration} 
+              onToggle={handleSortToggle} 
+            />
           </div>
 
           <button className="add-btn" type="button" aria-label="Add">
