@@ -25,10 +25,10 @@ export const pageConfig = {
   resolveNavTarget: () => {
     const input = window.prompt('Enter a user ID to view in Profile:');
     if (typeof input !== 'string') {
-      return null;
+      return '/profile/me';
     }
     const trimmed = input.trim();
-    return trimmed.length > 0 ? `/profile/${trimmed}` : '/profile/me';
+    return trimmed.length > 0 ? /profile/ : '/profile/me';
   }
 };
 
@@ -89,7 +89,8 @@ function ProfilePage() {
   const navigate = useNavigate();
   const { userId } = useParams();
   const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
-  const shouldLoadCurrentUser = normalizedUserId.length === 0 || normalizedUserId === 'me';
+  const shouldLoadCurrentUser =
+    normalizedUserId.length === 0 || normalizedUserId === 'me' || normalizedUserId === ':userId';
   const targetUserId = shouldLoadCurrentUser ? null : normalizedUserId;
   const userFromState = location.state?.user;
   const originPath = typeof location.state?.from === 'string' ? location.state.from : null;
@@ -215,10 +216,10 @@ function ProfilePage() {
               size="small"
               color="primary"
               sx={{ alignSelf: 'flex-start' }}
-          >
-            Back
-          </Button>
-        </Box>
+            >
+              Back
+            </Button>
+          </Box>
 
           {isFetchingProfile ? (
             <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
