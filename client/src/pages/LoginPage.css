@@ -1,24 +1,48 @@
+/* This imports the 'Urbanist' font and applies it globally to all text */
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap');
+
+body, input, button, textarea, p, h1, span, label, select, input::placeholder {
+  font-family: 'Urbanist', sans-serif;
+}
+
 /* Page background */
-.page-background {
+.login-page-background {
   width: 100vw;
-  height: 100vh;
+  min-height: 100vh;
   background: white;
   box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
   text-align: center;
   padding: 2.5rem 2rem;
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
   align-items: center;
   box-sizing: border-box;
 }
 
+/* To encapsulate page title and anything in the top nav bar. 
+   Keeps things next to each other.
+   Currently only tested with back arrow. */
+.login-page-header {
+  position: sticky;
+  top: 1rem;
+  background: #fff;
+  z-index: 0;
+  padding: 0.75rem 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
 /* Title */
-.page-title {
+.login-page-title {
   color: black;
   font-weight: 300;
-  font-size: 2rem;
-  margin-top: 1.5rem;
-  margin-bottom: 1rem;
+  font-size: 3rem;
+  margin-top: 0rem;
+  margin-bottom: -0.5rem;
 }
 
 /* Image placeholder */
@@ -58,7 +82,7 @@
   color: black;
   font-size: 1.2rem;
   transition: 0.2s;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.8rem;
 }
 
 .input-container input:focus {
@@ -70,6 +94,7 @@
   color: #c0c0c0;
 }
 
+/* The text under the input box when there is an input error */
 .input-error-text {
   position: absolute;
   margin-top: 2.9rem;
@@ -81,10 +106,12 @@
   margin-left: 0.5rem;
 }
 
+/* The color border of the input box when there is an input error */
 .input-container .input-error {
   border-color: red; 
 }
 
+/* For the show password toggle */
 .show-password-btn {
   position: absolute;
   right: 0.7rem;
@@ -102,7 +129,7 @@
   color: #000;
 }
 
-/* CSS for 'Remember me' and 'Forgot password' */
+/* 'Remember me' checkbox and 'Forgot password' text */
 .additional-options {
   display: flex;
   justify-content: space-between;
@@ -147,7 +174,7 @@ input[type="checkbox"] {
   text-decoration: underline;
 }
 
-/* File-wide Button Styles */
+/* Button Styles */
 .login-btn,
 .google-btn,
 .register-btn {
@@ -205,7 +232,7 @@ input[type="checkbox"] {
   background-color: #ad98f8;
 }
 
-/* Error Pop-up */
+/* Error Pop-up for authentication errors */
 .error-overlay {
   position: fixed; /* stays on top of everything */
   top: 0;
@@ -232,6 +259,7 @@ input[type="checkbox"] {
   animation: popIn 0.25s ease-in-out;
 }
 
+/* Text in the pop up */
 .error-box p {
   color: #d32f2f;
   font-size: 1rem;
@@ -254,8 +282,4 @@ input[type="checkbox"] {
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-5px); }
   40%, 80% { transform: translateX(5px); }
-}
-
-.shake {
-  animation: shake 0.3s;
 }

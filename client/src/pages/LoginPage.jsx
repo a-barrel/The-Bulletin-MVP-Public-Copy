@@ -90,7 +90,7 @@ function LoginPage() {
     };
 
   return (
-    <div className={`page-background ${shake ? "shake" : ""}`}>
+    <div className={`login-page-background ${shake ? "shake" : ""}`}>
       
       {error && (
           <div className="error-overlay" onClick={() => setError(null)}>
@@ -99,8 +99,9 @@ function LoginPage() {
             </div>
           </div>
         )}
-
-      <h1 className="page-title">The Bulletin</h1>
+      <div className="login-page-header">
+        <h1 className="login-page-title">The Bulletin</h1>
+      </div>
 
       {/*Put actual Bulletin logo here later*/}
       <div className="bulletin-image">
@@ -110,7 +111,7 @@ function LoginPage() {
       <form onSubmit={handleLogin} className={"login-form"}>
         <div className="input-container">
           <input
-            type="text"
+            type="text" // Allow as text, external function will verify if it is email and call error if needed   
             placeholder="Enter Email"
             value={email}
             onChange={(e) => {
@@ -174,7 +175,9 @@ function LoginPage() {
         />
         Sign in with Google
         </button>
+
         <p className="getting-started-text">Getting started?</p>
+
         <button 
           type="button"
           className="register-btn" 
@@ -182,6 +185,7 @@ function LoginPage() {
         > 
           Register Here
         </button>
+        
       </form>
     </div>
   );
