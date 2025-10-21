@@ -1,67 +1,63 @@
 import React, { useState, useCallback, useMemo } from "react";
 import "./ListPage.css";
-import PlaceIcon from '@mui/icons-material/Place'; // TODO: used only for Icon on pageConfig, maybe change with a list icon?
-import commentsIcon from "../assets/Comments.png";
-import attendanceIcon from "../assets/AttendanceIcon.png";
 import Navbar from "../components/Navbar";
 import SortToggle from "../components/SortToggle";
-import pinIcon from "../assets/PinIcon.png";
-import discussionIcon from "../assets/DiscussionIcon.png";
 import settingsIcon from "../assets/GearIcon.svg";
 import addIcon from "../assets/AddIcon.svg";
 import menuIcon from "../assets/MenuIcon.svg";
 import updatesIcon from "../assets/UpdateIcon.svg";
-import Feed from "../components/Feed.jsx";
+import Feed from "../components/Feed";
 
-export const pageConfig = {
-  id: 'list',      // id
-  label: 'List',   // Label (used in debug nav.)
-  icon: PlaceIcon, // TODO: maybe change with a list icon? Don't forget the import!
-  path: '/list',   // Path
-  order: 4,        // Where in debug nav it is ordered
-  showInNav: true, // Shows in Debug Navigator(?)
-  protected: true, // Checks if user is logged in
-};
-
+/* ---------- dummy feed (has `interested`) ---------- */
 const DUMMY_FEED = [
   {
     id: "pin_1",
     type: "pin",
     tag: "Potluck",
-    distance: "6 mi",
-    timeLabel: "In 3 Days",
+    distance: "2 mi",
+    timeLabel: "In 8 days",
     text: "Hosting a potluck at the park! Come bring your family and friends!",
     images: [
       "https://picsum.photos/seed/pot1/400/260",
       "https://picsum.photos/seed/pot2/400/260",
     ],
     author: "Chicken__Man",
+    authorName: "Chicken__Man",
+    creatorId: "507f1f77bcf86cd799439011",
+    creator: {
+      _id: "507f1f77bcf86cd799439011",
+      username: "Chicken__Man",
+      displayName: "Chicken__Man",
+      avatar: {
+        url: "https://picsum.photos/seed/chicken/100/100"
+      }
+    },
     comments: 8,
-    saves: 2,
+    interested: ["anna", "ben", "cory", "dee", "emma", "finn", "gia", "hank", "ivy", "bob", "stan"],
   },
   {
     id: "disc_1",
     type: "discussion",
     tag: "Superman Premiere",
-    distance: "6 mi",
-    timeLabel: "4 Days Left",
+    distance: "10 mi",
+    timeLabel: "1 Days Left",
     text: "How did everyone feel about the new superman?",
     images: ["https://picsum.photos/seed/super/400/260"],
     author: "MovieBuff",
     comments: 2,
-    saves: 0,
+    interested: ["sam", "tess", "uma"],
   },
   {
     id: "pin_2",
     type: "pin",
     tag: "Community Clean-up",
     distance: "2.4 mi",
-    timeLabel: "Tomorrow",
+    timeLabel: "In 3 hours",
     text: "Join us to spruce up the lake trail. Gloves and bags provided.",
     images: [],
     author: "TrailCrew",
     comments: 3,
-    saves: 5,
+    interested: ["zoe", "yuki", "xav", "will", "val"],
   },
 ];
 
@@ -114,22 +110,18 @@ export default function ListPage() {
   return (
     <div className="list-page">
       <div className="list-frame">
-        {/* 🔹 Top Header Bar */}
-        {/* Fixed purple header bar */}
+        {/* Header */}
         <header className="header-bar">
           <button className="header-icon-btn" aria-label="Menu">
             <img src={menuIcon} alt="Menu" className="header-icon" />
           </button>
-
           <h1 className="header-title">List</h1>
-
           <button className="header-icon-btn" aria-label="Notifications">
             <img src={updatesIcon} alt="Notifications" className="header-icon" />
           </button>
         </header>
 
-
-        {/* Topbar (Settings, Toggle, Sort, Add) */}
+        {/* Topbar */}
         <div className="topbar">
           <div className="top-left">
             <button className="icon-btn" type="button" aria-label="Settings">

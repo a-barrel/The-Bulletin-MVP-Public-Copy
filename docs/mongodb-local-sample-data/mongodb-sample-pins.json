@@ -53,12 +53,12 @@
     "isActive": true,
     "stats": {
       "bookmarkCount": 12,
-      "replyCount": 3,
+      "replyCount": 4,
       "shareCount": 3,
       "viewCount": 148
     },
     "bookmarkCount": 12,
-    "replyCount": 3,
+    "replyCount": 2,
     "startDate": {
       "$date": "2025-10-04T23:51:14.276Z"
     },
@@ -149,12 +149,12 @@
     "isActive": true,
     "stats": {
       "bookmarkCount": 8,
-      "replyCount": 3,
+      "replyCount": 5,
       "shareCount": 2,
       "viewCount": 203
     },
     "bookmarkCount": 8,
-    "replyCount": 3,
+    "replyCount": 0,
     "approximateAddress": {
       "city": "Long Beach",
       "state": "CA",

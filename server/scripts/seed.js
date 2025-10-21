@@ -42,14 +42,7 @@ async function seed() {
     },
     replies: {
       cleanupThanks: new ObjectId(),
-      cleanupSupplies: new ObjectId(),
-      cleanupCarpool: new ObjectId(),
-      latteWelcome: new ObjectId(),
-      latteSnacks: new ObjectId(),
-      lattePlaylist: new ObjectId(),
-      artWalkIdea: new ObjectId(),
-      artWalkSupport: new ObjectId(),
-      shorelineCarpool: new ObjectId()
+      latteChat: new ObjectId()
     },
     chats: {
       campusLounge: new ObjectId()
@@ -246,9 +239,9 @@ async function seed() {
       tags: ['community', 'volunteer'],
       relatedPinIds: [ids.pins.latteLounge],
       visibility: 'public',
-      stats: { bookmarkCount: 12, replyCount: 3, shareCount: 7, viewCount: 120 },
+      stats: { bookmarkCount: 12, replyCount: 4, shareCount: 7, viewCount: 120 },
       bookmarkCount: 12,
-      replyCount: 3,
+      replyCount: 4,
       startDate: tomorrow,
       endDate: new Date(tomorrow.getTime() + 3 * 60 * 60 * 1000),
       address: {
@@ -292,9 +285,9 @@ async function seed() {
       tags: ['coffee', 'study'],
       relatedPinIds: [ids.pins.campusCleanup],
       visibility: 'public',
-      stats: { bookmarkCount: 8, replyCount: 3, shareCount: 2, viewCount: 90 },
+      stats: { bookmarkCount: 8, replyCount: 6, shareCount: 2, viewCount: 90 },
       bookmarkCount: 8,
-      replyCount: 3,
+      replyCount: 6,
       approximateAddress: {
         city: 'Long Beach',
         state: 'CA',
@@ -521,8 +514,7 @@ async function seed() {
       _id: ids.replies.cleanupThanks,
       pinId: ids.pins.campusCleanup,
       authorId: ids.users.priya,
-      message: 'Count me in! I can bring extra gloves and refillable water jugs.',
-      attachments: [],
+      message: 'Count me in! I will bring reusable gloves.',
       reactions: [
         {
           userId: ids.users.alex,
@@ -530,118 +522,15 @@ async function seed() {
           reactedAt: now
         }
       ],
-      mentionedUserIds: [ids.users.alex],
-      createdAt: now,
-      updatedAt: now
+      mentionedUserIds: [ids.users.alex]
     },
     {
-      _id: ids.replies.cleanupSupplies,
-      pinId: ids.pins.campusCleanup,
+      _id: ids.replies.latteChat,
+      pinId: ids.pins.latteLounge,
       parentReplyId: ids.replies.cleanupThanks,
-      authorId: ids.users.alex,
-      message: 'Great! I will grab extra trash bags and set up a supply station by the fountain.',
-      attachments: [],
-      reactions: [],
-      mentionedUserIds: [ids.users.priya],
-      createdAt: new Date(now.getTime() + 3 * 60 * 1000),
-      updatedAt: new Date(now.getTime() + 3 * 60 * 1000)
-    },
-    {
-      _id: ids.replies.cleanupCarpool,
-      pinId: ids.pins.campusCleanup,
       authorId: ids.users.marcus,
-      message: 'If anyone needs a ride from off campus let me know—I have two open seats.',
-      attachments: [],
-      reactions: [
-        {
-          userId: ids.users.priya,
-          type: 'curious',
-          reactedAt: new Date(now.getTime() + 6 * 60 * 1000)
-        }
-      ],
-      mentionedUserIds: [],
-      createdAt: new Date(now.getTime() + 5 * 60 * 1000),
-      updatedAt: new Date(now.getTime() + 6 * 60 * 1000)
-    },
-    {
-      _id: ids.replies.latteWelcome,
-      pinId: ids.pins.latteLounge,
-      authorId: ids.users.priya,
-      message: 'Welcome everyone—grab a latte and claim a table when you arrive!',
-      attachments: [],
-      reactions: [],
-      mentionedUserIds: [],
-      createdAt: now,
-      updatedAt: now
-    },
-    {
-      _id: ids.replies.latteSnacks,
-      pinId: ids.pins.latteLounge,
-      parentReplyId: ids.replies.latteWelcome,
-      authorId: ids.users.alex,
-      message: 'I will bring a batch of matcha muffins so we have snacks for the first break.',
-      attachments: [],
-      reactions: [
-        {
-          userId: ids.users.marcus,
-          type: 'going',
-          reactedAt: new Date(now.getTime() + 8 * 60 * 1000)
-        }
-      ],
-      mentionedUserIds: [ids.users.priya],
-      createdAt: new Date(now.getTime() + 5 * 60 * 1000),
-      updatedAt: new Date(now.getTime() + 8 * 60 * 1000)
-    },
-    {
-      _id: ids.replies.lattePlaylist,
-      pinId: ids.pins.latteLounge,
-      authorId: ids.users.marcus,
-      message: 'Dropping a chillhop playlist in chat to keep the focus vibes going.',
-      attachments: [],
-      reactions: [],
-      mentionedUserIds: [],
-      createdAt: new Date(now.getTime() + 10 * 60 * 1000),
-      updatedAt: new Date(now.getTime() + 10 * 60 * 1000)
-    },
-    {
-      _id: ids.replies.artWalkIdea,
-      pinId: ids.pins.artWalkDiscussion,
-      authorId: ids.users.alex,
-      message: 'Let’s feature a rotating mural wall so local artists can collaborate live.',
-      attachments: [],
-      reactions: [
-        {
-          userId: ids.users.priya,
-          type: 'like',
-          reactedAt: new Date(now.getTime() + 30 * 60 * 1000)
-        }
-      ],
-      mentionedUserIds: [],
-      createdAt: new Date(now.getTime() + 25 * 60 * 1000),
-      updatedAt: new Date(now.getTime() + 30 * 60 * 1000)
-    },
-    {
-      _id: ids.replies.artWalkSupport,
-      pinId: ids.pins.artWalkDiscussion,
-      parentReplyId: ids.replies.artWalkIdea,
-      authorId: ids.users.priya,
-      message: 'Love that! I can reach out to the visual arts club to coordinate volunteers.',
-      attachments: [],
-      reactions: [],
-      mentionedUserIds: [ids.users.alex],
-      createdAt: new Date(now.getTime() + 32 * 60 * 1000),
-      updatedAt: new Date(now.getTime() + 32 * 60 * 1000)
-    },
-    {
-      _id: ids.replies.shorelineCarpool,
-      pinId: ids.pins.shorelineCycle,
-      authorId: ids.users.marcus,
-      message: 'Meet at Lot C at 7:30 a.m. so we can roll out together and do a quick safety check.',
-      attachments: [],
-      reactions: [],
-      mentionedUserIds: [],
-      createdAt: new Date(now.getTime() + 60 * 60 * 1000),
-      updatedAt: new Date(now.getTime() + 60 * 60 * 1000)
+      message: 'I can share my productivity playlist.',
+      mentionedUserIds: [ids.users.priya]
     }
   ];
 

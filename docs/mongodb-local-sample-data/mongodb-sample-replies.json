@@ -13,9 +13,7 @@
         "reactedAt": { "$date": "2025-10-03T23:55:00.000Z" }
       }
     ],
-    "mentionedUserIds": [
-      { "$oid": "68e061721329566a22d474a7" }
-    ],
+    "mentionedUserIds": [],
     "audit": {
       "createdBy": { "$oid": "68e061721329566a22d474a8" }
     },
@@ -26,12 +24,12 @@
     "_id": { "$oid": "68e061721329566a22d474b1" },
     "pinId": { "$oid": "68e061721329566a22d474aa" },
     "parentReplyId": { "$oid": "68e061721329566a22d474b0" },
-    "authorId": { "$oid": "68e061721329566a22d474a7" },
-    "message": "I'll grab pastries from Coffee Drunk to share afterwards.",
+    "authorId": { "$oid": "68e061721329566a22d474a9" },
+    "message": "I’ll grab pastries from Coffee Drunk to share afterwards.",
     "attachments": [],
     "reactions": [
       {
-        "userId": { "$oid": "68e061721329566a22d474a9" },
+        "userId": { "$oid": "68e061721329566a22d474a7" },
         "type": "interested",
         "reactedAt": { "$date": "2025-10-03T23:56:00.000Z" }
       }
@@ -40,84 +38,10 @@
       { "$oid": "68e061721329566a22d474a8" }
     ],
     "audit": {
-      "createdBy": { "$oid": "68e061721329566a22d474a7" }
+      "createdBy": { "$oid": "68e061721329566a22d474a9" }
     },
     "createdAt": { "$date": "2025-10-03T23:55:30.000Z" },
     "updatedAt": { "$date": "2025-10-03T23:56:00.000Z" }
-  },
-  {
-    "_id": { "$oid": "68e061721329566a22d474b2" },
-    "pinId": { "$oid": "68e061721329566a22d474aa" },
-    "parentReplyId": null,
-    "authorId": { "$oid": "68e061721329566a22d474a9" },
-    "message": "Anyone need a ride from East Long Beach? I have space for two more volunteers.",
-    "attachments": [],
-    "reactions": [
-      {
-        "userId": { "$oid": "68e061721329566a22d474a8" },
-        "type": "curious",
-        "reactedAt": { "$date": "2025-10-03T23:57:30.000Z" }
-      }
-    ],
-    "mentionedUserIds": [],
-    "audit": {
-      "createdBy": { "$oid": "68e061721329566a22d474a9" }
-    },
-    "createdAt": { "$date": "2025-10-03T23:57:00.000Z" },
-    "updatedAt": { "$date": "2025-10-03T23:57:30.000Z" }
-  },
-  {
-    "_id": { "$oid": "68e061721329566a22d474b3" },
-    "pinId": { "$oid": "68e061721329566a22d474ab" },
-    "parentReplyId": null,
-    "authorId": { "$oid": "68e061721329566a22d474a8" },
-    "message": "Welcome back to the Latte Lounge! Grab any open seat and order before 6:15.",
-    "attachments": [],
-    "reactions": [],
-    "mentionedUserIds": [],
-    "audit": {
-      "createdBy": { "$oid": "68e061721329566a22d474a8" }
-    },
-    "createdAt": { "$date": "2025-10-07T18:00:00.000Z" },
-    "updatedAt": { "$date": "2025-10-07T18:00:00.000Z" }
-  },
-  {
-    "_id": { "$oid": "68e061721329566a22d474b4" },
-    "pinId": { "$oid": "68e061721329566a22d474ab" },
-    "parentReplyId": { "$oid": "68e061721329566a22d474b3" },
-    "authorId": { "$oid": "68e061721329566a22d474a7" },
-    "message": "I'll bring a dozen matcha muffins so we have snacks during the first break.",
-    "attachments": [],
-    "reactions": [
-      {
-        "userId": { "$oid": "68e061721329566a22d474a9" },
-        "type": "going",
-        "reactedAt": { "$date": "2025-10-07T18:08:00.000Z" }
-      }
-    ],
-    "mentionedUserIds": [
-      { "$oid": "68e061721329566a22d474a8" }
-    ],
-    "audit": {
-      "createdBy": { "$oid": "68e061721329566a22d474a7" }
-    },
-    "createdAt": { "$date": "2025-10-07T18:05:00.000Z" },
-    "updatedAt": { "$date": "2025-10-07T18:08:00.000Z" }
-  },
-  {
-    "_id": { "$oid": "68e061721329566a22d474b5" },
-    "pinId": { "$oid": "68e061721329566a22d474ab" },
-    "parentReplyId": null,
-    "authorId": { "$oid": "68e061721329566a22d474a9" },
-    "message": "Just posted a lo-fi playlist in chat—perfect background focus when we regroup.",
-    "attachments": [],
-    "reactions": [],
-    "mentionedUserIds": [],
-    "audit": {
-      "createdBy": { "$oid": "68e061721329566a22d474a9" }
-    },
-    "createdAt": { "$date": "2025-10-07T18:12:00.000Z" },
-    "updatedAt": { "$date": "2025-10-07T18:12:00.000Z" }
   },
   {
     "_id": { "$oid": "68e061721329566a22d47560" },
@@ -152,7 +76,7 @@
     "reactions": [
       {
         "userId": { "$oid": "68e061721329566a22d474a7" },
-        "type": "going",
+        "type": "celebrate",
         "reactedAt": { "$date": "2025-10-09T19:18:00.000Z" }
       }
     ],
@@ -196,7 +120,7 @@
     "reactions": [
       {
         "userId": { "$oid": "68e061721329566a22d47510" },
-        "type": "curious",
+        "type": "support",
         "reactedAt": { "$date": "2025-10-09T19:21:00.000Z" }
       }
     ],
