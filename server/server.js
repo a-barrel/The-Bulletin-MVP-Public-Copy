@@ -71,7 +71,7 @@ mongoose
           : undefined
       });
       console.log(
-        `Firebase users synced (source: ${summary.source}, created: ${summary.created}, linked: ${summary.linked}, updated: ${summary.updated}, unchanged: ${summary.unchanged})`
+        `Firebase users synced (source: ${summary.source}, created: ${summary.created}, linked: ${summary.linked}, updated: ${summary.updated}, unchanged: ${summary.unchanged}, photo-updated: ${summary.photoUpdated ?? 0}, mongo-avatar-updated: ${summary.mongoAvatarUpdated ?? 0})`
       );
 
       if (summary.errors.length > 0) {

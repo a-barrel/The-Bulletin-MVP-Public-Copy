@@ -7,6 +7,7 @@ const UpdatePayloadSchema = z.object({
     'new-pin',
     'pin-update',
     'event-starting-soon',
+    'event-reminder',
     'popular-pin',
     'bookmark-update',
     'system',

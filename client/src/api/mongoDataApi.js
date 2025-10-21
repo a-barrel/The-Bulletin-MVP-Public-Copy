@@ -189,6 +189,117 @@ export async function fetchPinById(pinId) {
   return payload;
 }
 
+export async function fetchPinAttendees(pinId) {
+  if (!pinId) {
+    throw new Error('Pin id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/attendees`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => []);
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load attendees');
+  }
+
+  return payload;
+}
+
+export async function updatePinAttendance(pinId, attending) {
+  if (!pinId) {
+    throw new Error('Pin id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/attendance`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ attending })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to update attendance');
+  }
+
+  return payload;
+}
+
+export async function createPinBookmark(pinId) {
+  if (!pinId) {
+    throw new Error('Pin id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/bookmarks`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ pinId })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to create bookmark');
+  }
+
+  return payload;
+}
+
+export async function deletePinBookmark(pinId) {
+  if (!pinId) {
+    throw new Error('Pin id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/bookmarks/${encodeURIComponent(pinId)}`, {
+    method: 'DELETE',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to remove bookmark');
+  }
+
+  return payload;
+}
+
+export async function createPinReply(pinId, { message, parentReplyId } = {}) {
+  if (!pinId) {
+    throw new Error('Pin id is required');
+  }
+  if (!message || typeof message !== 'string') {
+    throw new Error('Reply message is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const body = {
+    message: message,
+    ...(parentReplyId ? { parentReplyId } : {})
+  };
+
+  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/replies`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify(body)
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const details = Array.isArray(payload?.issues)
+      ? `: ${payload.issues
+          .map((issue) => `${issue.path?.join('.') ?? ''} ${issue.message}`.trim())
+          .join('; ')}`
+      : '';
+    throw new Error((payload?.message || 'Failed to create reply') + details);
+  }
+
+  return payload;
+}
+
 export async function updatePin(pinId, input) {
   if (!pinId) {
     throw new Error('Pin id is required');
@@ -335,6 +446,21 @@ export async function fetchUserProfile(userId) {
   return payload;
 }
 
+export async function fetchCurrentUserProfile() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load current user profile');
+  }
+
+  return payload;
+}
+
 export async function createBookmark(input) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/debug/bookmarks`, {
@@ -352,26 +478,50 @@ export async function createBookmark(input) {
 }
 
 export async function fetchBookmarks({ userId, limit } = {}) {
-  if (!userId) {
-    throw new Error('User id is required to load bookmarks');
-  }
-
   const baseUrl = resolveApiBaseUrl();
-  const params = new URLSearchParams({
-    userId: userId
-  });
-  if (limit !== undefined) {
-    params.set('limit', String(limit));
+  const params = new URLSearchParams();
+  if (userId) {
+    params.set('userId', userId);
+  }
+  if (limit !== undefined && limit !== null) {
+    const numericLimit = Number(limit);
+    if (Number.isFinite(numericLimit)) {
+      const constrained = Math.min(100, Math.max(1, Math.trunc(numericLimit)));
+      params.set('limit', String(constrained));
+    }
   }
 
-  const response = await fetch(`${baseUrl}/api/bookmarks?${params.toString()}`, {
+  const query = params.toString();
+  const url = query ? `${baseUrl}/api/bookmarks?${query}` : `${baseUrl}/api/bookmarks`;
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: await buildHeaders()
   });
 
   const payload = await response.json().catch(() => []);
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load bookmarks');
+    const details = payload?.issues ? `: ${JSON.stringify(payload.issues)}` : '';
+    throw new Error((payload?.message || `Failed to load bookmarks (status ${response.status})`) + details);
+  }
+
+  return payload;
+}
+
+export async function removeBookmark(pinId) {
+  if (!pinId) {
+    throw new Error('Pin id is required to remove a bookmark');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/bookmarks/${encodeURIComponent(pinId)}`, {
+    method: 'DELETE',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to remove bookmark');
   }
 
   return payload;
@@ -464,7 +614,8 @@ export async function createProximityChatMessage(input) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to create chat message');
+    const details = payload?.issues ? `: ${JSON.stringify(payload.issues)}` : '';
+    throw new Error((payload?.message || 'Failed to create chat message') + details);
   }
 
   return payload;
@@ -599,4 +750,43 @@ export async function fetchReplies(pinId) {
   }
 
   return payload;
+}
+
+export async function fetchDebugAuthAccounts() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/auth/accounts`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load Firebase accounts');
+  }
+
+  return Array.isArray(payload?.accounts) ? payload.accounts : [];
+}
+
+export async function requestAccountSwap(uid) {
+  if (!uid) {
+    throw new Error('Firebase UID is required to swap accounts');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/auth/swap`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ uid })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to request account swap');
+  }
+
+  if (!payload?.token) {
+    throw new Error('Server did not return a custom token');
+  }
+
+  return payload.token;
 }

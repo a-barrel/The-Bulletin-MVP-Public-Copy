@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react';
+﻿import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { signInWithCustomToken } from 'firebase/auth';
+import { useAuthState } from 'react-firebase-hooks/auth';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -6,6 +8,7 @@ import Paper from '@mui/material/Paper';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
+import Avatar from '@mui/material/Avatar';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Divider from '@mui/material/Divider';
@@ -19,6 +22,14 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemAvatar from '@mui/material/ListItemAvatar';
+import ListItemText from '@mui/material/ListItemText';
+import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import ForumIcon from '@mui/icons-material/Forum';
@@ -35,6 +46,7 @@ import {
   createUserProfile,
   fetchUsers,
   fetchUserProfile,
+  fetchCurrentUserProfile,
   updateUserProfile,
   createBookmark,
   fetchBookmarks,
@@ -49,10 +61,13 @@ import {
   createUpdate,
   fetchUpdates,
   createReply,
-  fetchReplies
+  fetchReplies,
+  fetchDebugAuthAccounts,
+  requestAccountSwap
 } from '../api/mongoDataApi';
 import LeafletMap from '../components/Map';
 import runtimeConfig from '../config/runtime';
+import { auth } from '../firebase';
 ``
 //protected: true, //Firebase protection, requires login to see page
 export const pageConfig = {
@@ -69,6 +84,8 @@ const EXPERIMENT_SCREENS = [];
 const EXPERIMENT_ENABLED = runtimeConfig.troyExperimentEnabled && EXPERIMENT_SCREENS.length > 0;
 const EXPERIMENT_TAB_ID = 'troy-experiment';
 const EXPERIMENT_TITLE = "Troy's Dumb Experiment";
+const LIVE_CHAT_TAB_ID = 'live-chat';
+const ACCOUNT_SWAP_TAB_ID = 'account-swap';
 
 const DEFAULT_AVATAR_PATH = '/images/profile/profile-01.jpg';
 const DEFAULT_BANNER_PATH = '/images/background/background-01.jpg';
@@ -93,17 +110,56 @@ const formatDateTimeLocal = (date) => {
   return localDate.toISOString().slice(0, 16);
 };
 
+const formatReadableTimestamp = (value) => {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString();
+};
+
+const deriveInitials = (value) => {
+  if (!value) {
+    return '?';
+  }
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return '?';
+  }
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  const first = parts[0].charAt(0);
+  const last = parts[parts.length - 1].charAt(0);
+  return `${first}${last}`.toUpperCase();
+};
+
 const METERS_PER_MILE = 1609.34;
+const mongooseObjectIdLike = (value) => typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
 const TAB_OPTIONS = [
   { id: 'pin', label: 'Pins & Events' },
   { id: 'profile', label: 'Profiles' },
   { id: 'locations', label: 'Locations' },
   { id: 'bookmarks', label: 'Bookmarks' },
   { id: 'chat', label: 'Chat' },
+  { id: LIVE_CHAT_TAB_ID, label: 'Live Chat Test' },
   { id: 'updates', label: 'Updates' },
   { id: 'replies', label: 'Replies' },
+  { id: ACCOUNT_SWAP_TAB_ID, label: 'Account Swap' },
   ...(EXPERIMENT_ENABLED ? [{ id: EXPERIMENT_TAB_ID, label: EXPERIMENT_TITLE }] : [])
 ];
+const PIN_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'pin');
+const PROFILE_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'profile');
+const LOCATIONS_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'locations');
+const BOOKMARKS_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'bookmarks');
+const CHAT_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'chat');
+const LIVE_CHAT_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === LIVE_CHAT_TAB_ID);
+const UPDATES_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'updates');
+const REPLIES_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'replies');
+const ACCOUNT_SWAP_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === ACCOUNT_SWAP_TAB_ID);
 const EXPERIMENT_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === EXPERIMENT_TAB_ID);
 
 const ACCOUNT_STATUS_OPTIONS = ['active', 'inactive', 'suspended', 'deleted'];
@@ -240,6 +296,9 @@ function DebugConsolePage() {
   const [expiringDays, setExpiringDays] = useState('3');
   const [selectedPinId, setSelectedPinId] = useState(null);
   const [mapFocusLocation, setMapFocusLocation] = useState(null);
+
+  const theme = useTheme();
+  const isCompactTabs = useMediaQuery(theme.breakpoints.down('md'));
 
   const searchCenterLocation = useMemo(() => {
     const latitude = Number.parseFloat(formState.latitude);
@@ -729,8 +788,35 @@ const handleSubmit = async (event) => {
           aria-label="Debug console sections"
           textColor="primary"
           indicatorColor="primary"
-          variant="scrollable"
-          allowScrollButtonsMobile
+          orientation={isCompactTabs ? 'vertical' : 'horizontal'}
+          variant={isCompactTabs ? 'standard' : 'scrollable'}
+          allowScrollButtonsMobile={!isCompactTabs}
+          sx={{
+            width: '100%',
+            ...(isCompactTabs
+              ? {
+                  alignSelf: 'stretch',
+                  '& .MuiTabs-flexContainer': {
+                    flexDirection: 'column',
+                    alignItems: 'stretch',
+                    gap: 1
+                  },
+                  '& .MuiTab-root': {
+                    justifyContent: 'flex-start',
+                    alignItems: 'flex-start',
+                    textAlign: 'left',
+                    minWidth: 'auto'
+                  },
+                  '& .MuiTabs-indicator': {
+                    left: 0
+                  }
+                }
+              : {
+                  '& .MuiTab-root': {
+                    minWidth: 'auto'
+                  }
+                })
+          }}
         >
           {TAB_OPTIONS.map((tab, index) => (
             <Tab
@@ -745,10 +831,10 @@ const handleSubmit = async (event) => {
 
         <Box
           role="tabpanel"
-          hidden={activeTab !== 0}
+          hidden={activeTab !== PIN_TAB_INDEX}
           id="debug-tabpanel-pin"
           aria-labelledby="debug-tab-pin"
-          sx={{ display: activeTab === 0 ? 'contents' : 'none' }}
+          sx={{ display: activeTab === PIN_TAB_INDEX ? 'contents' : 'none' }}
         >
           {status && (
             <Alert severity={status.type} onClose={() => setStatus(null)}>
@@ -1282,63 +1368,86 @@ const handleSubmit = async (event) => {
 
         <Box
           role="tabpanel"
-          hidden={activeTab !== 1}
+          hidden={activeTab !== PROFILE_TAB_INDEX}
           id="debug-tabpanel-profile"
           aria-labelledby="debug-tab-profile"
-          sx={{ display: activeTab === 1 ? 'block' : 'none' }}
+          sx={{ display: activeTab === PROFILE_TAB_INDEX ? 'block' : 'none' }}
         >
           <ProfilesTab />
         </Box>
 
         <Box
           role="tabpanel"
-          hidden={activeTab !== 2}
+          hidden={activeTab !== LOCATIONS_TAB_INDEX}
           id="debug-tabpanel-locations"
           aria-labelledby="debug-tab-locations"
-          sx={{ display: activeTab === 2 ? 'block' : 'none' }}
+          sx={{ display: activeTab === LOCATIONS_TAB_INDEX ? 'block' : 'none' }}
         >
           <LocationsTab />
         </Box>
 
         <Box
           role="tabpanel"
-          hidden={activeTab !== 3}
+          hidden={activeTab !== BOOKMARKS_TAB_INDEX}
           id="debug-tabpanel-bookmarks"
           aria-labelledby="debug-tab-bookmarks"
-          sx={{ display: activeTab === 3 ? 'block' : 'none' }}
+          sx={{ display: activeTab === BOOKMARKS_TAB_INDEX ? 'block' : 'none' }}
         >
           <BookmarksTab />
         </Box>
 
         <Box
           role="tabpanel"
-          hidden={activeTab !== 4}
+          hidden={activeTab !== CHAT_TAB_INDEX}
           id="debug-tabpanel-chat"
           aria-labelledby="debug-tab-chat"
-          sx={{ display: activeTab === 4 ? 'block' : 'none' }}
+          sx={{ display: activeTab === CHAT_TAB_INDEX ? 'block' : 'none' }}
         >
           <ChatTab />
         </Box>
 
+        {LIVE_CHAT_TAB_INDEX !== -1 && (
+          <Box
+            role="tabpanel"
+            hidden={activeTab !== LIVE_CHAT_TAB_INDEX}
+            id="debug-tabpanel-live-chat"
+            aria-labelledby="debug-tab-live-chat"
+            sx={{ display: activeTab === LIVE_CHAT_TAB_INDEX ? 'block' : 'none' }}
+          >
+            <LiveChatTestTab />
+          </Box>
+        )}
+
         <Box
           role="tabpanel"
-          hidden={activeTab !== 5}
+          hidden={activeTab !== UPDATES_TAB_INDEX}
           id="debug-tabpanel-updates"
           aria-labelledby="debug-tab-updates"
-          sx={{ display: activeTab === 5 ? 'block' : 'none' }}
+          sx={{ display: activeTab === UPDATES_TAB_INDEX ? 'block' : 'none' }}
         >
           <UpdatesTab />
         </Box>
 
         <Box
           role="tabpanel"
-          hidden={activeTab !== 6}
+          hidden={activeTab !== REPLIES_TAB_INDEX}
           id="debug-tabpanel-replies"
           aria-labelledby="debug-tab-replies"
-          sx={{ display: activeTab === 6 ? 'block' : 'none' }}
+          sx={{ display: activeTab === REPLIES_TAB_INDEX ? 'block' : 'none' }}
         >
           <RepliesTab />
         </Box>
+        {ACCOUNT_SWAP_TAB_INDEX !== -1 && (
+          <Box
+            role="tabpanel"
+            hidden={activeTab !== ACCOUNT_SWAP_TAB_INDEX}
+            id="debug-tabpanel-account-swap"
+            aria-labelledby="debug-tab-account-swap"
+            sx={{ display: activeTab === ACCOUNT_SWAP_TAB_INDEX ? 'block' : 'none' }}
+          >
+            <AccountSwapTab />
+          </Box>
+        )}
         {EXPERIMENT_ENABLED && (
           <Box
             role="tabpanel"
@@ -1352,6 +1461,601 @@ const handleSubmit = async (event) => {
         )}
       </Stack>
     </Box>
+  );
+}
+
+function LiveChatTestTab() {
+  const [currentUser] = useAuthState(auth);
+  const [currentProfile, setCurrentProfile] = useState(null);
+  const [globalRoom, setGlobalRoom] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [messageInput, setMessageInput] = useState('');
+  const [status, setStatus] = useState(null);
+  const [isLoadingRoom, setIsLoadingRoom] = useState(false);
+  const [isRefreshingMessages, setIsRefreshingMessages] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  const resolveAuthorAvatar = useCallback((author) => {
+    if (!author) {
+      return resolveMediaUrl(DEFAULT_AVATAR_PATH);
+    }
+    const avatar = author.avatar;
+    if (typeof avatar === 'string') {
+      return resolveMediaUrl(avatar);
+    }
+    if (avatar && typeof avatar === 'object') {
+      const source = avatar.url || avatar.thumbnailUrl;
+      if (typeof source === 'string' && source.trim()) {
+        return resolveMediaUrl(source);
+      }
+    }
+    return resolveMediaUrl(DEFAULT_AVATAR_PATH);
+  }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const loadProfile = useCallback(async () => {
+    if (!currentUser) {
+      setCurrentProfile(null);
+      return;
+    }
+    try {
+      const profile = await fetchCurrentUserProfile();
+      setCurrentProfile(profile);
+    } catch (error) {
+      console.error('Failed to load current user profile:', error);
+      setStatus({ type: 'error', message: error.message || 'Failed to load current user profile.' });
+      setCurrentProfile(null);
+    }
+  }, [currentUser]);
+
+  const loadMessages = useCallback(async (room) => {
+    const roomId = room?._id;
+    if (!roomId || !mongooseObjectIdLike(roomId)) {
+      if (!roomId) {
+        setStatus({
+          type: 'warning',
+          message: 'Select a valid chat room before refreshing messages.'
+        });
+      } else {
+        setStatus({
+          type: 'error',
+          message: `Global chat room has an invalid id (${roomId}). Reimport the latest seed data.`
+        });
+      }
+      setMessages([]);
+      return;
+    }
+
+    setIsRefreshingMessages(true);
+    try {
+      const list = await fetchChatMessages(roomId);
+      setMessages(list);
+    } catch (error) {
+      console.error('Failed to refresh chat messages:', error);
+      setStatus({ type: 'error', message: error.message || 'Failed to refresh messages.' });
+    } finally {
+      setIsRefreshingMessages(false);
+    }
+  }, []);
+
+  const loadRoom = useCallback(async () => {
+    if (!currentUser) {
+      setGlobalRoom(null);
+      setMessages([]);
+      setStatus({ type: 'warning', message: 'Sign in to test the global chat room.' });
+      return;
+    }
+
+    if (!currentProfile?._id) {
+      setStatus({
+        type: 'warning',
+        message: 'Current user profile is unavailable. Swap accounts or refresh the page.'
+      });
+      return;
+    }
+
+    setIsLoadingRoom(true);
+    try {
+      const rooms = await fetchChatRooms();
+      let global = rooms.find(
+        (room) => room.isGlobal || room.name?.toLowerCase().includes('global debug lounge')
+      );
+      const currentUserId = typeof currentProfile._id === 'string'
+        ? currentProfile._id
+        : currentProfile._id?.toString?.();
+
+      if (!global || !mongooseObjectIdLike(global?._id)) {
+        if (!currentUserId || !mongooseObjectIdLike(currentUserId)) {
+          throw new Error('Current user profile is missing a valid ObjectId.');
+        }
+
+        const created = await createProximityChatRoom({
+          ownerId: currentUserId,
+          name: 'Global Debug Lounge',
+          description:
+            'Always-on sandbox chat for QA and local development. Radius is effectively planet-wide.',
+          latitude: 0,
+          longitude: 0,
+          accuracy: 0,
+          radiusMeters: 40000000,
+          isGlobal: true,
+          participantIds: [currentUserId],
+          moderatorIds: [currentUserId]
+        });
+        global = created;
+      }
+
+      if (!global || !mongooseObjectIdLike(global?._id)) {
+        throw new Error(
+          `Global chat room has an invalid id (${global?._id ?? 'unknown'}). Reimport the latest seed data.`
+        );
+      }
+
+      const normalizedRoom = {
+        ...global,
+        _id:
+          typeof global._id === 'string'
+            ? global._id
+            : global._id?.toString?.() ?? String(global._id ?? '')
+      };
+
+      setGlobalRoom(normalizedRoom);
+      setStatus(null);
+
+      if (currentUserId && mongooseObjectIdLike(currentUserId)) {
+        try {
+          await createProximityChatPresence({
+            roomId: normalizedRoom._id,
+            userId: currentUserId
+          });
+        } catch (presenceError) {
+          console.warn('Failed to record chat presence:', presenceError);
+        }
+      }
+
+      await loadMessages(normalizedRoom);
+    } catch (error) {
+      console.error('Failed to load global chat room:', error);
+      setGlobalRoom(null);
+      setMessages([]);
+      setStatus({ type: 'error', message: error.message || 'Failed to load chat room.' });
+    } finally {
+      setIsLoadingRoom(false);
+    }
+  }, [currentUser, currentProfile, loadMessages]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
+  useEffect(() => {
+    if (!currentUser || !currentProfile?._id) {
+      return;
+    }
+    loadRoom();
+  }, [currentUser, currentProfile, loadRoom]);
+
+  useEffect(() => {
+    if (!globalRoom) {
+      return;
+    }
+    const interval = setInterval(() => {
+      loadMessages(globalRoom);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [globalRoom, loadMessages]);
+
+  const handleSendMessage = async (event) => {
+    event.preventDefault();
+    setStatus(null);
+
+    if (!globalRoom) {
+      setStatus({ type: 'warning', message: 'No global chat room available.' });
+      return;
+    }
+
+    if (!currentProfile?._id) {
+      setStatus({ type: 'error', message: 'Current user profile is unavailable. Try swapping accounts again.' });
+      return;
+    }
+
+    const trimmed = messageInput.trim();
+    if (!trimmed) {
+      setStatus({ type: 'warning', message: 'Enter a message before sending.' });
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const created = await createProximityChatMessage({
+        roomId: globalRoom._id,
+        authorId: currentProfile._id,
+        message: trimmed
+      });
+      setMessages((prev) => [...prev, created]);
+      setMessageInput('');
+      try {
+        await createProximityChatPresence({
+          roomId: globalRoom._id,
+          userId: currentProfile._id
+        });
+      } catch (presenceError) {
+        console.warn('Failed to update chat presence after sending message:', presenceError);
+      }
+    } catch (error) {
+      console.error('Failed to send chat message:', error);
+      setStatus({ type: 'error', message: error.message || 'Failed to send message.' });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const sendingAsLabel = useMemo(() => {
+    if (currentProfile) {
+      return (
+        currentProfile.displayName ||
+        currentProfile.username ||
+        currentProfile.email ||
+        currentProfile._id
+      );
+    }
+    if (currentUser) {
+      return currentUser.displayName || currentUser.email || currentUser.uid;
+    }
+    return 'Unknown user';
+  }, [currentProfile, currentUser]);
+
+  const currentAvatar = useMemo(() => resolveAuthorAvatar(currentProfile), [currentProfile, resolveAuthorAvatar]);
+
+  return (
+    <Stack spacing={3}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Stack spacing={1}>
+          <Typography variant="h6">Live Chat Test</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Chat inside the shared Global Debug Lounge. Use the Account Swap tab to impersonate
+            different users and verify cross-account messaging flows.
+          </Typography>
+        </Stack>
+
+        {status && (
+          <Alert severity={status.type} onClose={() => setStatus(null)}>
+            {status.message}
+          </Alert>
+        )}
+
+        {!currentUser && (
+          <Alert severity="warning">
+            Sign in to interact with the live chat room.
+          </Alert>
+        )}
+
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+        >
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Avatar src={currentAvatar} alt={sendingAsLabel} />
+            <Stack spacing={0.3}>
+              <Typography variant="subtitle2">Sending as</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {sendingAsLabel}
+              </Typography>
+            </Stack>
+          </Stack>
+          <Box sx={{ flexGrow: 1 }} />
+          <Stack direction="row" spacing={1}>
+            <Button
+              type="button"
+              variant="outlined"
+              size="small"
+              onClick={loadRoom}
+              disabled={isLoadingRoom || !currentUser}
+            >
+              {isLoadingRoom ? 'Loading room…' : 'Reload room'}
+            </Button>
+            <Button
+              type="button"
+              variant="outlined"
+              size="small"
+              onClick={() => loadMessages(globalRoom)}
+              disabled={isRefreshingMessages || !globalRoom}
+            >
+              {isRefreshingMessages ? 'Refreshing…' : 'Refresh messages'}
+            </Button>
+          </Stack>
+        </Stack>
+
+        <Paper
+          variant="outlined"
+          sx={{
+            p: { xs: 1.5, sm: 2 },
+            height: 360,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            backgroundColor: 'background.default'
+          }}
+        >
+          {messages.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              {isLoadingRoom || isRefreshingMessages
+                ? 'Loading messages...'
+                : 'No messages yet. Send something to get started.'}
+            </Typography>
+          ) : (
+            messages.map((message) => {
+              const key = message?._id || `${message?.createdAt}-${message?.authorId || Math.random()}`;
+              const authorName =
+                message?.author?.displayName ||
+                message?.author?.username ||
+                message?.authorId ||
+                'Unknown user';
+              const avatarSrc = resolveAuthorAvatar(message?.author);
+              const timestamp = formatReadableTimestamp(message?.createdAt);
+              const isSelf =
+                currentProfile?._id && message?.authorId && message.authorId === currentProfile._id;
+
+              return (
+                <Stack
+                  key={key}
+                  direction="row"
+                  spacing={2}
+                  alignItems="flex-start"
+                  justifyContent={isSelf ? 'flex-end' : 'flex-start'}
+                >
+                  {!isSelf && <Avatar src={avatarSrc} alt={authorName} sx={{ width: 36, height: 36 }} />}
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      p: 1.5,
+                      maxWidth: '80%',
+                      backgroundColor: isSelf ? 'primary.main' : 'background.paper',
+                      color: isSelf ? 'primary.contrastText' : 'text.primary'
+                    }}
+                  >
+                    <Stack spacing={0.5}>
+                      <Stack direction="row" spacing={1} alignItems="baseline">
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                          {authorName}
+                        </Typography>
+                        {timestamp && (
+                          <Typography variant="caption" color="text.secondary">
+                            {timestamp}
+                          </Typography>
+                        )}
+                      </Stack>
+                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {message?.message}
+                      </Typography>
+                    </Stack>
+                  </Paper>
+                  {isSelf && <Avatar src={avatarSrc} alt={authorName} sx={{ width: 36, height: 36 }} />}
+                </Stack>
+              );
+            })
+          )}
+          <Box ref={messagesEndRef} />
+        </Paper>
+
+        <Box component="form" onSubmit={handleSendMessage}>
+          <Stack spacing={2}>
+            <TextField
+              label="Message"
+              multiline
+              minRows={2}
+              value={messageInput}
+              onChange={(event) => setMessageInput(event.target.value)}
+              placeholder="Type a message for the Global Debug Lounge"
+              disabled={!currentUser || !globalRoom}
+            />
+            <Stack direction="row" spacing={2} justifyContent="flex-end">
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={!currentUser || !globalRoom || isSending}
+              >
+                {isSending ? 'Sending…' : 'Send message'}
+              </Button>
+            </Stack>
+          </Stack>
+        </Box>
+      </Paper>
+    </Stack>
+  );
+}
+
+function AccountSwapTab() {
+  const [accounts, setAccounts] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
+  const [swapStatus, setSwapStatus] = useState(null);
+  const [pendingUid, setPendingUid] = useState(null);
+  const [currentUser] = useAuthState(auth);
+
+  const loadAccounts = useCallback(async () => {
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      const list = await fetchDebugAuthAccounts();
+      setAccounts(list);
+    } catch (error) {
+      setFetchError(error.message || 'Failed to load Firebase accounts.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchDebugAuthAccounts]);
+
+  useEffect(() => {
+    loadAccounts();
+  }, [loadAccounts]);
+
+  const handleSwap = useCallback(
+    async (account) => {
+      setSwapStatus(null);
+      setPendingUid(account.uid);
+      try {
+        const token = await requestAccountSwap(account.uid);
+        await signInWithCustomToken(auth, token);
+        setSwapStatus({
+          type: 'success',
+          message: `Now signed in as ${account.displayName || account.email || account.uid}.`
+        });
+        await loadAccounts();
+      } catch (error) {
+        setSwapStatus({
+          type: 'error',
+          message: error.message || 'Failed to swap accounts.'
+        });
+      } finally {
+        setPendingUid(null);
+      }
+    },
+    [loadAccounts, requestAccountSwap, signInWithCustomToken, auth]
+  );
+
+  const currentUserLabel =
+    currentUser?.displayName || currentUser?.email || currentUser?.uid || 'Unknown user';
+
+  return (
+    <Stack spacing={3}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+        >
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            Account Swap
+          </Typography>
+          <Button
+            type="button"
+            variant="outlined"
+            size="small"
+            startIcon={<RefreshIcon fontSize="small" />}
+            onClick={loadAccounts}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Refreshing...' : 'Refresh'}
+          </Button>
+        </Stack>
+
+        <Typography variant="body2" color="text.secondary">
+          Swap between Firebase Auth emulator accounts for offline testing without leaving the app.
+        </Typography>
+
+        {currentUser && (
+          <Alert severity="info">
+            Current Firebase user: <strong>{currentUserLabel}</strong>
+          </Alert>
+        )}
+
+        {swapStatus && (
+          <Alert severity={swapStatus.type} onClose={() => setSwapStatus(null)}>
+            {swapStatus.message}
+          </Alert>
+        )}
+
+        {fetchError && (
+          <Alert severity="error" onClose={() => setFetchError(null)}>
+            {fetchError}
+          </Alert>
+        )}
+
+        {isLoading && accounts.length === 0 ? (
+          <Stack alignItems="center" py={3}>
+            <CircularProgress size={32} />
+          </Stack>
+        ) : accounts.length === 0 ? (
+          <Alert severity="warning">No Firebase accounts were found in the emulator export.</Alert>
+        ) : (
+          <List disablePadding>
+            {accounts.map((account, index) => {
+              const label = account.displayName || account.email || account.uid;
+              const initials = deriveInitials(label);
+              const isCurrent = currentUser?.uid === account.uid;
+              const isPending = pendingUid === account.uid;
+              const actionDisabled = isCurrent || isPending || Boolean(account.disabled);
+              const lastSignIn = formatReadableTimestamp(account.lastLoginAt);
+
+              return (
+                <ListItem
+                  key={account.uid}
+                  alignItems="flex-start"
+                  divider={index !== accounts.length - 1}
+                  secondaryAction={
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      {isCurrent && <Chip label="Current" color="success" size="small" />}
+                      <Button
+                        type="button"
+                        size="small"
+                        variant="contained"
+                        onClick={() => handleSwap(account)}
+                        disabled={actionDisabled}
+                      >
+                        {isPending ? 'Switching...' : 'Swap to'}
+                      </Button>
+                    </Stack>
+                  }
+                >
+                  <ListItemAvatar>
+                    <Avatar src={account.photoUrl || undefined} alt={label}>
+                      {initials}
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        alignItems="center"
+                        flexWrap="wrap"
+                        useFlexGap
+                      >
+                        <Typography variant="subtitle1">{label}</Typography>
+                        {account.disabled && <Chip label="Disabled" color="warning" size="small" />}
+                      </Stack>
+                    }
+                    primaryTypographyProps={{ component: 'div' }}
+                    secondary={
+                      <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                        {account.email && (
+                          <Typography variant="body2" color="text.secondary" component="span">
+                            {account.email}
+                          </Typography>
+                        )}
+                        <Typography variant="caption" color="text.secondary" component="span">
+                          UID: {account.uid}
+                        </Typography>
+                        {account.providerIds?.length ? (
+                          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                            {account.providerIds.map((providerId) => (
+                              <Chip key={providerId} label={providerId} size="small" variant="outlined" />
+                            ))}
+                          </Stack>
+                        ) : null}
+                        {lastSignIn && (
+                          <Typography variant="caption" color="text.secondary" component="span">
+                            Last sign-in: {lastSignIn}
+                          </Typography>
+                        )}
+                      </Stack>
+                    }
+                    secondaryTypographyProps={{ component: 'div' }}
+                  />
+                </ListItem>
+              );
+            })}
+          </List>
+        )}
+      </Paper>
+    </Stack>
   );
 }
 
@@ -1435,7 +2139,7 @@ function ExperimentTab() {
         aria-labelledby={`${EXPERIMENT_TAB_ID}-dialog-title`}
       >
         <DialogTitle id={`${EXPERIMENT_TAB_ID}-dialog-title`}>
-          {EXPERIMENT_TITLE} — {activeScreen?.label}
+          {EXPERIMENT_TITLE} â€” {activeScreen?.label}
         </DialogTitle>
         <DialogContent dividers>
           <Box
@@ -1559,17 +2263,23 @@ function ProfilesTab() {
     setFetchStatus(null);
     setUpdateStatus(null);
     const userId = fetchUserId.trim();
-    if (!userId) {
-      setFetchStatus({ type: 'error', message: 'Provide a user ID to fetch.' });
+    if (!userId && !currentUser) {
+      setFetchStatus({ type: 'error', message: 'Sign in to load your profile.' });
       return;
     }
 
     try {
       setIsFetching(true);
-      const profile = await fetchUserProfile(userId);
+      const profile = userId ? await fetchUserProfile(userId) : await fetchCurrentUserProfile();
+      if (!userId && profile?._id) {
+        setFetchUserId(profile._id);
+      }
       setFetchedProfile(profile);
-       setEditForm(buildEditForm(profile));
-      setFetchStatus({ type: 'success', message: 'Profile loaded.' });
+      setEditForm(buildEditForm(profile));
+      setFetchStatus({
+        type: 'success',
+        message: userId ? 'Profile loaded.' : 'Loaded current user profile.'
+      });
     } catch (error) {
       setFetchStatus({ type: 'error', message: error.message || 'Failed to fetch profile.' });
     } finally {
@@ -1821,8 +2531,9 @@ function ProfilesTab() {
             label="User ID"
             value={fetchUserId}
             onChange={(event) => setFetchUserId(event.target.value)}
-            required
             fullWidth
+            placeholder="Leave blank to load the signed-in user"
+            helperText="Optional: provide a MongoDB user id or leave empty to load your own profile."
           />
           <Button type="submit" variant="outlined" disabled={isFetching}>
             {isFetching ? 'Loading...' : 'Fetch'}
@@ -3964,3 +4675,8 @@ function RepliesTab() {
 }
 
 export default DebugConsolePage;
+
+
+
+
+
