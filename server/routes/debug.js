@@ -38,6 +38,42 @@ const toIdString = (value) => {
   return String(value);
 };
 
+const toIsoDateString = (value) => {
+  if (!value) return undefined;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value.toISOString === 'function') return value.toISOString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+};
+
+const mapMediaAsset = (asset) => {
+  if (!asset) {
+    return undefined;
+  }
+
+  const doc = asset.toObject ? asset.toObject() : asset;
+  const url = doc.url || doc.thumbnailUrl;
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return undefined;
+  }
+
+  const payload = {
+    url: url.trim(),
+    thumbnailUrl: doc.thumbnailUrl || undefined,
+    width: doc.width ?? undefined,
+    height: doc.height ?? undefined,
+    mimeType: doc.mimeType || undefined,
+    description: doc.description || undefined,
+    uploadedAt: toIsoDateString(doc.uploadedAt),
+    uploadedBy: toIdString(doc.uploadedBy)
+  };
+
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined && value !== null)
+  );
+};
+
 const buildAudit = (audit, createdAt, updatedAt) => ({
   createdAt: createdAt.toISOString(),
   updatedAt: updatedAt.toISOString(),
@@ -51,14 +87,14 @@ const mapUserToProfile = (userDoc) => {
     _id: toIdString(doc._id),
     username: doc.username,
     displayName: doc.displayName,
-    avatar: doc.avatar || undefined,
+    avatar: mapMediaAsset(doc.avatar),
     stats: doc.stats || undefined,
     badges: doc.badges || [],
     primaryLocationId: toIdString(doc.primaryLocationId),
     accountStatus: doc.accountStatus || 'active',
     email: doc.email || undefined,
     bio: doc.bio || undefined,
-    banner: doc.banner || undefined,
+    banner: mapMediaAsset(doc.banner),
     preferences: doc.preferences || undefined,
     relationships: doc.relationships || undefined,
     locationSharingEnabled: Boolean(doc.locationSharingEnabled),
@@ -143,18 +179,19 @@ const mapChatMessage = (messageDoc) => {
     roomId: toIdString(doc.roomId),
     pinId: toIdString(doc.pinId),
     authorId: toIdString(doc.authorId),
-    author: doc.authorId && doc.authorId.username
-      ? {
-          _id: toIdString(doc.authorId._id),
-          username: doc.authorId.username,
-          displayName: doc.authorId.displayName,
-          avatar: doc.authorId.avatar || undefined,
-          stats: doc.authorId.stats || undefined,
-          badges: doc.authorId.badges || [],
-          primaryLocationId: toIdString(doc.authorId.primaryLocationId),
-          accountStatus: doc.authorId.accountStatus || 'active'
-        }
-      : undefined,
+    author:
+      doc.authorId && doc.authorId.username
+        ? {
+            _id: toIdString(doc.authorId._id),
+            username: doc.authorId.username,
+            displayName: doc.authorId.displayName,
+            avatar: mapMediaAsset(doc.authorId.avatar),
+            stats: doc.authorId.stats || undefined,
+            badges: doc.authorId.badges || [],
+            primaryLocationId: toIdString(doc.authorId.primaryLocationId),
+            accountStatus: doc.authorId.accountStatus || 'active'
+          }
+        : undefined,
     replyToMessageId: toIdString(doc.replyToMessageId),
     message: doc.message,
     coordinates,

@@ -35,6 +35,42 @@ const toIdString = (value) => {
   return String(value);
 };
 
+const toIsoDateString = (value) => {
+  if (!value) return undefined;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value.toISOString === 'function') return value.toISOString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+};
+
+const mapMediaAsset = (asset) => {
+  if (!asset) {
+    return undefined;
+  }
+
+  const doc = asset.toObject ? asset.toObject() : asset;
+  const url = doc.url || doc.thumbnailUrl;
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return undefined;
+  }
+
+  const payload = {
+    url: url.trim(),
+    thumbnailUrl: doc.thumbnailUrl || undefined,
+    width: doc.width ?? undefined,
+    height: doc.height ?? undefined,
+    mimeType: doc.mimeType || undefined,
+    description: doc.description || undefined,
+    uploadedAt: toIsoDateString(doc.uploadedAt),
+    uploadedBy: toIdString(doc.uploadedBy)
+  };
+
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined && value !== null)
+  );
+};
+
 const mapUserToPublic = (user) => {
   if (!user) return undefined;
   const doc = user.toObject ? user.toObject() : user;
@@ -42,7 +78,7 @@ const mapUserToPublic = (user) => {
     _id: toIdString(doc._id),
     username: doc.username,
     displayName: doc.displayName,
-    avatar: doc.avatar || undefined,
+    avatar: mapMediaAsset(doc.avatar),
     stats: doc.stats || undefined,
     badges: doc.badges || [],
     primaryLocationId: toIdString(doc.primaryLocationId),
@@ -181,3 +217,4 @@ router.get('/rooms/:roomId/presence', verifyToken, async (req, res) => {
 });
 
 module.exports = router;
+
