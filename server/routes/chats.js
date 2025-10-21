@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const mongoose = require('mongoose');
 const { z, ZodError } = require('zod');
 const {
@@ -70,6 +70,7 @@ const mapRoom = (roomDoc) => {
       accuracy: doc.coordinates.accuracy ?? undefined
     },
     radiusMeters: doc.radiusMeters,
+    isGlobal: Boolean(doc.isGlobal),
     participantCount: doc.participantCount ?? 0,
     participantIds: (doc.participantIds || []).map(toIdString),
     moderatorIds: (doc.moderatorIds || []).map(toIdString),
@@ -148,6 +149,9 @@ router.get('/rooms', verifyToken, async (req, res) => {
 router.get('/rooms/:roomId/messages', verifyToken, async (req, res) => {
   try {
     const { roomId } = RoomIdSchema.parse(req.params);
+    if (!mongoose.Types.ObjectId.isValid(roomId)) {
+      return res.status(400).json({ message: 'Invalid room id' });
+    }
     const messages = await ProximityChatMessage.find({ roomId })
       .sort({ createdAt: 1 })
       .populate('authorId');

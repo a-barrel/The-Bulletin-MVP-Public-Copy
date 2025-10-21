@@ -446,6 +446,21 @@ export async function fetchUserProfile(userId) {
   return payload;
 }
 
+export async function fetchCurrentUserProfile() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load current user profile');
+  }
+
+  return payload;
+}
+
 export async function createBookmark(input) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/debug/bookmarks`, {
@@ -599,7 +614,8 @@ export async function createProximityChatMessage(input) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to create chat message');
+    const details = payload?.issues ? `: ${JSON.stringify(payload.issues)}` : '';
+    throw new Error((payload?.message || 'Failed to create chat message') + details);
   }
 
   return payload;

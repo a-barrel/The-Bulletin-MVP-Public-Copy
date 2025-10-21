@@ -11,7 +11,8 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
-import { fetchUserProfile } from '../api/mongoDataApi';
+import { fetchCurrentUserProfile, fetchUserProfile } from '../api/mongoDataApi';
+import runtimeConfig from '../config/runtime';
 
 export const pageConfig = {
   id: 'profile',
@@ -27,33 +28,46 @@ export const pageConfig = {
       return null;
     }
     const trimmed = input.trim();
-    return trimmed.length > 0 ? `/profile/${trimmed}` : null;
+    return trimmed.length > 0 ? `/profile/${trimmed}` : '/profile/me';
   }
 };
 
 const FALLBACK_AVATAR = '/images/profile/profile-01.jpg';
 
 const resolveAvatarUrl = (avatar) => {
+  const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+  const toAbsolute = (value) => {
+    if (!value) {
+      return null;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    if (/^(?:[a-z]+:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
+      return trimmed;
+    }
+    const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+    return base ? `${base}${normalized}` : normalized;
+  };
+
   if (!avatar) {
-    return FALLBACK_AVATAR;
+    return toAbsolute(FALLBACK_AVATAR) ?? FALLBACK_AVATAR;
   }
 
   if (typeof avatar === 'string') {
-    const trimmed = avatar.trim();
-    return trimmed ? trimmed : FALLBACK_AVATAR;
+    return toAbsolute(avatar) ?? toAbsolute(FALLBACK_AVATAR) ?? FALLBACK_AVATAR;
   }
 
   if (typeof avatar === 'object') {
     const source = avatar.url ?? avatar.thumbnailUrl ?? avatar.path;
-    if (typeof source === 'string') {
-      const trimmedSource = source.trim();
-      if (trimmedSource) {
-        return trimmedSource;
-      }
+    const resolved = typeof source === 'string' ? toAbsolute(source) : null;
+    if (resolved) {
+      return resolved;
     }
   }
 
-  return FALLBACK_AVATAR;
+  return toAbsolute(FALLBACK_AVATAR) ?? FALLBACK_AVATAR;
 };
 
 const formatEntryValue = (value) => {
@@ -74,6 +88,9 @@ function ProfilePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { userId } = useParams();
+  const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
+  const shouldLoadCurrentUser = normalizedUserId.length === 0 || normalizedUserId === 'me';
+  const targetUserId = shouldLoadCurrentUser ? null : normalizedUserId;
   const userFromState = location.state?.user;
   const originPath = typeof location.state?.from === 'string' ? location.state.from : null;
   const [fetchedUser, setFetchedUser] = useState(null);
@@ -81,7 +98,14 @@ function ProfilePage() {
   const [fetchError, setFetchError] = useState(null);
 
   useEffect(() => {
-    if (!userId || userFromState) {
+    if (userFromState) {
+      setFetchedUser(userFromState);
+      setFetchError(null);
+      setIsFetchingProfile(false);
+      return;
+    }
+
+    if (!targetUserId && !shouldLoadCurrentUser) {
       setFetchedUser(null);
       setFetchError(null);
       setIsFetchingProfile(false);
@@ -95,7 +119,7 @@ function ProfilePage() {
       setFetchError(null);
 
       try {
-        const profile = await fetchUserProfile(userId);
+        const profile = targetUserId ? await fetchUserProfile(targetUserId) : await fetchCurrentUserProfile();
         if (ignore) {
           return;
         }
@@ -119,7 +143,7 @@ function ProfilePage() {
     return () => {
       ignore = true;
     };
-  }, [userId, userFromState]);
+  }, [targetUserId, shouldLoadCurrentUser, userFromState]);
 
   const effectiveUser = userFromState ?? fetchedUser ?? null;
 
@@ -224,7 +248,7 @@ function ProfilePage() {
                 {displayName}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                User ID: {userId || 'N/A'}
+                User ID: {effectiveUser?._id || targetUserId || 'N/A'}
               </Typography>
             </Box>
             {!hasUserData && !isFetchingProfile && !fetchError ? (

@@ -117,6 +117,7 @@ const mapChatRoom = (roomDoc) => {
       accuracy: doc.coordinates.accuracy ?? undefined
     },
     radiusMeters: doc.radiusMeters,
+    isGlobal: Boolean(doc.isGlobal),
     participantCount: doc.participantCount ?? 0,
     participantIds: (doc.participantIds || []).map(toIdString),
     moderatorIds: (doc.moderatorIds || []).map(toIdString),
@@ -576,7 +577,8 @@ router.post('/chat-rooms', async (req, res) => {
     radiusMeters: z.number().positive(),
     pinId: ObjectIdString.optional(),
     participantIds: z.array(ObjectIdString).optional(),
-    moderatorIds: z.array(ObjectIdString).optional()
+    moderatorIds: z.array(ObjectIdString).optional(),
+    isGlobal: z.boolean().optional()
   });
 
   try {
@@ -594,7 +596,8 @@ router.post('/chat-rooms', async (req, res) => {
       participantIds: input.participantIds ? input.participantIds.map(toObjectId) : [],
       participantCount: input.participantIds ? input.participantIds.length : 0,
       moderatorIds: input.moderatorIds ? input.moderatorIds.map(toObjectId) : [],
-      pinId: toObjectId(input.pinId)
+      pinId: toObjectId(input.pinId),
+      isGlobal: Boolean(input.isGlobal)
     });
 
     res.status(201).json(mapChatRoom(room));
