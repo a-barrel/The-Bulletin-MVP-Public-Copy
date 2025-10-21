@@ -24,6 +24,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 import ListPage from './pages/ListPage';
 import PinDetails from './pages/PinDetails';
+import UserProfile from './pages/UserProfile';
 import ProtectedRoute from './components/ProtectedRoute';
 import RegistrationPage from './pages/Registration';
 import LoginPage from './pages/LoginPage';
@@ -443,6 +444,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/pin/:pinId" element={<PinDetails />} />
+          <Route path="/user/:userId" element={<UserProfile />} />
           <Route path="/" element={<Navigate to="/login" replace />} />
 
           {/* Pages that manage their own navbar (ListPage, MapPage, etc.) */}
