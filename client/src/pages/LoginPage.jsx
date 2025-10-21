@@ -52,23 +52,25 @@ function LoginPage() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      navigate('/map');
+      navigate("/map");
     } catch (error) {
       switch (error.code) {
-        case 'auth/invalid-email':
-          setError('Please enter a valid email address.');
+        // Only big errors (e.g. no account with email or login failure) will get a popup.
+        // Else, blank or missing parameters just get a simple text error.
+        case "auth/invalid-email":
+          //setError("Please enter a valid email address.");
           break;
-        case 'auth/user-not-found':
-          setError('No account found with this email.');
+        case "auth/user-not-found":
+          setError("No account found with this email.");
           break;
-        case 'auth/wrong-password':
-          setError('Incorrect password. Try again.');
+        case "auth/wrong-password":
+          setError("Incorrect password. Try again.");
           break;
-        case 'auth/missing-password':
-          setError('Please enter your password.');
+        case "auth/missing-password":
+          //setError("Please enter your password.");
           break;
         default:
-          setError('Login failed. Please try again.');
+          setError("Login failed. Please try again.");
           break;
       }
       setShake(true);
@@ -81,23 +83,32 @@ function LoginPage() {
       try {
         const provider = new GoogleAuthProvider();
         await signInWithPopup(auth, provider);
-        navigate('/map');
+        navigate("/map");
       } catch (error) {
         setError(error.message);
       }
     };
 
   return (
-    <div className={`login-frame ${shake ? 'shake' : ''}`}>
-      <h1 className="login-title">The Bulletin</h1>
+    <div className={`page-background ${shake ? "shake" : ""}`}>
+      
+      {error && (
+          <div className="error-overlay" onClick={() => setError(null)}>
+            <div className="error-box">
+              <p>{error}</p>
+            </div>
+          </div>
+        )}
+
+      <h1 className="page-title">The Bulletin</h1>
 
       {/*Put actual Bulletin logo here later*/}
       <div className="bulletin-image">
-          <span>[ Skibidi ]</span>
-        </div>
+        <span>[ Skibidi ]</span>
+      </div>
 
       <form onSubmit={handleLogin} className={"login-form"}>
-        <div className="email-input-container">
+        <div className="input-container">
           <input
             type="text"
             placeholder="Enter Email"
@@ -111,7 +122,7 @@ function LoginPage() {
           {emailError && <span className="input-error-text">{emailError}</span>}
         </div>
 
-        <div className="password-input-container">
+        <div className="input-container">
           <input
             type={showPassword ? "text" : "password"}
             placeholder="Enter Password"
@@ -126,28 +137,28 @@ function LoginPage() {
 
           <button
             type="button"
-            className="toggle-password-btn"
+            className="show-password-btn"
             onClick={() => setShowPassword(!showPassword)}
           >
-            {showPassword ? <FaEyeSlash /> : <FaEye />}
+          {showPassword ? <FaEyeSlash /> : <FaEye />}
           </button>
         </div>
 
         <div className="additional-options">
-          <label className="remember-me-checkbox"> {/*NOTE: This doesn't do anything currently*/}
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={() => setRemember(!remember)}
-              />
-              Remember me
-            </label>
-            
-            <div className="forgot-password-link">
-              <span
-                className="forgot-password-clickable"
-                onClick={() => navigate('/forgot-password')}
-              > 
+          <label className="remember-me-checkbox"> {/*NOTE: This doesn"t do anything currently*/}
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={() => setRemember(!remember)}
+            />
+            Remember me
+          </label>
+          
+          <div className="forgot-password-link">
+            <span
+              className="forgot-password-clickable"
+              onClick={() => navigate("/forgot-password")}
+            > 
               Forgot Password?
             </span>
           </div>
@@ -167,7 +178,7 @@ function LoginPage() {
         <button 
           type="button"
           className="register-btn" 
-          onClick={() => navigate('/register')}
+          onClick={() => navigate("/register")}
         > 
           Register Here
         </button>
