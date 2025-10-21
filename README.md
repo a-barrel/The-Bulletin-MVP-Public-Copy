@@ -44,12 +44,14 @@ PINPOINT_OFFLINE_DEMO_TOKEN=demo-token
 
 # Firebase emulator defaults (used automatically in offline mode)
 USE_FIREBASE_EMULATOR=true
-FIREBASE_PROJECT_ID=pinpoint-local
+#FIREBASE_PROJECT_ID=bulletin-offline
 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
 FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
 
+FIREBASE_PROJECT_ID=bulletin-app-6548a
+
 # Server port
-PORT=5000
+PORT=8000
 ```
 
 #### Client (`client/.env`)
@@ -59,7 +61,7 @@ VITE_RUNTIME_MODE=offline
 
 # Backend API base URLs
 VITE_API_BASE_URL=
-VITE_API_BASE_URL_OFFLINE=http://localhost:5000
+VITE_API_BASE_URL_OFFLINE=http://localhost:8000
 
 # Optional API access tokens (used when running offline without Firebase auth)
 # VITE_API_ACCESS_TOKEN=
@@ -70,7 +72,7 @@ VITE_FIREBASE_CONFIG={"apiKey":"AIzaSyAkVlj0uQu2Xdc1Y99lAd1bPbFlawEM6pA","authDo
 
 # Optional offline Firebase overrides
 # VITE_FIREBASE_CONFIG_OFFLINE={"projectId":"pinpoint-offline"}
-# VITE_FIREBASE_AUTH_EMULATOR_URL=http://localhost:9099
+VITE_FIREBASE_AUTH_EMULATOR_URL=http://localhost:9099
 ```
 
 ### Installation
