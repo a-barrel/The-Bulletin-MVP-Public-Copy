@@ -90,17 +90,17 @@ function LoginPage() {
     };
 
   return (
-    <div className={`login-page-background ${shake ? "shake" : ""}`}>
-      
+    <div className={`page-background ${shake ? "shake" : ""}`}>  
       {error && (
-          <div className="error-overlay" onClick={() => setError(null)}>
-            <div className="error-box">
-              <p>{error}</p>
-            </div>
+        <div className="error-overlay" onClick={() => setError(null)}>
+          <div className="error-box">
+            <p>{error}</p>
           </div>
-        )}
-      <div className="login-page-header">
-        <h1 className="login-page-title">The Bulletin</h1>
+        </div>
+      )}
+
+      <div className="page-header">
+        <h1 className="page-title">The Bulletin</h1>
       </div>
 
       {/*Put actual Bulletin logo here later*/}
@@ -108,7 +108,7 @@ function LoginPage() {
         <span>[ Skibidi ]</span>
       </div>
 
-      <form onSubmit={handleLogin} className={"login-form"}>
+      <form onSubmit={handleLogin} className={"page-form"}>
         <div className="input-container">
           <input
             type="text" // Allow as text, external function will verify if it is email and call error if needed   
@@ -184,8 +184,7 @@ function LoginPage() {
           onClick={() => navigate("/register")}
         > 
           Register Here
-        </button>
-        
+        </button>    
       </form>
     </div>
   );

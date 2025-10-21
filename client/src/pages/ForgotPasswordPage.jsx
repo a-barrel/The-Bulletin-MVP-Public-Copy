@@ -52,8 +52,8 @@ function ForgotPasswordPage() {
   };
 
   return (
-    <div className={`forgot-password-page-background ${shake ? 'shake' : ''}`}>
-      <div className="forgot-password-page-header">
+    <div className={`page-background ${shake ? 'shake' : ''}`}>
+      <div className="page-header">
         <button
           className="forgot-password-back-btn"
           aria-label="Go back"
@@ -62,7 +62,7 @@ function ForgotPasswordPage() {
         &#8592;
         </button>
 
-        <h1 className="forgot-password-page-title">Forgot Password?</h1>
+        <h1 className="page-sub-title">Forgot Password?</h1>
       </div>
 
       <p className="instruction-text">
@@ -77,7 +77,7 @@ function ForgotPasswordPage() {
         </div>
       )}
 
-      <form onSubmit={handleEmailSubmission} className={"forgot-password-form"}>
+      <form onSubmit={handleEmailSubmission} className={"page-form"}>
         <div className="input-container">
           <input
             type="text" // Allow as text, external function will verify if it is email and call error if needed   
@@ -97,14 +97,6 @@ function ForgotPasswordPage() {
           className="submit-email-btn"
         >
           Submit
-        </button>
-
-        <button 
-          type="button"
-          className="cancel-btn"
-          onClick={() => navigate('/login')}
-        >
-          Cancel
         </button>
       </form>
     </div>
