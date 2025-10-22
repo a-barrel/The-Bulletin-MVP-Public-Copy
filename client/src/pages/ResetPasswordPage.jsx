@@ -46,6 +46,7 @@ function ResetPasswordPage() {
   const [strength, setStrength] = useState({ label: "", score: 0});
   const [shake, setShake] = useState(false);
   const [error, setError] = useState(null);
+  const [passwordError, setPasswordError] = useState(null);
   const [message, setMessage] = useState(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
@@ -89,25 +90,25 @@ function ResetPasswordPage() {
 
   const passwordErr = validatePassword(newPassword);
 
-  setError(passwordErr);
+  setPasswordError(passwordErr);
 
   // Call for simple errors before attempting to authenticate 
   if (!newPassword || !confirmNewPassword) {
-    setError("Please enter a password and confirm it in the fields.");
+    setPasswordError("Please enter a password and confirm it in the fields.");
     setShake(true);
     setTimeout(() => setShake(false), 300);
     return;
   }
 
   if (newPassword != confirmNewPassword) {
-    setError("Passwords are not matching. Please re-enter them again.");
+    setPasswordError("Passwords are not matching. Please re-enter them again.");
     setShake(true);
     setTimeout(() => setShake(false), 300);
     return;
   }
 
   if (strength.label != "Strong") {
-    setError("Password is too weak. Make it stronger.");
+    setPasswordError("Password is too weak. Make it stronger.");
     setShake(true);
     setTimeout(() => setShake(false), 300);
     return;
@@ -165,7 +166,7 @@ function ResetPasswordPage() {
               setNewPassword(e.target.value)
               setError("")
             }}
-            className={error ? "input-error" : ""}
+            className={passwordError ? "input-error" : ""}
           />  
 
           <button
@@ -186,9 +187,9 @@ function ResetPasswordPage() {
               setConfirmNewPassword(e.target.value)
               setError("")
             }}
-            className={error ? "input-error" : ""}
+            className={passwordError ? "input-error" : ""}
           />  
-          {error && <span className="input-error-text">{error}</span>}
+          {passwordError && <span className="input-error-text">{passwordError}</span>}
         
           <button
             type="button"

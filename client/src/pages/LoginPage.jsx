@@ -167,7 +167,11 @@ function LoginPage() {
           
         <button type="submit" className="login-page-login-btn">Login</button>
 
-        <button className="login-page-google-sign-in-btn" onClick={handleGoogleSignIn}>
+        <button 
+          type="button"
+          className="login-page-google-sign-in-btn" 
+          onClick={handleGoogleSignIn}
+        >
         <img
           src="https://www.svgrepo.com/show/475656/google-color.svg"
           alt="Google logo"
