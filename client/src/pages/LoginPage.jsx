@@ -165,9 +165,9 @@ function LoginPage() {
           </div>
         </div>
           
-        <button type="submit" className="login-btn">Login</button>
+        <button type="submit" className="login-page-login-btn">Login</button>
 
-        <button className="google-btn" onClick={handleGoogleSignIn}>
+        <button className="login-page-google-sign-in-btn" onClick={handleGoogleSignIn}>
         <img
           src="https://www.svgrepo.com/show/475656/google-color.svg"
           alt="Google logo"
@@ -180,7 +180,7 @@ function LoginPage() {
 
         <button 
           type="button"
-          className="register-btn" 
+          className="login-page-register-btn" 
           onClick={() => navigate("/register")}
         > 
           Register Here

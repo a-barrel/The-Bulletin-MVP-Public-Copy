@@ -55,7 +55,7 @@ function ForgotPasswordPage() {
     <div className={`page-background ${shake ? 'shake' : ''}`}>
       <div className="page-header">
         <button
-          className="forgot-password-back-btn"
+          className="page-back-btn"
           aria-label="Go back"
           onClick={() => navigate("./login")}
         >
@@ -94,7 +94,7 @@ function ForgotPasswordPage() {
         
         <button 
           type="submit" 
-          className="submit-email-btn"
+          className="forgot-password-page-submit-email-btn"
         >
           Submit
         </button>
