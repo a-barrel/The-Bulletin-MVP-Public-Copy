@@ -9,6 +9,7 @@ const { BookmarkSchema, BookmarkCollectionSchema } = require('../schemas/bookmar
 const { PinPreviewSchema } = require('../schemas/pin');
 const { PublicUserSchema } = require('../schemas/user');
 const verifyToken = require('../middleware/verifyToken');
+const { broadcastBookmarkCreated } = require('../services/updateFanoutService');
 
 const router = express.Router();
 
@@ -259,7 +260,7 @@ router.post('/', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const pin = await Pin.findById(pinId);
+    const pin = await Pin.findById(pinId).populate('creatorId');
     if (!pin) {
       return res.status(404).json({ message: 'Pin not found' });
     }
@@ -295,6 +296,13 @@ router.post('/', verifyToken, async (req, res) => {
       }
       await pin.save();
       bookmarkCountIncrement = 1;
+
+      broadcastBookmarkCreated({
+        pin,
+        bookmarker: viewer
+      }).catch((error) => {
+        console.error('Failed to queue bookmark updates:', error);
+      });
     }
 
     const bookmarkCount = pin.bookmarkCount ?? 0;

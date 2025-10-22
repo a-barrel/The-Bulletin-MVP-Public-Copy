@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import "./ListPage.css";
 import PlaceIcon from '@mui/icons-material/Place'; // TODO: used only for Icon on pageConfig, maybe change with a list icon?
 import commentsIcon from "../assets/Comments.png";
@@ -64,6 +65,7 @@ const DUMMY_FEED = [
 ];
 
 function ListPage() {
+  const navigate = useNavigate();
   const [toggleOn, setToggleOn] = useState(false);
   const handleToggle = useCallback(() => setToggleOn(v => !v), []);
   const onToggleKeyDown = useCallback((e) => {
@@ -72,6 +74,9 @@ function ListPage() {
       setToggleOn(v => !v);
     }
   }, []);
+  const handleNotifications = useCallback(() => {
+    navigate('/updates');
+  }, [navigate]);
 
   return (
     <div className="list-page">
@@ -85,7 +90,12 @@ function ListPage() {
 
           <h1 className="header-title">List</h1>
 
-          <button className="header-icon-btn" aria-label="Notifications">
+          <button
+            className="header-icon-btn"
+            type="button"
+            aria-label="Notifications"
+            onClick={handleNotifications}
+          >
             <img src={updatesIcon} alt="Notifications" className="header-icon" />
           </button>
         </header>

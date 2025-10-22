@@ -6,21 +6,23 @@ const { z, ZodError } = require('zod');
 const runtime = require('../config/runtime');
 const User = require('../models/User');
 const { Bookmark, BookmarkCollection } = require('../models/Bookmark');
-const {
-  ProximityChatRoom,
-  ProximityChatMessage,
-  ProximityChatPresence
-} = require('../models/ProximityChat');
 const Update = require('../models/Update');
 const Reply = require('../models/Reply');
 const Pin = require('../models/Pin');
 const verifyToken = require('../middleware/verifyToken');
 const { UserProfileSchema } = require('../schemas/user');
 const { BookmarkSchema, BookmarkCollectionSchema } = require('../schemas/bookmark');
-const { ProximityChatRoomSchema, ProximityChatMessageSchema, ProximityChatPresenceSchema } = require('../schemas/proximityChat');
 const { UpdateSchema } = require('../schemas/update');
 const { PinReplySchema } = require('../schemas/reply');
 const { PinPreviewSchema } = require('../schemas/pin');
+const {
+  mapRoom: mapChatRoom,
+  mapMessage: mapChatMessage,
+  mapPresence: mapChatPresence,
+  createRoom: createChatRoomRecord,
+  createMessage: createChatMessageRecord,
+  upsertPresence: upsertChatPresenceRecord
+} = require('../services/proximityChatService');
 
 const router = express.Router();
 
@@ -137,79 +139,6 @@ const mapCollection = (collectionDoc, bookmarks) => {
     createdAt: collectionDoc.createdAt.toISOString(),
     updatedAt: collectionDoc.updatedAt.toISOString(),
     bookmarks
-  });
-};
-
-const mapChatRoom = (roomDoc) => {
-  const doc = roomDoc.toObject();
-  return ProximityChatRoomSchema.parse({
-    _id: toIdString(doc._id),
-    ownerId: toIdString(doc.ownerId),
-    name: doc.name,
-    description: doc.description || undefined,
-    coordinates: {
-      type: 'Point',
-      coordinates: doc.coordinates.coordinates,
-      accuracy: doc.coordinates.accuracy ?? undefined
-    },
-    radiusMeters: doc.radiusMeters,
-    isGlobal: Boolean(doc.isGlobal),
-    participantCount: doc.participantCount ?? 0,
-    participantIds: (doc.participantIds || []).map(toIdString),
-    moderatorIds: (doc.moderatorIds || []).map(toIdString),
-    pinId: toIdString(doc.pinId),
-    createdAt: roomDoc.createdAt.toISOString(),
-    updatedAt: roomDoc.updatedAt.toISOString(),
-    audit: doc.audit ? buildAudit(doc.audit, roomDoc.createdAt, roomDoc.updatedAt) : undefined
-  });
-};
-
-const mapChatMessage = (messageDoc) => {
-  const doc = messageDoc.toObject();
-  const coordinates = doc.coordinates && Array.isArray(doc.coordinates.coordinates) && doc.coordinates.coordinates.length === 2
-    ? {
-        type: 'Point',
-        coordinates: doc.coordinates.coordinates,
-        accuracy: doc.coordinates.accuracy ?? undefined
-      }
-    : undefined;
-
-  return ProximityChatMessageSchema.parse({
-    _id: toIdString(doc._id),
-    roomId: toIdString(doc.roomId),
-    pinId: toIdString(doc.pinId),
-    authorId: toIdString(doc.authorId),
-    author:
-      doc.authorId && doc.authorId.username
-        ? {
-            _id: toIdString(doc.authorId._id),
-            username: doc.authorId.username,
-            displayName: doc.authorId.displayName,
-            avatar: mapMediaAsset(doc.authorId.avatar),
-            stats: doc.authorId.stats || undefined,
-            badges: doc.authorId.badges || [],
-            primaryLocationId: toIdString(doc.authorId.primaryLocationId),
-            accountStatus: doc.authorId.accountStatus || 'active'
-          }
-        : undefined,
-    replyToMessageId: toIdString(doc.replyToMessageId),
-    message: doc.message,
-    coordinates,
-    attachments: doc.attachments || [],
-    createdAt: messageDoc.createdAt.toISOString(),
-    updatedAt: messageDoc.updatedAt.toISOString(),
-    audit: doc.audit ? buildAudit(doc.audit, messageDoc.createdAt, messageDoc.updatedAt) : undefined
-  });
-};
-
-const mapChatPresence = (presenceDoc) => {
-  const doc = presenceDoc.toObject();
-  return ProximityChatPresenceSchema.parse({
-    roomId: toIdString(doc.roomId),
-    userId: toIdString(doc.userId),
-    sessionId: toIdString(doc.sessionId),
-    joinedAt: doc.joinedAt.toISOString(),
-    lastActiveAt: doc.lastActiveAt.toISOString()
   });
 };
 
@@ -620,24 +549,21 @@ router.post('/chat-rooms', async (req, res) => {
 
   try {
     const input = CreateRoomSchema.parse(req.body);
-    const room = await ProximityChatRoom.create({
-      ownerId: toObjectId(input.ownerId),
+    const room = await createChatRoomRecord({
+      ownerId: input.ownerId,
       name: input.name,
       description: input.description,
-      coordinates: {
-        type: 'Point',
-        coordinates: [input.longitude, input.latitude],
-        accuracy: input.accuracy
-      },
+      latitude: input.latitude,
+      longitude: input.longitude,
+      accuracy: input.accuracy,
       radiusMeters: input.radiusMeters,
-      participantIds: input.participantIds ? input.participantIds.map(toObjectId) : [],
-      participantCount: input.participantIds ? input.participantIds.length : 0,
-      moderatorIds: input.moderatorIds ? input.moderatorIds.map(toObjectId) : [],
-      pinId: toObjectId(input.pinId),
-      isGlobal: Boolean(input.isGlobal)
+      pinId: input.pinId,
+      participantIds: input.participantIds,
+      moderatorIds: input.moderatorIds,
+      isGlobal: input.isGlobal
     });
 
-    res.status(201).json(mapChatRoom(room));
+    res.status(201).json(room);
   } catch (error) {
     if (error instanceof ZodError) {
       return res.status(400).json({ message: 'Invalid chat room payload', issues: error.errors });
@@ -660,27 +586,18 @@ router.post('/chat-messages', async (req, res) => {
 
   try {
     const input = CreateMessageSchema.parse(req.body);
-
-    let coordinates;
-    if (input.latitude !== undefined && input.longitude !== undefined) {
-      coordinates = {
-        type: 'Point',
-        coordinates: [input.longitude, input.latitude],
-        accuracy: input.accuracy
-      };
-    }
-
-    const message = await ProximityChatMessage.create({
-      roomId: toObjectId(input.roomId),
-      pinId: toObjectId(input.pinId),
-      authorId: toObjectId(input.authorId),
-      replyToMessageId: toObjectId(input.replyToMessageId),
+    const { messageDoc, response } = await createChatMessageRecord({
+      roomId: input.roomId,
+      pinId: input.pinId,
+      authorId: input.authorId,
+      replyToMessageId: input.replyToMessageId,
       message: input.message,
-      coordinates
+      latitude: input.latitude,
+      longitude: input.longitude,
+      accuracy: input.accuracy
     });
 
-    const populated = await message.populate('authorId');
-    res.status(201).json(mapChatMessage(populated));
+    res.status(201).json(response);
   } catch (error) {
     if (error instanceof ZodError) {
       return res.status(400).json({ message: 'Invalid chat message payload', issues: error.errors });
@@ -700,26 +617,15 @@ router.post('/chat-presence', async (req, res) => {
 
   try {
     const input = CreatePresenceSchema.parse(req.body);
-    const now = new Date();
-    const joinedAt = input.joinedAt ? new Date(input.joinedAt) : now;
-    const lastActiveAt = input.lastActiveAt ? new Date(input.lastActiveAt) : now;
+    const presence = await upsertChatPresenceRecord({
+      roomId: input.roomId,
+      userId: input.userId,
+      sessionId: input.sessionId,
+      joinedAt: input.joinedAt,
+      lastActiveAt: input.lastActiveAt
+    });
 
-    const presence = await ProximityChatPresence.findOneAndUpdate(
-      {
-        roomId: toObjectId(input.roomId),
-        userId: toObjectId(input.userId)
-      },
-      {
-        roomId: toObjectId(input.roomId),
-        userId: toObjectId(input.userId),
-        sessionId: toObjectId(input.sessionId),
-        joinedAt,
-        lastActiveAt
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-
-    res.status(201).json(mapChatPresence(presence));
+    res.status(201).json(presence);
   } catch (error) {
     if (error instanceof ZodError) {
       return res.status(400).json({ message: 'Invalid chat presence payload', issues: error.errors });

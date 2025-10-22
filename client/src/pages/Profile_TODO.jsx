@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -11,7 +11,11 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
-import { fetchCurrentUserProfile, fetchUserProfile } from '../api/mongoDataApi';
+import TextField from '@mui/material/TextField';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch from '@mui/material/Switch';
+import MenuItem from '@mui/material/MenuItem';
+import { fetchCurrentUserProfile, fetchUserProfile, updateCurrentUserProfile, uploadImage } from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
 
 export const pageConfig = {
@@ -97,6 +101,46 @@ function ProfilePage() {
   const [fetchedUser, setFetchedUser] = useState(null);
   const [isFetchingProfile, setIsFetchingProfile] = useState(false);
   const [fetchError, setFetchError] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState(null);
+  const [formState, setFormState] = useState({
+    displayName: '',
+    bio: '',
+    locationSharingEnabled: false,
+    theme: 'system',
+    avatarFile: null,
+    avatarPreviewUrl: null,
+    avatarCleared: true
+  });
+  const avatarPreviewUrlRef = useRef(null);
+
+  const clearAvatarPreviewUrl = useCallback(() => {
+    if (avatarPreviewUrlRef.current && avatarPreviewUrlRef.current.startsWith('blob:')) {
+      URL.revokeObjectURL(avatarPreviewUrlRef.current);
+    }
+    avatarPreviewUrlRef.current = null;
+  }, []);
+
+  const initializeFormState = useCallback(
+    (profile) => ({
+      displayName: profile?.displayName ?? '',
+      bio: profile?.bio ?? '',
+      locationSharingEnabled: Boolean(profile?.locationSharingEnabled),
+      theme: profile?.preferences?.theme ?? 'system',
+      avatarFile: null,
+      avatarPreviewUrl: profile?.avatar ? resolveAvatarUrl(profile.avatar) : null,
+      avatarCleared: !profile?.avatar
+    }),
+    []
+  );
+
+  useEffect(
+    () => () => {
+      clearAvatarPreviewUrl();
+    },
+    [clearAvatarPreviewUrl]
+  );
 
   useEffect(() => {
     if (userFromState) {
@@ -163,6 +207,194 @@ function ProfilePage() {
   }, [effectiveUser, userId]);
 
   const avatarUrl = resolveAvatarUrl(effectiveUser?.avatar);
+  const canEditProfile =
+    !userFromState &&
+    (shouldLoadCurrentUser ||
+      (effectiveUser && targetUserId && effectiveUser._id && effectiveUser._id === targetUserId));
+  const editingAvatarSrc = formState.avatarCleared ? null : formState.avatarPreviewUrl ?? avatarUrl;
+
+  useEffect(() => {
+    if (!isEditing && effectiveUser) {
+      setFormState(initializeFormState(effectiveUser));
+    }
+  }, [effectiveUser, initializeFormState, isEditing]);
+
+  const handleBeginEditing = useCallback(() => {
+    if (!effectiveUser) {
+      return;
+    }
+    clearAvatarPreviewUrl();
+    setFormState(initializeFormState(effectiveUser));
+    setUpdateStatus(null);
+    setIsEditing(true);
+  }, [clearAvatarPreviewUrl, effectiveUser, initializeFormState]);
+
+  const handleCancelEditing = useCallback(() => {
+    clearAvatarPreviewUrl();
+    setFormState(initializeFormState(effectiveUser));
+    setIsEditing(false);
+  }, [clearAvatarPreviewUrl, effectiveUser, initializeFormState]);
+
+  const handleAvatarFileChange = useCallback(
+    (event) => {
+      const file = event.target.files?.[0];
+      if (!file) {
+        return;
+      }
+      if (avatarPreviewUrlRef.current && avatarPreviewUrlRef.current.startsWith('blob:')) {
+        URL.revokeObjectURL(avatarPreviewUrlRef.current);
+      }
+      const previewUrl = URL.createObjectURL(file);
+      avatarPreviewUrlRef.current = previewUrl;
+      setFormState((prev) => ({
+        ...prev,
+        avatarFile: file,
+        avatarPreviewUrl: previewUrl,
+        avatarCleared: false
+      }));
+      event.target.value = '';
+    },
+    []
+  );
+
+  const handleClearAvatar = useCallback(() => {
+    clearAvatarPreviewUrl();
+    setFormState((prev) => ({
+      ...prev,
+      avatarFile: null,
+      avatarPreviewUrl: null,
+      avatarCleared: true
+    }));
+  }, [clearAvatarPreviewUrl]);
+
+  const handleFieldChange = useCallback((field) => {
+    return (event) => {
+      const value = typeof event?.target?.value === 'string' ? event.target.value : '';
+      setFormState((prev) => ({
+        ...prev,
+        [field]: value
+      }));
+    };
+  }, []);
+
+  const handleThemeChange = useCallback((event) => {
+    const value = typeof event?.target?.value === 'string' ? event.target.value : 'system';
+    setFormState((prev) => ({
+      ...prev,
+      theme: value
+    }));
+  }, []);
+
+  const handleToggleLocationSharing = useCallback((event) => {
+    setFormState((prev) => ({
+      ...prev,
+      locationSharingEnabled: Boolean(event?.target?.checked)
+    }));
+  }, []);
+
+  const handleSaveProfile = useCallback(
+    async (event) => {
+      event.preventDefault();
+      if (!effectiveUser) {
+        setUpdateStatus({
+          type: 'error',
+          message: 'No profile data is loaded.'
+        });
+        return;
+      }
+
+      const trimmedDisplayName = formState.displayName.trim();
+      if (!trimmedDisplayName) {
+        setUpdateStatus({ type: 'error', message: 'Display name cannot be empty.' });
+        return;
+      }
+
+      const payload = {};
+
+      if (trimmedDisplayName !== (effectiveUser.displayName ?? '')) {
+        payload.displayName = trimmedDisplayName;
+      }
+
+      const normalizedBio = formState.bio.trim();
+      const existingBio = effectiveUser?.bio ?? '';
+      if (normalizedBio !== existingBio) {
+        payload.bio = normalizedBio.length > 0 ? normalizedBio : null;
+      }
+
+      if (formState.locationSharingEnabled !== Boolean(effectiveUser?.locationSharingEnabled)) {
+        payload.locationSharingEnabled = formState.locationSharingEnabled;
+      }
+
+      if (formState.avatarCleared && (effectiveUser?.avatar || formState.avatarFile)) {
+        payload.avatar = null;
+      } else if (formState.avatarFile) {
+        let uploaded;
+        try {
+          setIsSavingProfile(true);
+          uploaded = await uploadImage(formState.avatarFile);
+        } catch (error) {
+          setIsSavingProfile(false);
+          setUpdateStatus({ type: 'error', message: error?.message || 'Failed to upload avatar.' });
+          return;
+        }
+
+        payload.avatar = Object.fromEntries(
+          Object.entries({
+            url: uploaded?.url,
+            thumbnailUrl: uploaded?.thumbnailUrl,
+            width: uploaded?.width,
+            height: uploaded?.height,
+            mimeType: uploaded?.mimeType,
+            description: uploaded?.description,
+            uploadedAt: uploaded?.uploadedAt,
+            uploadedBy: effectiveUser?._id
+          }).filter(([, value]) => value !== undefined && value !== null && value !== '')
+        );
+      }
+
+      const preferencesPayload = {};
+      const currentTheme = effectiveUser?.preferences?.theme ?? 'system';
+      if (formState.theme !== currentTheme) {
+        preferencesPayload.theme = formState.theme;
+      }
+
+      if (Object.keys(preferencesPayload).length > 0) {
+        payload.preferences = preferencesPayload;
+      }
+
+      if (Object.keys(payload).length === 0) {
+        setUpdateStatus({ type: 'info', message: 'No changes to save.' });
+        return;
+      }
+
+      try {
+        setIsSavingProfile(true);
+        const updatedProfile = await updateCurrentUserProfile(payload);
+        setFetchedUser(updatedProfile);
+        setUpdateStatus({ type: 'success', message: 'Profile updated successfully.' });
+        setIsEditing(false);
+        clearAvatarPreviewUrl();
+        setFormState(initializeFormState(updatedProfile));
+      } catch (error) {
+        setUpdateStatus({ type: 'error', message: error?.message || 'Failed to update profile.' });
+      } finally {
+        setIsSavingProfile(false);
+      }
+    },
+    [
+      clearAvatarPreviewUrl,
+      effectiveUser,
+      formState.avatarCleared,
+      formState.avatarFile,
+      formState.bio,
+      formState.displayName,
+      formState.locationSharingEnabled,
+      formState.theme,
+      initializeFormState,
+      updateCurrentUserProfile,
+      uploadImage
+    ]
+  );
 
   const detailEntries = useMemo(() => {
     if (!effectiveUser || typeof effectiveUser !== 'object') {
@@ -259,6 +491,131 @@ function ProfilePage() {
               </Typography>
             ) : null}
           </Stack>
+
+          {canEditProfile ? (
+            <Stack spacing={2} sx={{ alignSelf: 'stretch' }}>
+              {updateStatus ? (
+                <Alert severity={updateStatus.type} onClose={() => setUpdateStatus(null)}>
+                  {updateStatus.message}
+                </Alert>
+              ) : null}
+
+              {isEditing ? (
+                <Stack
+                  component="form"
+                  spacing={2}
+                  onSubmit={handleSaveProfile}
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    backgroundColor: 'background.default'
+                  }}
+                >
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+                    <Avatar
+                      src={editingAvatarSrc}
+                      alt="Profile avatar preview"
+                      sx={{ width: 96, height: 96, bgcolor: 'secondary.main' }}
+                    >
+                      {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
+                    </Avatar>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                      <Button component="label" variant="outlined" size="small" disabled={isSavingProfile}>
+                        Upload avatar
+                        <input type="file" hidden accept="image/*" onChange={handleAvatarFileChange} />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="text"
+                        color="warning"
+                        size="small"
+                        onClick={handleClearAvatar}
+                        disabled={
+                          isSavingProfile ||
+                          (formState.avatarCleared && !formState.avatarFile && !effectiveUser?.avatar)
+                        }
+                      >
+                        Remove avatar
+                      </Button>
+                    </Stack>
+                  </Stack>
+
+                  <TextField
+                    label="Display name"
+                    value={formState.displayName}
+                    onChange={handleFieldChange('displayName')}
+                    required
+                    disabled={isSavingProfile}
+                    fullWidth
+                  />
+
+                  <TextField
+                    label="Bio"
+                    value={formState.bio}
+                    onChange={handleFieldChange('bio')}
+                    multiline
+                    minRows={3}
+                    helperText="Share something about yourself (500 characters max)."
+                    disabled={isSavingProfile}
+                    inputProps={{ maxLength: 500 }}
+                    fullWidth
+                  />
+
+                  <TextField
+                    label="Theme preference"
+                    value={formState.theme}
+                    onChange={handleThemeChange}
+                    select
+                    disabled={isSavingProfile}
+                    fullWidth
+                  >
+                    <MenuItem value="system">System default</MenuItem>
+                    <MenuItem value="light">Light</MenuItem>
+                    <MenuItem value="dark">Dark</MenuItem>
+                  </TextField>
+
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={formState.locationSharingEnabled}
+                        onChange={handleToggleLocationSharing}
+                        color="primary"
+                        disabled={isSavingProfile}
+                      />
+                    }
+                    label="Share location with nearby features"
+                  />
+
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} justifyContent="flex-end">
+                    <Button
+                      type="button"
+                      variant="outlined"
+                      color="inherit"
+                      onClick={handleCancelEditing}
+                      disabled={isSavingProfile}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" variant="contained" disabled={isSavingProfile}>
+                      {isSavingProfile ? 'Saving...' : 'Save changes'}
+                    </Button>
+                  </Stack>
+                </Stack>
+              ) : (
+                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleBeginEditing}
+                    disabled={!effectiveUser || isFetchingProfile}
+                  >
+                    Edit profile
+                  </Button>
+                </Box>
+              )}
+            </Stack>
+          ) : null}
 
           {hasUserData ? (
             <>

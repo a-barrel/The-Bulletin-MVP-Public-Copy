@@ -9,6 +9,11 @@ const { PinListItemSchema, PinSchema, PinPreviewSchema } = require('../schemas/p
 const { PinReplySchema } = require('../schemas/reply');
 const { PublicUserSchema } = require('../schemas/user');
 const verifyToken = require('../middleware/verifyToken');
+const {
+  broadcastPinCreated,
+  broadcastPinReply,
+  broadcastAttendanceChange
+} = require('../services/updateFanoutService');
 
 const router = express.Router();
 
@@ -418,6 +423,9 @@ router.post('/', verifyToken, async (req, res) => {
       viewerId,
       viewerHasBookmarked: false
     });
+    broadcastPinCreated(sourcePin).catch((error) => {
+      console.error('Failed to queue pin creation updates:', error);
+    });
     res.status(201).json(payload);
   } catch (error) {
     if (error instanceof ZodError) {
@@ -588,6 +596,9 @@ router.post('/:pinId/attendance', verifyToken, async (req, res) => {
       viewerId,
       viewerHasBookmarked: Boolean(bookmarkExists)
     });
+    broadcastAttendanceChange({ pin, attendee: viewer, attending }).catch((error) => {
+      console.error('Failed to queue attendance updates:', error);
+    });
     res.json(payload);
   } catch (error) {
     if (error instanceof ZodError) {
@@ -673,16 +684,17 @@ router.post('/:pinId/replies', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const pin = await Pin.findById(pinId);
+    const pin = await Pin.findById(pinId).populate('creatorId');
     if (!pin) {
       return res.status(404).json({ message: 'Pin not found' });
     }
 
     let parentReplyId = undefined;
+    let parentReplyDoc = null;
     if (input.parentReplyId) {
       parentReplyId = new mongoose.Types.ObjectId(input.parentReplyId);
-      const parentExists = await Reply.exists({ _id: parentReplyId, pinId });
-      if (!parentExists) {
+      parentReplyDoc = await Reply.findOne({ _id: parentReplyId, pinId }).populate('authorId');
+      if (!parentReplyDoc) {
         return res.status(404).json({ message: 'Parent reply not found for this pin' });
       }
     }
@@ -711,6 +723,14 @@ router.post('/:pinId/replies', verifyToken, async (req, res) => {
 
     const populatedReply = await Reply.findById(reply._id).populate('authorId');
     const payload = mapReply(populatedReply ?? reply, mapUserToPublic(populatedReply?.authorId ?? viewer));
+    broadcastPinReply({
+      pin,
+      reply: populatedReply ?? reply,
+      author: populatedReply?.authorId ?? viewer,
+      parentReply: parentReplyDoc
+    }).catch((error) => {
+      console.error('Failed to queue pin reply updates:', error);
+    });
     res.status(201).json(payload);
   } catch (error) {
     if (error instanceof ZodError) {

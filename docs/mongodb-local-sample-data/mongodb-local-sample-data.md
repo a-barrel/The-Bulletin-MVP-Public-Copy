@@ -2,22 +2,46 @@
 
 Use these JSON files to seed a local MongoDB instance with realistic data that matches the Pinpoint schemas. All files live alongside this guide inside the `docs/` folder.
 
-## Quick Start
+## Quick Start (Automated Loader)
+
+From the repo root the following command will replace the relevant MongoDB collections with the sample fixtures:
 
 ```bash
-# Adjust the connection string or database name as needed
+npm run seed:samples
+```
+
+The script resolves `server/.env`, connects to `MONGODB_URI` (defaulting to `mongodb://localhost:27017/pinpoint`), clears the targeted collections, and bulk inserts the JSON fixtures from this directory.  
+
+Advanced usage:
+
+```bash
+# Load only users and pins without dropping existing records
+npm run seed:samples -- --collections users,pins --keep
+
+# Preview what would happen without writing to MongoDB
+npm run seed:samples -- --dry-run
+
+# Point at a different directory of fixtures
+npm run seed:samples -- --data-dir ./extra-fixtures
+```
+
+## Manual Import (mongoimport)
+
+If you prefer to seed collections manually, you can still use `mongoimport` directly:
+
+```bash
 mongosh "mongodb://localhost:27017/pinpoint"
 
-mongoimport --db pinpoint --collection users --file docs/mongodb-sample-users.json --jsonArray
-mongoimport --db pinpoint --collection pins --file docs/mongodb-sample-pins.json --jsonArray
-mongoimport --db pinpoint --collection bookmarkcollections --file docs/mongodb-sample-bookmarkCollections.json --jsonArray
-mongoimport --db pinpoint --collection bookmarks --file docs/mongodb-sample-bookmarks.json --jsonArray
-mongoimport --db pinpoint --collection replies --file docs/mongodb-sample-replies.json --jsonArray
-mongoimport --db pinpoint --collection locations --file docs/mongodb-sample-locations.json --jsonArray
-mongoimport --db pinpoint --collection proximitychatrooms --file docs/mongodb-sample-proximityChatRooms.json --jsonArray
-mongoimport --db pinpoint --collection proximitychatmessages --file docs/mongodb-sample-proximityChatMessages.json --jsonArray
-mongoimport --db pinpoint --collection proximitychatpresences --file docs/mongodb-sample-proximityChatPresence.json --jsonArray
-mongoimport --db pinpoint --collection updates --file docs/mongodb-sample-updates.json --jsonArray
+mongoimport --db pinpoint --collection users --file docs/mongodb-local-sample-data/mongodb-sample-users.json --jsonArray
+mongoimport --db pinpoint --collection pins --file docs/mongodb-local-sample-data/mongodb-sample-pins.json --jsonArray
+mongoimport --db pinpoint --collection bookmarkcollections --file docs/mongodb-local-sample-data/mongodb-sample-bookmarkCollections.json --jsonArray
+mongoimport --db pinpoint --collection bookmarks --file docs/mongodb-local-sample-data/mongodb-sample-bookmarks.json --jsonArray
+mongoimport --db pinpoint --collection replies --file docs/mongodb-local-sample-data/mongodb-sample-replies.json --jsonArray
+mongoimport --db pinpoint --collection locations --file docs/mongodb-local-sample-data/mongodb-sample-locations.json --jsonArray
+mongoimport --db pinpoint --collection proximitychatrooms --file docs/mongodb-local-sample-data/mongodb-sample-proximityChatRooms.json --jsonArray
+mongoimport --db pinpoint --collection proximitychatmessages --file docs/mongodb-local-sample-data/mongodb-sample-proximityChatMessages.json --jsonArray
+mongoimport --db pinpoint --collection proximitychatpresences --file docs/mongodb-local-sample-data/mongodb-sample-proximityChatPresence.json --jsonArray
+mongoimport --db pinpoint --collection updates --file docs/mongodb-local-sample-data/mongodb-sample-updates.json --jsonArray
 ```
 
 > The files use MongoDB Extended JSON (`$oid`, `$date`) so they retain object IDs and timestamps.

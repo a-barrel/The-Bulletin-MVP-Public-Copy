@@ -13,6 +13,7 @@
     "server:start": "cd server && npm start",
     "client:preview": "cd client && npm run preview",
     "seed": "cd server && npm run seed",
+    "seed:samples": "cd server && npm run seed:samples",
     "install:all": "npm install && cd server && npm install && cd ../client && npm install"
   },
   "keywords": [
