@@ -12,6 +12,11 @@
 - **[Done 2025-10-21] Build first-class chat UI:** `ChatPage.jsx` now lists rooms, supports creation/discovery, live messaging, and presence heartbeats through the production chat APIs.
 - **[Done 2025-10-21] Create user settings hub:** flesh out `Settings_TODO.jsx` so users can manage notification preferences, theme, radius defaults, and account controls via the backed `/api/users/me` endpoint.
 - **Settings follow-ups:** surface account security (password reset, linked accounts) and advanced privacy controls once the core UI ships.
-- **Replace list feed stub:** hook `ListPage.jsx` into real datasets (nearby pins, bookmarks, “for you”) instead of the current `DUMMY_FEED`, and plumb the updates badge into the bell icon.
+- **Replace list feed stub:** hook `ListPage.jsx` into real datasets (nearby pins, bookmarks, "for you") instead of the current `DUMMY_FEED`, and plumb the updates badge into the bell icon.
 - **[Done 2025-10-21] Finish bookmarks screen:** `BookmarksPage.jsx` now groups saved pins by collection, offers quick view/remove actions, and replaces the debug JSON dump.
 - **Tidy remaining placeholders:** clean up lingering `-todo` routes, refine the forgot password flow, and align page configs once the final UIs land.
+- **[Done 2025-10-22] Profile page UX pass:** upgraded `ProfilePage.jsx` with stats, activity highlights, badge chips, preferences, and raw profile toggles, retiring the `_TODO` scaffolding entirely.
+- **[Done 2025-10-22] Testing expansion:** replaced the placeholder Jest sanity check with component coverage (`Feed`, `LocationShare`) and utility mocks to keep regressions visible.
+- **Testing follow-ups:** layer in integration-level tests (MSW-powered API mocks for profile/updates flows) and bring server routes under test once the suite stabilizes.
+- **Navigation polish:** expand the bottom nav and overlay to surface Updates/Bookmarks and feed the unread updates badge once the shared context is wired up.
+- **Automation tools:** evaluate layering in Jest (unit tests), Cypress/Playwright (E2E), Husky pre-commit hooks, and GitHub Actions CI to keep lint/tests running automatically as the team stabilizes.

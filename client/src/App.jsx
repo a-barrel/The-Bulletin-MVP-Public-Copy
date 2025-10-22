@@ -25,6 +25,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { NavOverlayProvider } from './contexts/NavOverlayContext';
 import RegistrationPage from './pages/Registration';
+import { UpdatesProvider } from './contexts/UpdatesContext';
 
 const theme = createTheme({
   palette: {
@@ -130,6 +131,7 @@ function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const [navOverlayOpen, setNavOverlayOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const navPages = useMemo(
     () => pages.filter((page) => page.showInNav),
@@ -279,6 +281,14 @@ function App() {
     [handleBack, previousNavPage, previousNavPath]
   );
 
+  const updatesContextValue = useMemo(
+    () => ({
+      unreadCount,
+      setUnreadCount
+    }),
+    [unreadCount]
+  );
+
   const handleNavigate = useCallback(
     (target) => {
       let targetPath = null;
@@ -345,8 +355,9 @@ function App() {
   }, [location.pathname, navPages.length, navigate]);
 
   return (
-    <NavOverlayProvider value={navOverlayContextValue}>
-      <ThemeProvider theme={theme}>
+    <UpdatesProvider value={updatesContextValue}>
+      <NavOverlayProvider value={navOverlayContextValue}>
+        <ThemeProvider theme={theme}>
         <CssBaseline />
 
           <Modal open={navOverlayOpen} onClose={closeOverlay} closeAfterTransition keepMounted>
@@ -467,6 +478,7 @@ function App() {
           </Routes>
         </ThemeProvider>
       </NavOverlayProvider>
+    </UpdatesProvider>
   );
 }
 

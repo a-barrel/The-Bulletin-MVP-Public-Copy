@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 const Update = require('../models/Update');
 const User = require('../models/User');
 const Pin = require('../models/Pin');
@@ -30,7 +30,7 @@ const truncate = (value, length) => {
   if (text.length <= length) {
     return text;
   }
-  return `${text.slice(0, length - 1).trimEnd()}…`;
+  return `${text.slice(0, length - 1).trimEnd()}...`;
 };
 
 const getDisplayName = (userDoc) => {
@@ -437,3 +437,5 @@ module.exports = {
   broadcastBookmarkCreated,
   broadcastChatMessage
 };
+
+

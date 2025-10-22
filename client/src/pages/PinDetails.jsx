@@ -14,6 +14,12 @@ import {
   createPinReply
 } from '../api/mongoDataApi';
 
+const SAMPLE_PIN_IDS = [
+  '68e061721329566a22d474aa',
+  '68e061721329566a22d474ab',
+  '68e061721329566a22d474ac'
+];
+
 export const pageConfig = {
   id: 'pin-details',
   label: 'Pin Details',
@@ -21,13 +27,20 @@ export const pageConfig = {
   path: '/pin/:pinId',
   order: 3,
   showInNav: true,
-  resolveNavTarget: () => {
-    const input = window.prompt('Enter a pin ID to view in Pin Details:');
-    if (typeof input !== 'string') {
-      return null;
+  resolveNavTarget: ({ currentPath } = {}) => {
+    const input = window.prompt(
+      'Enter a pin ID to view (leave blank for a random sample, cancel to stay put):'
+    );
+    if (input === null) {
+      return currentPath ?? null;
     }
     const trimmed = input.trim();
-    return trimmed.length > 0 ? `/pin/${trimmed}` : null;
+    if (!trimmed) {
+      const randomId =
+        SAMPLE_PIN_IDS[Math.floor(Math.random() * SAMPLE_PIN_IDS.length)] ?? '68e061721329566a22d474aa';
+      return `/pin/${randomId}`;
+    }
+    return `/pin/${trimmed}`;
   }
 };
 

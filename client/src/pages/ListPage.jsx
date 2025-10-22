@@ -148,7 +148,7 @@ function ListPage() {
                 </div>
                 <div className="meta-right">
                   <span className="time">{item.timeLabel}</span>
-                  <span className="dot">•</span>
+                  <span className="dot">&bull;</span>
                   <span className="dist">{item.distance}</span>
                 </div>
               </header>
@@ -204,3 +204,4 @@ function ListPage() {
 }
 
 export default ListPage;
+

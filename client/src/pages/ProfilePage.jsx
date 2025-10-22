@@ -15,6 +15,9 @@ import TextField from '@mui/material/TextField';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
 import MenuItem from '@mui/material/MenuItem';
+import Chip from '@mui/material/Chip';
+import Grid from '@mui/material/Grid';
+import Collapse from '@mui/material/Collapse';
 import { fetchCurrentUserProfile, fetchUserProfile, updateCurrentUserProfile, uploadImage } from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
 
@@ -26,13 +29,25 @@ export const pageConfig = {
   order: 91,
   showInNav: true,
   protected: true,
-  resolveNavTarget: () => {
-    const input = window.prompt('Enter a user ID to view in Profile:');
-    if (typeof input !== 'string') {
-      return '/profile/me';
+  resolveNavTarget: ({ currentPath } = {}) => {
+    const input = window.prompt(
+      'Enter a profile ID (leave blank for your profile, type "me" or cancel to stay put):'
+    );
+    if (input === null) {
+      return currentPath ?? null;
     }
     const trimmed = input.trim();
-    return trimmed.length > 0 ? /profile/ : '/profile/me';
+    if (!trimmed || trimmed.toLowerCase() === 'me') {
+      return '/profile/me';
+    }
+    const sanitized = trimmed.replace(/^\/+/, '');
+    if (/^profile\/.+/i.test(sanitized)) {
+      return `/${sanitized}`;
+    }
+    if (/^\/profile\/.+/i.test(trimmed)) {
+      return trimmed;
+    }
+    return `/profile/${sanitized}`;
   }
 };
 
@@ -88,6 +103,48 @@ const formatEntryValue = (value) => {
   return String(value);
 };
 
+const METERS_PER_MILE = 1609.34;
+
+const formatDateTime = (value) => {
+  if (!value) {
+    return '—';
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+  return date.toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
+};
+
+const Section = ({ title, description, children }) => (
+  <Stack spacing={1.5}>
+    <Box>
+      <Typography variant="h6" component="h2">
+        {title}
+      </Typography>
+      {description ? (
+        <Typography variant="body2" color="text.secondary">
+          {description}
+        </Typography>
+      ) : null}
+    </Box>
+    <Box
+      sx={{
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: 'divider',
+        backgroundColor: 'background.default',
+        p: { xs: 2, md: 3 }
+      }}
+    >
+      {children}
+    </Box>
+  </Stack>
+);
+
 function ProfilePage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -104,6 +161,7 @@ function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [updateStatus, setUpdateStatus] = useState(null);
+  const [showRawData, setShowRawData] = useState(false);
   const [formState, setFormState] = useState({
     displayName: '',
     bio: '',
@@ -409,8 +467,108 @@ function ProfilePage() {
         isObject: typeof value === 'object' && value !== null
       }));
   }, [effectiveUser]);
+  const hasProfile = Boolean(effectiveUser);
+  const statsEntries = useMemo(() => {
+    const stats = effectiveUser?.stats;
+    if (!stats) {
+      return [];
+    }
+    return [
+      { key: 'eventsHosted', label: 'Events hosted', value: stats.eventsHosted ?? 0 },
+      { key: 'eventsAttended', label: 'Events attended', value: stats.eventsAttended ?? 0 },
+      { key: 'posts', label: 'Posts', value: stats.posts ?? 0 },
+      { key: 'bookmarks', label: 'Bookmarks', value: stats.bookmarks ?? 0 },
+      { key: 'followers', label: 'Followers', value: stats.followers ?? 0 },
+      { key: 'following', label: 'Following', value: stats.following ?? 0 }
+    ];
+  }, [effectiveUser]);
 
-  const hasUserData = detailEntries.length > 0;
+  const badgeList = effectiveUser?.badges ?? [];
+
+  const activityEntries = useMemo(() => {
+    if (!effectiveUser) {
+      return [];
+    }
+    return [
+      {
+        key: 'pinnedPinIds',
+        label: 'Pinned pins',
+        value: effectiveUser.pinnedPinIds?.length ?? 0
+      },
+      {
+        key: 'ownedPinIds',
+        label: 'Pins created',
+        value: effectiveUser.ownedPinIds?.length ?? 0
+      },
+      {
+        key: 'bookmarkCollectionIds',
+        label: 'Bookmark collections',
+        value: effectiveUser.bookmarkCollectionIds?.length ?? 0
+      },
+      {
+        key: 'proximityChatRoomIds',
+        label: 'Chat rooms joined',
+        value: effectiveUser.proximityChatRoomIds?.length ?? 0
+      },
+      {
+        key: 'recentLocationIds',
+        label: 'Recent locations',
+        value: effectiveUser.recentLocationIds?.length ?? 0
+      }
+    ];
+  }, [effectiveUser]);
+
+  const preferenceSummary = useMemo(() => {
+    const preferences = effectiveUser?.preferences ?? {};
+    const theme = preferences.theme ?? 'system';
+    const radiusMeters = preferences.radiusPreferenceMeters;
+    const radiusMiles =
+      typeof radiusMeters === 'number'
+        ? Math.round((100 * radiusMeters) / METERS_PER_MILE) / 100
+        : null;
+    return {
+      theme,
+      radiusMiles,
+      locationSharing: Boolean(effectiveUser?.locationSharingEnabled)
+    };
+  }, [effectiveUser]);
+
+  const notificationPreferences = useMemo(() => {
+    const notifications = effectiveUser?.preferences?.notifications ?? {};
+    return [
+      {
+        key: 'proximity',
+        label: 'Nearby activity alerts',
+        enabled: notifications.proximity !== false
+      },
+      {
+        key: 'updates',
+        label: 'Pin & chat updates',
+        enabled: notifications.updates !== false
+      },
+      {
+        key: 'marketing',
+        label: 'Tips & marketing',
+        enabled: notifications.marketing === true
+      }
+    ];
+  }, [effectiveUser]);
+
+  const accountTimeline = useMemo(() => {
+    if (!effectiveUser) {
+      return null;
+    }
+    return {
+      createdAt: formatDateTime(effectiveUser.createdAt),
+      updatedAt: formatDateTime(effectiveUser.updatedAt),
+      status: effectiveUser.accountStatus ?? 'unknown',
+      email: effectiveUser.email ?? '—',
+      userId: effectiveUser._id ?? targetUserId ?? '—'
+    };
+  }, [effectiveUser, targetUserId]);
+
+  const rawDataAvailable = detailEntries.length > 0;
+
   const handleBack = () => {
     if (originPath) {
       navigate(originPath);
@@ -484,7 +642,7 @@ function ProfilePage() {
                 User ID: {effectiveUser?._id || targetUserId || 'N/A'}
               </Typography>
             </Box>
-            {!hasUserData && !isFetchingProfile && !fetchError ? (
+            {!hasProfile && !isFetchingProfile && !fetchError ? (
               <Typography variant="body2" color="text.secondary">
                 No additional user context was provided. Use a pin, reply, or enter a valid user ID
                 to preview available data.
@@ -617,58 +775,225 @@ function ProfilePage() {
             </Stack>
           ) : null}
 
-          {hasUserData ? (
+          {hasProfile ? (
             <>
               <Divider />
-              <Stack spacing={2}>
-                <Typography variant="subtitle1" color="text.secondary">
-                  Raw user data (placeholder view)
-                </Typography>
-                <Stack spacing={1.5}>
-                  {detailEntries.map(({ key, value, isObject }) => (
-                    <Box
-                      key={key}
-                      sx={{
-                        borderRadius: 2,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        backgroundColor: 'background.default',
-                        p: 2
-                      }}
-                    >
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{
-                          textTransform: 'uppercase',
-                          letterSpacing: 0.6,
-                          fontWeight: 600
-                        }}
-                      >
-                        {key}
-                      </Typography>
-                      {isObject ? (
-                        <Box
-                          component="pre"
-                          sx={{
-                            mt: 1,
-                            mb: 0,
-                            fontSize: '0.85rem',
-                            lineHeight: 1.5,
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word'
-                          }}
-                        >
-                          {formatEntryValue(value)}
-                        </Box>
-                      ) : (
-                        <Typography variant="body1" sx={{ mt: 0.5 }}>
-                          {formatEntryValue(value)}
+              <Stack spacing={3}>
+                <Section
+                  title="Highlights"
+                  description="At-a-glance stats across this profile."
+                >
+                  {statsEntries.length ? (
+                    <Grid container spacing={2}>
+                      {statsEntries.map(({ key, label, value }) => (
+                        <Grid item xs={6} sm={4} key={key}>
+                          <Stack spacing={0.5}>
+                            <Typography variant="subtitle2" color="text.secondary">
+                              {label}
+                            </Typography>
+                            <Typography variant="h5">{value}</Typography>
+                          </Stack>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Stats will appear here once this user starts hosting events, posting, or connecting with others.
+                    </Typography>
+                  )}
+                </Section>
+
+                <Section
+                  title="Activity & collections"
+                  description="Quick counts for pins, bookmarks, rooms, and locations associated with this user."
+                >
+                  {activityEntries.length ? (
+                    <Grid container spacing={2}>
+                      {activityEntries.map(({ key, label, value }) => (
+                        <Grid item xs={6} sm={4} key={key}>
+                          <Stack spacing={0.25}>
+                            <Typography variant="subtitle2" color="text.secondary">
+                              {label}
+                            </Typography>
+                            <Typography variant="h6">{value}</Typography>
+                          </Stack>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Activity counters will populate as soon as this user creates or saves pins, joins chats, or shares check-ins.
+                    </Typography>
+                  )}
+                </Section>
+
+                <Section
+                  title="Preferences"
+                  description="Theme, privacy, and notification settings currently applied to this profile."
+                >
+                  <Stack spacing={1.5}>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Interface theme
                         </Typography>
-                      )}
-                    </Box>
-                  ))}
-                </Stack>
+                        <Typography variant="body1">
+                          {preferenceSummary.theme.charAt(0).toUpperCase() + preferenceSummary.theme.slice(1)}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Discovery radius
+                        </Typography>
+                        <Typography variant="body1">
+                          {typeof preferenceSummary.radiusMiles === 'number'
+                            ? `${preferenceSummary.radiusMiles} mi`
+                            : 'Default'}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Location sharing
+                        </Typography>
+                        <Typography variant="body1">
+                          {preferenceSummary.locationSharing ? 'Enabled' : 'Disabled'}
+                        </Typography>
+                      </Box>
+                    </Stack>
+
+                    <Divider flexItem />
+
+                    <Stack direction="row" flexWrap="wrap" gap={1}>
+                      {notificationPreferences.map(({ key, label, enabled }) => (
+                        <Chip
+                          key={key}
+                          label={`${label}${enabled ? '' : ' (off)'}`}
+                          color={enabled ? 'success' : 'default'}
+                          variant={enabled ? 'filled' : 'outlined'}
+                          size="small"
+                        />
+                      ))}
+                    </Stack>
+                  </Stack>
+                </Section>
+
+                <Section
+                  title="Badges & achievements"
+                  description="Recognition earned by this community member."
+                >
+                  {badgeList.length ? (
+                    <Stack direction="row" flexWrap="wrap" gap={1.5}>
+                      {badgeList.map((badge) => (
+                        <Chip key={badge} label={badge} color="primary" variant="outlined" />
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No badges yet — they’ll appear here once this user starts collecting achievements.
+                    </Typography>
+                  )}
+                </Section>
+
+                <Section
+                  title="Account timeline"
+                  description="Provisioning details captured when this account was created."
+                >
+                  {accountTimeline ? (
+                    <Stack spacing={1}>
+                      <Typography variant="body2" color="text.secondary">
+                        User ID
+                      </Typography>
+                      <Typography variant="body1">{accountTimeline.userId}</Typography>
+
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Email
+                      </Typography>
+                      <Typography variant="body1">{accountTimeline.email}</Typography>
+
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Account status
+                      </Typography>
+                      <Typography variant="body1">
+                        {accountTimeline.status.charAt(0).toUpperCase() + accountTimeline.status.slice(1)}
+                      </Typography>
+
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Created
+                      </Typography>
+                      <Typography variant="body1">{accountTimeline.createdAt}</Typography>
+
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Last updated
+                      </Typography>
+                      <Typography variant="body1">{accountTimeline.updatedAt}</Typography>
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      We’ll surface account timestamps once this profile finishes loading.
+                    </Typography>
+                  )}
+                </Section>
+
+                {rawDataAvailable ? (
+                  <Stack spacing={1}>
+                    <Button
+                      type="button"
+                      variant="text"
+                      color="secondary"
+                      onClick={() => setShowRawData((prev) => !prev)}
+                      sx={{ alignSelf: 'flex-start' }}
+                    >
+                      {showRawData ? 'Hide raw profile JSON' : 'Show raw profile JSON'}
+                    </Button>
+                    <Collapse in={showRawData} unmountOnExit>
+                      <Stack spacing={1.5}>
+                        {detailEntries.map(({ key, value, isObject }) => (
+                          <Box
+                            key={key}
+                            sx={{
+                              borderRadius: 2,
+                              border: '1px dashed',
+                              borderColor: 'divider',
+                              backgroundColor: 'background.default',
+                              p: 2
+                            }}
+                          >
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.6,
+                                fontWeight: 600
+                              }}
+                            >
+                              {key}
+                            </Typography>
+                            {isObject ? (
+                              <Box
+                                component="pre"
+                                sx={{
+                                  mt: 1,
+                                  mb: 0,
+                                  fontSize: '0.85rem',
+                                  lineHeight: 1.5,
+                                  whiteSpace: 'pre-wrap',
+                                  wordBreak: 'break-word'
+                                }}
+                              >
+                                {formatEntryValue(value)}
+                              </Box>
+                            ) : (
+                              <Typography variant="body1" sx={{ mt: 0.5 }}>
+                                {formatEntryValue(value)}
+                              </Typography>
+                            )}
+                          </Box>
+                        ))}
+                      </Stack>
+                    </Collapse>
+                  </Stack>
+                ) : null}
               </Stack>
             </>
           ) : null}
