@@ -568,12 +568,9 @@ export async function createBookmarkCollection(input) {
 }
 
 export async function fetchBookmarkCollections(userId) {
-  if (!userId) {
-    throw new Error('User id is required to load bookmark collections');
-  }
-
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/bookmarks/collections?userId=${encodeURIComponent(userId)}`, {
+  const params = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+  const response = await fetch(`${baseUrl}/api/bookmarks/collections${params}`, {
     method: 'GET',
     headers: await buildHeaders()
   });

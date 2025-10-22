@@ -1,4 +1,4 @@
-# Backlog Ideas (2025-10-21)
+﻿# Backlog Ideas (2025-10-21)
 
 - **[Done 2025-10-21] Promote profile update endpoints:** `/api/users/me` now supports display name, bio, avatar, theme, and location sharing updates and the profile page saves through it while keeping the debug route available for tooling.
 - **Profile polish follow-ups:** consider banner uploads, richer preference toggles (notifications, radius), and admin-level mutations for editing other users when needed.
@@ -9,3 +9,9 @@
 - **Update follow-ups:** expand fan-out to additional events (bookmarks, chat), add delivery preferences per user, and surface unread counts in the UI.
 - **[Done 2025-10-21] Script sample data seeding:** Added `server/scripts/load-sample-data.js` plus the `npm run seed:samples` task, enabling one-command refreshes (with collection filters, dry-run mode, and custom data directories) from the fixtures in `docs/mongodb-local-sample-data`.
 - **Sample data follow-ups:** consider per-environment presets (e.g., smaller mobile datasets), add sanity checks for referential integrity, and wire CI smoke tests against the fixtures.
+- **[Done 2025-10-21] Build first-class chat UI:** `ChatPage.jsx` now lists rooms, supports creation/discovery, live messaging, and presence heartbeats through the production chat APIs.
+- **[Done 2025-10-21] Create user settings hub:** flesh out `Settings_TODO.jsx` so users can manage notification preferences, theme, radius defaults, and account controls via the backed `/api/users/me` endpoint.
+- **Settings follow-ups:** surface account security (password reset, linked accounts) and advanced privacy controls once the core UI ships.
+- **Replace list feed stub:** hook `ListPage.jsx` into real datasets (nearby pins, bookmarks, “for you”) instead of the current `DUMMY_FEED`, and plumb the updates badge into the bell icon.
+- **[Done 2025-10-21] Finish bookmarks screen:** `BookmarksPage.jsx` now groups saved pins by collection, offers quick view/remove actions, and replaces the debug JSON dump.
+- **Tidy remaining placeholders:** clean up lingering `-todo` routes, refine the forgot password flow, and align page configs once the final UIs land.
