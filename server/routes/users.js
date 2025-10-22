@@ -18,6 +18,95 @@ const PinQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(50).default(20)
 });
 
+const MediaAssetUpdateSchema = z.object({
+  url: z.string().trim().min(1, 'Media url is required'),
+  thumbnailUrl: z.string().trim().min(1).optional(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  mimeType: z.string().trim().optional(),
+  description: z.string().optional(),
+  uploadedAt: z.string().datetime().optional(),
+  uploadedBy: z
+    .string()
+    .trim()
+    .refine((value) => mongoose.Types.ObjectId.isValid(value), { message: 'Invalid uploadedBy id' })
+    .optional()
+});
+
+const UserPreferencesUpdateSchema = z
+  .object({
+    theme: z.enum(['system', 'light', 'dark']).optional(),
+    radiusPreferenceMeters: z.number().int().positive().max(160934, 'Radius must be under 100 miles').optional(),
+    notifications: z
+      .object({
+        proximity: z.boolean().optional(),
+        updates: z.boolean().optional(),
+        marketing: z.boolean().optional()
+      })
+      .optional()
+  })
+  .refine(
+    (value) => Object.values(value).some((field) => field !== undefined),
+    'Provide at least one preference field to update.'
+  )
+  .optional();
+
+const UserSelfUpdateSchema = z
+  .object({
+    displayName: z
+      .string()
+      .trim()
+      .min(1, 'Display name cannot be empty')
+      .max(80, 'Display name must be 80 characters or fewer')
+      .optional(),
+    bio: z
+      .union([z.string().trim().max(500, 'Bio must be 500 characters or fewer'), z.literal(null)])
+      .optional(),
+    locationSharingEnabled: z.boolean().optional(),
+    avatar: z.union([MediaAssetUpdateSchema, z.literal(null)]).optional(),
+    banner: z.union([MediaAssetUpdateSchema, z.literal(null)]).optional(),
+    preferences: UserPreferencesUpdateSchema
+  })
+  .refine(
+    (value) => Object.values(value).some((field) => field !== undefined),
+    'Provide at least one field to update.'
+  );
+
+const parseDateOrNull = (value) => {
+  if (!value) {
+    return undefined;
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error('Invalid uploadedAt timestamp');
+  }
+  return parsed;
+};
+
+const normalizeMediaAssetInput = (asset) => {
+  if (!asset) {
+    return undefined;
+  }
+
+  const payload = {
+    url: asset.url.trim(),
+    thumbnailUrl: asset.thumbnailUrl ? asset.thumbnailUrl.trim() : undefined,
+    width: asset.width,
+    height: asset.height,
+    mimeType: asset.mimeType ? asset.mimeType.trim() : undefined,
+    description: asset.description,
+    uploadedAt: parseDateOrNull(asset.uploadedAt),
+    uploadedBy:
+      asset.uploadedBy && mongoose.Types.ObjectId.isValid(asset.uploadedBy)
+        ? new mongoose.Types.ObjectId(asset.uploadedBy)
+        : undefined
+  };
+
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined && value !== null && value !== '')
+  );
+};
+
 const toIdString = (value) => {
   if (!value) return undefined;
   if (typeof value === 'string') return value;
@@ -231,6 +320,125 @@ router.get('/me', verifyToken, async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ message: 'Failed to load user profile' });
+  }
+});
+
+router.patch('/me', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const input = UserSelfUpdateSchema.parse(req.body);
+    const setDoc = {};
+    const unsetDoc = {};
+
+    if (input.displayName !== undefined) {
+      const trimmedDisplayName = input.displayName.trim();
+      if (!trimmedDisplayName) {
+        return res.status(400).json({ message: 'Display name cannot be empty' });
+      }
+      setDoc.displayName = trimmedDisplayName;
+    }
+
+    if (input.bio !== undefined) {
+      if (input.bio === null || input.bio === '') {
+        unsetDoc.bio = '';
+      } else {
+        setDoc.bio = input.bio;
+      }
+    }
+
+    if (input.locationSharingEnabled !== undefined) {
+      setDoc.locationSharingEnabled = input.locationSharingEnabled;
+    }
+
+    if (input.avatar !== undefined) {
+      if (input.avatar === null) {
+        unsetDoc.avatar = '';
+      } else {
+        try {
+          setDoc.avatar = normalizeMediaAssetInput(input.avatar);
+        } catch (error) {
+          return res.status(400).json({ message: error.message || 'Invalid avatar payload' });
+        }
+      }
+    }
+
+    if (input.banner !== undefined) {
+      if (input.banner === null) {
+        unsetDoc.banner = '';
+      } else {
+        try {
+          setDoc.banner = normalizeMediaAssetInput(input.banner);
+        } catch (error) {
+          return res.status(400).json({ message: error.message || 'Invalid banner payload' });
+        }
+      }
+    }
+
+    if (input.preferences && typeof input.preferences === 'object') {
+      if (input.preferences.theme !== undefined) {
+        setDoc['preferences.theme'] = input.preferences.theme;
+      }
+      if (input.preferences.radiusPreferenceMeters !== undefined) {
+        setDoc['preferences.radiusPreferenceMeters'] = input.preferences.radiusPreferenceMeters;
+      }
+      if (input.preferences.notifications && typeof input.preferences.notifications === 'object') {
+        const notifications = input.preferences.notifications;
+        if (notifications.proximity !== undefined) {
+          setDoc['preferences.notifications.proximity'] = notifications.proximity;
+        }
+        if (notifications.updates !== undefined) {
+          setDoc['preferences.notifications.updates'] = notifications.updates;
+        }
+        if (notifications.marketing !== undefined) {
+          setDoc['preferences.notifications.marketing'] = notifications.marketing;
+        }
+      }
+    }
+
+    const updateOps = {};
+    if (Object.keys(setDoc).length > 0) {
+      updateOps.$set = setDoc;
+    }
+    if (Object.keys(unsetDoc).length > 0) {
+      updateOps.$unset = unsetDoc;
+    }
+
+    if (Object.keys(updateOps).length === 0) {
+      return res.status(400).json({ message: 'No updates to apply.' });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(viewer._id, updateOps, {
+      new: true,
+      runValidators: true
+    });
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    try {
+      const payload = mapUserToProfile(updatedUser);
+      res.json(payload);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(500).json({
+          message: 'User profile data is malformed after update',
+          issues: error.errors,
+          userId: toIdString(updatedUser._id)
+        });
+      }
+      throw error;
+    }
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid update payload', issues: error.errors });
+    }
+    console.error('Failed to update user profile:', error);
+    res.status(500).json({ message: 'Failed to update user profile' });
   }
 });
 

@@ -6,13 +6,17 @@ const {
   ProximityChatMessage,
   ProximityChatPresence
 } = require('../models/ProximityChat');
-const {
-  ProximityChatRoomSchema,
-  ProximityChatMessageSchema,
-  ProximityChatPresenceSchema
-} = require('../schemas/proximityChat');
-const { PublicUserSchema } = require('../schemas/user');
+const User = require('../models/User');
 const verifyToken = require('../middleware/verifyToken');
+const {
+  mapRoom,
+  mapMessage,
+  mapPresence,
+  createRoom,
+  createMessage,
+  upsertPresence
+} = require('../services/proximityChatService');
+const { broadcastChatMessage } = require('../services/updateFanoutService');
 
 const router = express.Router();
 
@@ -27,132 +31,166 @@ const RoomIdSchema = z.object({
   })
 });
 
-const toIdString = (value) => {
-  if (!value) return undefined;
-  if (typeof value === 'string') return value;
-  if (value instanceof mongoose.Types.ObjectId) return value.toString();
-  if (value._id) return value._id.toString();
-  return String(value);
-};
+const ObjectIdString = z
+  .string()
+  .trim()
+  .refine((value) => mongoose.Types.ObjectId.isValid(value), { message: 'Invalid object id' });
 
-const toIsoDateString = (value) => {
-  if (!value) return undefined;
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'string') return value;
-  if (typeof value.toISOString === 'function') return value.toISOString();
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
-};
-
-const mapMediaAsset = (asset) => {
-  if (!asset) {
-    return undefined;
-  }
-
-  const doc = asset.toObject ? asset.toObject() : asset;
-  const url = doc.url || doc.thumbnailUrl;
-  if (!url || typeof url !== 'string' || !url.trim()) {
-    return undefined;
-  }
-
-  const payload = {
-    url: url.trim(),
-    thumbnailUrl: doc.thumbnailUrl || undefined,
-    width: doc.width ?? undefined,
-    height: doc.height ?? undefined,
-    mimeType: doc.mimeType || undefined,
-    description: doc.description || undefined,
-    uploadedAt: toIsoDateString(doc.uploadedAt),
-    uploadedBy: toIdString(doc.uploadedBy)
-  };
-
-  return Object.fromEntries(
-    Object.entries(payload).filter(([, value]) => value !== undefined && value !== null)
-  );
-};
-
-const mapUserToPublic = (user) => {
-  if (!user) return undefined;
-  const doc = user.toObject ? user.toObject() : user;
-  return PublicUserSchema.parse({
-    _id: toIdString(doc._id),
-    username: doc.username,
-    displayName: doc.displayName,
-    avatar: mapMediaAsset(doc.avatar),
-    stats: doc.stats || undefined,
-    badges: doc.badges || [],
-    primaryLocationId: toIdString(doc.primaryLocationId),
-    accountStatus: doc.accountStatus || 'active'
-  });
-};
-
-const buildAudit = (audit, createdAt, updatedAt) => ({
-  createdAt: createdAt.toISOString(),
-  updatedAt: updatedAt.toISOString(),
-  createdBy: audit?.createdBy ? toIdString(audit.createdBy) : undefined,
-  updatedBy: audit?.updatedBy ? toIdString(audit.updatedBy) : undefined
+const CreateRoomRequestSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required'),
+  description: z.string().optional(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  accuracy: z.number().nonnegative().optional(),
+  radiusMeters: z.number().positive(),
+  pinId: ObjectIdString.optional(),
+  isGlobal: z.boolean().optional()
 });
 
-const mapRoom = (roomDoc) => {
-  const doc = roomDoc.toObject();
-  return ProximityChatRoomSchema.parse({
-    _id: toIdString(doc._id),
-    ownerId: toIdString(doc.ownerId),
-    name: doc.name,
-    description: doc.description || undefined,
-    coordinates: {
-      type: 'Point',
-      coordinates: doc.coordinates.coordinates,
-      accuracy: doc.coordinates.accuracy ?? undefined
-    },
-    radiusMeters: doc.radiusMeters,
-    isGlobal: Boolean(doc.isGlobal),
-    participantCount: doc.participantCount ?? 0,
-    participantIds: (doc.participantIds || []).map(toIdString),
-    moderatorIds: (doc.moderatorIds || []).map(toIdString),
-    pinId: toIdString(doc.pinId),
-    createdAt: roomDoc.createdAt.toISOString(),
-    updatedAt: roomDoc.updatedAt.toISOString(),
-    audit: doc.audit ? buildAudit(doc.audit, roomDoc.createdAt, roomDoc.updatedAt) : undefined
-  });
+const CreateMessageRequestSchema = z
+  .object({
+    message: z.string().trim().min(1).max(2000),
+    pinId: ObjectIdString.optional(),
+    replyToMessageId: ObjectIdString.optional(),
+    latitude: z.number().min(-90).max(90).optional(),
+    longitude: z.number().min(-180).max(180).optional(),
+    accuracy: z.number().nonnegative().optional()
+  })
+  .refine(
+    (value) =>
+      (value.latitude === undefined && value.longitude === undefined) ||
+      (value.latitude !== undefined && value.longitude !== undefined),
+    { message: 'Latitude and longitude must both be provided together.' }
+  );
+
+const CreatePresenceRequestSchema = z.object({
+  sessionId: ObjectIdString.optional(),
+  joinedAt: z.string().datetime().optional(),
+  lastActiveAt: z.string().datetime().optional()
+});
+
+const resolveViewerUser = async (req) => {
+  if (!req?.user?.uid) {
+    return null;
+  }
+
+  try {
+    const viewer = await User.findOne({ firebaseUid: req.user.uid });
+    return viewer;
+  } catch (error) {
+    console.error('Failed to resolve viewer user for chats route:', error);
+    return null;
+  }
 };
 
-const mapMessage = (messageDoc) => {
-  const doc = messageDoc.toObject();
-  const coordinates = doc.coordinates && Array.isArray(doc.coordinates.coordinates) && doc.coordinates.coordinates.length === 2
-    ? {
-        type: 'Point',
-        coordinates: doc.coordinates.coordinates,
-        accuracy: doc.coordinates.accuracy ?? undefined
+router.post('/rooms', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const input = CreateRoomRequestSchema.parse(req.body);
+    const viewerId = viewer._id.toString();
+    const participantIds = new Set([viewerId]);
+
+    const payload = await createRoom({
+      ownerId: viewerId,
+      name: input.name,
+      description: input.description,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      accuracy: input.accuracy,
+      radiusMeters: input.radiusMeters,
+      pinId: input.pinId,
+      participantIds: Array.from(participantIds),
+      moderatorIds: [viewerId],
+      isGlobal: input.isGlobal
+    });
+
+    res.status(201).json(payload);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid chat room payload', issues: error.errors });
+    }
+    console.error('Failed to create chat room:', error);
+    res.status(500).json({ message: 'Failed to create chat room' });
+  }
+});
+
+router.post('/rooms/:roomId/messages', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { roomId } = RoomIdSchema.parse(req.params);
+    const input = CreateMessageRequestSchema.parse(req.body);
+
+    const { messageDoc, response } = await createMessage({
+      roomId,
+      authorId: viewer._id.toString(),
+      message: input.message,
+      pinId: input.pinId,
+      replyToMessageId: input.replyToMessageId,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      accuracy: input.accuracy
+    });
+
+    res.status(201).json(response);
+
+    try {
+      const room = await ProximityChatRoom.findById(roomId);
+      if (room) {
+        broadcastChatMessage({
+          room,
+          message: messageDoc,
+          author: viewer
+        }).catch((error) => {
+          console.error('Failed to queue chat message updates:', error);
+        });
       }
-    : undefined;
+    } catch (fanoutError) {
+      console.error('Failed to prepare chat message fan-out:', fanoutError);
+    }
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid chat message payload', issues: error.errors });
+    }
+    console.error('Failed to create chat message:', error);
+    res.status(500).json({ message: 'Failed to create chat message' });
+  }
+});
 
-  return ProximityChatMessageSchema.parse({
-    _id: toIdString(doc._id),
-    roomId: toIdString(doc.roomId),
-    pinId: toIdString(doc.pinId),
-    authorId: toIdString(doc.authorId),
-    author: mapUserToPublic(doc.authorId),
-    replyToMessageId: toIdString(doc.replyToMessageId),
-    message: doc.message,
-    coordinates,
-    attachments: doc.attachments || [],
-    createdAt: messageDoc.createdAt.toISOString(),
-    updatedAt: messageDoc.updatedAt.toISOString(),
-    audit: doc.audit ? buildAudit(doc.audit, messageDoc.createdAt, messageDoc.updatedAt) : undefined
-  });
-};
+router.post('/rooms/:roomId/presence', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
-const mapPresence = (presenceDoc) => {
-  const doc = presenceDoc.toObject();
-  return ProximityChatPresenceSchema.parse({
-    roomId: toIdString(doc.roomId),
-    userId: toIdString(doc.userId),
-    sessionId: toIdString(doc.sessionId),
-    joinedAt: doc.joinedAt.toISOString(),
-    lastActiveAt: doc.lastActiveAt.toISOString()
-  });
-};
+    const { roomId } = RoomIdSchema.parse(req.params);
+    const input = CreatePresenceRequestSchema.parse(req.body);
+
+    const payload = await upsertPresence({
+      roomId,
+      userId: viewer._id.toString(),
+      sessionId: input.sessionId,
+      joinedAt: input.joinedAt,
+      lastActiveAt: input.lastActiveAt
+    });
+
+    res.status(201).json(payload);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid chat presence payload', issues: error.errors });
+    }
+    console.error('Failed to upsert chat presence:', error);
+    res.status(500).json({ message: 'Failed to update chat presence' });
+  }
+});
 
 router.get('/rooms', verifyToken, async (req, res) => {
   try {

@@ -29,6 +29,7 @@
                     "dev":  "nodemon server.js",
                     "test":  "echo \"Error: no test specified\" \u0026\u0026 exit 1",
                     "seed":  "node scripts/seed.js",
+                    "seed:samples":  "node scripts/load-sample-data.js",
                     "sync:firebase-users":  "node scripts/sync-firebase-users.js"
                 }
 }

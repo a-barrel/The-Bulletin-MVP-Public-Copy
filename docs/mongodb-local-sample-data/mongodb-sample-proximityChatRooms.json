@@ -24,8 +24,8 @@
       "createdBy": { "$oid": "68e061721329566a22d474a8" },
       "updatedBy": { "$oid": "68e061721329566a22d474a8" }
     },
-    "createdAt": { "$date": "2025-09-12T18:00:00.000Z" },
-    "updatedAt": { "$date": "2025-10-03T23:30:00.000Z" }
+    "createdAt": { "$date": "2026-09-12T18:00:00.000Z" },
+    "updatedAt": { "$date": "2026-10-03T23:30:00.000Z" }
   },
   {
     "_id": { "$oid": "68e061721329566a22d47570" },
@@ -54,14 +54,14 @@
       "createdBy": { "$oid": "68e061721329566a22d47510" },
       "updatedBy": { "$oid": "68e061721329566a22d47510" }
     },
-    "createdAt": { "$date": "2025-09-30T20:20:00.000Z" },
-    "updatedAt": { "$date": "2025-10-09T19:00:00.000Z" }
+    "createdAt": { "$date": "2026-09-30T20:20:00.000Z" },
+    "updatedAt": { "$date": "2026-10-09T19:00:00.000Z" }
   },
   {
     "_id": { "$oid": "68e061721329566a22d47690" },
     "ownerId": { "$oid": "68e061721329566a22d474a7" },
-    "name": "Global Debug Lounge",
-    "description": "Always-on sandbox chat for QA and local development. Radius is effectively planet-wide.",
+    "name": "Global Debug Lounge A",
+    "description": "Always-on sandbox chat for QA and local development. Room A focuses on baseline flows.",
     "coordinates": {
       "type": "Point",
       "coordinates": [0.0, 0.0],
@@ -81,7 +81,86 @@
       "createdBy": { "$oid": "68e061721329566a22d474a7" },
       "updatedBy": { "$oid": "68e061721329566a22d474a7" }
     },
-    "createdAt": { "$date": "2025-10-15T17:00:00.000Z" },
-    "updatedAt": { "$date": "2025-10-20T19:15:00.000Z" }
+    "createdAt": { "$date": "2026-10-15T17:00:00.000Z" },
+    "updatedAt": { "$date": "2026-10-21T02:20:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47691" },
+    "ownerId": { "$oid": "68e061721329566a22d474a8" },
+    "name": "Global Debug Lounge B",
+    "description": "Parallel global lounge used when swapping rooms without GPS restrictions.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [0.0, 0.0],
+      "accuracy": 0
+    },
+    "radiusMeters": 40000000,
+    "isGlobal": true,
+    "participantCount": 2,
+    "participantIds": [
+      { "$oid": "68e061721329566a22d474a7" },
+      { "$oid": "68e061721329566a22d474a8" }
+    ],
+    "moderatorIds": [
+      { "$oid": "68e061721329566a22d474a8" }
+    ],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d474a8" },
+      "updatedBy": { "$oid": "68e061721329566a22d474a8" }
+    },
+    "createdAt": { "$date": "2026-10-21T02:30:00.000Z" },
+    "updatedAt": { "$date": "2026-10-21T02:30:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47692" },
+    "ownerId": { "$oid": "68e061721329566a22d474a7" },
+    "name": "Long Beach Debug Chat",
+    "description": "Geofenced debug chat centered near Long Beach, California for location gating tests.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [-118.193739, 33.77005],
+      "accuracy": 10
+    },
+    "radiusMeters": 3000,
+    "participantCount": 3,
+    "participantIds": [
+      { "$oid": "68e061721329566a22d474a7" },
+      { "$oid": "68e061721329566a22d474a8" },
+      { "$oid": "68e061721329566a22d474a9" }
+    ],
+    "moderatorIds": [
+      { "$oid": "68e061721329566a22d474a7" }
+    ],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d474a7" },
+      "updatedBy": { "$oid": "68e061721329566a22d474a7" }
+    },
+    "createdAt": { "$date": "2026-10-21T02:35:00.000Z" },
+    "updatedAt": { "$date": "2026-10-21T02:35:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47693" },
+    "ownerId": { "$oid": "68e061721329566a22d474a8" },
+    "name": "North Pole Debug Chat",
+    "description": "Far north debug chat to confirm users outside Long Beach are blocked appropriately.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [135.0, 89.95],
+      "accuracy": 30
+    },
+    "radiusMeters": 3000,
+    "participantCount": 1,
+    "participantIds": [
+      { "$oid": "68e061721329566a22d474a8" }
+    ],
+    "moderatorIds": [
+      { "$oid": "68e061721329566a22d474a8" }
+    ],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d474a8" },
+      "updatedBy": { "$oid": "68e061721329566a22d474a8" }
+    },
+    "createdAt": { "$date": "2026-10-21T02:45:00.000Z" },
+    "updatedAt": { "$date": "2026-10-21T02:45:00.000Z" }
   }
 ]
