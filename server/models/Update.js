@@ -54,6 +54,7 @@ const updateSchema = new mongoose.Schema(
           'new-pin',
           'pin-update',
           'event-starting-soon',
+          'event-reminder',
           'popular-pin',
           'bookmark-update',
           'system',

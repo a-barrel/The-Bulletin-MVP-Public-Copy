@@ -1,7 +1,9 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const admin = require('firebase-admin');
 const { z, ZodError } = require('zod');
 
+const runtime = require('../config/runtime');
 const User = require('../models/User');
 const { Bookmark, BookmarkCollection } = require('../models/Bookmark');
 const {
@@ -36,6 +38,42 @@ const toIdString = (value) => {
   return String(value);
 };
 
+const toIsoDateString = (value) => {
+  if (!value) return undefined;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value.toISOString === 'function') return value.toISOString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+};
+
+const mapMediaAsset = (asset) => {
+  if (!asset) {
+    return undefined;
+  }
+
+  const doc = asset.toObject ? asset.toObject() : asset;
+  const url = doc.url || doc.thumbnailUrl;
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return undefined;
+  }
+
+  const payload = {
+    url: url.trim(),
+    thumbnailUrl: doc.thumbnailUrl || undefined,
+    width: doc.width ?? undefined,
+    height: doc.height ?? undefined,
+    mimeType: doc.mimeType || undefined,
+    description: doc.description || undefined,
+    uploadedAt: toIsoDateString(doc.uploadedAt),
+    uploadedBy: toIdString(doc.uploadedBy)
+  };
+
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined && value !== null)
+  );
+};
+
 const buildAudit = (audit, createdAt, updatedAt) => ({
   createdAt: createdAt.toISOString(),
   updatedAt: updatedAt.toISOString(),
@@ -49,14 +87,14 @@ const mapUserToProfile = (userDoc) => {
     _id: toIdString(doc._id),
     username: doc.username,
     displayName: doc.displayName,
-    avatar: doc.avatar || undefined,
+    avatar: mapMediaAsset(doc.avatar),
     stats: doc.stats || undefined,
     badges: doc.badges || [],
     primaryLocationId: toIdString(doc.primaryLocationId),
     accountStatus: doc.accountStatus || 'active',
     email: doc.email || undefined,
     bio: doc.bio || undefined,
-    banner: doc.banner || undefined,
+    banner: mapMediaAsset(doc.banner),
     preferences: doc.preferences || undefined,
     relationships: doc.relationships || undefined,
     locationSharingEnabled: Boolean(doc.locationSharingEnabled),
@@ -115,6 +153,7 @@ const mapChatRoom = (roomDoc) => {
       accuracy: doc.coordinates.accuracy ?? undefined
     },
     radiusMeters: doc.radiusMeters,
+    isGlobal: Boolean(doc.isGlobal),
     participantCount: doc.participantCount ?? 0,
     participantIds: (doc.participantIds || []).map(toIdString),
     moderatorIds: (doc.moderatorIds || []).map(toIdString),
@@ -140,18 +179,19 @@ const mapChatMessage = (messageDoc) => {
     roomId: toIdString(doc.roomId),
     pinId: toIdString(doc.pinId),
     authorId: toIdString(doc.authorId),
-    author: doc.authorId && doc.authorId.username
-      ? {
-          _id: toIdString(doc.authorId._id),
-          username: doc.authorId.username,
-          displayName: doc.authorId.displayName,
-          avatar: doc.authorId.avatar || undefined,
-          stats: doc.authorId.stats || undefined,
-          badges: doc.authorId.badges || [],
-          primaryLocationId: toIdString(doc.authorId.primaryLocationId),
-          accountStatus: doc.authorId.accountStatus || 'active'
-        }
-      : undefined,
+    author:
+      doc.authorId && doc.authorId.username
+        ? {
+            _id: toIdString(doc.authorId._id),
+            username: doc.authorId.username,
+            displayName: doc.authorId.displayName,
+            avatar: mapMediaAsset(doc.authorId.avatar),
+            stats: doc.authorId.stats || undefined,
+            badges: doc.authorId.badges || [],
+            primaryLocationId: toIdString(doc.authorId.primaryLocationId),
+            accountStatus: doc.authorId.accountStatus || 'active'
+          }
+        : undefined,
     replyToMessageId: toIdString(doc.replyToMessageId),
     message: doc.message,
     coordinates,
@@ -223,6 +263,84 @@ const mapReply = (replyDoc) => {
 };
 
 router.use(verifyToken);
+
+router.get('/auth/accounts', async (req, res) => {
+  if (!runtime.isOffline) {
+    return res.status(403).json({ message: 'Account swapping is only available in offline mode.' });
+  }
+
+  try {
+    const accounts = [];
+    let nextPageToken = undefined;
+
+    do {
+      // Firebase Admin paginates results; pull everything so the debug UI has the full list.
+      const result = await admin.auth().listUsers(1000, nextPageToken);
+      result.users.forEach((userRecord) => {
+        accounts.push({
+          uid: userRecord.uid,
+          displayName: userRecord.displayName || null,
+          email: userRecord.email || null,
+          photoUrl: userRecord.photoURL || null,
+          disabled: Boolean(userRecord.disabled),
+          providerIds: (userRecord.providerData || []).map((provider) => provider.providerId).filter(Boolean),
+          lastLoginAt: userRecord.metadata?.lastSignInTime || null,
+          createdAt: userRecord.metadata?.creationTime || null
+        });
+      });
+      nextPageToken = result.pageToken;
+    } while (nextPageToken);
+
+    accounts.sort((a, b) => {
+      const labelA = (a.displayName || a.email || a.uid).toLowerCase();
+      const labelB = (b.displayName || b.email || b.uid).toLowerCase();
+      return labelA.localeCompare(labelB);
+    });
+
+    res.json({ accounts });
+  } catch (error) {
+    console.error('Failed to list Firebase accounts for debug swap', error);
+    res.status(500).json({ message: 'Failed to load Firebase accounts' });
+  }
+});
+
+router.post('/auth/swap', async (req, res) => {
+  if (!runtime.isOffline) {
+    return res.status(403).json({ message: 'Account swapping is only available in offline mode.' });
+  }
+
+  const SwapSchema = z.object({
+    uid: z.string().min(1, 'A Firebase UID is required')
+  });
+
+  let input;
+  try {
+    input = SwapSchema.parse(req.body);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid swap payload', issues: error.errors });
+    }
+    return res.status(400).json({ message: 'Invalid swap payload' });
+  }
+
+  try {
+    await admin.auth().getUser(input.uid);
+  } catch (error) {
+    if (error.code === 'auth/user-not-found') {
+      return res.status(404).json({ message: 'Firebase account not found' });
+    }
+    console.error('Failed to verify Firebase account before issuing custom token', error);
+    return res.status(500).json({ message: 'Failed to verify Firebase account' });
+  }
+
+  try {
+    const token = await admin.auth().createCustomToken(input.uid);
+    res.json({ token });
+  } catch (error) {
+    console.error('Failed to issue custom token for debug swap', error);
+    res.status(500).json({ message: 'Failed to issue custom token' });
+  }
+});
 
 router.post('/users', async (req, res) => {
   const CreateUserSchema = z.object({
@@ -496,7 +614,8 @@ router.post('/chat-rooms', async (req, res) => {
     radiusMeters: z.number().positive(),
     pinId: ObjectIdString.optional(),
     participantIds: z.array(ObjectIdString).optional(),
-    moderatorIds: z.array(ObjectIdString).optional()
+    moderatorIds: z.array(ObjectIdString).optional(),
+    isGlobal: z.boolean().optional()
   });
 
   try {
@@ -514,7 +633,8 @@ router.post('/chat-rooms', async (req, res) => {
       participantIds: input.participantIds ? input.participantIds.map(toObjectId) : [],
       participantCount: input.participantIds ? input.participantIds.length : 0,
       moderatorIds: input.moderatorIds ? input.moderatorIds.map(toObjectId) : [],
-      pinId: toObjectId(input.pinId)
+      pinId: toObjectId(input.pinId),
+      isGlobal: Boolean(input.isGlobal)
     });
 
     res.status(201).json(mapChatRoom(room));

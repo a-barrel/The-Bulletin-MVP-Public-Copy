@@ -47,7 +47,7 @@ async function main() {
       fallbackExportPath: runtime.isOffline ? fallbackExportPath : undefined
     });
     console.log(
-      `Firebase user sync complete (source: ${summary.source}, created: ${summary.created}, linked: ${summary.linked}, updated: ${summary.updated}, unchanged: ${summary.unchanged})`
+      `Firebase user sync complete (source: ${summary.source}, created: ${summary.created}, linked: ${summary.linked}, updated: ${summary.updated}, unchanged: ${summary.unchanged}, photo-updated: ${summary.photoUpdated ?? 0}, mongo-avatar-updated: ${summary.mongoAvatarUpdated ?? 0})`
     );
 
     if (summary.errors.length > 0) {
