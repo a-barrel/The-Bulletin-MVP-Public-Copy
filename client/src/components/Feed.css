@@ -72,19 +72,34 @@
 
 /* Footer layout (author | interested | counts) */
 .card-footer {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;     /* left | flexible middle | right */
+  grid-template-areas: "author interested counts";
   align-items: center;
-  gap: 1rem;
+  column-gap: 12px;
+  row-gap: 6px;
 }
-.author { 
-  display: inline-flex; 
-  align-items: center; 
-  gap: 0.5rem; 
-  flex: 0 0 auto; 
+
+.author {
+  grid-area: author;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;                               /* allow truncation */
 }
+
+/* truncate long names so counts never get pushed */
+.author .name {
+  max-width: 180px;                 /* tune per breakpoint */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+}
+
 .avatar {
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 30px;
   border-radius: 50%;
   border: 1.5px solid #111;
   background: linear-gradient(135deg, #e9d9ff, #d9c7ff);
@@ -92,12 +107,17 @@
 .name { font-weight: 600; color: black; }
 
 .counts {
+  flex: 0 0 auto;
   display: inline-flex;
   gap: 0.8rem;
-  color: #111;
-  font-weight: 500;
-  flex: 0 0 auto;
 }
+
+.counts,
+.counts span,
+.counts .count-item {
+  color: #000 !important;   /* force solid black */
+}
+
 .count-item {
   display: inline-flex;
   align-items: center;
@@ -112,32 +132,25 @@
 
 /* Interested users row (middle, expands) */
 .interested-row {
-  flex: 1 1 auto;
-  display: inline-flex;
+  flex: 1 1 auto;                   /* grows to fill, can shrink */
+  min-width: 0;                     /* allow shrinking without breaking layout */
+  display: flex;
   align-items: center;
   gap: 8px;
-  overflow: hidden;
+  overflow: hidden;                 /* clip extra content */
   min-height: 28px;
 }
+
 .interest-bubble {
   width: 28px;
   height: 28px;
+  flex: 0 0 28px;                   /* <-- prevents squishing */
   border-radius: 50%;
   border: 1.5px solid black;
-  cursor: pointer;
-  transition: transform .15s ease;
 }
-.interest-bubble:hover { transform: translateY(-1px) scale(1.03); }
 
 .interest-more {
-  font-weight: 600;
-  color: #6a25d7;
-  background: #efe7ff;
-  border: 1px solid #6a25d7;
-  border-radius: 999px;
-  padding: 2px 8px;
-  line-height: 1;
-  font-size: 0.85rem;
+  flex: 0 0 auto;                   /* pill keeps natural size */
 }
 
 /* Tag icon beside title */
@@ -166,7 +179,7 @@
   color: #4a1a9e;
 }
 
-/* Responsive tweaks */
+/* ---------- Responsive tweaks ---------- */
 @media (max-width: 768px) {
   .card { width: 94%; }
 }
@@ -175,7 +188,79 @@
   .card { width: 94%; }
   .media { height: 140px; }
 
-  .interest-bubble { width: 24px; height: 24px; }
-  .interested-row { gap: 6px; min-height: 24px; }
-  .interest-more { font-size: 0.8rem; padding: 2px 6px; }
+  /* Footer: 2 rows
+     Row 1: author (left) ...... counts (right)
+     Row 2: interested bubbles full width */
+  .card-footer {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "author . counts"
+      "interested interested interested";
+    row-gap: 6px;
+    align-items: center;
+  }
+
+  .author { 
+    grid-area: author;
+    min-width: 0;                 /* allow truncation */
+  }
+  .author .name {
+    max-width: 120px;             /* tune if needed */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+  }
+
+  .avatar{
+    width: 40px;
+    height: 38px;
+    
+  }
+
+  .counts {
+    grid-area: counts;
+    justify-self: end;
+    gap: 0.6rem;
+    white-space: nowrap;          /* keep numbers/icons on one line */
+    flex: 0 0 auto;
+  }
+
+  .interested-row {
+    grid-area: interested;
+    display: flex;
+    flex-wrap: wrap;              /* wrap to next line if needed */
+    gap: 6px;
+    min-height: 24px;
+    min-width: 0;                 /* allow row to shrink without overflow */
+    overflow: visible;
+  }
+
+  /* Bubble sizing (prevent squish) */
+  .interest-bubble {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;               /* fixed width/height in flex row */
+    border-radius: 50%;
+  }
+
+  .interest-more {
+    font-size: 0.8rem;
+    padding: 2px 6px;
+    flex: 0 0 auto;
+  }
 }
+
+/* Bookmark button (unchanged) */
+.bookmark-btn {
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+.bookmark-emoji { font-size: 18px; line-height: 1; }
+.bookmark-btn:hover { transform: translateY(-1px); }
