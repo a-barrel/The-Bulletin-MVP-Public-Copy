@@ -104,6 +104,161 @@ const INITIAL_COORDINATES = {
   longitude: '-118.1136'
 };
 
+const DEFAULT_LOCATION_COORDINATES = {
+  latitude: Number.parseFloat(INITIAL_COORDINATES.latitude) || 33.7838,
+  longitude: Number.parseFloat(INITIAL_COORDINATES.longitude) || -118.1136
+};
+
+const DEFAULT_LOCATION_TELEPORT_KEY = 'default-location';
+
+const LIVE_CHAT_ROOM_PRESETS = [
+  {
+    key: 'global-a',
+    label: 'Global Room A',
+    name: 'Global Debug Lounge A',
+    aliases: ['Global Debug Lounge'],
+    description: 'Global lounge for debugging (Room A).',
+    isGlobal: true,
+    latitude: 0,
+    longitude: 0,
+    accuracy: 0,
+    radiusMeters: 40000000
+  },
+  {
+    key: 'global-b',
+    label: 'Global Room B',
+    name: 'Global Debug Lounge B',
+    aliases: ['Global Debug Lounge B'],
+    description: 'Second global lounge for debugging (Room B).',
+    isGlobal: true,
+    latitude: 0,
+    longitude: 0,
+    accuracy: 0,
+    radiusMeters: 40000000
+  },
+  {
+    key: 'long-beach',
+    label: 'Long Beach, CA',
+    name: 'Long Beach Debug Chat',
+    aliases: ['Long Beach,California Chat Room', 'Long Beach Chat Room'],
+    description: 'Geofenced chat near Long Beach, CA for proximity testing.',
+    latitude: 33.77005,
+    longitude: -118.193739,
+    accuracy: 10,
+    radiusMeters: 3000
+  },
+  {
+    key: 'north-pole',
+    label: 'North Pole',
+    name: 'North Pole Debug Chat',
+    aliases: ['North Pole Chat Room'],
+    description: 'Geofenced chat positioned at the North Pole for negative access testing.',
+    latitude: 89.95,
+    longitude: 135,
+    accuracy: 30,
+    radiusMeters: 3000
+  }
+];
+
+const TELEPORT_PRESETS = [
+  {
+    key: 'north-pole',
+    label: 'Teleport user location to North Pole',
+    latitude: 89.95,
+    longitude: 135,
+    accuracy: 25,
+    statusMessage: 'Location spoofed to the North Pole.'
+  },
+  {
+    key: 'long-beach',
+    label: 'Teleport user location to Long Beach, California',
+    latitude: 33.77005,
+    longitude: -118.193739,
+    accuracy: 12,
+    statusMessage: 'Location spoofed to Long Beach, CA.'
+  },
+  {
+    key: DEFAULT_LOCATION_TELEPORT_KEY,
+    label: 'Default location sharing',
+    latitude: DEFAULT_LOCATION_COORDINATES.latitude,
+    longitude: DEFAULT_LOCATION_COORDINATES.longitude,
+    accuracy: 15,
+    statusMessage: 'Location reset to the default debug coordinates.'
+  }
+];
+
+const EARTH_RADIUS_METERS = 6371000;
+const toRadians = (value) => (value * Math.PI) / 180;
+const haversineDistanceMeters = (pointA, pointB) => {
+  if (!pointA || !pointB) {
+    return Number.NaN;
+  }
+  const lat1 = toRadians(pointA.latitude);
+  const lat2 = toRadians(pointB.latitude);
+  const deltaLat = lat2 - lat1;
+  const deltaLon = toRadians(pointB.longitude - pointA.longitude);
+  const a =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return EARTH_RADIUS_METERS * c;
+};
+
+const evaluateRoomAccess = (room, location) => {
+  if (!room) {
+    return { allowed: false, reason: 'Select a chat room to begin.' };
+  }
+
+  if (room.isGlobal || (room.radiusMeters && room.radiusMeters >= 40000000)) {
+    return { allowed: true };
+  }
+
+  const coordinates = room.coordinates?.coordinates;
+  if (!Array.isArray(coordinates) || coordinates.length < 2) {
+    return { allowed: true };
+  }
+
+  if (!location || Number.isNaN(location.latitude) || Number.isNaN(location.longitude)) {
+    return {
+      allowed: false,
+      reason: 'Spoof your location before entering geofenced chat rooms.'
+    };
+  }
+
+  const [roomLongitude, roomLatitude] = coordinates;
+  const distanceMeters = haversineDistanceMeters(
+    { latitude: location.latitude, longitude: location.longitude },
+    { latitude: roomLatitude, longitude: roomLongitude }
+  );
+
+  if (!Number.isFinite(distanceMeters)) {
+    return { allowed: true };
+  }
+
+  if (room.radiusMeters !== undefined && distanceMeters > room.radiusMeters) {
+    const withinLabel =
+      distanceMeters >= 1000
+        ? `${(distanceMeters / 1000).toFixed(1)} km`
+        : `${Math.round(distanceMeters)} m`;
+    const radiusLabel =
+      room.radiusMeters >= 1000
+        ? `${(room.radiusMeters / 1000).toFixed(1)} km`
+        : `${Math.round(room.radiusMeters)} m`;
+    return {
+      allowed: false,
+      reason: `Outside the "${room.name}" radius. You're ${withinLabel} away; move within ${radiusLabel}.`,
+      distanceMeters,
+      radiusMeters: room.radiusMeters
+    };
+  }
+
+  return {
+    allowed: true,
+    distanceMeters,
+    radiusMeters: room.radiusMeters
+  };
+};
+
 const formatDateTimeLocal = (date) => {
   const timezoneOffsetMs = date.getTimezoneOffset() * 60000;
   const localDate = new Date(date.getTime() - timezoneOffsetMs);
@@ -138,6 +293,27 @@ const deriveInitials = (value) => {
 };
 
 const METERS_PER_MILE = 1609.34;
+const normalizeRoomName = (value) => `${value ?? ''}`.trim().toLowerCase();
+const toIdString = (value) => {
+  if (!value) {
+    return '';
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'object') {
+    if (value._id) {
+      return toIdString(value._id);
+    }
+    if (typeof value.toString === 'function') {
+      const stringValue = value.toString();
+      if (stringValue && stringValue !== '[object Object]') {
+        return stringValue;
+      }
+    }
+  }
+  return `${value}`;
+};
 const mongooseObjectIdLike = (value) => typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
 const TAB_OPTIONS = [
   { id: 'pin', label: 'Pins & Events' },
@@ -1467,15 +1643,22 @@ const handleSubmit = async (event) => {
 function LiveChatTestTab() {
   const [currentUser] = useAuthState(auth);
   const [currentProfile, setCurrentProfile] = useState(null);
-  const [globalRoom, setGlobalRoom] = useState(null);
+  const [roomsByKey, setRoomsByKey] = useState({});
+  const [selectedRoomKey, setSelectedRoomKey] = useState(LIVE_CHAT_ROOM_PRESETS[0].key);
+  const [activeRoom, setActiveRoom] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState('');
   const [status, setStatus] = useState(null);
-  const [isLoadingRoom, setIsLoadingRoom] = useState(false);
+  const [locationStatus, setLocationStatus] = useState(null);
+  const [isEnsuringRooms, setIsEnsuringRooms] = useState(false);
   const [isRefreshingMessages, setIsRefreshingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const messagesEndRef = useRef(null);
-
+  const [isTeleporting, setIsTeleporting] = useState(false);
+  const [activeLocationKey, setActiveLocationKey] = useState(DEFAULT_LOCATION_TELEPORT_KEY);
+  const defaultTeleportPreset = useMemo(
+    () => TELEPORT_PRESETS.find((preset) => preset.key === DEFAULT_LOCATION_TELEPORT_KEY),
+    []
+  );
   const resolveAuthorAvatar = useCallback((author) => {
     if (!author) {
       return resolveMediaUrl(DEFAULT_AVATAR_PATH);
@@ -1492,10 +1675,54 @@ function LiveChatTestTab() {
     }
     return resolveMediaUrl(DEFAULT_AVATAR_PATH);
   }, []);
+  const [lastSpoofedLocation, setLastSpoofedLocation] = useState(() =>
+    defaultTeleportPreset
+      ? {
+          latitude: defaultTeleportPreset.latitude,
+          longitude: defaultTeleportPreset.longitude,
+          accuracy: defaultTeleportPreset.accuracy
+        }
+      : null
+  );
+  const selectedRoomKeyRef = useRef(selectedRoomKey);
+  const messagesEndRef = useRef(null);
+
+  const currentProfileId = useMemo(() => toIdString(currentProfile?._id), [currentProfile]);
+  const activeRoomRadiusLabel = useMemo(() => {
+    if (!activeRoom?.radiusMeters) {
+      return null;
+    }
+    if (activeRoom.radiusMeters >= 1000) {
+      return `${(activeRoom.radiusMeters / 1000).toFixed(1)} km radius`;
+    }
+    return `${Math.round(activeRoom.radiusMeters)} m radius`;
+  }, [activeRoom]);
+  const activeTeleportPreset = useMemo(
+    () => TELEPORT_PRESETS.find((preset) => preset.key === activeLocationKey),
+    [activeLocationKey]
+  );
+  const roomAccess = useMemo(
+    () => evaluateRoomAccess(activeRoom, lastSpoofedLocation),
+    [activeRoom, lastSpoofedLocation]
+  );
+  const distanceToRoomLabel = useMemo(() => {
+    if (!roomAccess?.allowed || roomAccess.distanceMeters === undefined) {
+      return null;
+    }
+    const distance = roomAccess.distanceMeters;
+    if (!Number.isFinite(distance)) {
+      return null;
+    }
+    return distance >= 1000 ? `${(distance / 1000).toFixed(2)} km away` : `${Math.round(distance)} m away`;
+  }, [roomAccess]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    selectedRoomKeyRef.current = selectedRoomKey;
+  }, [selectedRoomKey]);
 
   const loadProfile = useCallback(async () => {
     if (!currentUser) {
@@ -1513,7 +1740,7 @@ function LiveChatTestTab() {
   }, [currentUser]);
 
   const loadMessages = useCallback(async (room) => {
-    const roomId = room?._id;
+    const roomId = toIdString(room?._id);
     if (!roomId || !mongooseObjectIdLike(roomId)) {
       if (!roomId) {
         setStatus({
@@ -1523,7 +1750,7 @@ function LiveChatTestTab() {
       } else {
         setStatus({
           type: 'error',
-          message: `Global chat room has an invalid id (${roomId}). Reimport the latest seed data.`
+          message: `Selected chat room has an invalid id (${roomId}). Reload the rooms.`
         });
       }
       setMessages([]);
@@ -1542,91 +1769,200 @@ function LiveChatTestTab() {
     }
   }, []);
 
-  const loadRoom = useCallback(async () => {
-    if (!currentUser) {
-      setGlobalRoom(null);
-      setMessages([]);
-      setStatus({ type: 'warning', message: 'Sign in to test the global chat room.' });
-      return;
-    }
+  const ensurePresetRooms = useCallback(
+    async (preferredKey) => {
+      if (!currentUser) {
+        setRoomsByKey({});
+        setActiveRoom(null);
+        setMessages([]);
+        setStatus({ type: 'warning', message: 'Sign in to test the live chat rooms.' });
+        return;
+      }
 
-    if (!currentProfile?._id) {
-      setStatus({
-        type: 'warning',
-        message: 'Current user profile is unavailable. Swap accounts or refresh the page.'
-      });
-      return;
-    }
-
-    setIsLoadingRoom(true);
-    try {
-      const rooms = await fetchChatRooms();
-      let global = rooms.find(
-        (room) => room.isGlobal || room.name?.toLowerCase().includes('global debug lounge')
-      );
-      const currentUserId = typeof currentProfile._id === 'string'
-        ? currentProfile._id
-        : currentProfile._id?.toString?.();
-
-      if (!global || !mongooseObjectIdLike(global?._id)) {
-        if (!currentUserId || !mongooseObjectIdLike(currentUserId)) {
-          throw new Error('Current user profile is missing a valid ObjectId.');
-        }
-
-        const created = await createProximityChatRoom({
-          ownerId: currentUserId,
-          name: 'Global Debug Lounge',
-          description:
-            'Always-on sandbox chat for QA and local development. Radius is effectively planet-wide.',
-          latitude: 0,
-          longitude: 0,
-          accuracy: 0,
-          radiusMeters: 40000000,
-          isGlobal: true,
-          participantIds: [currentUserId],
-          moderatorIds: [currentUserId]
+      if (!currentProfile?._id) {
+        setStatus({
+          type: 'warning',
+          message: 'Current user profile is unavailable. Swap accounts or refresh the page.'
         });
-        global = created;
+        return;
       }
 
-      if (!global || !mongooseObjectIdLike(global?._id)) {
-        throw new Error(
-          `Global chat room has an invalid id (${global?._id ?? 'unknown'}). Reimport the latest seed data.`
-        );
+      if (!currentProfileId || !mongooseObjectIdLike(currentProfileId)) {
+        setStatus({
+          type: 'error',
+          message: 'Current user profile is missing a valid ObjectId.'
+        });
+        return;
       }
 
-      const normalizedRoom = {
-        ...global,
-        _id:
-          typeof global._id === 'string'
-            ? global._id
-            : global._id?.toString?.() ?? String(global._id ?? '')
-      };
+      setIsEnsuringRooms(true);
+      try {
+        const rooms = await fetchChatRooms();
+        const remainingRooms = Array.isArray(rooms) ? [...rooms] : [];
+        const nextRoomsByKey = {};
 
-      setGlobalRoom(normalizedRoom);
-      setStatus(null);
+        for (const preset of LIVE_CHAT_ROOM_PRESETS) {
+          const targetNames = [preset.name, ...(preset.aliases ?? [])].map(normalizeRoomName);
+          const matchIndex = remainingRooms.findIndex((candidate) =>
+            targetNames.includes(normalizeRoomName(candidate?.name))
+          );
 
-      if (currentUserId && mongooseObjectIdLike(currentUserId)) {
-        try {
-          await createProximityChatPresence({
-            roomId: normalizedRoom._id,
-            userId: currentUserId
-          });
-        } catch (presenceError) {
-          console.warn('Failed to record chat presence:', presenceError);
+          let resolvedRoom;
+          if (matchIndex >= 0) {
+            resolvedRoom = remainingRooms.splice(matchIndex, 1)[0];
+          } else {
+            const created = await createProximityChatRoom({
+              ownerId: currentProfileId,
+              name: preset.name,
+              description: preset.description,
+              latitude: preset.latitude,
+              longitude: preset.longitude,
+              accuracy: preset.accuracy,
+              radiusMeters: preset.radiusMeters,
+              isGlobal: Boolean(preset.isGlobal),
+              participantIds: [currentProfileId],
+              moderatorIds: [currentProfileId]
+            });
+            resolvedRoom = created;
+          }
+
+          const normalizedRoom = {
+            ...resolvedRoom,
+            _id: toIdString(resolvedRoom?._id),
+            ownerId: toIdString(resolvedRoom?.ownerId),
+            presetKey: preset.key
+          };
+          nextRoomsByKey[preset.key] = normalizedRoom;
         }
+
+        setRoomsByKey(nextRoomsByKey);
+
+        const resolveNextKey = () => {
+          if (preferredKey && nextRoomsByKey[preferredKey]) {
+            return preferredKey;
+          }
+
+          const accessible = LIVE_CHAT_ROOM_PRESETS.find((preset) => {
+            const room = nextRoomsByKey[preset.key];
+            if (!room) {
+              return false;
+            }
+            return evaluateRoomAccess(room, lastSpoofedLocation).allowed;
+          });
+          if (accessible) {
+            return accessible.key;
+          }
+
+          return LIVE_CHAT_ROOM_PRESETS.find((preset) => nextRoomsByKey[preset.key])?.key;
+        };
+
+        const nextKey = resolveNextKey() ?? LIVE_CHAT_ROOM_PRESETS[0].key;
+
+        const nextRoom = nextRoomsByKey[nextKey] ?? null;
+        setSelectedRoomKey(nextKey);
+        setActiveRoom(nextRoom);
+        if (!nextRoom) {
+          setMessages([]);
+        } else {
+          setStatus(null);
+        }
+      } catch (error) {
+        console.error('Failed to ensure chat rooms:', error);
+        setRoomsByKey({});
+        setActiveRoom(null);
+        setMessages([]);
+        setStatus({ type: 'error', message: error.message || 'Failed to load chat rooms.' });
+      } finally {
+        setIsEnsuringRooms(false);
+      }
+    },
+    [currentProfile, currentProfileId, currentUser, lastSpoofedLocation]
+  );
+
+  const handleSelectRoom = useCallback(
+    (roomKey) => {
+      if (!roomKey) {
+        return;
+      }
+      setSelectedRoomKey(roomKey);
+      const nextRoom = roomsByKey[roomKey];
+      if (nextRoom) {
+        setActiveRoom(nextRoom);
+      } else {
+        ensurePresetRooms(roomKey);
+      }
+    },
+    [ensurePresetRooms, roomsByKey]
+  );
+
+  const handleReloadRooms = useCallback(() => {
+    ensurePresetRooms(selectedRoomKeyRef.current);
+  }, [ensurePresetRooms]);
+
+  const handleRefreshMessages = useCallback(() => {
+    if (!activeRoom) {
+      setStatus({ type: 'warning', message: 'Select a chat room before refreshing messages.' });
+      return;
+    }
+    if (!roomAccess.allowed) {
+      setStatus({ type: 'warning', message: roomAccess.reason });
+      return;
+    }
+    loadMessages(activeRoom);
+  }, [activeRoom, loadMessages, roomAccess]);
+
+  const handleTeleport = useCallback(
+    async (preset) => {
+      if (!currentProfile?._id) {
+        setLocationStatus({
+          type: 'warning',
+          message: 'Current user profile is unavailable. Swap accounts or refresh the page.'
+        });
+        return;
       }
 
-      await loadMessages(normalizedRoom);
-    } catch (error) {
-      console.error('Failed to load global chat room:', error);
-      setGlobalRoom(null);
-      setMessages([]);
-      setStatus({ type: 'error', message: error.message || 'Failed to load chat room.' });
-    } finally {
-      setIsLoadingRoom(false);
-    }
-  }, [currentUser, currentProfile, loadMessages]);
+      if (!currentProfileId || !mongooseObjectIdLike(currentProfileId)) {
+        setLocationStatus({
+          type: 'error',
+          message: 'Current user profile is missing a valid ObjectId.'
+        });
+        return;
+      }
+
+      setIsTeleporting(true);
+      setLocationStatus(null);
+
+      try {
+        await insertLocationUpdate({
+          userId: currentProfileId,
+          coordinates: {
+            type: 'Point',
+            coordinates: [preset.longitude, preset.latitude],
+            accuracy: preset.accuracy
+          },
+          isPublic: true,
+          source: 'web'
+        });
+
+        setActiveLocationKey(preset.key);
+        setLastSpoofedLocation({
+          latitude: preset.latitude,
+          longitude: preset.longitude,
+          accuracy: preset.accuracy
+        });
+        setLocationStatus({
+          type: 'success',
+          message: preset.statusMessage
+        });
+      } catch (error) {
+        console.error('Failed to spoof location:', error);
+        setLocationStatus({ type: 'error', message: error.message || 'Failed to spoof location.' });
+      } finally {
+        setIsTeleporting(false);
+      }
+    },
+    [currentProfile, currentProfileId]
+  );
 
   useEffect(() => {
     loadProfile();
@@ -1636,30 +1972,67 @@ function LiveChatTestTab() {
     if (!currentUser || !currentProfile?._id) {
       return;
     }
-    loadRoom();
-  }, [currentUser, currentProfile, loadRoom]);
+    ensurePresetRooms(selectedRoomKeyRef.current);
+  }, [currentUser, currentProfile, ensurePresetRooms]);
 
   useEffect(() => {
-    if (!globalRoom) {
+    const roomId = toIdString(activeRoom?._id);
+    if (!roomId || !mongooseObjectIdLike(roomId)) {
+      if (!activeRoom) {
+        setMessages([]);
+      }
       return;
     }
+
+    if (!roomAccess.allowed) {
+      setMessages([]);
+      return;
+    }
+
+    setMessages([]);
+    loadMessages(activeRoom);
+
+    if (currentProfileId && mongooseObjectIdLike(currentProfileId)) {
+      createProximityChatPresence({
+        roomId,
+        userId: currentProfileId
+      }).catch((error) => {
+        console.warn('Failed to record chat presence:', error);
+      });
+    }
+  }, [activeRoom, currentProfileId, loadMessages, roomAccess]);
+
+  useEffect(() => {
+    const roomId = toIdString(activeRoom?._id);
+    if (!roomId || !mongooseObjectIdLike(roomId) || !roomAccess.allowed) {
+      return undefined;
+    }
     const interval = setInterval(() => {
-      loadMessages(globalRoom);
+      loadMessages(activeRoom);
     }, 5000);
     return () => clearInterval(interval);
-  }, [globalRoom, loadMessages]);
+  }, [activeRoom, loadMessages, roomAccess]);
 
   const handleSendMessage = async (event) => {
     event.preventDefault();
     setStatus(null);
 
-    if (!globalRoom) {
-      setStatus({ type: 'warning', message: 'No global chat room available.' });
+    const roomId = toIdString(activeRoom?._id);
+    if (!roomId || !mongooseObjectIdLike(roomId)) {
+      setStatus({ type: 'warning', message: 'Select a chat room before sending a message.' });
       return;
     }
 
-    if (!currentProfile?._id) {
-      setStatus({ type: 'error', message: 'Current user profile is unavailable. Try swapping accounts again.' });
+    if (!currentProfileId || !mongooseObjectIdLike(currentProfileId)) {
+      setStatus({
+        type: 'error',
+        message: 'Current user profile is unavailable. Try swapping accounts again.'
+      });
+      return;
+    }
+
+    if (!roomAccess.allowed) {
+      setStatus({ type: 'warning', message: roomAccess.reason });
       return;
     }
 
@@ -1671,17 +2044,27 @@ function LiveChatTestTab() {
 
     setIsSending(true);
     try {
-      const created = await createProximityChatMessage({
-        roomId: globalRoom._id,
-        authorId: currentProfile._id,
+      const payload = {
+        roomId,
+        authorId: currentProfileId,
         message: trimmed
-      });
+      };
+
+      if (lastSpoofedLocation) {
+        payload.latitude = lastSpoofedLocation.latitude;
+        payload.longitude = lastSpoofedLocation.longitude;
+        if (lastSpoofedLocation.accuracy !== undefined) {
+          payload.accuracy = lastSpoofedLocation.accuracy;
+        }
+      }
+
+      const created = await createProximityChatMessage(payload);
       setMessages((prev) => [...prev, created]);
       setMessageInput('');
       try {
         await createProximityChatPresence({
-          roomId: globalRoom._id,
-          userId: currentProfile._id
+          roomId,
+          userId: currentProfileId
         });
       } catch (presenceError) {
         console.warn('Failed to update chat presence after sending message:', presenceError);
@@ -1717,8 +2100,7 @@ function LiveChatTestTab() {
         <Stack spacing={1}>
           <Typography variant="h6">Live Chat Test</Typography>
           <Typography variant="body2" color="text.secondary">
-            Chat inside the shared Global Debug Lounge. Use the Account Swap tab to impersonate
-            different users and verify cross-account messaging flows.
+            Swap between preset chat rooms and spoof GPS to validate proximity behavior for live chat.
           </Typography>
         </Stack>
 
@@ -1727,12 +2109,100 @@ function LiveChatTestTab() {
             {status.message}
           </Alert>
         )}
+        {!roomAccess.allowed && activeRoom && (
+          <Alert severity="warning">{roomAccess.reason}</Alert>
+        )}
 
         {!currentUser && (
           <Alert severity="warning">
-            Sign in to interact with the live chat room.
+            Sign in to interact with the live chat rooms.
           </Alert>
         )}
+
+        <Stack spacing={2}>
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">Chat room presets</Typography>
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={1}
+              alignItems={{ xs: 'stretch', md: 'center' }}
+            >
+              <ToggleButtonGroup
+                value={selectedRoomKey}
+                exclusive
+                onChange={(_, value) => value && handleSelectRoom(value)}
+                size="small"
+                color="primary"
+                sx={{ flexWrap: 'wrap' }}
+              >
+                {LIVE_CHAT_ROOM_PRESETS.map((preset) => (
+                  <ToggleButton
+                    key={preset.key}
+                    value={preset.key}
+                    disabled={isEnsuringRooms && !roomsByKey[preset.key]}
+                    sx={{ textTransform: 'none', minWidth: 140 }}
+                  >
+                    {preset.label}
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+              {isEnsuringRooms && <CircularProgress size={20} />}
+            </Stack>
+            {activeRoom && (
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1}
+                alignItems={{ xs: 'flex-start', sm: 'center' }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {activeRoom.name}
+                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                  {activeRoomRadiusLabel && <Chip size="small" label={activeRoomRadiusLabel} />}
+                  {distanceToRoomLabel && <Chip size="small" color="secondary" label={distanceToRoomLabel} />}
+                  {activeRoom.description && (
+                    <Typography variant="caption" color="text.secondary">
+                      {activeRoom.description}
+                    </Typography>
+                  )}
+                </Stack>
+              </Stack>
+            )}
+          </Stack>
+
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">GPS spoofing</Typography>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              alignItems={{ xs: 'stretch', sm: 'center' }}
+            >
+              {TELEPORT_PRESETS.map((preset) => (
+                <Button
+                  key={preset.key}
+                  type="button"
+                  size="small"
+                  variant={preset.key === activeLocationKey ? 'contained' : 'outlined'}
+                  onClick={() => handleTeleport(preset)}
+                  disabled={isTeleporting || !currentUser}
+                  sx={{ textTransform: 'none', minWidth: 220 }}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+            </Stack>
+            {activeTeleportPreset && (
+              <Typography variant="caption" color="text.secondary">
+                Active GPS preset: {activeTeleportPreset.label} ({activeTeleportPreset.latitude.toFixed(4)}, {activeTeleportPreset.longitude.toFixed(4)})
+              </Typography>
+            )}
+            {locationStatus && (
+              <Alert severity={locationStatus.type} onClose={() => setLocationStatus(null)}>
+                {locationStatus.message}
+              </Alert>
+            )}
+          </Stack>
+        </Stack>
 
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
@@ -1754,19 +2224,19 @@ function LiveChatTestTab() {
               type="button"
               variant="outlined"
               size="small"
-              onClick={loadRoom}
-              disabled={isLoadingRoom || !currentUser}
+              onClick={handleReloadRooms}
+              disabled={isEnsuringRooms || !currentUser}
             >
-              {isLoadingRoom ? 'Loading room…' : 'Reload room'}
+              {isEnsuringRooms ? 'Loading rooms...' : 'Reload rooms'}
             </Button>
             <Button
               type="button"
               variant="outlined"
               size="small"
-              onClick={() => loadMessages(globalRoom)}
-              disabled={isRefreshingMessages || !globalRoom}
+              onClick={handleRefreshMessages}
+              disabled={isRefreshingMessages || !activeRoom}
             >
-              {isRefreshingMessages ? 'Refreshing…' : 'Refresh messages'}
+              {isRefreshingMessages ? 'Refreshing...' : 'Refresh messages'}
             </Button>
           </Stack>
         </Stack>
@@ -1783,9 +2253,13 @@ function LiveChatTestTab() {
             backgroundColor: 'background.default'
           }}
         >
-          {messages.length === 0 ? (
+          {!roomAccess.allowed && activeRoom ? (
             <Typography variant="body2" color="text.secondary">
-              {isLoadingRoom || isRefreshingMessages
+              {roomAccess.reason}
+            </Typography>
+          ) : messages.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              {isEnsuringRooms || isRefreshingMessages
                 ? 'Loading messages...'
                 : 'No messages yet. Send something to get started.'}
             </Typography>
@@ -1799,8 +2273,8 @@ function LiveChatTestTab() {
                 'Unknown user';
               const avatarSrc = resolveAuthorAvatar(message?.author);
               const timestamp = formatReadableTimestamp(message?.createdAt);
-              const isSelf =
-                currentProfile?._id && message?.authorId && message.authorId === currentProfile._id;
+              const messageAuthorId = toIdString(message?.authorId);
+              const isSelf = currentProfileId && messageAuthorId && messageAuthorId === currentProfileId;
 
               return (
                 <Stack
@@ -1852,16 +2326,16 @@ function LiveChatTestTab() {
               minRows={2}
               value={messageInput}
               onChange={(event) => setMessageInput(event.target.value)}
-              placeholder="Type a message for the Global Debug Lounge"
-              disabled={!currentUser || !globalRoom}
+              placeholder={`Type a message for ${activeRoom?.name ?? 'the selected chat room'}`}
+              disabled={!currentUser || !activeRoom || !roomAccess.allowed}
             />
             <Stack direction="row" spacing={2} justifyContent="flex-end">
               <Button
                 type="submit"
                 variant="contained"
-                disabled={!currentUser || !globalRoom || isSending}
+                disabled={!currentUser || !activeRoom || !roomAccess.allowed || isSending}
               >
-                {isSending ? 'Sending…' : 'Send message'}
+                {isSending ? 'Sending...' : 'Send message'}
               </Button>
             </Stack>
           </Stack>
