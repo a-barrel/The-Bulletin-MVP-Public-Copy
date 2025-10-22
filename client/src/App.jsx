@@ -305,6 +305,16 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (event) => {
+      if (event.code === 'Backquote' && event.ctrlKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!AUTH_ROUTES.has(location.pathname)) {
+          setNavOverlayOpen(false);
+          navigate('/emulation-test');
+        }
+        return;
+      }
+
       if (event.key === '`' || event.key === '~') {
         if (AUTH_ROUTES.has(location.pathname) || navPages.length === 0) {
           return;
@@ -321,7 +331,7 @@ export default function App() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [location.pathname, navPages.length]);
+  }, [location.pathname, navPages.length, navigate]);
 
   const explicitPaths = new Set([
     '/login',

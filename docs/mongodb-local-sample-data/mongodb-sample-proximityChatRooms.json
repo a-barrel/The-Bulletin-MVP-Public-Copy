@@ -56,5 +56,32 @@
     },
     "createdAt": { "$date": "2025-09-30T20:20:00.000Z" },
     "updatedAt": { "$date": "2025-10-09T19:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d47690" },
+    "ownerId": { "$oid": "68e061721329566a22d474a7" },
+    "name": "Global Debug Lounge",
+    "description": "Always-on sandbox chat for QA and local development. Radius is effectively planet-wide.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [0.0, 0.0],
+      "accuracy": 0
+    },
+    "radiusMeters": 40000000,
+    "isGlobal": true,
+    "participantCount": 2,
+    "participantIds": [
+      { "$oid": "68e061721329566a22d474a7" },
+      { "$oid": "68e061721329566a22d474a8" }
+    ],
+    "moderatorIds": [
+      { "$oid": "68e061721329566a22d474a7" }
+    ],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d474a7" },
+      "updatedBy": { "$oid": "68e061721329566a22d474a7" }
+    },
+    "createdAt": { "$date": "2025-10-15T17:00:00.000Z" },
+    "updatedAt": { "$date": "2025-10-20T19:15:00.000Z" }
   }
 ]

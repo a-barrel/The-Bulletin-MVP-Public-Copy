@@ -35,6 +35,20 @@ const toIsoDateString = (value) => {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 };
 
+const resolveViewerUser = async (req) => {
+  if (!req?.user?.uid) {
+    return null;
+  }
+
+  try {
+    const viewer = await User.findOne({ firebaseUid: req.user.uid });
+    return viewer;
+  } catch (error) {
+    console.error('Failed to resolve viewer user for users route:', error);
+    return null;
+  }
+};
+
 const mapMediaAssetResponse = (asset) => {
   if (!asset) {
     return undefined;
@@ -192,6 +206,31 @@ router.get('/', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Invalid user query', issues: error.errors });
     }
     res.status(500).json({ message: 'Failed to load users' });
+  }
+});
+
+router.get('/me', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    try {
+      const payload = mapUserToProfile(viewer);
+      return res.json(payload);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(500).json({
+          message: 'User profile data is malformed',
+          issues: error.errors,
+          userId: toIdString(viewer._id)
+        });
+      }
+      throw error;
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to load user profile' });
   }
 });
 
