@@ -1,18 +1,23 @@
+/* Base (unchanged) */
 .bottom-nav {
-  position: sticky;
+  position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
-  align-self: center;                 
-  width: calc(100% + 2rem);           
-  margin-left: -1rem;                 
-  height: 110px;                      
-  background-color: #d1b4f5;
+  z-index: 1000;
+
+  height: 80px;
+  background: #d1b4f5;
+  border-top: 2px solid #000;
+
   display: flex;
   justify-content: space-around;
   align-items: center;
-  z-index: 10;
-  margin-top: auto;                   
-  padding: 8px 1rem calc(10px + env(safe-area-inset-bottom, 0)); 
-  transform: translateY(25px); 
+
+  margin: 0;
+  padding: 8px 1rem calc(10px + env(safe-area-inset-bottom, 0));
+  box-sizing: border-box;    /* prevent width overflow */
+  transform: none;
 }
 
 /* Navigation item styling */
@@ -51,11 +56,14 @@
     hue-rotate(258deg) brightness(90%) contrast(103%);
 }
 
+/* Mobile – don't stretch or nudge */
 @media (max-width: 480px) {
   .bottom-nav {
     width: 100%;
-    margin-left: 0;
-    border-radius: 0;                 
-    height: 100px;                    
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transform: none;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0));
   }
 }

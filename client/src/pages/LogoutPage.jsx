@@ -1,0 +1,42 @@
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { auth } from '../firebase';
+import { signOut } from 'firebase/auth';
+import './LogoutPage.css'; // Same as LoginPage.css
+
+export const pageConfig = {
+  id: 'logout',
+  label: 'Logout',
+  path: '/logout',
+  order: 80,
+  showInNav: true,
+  protected: true
+};
+
+function LogoutPage() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleLogout = async () => {
+      try {
+        await signOut(auth);
+        navigate('/login');
+      } catch (error) {
+        console.error("Error signing out: ", error);
+        navigate('/login');
+      }
+    };
+
+    handleLogout();
+  }, [navigate]);
+
+  return (
+    <div className="login-page">
+      <div className="login-frame">
+        <h1 className="login-title">Logging you out...</h1>
+      </div>
+    </div>
+  );
+}
+
+export default LogoutPage;

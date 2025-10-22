@@ -1,129 +1,166 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import commentsIcon from "../assets/Comments.png";
-import attendanceIcon from "../assets/AttendanceIcon.png";
-import pinIcon from "../assets/PinIcon.png";
-import discussionIcon from "../assets/DiscussionIcon.png";
+﻿import React from "react";
 import "./Feed.css";
 
-/* ---------- small helpers (display only) ---------- */
-function formatTimeLabel(label = "") {
-  const s = String(label).toLowerCase().trim();
-  const h = s.match(/(\d+(?:\.\d+)?)\s*hour/);
-  if (h) {
-    const n = Math.round(parseFloat(h[1]));
-    return `In ${n} hour${n === 1 ? "" : "s"}`;
-  }
-  if (/\btoday\b/.test(s) || /\b0\s*days?\b/.test(s)) return "In a few hours";
-  const d1 = s.match(/in\s*(\d+(?:\.\d+)?)\s*days?/);
-  const d2 = s.match(/(\d+(?:\.\d+)?)\s*days?\s*left/);
-  const num = d1 ? parseFloat(d1[1]) : d2 ? parseFloat(d2[1]) : null;
-  if (Number.isFinite(num)) {
-    const n = Math.round(num);
-    return n === 1 ? "In 1 day" : `In ${n} days`;
-  }
-  if (/\btomorrow\b/.test(s)) return "In 1 day";
-  return label;
-}
+const DEFAULT_AVATAR = "/images/profile/profile-01.jpg";
 
-/* ---------- Interested bubbles (inline here for simplicity) ---------- */
-const InterestedRow = ({ users = [] }) => {
-  const MAX = 8;
-  const visible = users.slice(0, MAX);
-  const extra = users.length - visible.length;
+const resolveAuthorName = (item) =>
+  item?.authorName ||
+  item?.author ||
+  item?.creator?.displayName ||
+  item?.creator?.username ||
+  "Unknown";
 
-  return (
-    <div className="interested-row" aria-label="Interested users">
-      {visible.map((u, i) => (
-        <div className="interest-bubble" key={i} title={`@${u}`} />
-      ))}
-      {extra > 0 && <span className="interest-more">+{extra}</span>}
-    </div>
-  );
+const resolveAvatar = (item) =>
+  item?.creator?.avatar?.url ||
+  item?.creator?.avatar?.thumbnailUrl ||
+  item?.avatar ||
+  DEFAULT_AVATAR;
+
+const interestInitial = (value) => {
+  const label = typeof value === "string" ? value.trim() : "";
+  if (!label) return "?";
+  return label.charAt(0).toUpperCase();
 };
 
-/* ---------- Feed component ---------- */
-export default function Feed({ items = [] }) {
-  const navigate = useNavigate();
+const resolveTagBadge = (type) => {
+  switch (type) {
+    case "pin":
+      return "PIN";
+    case "discussion":
+      return "CHAT";
+    default:
+      return "ITEM";
+  }
+};
 
-  const handleAuthorClick = (e, item) => {
-    e.stopPropagation();
-    if (item.creatorId || item.creator?._id) {
-      const authorId = item.creatorId || item.creator._id;
-      navigate(`/user/${authorId}`);
-    }
-  };
+function FeedCard({ item }) {
+  const cardType = item?.type ? String(item.type).toLowerCase() : "";
+  const images = Array.isArray(item?.images) ? item.images.filter(Boolean) : [];
+  const interested = Array.isArray(item?.interested)
+    ? item.interested.filter(Boolean)
+    : [];
+  const displayedInterested = interested.slice(0, 5);
+  const remainingInterested =
+    interested.length > displayedInterested.length
+      ? interested.length - displayedInterested.length
+      : 0;
+  const authorName = resolveAuthorName(item);
+  const baseKey = item?.id || item?._id || authorName || "item";
+  const tagBadge = resolveTagBadge(cardType);
 
-  const handlePinClick = (item) => {
-    navigate(`/pin/${item.id}`);
-  };
+  return (
+    <article className={`card ${cardType}`}>
+      <header className={`card-header ${cardType}`}>
+        <div className="tag">
+          <span className="tag-icon" aria-hidden="true">
+            {tagBadge}
+          </span>
+          <span>{item?.tag || "Untitled"}</span>
+        </div>
+        <div className="meta-right">
+          {item?.distance && <span className="distance">{item.distance}</span>}
+          {item?.distance && item?.timeLabel && <span className="dot">|</span>}
+          {item?.timeLabel && <span className="time">{item.timeLabel}</span>}
+          <button type="button" className="bookmark-btn" aria-label="Bookmark pin">
+            <span className="bookmark-emoji" role="img" aria-hidden="true">
+              [*]
+            </span>
+          </button>
+        </div>
+      </header>
+
+      {item?.text && <p className="card-text">{item.text}</p>}
+
+      {images.length > 0 && (
+        <div
+          className={`media-grid ${
+            images.length === 1 ? "one" : images.length === 2 ? "two" : ""
+          }`}
+        >
+          {images.map((src, imgIndex) => (
+            <img
+              key={`${baseKey}-media-${imgIndex}`}
+              src={src}
+              className="media"
+              alt=""
+              loading="lazy"
+            />
+          ))}
+        </div>
+      )}
+
+      <footer className="card-footer">
+        <div className="author">
+          <img
+            className="avatar"
+            src={resolveAvatar(item)}
+            alt={`${authorName} avatar`}
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = DEFAULT_AVATAR;
+            }}
+          />
+          <span className="name">{authorName}</span>
+        </div>
+
+        <div className="interested-row">
+          {displayedInterested.map((name, interestIndex) => (
+            <span
+              className="interest-bubble"
+              key={`${baseKey}-interest-${interestIndex}`}
+              title={String(name)}
+            >
+              {interestInitial(name)}
+            </span>
+          ))}
+          {remainingInterested > 0 && (
+            <span className="interest-more">+{remainingInterested}</span>
+          )}
+        </div>
+
+        <div className="counts">
+          {typeof item?.comments === "number" && (
+            <span className="count-item" title="Comments">
+              <span className="count-icon" aria-hidden="true">
+                C
+              </span>
+              <span>{item.comments}</span>
+            </span>
+          )}
+
+          {interested.length > 0 && (
+            <span className="count-item" title="Interested users">
+              <span className="count-icon" aria-hidden="true">
+                *
+              </span>
+              <span>{interested.length}</span>
+            </span>
+          )}
+        </div>
+      </footer>
+    </article>
+  );
+}
+
+export default function Feed({ items }) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return (
+      <div className="feed">
+        <div className="card">
+          <p className="card-text">No nearby pins yet. Check back soon!</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="feed">
-      {items.map((item) => {
-        const interested = item.interested ?? [];
-        const attendanceCount = interested.length;
-
-        return (
-          <article 
-            className={`card ${item.type}`} 
-            key={item.id}
-            onClick={() => handlePinClick(item)}
-          >
-            <header className={`card-header ${item.type}`}>
-              <div className="tag">
-                <img
-                  src={item.type === "pin" ? pinIcon : discussionIcon}
-                  alt={item.type === "pin" ? "Pin" : "Discussion"}
-                  className="tag-icon"
-                />
-                <span>{item.tag}</span>
-              </div>
-              <div className="meta-right">
-                <span className="time">{formatTimeLabel(item.timeLabel)}</span>
-                <span className="dot">·</span>
-                <span className="dist">{item.distance}</span>
-              </div>
-            </header>
-
-            <div className="card-body">
-              <p className="card-text">{item.text}</p>
-
-              {item.images?.length > 0 && (
-                <div className={`media-grid ${item.images.length > 1 ? "two" : "one"}`}>
-                  {item.images.map((src, i) => (
-                    <img className="media" src={src} alt="" key={i} />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <footer className="card-footer">
-              <div className="author">
-                <div className="avatar" aria-hidden="true" />
-                <span 
-                  className="name author-clickable"
-                  onClick={(e) => handleAuthorClick(e, item)}
-                >
-                  @{item.creator?.displayName || item.creator?.username || item.author}
-                </span>
-              </div>
-
-              {/* interested users trail */}
-              <InterestedRow users={interested} />
-
-              <div className="counts">
-                <span title="Comments" className="count-item">
-                  <img src={commentsIcon} alt="Comments" className="count-icon" /> {item.comments}
-                </span>
-                <span title="Interested / Attending" className="count-item">
-                  <img src={attendanceIcon} alt="Attendance" className="count-icon" /> {attendanceCount}
-                </span>
-              </div>
-            </footer>
-          </article>
-        );
-      })}
+      {items.map((item, index) => (
+        <FeedCard
+          item={item}
+          key={item?.id || item?._id || `${index}-${resolveAuthorName(item)}`}
+        />
+      ))}
     </div>
   );
 }

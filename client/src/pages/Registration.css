@@ -1,107 +1,53 @@
-/* Outer background */
-.register-page {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: black;
-  width: 100vw;
-  height: 100dvh; 
-}
-
-/* Phone-like frame */
-.register-frame {
-  width: 80vw;
-  max-width: 950px;
-  height: 90vh;
-  background: white;
-  border: 0.1rem solid black;
-  border-radius: 40px;
-  padding: 2rem 1.5rem;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  overflow-y: auto;
+/* For the textbox inputs*/
+.register-input-container {
+  width: 85vw;
   position: relative;
-}
-
-.back-btn {
-  position: absolute;
-  top: 20px;
-  left: 16px;
-  width: 38px;
-  height: 38px;
-  border: none;
-  background: none;
-  color: black;
-  font-size: 2rem;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* Takes away orange hover color that's default in browser*/
-.back-btn:hover,
-.back-btn:focus,
-.back-btn:active {
-  outline: none;
-  background: none;
-  box-shadow: none;
-}
-
-/* Title */
-.register-title {
-  color: black;
-  font-weight: 300;
-  font-size: 2.5rem;
-  margin: 1.25rem 0 1rem;
-}
-
-/* Form */
-.register-form {
-  width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1rem;
 }
 
-/* Inputs */
-.field { width: 80%; }
-.input {
-  width: 95%;
-  padding: 12px 14px;
-  margin-left: -10px;
-  border: 1.5px solid black;
-  border-radius: 10px;
-  background: white;
+.register-input-container input {
+  padding: 10px 12px;
+  border: 1.5px solid #888;
+  border-radius: 6px;
+  background-color: white;
   color: black;
-  font-size: 0.95rem;
-  transition: border-color .2s;
+  font-size: 1.2rem;
+  transition: 0.2s;
+  margin-bottom: 2.5rem;
 }
-.input::placeholder { color: #c0c0c0; }
-.input:focus { border-color: #b68de8; outline: none; }
 
-/* Inline error */
-.helper-error {
-  color: #d32f2f;
+.register-input-container input:focus {
+  border-color: #75d2fd;
+  outline: none;
+}
+
+.register-input-container input::placeholder {
+  color: #c0c0c0;
+}
+
+
+/* The text under the input box when there is an input error */
+.register-input-error-text {
+  position: absolute;
+  margin-top: 2.9rem;
+  color: red;
+  text-align: left;
   font-size: 0.9rem;
-  margin-top: 0.25rem;
-  text-align: left;      
-  width: 85%;            
+  font-weight: 600;
+  transition: opacity 0.3s ease;
+  margin-left: 0.5rem;
 }
 
 /* Submit */
 .register-submit {
   background: #CDAEF2;
-  color: black;
-  border: 0.1rem solid black;
-  border-radius: 25px;
-  padding: 10px 90px;
-  font-size: 1.3rem;
-  cursor: pointer;
-  transition: background .2s;
+  margin-top: 2rem;
 }
-.register-submit:hover { background: #9a7fff; }
+
+.register-submit:hover { 
+  background: #9a7fff; 
+}
 
 /* Tablets */
 @media (max-width: 768px) {
