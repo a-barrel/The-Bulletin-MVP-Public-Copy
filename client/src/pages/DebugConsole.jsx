@@ -86,6 +86,7 @@ const EXPERIMENT_TAB_ID = 'troy-experiment';
 const EXPERIMENT_TITLE = "Troy's Dumb Experiment";
 const LIVE_CHAT_TAB_ID = 'live-chat';
 const ACCOUNT_SWAP_TAB_ID = 'account-swap';
+const CHAT_VIS_TAB_ID = 'chat-visualization';
 
 const DEFAULT_AVATAR_PATH = '/images/profile/profile-01.jpg';
 const DEFAULT_BANNER_PATH = '/images/background/background-01.jpg';
@@ -187,8 +188,38 @@ const TELEPORT_PRESETS = [
   }
 ];
 
+const SPOOF_STEP_METERS = 3218; // ~2 miles
+const DIRECTION_SUCCESS_MESSAGES = {
+  north: 'Moved north by roughly 2 miles.',
+  south: 'Moved south by roughly 2 miles.',
+  east: 'Moved east by roughly 2 miles.',
+  west: 'Moved west by roughly 2 miles.'
+};
 const EARTH_RADIUS_METERS = 6371000;
 const toRadians = (value) => (value * Math.PI) / 180;
+const metersToLatitudeDegrees = (meters) => (meters / EARTH_RADIUS_METERS) * (180 / Math.PI);
+const metersToLongitudeDegrees = (meters, latitude) => {
+  const latitudeRadians = toRadians(latitude);
+  const denominator = Math.cos(latitudeRadians);
+  if (Math.abs(denominator) < 1e-6) {
+    return 0;
+  }
+  return (meters / (EARTH_RADIUS_METERS * denominator)) * (180 / Math.PI);
+};
+const clampLatitude = (value) => Math.max(-90, Math.min(90, value));
+const normalizeLongitude = (value) => {
+  if (!Number.isFinite(value)) {
+    return value;
+  }
+  let normalized = value;
+  while (normalized > 180) {
+    normalized -= 360;
+  }
+  while (normalized < -180) {
+    normalized += 360;
+  }
+  return normalized;
+};
 const haversineDistanceMeters = (pointA, pointB) => {
   if (!pointA || !pointB) {
     return Number.NaN;
@@ -259,6 +290,55 @@ const evaluateRoomAccess = (room, location) => {
   };
 };
 
+const shiftLocationByDirection = (source, direction, stepMeters = SPOOF_STEP_METERS) => {
+  if (
+    !source ||
+    !Number.isFinite(source.latitude) ||
+    !Number.isFinite(source.longitude) ||
+    !direction
+  ) {
+    return null;
+  }
+
+  const latitudeOffset = metersToLatitudeDegrees(stepMeters);
+  const longitudeOffset = metersToLongitudeDegrees(stepMeters, source.latitude);
+  let nextLatitude = source.latitude;
+  let nextLongitude = source.longitude;
+
+  switch (direction) {
+    case 'north':
+      nextLatitude += latitudeOffset;
+      break;
+    case 'south':
+      nextLatitude -= latitudeOffset;
+      break;
+    case 'east':
+      nextLongitude += longitudeOffset;
+      break;
+    case 'west':
+      nextLongitude -= longitudeOffset;
+      break;
+    default:
+      return null;
+  }
+
+  const latitude = clampLatitude(nextLatitude);
+  const longitude = normalizeLongitude(nextLongitude);
+
+  if (
+    Math.abs(latitude - source.latitude) < 1e-9 &&
+    Math.abs(longitude - source.longitude) < 1e-9
+  ) {
+    return source;
+  }
+
+  return {
+    latitude,
+    longitude,
+    accuracy: source.accuracy
+  };
+};
+
 const formatDateTimeLocal = (date) => {
   const timezoneOffsetMs = date.getTimezoneOffset() * 60000;
   const localDate = new Date(date.getTime() - timezoneOffsetMs);
@@ -322,6 +402,7 @@ const TAB_OPTIONS = [
   { id: 'bookmarks', label: 'Bookmarks' },
   { id: 'chat', label: 'Chat' },
   { id: LIVE_CHAT_TAB_ID, label: 'Live Chat Test' },
+  { id: CHAT_VIS_TAB_ID, label: 'Chat Room Visualization' },
   { id: 'updates', label: 'Updates' },
   { id: 'replies', label: 'Replies' },
   { id: ACCOUNT_SWAP_TAB_ID, label: 'Account Swap' },
@@ -333,6 +414,7 @@ const LOCATIONS_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'locations
 const BOOKMARKS_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'bookmarks');
 const CHAT_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'chat');
 const LIVE_CHAT_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === LIVE_CHAT_TAB_ID);
+const CHAT_VIS_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === CHAT_VIS_TAB_ID);
 const UPDATES_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'updates');
 const REPLIES_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'replies');
 const ACCOUNT_SWAP_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === ACCOUNT_SWAP_TAB_ID);
@@ -1591,6 +1673,18 @@ const handleSubmit = async (event) => {
             sx={{ display: activeTab === LIVE_CHAT_TAB_INDEX ? 'block' : 'none' }}
           >
             <LiveChatTestTab />
+          </Box>
+        )}
+
+        {CHAT_VIS_TAB_INDEX !== -1 && (
+          <Box
+            role="tabpanel"
+            hidden={activeTab !== CHAT_VIS_TAB_INDEX}
+            id="debug-tabpanel-chat-visualization"
+            aria-labelledby="debug-tab-chat-visualization"
+            sx={{ display: activeTab === CHAT_VIS_TAB_INDEX ? 'block' : 'none' }}
+          >
+            <ChatRoomVisualizationTab />
           </Box>
         )}
 
@@ -3998,6 +4092,557 @@ function BookmarksTab() {
           </Button>
         </Stack>
         <JsonPreview data={collectionsResult} />
+      </Paper>
+    </Stack>
+  );
+}
+
+function ChatRoomVisualizationTab() {
+  const [currentUser] = useAuthState(auth);
+  const [currentProfile, setCurrentProfile] = useState(null);
+  const [profileStatus, setProfileStatus] = useState(null);
+
+  const defaultTeleportPreset = useMemo(
+    () => TELEPORT_PRESETS.find((preset) => preset.key === DEFAULT_LOCATION_TELEPORT_KEY),
+    []
+  );
+
+  const initialSpoofLocation = useMemo(
+    () => ({
+      latitude: defaultTeleportPreset?.latitude ?? DEFAULT_LOCATION_COORDINATES.latitude,
+      longitude: defaultTeleportPreset?.longitude ?? DEFAULT_LOCATION_COORDINATES.longitude,
+      accuracy: defaultTeleportPreset?.accuracy
+    }),
+    [defaultTeleportPreset]
+  );
+
+  const [activePresetKey, setActivePresetKey] = useState(
+    defaultTeleportPreset?.key ?? DEFAULT_LOCATION_TELEPORT_KEY
+  );
+  const [lastSpoofedLocation, setLastSpoofedLocation] = useState(initialSpoofLocation);
+  const [teleportStatus, setTeleportStatus] = useState(null);
+  const [isTeleporting, setIsTeleporting] = useState(false);
+
+  const [rooms, setRooms] = useState([]);
+  const [roomsStatus, setRoomsStatus] = useState(null);
+  const [isFetchingRooms, setIsFetchingRooms] = useState(false);
+
+  const [selectedRoomId, setSelectedRoomId] = useState(null);
+  const selectedRoomIdRef = useRef(null);
+
+  useEffect(() => {
+    selectedRoomIdRef.current = selectedRoomId;
+  }, [selectedRoomId]);
+
+  const [mapCenterOverride, setMapCenterOverride] = useState(() => ({
+    latitude: initialSpoofLocation.latitude,
+    longitude: initialSpoofLocation.longitude
+  }));
+
+  const currentProfileId = useMemo(() => toIdString(currentProfile?._id), [currentProfile]);
+
+  const loadProfile = useCallback(async () => {
+    if (!currentUser) {
+      setCurrentProfile(null);
+      return;
+    }
+
+    setProfileStatus(null);
+    try {
+      const profile = await fetchCurrentUserProfile();
+      setCurrentProfile(profile);
+    } catch (error) {
+      console.error('Failed to load current user profile for visualization tab:', error);
+      setProfileStatus({ type: 'error', message: error.message || 'Failed to load current user profile.' });
+      setCurrentProfile(null);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
+  const fetchRooms = useCallback(async () => {
+    setRoomsStatus(null);
+    setIsFetchingRooms(true);
+    try {
+      const results = await fetchChatRooms({});
+      setRooms(results);
+      setRoomsStatus({
+        type: 'success',
+        message: `Loaded ${results.length} chat room${results.length === 1 ? '' : 's'}.`
+      });
+
+      if (!selectedRoomIdRef.current) {
+        const focusRoom = results.find((room) => extractPinLocation(room));
+        if (focusRoom) {
+          const focus = extractPinLocation(focusRoom);
+          if (focus) {
+            setMapCenterOverride(focus);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load chat rooms for visualization tab:', error);
+      setRooms([]);
+      setRoomsStatus({ type: 'error', message: error.message || 'Failed to load chat rooms.' });
+    } finally {
+      setIsFetchingRooms(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRooms();
+  }, [fetchRooms]);
+
+  const handleRefreshRooms = useCallback(() => {
+    fetchRooms();
+  }, [fetchRooms]);
+
+  const handleTeleport = useCallback(
+    async (preset) => {
+      if (!preset) {
+        return;
+      }
+
+      if (!currentUser) {
+        setTeleportStatus({
+          type: 'warning',
+          message: 'Sign in to spoof your location.'
+        });
+        return;
+      }
+
+      if (!currentProfileId || !mongooseObjectIdLike(currentProfileId)) {
+        setTeleportStatus({
+          type: 'error',
+          message: 'Current user profile is missing a valid ObjectId.'
+        });
+        return;
+      }
+
+      setIsTeleporting(true);
+      setTeleportStatus(null);
+
+      try {
+        await insertLocationUpdate({
+          userId: currentProfileId,
+          coordinates: {
+            type: 'Point',
+            coordinates: [preset.longitude, preset.latitude],
+            accuracy: preset.accuracy
+          },
+          isPublic: true,
+          source: 'web'
+        });
+
+        setActivePresetKey(preset.key);
+        setLastSpoofedLocation({
+          latitude: preset.latitude,
+          longitude: preset.longitude,
+          accuracy: preset.accuracy
+        });
+        setMapCenterOverride({ latitude: preset.latitude, longitude: preset.longitude });
+        setTeleportStatus({
+          type: 'success',
+          message: preset.statusMessage
+        });
+      } catch (error) {
+        console.error('Failed to spoof location from visualization tab:', error);
+        setTeleportStatus({ type: 'error', message: error.message || 'Failed to spoof location.' });
+      } finally {
+        setIsTeleporting(false);
+      }
+    },
+    [currentUser, currentProfileId]
+  );
+
+  const handleDirectionalSpoof = useCallback(
+    async (direction) => {
+      if (!direction) {
+        return;
+      }
+
+      if (!currentUser) {
+        setTeleportStatus({
+          type: 'warning',
+          message: 'Sign in to spoof your location.'
+        });
+        return;
+      }
+
+      if (!currentProfileId || !mongooseObjectIdLike(currentProfileId)) {
+        setTeleportStatus({
+          type: 'error',
+          message: 'Current user profile is missing a valid ObjectId.'
+        });
+        return;
+      }
+
+      const sourceLocation =
+        (lastSpoofedLocation &&
+          Number.isFinite(lastSpoofedLocation.latitude) &&
+          Number.isFinite(lastSpoofedLocation.longitude) &&
+          lastSpoofedLocation) ||
+        initialSpoofLocation;
+
+      const nextLocation = shiftLocationByDirection(sourceLocation, direction, SPOOF_STEP_METERS);
+      if (!nextLocation) {
+        setTeleportStatus({
+          type: 'error',
+          message: 'Unable to adjust location. Teleport to a preset first.'
+        });
+        return;
+      }
+
+      setIsTeleporting(true);
+      setTeleportStatus(null);
+
+      try {
+        const payload = {
+          userId: currentProfileId,
+          coordinates: {
+            type: 'Point',
+            coordinates: [nextLocation.longitude, nextLocation.latitude]
+          },
+          isPublic: true,
+          source: 'web'
+        };
+
+        if (Number.isFinite(nextLocation.accuracy)) {
+          payload.coordinates.accuracy = nextLocation.accuracy;
+        }
+
+        await insertLocationUpdate(payload);
+
+        setActivePresetKey(null);
+        setLastSpoofedLocation(nextLocation);
+        setMapCenterOverride({ latitude: nextLocation.latitude, longitude: nextLocation.longitude });
+        setTeleportStatus({
+          type: 'success',
+          message: DIRECTION_SUCCESS_MESSAGES[direction] ?? 'Spoofed location updated.'
+        });
+      } catch (error) {
+        console.error('Failed to adjust spoofed location:', error);
+        setTeleportStatus({ type: 'error', message: error.message || 'Failed to adjust location.' });
+      } finally {
+        setIsTeleporting(false);
+      }
+    },
+    [currentUser, currentProfileId, lastSpoofedLocation, initialSpoofLocation]
+  );
+
+  const mapPins = useMemo(
+    () =>
+      rooms
+        .map((room) => {
+          const coordinates = room?.coordinates?.coordinates;
+          if (!Array.isArray(coordinates) || coordinates.length < 2) {
+            return null;
+          }
+          const [longitude, latitude] = coordinates;
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            return null;
+          }
+
+          const pin = {
+            _id: toIdString(room?._id),
+            title: room?.name ?? 'Untitled chat room',
+            type: room?.isGlobal ? 'global-chat-room' : 'chat-room',
+            coordinates: {
+              type: 'Point',
+              coordinates: [longitude, latitude]
+            },
+            proximityRadiusMeters: room?.radiusMeters,
+            description: room?.description ?? undefined
+          };
+
+          if (lastSpoofedLocation) {
+            const distance = haversineDistanceMeters(lastSpoofedLocation, {
+              latitude,
+              longitude
+            });
+            if (Number.isFinite(distance)) {
+              pin.distanceMeters = distance;
+            }
+          }
+
+          return pin;
+        })
+        .filter(Boolean),
+    [rooms, lastSpoofedLocation]
+  );
+
+  const selectedRoom = useMemo(
+    () => rooms.find((room) => toIdString(room?._id) === selectedRoomId) ?? null,
+    [rooms, selectedRoomId]
+  );
+
+  const selectedRoomDistanceLabel = useMemo(() => {
+    if (!selectedRoom || !lastSpoofedLocation) {
+      return null;
+    }
+    const location = extractPinLocation(selectedRoom);
+    if (!location) {
+      return null;
+    }
+    const distance = haversineDistanceMeters(lastSpoofedLocation, location);
+    if (!Number.isFinite(distance)) {
+      return null;
+    }
+    return distance >= 1000 ? `${(distance / 1000).toFixed(2)} km away` : `${Math.round(distance)} m away`;
+  }, [selectedRoom, lastSpoofedLocation]);
+
+  const handlePinSelect = useCallback((pin) => {
+    const id = toIdString(pin?._id);
+    setSelectedRoomId(id || null);
+    const focus = extractPinLocation(pin);
+    if (focus) {
+      setMapCenterOverride(focus);
+    }
+  }, []);
+
+  const handleFocusRoom = useCallback((room) => {
+    const id = toIdString(room?._id);
+    setSelectedRoomId(id || null);
+    const focus = extractPinLocation(room);
+    if (focus) {
+      setMapCenterOverride(focus);
+    }
+  }, []);
+
+  const activePreset = useMemo(
+    () => TELEPORT_PRESETS.find((preset) => preset.key === activePresetKey) ?? null,
+    [activePresetKey]
+  );
+
+  const userRadiusMeters = Number.isFinite(selectedRoom?.radiusMeters) ? selectedRoom.radiusMeters : undefined;
+
+  return (
+    <Stack spacing={2}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1}
+          justifyContent="space-between"
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+        >
+          <Box>
+            <Typography variant="h6">Chat room overview</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Visualize chat room geofences alongside your spoofed location.
+            </Typography>
+          </Box>
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={handleRefreshRooms}
+            disabled={isFetchingRooms}
+          >
+            {isFetchingRooms ? 'Refreshing...' : 'Refresh rooms'}
+          </Button>
+        </Stack>
+        {roomsStatus && (
+          <Alert severity={roomsStatus.type} onClose={() => setRoomsStatus(null)}>
+            {roomsStatus.message}
+          </Alert>
+        )}
+      </Paper>
+
+      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Stack spacing={1.5}>
+          <Typography variant="h6">GPS spoofer</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Teleport your active debug account to quickly test chat room access.
+          </Typography>
+          {!currentUser && <Alert severity="warning">Sign in to spoof your location.</Alert>}
+          {profileStatus && (
+            <Alert severity={profileStatus.type} onClose={() => setProfileStatus(null)}>
+              {profileStatus.message}
+            </Alert>
+          )}
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ xs: 'stretch', md: 'center' }}>
+            {TELEPORT_PRESETS.map((preset) => (
+              <Button
+                key={preset.key}
+                variant={preset.key === activePresetKey ? 'contained' : 'outlined'}
+                onClick={() => handleTeleport(preset)}
+                disabled={isTeleporting}
+                sx={{ textTransform: 'none' }}
+              >
+                {preset.label}
+              </Button>
+            ))}
+            {isTeleporting && <CircularProgress size={20} />}
+          </Stack>
+          <Divider />
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">Directional nudge</Typography>
+            <Stack direction="row" spacing={1} justifyContent="center">
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleDirectionalSpoof('north')}
+                disabled={isTeleporting}
+                sx={{ minWidth: 96 }}
+              >
+                North
+              </Button>
+            </Stack>
+            <Stack direction="row" spacing={1} justifyContent="center">
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleDirectionalSpoof('west')}
+                disabled={isTeleporting}
+                sx={{ minWidth: 96 }}
+              >
+                West
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleDirectionalSpoof('east')}
+                disabled={isTeleporting}
+                sx={{ minWidth: 96 }}
+              >
+                East
+              </Button>
+            </Stack>
+            <Stack direction="row" spacing={1} justifyContent="center">
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleDirectionalSpoof('south')}
+                disabled={isTeleporting}
+                sx={{ minWidth: 96 }}
+              >
+                South
+              </Button>
+            </Stack>
+            <Typography variant="caption" color="text.secondary" align="center">
+              Each press moves the spoofed location by roughly 2 miles.
+            </Typography>
+          </Stack>
+          {activePreset && (
+            <Typography variant="caption" color="text.secondary">
+              Active GPS preset: {activePreset.label} ({activePreset.latitude.toFixed(4)}, 
+              {activePreset.longitude.toFixed(4)})
+            </Typography>
+          )}
+          {teleportStatus && (
+            <Alert severity={teleportStatus.type} onClose={() => setTeleportStatus(null)}>
+              {teleportStatus.message}
+            </Alert>
+          )}
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Stack spacing={1}>
+          <Typography variant="h6">Map view</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Click a marker to focus a chat room and compare against your spoofed location.
+          </Typography>
+        </Stack>
+        <Box sx={{ height: 420, borderRadius: 2, overflow: 'hidden' }}>
+          <LeafletMap
+            userLocation={lastSpoofedLocation ?? undefined}
+            userRadiusMeters={userRadiusMeters}
+            centerOverride={mapCenterOverride ?? undefined}
+            pins={mapPins}
+            selectedPinId={selectedRoomId ?? undefined}
+            onPinSelect={handlePinSelect}
+          />
+        </Box>
+        {selectedRoom ? (
+          <Stack spacing={0.5}>
+            <Typography variant="subtitle1">{selectedRoom.name ?? 'Untitled chat room'}</Typography>
+            {selectedRoom.description ? (
+              <Typography variant="body2" color="text.secondary">
+                {selectedRoom.description}
+              </Typography>
+            ) : null}
+            <Typography variant="body2" color="text.secondary">
+              Radius: {Number.isFinite(selectedRoom.radiusMeters) ? `${selectedRoom.radiusMeters} m` : 'Not set'}
+              {selectedRoom.isGlobal ? ' (global room)' : ''}
+            </Typography>
+            {selectedRoomDistanceLabel && (
+              <Typography variant="body2" color="text.secondary">
+                Distance from spoofed location: {selectedRoomDistanceLabel}
+              </Typography>
+            )}
+          </Stack>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            Select a chat room marker or card to see details.
+          </Typography>
+        )}
+      </Paper>
+
+      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Typography variant="h6">Chat rooms</Typography>
+        {rooms.length ? (
+          <Stack spacing={1}>
+            {rooms.map((room, index) => {
+              const id = toIdString(room?._id);
+              const key = id || `${index}-${room?.name ?? 'room'}`;
+              const isSelected = id && id === selectedRoomId;
+              const location = extractPinLocation(room);
+              return (
+                <Paper
+                  key={key}
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    borderColor: isSelected ? 'primary.main' : 'divider',
+                    borderWidth: isSelected ? 2 : 1
+                  }}
+                >
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={1}
+                    justifyContent="space-between"
+                    alignItems={{ xs: 'flex-start', sm: 'center' }}
+                  >
+                    <Box>
+                      <Typography variant="subtitle1">{room?.name ?? 'Untitled chat room'}</Typography>
+                      {room?.description ? (
+                        <Typography variant="body2" color="text.secondary">
+                          {room.description}
+                        </Typography>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          No description provided.
+                        </Typography>
+                      )}
+                      <Typography variant="caption" color="text.secondary">
+                        {location
+                          ? `Center: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`
+                          : 'Missing coordinates'}
+                        {Number.isFinite(room?.radiusMeters) ? ` | Radius: ${room.radiusMeters} m` : ''}
+                        {room?.isGlobal ? ' (global room)' : ''}
+                      </Typography>
+                    </Box>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      {isSelected ? (
+                        <Chip label="Focused" color="primary" size="small" />
+                      ) : (
+                        <Button size="small" onClick={() => handleFocusRoom(room)}>
+                          Focus on map
+                        </Button>
+                      )}
+                    </Stack>
+                  </Stack>
+                </Paper>
+              );
+            })}
+          </Stack>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            {isFetchingRooms ? 'Loading chat rooms...' : 'Chat rooms will appear here once loaded.'}
+          </Typography>
+        )}
       </Paper>
     </Stack>
   );

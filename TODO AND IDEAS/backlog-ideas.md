@@ -18,5 +18,30 @@
 - **[Done 2025-10-22] Profile page UX pass:** upgraded `ProfilePage.jsx` with stats, activity highlights, badge chips, preferences, and raw profile toggles, retiring the `_TODO` scaffolding entirely.
 - **[Done 2025-10-22] Testing expansion:** replaced the placeholder Jest sanity check with component coverage (`Feed`, `LocationShare`) and utility mocks to keep regressions visible.
 - **Testing follow-ups:** layer in integration-level tests (MSW-powered API mocks for profile/updates flows) and bring server routes under test once the suite stabilizes.
+- **Expired pin follow-ups:** add API-level safeguards to mark/bookmark checks, include server tests around expired pins, and surface expiry info in the list feed.
 - **Navigation polish:** expand the bottom nav and overlay to surface Updates/Bookmarks and feed the unread updates badge once the shared context is wired up.
 - **Automation tools:** evaluate layering in Jest (unit tests), Cypress/Playwright (E2E), Husky pre-commit hooks, and GitHub Actions CI to keep lint/tests running automatically as the team stabilizes.
+
+- **Expired Pin Functionality:** handle all use cases of a user seeing an expired pin and guide the user back to the home page should they somehow
+access an expired pin.
+
+Implemention of Chat Room visualization: a tab in the debug console with the map
+and GPS spoofer, with visual circles for chatrooms that exist - and make it so
+it sends update notifications when that user leaves and enters chatrooms. And
+double check the chat page if they swapped rooms.
+
+Persistent storage: Firebase persistent storage for online testing. Going to 
+wait on this since our demos are localhost offline testing for now. 
+
+Remove "Replies: 3" from the 
+"Bookmarks: 13
+Replies: 3
+Attending: 3 / 50" window
+
+No indicator that bookmark button actually works
+"" same for  reply button on pin details 
+
+reply ordering is weird - is it inverted with own user
+on top??? 
+
+-older sample accounts dont have firebase accounts
