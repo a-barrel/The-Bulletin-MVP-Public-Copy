@@ -7,6 +7,17 @@ import addIcon from "../assets/AddIcon.svg";
 import menuIcon from "../assets/MenuIcon.svg";
 import updatesIcon from "../assets/UpdateIcon.svg";
 import Feed from "../components/Feed";
+import PlaceIcon from '@mui/icons-material/Place'; // TODO: used only for Icon on pageConfig, maybe change with a list icon?
+
+export const pageConfig = {
+  id: 'list',      // id
+  label: 'List',   // Label (used in debug nav.)
+  icon: PlaceIcon, // TODO: maybe change with a list icon? Don't forget the import!
+  path: '/list',   // Path
+  order: 4,        // Where in debug nav it is ordered
+  showInNav: true, // Shows in Debug Navigator(?)
+  protected: true, // Checks if user is logged in
+};
 
 /* ---------- dummy feed (has `interested`) ---------- */
 const DUMMY_FEED = [
