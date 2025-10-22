@@ -45,3 +45,7 @@ reply ordering is weird - is it inverted with own user
 on top??? 
 
 -older sample accounts dont have firebase accounts
+
+-Route the + button on list page to pin creation
+
+-
