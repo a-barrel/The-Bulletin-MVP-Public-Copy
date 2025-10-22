@@ -1,11 +1,23 @@
 import React, { useState, useCallback, useMemo } from "react";
 import "./ListPage.css";
 import Navbar from "../components/Navbar";
+import SortToggle from "../components/SortToggle";
 import settingsIcon from "../assets/GearIcon.svg";
 import addIcon from "../assets/AddIcon.svg";
 import menuIcon from "../assets/MenuIcon.svg";
 import updatesIcon from "../assets/UpdateIcon.svg";
 import Feed from "../components/Feed";
+import PlaceIcon from '@mui/icons-material/Place'; // TODO: used only for Icon on pageConfig, maybe change with a list icon?
+
+export const pageConfig = {
+  id: 'list',      // id
+  label: 'List',   // Label (used in debug nav.)
+  icon: PlaceIcon, // TODO: maybe change with a list icon? Don't forget the import!
+  path: '/list',   // Path
+  order: 4,        // Where in debug nav it is ordered
+  showInNav: true, // Shows in Debug Navigator(?)
+  protected: true, // Checks if user is logged in
+};
 
 /* ---------- dummy feed (has `interested`) ---------- */
 const DUMMY_FEED = [
@@ -80,27 +92,30 @@ function hoursUntil(label = "") {
 
 export default function ListPage() {
   const [sortByExpiration, setSortByExpiration] = useState(false); // false = distance, true = expiration
-  const handleToggle = useCallback(() => setSortByExpiration(v => !v), []);
-  const onToggleKeyDown = useCallback((e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      setSortByExpiration(v => !v);
-    }
+  const handleSortToggle = useCallback(() => {
+    setSortByExpiration(prev => !prev);
   }, []);
 
-  const sortedFeed = useMemo(() => {
-    const items = [...DUMMY_FEED];
+  const filteredAndSortedFeed = useMemo(() => {
+    // Step 1: Filter out expired pins
+    const filteredItems = DUMMY_FEED.filter(pin => {
+      const hoursLeft = hoursUntil(pin.timeLabel);
+      return hoursLeft > 0; // Only show non-expired pins
+    });
+    
+    // Step 2: Sort the filtered items
     if (sortByExpiration) {
-      items.sort((a, b) => {
+      filteredItems.sort((a, b) => {
         const ha = hoursUntil(a.timeLabel);
         const hb = hoursUntil(b.timeLabel);
         if (ha !== hb) return ha - hb;
         return milesFrom(a.distance) - milesFrom(b.distance);
       });
     } else {
-      items.sort((a, b) => milesFrom(a.distance) - milesFrom(b.distance));
+      filteredItems.sort((a, b) => milesFrom(a.distance) - milesFrom(b.distance));
     }
-    return items;
+    
+    return filteredItems;
   }, [sortByExpiration]);
 
   return (
@@ -123,25 +138,12 @@ export default function ListPage() {
             <button className="icon-btn" type="button" aria-label="Settings">
               <img src={settingsIcon} alt="Settings" />
             </button>
-
-            <div
-              className={`toggle-container ${sortByExpiration ? "active" : ""}`}
-              role="switch"
-              aria-checked={sortByExpiration}
-              tabIndex={0}
-              onClick={handleToggle}
-              onKeyDown={onToggleKeyDown}
-              title="Toggle sort"
-            >
-              <div className="toggle-circle" />
-            </div>
-
-            <div className="sort-row">
-              <span className="sort-label">Sort by:</span>
-              <button className="sort-link" type="button" onClick={handleToggle}>
-                {sortByExpiration ? "Expiration" : "Distance"}
-              </button>
-            </div>
+            
+            {/* Sort Toggle */}
+            <SortToggle 
+              sortByExpiration={sortByExpiration} 
+              onToggle={handleSortToggle} 
+            />
           </div>
 
           <button className="add-btn" type="button" aria-label="Add">
@@ -150,7 +152,7 @@ export default function ListPage() {
         </div>
 
         {/* Feed (now a component) */}
-        <Feed items={sortedFeed} />
+        <Feed items={filteredAndSortedFeed} />
 
         <Navbar />
       </div>

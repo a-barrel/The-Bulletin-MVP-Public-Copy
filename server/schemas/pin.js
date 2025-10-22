@@ -39,7 +39,9 @@ const BasePinSchema = z.object({
   replyCount: z.number().int().nonnegative().default(0),
   createdAt: IsoDateStringSchema,
   updatedAt: IsoDateStringSchema,
-  audit: AuditMetadataSchema.optional()
+  audit: AuditMetadataSchema.optional(),
+  viewerIsAttending: z.boolean().optional(),
+  viewerHasBookmarked: z.boolean().optional()
 });
 
 const EventAddressComponentsSchema = z
