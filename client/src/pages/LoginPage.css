@@ -1,48 +1,78 @@
-/* Outer background */
-.login-page {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #111;
+/* This imports the 'Urbanist' font and applies it globally to all text */
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap');
+
+body, input, button, textarea, p, h1, small, span, label, select, input::placeholder {
+  font-family: 'Urbanist', sans-serif;
+}
+
+/* Page background */
+.page-background {
   width: 100vw;
-  height: 100vh;
-  padding: 1rem;
+  min-height: 100vh;
+  background: white;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
   box-sizing: border-box;
 }
 
-/* Phone-like frame */
-.login-frame {
-  width: 100%;
-  max-width: 400px;
-  height: 90vh;
-  background: white;
-  border-radius: 40px;
-  box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
-  text-align: center;
-  padding: 2rem;
+/* To encapsulate page title and anything in the top nav bar. 
+   Keeps things next to each other.
+   Currently only tested with back arrow. */
+.page-header {
+  position: sticky;
+  background: rgba(255, 255, 255, 0); 
+  z-index: 0;
+  padding: 0.75rem 0;
+  width: 100vw;
+  height: 10vh;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  overflow-y: auto;
 }
 
 /* Title */
-.login-title {
+.page-title {
   color: black;
   font-weight: 300;
   font-size: 2rem;
-  margin-top: 1.5rem;
+  margin-top: 0rem;
+}
+
+/* Smaller Title for sub-menus */
+.page-sub-title {
+  color: black;
+  font-weight: 300;
+  font-size: 1.5rem;
+  letter-spacing: 0.3px;
+  text-align: center;
   margin-bottom: 1rem;
+}
+
+/* back arrow */
+.page-back-btn {
+  position: absolute;
+  left: 0rem;
+  background: none;
+  border: none;
+  color: #111;
+  font-size: 2rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: transform 0.15s ease, color 0.2s ease;
 }
 
 /* Image placeholder */
 .bulletin-image {
-  width: 85%;
-  height: 50%;
-  max-width: 260px;
-  max-height: 150px;
+  width: 50vw;
+  height: 20vh;
   border: 3px solid black;
   border-radius: 10px;
+  margin-top: -1rem;
   margin-bottom: 1.5rem;
   display: flex;
   align-items: center;
@@ -51,8 +81,8 @@
 }
 
 /* Form layout */
-.login-form {
-  display: flex;
+.page-form {
+  display: flex;  
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
@@ -60,9 +90,14 @@
 }
 
 /* For the textbox inputs*/
-.login-form input {
-  width: 100%;
-  max-width: 350px;
+.input-container {
+  width: 85vw;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.input-container input {
   padding: 10px 12px;
   border: 1.5px solid #888;
   border-radius: 6px;
@@ -70,90 +105,106 @@
   color: black;
   font-size: 1.2rem;
   transition: 0.2s;
+  margin-bottom: 1.2rem;
 }
 
-.login-form input:focus {
+.input-container input:focus {
   border-color: #75d2fd;
   outline: none;
 }
 
-/* The 'Enter Email' and 'Enter Password' */
-.login-form input::placeholder {
+.input-container input::placeholder {
   color: #c0c0c0;
 }
 
-.email-input-container,
-.password-input-container {
-  width: 100%;
-  position: relative;
-  display: flex;
-}
-
-.email-input-container input,
-.password-input-container input {
-  width: 100%;
-  padding-right: 2.5rem;
-}
-
-.toggle-password-btn {
+/* The text under the input box when there is an input error */
+.input-error-text {
   position: absolute;
-  right: 10px;
-  top: 55%;
-  transform: translateY(-50%);
+  margin-top: 3rem;
+  color: red;
+  text-align: left;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: opacity 0.3s ease;
+  margin-left: 0.5rem;
+}
+
+/* The color border of the input box when there is an input error */
+.input-container .input-error {
+  border-color: red; 
+}
+
+/* For the show password toggle */
+.show-password-btn {
+  position: absolute;
+  right: 0.7rem;
+  top: 0.5rem;
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   color: #555;
   transition: color 0.2s;
   padding: 0.1rem;
 }
 
-.toggle-password-btn:hover {
+.show-password-btn:hover {
   color: #000;
 }
 
-/* CSS for 'Remember me' and 'Forgot password' */
+/* 'Remember me' checkbox and 'Forgot password' text */
 .additional-options {
   display: flex;
   justify-content: space-between;
-  width: 100%;
-  margin-top: 0.1rem;
-  margin-bottom: 0.5rem;
-  font-size: 0.95rem;
-}
-
-.additional-options .remember-me-checkbox {
-  display: flex;
-  gap: 0.2rem;
-  color: #111;
+  width: 85vw;
   font-size: 1rem;
-  white-space: nowrap;
+  margin-top: -0.1rem;
+  margin-bottom: 0.8rem;
 }
 
-.additional-options .forgot-password-link {
+.checkbox-container {
+  display: flex;
+  align-items: center;
+}
+
+.remember-me-checkbox {
+  display: flex;
+  align-items: center;
+  color: #111;
+  white-space: nowrap;
+  gap: 0.3rem;
+}
+
+input[type="checkbox"] {
+  transform: scale(1.2);
+  accent-color: #9B5DE5;
+  cursor: pointer;
+}
+
+.forgot-password-link {
   cursor: pointer;
   margin-left: 0.9rem;
   font-size: 1rem;
   white-space: nowrap;
 }
 
-.additional-options .forgot-password-clickable {
+.forgot-password-clickable {
   color: #2b8eff;
   text-decoration: none;
 }
 
-.additional-options .forgot-password-clickable:hover {
+.forgot-password-clickable:hover {
   text-decoration: underline;
 }
 
-/* File-wide Button Styles */
-.login-btn,
-.google-btn,
-.register-btn {
-  width: 100%;
-  max-width: 300px;
-  min-height: 45px;
+/* Button Styles */
+.login-page-login-btn,
+.login-page-google-sign-in-btn,
+.login-page-register-btn,
+.forgot-password-page-submit-email-btn,
+.reset-password-page-submit-btn,
+.register-submit {
+  width: 65vw;
   border-radius: 25px;
   font-size: 1.1rem;
   font-weight: 500;
@@ -165,16 +216,16 @@
 }
 
 /* Login button */
-.login-btn {
+.login-page-login-btn {
   background-color: #F15BB5;
 }
 
-.login-btn:hover {
-  background-color: #f3b8d7;
+.login-page-login-btn:hover {
+  background-color: #faa3d1;
 }
 
 /* Google sign-in */
-.google-btn {
+.login-page-google-sign-in-btn {
   display: flex;
   justify-content: center;
   gap: 10px;
@@ -182,8 +233,8 @@
   background-color: #c5ecff;
 }
 
-.google-btn:hover {
-  background-color: #357ae8;
+.login-page-google-sign-in-btn:hover {
+  background-color: #8fb6f3;
 }
 
 .google-icon{
@@ -193,44 +244,21 @@
 
 /* "Getting Started" & Register Button*/
 .getting-started-text {
-  margin-top: 3rem;
+  margin-top: 2rem;
+  margin-bottom: -0.5rem;
   color: #666;
   font-size: 1.1rem;
 }
 
-.register-btn {
+.login-page-register-btn {
   background-color: #CDAEF2;
 }
 
-.register-btn:hover {
-  background-color: #9a7fff;
+.login-page-register-btn:hover {
+  background-color: #ad98f8;
 }
 
-/* Error message */
-.error-msg {
-  color: #d32f2f; 
-  background-color: #ffeaea;
-  border: 1px solid #f5c2c2;
-  border-radius: 6px;
-  padding: 8px 12px;
-  margin-top: 0.75rem;
-  font-size: 0.9rem;
-  width: 80%;
-  text-align: center;
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-5px); }
-  40%, 80% { transform: translateX(5px); }
-}
-
-.shake {
-  animation: shake 0.3s;
-}
-
-
-* Error overlay */
+/* Error Pop-up for authentication errors */
 .error-overlay {
   position: fixed; /* stays on top of everything */
   top: 0;
@@ -257,6 +285,7 @@
   animation: popIn 0.25s ease-in-out;
 }
 
+/* Text in the pop up */
 .error-box p {
   color: #d32f2f;
   font-size: 1rem;
@@ -264,7 +293,43 @@
   font-weight: 500;
 }
 
-/* Subtle entry animations */
+/* Message popup overlay */
+.message-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.25s ease;
+}
+
+/* The actual popup box */
+.message-box {
+  background: white;
+  width: 85vw;
+  border-radius: 18px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  text-align: center;
+  animation: slideUp 0.3s ease;
+}
+
+/* Message text */
+.message-box p {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #222;
+  line-height: 1.4;
+  white-space: pre-line;
+}
+
+/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -273,4 +338,49 @@
 @keyframes popIn {
   from { transform: scale(0.9); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-5px); }
+  40%, 80% { transform: translateX(5px); }
+}
+
+.shake {
+  animation: shake 0.3s;
+}
+
+/* Form Factor changes */
+/* Tablets */
+@media (max-width: 768px) {
+  .phone-frame {
+    width: 95%;
+    height: 90vh;
+    border-radius: 30px;
+  }
+
+  .login-title {
+    font-size: 1.8rem;
+  }
+}
+
+/* Phones */
+@media (max-width: 480px) {
+  .phone-frame {
+    width: 100%;
+    height: 100vh;
+    border-radius: 0; /* fills the screen edge-to-edge */
+    box-shadow: none; /* remove outer shadow for smaller devices */
+  }
+
+  .login-form input {
+    width: 90%;
+  }
+
+  .login-btn,
+  .google-btn,
+  .register-btn {
+    width: 90%;
+    padding: 10px;
+  }
 }
