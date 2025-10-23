@@ -41,7 +41,7 @@ Attending: 3 / 50" window
 - No indicator that bookmark button actually works
 - "" same for  reply button on pin details 
 
-- **[Done 2025-10-22] Fix reply ordering:** Replies now sort by creation timestamp (newest first) in the pins API and both Pin Details UIs, so timelines no longer shuffle based on author data. Added client-side defensive sorting to keep things stable even if upstream ordering changes.
+- **[Done 2025-10-22] Fix reply ordering:** Replies now sort by creation timestamp (newest first) in the pins API and both Pin Details UIs, so timelines no longer shuffle based on author data. Added client-side defensive sorting (with updatedAt/ObjectId fallbacks and future-date guards) to keep things stable even if upstream ordering changes or legacy replies use seeded timestamps.
 - **Reply follow-ups:** consider threading UI once parent reply support lands, and surface relative timestamps.
 
 - **[Done 2025-10-22] Backfill Firebase accounts for legacy samples:** added provisioning to `server/scripts/sync-firebase-users.js` so any Mongo users without a Firebase auth record get an emulator account (with default password support and dry-run mode). Linking now runs before the usual Firebase-to-Mongo sync, so older fixtures authenticate like the newer ones.
