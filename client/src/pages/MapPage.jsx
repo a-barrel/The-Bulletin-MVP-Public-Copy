@@ -73,44 +73,30 @@ function MapPage() {
   const [error, setError] = useState(null);
   const lastSharedLocationRef = useRef(null);
 
-  useEffect(() => {
-    if ('geolocation' in navigator) {
+  const requestBrowserLocation = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      if (!('geolocation' in navigator)) {
+        reject(new Error('Geolocation is not supported in this browser.'));
+        return;
+      }
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const { latitude, longitude } = position.coords;
-          setUserLocation((prev) => {
-            if (
-              prev &&
-              Math.abs(prev.latitude - latitude) < 1e-9 &&
-              Math.abs(prev.longitude - longitude) < 1e-9
-            ) {
-              return prev;
-            }
-            return { latitude, longitude };
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
           });
-          setIsUsingFallbackLocation(false);
-          setError(null);
         },
-        (err) => {
-          console.error('Error getting location:', err);
-          setIsUsingFallbackLocation(true);
-          setUserLocation(FALLBACK_LOCATION);
-          if (err?.code === 1) {
-            setError('Using default campus location. Enable location permissions for precise results.');
-          } else if (err?.code === 2) {
-            setError('Device location unavailable. Showing default Long Beach area.');
-          } else if (err?.code === 3) {
-            setError('Timed out retrieving device location. Showing default Long Beach area.');
-          } else {
-            setError('We could not access your location. Using default Long Beach coordinates.');
-          }
+        (error) => {
+          reject(error);
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 10_000
         }
       );
-    } else {
-      setIsUsingFallbackLocation(true);
-      setUserLocation(FALLBACK_LOCATION);
-      setError('Geolocation is not supported in this browser. Showing default Long Beach area.');
-    }
+    });
   }, []);
 
   const refreshPins = useCallback(
@@ -144,14 +130,14 @@ function MapPage() {
     [userLocation, fetchPinsNearby]
   );
 
-  const refreshNearby = useCallback(async () => {
-    if (!hasValidCoordinates(userLocation)) return;
+  const refreshNearby = useCallback(async (location = userLocation) => {
+    if (!hasValidCoordinates(location)) return;
 
     setIsLoadingNearby(true);
     try {
       const results = await fetchNearbyUsers({
-        longitude: userLocation.longitude,
-        latitude: userLocation.latitude,
+        longitude: location.longitude,
+        latitude: location.latitude,
         maxDistance: DEFAULT_MAX_DISTANCE_METERS
       });
       setNearbyUsers(results);
@@ -185,8 +171,37 @@ function MapPage() {
   }, [insertLocationUpdate]);
 
   const handleStartSharing = useCallback(async () => {
-    if (!hasValidCoordinates(userLocation)) {
-      setError('Set your location before enabling sharing.');
+    let locationToShare = userLocation;
+
+    try {
+      const resolvedLocation = await requestBrowserLocation();
+      locationToShare = resolvedLocation;
+      setUserLocation((prev) => {
+        if (
+          prev &&
+          Math.abs(prev.latitude - resolvedLocation.latitude) < 1e-9 &&
+          Math.abs(prev.longitude - resolvedLocation.longitude) < 1e-9
+        ) {
+          return prev;
+        }
+        return resolvedLocation;
+      });
+      setIsUsingFallbackLocation(false);
+      setError(null);
+    } catch (geoError) {
+      console.error('Error getting browser location:', geoError);
+      if (geoError?.code === 1) {
+        setError('Location permission denied. Enable location access to share.');
+      } else if (geoError?.code === 2) {
+        setError('Device location unavailable. Check your GPS or network settings.');
+      } else if (geoError?.code === 3) {
+        setError('Timed out retrieving device location. Try again.');
+      } else {
+        setError(
+          geoError?.message || 'We could not access your location. Using default Long Beach coordinates.'
+        );
+      }
+      setIsSharing(false);
       return;
     }
 
@@ -195,16 +210,16 @@ function MapPage() {
     );
     setIsSharing(true);
     try {
-      await pushLocationUpdate(userLocation);
-      lastSharedLocationRef.current = userLocation;
-      await refreshNearby();
+      await pushLocationUpdate(locationToShare);
+      lastSharedLocationRef.current = locationToShare;
+      await refreshNearby(locationToShare);
     } catch (err) {
       console.error('Error sharing location:', err);
       setError(err.message || 'Failed to share your location.');
       lastSharedLocationRef.current = null;
       setIsSharing(false);
     }
-  }, [userLocation, pushLocationUpdate, refreshNearby]);
+  }, [userLocation, requestBrowserLocation, pushLocationUpdate, refreshNearby]);
 
   const shareDisabled = !hasValidCoordinates(userLocation);
   const shareHelperText = isUsingFallbackLocation

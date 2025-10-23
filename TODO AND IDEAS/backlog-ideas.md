@@ -54,4 +54,50 @@ Attending: 3 / 50" window
 - **[Done 2025-10-22] Route list + button to pin creation:** wired the List screen CTA to navigate to `/create-pin`, so the quick action now opens the pin composer instead of doing nothing.
 - **List follow-ups:** consider guarding with auth state and showing a tooltip/disabled state when offline data is unavailable.
 
--
+- **Pins outside Interaction Radius:** 
+"On the prompt for the Pin ID when navigating
+to the Pin Details page (v1 and v2),
+add a tooltip mention of how typing 'far'
+will fetch a pin that's far away to test
+locking users out of interacting with a pin 
+in a similar fashion to how expired pins 
+lock a user out of interacting with it with 
+a overlay explaining why they cant interact with the pin with a button going back to the List Page. 
+And add functionality for fetching a pin outside
+the users interaction radius so it can actually
+fetch a pin that's too far away."
+
+
+
+- **Goals for 10/23/2025:** 
+
+**Done** -Make tabs start a new row in debug_console
+instead of endlessly scrolling left and right.
+
+In uploads/images, create a /badge/ folder
+with some tiny image badges, 
+and create basic ones that show on profile: 
+
+0. Hacker (access debug_console)
+1. Chat for first time.(you did it)
+3. Create a Pin
+4. Bookmark a Pin 
+5. Attend an Event
+6. Kirby (Ctrl+` unlocks this)
+
+Create a tab for Badges in debug,
+where you can add/remove these badges,
+and a "reset all badges" option. 
+
+**A tiny popup overlay in bottom right that fades showing
+you earned Badge [x]!!! Yippeee confetti. 
+
+-Block user interacting with Pins outside
+interaction radius just like expired pin functionality.
+
+-Export Bookmarks as CSV, I guess add that 
+to the debug console and actual bookmark page
+as a tiny button at the bottom. 
+
+
+

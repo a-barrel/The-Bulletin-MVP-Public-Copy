@@ -1147,8 +1147,7 @@ const handleSubmit = async (event) => {
           textColor="primary"
           indicatorColor="primary"
           orientation={isCompactTabs ? 'vertical' : 'horizontal'}
-          variant={isCompactTabs ? 'standard' : 'scrollable'}
-          allowScrollButtonsMobile={!isCompactTabs}
+          variant="standard"
           sx={{
             width: '100%',
             ...(isCompactTabs
@@ -1165,13 +1164,23 @@ const handleSubmit = async (event) => {
                     textAlign: 'left',
                     minWidth: 'auto'
                   },
+                  '& .MuiTabs-flexContainer': {
+                    flexWrap: 'nowrap'
+                  },
                   '& .MuiTabs-indicator': {
                     left: 0
                   }
                 }
               : {
+                  '& .MuiTabs-flexContainer': {
+                    flexWrap: 'wrap',
+                    columnGap: 1,
+                    rowGap: 1,
+                    justifyContent: 'flex-start'
+                  },
                   '& .MuiTab-root': {
-                    minWidth: 'auto'
+                    minWidth: 'auto',
+                    flex: '0 0 auto'
                   }
                 })
           }}
