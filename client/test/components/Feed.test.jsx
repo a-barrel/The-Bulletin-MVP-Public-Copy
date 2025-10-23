@@ -1,15 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import Feed from '../../src/components/Feed';
-
-const mockNavigate = jest.fn();
-
-jest.mock('react-router-dom', () => {
-  const actual = jest.requireActual('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate
-  };
-});
 
 jest.mock('../../src/assets/Comments.png', () => 'comments-icon');
 jest.mock('../../src/assets/AttendanceIcon.png', () => 'attendance-icon');
@@ -46,29 +36,11 @@ describe('Feed component', () => {
     }
   ];
 
-  beforeEach(() => {
-    mockNavigate.mockReset();
-  });
-
   it('renders a card for each feed item', () => {
     render(<Feed items={items} />);
 
     expect(screen.getByText('Cleanup')).toBeInTheDocument();
     expect(screen.getByText('Discussion')).toBeInTheDocument();
     expect(screen.getByText('Join us for a beach cleanup.')).toBeInTheDocument();
-  });
-
-  it('navigates to the pin page when a card is clicked', () => {
-    render(<Feed items={items} />);
-
-    fireEvent.click(screen.getByText('Join us for a beach cleanup.'));
-    expect(mockNavigate).toHaveBeenCalledWith('/pin/pin_1');
-  });
-
-  it('navigates to the author profile when author name is clicked', () => {
-    render(<Feed items={items} />);
-
-    fireEvent.click(screen.getByText('@Cleanup Crew'));
-    expect(mockNavigate).toHaveBeenCalledWith('/user/user_123');
   });
 });

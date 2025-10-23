@@ -32,8 +32,9 @@ double check the chat page if they swapped rooms.
 
 Persistent storage: Firebase persistent storage for online testing. Going to 
 wait on this since our demos are localhost offline testing for now. 
+- Firebase Storage groundwork: enable Storage in Firebase, provision per-env buckets with CORS, extend runtime config for bucket names/credentials, sketch security rules for user/pin paths, and decide on direct-upload vs server-proxy flow (plus metadata/backfill plan).
 
-Remove "Replies: 3" from the 
+- **[Done 2025-10-22]** Remove "Replies: 3" from the 
 "Bookmarks: 13
 Replies: 3
 Attending: 3 / 50" window
@@ -43,6 +44,9 @@ Attending: 3 / 50" window
 
 - **[Done 2025-10-22] Fix reply ordering:** Replies now sort by creation timestamp (newest first) in the pins API and both Pin Details UIs, so timelines no longer shuffle based on author data. Added client-side defensive sorting (with updatedAt/ObjectId fallbacks and future-date guards) to keep things stable even if upstream ordering changes or legacy replies use seeded timestamps.
 - **Reply follow-ups:** consider threading UI once parent reply support lands, and surface relative timestamps.
+
+- **[Done 2025-10-22] Add Jest coverage baseline:** Added feed/render checks, updates context assertions, and service-level suites (fan-out + Firebase sync) with a multi-project Jest config so future tests drop in cleanly. Deferred full page navigation specs until we settle on a router harness.
+- **Testing follow-ups:** layer Supertest routes for pins/updates, cover bookmark flows end-to-end, revisit Pin Details/List routing tests with a stable router harness, and wire CI to run the new suites.
 
 - **[Done 2025-10-22] Backfill Firebase accounts for legacy samples:** added provisioning to `server/scripts/sync-firebase-users.js` so any Mongo users without a Firebase auth record get an emulator account (with default password support and dry-run mode). Linking now runs before the usual Firebase-to-Mongo sync, so older fixtures authenticate like the newer ones.
 - **Firebase follow-ups:** document the generated passwords and consider per-environment secrets before pointing at production auth.
