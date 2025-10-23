@@ -62,6 +62,15 @@ module.exports = {
       }
     },
     {
+      files: ['**/*.test.{js,jsx}'],
+      env: {
+        jest: true
+      },
+      rules: {
+        'no-undef': 'off'
+      }
+    },
+    {
       files: ['server/**/*.js'],
       env: {
         node: true,

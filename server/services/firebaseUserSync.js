@@ -6,6 +6,7 @@ const runtime = require('../config/runtime');
 
 const USERNAME_MAX_LENGTH = 32;
 const DEFAULT_USERNAME_PREFIX = 'user';
+const DEFAULT_SAMPLE_PASSWORD = 'Pinpoint123!';
 
 const PROFILE_IMAGE_COUNT =
   Number.parseInt(process.env.PINPOINT_PROFILE_IMAGE_COUNT ?? '12', 10) || 12;
@@ -84,6 +85,18 @@ const normalizeEmail = (email) => {
     return undefined;
   }
   return email.trim().toLowerCase();
+};
+const toIdString = (value) => {
+  if (!value) {
+    return '';
+  }
+  if (value instanceof mongoose.Types.ObjectId) {
+    return value.toHexString();
+  }
+  if (typeof value === 'object' && value._id) {
+    return toIdString(value._id);
+  }
+  return String(value);
 };
 
 const extractProfileData = (profile = {}) => {
@@ -250,6 +263,224 @@ async function ensureUserForFirebaseAccount(decodedToken) {
   return user;
 }
 
+const resolveDefaultSamplePassword = () =>
+  (process.env.PINPOINT_SAMPLE_ACCOUNT_PASSWORD &&
+  process.env.PINPOINT_SAMPLE_ACCOUNT_PASSWORD.trim().length >= 6
+    ? process.env.PINPOINT_SAMPLE_ACCOUNT_PASSWORD.trim()
+    : DEFAULT_SAMPLE_PASSWORD);
+
+const buildFallbackEmailForUser = (user) => {
+  const idText = toIdString(user?._id) || sanitizeUsername(user?.username || user?.displayName || 'user');
+  return `user-${idText}@pinpoint.local`;
+};
+
+async function ensureFirebaseAccountForUserDocument(user, { dryRun = false, defaultPassword } = {}) {
+  if (!user) {
+    return { status: 'skipped', reason: 'missing-user' };
+  }
+
+  const summary = {
+    status: 'skipped',
+    userId: toIdString(user._id),
+    username: user.username,
+    email: null,
+    firebaseUid: user.firebaseUid || null,
+    createdAuthUser: false,
+    updatedAuthUser: false,
+    mongoUpdated: false,
+    warnings: []
+  };
+
+  const hadFirebaseUid = Boolean(user.firebaseUid);
+
+  let authUser = null;
+  let targetEmail = normalizeEmail(user.email) || buildFallbackEmailForUser(user);
+  summary.email = targetEmail;
+
+  try {
+    if (user.firebaseUid) {
+      authUser = await admin.auth().getUser(user.firebaseUid);
+    }
+  } catch (error) {
+    if (error && error.code === 'auth/user-not-found') {
+      summary.warnings.push({
+        type: 'missing-firebase-user',
+        message: `Firebase user ${user.firebaseUid} not found. Recreating.`,
+        firebaseUid: user.firebaseUid
+      });
+      authUser = null;
+    } else {
+      throw error;
+    }
+  }
+
+  if (!authUser && targetEmail) {
+    try {
+      authUser = await admin.auth().getUserByEmail(targetEmail);
+    } catch (error) {
+      if (!error || error.code !== 'auth/user-not-found') {
+        throw error;
+      }
+    }
+  }
+
+  const displayName =
+    (user.displayName && user.displayName.trim()) ||
+    (user.username && user.username.trim()) ||
+    (targetEmail && targetEmail.split('@')[0]) ||
+    'Pinpoint User';
+
+  const accountDisabled = Boolean(user.accountStatus && user.accountStatus !== 'active');
+  const password = defaultPassword || resolveDefaultSamplePassword();
+
+  if (!authUser) {
+    if (dryRun) {
+      summary.status = 'would-create';
+      return summary;
+    }
+
+    authUser = await admin.auth().createUser({
+      email: targetEmail,
+      password,
+      displayName,
+      emailVerified: Boolean(targetEmail),
+      disabled: accountDisabled
+    });
+    summary.createdAuthUser = true;
+
+    if (shouldAssignFirebasePhotos) {
+      const targetPhotoUrl = resolveProfilePhotoUrl(authUser.uid);
+      if (targetPhotoUrl && authUser.photoURL !== targetPhotoUrl) {
+        await admin.auth().updateUser(authUser.uid, { photoURL: targetPhotoUrl });
+        summary.updatedAuthUser = true;
+      }
+    }
+  } else {
+    const updatePayload = {};
+
+    if (targetEmail && authUser.email !== targetEmail) {
+      updatePayload.email = targetEmail;
+      updatePayload.emailVerified = true;
+    } else if (targetEmail && !authUser.emailVerified) {
+      updatePayload.emailVerified = true;
+    }
+
+    if (authUser.displayName !== displayName) {
+      updatePayload.displayName = displayName;
+    }
+
+    if (accountDisabled !== authUser.disabled) {
+      updatePayload.disabled = accountDisabled;
+    }
+
+    if (shouldAssignFirebasePhotos) {
+      const targetPhotoUrl = resolveProfilePhotoUrl(authUser.uid);
+      if (targetPhotoUrl && authUser.photoURL !== targetPhotoUrl) {
+        updatePayload.photoURL = targetPhotoUrl;
+      }
+    }
+
+    if (Object.keys(updatePayload).length > 0) {
+      if (!dryRun) {
+        await admin.auth().updateUser(authUser.uid, updatePayload);
+      }
+      summary.updatedAuthUser = true;
+    }
+  }
+
+  summary.firebaseUid = authUser.uid;
+
+  let mongoChanged = false;
+  if (!user.firebaseUid || user.firebaseUid !== authUser.uid) {
+    user.firebaseUid = authUser.uid;
+    mongoChanged = true;
+  }
+  if (!user.email && targetEmail) {
+    user.email = targetEmail;
+    mongoChanged = true;
+  }
+  if (!user.displayName && displayName) {
+    user.displayName = displayName;
+    mongoChanged = true;
+  }
+
+  if (mongoChanged) {
+    if (!dryRun) {
+      await user.save();
+    }
+    summary.mongoUpdated = true;
+  }
+
+  if (summary.createdAuthUser) {
+    summary.status = 'created';
+  } else if (!hadFirebaseUid && summary.mongoUpdated) {
+    summary.status = 'linked';
+  } else if (summary.updatedAuthUser || summary.mongoUpdated) {
+    summary.status = 'updated';
+  } else {
+    summary.status = 'unchanged';
+  }
+
+  return summary;
+}
+
+async function provisionFirebaseAccountsForAllUsers({ dryRun = false, defaultPassword } = {}) {
+  const summary = {
+    processed: 0,
+    created: 0,
+    linked: 0,
+    updated: 0,
+    unchanged: 0,
+    wouldCreate: 0,
+    skipped: 0,
+    errors: [],
+    warnings: []
+  };
+
+  const cursor = User.find().cursor();
+
+  // eslint-disable-next-line no-restricted-syntax
+  for await (const user of cursor) {
+    summary.processed += 1;
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const result = await ensureFirebaseAccountForUserDocument(user, { dryRun, defaultPassword });
+      summary.warnings.push(...(result.warnings || []));
+
+      switch (result.status) {
+        case 'created':
+          summary.created += 1;
+          break;
+        case 'linked':
+          summary.linked += 1;
+          break;
+        case 'updated':
+          summary.updated += 1;
+          break;
+        case 'unchanged':
+          summary.unchanged += 1;
+          break;
+        case 'would-create':
+          summary.wouldCreate += 1;
+          break;
+        case 'skipped':
+          summary.skipped += 1;
+          break;
+        default:
+          break;
+      }
+    } catch (error) {
+      summary.errors.push({
+        userId: toIdString(user._id),
+        username: user.username,
+        message: error?.message || 'Failed to ensure Firebase account for user'
+      });
+    }
+  }
+
+  return summary;
+}
+
 function loadUsersFromExport(exportPath) {
   if (!exportPath) {
     throw new Error('No fallback export path provided');
@@ -408,5 +639,7 @@ async function syncAllFirebaseUsers({ dryRun = false, fallbackExportPath } = {})
 module.exports = {
   ensureUserForFirebaseAccount,
   syncAllFirebaseUsers,
-  upsertUserFromAuthProfile
+  upsertUserFromAuthProfile,
+  ensureFirebaseAccountForUserDocument,
+  provisionFirebaseAccountsForAllUsers
 };

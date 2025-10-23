@@ -745,7 +745,7 @@ router.get('/:pinId/replies', verifyToken, async (req, res) => {
   try {
     const { pinId } = PinIdSchema.parse(req.params);
     const replies = await Reply.find({ pinId })
-      .sort({ createdAt: 1 })
+      .sort({ createdAt: -1, updatedAt: -1, _id: -1 })
       .populate('authorId');
 
     const payload = replies.map((reply) => mapReply(reply, mapUserToPublic(reply.authorId)));

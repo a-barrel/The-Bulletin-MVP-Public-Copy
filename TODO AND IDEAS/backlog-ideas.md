@@ -38,14 +38,16 @@ Remove "Replies: 3" from the
 Replies: 3
 Attending: 3 / 50" window
 
-No indicator that bookmark button actually works
-"" same for  reply button on pin details 
+- No indicator that bookmark button actually works
+- "" same for  reply button on pin details 
 
-reply ordering is weird - is it inverted with own user
-on top??? 
+- **[Done 2025-10-22] Fix reply ordering:** Replies now sort by creation timestamp (newest first) in the pins API and both Pin Details UIs, so timelines no longer shuffle based on author data. Added client-side defensive sorting (with updatedAt/ObjectId fallbacks and future-date guards) to keep things stable even if upstream ordering changes or legacy replies use seeded timestamps.
+- **Reply follow-ups:** consider threading UI once parent reply support lands, and surface relative timestamps.
 
--older sample accounts dont have firebase accounts
+- **[Done 2025-10-22] Backfill Firebase accounts for legacy samples:** added provisioning to `server/scripts/sync-firebase-users.js` so any Mongo users without a Firebase auth record get an emulator account (with default password support and dry-run mode). Linking now runs before the usual Firebase-to-Mongo sync, so older fixtures authenticate like the newer ones.
+- **Firebase follow-ups:** document the generated passwords and consider per-environment secrets before pointing at production auth.
 
--Route the + button on list page to pin creation
+- **[Done 2025-10-22] Route list + button to pin creation:** wired the List screen CTA to navigate to `/create-pin`, so the quick action now opens the pin composer instead of doing nothing.
+- **List follow-ups:** consider guarding with auth state and showing a tooltip/disabled state when offline data is unavailable.
 
 -

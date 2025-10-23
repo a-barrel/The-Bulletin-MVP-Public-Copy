@@ -136,6 +136,52 @@ const formatApproximateAddress = (approximateAddress) => {
   return parts.length > 0 ? parts.join(', ') : null;
 };
 
+const normaliseTimestamp = (value) => {
+  if (!value) {
+    return 0;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  const time = date.getTime();
+  return Number.isFinite(time) ? time : 0;
+};
+
+const FUTURE_SKEW_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+const safeTimestamp = (value) => {
+  const time = normaliseTimestamp(value);
+  if (!time) {
+    return 0;
+  }
+  if (time - Date.now() > FUTURE_SKEW_MS) {
+    return 0;
+  }
+  return time;
+};
+
+const objectIdTimestamp = (value) => {
+  if (typeof value !== 'string' || value.length < 8 || !/^[a-f\d]+$/i.test(value)) {
+    return 0;
+  }
+  const hex = value.slice(0, 8);
+  const asNumber = Number.parseInt(hex, 16);
+  return Number.isFinite(asNumber) ? asNumber * 1000 : 0;
+};
+
+const resolveReplySortValue = (reply) => {
+  const created = safeTimestamp(reply?.createdAt);
+  if (created) {
+    return created;
+  }
+  const updated = safeTimestamp(reply?.updatedAt);
+  if (updated) {
+    return updated;
+  }
+  return objectIdTimestamp(reply?._id);
+};
+
+const sortRepliesByDateDesc = (list) =>
+  [...list].sort((a, b) => resolveReplySortValue(b) - resolveReplySortValue(a));
+
 const parseCoordinates = (coordinates) => {
   if (!Array.isArray(coordinates) || coordinates.length < 2) {
     return null;
@@ -355,7 +401,7 @@ const pinExpired = useMemo(() => {
         if (ignore) {
           return;
         }
-        setReplies(Array.isArray(payload) ? payload : []);
+        setReplies(Array.isArray(payload) ? sortRepliesByDateDesc(payload) : []);
       } catch (error) {
         if (ignore) {
           return;
@@ -704,7 +750,7 @@ const pinExpired = useMemo(() => {
     try {
       const newReply = await createPinReply(pinId, { message: trimmedMessage });
 
-      setReplies((prev) => [...prev, newReply]);
+      setReplies((prev) => sortRepliesByDateDesc([...prev, newReply]));
       setReplyMessage('');
       setReplyComposerOpen(false);
       setPin((prev) => {
@@ -942,8 +988,6 @@ const pinExpired = useMemo(() => {
               />
               <span className='attendance-text'>
                 Bookmarks: {pin.bookmarkCount ?? 0}
-                <br />
-                Replies: {pin.replyCount ?? pin.stats?.replyCount ?? 0}
                 {isEventPin ? (
                   <>
                     <br />

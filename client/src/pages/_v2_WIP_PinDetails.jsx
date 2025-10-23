@@ -6,6 +6,13 @@ import LeafletMap from '../components/Map';
 import runtimeConfig from '../config/runtime';
 import { fetchPinById, fetchReplies } from '../api/mongoDataApi';
 
+const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
+const SAMPLE_PIN_IDS = [
+  '68e061721329566a22d474aa',
+  '68e061721329566a22d474ab',
+  '68e061721329566a22d474ac'
+];
+
 export const pageConfig = {
   id: 'pin-details-v2-wip',
   label: 'Pin Details v2 (WIP)',
@@ -13,13 +20,23 @@ export const pageConfig = {
   path: '/pin-v2/:pinId',
   order: 98,
   showInNav: true,
-  resolveNavTarget: () => {
-    const input = window.prompt('Enter a pin ID to view in Pin Details v2:');
-    if (typeof input !== 'string') {
-      return null;
+  resolveNavTarget: ({ currentPath } = {}) => {
+    const input = window.prompt(
+      'Enter a pin ID to view in Pin Details v2 (type "expired" to preview an expired pin, leave blank for a random sample, cancel to stay put):'
+    );
+    if (input === null) {
+      return currentPath ?? null;
     }
     const trimmed = input.trim();
-    return trimmed.length > 0 ? `/pin-v2/${trimmed}` : null;
+    if (trimmed.toLowerCase() === 'expired') {
+      return `/pin-v2/${EXPIRED_PIN_ID}`;
+    }
+    if (!trimmed) {
+      const randomId =
+        SAMPLE_PIN_IDS[Math.floor(Math.random() * SAMPLE_PIN_IDS.length)] ?? '68e061721329566a22d474aa';
+      return `/pin-v2/${randomId}`;
+    }
+    return `/pin-v2/${trimmed}`;
   }
 };
 
@@ -144,6 +161,52 @@ const combineStringList = (value) => {
   return value.filter(Boolean).join(', ');
 };
 
+const normaliseTimestamp = (value) => {
+  if (!value) {
+    return 0;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  const time = date.getTime();
+  return Number.isFinite(time) ? time : 0;
+};
+
+const FUTURE_SKEW_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+const safeTimestamp = (value) => {
+  const time = normaliseTimestamp(value);
+  if (!time) {
+    return 0;
+  }
+  if (time - Date.now() > FUTURE_SKEW_MS) {
+    return 0;
+  }
+  return time;
+};
+
+const objectIdTimestamp = (value) => {
+  if (typeof value !== 'string' || value.length < 8 || !/^[a-f\d]+$/i.test(value)) {
+    return 0;
+  }
+  const hex = value.slice(0, 8);
+  const asNumber = Number.parseInt(hex, 16);
+  return Number.isFinite(asNumber) ? asNumber * 1000 : 0;
+};
+
+const resolveReplySortValue = (reply) => {
+  const created = safeTimestamp(reply?.createdAt);
+  if (created) {
+    return created;
+  }
+  const updated = safeTimestamp(reply?.updatedAt);
+  if (updated) {
+    return updated;
+  }
+  return objectIdTimestamp(reply?._id);
+};
+
+const sortRepliesByDateDesc = (list) =>
+  [...list].sort((a, b) => resolveReplySortValue(b) - resolveReplySortValue(a));
+
 function PinDetailsV2WIP() {
   const { pinId } = useParams();
   const [pin, setPin] = useState(null);
@@ -210,7 +273,7 @@ function PinDetailsV2WIP() {
         if (!isMounted) {
           return;
         }
-        setReplies(Array.isArray(list) ? list : []);
+        setReplies(Array.isArray(list) ? sortRepliesByDateDesc(list) : []);
       } catch (err) {
         if (!isMounted || signal.aborted) {
           return;
@@ -311,14 +374,12 @@ function PinDetailsV2WIP() {
                 </p>
               </div>
               <div className='meta-block'>
-                <h3>Stats</h3>
-                <p>
-                  Bookmarks: {pin.bookmarkCount ?? 0}
-                  <br />
-                  Replies: {pin.replyCount ?? pin.stats?.replyCount ?? 0}
-                  {pin.type === 'event' ? (
-                    <>
-                      <br />
+                  <h3>Stats</h3>
+                  <p>
+                    Bookmarks: {pin.bookmarkCount ?? 0}
+                    {pin.type === 'event' ? (
+                      <>
+                        <br />
                       Attending: {pin.participantCount ?? 0}
                       {pin.participantLimit ? ` / ${pin.participantLimit}` : ''}
                     </>
