@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import "./ListPage.css";
 import Navbar from "../components/Navbar";
@@ -98,16 +98,19 @@ export default function ListPage() {
     setSortByExpiration((prev) => !prev);
   }, []);
   const handleNotifications = useCallback(() => {
-    navigate('/updates');
+    navigate("/updates");
+  }, [navigate]);
+  const handleCreatePin = useCallback(() => {
+    navigate("/create-pin");
   }, [navigate]);
 
   const filteredAndSortedFeed = useMemo(() => {
     // Step 1: Filter out expired pins
-    const filteredItems = DUMMY_FEED.filter(pin => {
+    const filteredItems = DUMMY_FEED.filter((pin) => {
       const hoursLeft = hoursUntil(pin.timeLabel);
       return hoursLeft > 0; // Only show non-expired pins
     });
-    
+
     // Step 2: Sort the filtered items
     if (sortByExpiration) {
       filteredItems.sort((a, b) => {
@@ -119,7 +122,7 @@ export default function ListPage() {
     } else {
       filteredItems.sort((a, b) => milesFrom(a.distance) - milesFrom(b.distance));
     }
-    
+
     return filteredItems;
   }, [sortByExpiration]);
 
@@ -148,15 +151,20 @@ export default function ListPage() {
             <button className="icon-btn" type="button" aria-label="Settings">
               <img src={settingsIcon} alt="Settings" />
             </button>
-            
+
             {/* Sort Toggle */}
-            <SortToggle 
-              sortByExpiration={sortByExpiration} 
-              onToggle={handleSortToggle} 
+            <SortToggle
+              sortByExpiration={sortByExpiration}
+              onToggle={handleSortToggle}
             />
           </div>
 
-          <button className="add-btn" type="button" aria-label="Add">
+          <button
+            className="add-btn"
+            type="button"
+            aria-label="Create pin"
+            onClick={handleCreatePin}
+          >
             <img src={addIcon} alt="Add" />
           </button>
         </div>

@@ -144,6 +144,18 @@ const combineStringList = (value) => {
   return value.filter(Boolean).join(', ');
 };
 
+const normaliseTimestamp = (value) => {
+  if (!value) {
+    return 0;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  const time = date.getTime();
+  return Number.isFinite(time) ? time : 0;
+};
+
+const sortRepliesByDateDesc = (list) =>
+  [...list].sort((a, b) => normaliseTimestamp(b?.createdAt) - normaliseTimestamp(a?.createdAt));
+
 function PinDetailsV2WIP() {
   const { pinId } = useParams();
   const [pin, setPin] = useState(null);
@@ -210,7 +222,7 @@ function PinDetailsV2WIP() {
         if (!isMounted) {
           return;
         }
-        setReplies(Array.isArray(list) ? list : []);
+        setReplies(Array.isArray(list) ? sortRepliesByDateDesc(list) : []);
       } catch (err) {
         if (!isMounted || signal.aborted) {
           return;

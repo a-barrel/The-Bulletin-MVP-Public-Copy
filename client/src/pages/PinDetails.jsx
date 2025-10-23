@@ -136,6 +136,18 @@ const formatApproximateAddress = (approximateAddress) => {
   return parts.length > 0 ? parts.join(', ') : null;
 };
 
+const normaliseTimestamp = (value) => {
+  if (!value) {
+    return 0;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  const time = date.getTime();
+  return Number.isFinite(time) ? time : 0;
+};
+
+const sortRepliesByDateDesc = (list) =>
+  [...list].sort((a, b) => normaliseTimestamp(b?.createdAt) - normaliseTimestamp(a?.createdAt));
+
 const parseCoordinates = (coordinates) => {
   if (!Array.isArray(coordinates) || coordinates.length < 2) {
     return null;
@@ -355,7 +367,7 @@ const pinExpired = useMemo(() => {
         if (ignore) {
           return;
         }
-        setReplies(Array.isArray(payload) ? payload : []);
+        setReplies(Array.isArray(payload) ? sortRepliesByDateDesc(payload) : []);
       } catch (error) {
         if (ignore) {
           return;
@@ -704,7 +716,7 @@ const pinExpired = useMemo(() => {
     try {
       const newReply = await createPinReply(pinId, { message: trimmedMessage });
 
-      setReplies((prev) => [...prev, newReply]);
+      setReplies((prev) => sortRepliesByDateDesc([...prev, newReply]));
       setReplyMessage('');
       setReplyComposerOpen(false);
       setPin((prev) => {

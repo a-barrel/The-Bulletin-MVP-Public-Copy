@@ -6,7 +6,10 @@ const admin = require('firebase-admin');
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const runtime = require('../config/runtime');
-const { syncAllFirebaseUsers } = require('../services/firebaseUserSync');
+const {
+  syncAllFirebaseUsers,
+  provisionFirebaseAccountsForAllUsers
+} = require('../services/firebaseUserSync');
 
 async function initializeFirebaseAdmin() {
   if (admin.apps.length > 0) {
@@ -42,6 +45,33 @@ async function main() {
   console.log(`Connected to MongoDB at ${runtime.mongoUri}`);
 
   try {
+    const args = new Set(process.argv.slice(2));
+    const dryRun = args.has('--dry-run');
+    const defaultPassword = process.env.PINPOINT_SAMPLE_ACCOUNT_PASSWORD;
+
+    if (dryRun) {
+      console.log('Running Firebase user provisioning in dry-run mode.');
+    }
+
+    const provisionSummary = await provisionFirebaseAccountsForAllUsers({
+      dryRun,
+      defaultPassword
+    });
+    console.log(
+      `Firebase account provisioning complete (processed: ${provisionSummary.processed}, created: ${provisionSummary.created}, linked: ${provisionSummary.linked}, updated: ${provisionSummary.updated}, unchanged: ${provisionSummary.unchanged}, would-create: ${provisionSummary.wouldCreate}, skipped: ${provisionSummary.skipped})`
+    );
+    if (provisionSummary.errors.length > 0) {
+      console.warn('Errors provisioning Firebase accounts:', provisionSummary.errors);
+    }
+    if (provisionSummary.warnings.length > 0) {
+      console.warn('Warnings during Firebase account provisioning:', provisionSummary.warnings);
+    }
+
+    if (dryRun) {
+      console.log('Dry-run complete, skipping Firebase -> Mongo sync.');
+      return;
+    }
+
     const fallbackExportPath = path.join(__dirname, '..', '..', 'emulator-data', 'auth_export', 'accounts.json');
     const summary = await syncAllFirebaseUsers({
       fallbackExportPath: runtime.isOffline ? fallbackExportPath : undefined
