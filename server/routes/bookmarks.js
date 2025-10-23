@@ -24,6 +24,16 @@ const BookmarkQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(50)
 });
 
+const ExportQuerySchema = z.object({
+  userId: z
+    .string()
+    .trim()
+    .optional()
+    .refine((value) => !value || mongoose.Types.ObjectId.isValid(value), {
+      message: 'Invalid user id'
+    })
+});
+
 const CollectionQuerySchema = z.object({
   userId: z
     .string()
@@ -49,6 +59,23 @@ const toIsoDateString = (value) => {
   if (typeof value.toISOString === 'function') return value.toISOString();
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+};
+
+const escapeCsvValue = (value) => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const stringValue = String(value);
+  if (stringValue === '') {
+    return '';
+  }
+
+  if (/[",\r\n]/.test(stringValue)) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+
+  return stringValue;
 };
 
 const mapMediaAsset = (asset) => {
@@ -206,6 +233,76 @@ router.get('/', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Invalid bookmark query', issues: error.errors });
     }
     res.status(500).json({ message: 'Failed to load bookmarks' });
+  }
+});
+
+router.get('/export', verifyToken, async (req, res) => {
+  try {
+    const query = ExportQuerySchema.parse(req.query);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer && !query.userId) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const targetUserId = query.userId
+      ? new mongoose.Types.ObjectId(query.userId)
+      : viewer._id;
+
+    const bookmarks = await Bookmark.find({ userId: targetUserId })
+      .sort({ createdAt: -1 })
+      .populate({ path: 'pinId', populate: { path: 'creatorId' } });
+
+    const header = [
+      'Bookmark ID',
+      'Saved At',
+      'Pin ID',
+      'Pin Title',
+      'Pin Type',
+      'Pin Creator',
+      'Pin Creator ID',
+      'Notes',
+      'Reminder At',
+      'Collection ID'
+    ];
+
+    const rows = bookmarks.map((bookmark) => {
+      const pinPreview = mapPinToPreview(bookmark.pinId);
+      const creator = pinPreview?.creator;
+      const creatorName =
+        creator?.displayName || creator?.username || '';
+
+      return [
+        toIdString(bookmark._id),
+        bookmark.createdAt.toISOString(),
+        pinPreview?._id ?? '',
+        pinPreview?.title ?? '',
+        pinPreview?.type ?? '',
+        creatorName ?? '',
+        creator?._id ?? '',
+        bookmark.notes ?? '',
+        bookmark.reminderAt ? bookmark.reminderAt.toISOString() : '',
+        toIdString(bookmark.collectionId) ?? ''
+      ];
+    });
+
+    const csvLines = [
+      header.map(escapeCsvValue).join(','),
+      ...rows.map((row) => row.map(escapeCsvValue).join(','))
+    ].join('\r\n');
+
+    const safeTimestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const ownerId = query.userId || toIdString(viewer?._id) || 'bookmarks';
+    const filename = `bookmarks-${ownerId}-${safeTimestamp}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.status(200).send(`\ufeff${csvLines}`);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid bookmark export query', issues: error.errors });
+    }
+    console.error('Failed to export bookmarks:', error);
+    res.status(500).json({ message: 'Failed to export bookmarks' });
   }
 });
 

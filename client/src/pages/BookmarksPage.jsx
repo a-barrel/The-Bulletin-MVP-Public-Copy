@@ -21,6 +21,7 @@ import LaunchIcon from '@mui/icons-material/Launch';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { auth } from '../firebase';
 import {
+  exportBookmarks,
   fetchBookmarks,
   fetchBookmarkCollections,
   removeBookmark
@@ -76,6 +77,8 @@ function BookmarksPage() {
   const [error, setError] = useState(null);
   const [removalStatus, setRemovalStatus] = useState(null);
   const [removingPinId, setRemovingPinId] = useState(null);
+  const [exportStatus, setExportStatus] = useState(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const collectionsById = useMemo(() => {
     const map = new Map();
@@ -173,6 +176,42 @@ function BookmarksPage() {
     []
   );
 
+  const handleExport = useCallback(async () => {
+    if (!authUser) {
+      setExportStatus({ type: 'error', message: 'Sign in to export your bookmarks.' });
+      return;
+    }
+
+    setExportStatus(null);
+    setIsExporting(true);
+    try {
+      const { blob, filename } = await exportBookmarks();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = downloadUrl;
+      anchor.download = filename || 'bookmarks.csv';
+      document.body.appendChild(anchor);
+      anchor.click();
+      window.setTimeout(() => {
+        document.body.removeChild(anchor);
+        window.URL.revokeObjectURL(downloadUrl);
+      }, 0);
+
+      setExportStatus({
+        type: 'success',
+        message:
+          totalCount > 0
+            ? `Exported ${totalCount} bookmark${totalCount === 1 ? '' : 's'} to ${filename || 'bookmarks.csv'}.`
+            : `Export ready. ${filename || 'bookmarks.csv'} downloaded.`
+      });
+    } catch (err) {
+      console.error('Failed to export bookmarks:', err);
+      setExportStatus({ type: 'error', message: err?.message || 'Failed to export bookmarks.' });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [authUser, totalCount]);
+
   return (
     <Box
       sx={{
@@ -201,21 +240,42 @@ function BookmarksPage() {
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1.5}
           alignItems={{ xs: 'flex-start', sm: 'center' }}
+          justifyContent="space-between"
         >
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
             Quickly revisit saved pins. Bookmarks are grouped by collection and can be removed at any time.
           </Typography>
-          <Button
-            type="button"
-            variant="outlined"
-            size="small"
-            onClick={loadData}
-            disabled={isLoading || authLoading || !authUser}
+          <Stack
+            direction="row"
+            spacing={1}
             sx={{ alignSelf: { xs: 'flex-start', sm: 'flex-end' } }}
           >
-            {isLoading ? 'Loading...' : 'Refresh'}
-          </Button>
+            <Button
+              type="button"
+              variant="outlined"
+              size="small"
+              onClick={loadData}
+              disabled={isLoading || authLoading || !authUser}
+            >
+              {isLoading ? 'Loading...' : 'Refresh'}
+            </Button>
+            <Button
+              type="button"
+              variant="contained"
+              size="small"
+              onClick={handleExport}
+              disabled={isExporting || authLoading || !authUser}
+            >
+              {isExporting ? 'Exporting...' : 'Export CSV'}
+            </Button>
+          </Stack>
         </Stack>
+
+        {exportStatus ? (
+          <Alert severity={exportStatus.type} onClose={() => setExportStatus(null)}>
+            {exportStatus.message}
+          </Alert>
+        ) : null}
 
         {removalStatus ? (
           <Alert severity={removalStatus.type} onClose={() => setRemovalStatus(null)}>

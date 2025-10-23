@@ -49,6 +49,7 @@ import {
   fetchCurrentUserProfile,
   updateUserProfile,
   createBookmark,
+  exportBookmarks,
   fetchBookmarks,
   createBookmarkCollection,
   fetchBookmarkCollections,
@@ -3838,6 +3839,8 @@ function BookmarksTab() {
   const [bookmarksStatus, setBookmarksStatus] = useState(null);
   const [bookmarksResult, setBookmarksResult] = useState(null);
   const [isFetchingBookmarks, setIsFetchingBookmarks] = useState(false);
+  const [exportBookmarksStatus, setExportBookmarksStatus] = useState(null);
+  const [isExportingBookmarks, setIsExportingBookmarks] = useState(false);
 
   const [collectionsUserId, setCollectionsUserId] = useState('');
   const [collectionsStatus, setCollectionsStatus] = useState(null);
@@ -3931,6 +3934,7 @@ function BookmarksTab() {
   const handleFetchBookmarks = async (event) => {
     event.preventDefault();
     setBookmarksStatus(null);
+    setExportBookmarksStatus(null);
 
     const userId = bookmarksQuery.userId.trim();
     if (!userId) {
@@ -3959,6 +3963,40 @@ function BookmarksTab() {
       setBookmarksStatus({ type: 'error', message: error.message || 'Failed to load bookmarks.' });
     } finally {
       setIsFetchingBookmarks(false);
+    }
+  };
+
+  const handleExportBookmarksCsv = async () => {
+    setExportBookmarksStatus(null);
+    const userId = bookmarksQuery.userId.trim();
+    if (!userId) {
+      setExportBookmarksStatus({ type: 'error', message: 'User ID is required to export bookmarks.' });
+      return;
+    }
+
+    try {
+      setIsExportingBookmarks(true);
+      const { blob, filename } = await exportBookmarks({ userId });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = downloadUrl;
+      anchor.download = filename || `bookmarks-${userId}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      window.setTimeout(() => {
+        document.body.removeChild(anchor);
+        window.URL.revokeObjectURL(downloadUrl);
+      }, 0);
+
+      setExportBookmarksStatus({
+        type: 'success',
+        message: `Exported bookmarks for ${userId} to ${filename || 'bookmarks.csv'}.`
+      });
+    } catch (error) {
+      console.error('Failed to export bookmarks:', error);
+      setExportBookmarksStatus({ type: 'error', message: error?.message || 'Failed to export bookmarks.' });
+    } finally {
+      setIsExportingBookmarks(false);
     }
   };
 
@@ -4153,7 +4191,17 @@ function BookmarksTab() {
             {bookmarksStatus.message}
           </Alert>
         )}
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        {exportBookmarksStatus && (
+          <Alert severity={exportBookmarksStatus.type} onClose={() => setExportBookmarksStatus(null)}>
+            {exportBookmarksStatus.message}
+          </Alert>
+        )}
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          alignItems={{ xs: 'stretch', sm: 'flex-end' }}
+          sx={{ flexWrap: 'wrap' }}
+        >
           <TextField
             label="User ID"
             value={bookmarksQuery.userId}
@@ -4167,9 +4215,19 @@ function BookmarksTab() {
             onChange={(event) => setBookmarksQuery((prev) => ({ ...prev, limit: event.target.value }))}
             sx={{ width: { xs: '100%', sm: 120 } }}
           />
-          <Button type="submit" variant="outlined" disabled={isFetchingBookmarks}>
-            {isFetchingBookmarks ? 'Loading...' : 'Fetch'}
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button type="submit" variant="outlined" disabled={isFetchingBookmarks}>
+              {isFetchingBookmarks ? 'Loading...' : 'Fetch'}
+            </Button>
+            <Button
+              type="button"
+              variant="contained"
+              onClick={handleExportBookmarksCsv}
+              disabled={isExportingBookmarks || isFetchingBookmarks}
+            >
+              {isExportingBookmarks ? 'Exporting...' : 'Export CSV'}
+            </Button>
+          </Stack>
         </Stack>
         <JsonPreview data={bookmarksResult} />
       </Paper>

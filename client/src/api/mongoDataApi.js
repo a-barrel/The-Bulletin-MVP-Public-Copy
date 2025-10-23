@@ -43,6 +43,28 @@ async function buildHeaders(extra = {}, options = {}) {
   };
 }
 
+function parseFilenameFromContentDisposition(headerValue, fallback = 'bookmarks.csv') {
+  if (!headerValue) {
+    return fallback;
+  }
+
+  const match = headerValue.match(/filename\*?=(?:UTF-8'')?([^;]+)/i);
+  if (!match || !match[1]) {
+    return fallback;
+  }
+
+  let filename = match[1].trim();
+  if (filename.startsWith('"') && filename.endsWith('"')) {
+    filename = filename.slice(1, -1);
+  }
+
+  try {
+    return decodeURIComponent(filename);
+  } catch {
+    return filename || fallback;
+  }
+}
+
 export function isMongoDataApiConfigured() {
   if (!API_BASE_URL && runtimeConfig.isOnline) {
     console.warn(
@@ -549,6 +571,38 @@ export async function removeBookmark(pinId) {
   }
 
   return payload;
+}
+
+export async function exportBookmarks({ userId } = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const params = new URLSearchParams();
+  if (userId) {
+    params.set('userId', userId);
+  }
+
+  const query = params.toString();
+  const url = query ? `${baseUrl}/api/bookmarks/export?${query}` : `${baseUrl}/api/bookmarks/export`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: await buildHeaders({ Accept: 'text/csv' }, { skipJson: true })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    try {
+      const payload = errorText ? JSON.parse(errorText) : {};
+      throw new Error(payload?.message || 'Failed to export bookmarks');
+    } catch {
+      throw new Error(errorText || 'Failed to export bookmarks');
+    }
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get('Content-Disposition');
+  const filename = parseFilenameFromContentDisposition(disposition);
+
+  return { blob, filename };
 }
 
 export async function createBookmarkCollection(input) {
