@@ -46,10 +46,14 @@ app.use(express.json());
 
 const uploadsDir = path.join(__dirname, 'uploads');
 const imagesDir = path.join(uploadsDir, 'images');
+const soundsDir = path.join(uploadsDir, 'sounds');
 fs.mkdirSync(imagesDir, { recursive: true });
+fs.mkdirSync(soundsDir, { recursive: true });
 app.set('uploadsDir', uploadsDir);
 app.set('imagesDir', imagesDir);
+app.set('soundsDir', soundsDir);
 app.use('/images', express.static(imagesDir));
+app.use('/sounds', express.static(soundsDir));
 
 // MongoDB connection
 mongoose

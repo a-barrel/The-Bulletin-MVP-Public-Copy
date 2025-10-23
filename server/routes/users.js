@@ -6,6 +6,7 @@ const Pin = require('../models/Pin');
 const { PublicUserSchema, UserProfileSchema } = require('../schemas/user');
 const { PinListItemSchema } = require('../schemas/pin');
 const verifyToken = require('../middleware/verifyToken');
+const { grantBadge } = require('../services/badgeService');
 
 const router = express.Router();
 
@@ -439,6 +440,34 @@ router.patch('/me', verifyToken, async (req, res) => {
     }
     console.error('Failed to update user profile:', error);
     res.status(500).json({ message: 'Failed to update user profile' });
+  }
+});
+
+router.post('/me/badges/:badgeId', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { badgeId } = req.params;
+    const result = await grantBadge({
+      userId: viewer._id,
+      badgeId: badgeId.trim().toLowerCase(),
+      sourceUserId: viewer._id
+    });
+
+    res.json({
+      granted: result.granted,
+      badgeId: result.badge.id,
+      badges: result.badges
+    });
+  } catch (error) {
+    if (error.message && error.message.startsWith('Unknown badge')) {
+      return res.status(400).json({ message: error.message });
+    }
+    console.error('Failed to grant badge to current user:', error);
+    res.status(500).json({ message: 'Failed to grant badge' });
   }
 });
 

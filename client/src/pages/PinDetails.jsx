@@ -13,6 +13,8 @@ import {
   deletePinBookmark,
   createPinReply
 } from '../api/mongoDataApi';
+import { playBadgeSound } from '../utils/badgeSound';
+import { useBadgeSound } from '../contexts/BadgeSoundContext';
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
@@ -287,12 +289,13 @@ function PinDetails() {
   const [replyMessage, setReplyMessage] = useState('');
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
   const [submitReplyError, setSubmitReplyError] = useState(null);
-const isEventPin = useMemo(
-  () => (typeof pin?.type === 'string' ? pin.type.toLowerCase() === 'event' : false),
-  [pin?.type]
-);
+  const { announceBadgeEarned } = useBadgeSound();
+  const isEventPin = useMemo(
+    () => (typeof pin?.type === 'string' ? pin.type.toLowerCase() === 'event' : false),
+    [pin?.type]
+  );
 
-const pinExpired = useMemo(() => {
+  const pinExpired = useMemo(() => {
   if (!pin) {
     return false;
   }
@@ -721,6 +724,10 @@ const pinExpired = useMemo(() => {
             ? response.viewerHasBookmarked
             : true
         );
+        if (response?.badgeEarnedId) {
+          playBadgeSound();
+          announceBadgeEarned(response.badgeEarnedId);
+        }
       }
     } catch (toggleError) {
       console.error('Failed to toggle bookmark:', toggleError);
@@ -728,7 +735,7 @@ const pinExpired = useMemo(() => {
     } finally {
       setIsUpdatingBookmark(false);
     }
-  }, [pin, bookmarked, isUpdatingBookmark, isInteractionLocked, pinExpired, distanceLockActive]);
+  }, [announceBadgeEarned, bookmarked, distanceLockActive, isInteractionLocked, isUpdatingBookmark, pin, pinExpired]);
 
   const handleToggleAttendance = useCallback(async () => {
     if (!pin || !isEventPin || isUpdatingAttendance || isInteractionLocked) {
@@ -778,6 +785,10 @@ const pinExpired = useMemo(() => {
       const updatedPin = await updatePinAttendance(pin._id, nextAttending);
       setPin(updatedPin);
       setAttending(Boolean(updatedPin.viewerIsAttending));
+      if (updatedPin?._badgeEarnedId) {
+        playBadgeSound();
+        announceBadgeEarned(updatedPin._badgeEarnedId);
+      }
     } catch (updateError) {
       console.error('Failed to update attendance:', updateError);
       setAttendanceError(updateError?.message || 'Failed to update attendance.');
@@ -802,7 +813,7 @@ const pinExpired = useMemo(() => {
     } finally {
       setIsUpdatingAttendance(false);
     }
-  }, [pin, attending, isEventPin, isUpdatingAttendance, isInteractionLocked, pinExpired, distanceLockActive]);
+  }, [announceBadgeEarned, attending, distanceLockActive, isEventPin, isInteractionLocked, isUpdatingAttendance, pin, pinExpired]);
 
   const handleSubmitReply = useCallback(async () => {
     if (!pinId || isSubmittingReply || isInteractionLocked) {
@@ -1332,5 +1343,3 @@ const pinExpired = useMemo(() => {
 }
 
 export default PinDetails;
-
-

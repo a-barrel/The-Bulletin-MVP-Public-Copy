@@ -42,6 +42,7 @@ const userSchema = new mongoose.Schema(
       followers: { type: Number, default: 0 },
       following: { type: Number, default: 0 }
     },
+    badges: { type: [String], default: [] },
     relationships: {
       followerIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
       followingIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],

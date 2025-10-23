@@ -1,3 +1,4 @@
+import runtimeConfig from '../config/runtime';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -37,6 +38,19 @@ export const pageConfig = {
   order: 93,
   showInNav: true,
   protected: true
+};
+
+const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+
+const resolveBadgeImageUrl = (value) => {
+  if (!value) {
+    return null;
+  }
+  if (/^(?:https?:)?\/\//i.test(value) || value.startsWith('data:')) {
+    return value;
+  }
+  const normalized = value.startsWith('/') ? value : `/${value}`;
+  return API_BASE_URL ? `${API_BASE_URL}${normalized}` : normalized;
 };
 
 const formatRelativeTime = (value) => {
@@ -338,7 +352,12 @@ function UpdatesPage() {
               const message = update.payload?.body;
               const pinTitle = update.payload?.pin?.title;
               const pinId = update.payload?.pin?._id;
-              const typeLabel = update.payload?.type ?? 'update';
+              const typeKey = update.payload?.type ?? 'update';
+              const displayTypeLabel = typeKey.replace(/-/g, ' ');
+              const isBadgeUpdate = typeKey === 'badge-earned';
+              const badgeId = update.payload?.metadata?.badgeId;
+              const badgeImage = update.payload?.metadata?.badgeImage;
+              const badgeImageUrl = badgeImage ? resolveBadgeImageUrl(badgeImage) : null;
 
               return (
                 <Paper
@@ -355,7 +374,7 @@ function UpdatesPage() {
                     <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
                       <Stack direction="row" spacing={1} alignItems="center">
                         <Chip
-                          label={typeLabel.replace(/-/g, ' ')}
+                          label={displayTypeLabel}
                           size="small"
                           color={read ? 'default' : 'secondary'}
                         />
@@ -372,6 +391,22 @@ function UpdatesPage() {
                       <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
                         {message}
                       </Typography>
+                    ) : null}
+
+                    {isBadgeUpdate && badgeImageUrl ? (
+                      <Box
+                        component="img"
+                        src={badgeImageUrl || undefined}
+                        alt={badgeId ? `${badgeId} badge` : 'Badge earned'}
+                        sx={{
+                          width: { xs: 96, sm: 128 },
+                          height: { xs: 96, sm: 128 },
+                          borderRadius: 3,
+                          alignSelf: 'flex-start',
+                          border: (theme) => `1px solid ${theme.palette.divider}`,
+                          objectFit: 'cover'
+                        }}
+                      />
                     ) : null}
 
                     <Divider />
@@ -421,3 +456,10 @@ function UpdatesPage() {
 }
 
 export default UpdatesPage;
+
+
+
+
+
+
+

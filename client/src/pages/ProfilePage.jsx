@@ -18,8 +18,11 @@ import MenuItem from '@mui/material/MenuItem';
 import Chip from '@mui/material/Chip';
 import Grid from '@mui/material/Grid';
 import Collapse from '@mui/material/Collapse';
+import { playBadgeSound } from '../utils/badgeSound';
+import Tooltip from '@mui/material/Tooltip';
 import { fetchCurrentUserProfile, fetchUserProfile, updateCurrentUserProfile, uploadImage } from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
+import { BADGE_METADATA } from '../utils/badges';
 
 export const pageConfig = {
   id: 'profile',
@@ -52,6 +55,18 @@ export const pageConfig = {
 };
 
 const FALLBACK_AVATAR = '/images/profile/profile-01.jpg';
+
+const resolveBadgeImageUrl = (value) => {
+  if (!value) {
+    return null;
+  }
+  if (/^(?:https?:)?\/\//i.test(value) || value.startsWith('data:')) {
+    return value;
+  }
+  const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+  const normalized = value.startsWith('/') ? value : `/${value}`;
+  return base ? `${base}${normalized}` : normalized;
+};
 
 const resolveAvatarUrl = (avatar) => {
   const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
@@ -454,10 +469,10 @@ function ProfilePage() {
     ]
   );
 
-  const detailEntries = useMemo(() => {
-    if (!effectiveUser || typeof effectiveUser !== 'object') {
-      return [];
-    }
+const detailEntries = useMemo(() => {
+  if (!effectiveUser || typeof effectiveUser !== 'object') {
+    return [];
+  }
 
     return Object.entries(effectiveUser)
       .filter(([, value]) => value !== undefined)
@@ -468,6 +483,14 @@ function ProfilePage() {
       }));
   }, [effectiveUser]);
   const hasProfile = Boolean(effectiveUser);
+  const bioText = useMemo(() => {
+    const rawBio = effectiveUser?.bio;
+    if (typeof rawBio !== 'string') {
+      return null;
+    }
+    const trimmed = rawBio.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }, [effectiveUser?.bio]);
   const statsEntries = useMemo(() => {
     const stats = effectiveUser?.stats;
     if (!stats) {
@@ -484,6 +507,14 @@ function ProfilePage() {
   }, [effectiveUser]);
 
   const badgeList = effectiveUser?.badges ?? [];
+  const previousBadgeCountRef = useRef(badgeList.length);
+
+  useEffect(() => {
+    if (badgeList.length > previousBadgeCountRef.current) {
+      playBadgeSound();
+    }
+    previousBadgeCountRef.current = badgeList.length;
+  }, [badgeList.length]);
 
   const activityEntries = useMemo(() => {
     if (!effectiveUser) {
@@ -780,6 +811,68 @@ function ProfilePage() {
               <Divider />
               <Stack spacing={3}>
                 <Section
+                  title="Bio"
+                  description="Everything they want you to know right now."
+                >
+                  {bioText ? (
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {bioText}
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      This user hasn't added a bio yet.
+                    </Typography>
+                  )}
+                </Section>
+
+                <Section
+                  title="Badges & achievements"
+                  description="Recognition earned by this community member."
+                >
+                  {badgeList.length ? (
+                    <Stack direction="row" flexWrap="wrap" gap={1.5}>
+                      {badgeList.map((badgeId) => {
+                        const badgeInfo =
+                          BADGE_METADATA[badgeId] ?? {
+                            label: badgeId,
+                            description: 'Earn this badge to uncover its story.',
+                            image: undefined
+                          };
+                        const badgeImageUrl = resolveBadgeImageUrl(badgeInfo.image);
+                        return (
+                          <Tooltip key={badgeId} title={badgeInfo.description} arrow enterTouchDelay={0}>
+                            <Chip
+                              label={badgeInfo.label}
+                              color="primary"
+                              variant="outlined"
+                              sx={{
+                                fontSize: '1rem',
+                                px: 1.5,
+                                py: 0.75,
+                                borderWidth: 2
+                              }}
+                              avatar={
+                                badgeImageUrl ? (
+                                  <Avatar
+                                    src={badgeImageUrl}
+                                    alt={`${badgeInfo.label} badge`}
+                                    sx={{ width: 56, height: 56 }}
+                                  />
+                                ) : undefined
+                              }
+                            />
+                          </Tooltip>
+                        );
+                      })}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No badges yet — they’ll appear here once this user starts collecting achievements.
+                    </Typography>
+                  )}
+                </Section>
+
+                <Section
                   title="Highlights"
                   description="At-a-glance stats across this profile."
                 >
@@ -870,28 +963,10 @@ function ProfilePage() {
                           label={`${label}${enabled ? '' : ' (off)'}`}
                           color={enabled ? 'success' : 'default'}
                           variant={enabled ? 'filled' : 'outlined'}
-                          size="small"
                         />
                       ))}
                     </Stack>
                   </Stack>
-                </Section>
-
-                <Section
-                  title="Badges & achievements"
-                  description="Recognition earned by this community member."
-                >
-                  {badgeList.length ? (
-                    <Stack direction="row" flexWrap="wrap" gap={1.5}>
-                      {badgeList.map((badge) => (
-                        <Chip key={badge} label={badge} color="primary" variant="outlined" />
-                      ))}
-                    </Stack>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      No badges yet — they’ll appear here once this user starts collecting achievements.
-                    </Typography>
-                  )}
                 </Section>
 
                 <Section
@@ -1004,3 +1079,9 @@ function ProfilePage() {
 }
 
 export default ProfilePage;
+
+
+
+
+
+

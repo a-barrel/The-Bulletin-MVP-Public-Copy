@@ -31,6 +31,8 @@ import SendIcon from '@mui/icons-material/Send';
 import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
 import { auth } from '../firebase';
+import { playBadgeSound } from '../utils/badgeSound';
+import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import {
   fetchChatRooms,
   createChatRoom,
@@ -60,6 +62,7 @@ const PRESENCE_HEARTBEAT_MS = 30_000;
 const MESSAGES_REFRESH_MS = 7_000;
 
 function ChatPage() {
+  const { announceBadgeEarned } = useBadgeSound();
   const [authUser, authLoading] = useAuthState(auth);
   const [rooms, setRooms] = useState([]);
   const [roomsError, setRoomsError] = useState(null);
@@ -308,6 +311,10 @@ function ChatPage() {
       try {
         const message = await createChatMessage(selectedRoomId, { message: trimmed });
         setMessages((prev) => [...prev, message]);
+        if (message?.badgeEarnedId) {
+          playBadgeSound();
+          announceBadgeEarned(message.badgeEarnedId);
+        }
         setMessageDraft('');
         scrollMessagesToBottom();
       } catch (error) {
@@ -316,7 +323,7 @@ function ChatPage() {
         setIsSendingMessage(false);
       }
     },
-    [authUser, messageDraft, scrollMessagesToBottom, selectedRoomId]
+    [announceBadgeEarned, authUser, messageDraft, scrollMessagesToBottom, selectedRoomId]
   );
 
   const filteredPresence = useMemo(() => {
@@ -748,4 +755,5 @@ function ChatPage() {
 }
 
 export default ChatPage;
+
 

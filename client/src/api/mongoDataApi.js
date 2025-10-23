@@ -648,6 +648,101 @@ export async function fetchBookmarkCollections(userId) {
   return payload;
 }
 
+export async function awardBadge(badgeId) {
+  if (!badgeId) {
+    throw new Error('Badge id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/badges/${encodeURIComponent(badgeId)}`, {
+    method: 'POST',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to award badge');
+  }
+
+  return payload;
+}
+
+export async function debugListBadges({ userId } = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const params = new URLSearchParams();
+  if (userId) {
+    params.set('userId', userId);
+  }
+  const query = params.toString();
+  const url = query ? `${baseUrl}/api/debug/badges?${query}` : `${baseUrl}/api/debug/badges`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load badges');
+  }
+
+  return payload;
+}
+
+export async function debugGrantBadge({ userId, badgeId }) {
+  if (!badgeId) {
+    throw new Error('Badge id is required to grant');
+  }
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/badges/grant`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ userId, badgeId })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to grant badge');
+  }
+
+  return payload;
+}
+
+export async function debugRevokeBadge({ userId, badgeId }) {
+  if (!badgeId) {
+    throw new Error('Badge id is required to revoke');
+  }
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/badges/revoke`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ userId, badgeId })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to revoke badge');
+  }
+
+  return payload;
+}
+
+export async function debugResetBadges({ userId } = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/badges/reset`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ userId })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to reset badges');
+  }
+
+  return payload;
+}
+
 export async function createProximityChatRoom(input) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/debug/chat-rooms`, {

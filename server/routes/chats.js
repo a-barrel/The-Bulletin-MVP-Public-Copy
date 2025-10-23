@@ -17,6 +17,7 @@ const {
   upsertPresence
 } = require('../services/proximityChatService');
 const { broadcastChatMessage } = require('../services/updateFanoutService');
+const { grantBadge } = require('../services/badgeService');
 
 const router = express.Router();
 
@@ -138,6 +139,21 @@ router.post('/rooms/:roomId/messages', verifyToken, async (req, res) => {
       longitude: input.longitude,
       accuracy: input.accuracy
     });
+
+    let chatBadgeResult = null;
+    try {
+      chatBadgeResult = await grantBadge({
+        userId: viewer._id,
+        badgeId: 'chat-first-message',
+        sourceUserId: viewer._id
+      });
+    } catch (error) {
+      console.error('Failed to grant chat badge:', error);
+    }
+
+    if (chatBadgeResult?.granted) {
+      response.badgeEarnedId = chatBadgeResult.badge.id;
+    }
 
     res.status(201).json(response);
 

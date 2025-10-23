@@ -63,20 +63,25 @@ Attending: 3 / 50" window
 **Done** -Make tabs start a new row in debug_console
 instead of endlessly scrolling left and right.
 
-In uploads/images, create a /badge/ folder
-with some tiny image badges, 
-and create basic ones that show on profile: 
+**Done** In uploads/images, create a /badge/ folder
+with some tiny image badges
 
-0. Hacker (access debug_console)
-1. Chat for first time.(you did it)
-3. Create a Pin
-4. Bookmark a Pin 
-5. Attend an Event
-6. Kirby (Ctrl+` unlocks this)
+Badge functionality for the following: 
 
-Create a tab for Badges in debug,
-where you can add/remove these badges,
+1. Enter debug console for first time badge
+2. Chat for first time badge
+3. Create your first Pin badge
+4. Bookmark a Pin badge
+5. Attend an Event badge
+6. The "how" badge (access the hidden page from pressing Ctrl + ` (tilde))
+
+Create a "Badges" tab in the debug_console for viewing all Badges in debug_console, where you can add/remove these badges,
 and a "reset all badges" option. 
+
+-Have it send an update to the user when they earn a 
+badge that shows up on the update page
+
+-Have these badges display on the profile page (both self and others)
 
 **A tiny popup overlay in bottom right that fades showing
 you earned Badge [x]!!! Yippeee confetti. 
@@ -87,5 +92,18 @@ you earned Badge [x]!!! Yippeee confetti.
 to the debug console and actual bookmark page
 as a tiny button at the bottom. 
 
+
+-Fix Chat Room to display ONLY stuff the user is in vinciity of.
+And double check they can't interact with chat rooms outside
+their radius
+
+-Let users interact with pins they bookmarked if its outside interaction radius
+
+
+-Activity & collections not updating,
+bookmarks, pins, etc are at 0.
+
+--No updates if you GPS spoof on the Map page,
+make sure it works globally. Persistent location issue?
 
 

@@ -27,6 +27,7 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import { auth } from '../firebase';
 import { fetchCurrentUserProfile, updateCurrentUserProfile } from '../api/mongoDataApi';
+import { useBadgeSound } from '../contexts/BadgeSoundContext';
 
 export const pageConfig = {
   id: 'settings',
@@ -70,6 +71,7 @@ function SettingsPage() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [saveStatus, setSaveStatus] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const { enabled: badgeSoundEnabled, setEnabled: setBadgeSoundEnabled } = useBadgeSound();
 
   const theme = settings.theme;
   const notifications = settings.notifications;
@@ -351,6 +353,29 @@ function SettingsPage() {
               onChange={handleRadiusChange}
             />
           </Box>
+
+          <Divider />
+
+          <Stack spacing={0.5}>
+            <Typography variant="h6">Audio</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Decide whether new badges should play a celebration sound.
+            </Typography>
+          </Stack>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={badgeSoundEnabled}
+                onChange={(event) => setBadgeSoundEnabled(event.target.checked)}
+              />
+            }
+            label="Play sound when I earn a badge"
+          />
+          <Typography variant="body2" color="text.secondary">
+            {badgeSoundEnabled
+              ? 'The badge chime is enabled and will play the next time you unlock something.'
+              : 'Badge chime remains muted. Turn it on here whenever you want to hear it.'}
+          </Typography>
 
           <Divider />
 

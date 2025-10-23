@@ -10,6 +10,7 @@ const { PinPreviewSchema } = require('../schemas/pin');
 const { PublicUserSchema } = require('../schemas/user');
 const verifyToken = require('../middleware/verifyToken');
 const { broadcastBookmarkCreated } = require('../services/updateFanoutService');
+const { grantBadge } = require('../services/badgeService');
 
 const router = express.Router();
 
@@ -372,6 +373,7 @@ router.post('/', verifyToken, async (req, res) => {
 
     let createdBookmark = existingBookmark;
     let bookmarkCountIncrement = 0;
+    let bookmarkBadgeResult = null;
 
     if (!existingBookmark) {
       createdBookmark = await Bookmark.create({
@@ -404,13 +406,26 @@ router.post('/', verifyToken, async (req, res) => {
 
     const bookmarkCount = pin.bookmarkCount ?? 0;
 
+    if (bookmarkCountIncrement === 1) {
+      try {
+        bookmarkBadgeResult = await grantBadge({
+          userId: viewer._id,
+          badgeId: 'bookmark-first-pin',
+          sourceUserId: viewer._id
+        });
+      } catch (error) {
+        console.error('Failed to grant bookmark badge:', error);
+      }
+    }
+
     res.status(existingBookmark ? 200 : 201).json({
       bookmarkId: toIdString(createdBookmark?._id),
       pinId: toIdString(pinObjectId),
       bookmarkCount,
       viewerHasBookmarked: true,
       alreadyBookmarked: Boolean(existingBookmark),
-      bookmarkWasCreated: bookmarkCountIncrement === 1
+      bookmarkWasCreated: bookmarkCountIncrement === 1,
+      badgeEarnedId: bookmarkBadgeResult?.granted ? bookmarkBadgeResult.badge.id : null
     });
   } catch (error) {
     if (error instanceof ZodError) {
@@ -472,3 +487,6 @@ router.delete('/:pinId', verifyToken, async (req, res) => {
 });
 
 module.exports = router;
+
+
+

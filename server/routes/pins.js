@@ -14,6 +14,7 @@ const {
   broadcastPinReply,
   broadcastAttendanceChange
 } = require('../services/updateFanoutService');
+const { grantBadge } = require('../services/badgeService');
 
 const router = express.Router();
 
@@ -435,10 +436,26 @@ router.post('/', verifyToken, async (req, res) => {
     const creatorPublic = hydrated ? mapUserToPublic(hydrated.creatorId) : undefined;
     const viewer = await resolveViewerUser(req);
     const viewerId = viewer ? toIdString(viewer._id) : undefined;
+    let createBadgeResult = null;
+    if (viewer) {
+      try {
+        createBadgeResult = await grantBadge({
+          userId: viewer._id,
+          badgeId: 'create-first-pin',
+          sourceUserId: viewer._id
+        });
+      } catch (error) {
+        console.error('Failed to grant create pin badge:', error);
+      }
+    }
+
     const payload = mapPinToFull(sourcePin, creatorPublic, {
       viewerId,
       viewerHasBookmarked: false
     });
+    if (createBadgeResult?.granted) {
+      payload._badgeEarnedId = createBadgeResult.badge.id;
+    }
     broadcastPinCreated(sourcePin).catch((error) => {
       console.error('Failed to queue pin creation updates:', error);
     });
@@ -622,10 +639,27 @@ router.post('/:pinId/attendance', verifyToken, async (req, res) => {
     await pin.save();
 
     const bookmarkExists = await Bookmark.exists({ userId: viewer._id, pinId: pin._id });
+    let attendanceBadgeResult = null;
+    if (attending) {
+      try {
+        attendanceBadgeResult = await grantBadge({
+          userId: viewer._id,
+          badgeId: 'attend-first-event',
+          sourceUserId: viewer._id
+        });
+      } catch (error) {
+        console.error('Failed to grant attendance badge:', error);
+      }
+    }
+
     const payload = mapPinToFull(pin, mapUserToPublic(pin.creatorId), {
       viewerId,
       viewerHasBookmarked: Boolean(bookmarkExists)
     });
+    if (attendanceBadgeResult?.granted) {
+      payload._badgeEarnedId = attendanceBadgeResult.badge.id;
+    }
+
     broadcastAttendanceChange({ pin, attendee: viewer, attending }).catch((error) => {
       console.error('Failed to queue attendance updates:', error);
     });
