@@ -59,7 +59,8 @@ const updateSchema = new mongoose.Schema(
           'bookmark-update',
           'system',
           'chat-message',
-          'friend-request'
+          'friend-request',
+          'chat-room-transition'
         ],
         required: true
       },

@@ -644,11 +644,13 @@ router.post('/updates', async (req, res) => {
         'new-pin',
         'pin-update',
         'event-starting-soon',
+        'event-reminder',
         'popular-pin',
         'bookmark-update',
         'system',
         'chat-message',
-        'friend-request'
+        'friend-request',
+        'chat-room-transition'
       ]),
       title: z.string().min(1),
       body: z.string().optional(),

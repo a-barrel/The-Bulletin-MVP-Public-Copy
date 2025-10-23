@@ -12,7 +12,8 @@ const UpdatePayloadSchema = z.object({
     'bookmark-update',
     'system',
     'chat-message',
-    'friend-request'
+    'friend-request',
+    'chat-room-transition'
   ]),
   pin: PinPreviewSchema.optional(),
   title: z.string().min(1),

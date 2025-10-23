@@ -149,27 +149,52 @@ const LIVE_CHAT_ROOM_PRESETS = [
     radiusMeters: 3000
   },
   {
-    key: 'north-pole',
-    label: 'North Pole',
-    name: 'North Pole Debug Chat',
-    aliases: ['North Pole Chat Room'],
-    description: 'Geofenced chat positioned at the North Pole for negative access testing.',
-    latitude: 89.95,
-    longitude: 135,
-    accuracy: 30,
-    radiusMeters: 3000
+    key: 'shoreline-village',
+    label: 'Shoreline Village',
+    name: 'Long Beach Shoreline Village Chat',
+    aliases: ['Shoreline Village Chat', 'Downtown Waterfront Chat'],
+    description: 'Waterfront chats along Shoreline Village for debugging short hops between rooms.',
+    latitude: 33.7633,
+    longitude: -118.1899,
+    accuracy: 12,
+    radiusMeters: 1200
+  },
+  {
+    key: 'belmont-shore',
+    label: 'Belmont Shore',
+    name: 'Belmont Shore Meetups',
+    aliases: ['Belmont Shore Chat', 'Belmont Shore Debug'],
+    description: 'Beachside chat circle for Belmont Shore events and meetups.',
+    latitude: 33.7603,
+    longitude: -118.1309,
+    accuracy: 12,
+    radiusMeters: 1400
+  },
+  {
+    key: 'signal-hill',
+    label: 'Signal Hill Overlook',
+    name: 'Signal Hill Lookout Chat',
+    aliases: ['Signal Hill Chat Room'],
+    description: 'Hilltop coverage to validate elevation and short-distance transitions.',
+    latitude: 33.8044,
+    longitude: -118.1678,
+    accuracy: 12,
+    radiusMeters: 1300
+  },
+  {
+    key: 'csulb',
+    label: 'CSULB Campus',
+    name: 'CSULB Campus Chat',
+    aliases: ['Campus Chat Room', 'Long Beach State Chat'],
+    description: 'Geofenced room covering the Cal State Long Beach campus.',
+    latitude: 33.7838,
+    longitude: -118.1141,
+    accuracy: 12,
+    radiusMeters: 1600
   }
 ];
 
 const TELEPORT_PRESETS = [
-  {
-    key: 'north-pole',
-    label: 'Teleport user location to North Pole',
-    latitude: 89.95,
-    longitude: 135,
-    accuracy: 25,
-    statusMessage: 'Location spoofed to the North Pole.'
-  },
   {
     key: 'long-beach',
     label: 'Teleport user location to Long Beach, California',
@@ -177,6 +202,38 @@ const TELEPORT_PRESETS = [
     longitude: -118.193739,
     accuracy: 12,
     statusMessage: 'Location spoofed to Long Beach, CA.'
+  },
+  {
+    key: 'shoreline-village',
+    label: 'Teleport to Shoreline Village waterfront',
+    latitude: 33.7633,
+    longitude: -118.1899,
+    accuracy: 12,
+    statusMessage: 'Location spoofed to Long Beach Shoreline Village.'
+  },
+  {
+    key: 'belmont-shore',
+    label: 'Teleport to Belmont Shore',
+    latitude: 33.7603,
+    longitude: -118.1309,
+    accuracy: 12,
+    statusMessage: 'Location spoofed to Belmont Shore.'
+  },
+  {
+    key: 'csulb-campus',
+    label: 'Teleport to CSULB campus',
+    latitude: 33.7838,
+    longitude: -118.1141,
+    accuracy: 12,
+    statusMessage: 'Location spoofed to the CSULB campus.'
+  },
+  {
+    key: 'signal-hill',
+    label: 'Teleport to Signal Hill overlook',
+    latitude: 33.8044,
+    longitude: -118.1678,
+    accuracy: 12,
+    statusMessage: 'Location spoofed to Signal Hill.'
   },
   {
     key: DEFAULT_LOCATION_TELEPORT_KEY,
@@ -288,6 +345,47 @@ const evaluateRoomAccess = (room, location) => {
     distanceMeters,
     radiusMeters: room.radiusMeters
   };
+};
+
+const isGlobalChatRoom = (room) =>
+  Boolean(room?.isGlobal) ||
+  (Number.isFinite(room?.radiusMeters) && room.radiusMeters >= 40000000);
+
+const resolveActiveRoomForLocation = (rooms, location) => {
+  if (!Array.isArray(rooms) || rooms.length === 0) {
+    return null;
+  }
+
+  let bestRoom = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (const room of rooms) {
+    const access = evaluateRoomAccess(room, location);
+    if (!access.allowed) {
+      continue;
+    }
+
+    const isGlobal = isGlobalChatRoom(room);
+    const distance = Number.isFinite(access.distanceMeters) ? access.distanceMeters : Number.POSITIVE_INFINITY;
+    const score = isGlobal ? distance + 1e6 : distance;
+
+    if (score < bestScore) {
+      bestRoom = room;
+      bestScore = score;
+    }
+  }
+
+  return bestRoom;
+};
+
+const formatDistanceMetersLabel = (value) => {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)} km`;
+  }
+  return `${Math.round(value)} m`;
 };
 
 const shiftLocationByDirection = (source, direction, stepMeters = SPOOF_STEP_METERS) => {
@@ -425,11 +523,13 @@ const UPDATE_TYPE_OPTIONS = [
   'new-pin',
   'pin-update',
   'event-starting-soon',
+  'event-reminder',
   'popular-pin',
   'bookmark-update',
   'system',
   'chat-message',
-  'friend-request'
+  'friend-request',
+  'chat-room-transition'
 ];
 const LOCATION_SOURCE_OPTIONS = ['web', 'ios', 'android', 'background'];
 
@@ -4129,6 +4229,12 @@ function ChatRoomVisualizationTab() {
 
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const selectedRoomIdRef = useRef(null);
+  const [currentRoomId, setCurrentRoomId] = useState(null);
+  const currentRoomRef = useRef(null);
+  const lastAnnouncedTransitionRef = useRef(null);
+  const pendingTransitionRef = useRef(null);
+  const hasUserMovedRef = useRef(false);
+  const [movementStatus, setMovementStatus] = useState(null);
 
   useEffect(() => {
     selectedRoomIdRef.current = selectedRoomId;
@@ -4165,12 +4271,60 @@ function ChatRoomVisualizationTab() {
   const fetchRooms = useCallback(async () => {
     setRoomsStatus(null);
     setIsFetchingRooms(true);
+    let createdCount = 0;
     try {
-      const results = await fetchChatRooms({});
+      let results = await fetchChatRooms({});
+      if (!Array.isArray(results)) {
+        results = [];
+      }
+
+      if (currentProfileId && mongooseObjectIdLike(currentProfileId)) {
+        const scratch = [...results];
+
+        for (const preset of LIVE_CHAT_ROOM_PRESETS) {
+          const targetNames = [preset.name, ...(preset.aliases ?? [])].map(normalizeRoomName);
+          const matchIndex = scratch.findIndex((candidate) =>
+            targetNames.includes(normalizeRoomName(candidate?.name))
+          );
+
+          if (matchIndex >= 0) {
+            continue;
+          }
+
+          try {
+            const created = await createProximityChatRoom({
+              ownerId: currentProfileId,
+              name: preset.name,
+              description: preset.description,
+              latitude: preset.latitude,
+              longitude: preset.longitude,
+              accuracy: preset.accuracy,
+              radiusMeters: preset.radiusMeters,
+              isGlobal: Boolean(preset.isGlobal),
+              participantIds: [currentProfileId],
+              moderatorIds: [currentProfileId]
+            });
+            scratch.push(created);
+            createdCount += 1;
+          } catch (creationError) {
+            console.warn('Failed to ensure preset chat room:', preset, creationError);
+          }
+        }
+
+        if (createdCount > 0) {
+          results = await fetchChatRooms({});
+          if (!Array.isArray(results)) {
+            results = [];
+          }
+        }
+      }
+
       setRooms(results);
       setRoomsStatus({
         type: 'success',
-        message: `Loaded ${results.length} chat room${results.length === 1 ? '' : 's'}.`
+        message: `Loaded ${results.length} chat room${results.length === 1 ? '' : 's'}${
+          createdCount ? ` (created ${createdCount} preset${createdCount === 1 ? '' : 's'})` : ''
+        }.`
       });
 
       if (!selectedRoomIdRef.current) {
@@ -4189,7 +4343,7 @@ function ChatRoomVisualizationTab() {
     } finally {
       setIsFetchingRooms(false);
     }
-  }, []);
+  }, [currentProfileId]);
 
   useEffect(() => {
     fetchRooms();
@@ -4247,6 +4401,7 @@ function ChatRoomVisualizationTab() {
           type: 'success',
           message: preset.statusMessage
         });
+        hasUserMovedRef.current = true;
       } catch (error) {
         console.error('Failed to spoof location from visualization tab:', error);
         setTeleportStatus({ type: 'error', message: error.message || 'Failed to spoof location.' });
@@ -4322,6 +4477,7 @@ function ChatRoomVisualizationTab() {
           type: 'success',
           message: DIRECTION_SUCCESS_MESSAGES[direction] ?? 'Spoofed location updated.'
         });
+        hasUserMovedRef.current = true;
       } catch (error) {
         console.error('Failed to adjust spoofed location:', error);
         setTeleportStatus({ type: 'error', message: error.message || 'Failed to adjust location.' });
@@ -4331,6 +4487,125 @@ function ChatRoomVisualizationTab() {
     },
     [currentUser, currentProfileId, lastSpoofedLocation, initialSpoofLocation]
   );
+
+  useEffect(() => {
+    if (!Array.isArray(rooms) || rooms.length === 0) {
+      setCurrentRoomId(null);
+      currentRoomRef.current = null;
+      return;
+    }
+
+    const nextRoom = resolveActiveRoomForLocation(rooms, lastSpoofedLocation);
+    const nextRoomId = toIdString(nextRoom?._id) || null;
+    setCurrentRoomId(nextRoomId);
+
+    const previousRoom = currentRoomRef.current;
+    const previousRoomId = toIdString(previousRoom?._id) || null;
+
+    if (previousRoomId === nextRoomId) {
+      return;
+    }
+
+    currentRoomRef.current = nextRoom;
+
+    if (!hasUserMovedRef.current) {
+      return;
+    }
+
+    if (!currentProfileId || !mongooseObjectIdLike(currentProfileId)) {
+      return;
+    }
+
+    const transitionKey = `${previousRoomId ?? 'none'}->${nextRoomId ?? 'none'}`;
+    if (
+      pendingTransitionRef.current === transitionKey ||
+      lastAnnouncedTransitionRef.current === transitionKey
+    ) {
+      return;
+    }
+
+    pendingTransitionRef.current = transitionKey;
+    let isCancelled = false;
+
+    (async () => {
+      try {
+        if (nextRoomId) {
+          await createProximityChatPresence({
+            roomId: nextRoomId,
+            userId: currentProfileId
+          });
+        }
+
+        const fromLabel = previousRoom?.name ?? 'Outside chat rooms';
+        const toLabel = nextRoom?.name ?? 'Outside chat rooms';
+        const title = nextRoom
+          ? previousRoom
+            ? `Moved from ${fromLabel} to ${toLabel}`
+            : `Entered ${toLabel}`
+          : `Left ${fromLabel}`;
+
+        const metadata = {
+          fromRoomId: previousRoomId,
+          toRoomId: nextRoomId,
+          latitude: Number.isFinite(lastSpoofedLocation?.latitude) ? lastSpoofedLocation.latitude : null,
+          longitude: Number.isFinite(lastSpoofedLocation?.longitude) ? lastSpoofedLocation.longitude : null
+        };
+
+        let distanceLabel = null;
+        if (nextRoom && !isGlobalChatRoom(nextRoom)) {
+          const nextLocation = extractPinLocation(nextRoom);
+          const distanceMeters = nextLocation
+            ? haversineDistanceMeters(lastSpoofedLocation, nextLocation)
+            : Number.NaN;
+          if (Number.isFinite(distanceMeters)) {
+            metadata.distanceMeters = Number(distanceMeters.toFixed(2));
+            distanceLabel = formatDistanceMetersLabel(distanceMeters);
+          }
+        }
+
+        const bodyParts = [];
+        if (distanceLabel) {
+          bodyParts.push(`Now approximately ${distanceLabel} from the ${toLabel} center.`);
+        }
+
+        if (lastSpoofedLocation?.accuracy !== undefined) {
+          metadata.accuracy = lastSpoofedLocation.accuracy;
+        }
+
+        await createUpdate({
+          userId: currentProfileId,
+          payload: {
+            type: 'chat-room-transition',
+            title,
+            body: bodyParts.length ? bodyParts.join(' ') : undefined,
+            metadata
+          }
+        });
+
+        if (!isCancelled) {
+          const severity = nextRoom ? 'success' : 'warning';
+          setMovementStatus({ type: severity, message: title });
+          lastAnnouncedTransitionRef.current = transitionKey;
+        }
+      } catch (error) {
+        console.warn('Failed to record chat room transition:', error);
+        if (!isCancelled) {
+          setMovementStatus({
+            type: 'error',
+            message: error.message || 'Failed to record chat room movement.'
+          });
+        }
+      } finally {
+        if (pendingTransitionRef.current === transitionKey) {
+          pendingTransitionRef.current = null;
+        }
+      }
+    })();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [rooms, lastSpoofedLocation, currentProfileId]);
 
   const mapPins = useMemo(
     () =>
@@ -4378,6 +4653,11 @@ function ChatRoomVisualizationTab() {
     [rooms, selectedRoomId]
   );
 
+  const currentRoom = useMemo(
+    () => rooms.find((room) => toIdString(room?._id) === currentRoomId) ?? null,
+    [rooms, currentRoomId]
+  );
+
   const selectedRoomDistanceLabel = useMemo(() => {
     if (!selectedRoom || !lastSpoofedLocation) {
       return null;
@@ -4392,6 +4672,22 @@ function ChatRoomVisualizationTab() {
     }
     return distance >= 1000 ? `${(distance / 1000).toFixed(2)} km away` : `${Math.round(distance)} m away`;
   }, [selectedRoom, lastSpoofedLocation]);
+
+  const currentRoomDistanceLabel = useMemo(() => {
+    if (!currentRoom || !lastSpoofedLocation) {
+      return null;
+    }
+    const location = extractPinLocation(currentRoom);
+    if (!location) {
+      return null;
+    }
+    const distance = haversineDistanceMeters(lastSpoofedLocation, location);
+    if (!Number.isFinite(distance)) {
+      return null;
+    }
+    const label = formatDistanceMetersLabel(distance);
+    return label ? `${label} from the center` : null;
+  }, [currentRoom, lastSpoofedLocation]);
 
   const handlePinSelect = useCallback((pin) => {
     const id = toIdString(pin?._id);
@@ -4416,7 +4712,10 @@ function ChatRoomVisualizationTab() {
     [activePresetKey]
   );
 
-  const userRadiusMeters = Number.isFinite(selectedRoom?.radiusMeters) ? selectedRoom.radiusMeters : undefined;
+  const activeRadiusSource = selectedRoom ?? currentRoom;
+  const userRadiusMeters = Number.isFinite(activeRadiusSource?.radiusMeters)
+    ? activeRadiusSource.radiusMeters
+    : undefined;
 
   return (
     <Stack spacing={2}>
@@ -4545,6 +4844,21 @@ function ChatRoomVisualizationTab() {
             Click a marker to focus a chat room and compare against your spoofed location.
           </Typography>
         </Stack>
+        {movementStatus && (
+          <Alert severity={movementStatus.type} onClose={() => setMovementStatus(null)}>
+            {movementStatus.message}
+          </Alert>
+        )}
+        {currentRoom ? (
+          <Alert severity="info">
+            Currently inside <strong>{currentRoom.name ?? 'Untitled chat room'}</strong>
+            {currentRoomDistanceLabel ? ` — ${currentRoomDistanceLabel}` : ''}
+          </Alert>
+        ) : hasUserMovedRef.current ? (
+          <Alert severity="warning">
+            Not currently inside any geofenced chat room. Move closer to one of the markers to join it.
+          </Alert>
+        ) : null}
         <Box sx={{ height: 420, borderRadius: 2, overflow: 'hidden' }}>
           <LeafletMap
             userLocation={lastSpoofedLocation ?? undefined}
@@ -4588,6 +4902,7 @@ function ChatRoomVisualizationTab() {
               const id = toIdString(room?._id);
               const key = id || `${index}-${room?.name ?? 'room'}`;
               const isSelected = id && id === selectedRoomId;
+              const isCurrent = id && id === currentRoomId;
               const location = extractPinLocation(room);
               return (
                 <Paper
@@ -4595,8 +4910,9 @@ function ChatRoomVisualizationTab() {
                   variant="outlined"
                   sx={{
                     p: 2,
-                    borderColor: isSelected ? 'primary.main' : 'divider',
-                    borderWidth: isSelected ? 2 : 1
+                    borderColor: isCurrent ? 'success.main' : isSelected ? 'primary.main' : 'divider',
+                    borderWidth: isCurrent || isSelected ? 2 : 1,
+                    backgroundColor: isCurrent ? 'success.light' : undefined
                   }}
                 >
                   <Stack
@@ -4605,8 +4921,13 @@ function ChatRoomVisualizationTab() {
                     justifyContent="space-between"
                     alignItems={{ xs: 'flex-start', sm: 'center' }}
                   >
-                    <Box>
-                      <Typography variant="subtitle1">{room?.name ?? 'Untitled chat room'}</Typography>
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                        <Typography variant="subtitle1">{room?.name ?? 'Untitled chat room'}</Typography>
+                        {isCurrent && <Chip label="Current" color="success" size="small" />}
+                        {isSelected && !isCurrent && <Chip label="Focused" color="primary" size="small" />}
+                        {room?.isGlobal && <Chip label="Global" color="default" size="small" />}
+                      </Stack>
                       {room?.description ? (
                         <Typography variant="body2" color="text.secondary">
                           {room.description}
@@ -4621,16 +4942,16 @@ function ChatRoomVisualizationTab() {
                           ? `Center: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`
                           : 'Missing coordinates'}
                         {Number.isFinite(room?.radiusMeters) ? ` | Radius: ${room.radiusMeters} m` : ''}
-                        {room?.isGlobal ? ' (global room)' : ''}
                       </Typography>
                     </Box>
                     <Stack direction="row" spacing={1} alignItems="center">
-                      {isSelected ? (
-                        <Chip label="Focused" color="primary" size="small" />
-                      ) : (
+                      {!isSelected && (
                         <Button size="small" onClick={() => handleFocusRoom(room)}>
                           Focus on map
                         </Button>
+                      )}
+                      {isSelected && (
+                        <Chip label={isCurrent ? 'Current focus' : 'Focused'} color={isCurrent ? 'success' : 'primary'} size="small" />
                       )}
                     </Stack>
                   </Stack>

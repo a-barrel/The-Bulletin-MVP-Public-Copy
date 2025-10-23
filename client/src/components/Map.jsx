@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -52,7 +52,7 @@ const selectedPinIcon = new L.Icon({
 function MapUpdater({ center }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center);
+    map.setView(center, undefined, { animate: true });
   }, [center, map]);
   return null;
 }
@@ -150,6 +150,22 @@ const Map = ({
   centerOverride,
   userRadiusMeters
 }) => {
+  const tileLayerRef = useRef(null);
+  const handleTileError = useCallback(() => {
+    const layer = tileLayerRef.current;
+    if (!layer || typeof layer.redraw !== 'function') {
+      return;
+    }
+    // Small delay lets transient network hiccups settle before refreshing tiles.
+    window.setTimeout(() => {
+      try {
+        layer.redraw();
+      } catch (error) {
+        console.warn('Failed to redraw tile layer after error:', error);
+      }
+    }, 500);
+  }, []);
+
   const resolvedCenter = toLatLng(centerOverride) ?? toLatLng(userLocation) ?? [0, 0];
   const userMarkerPosition = toLatLng(userLocation);
   const resolvedPins = Array.isArray(pins) ? pins : [];
@@ -161,8 +177,12 @@ const Map = ({
       style={{ width: '100%', height: '100%' }}
     >
       <TileLayer
+        ref={tileLayerRef}
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        eventHandlers={{
+          tileerror: handleTileError
+        }}
       />
       
       {userMarkerPosition && (
