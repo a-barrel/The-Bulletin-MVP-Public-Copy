@@ -323,7 +323,7 @@ export async function updatePin(pinId, input) {
   return payload;
 }
 
-export async function uploadPinImage(file) {
+async function uploadImageInternal(file) {
   if (!file) {
     throw new Error('Image file is required');
   }
@@ -461,6 +461,30 @@ export async function fetchCurrentUserProfile() {
   return payload;
 }
 
+export async function uploadImage(file) {
+  return uploadImageInternal(file);
+}
+
+export async function uploadPinImage(file) {
+  return uploadImageInternal(file);
+}
+
+export async function updateCurrentUserProfile(input) {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me`, {
+    method: 'PATCH',
+    headers: await buildHeaders(),
+    body: JSON.stringify(input)
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to update current user profile');
+  }
+
+  return payload;
+}
+
 export async function createBookmark(input) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/debug/bookmarks`, {
@@ -544,12 +568,9 @@ export async function createBookmarkCollection(input) {
 }
 
 export async function fetchBookmarkCollections(userId) {
-  if (!userId) {
-    throw new Error('User id is required to load bookmark collections');
-  }
-
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/bookmarks/collections?userId=${encodeURIComponent(userId)}`, {
+  const params = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+  const response = await fetch(`${baseUrl}/api/bookmarks/collections${params}`, {
     method: 'GET',
     headers: await buildHeaders()
   });
@@ -565,6 +586,22 @@ export async function fetchBookmarkCollections(userId) {
 export async function createProximityChatRoom(input) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/debug/chat-rooms`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify(input)
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to create chat room');
+  }
+
+  return payload;
+}
+
+export async function createChatRoom(input) {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/chats/rooms`, {
     method: 'POST',
     headers: await buildHeaders(),
     body: JSON.stringify(input)
@@ -621,6 +658,26 @@ export async function createProximityChatMessage(input) {
   return payload;
 }
 
+export async function createChatMessage(roomId, input) {
+  if (!roomId) {
+    throw new Error('Room id is required to create a chat message');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/messages`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify(input)
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to create chat message');
+  }
+
+  return payload;
+}
+
 export async function fetchChatMessages(roomId) {
   if (!roomId) {
     throw new Error('Room id is required to load messages');
@@ -651,6 +708,26 @@ export async function createProximityChatPresence(input) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(payload?.message || 'Failed to record chat presence');
+  }
+
+  return payload;
+}
+
+export async function upsertChatPresence(roomId, input = {}) {
+  if (!roomId) {
+    throw new Error('Room id is required to update presence');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/presence`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify(input)
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to update chat presence');
   }
 
   return payload;
@@ -712,6 +789,40 @@ export async function fetchUpdates({ userId, limit } = {}) {
   const payload = await response.json().catch(() => []);
   if (!response.ok) {
     throw new Error(payload?.message || 'Failed to load updates');
+  }
+
+  return payload;
+}
+
+export async function markUpdateRead(updateId) {
+  if (!updateId) {
+    throw new Error('Update id is required to mark an update as read');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/updates/${encodeURIComponent(updateId)}/read`, {
+    method: 'PATCH',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to mark update as read');
+  }
+
+  return payload;
+}
+
+export async function markAllUpdatesRead() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/updates/mark-all-read`, {
+    method: 'PATCH',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to mark all updates as read');
   }
 
   return payload;

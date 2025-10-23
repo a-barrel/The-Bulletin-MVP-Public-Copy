@@ -5,7 +5,7 @@
     "pinId": { "$oid": "68e061721329566a22d474ab" },
     "authorId": { "$oid": "68e061721329566a22d474a8" },
     "replyToMessageId": null,
-    "message": "Welcome! Grab a seat near the back patio; we’ll kick off at 6:05.",
+    "message": "Welcome! Grab a seat near the back patio; we'll kick off at 6:05.",
     "coordinates": {
       "type": "Point",
       "coordinates": [-118.1141, 33.7838],
@@ -15,8 +15,8 @@
     "audit": {
       "createdBy": { "$oid": "68e061721329566a22d474a8" }
     },
-    "createdAt": { "$date": "2025-10-03T23:20:00.000Z" },
-    "updatedAt": { "$date": "2025-10-03T23:20:00.000Z" }
+    "createdAt": { "$date": "2026-10-03T23:20:00.000Z" },
+    "updatedAt": { "$date": "2026-10-03T23:20:00.000Z" }
   },
   {
     "_id": { "$oid": "68e061721329566a22d47571" },
@@ -34,8 +34,8 @@
     "audit": {
       "createdBy": { "$oid": "68e061721329566a22d47510" }
     },
-    "createdAt": { "$date": "2025-10-09T18:50:00.000Z" },
-    "updatedAt": { "$date": "2025-10-09T18:50:00.000Z" }
+    "createdAt": { "$date": "2026-10-09T18:50:00.000Z" },
+    "updatedAt": { "$date": "2026-10-09T18:50:00.000Z" }
   },
   {
     "_id": { "$oid": "68e061721329566a22d47572" },
@@ -53,15 +53,15 @@
     "audit": {
       "createdBy": { "$oid": "68e061721329566a22d474a7" }
     },
-    "createdAt": { "$date": "2025-10-09T18:55:00.000Z" },
-    "updatedAt": { "$date": "2025-10-09T18:55:00.000Z" }
+    "createdAt": { "$date": "2026-10-09T18:55:00.000Z" },
+    "updatedAt": { "$date": "2026-10-09T18:55:00.000Z" }
   },
   {
     "_id": { "$oid": "68e061721329566a22d476a0" },
     "roomId": { "$oid": "68e061721329566a22d47690" },
     "authorId": { "$oid": "68e061721329566a22d474a7" },
     "replyToMessageId": null,
-    "message": "Welcome to the Global Debug Lounge. Use this room while swapping accounts or faking GPS during tests.",
+    "message": "Welcome to Global Debug Lounge A. Use this space for baseline swap + messaging checks.",
     "coordinates": {
       "type": "Point",
       "coordinates": [0.0, 0.0],
@@ -71,7 +71,61 @@
     "audit": {
       "createdBy": { "$oid": "68e061721329566a22d474a7" }
     },
-    "createdAt": { "$date": "2025-10-20T19:16:00.000Z" },
-    "updatedAt": { "$date": "2025-10-20T19:16:00.000Z" }
+    "createdAt": { "$date": "2026-10-20T19:16:00.000Z" },
+    "updatedAt": { "$date": "2026-10-20T19:16:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d476a1" },
+    "roomId": { "$oid": "68e061721329566a22d47691" },
+    "authorId": { "$oid": "68e061721329566a22d474a8" },
+    "replyToMessageId": null,
+    "message": "Global Lounge B online. Hop here when you just need a fast room swap without geo rules.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [0.0, 0.0],
+      "accuracy": 0
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d474a8" }
+    },
+    "createdAt": { "$date": "2026-10-21T02:32:00.000Z" },
+    "updatedAt": { "$date": "2026-10-21T02:32:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d476a2" },
+    "roomId": { "$oid": "68e061721329566a22d47692" },
+    "authorId": { "$oid": "68e061721329566a22d474a9" },
+    "replyToMessageId": null,
+    "message": "Checking in from the Long Beach waterfront. I can see the chat after spoofing to campus coords.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [-118.193739, 33.77005],
+      "accuracy": 12
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d474a9" }
+    },
+    "createdAt": { "$date": "2026-10-21T02:36:00.000Z" },
+    "updatedAt": { "$date": "2026-10-21T02:36:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d476a3" },
+    "roomId": { "$oid": "68e061721329566a22d47693" },
+    "authorId": { "$oid": "68e061721329566a22d474a8" },
+    "replyToMessageId": null,
+    "message": "North Pole check: messages here should stay invisible to anyone spoofed to Long Beach.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [135.0, 89.95],
+      "accuracy": 30
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": { "$oid": "68e061721329566a22d474a8" }
+    },
+    "createdAt": { "$date": "2026-10-21T02:46:00.000Z" },
+    "updatedAt": { "$date": "2026-10-21T02:46:00.000Z" }
   }
 ]

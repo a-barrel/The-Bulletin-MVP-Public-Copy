@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -147,7 +147,8 @@ const Map = ({
   pins = [],
   onPinSelect,
   selectedPinId,
-  centerOverride
+  centerOverride,
+  userRadiusMeters
 }) => {
   const resolvedCenter = toLatLng(centerOverride) ?? toLatLng(userLocation) ?? [0, 0];
   const userMarkerPosition = toLatLng(userLocation);
@@ -173,6 +174,13 @@ const Map = ({
             <h3>You are here</h3>
           </Popup>
         </Marker>
+      )}
+      {userMarkerPosition && Number.isFinite(userRadiusMeters) && userRadiusMeters > 0 && (
+        <Circle
+          center={userMarkerPosition}
+          radius={userRadiusMeters}
+          pathOptions={{ color: '#2196f3', fillColor: '#2196f3', fillOpacity: 0.15, weight: 1.5 }}
+        />
       )}
 
       {nearbyUsers.map((user, index) => (

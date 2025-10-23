@@ -1,8 +1,8 @@
-import { NavLink } from "react-router-dom";
-import "./Navbar.css";
-import ChatIcon from "../assets/ChatPage.svg";
-import MapIcon from "../assets/MapPage.svg";
-import ListIcon from "../assets/ListPage.svg"; // ✅ matches your files
+import { NavLink } from 'react-router-dom';
+import './Navbar.css';
+import ChatIcon from '../assets/ChatPage.svg';
+import MapIcon from '../assets/MapPage.svg';
+import ListIcon from '../assets/ListPage.svg';
 
 export default function Navbar() {
   return (

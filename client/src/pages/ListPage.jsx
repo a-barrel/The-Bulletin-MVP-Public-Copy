@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useMemo } from "react";
+﻿import React, { useState, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import "./ListPage.css";
 import Navbar from "../components/Navbar";
 import SortToggle from "../components/SortToggle";
@@ -91,10 +92,14 @@ function hoursUntil(label = "") {
 }
 
 export default function ListPage() {
+  const navigate = useNavigate();
   const [sortByExpiration, setSortByExpiration] = useState(false); // false = distance, true = expiration
   const handleSortToggle = useCallback(() => {
-    setSortByExpiration(prev => !prev);
+    setSortByExpiration((prev) => !prev);
   }, []);
+  const handleNotifications = useCallback(() => {
+    navigate('/updates');
+  }, [navigate]);
 
   const filteredAndSortedFeed = useMemo(() => {
     // Step 1: Filter out expired pins
@@ -127,7 +132,12 @@ export default function ListPage() {
             <img src={menuIcon} alt="Menu" className="header-icon" />
           </button>
           <h1 className="header-title">List</h1>
-          <button className="header-icon-btn" aria-label="Notifications">
+          <button
+            className="header-icon-btn"
+            type="button"
+            aria-label="Notifications"
+            onClick={handleNotifications}
+          >
             <img src={updatesIcon} alt="Notifications" className="header-icon" />
           </button>
         </header>

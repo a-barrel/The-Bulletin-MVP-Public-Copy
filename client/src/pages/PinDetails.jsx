@@ -14,6 +14,13 @@ import {
   createPinReply
 } from '../api/mongoDataApi';
 
+const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
+const SAMPLE_PIN_IDS = [
+  '68e061721329566a22d474aa',
+  '68e061721329566a22d474ab',
+  '68e061721329566a22d474ac'
+];
+
 export const pageConfig = {
   id: 'pin-details',
   label: 'Pin Details',
@@ -21,13 +28,23 @@ export const pageConfig = {
   path: '/pin/:pinId',
   order: 3,
   showInNav: true,
-  resolveNavTarget: () => {
-    const input = window.prompt('Enter a pin ID to view in Pin Details:');
-    if (typeof input !== 'string') {
-      return null;
+  resolveNavTarget: ({ currentPath } = {}) => {
+    const input = window.prompt(
+      'Enter a pin ID to view (type "expired" to preview an expired pin, leave blank for a random sample, cancel to stay put):'
+    );
+    if (input === null) {
+      return currentPath ?? null;
     }
     const trimmed = input.trim();
-    return trimmed.length > 0 ? `/pin/${trimmed}` : null;
+    if (trimmed.toLowerCase() === 'expired') {
+      return `/pin/${EXPIRED_PIN_ID}`;
+    }
+    if (!trimmed) {
+      const randomId =
+        SAMPLE_PIN_IDS[Math.floor(Math.random() * SAMPLE_PIN_IDS.length)] ?? '68e061721329566a22d474aa';
+      return `/pin/${randomId}`;
+    }
+    return `/pin/${trimmed}`;
   }
 };
 
@@ -219,10 +236,25 @@ function PinDetails() {
   const [replyMessage, setReplyMessage] = useState('');
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
   const [submitReplyError, setSubmitReplyError] = useState(null);
-  const isEventPin = useMemo(
-    () => (typeof pin?.type === 'string' ? pin.type.toLowerCase() === 'event' : false),
-    [pin?.type]
-  );
+const isEventPin = useMemo(
+  () => (typeof pin?.type === 'string' ? pin.type.toLowerCase() === 'event' : false),
+  [pin?.type]
+);
+
+const pinExpired = useMemo(() => {
+  if (!pin) {
+    return false;
+  }
+  const expiresSource = pin.expiresAt ?? pin.endDate;
+  if (!expiresSource) {
+    return false;
+  }
+  const expiry = new Date(expiresSource);
+  if (Number.isNaN(expiry.getTime())) {
+    return false;
+  }
+  return expiry.getTime() < Date.now();
+}, [pin]);
 
   useEffect(() => {
     setBookmarked(false);
@@ -239,7 +271,7 @@ function PinDetails() {
     setReplyMessage('');
     setIsSubmittingReply(false);
     setSubmitReplyError(null);
-  }, [pinId]);
+  }, [pinId, pinExpired]);
 
   useEffect(() => {
     if (!pin) {
@@ -305,7 +337,7 @@ function PinDetails() {
     return () => {
       ignore = true;
     };
-  }, [pinId]);
+  }, [pinId, pinExpired]);
 
   useEffect(() => {
     if (!pinId) {
@@ -343,7 +375,7 @@ function PinDetails() {
     return () => {
       ignore = true;
     };
-  }, [pinId]);
+  }, [pinId, pinExpired]);
 
   useEffect(() => {
     if (!attendeeOverlayOpen) {
@@ -469,24 +501,28 @@ function PinDetails() {
   );
 
   const openAttendeeOverlay = useCallback(() => {
-    if (!isEventPin) {
+    if (!isEventPin || pinExpired) {
       return;
     }
     setAttendeesError(null);
     setAttendeeOverlayOpen(true);
-  }, [isEventPin]);
+  }, [isEventPin, pinExpired]);
 
   const closeAttendeeOverlay = useCallback(() => {
     setAttendeeOverlayOpen(false);
   }, []);
 
   const openReplyComposer = useCallback(() => {
+    if (pinExpired) {
+      setSubmitReplyError('Replies are closed because this pin has expired.');
+      return;
+    }
     if (!pinId) {
       return;
     }
     setSubmitReplyError(null);
     setReplyComposerOpen(true);
-  }, [pinId]);
+  }, [pinId, pinExpired]);
 
   const closeReplyComposer = useCallback(() => {
     if (isSubmittingReply) {
@@ -497,7 +533,10 @@ function PinDetails() {
   }, [isSubmittingReply]);
 
   const handleToggleBookmark = useCallback(async () => {
-    if (!pin || isUpdatingBookmark) {
+    if (!pin || isUpdatingBookmark || pinExpired) {
+      if (pinExpired) {
+        setBookmarkError('Expired pins cannot be bookmarked.');
+      }
       return;
     }
 
@@ -572,10 +611,13 @@ function PinDetails() {
     } finally {
       setIsUpdatingBookmark(false);
     }
-  }, [pin, bookmarked, isUpdatingBookmark]);
+  }, [pin, bookmarked, isUpdatingBookmark, pinExpired]);
 
   const handleToggleAttendance = useCallback(async () => {
-    if (!pin || !isEventPin || isUpdatingAttendance) {
+    if (!pin || !isEventPin || isUpdatingAttendance || pinExpired) {
+      if (pinExpired) {
+        setAttendanceError('This event has ended.');
+      }
       return;
     }
 
@@ -641,10 +683,13 @@ function PinDetails() {
     } finally {
       setIsUpdatingAttendance(false);
     }
-  }, [pin, attending, isEventPin, isUpdatingAttendance]);
+  }, [pin, attending, isEventPin, isUpdatingAttendance, pinExpired]);
 
   const handleSubmitReply = useCallback(async () => {
-    if (!pinId || isSubmittingReply) {
+    if (!pinId || isSubmittingReply || pinExpired) {
+      if (pinExpired) {
+        setSubmitReplyError('Replies are closed because this pin has expired.');
+      }
       return;
     }
     const trimmedMessage = replyMessage.trim();
@@ -681,14 +726,27 @@ function PinDetails() {
     } finally {
       setIsSubmittingReply(false);
     }
-  }, [pinId, replyMessage, isSubmittingReply]);
+  }, [pinId, replyMessage, isSubmittingReply, pinExpired]);
 
-  const expirationLabel = useMemo(() => formatDateTime(pin?.expiresAt), [pin]);
+  const expirationLabel = useMemo(() => formatDateTime(pin?.expiresAt ?? pin?.endDate), [pin]);
   const createdAtLabel = useMemo(() => formatDateTime(pin?.createdAt), [pin]);
   const updatedAtLabel = useMemo(() => formatDateTime(pin?.updatedAt), [pin]);
 
   return (
     <div className='pin-details'>
+      {pinExpired ? (
+        <div className='pin-expired-overlay' role='dialog' aria-modal='true'>
+          <div className='pin-expired-modal'>
+            <h3>This pin has expired</h3>
+            <p>This activity is no longer available. Please head back to the home feed to explore current happenings.</p>
+            <div className='expired-actions'>
+              <Link to="/list" className='expired-return-button'>
+                Return to List
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {/* Header */}
       <header className='header'>
         <Link to="/list" className="back-button">
@@ -704,7 +762,7 @@ function PinDetails() {
           <button
             className='bookmark-button'
             onClick={handleToggleBookmark}
-            disabled={isUpdatingBookmark || !pin}
+            disabled={isUpdatingBookmark || !pin || pinExpired}
             aria-pressed={bookmarked ? 'true' : 'false'}
             aria-label={bookmarked ? 'Remove bookmark' : 'Save bookmark'}
             aria-busy={isUpdatingBookmark ? 'true' : 'false'}
@@ -899,7 +957,7 @@ function PinDetails() {
                   type="button"
                   className='view-attendees-button'
                   onClick={openAttendeeOverlay}
-                  disabled={isLoadingAttendees && attendeeOverlayOpen}
+                  disabled={pinExpired || (isLoadingAttendees && attendeeOverlayOpen)}
                 >
                   {isLoadingAttendees && attendeeOverlayOpen ? 'Loading attendees...' : 'View Attendees'}
                 </button>
@@ -913,7 +971,7 @@ function PinDetails() {
               <button
                 className={`attend-button ${attending ? 'attending' : ''}`}
                 onClick={handleToggleAttendance}
-                disabled={isUpdatingAttendance || !pin}
+                disabled={isUpdatingAttendance || !pin || pinExpired}
                 aria-busy={isUpdatingAttendance ? 'true' : 'false'}
               >
                 {isUpdatingAttendance ? 'Updating...' : attending ? 'Attending!' : 'Attend'}
@@ -1003,7 +1061,7 @@ function PinDetails() {
           </div>
 
           {/* Create comment button */}
-          <button className='create-comment' onClick={openReplyComposer} aria-label='Create reply'>
+          <button className='create-comment' disabled={pinExpired} onClick={openReplyComposer} aria-label='Create reply'>
             <img
               src='https://www.svgrepo.com/show/489238/add-comment.svg'
               className='create-comment-button'
@@ -1032,7 +1090,7 @@ function PinDetails() {
                 type='button'
                 className='reply-overlay-close'
                 onClick={closeReplyComposer}
-                disabled={isSubmittingReply}
+                disabled={isSubmittingReply || pinExpired}
               >
                 Cancel
               </button>
@@ -1048,7 +1106,7 @@ function PinDetails() {
                 onChange={(event) => setReplyMessage(event.target.value)}
                 placeholder='Type your reply here...'
                 maxLength={4000}
-                disabled={isSubmittingReply}
+                disabled={isSubmittingReply || pinExpired}
               />
               <div className='reply-overlay-footer'>
                 <span className='reply-overlay-count'>{replyMessage.length}/4000</span>
@@ -1056,7 +1114,7 @@ function PinDetails() {
                   type='button'
                   className='reply-overlay-submit'
                   onClick={handleSubmitReply}
-                  disabled={isSubmittingReply}
+                  disabled={isSubmittingReply || pinExpired}
                 >
                   {isSubmittingReply ? 'Posting...' : 'Post Reply'}
                 </button>
