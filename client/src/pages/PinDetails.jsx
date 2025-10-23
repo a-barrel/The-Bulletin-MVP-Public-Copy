@@ -20,6 +20,7 @@ const SAMPLE_PIN_IDS = [
   '68e061721329566a22d474ab',
   '68e061721329566a22d474ac'
 ];
+const FAR_PIN_ID = SAMPLE_PIN_IDS[0] ?? '68e061721329566a22d474aa';
 
 export const pageConfig = {
   id: 'pin-details',
@@ -30,7 +31,7 @@ export const pageConfig = {
   showInNav: true,
   resolveNavTarget: ({ currentPath } = {}) => {
     const input = window.prompt(
-      'Enter a pin ID to view (type "expired" to preview an expired pin, leave blank for a random sample, cancel to stay put):'
+      'Enter a pin ID to view (type "expired" for an expired preview, type "far" to preview a pin outside your interaction radius, leave blank for a random sample, cancel to stay put):'
     );
     if (input === null) {
       return currentPath ?? null;
@@ -38,6 +39,10 @@ export const pageConfig = {
     const trimmed = input.trim();
     if (trimmed.toLowerCase() === 'expired') {
       return `/pin/${EXPIRED_PIN_ID}`;
+    }
+    if (trimmed.toLowerCase() === 'far') {
+      const farId = FAR_PIN_ID;
+      return `/pin/${farId}?preview=far`;
     }
     if (!trimmed) {
       const randomId =
@@ -302,6 +307,59 @@ const pinExpired = useMemo(() => {
   return expiry.getTime() < Date.now();
 }, [pin]);
 
+  const previewMode = useMemo(() => {
+    const params = new URLSearchParams(location.search ?? '');
+    return (params.get('preview') || '').toLowerCase();
+  }, [location.search]);
+
+  const simulatedFarPreview = previewMode === 'far';
+  const viewerWithinInteractionRadius =
+    typeof pin?.viewerWithinInteractionRadius === 'boolean' ? pin.viewerWithinInteractionRadius : undefined;
+  const viewerDistanceMeters =
+    typeof pin?.viewerDistanceMeters === 'number' && Number.isFinite(pin.viewerDistanceMeters)
+      ? pin.viewerDistanceMeters
+      : null;
+  const distanceLockActive = !pinExpired && (simulatedFarPreview || viewerWithinInteractionRadius === false);
+  const isInteractionLocked = pinExpired || distanceLockActive;
+  const viewerInteractionLockMessage = pin?.viewerInteractionLockMessage;
+
+  const viewerDistanceLabel = useMemo(() => {
+    if (viewerDistanceMeters === null) {
+      return null;
+    }
+    if (viewerDistanceMeters >= 1609.34) {
+      const miles = viewerDistanceMeters / 1609.34;
+      return `${miles.toFixed(1)} miles`;
+    }
+    if (viewerDistanceMeters >= 10) {
+      return `${Math.round(viewerDistanceMeters)} meters`;
+    }
+    return `${viewerDistanceMeters.toFixed(1)} meters`;
+  }, [viewerDistanceMeters]);
+
+  const interactionOverlay = useMemo(() => {
+    if (pinExpired) {
+      return {
+        title: 'This pin has expired',
+        message:
+          'This activity is no longer available. Please head back to the home feed to explore current happenings.'
+      };
+    }
+
+    if (distanceLockActive) {
+      const defaultMessage = viewerDistanceLabel
+        ? `This pin is approximately ${viewerDistanceLabel} away and sits outside your interaction radius. Move closer to engage with it.`
+        : 'This pin is outside your interaction radius. Move closer to interact with it.';
+
+      return {
+        title: 'Outside interaction radius',
+        message: viewerInteractionLockMessage || defaultMessage
+      };
+    }
+
+    return null;
+  }, [pinExpired, distanceLockActive, viewerInteractionLockMessage, viewerDistanceLabel]);
+
   useEffect(() => {
     setBookmarked(false);
     setIsUpdatingBookmark(false);
@@ -317,7 +375,7 @@ const pinExpired = useMemo(() => {
     setReplyMessage('');
     setIsSubmittingReply(false);
     setSubmitReplyError(null);
-  }, [pinId, pinExpired]);
+  }, [pinId, isInteractionLocked]);
 
   useEffect(() => {
     if (!pin) {
@@ -356,7 +414,7 @@ const pinExpired = useMemo(() => {
       setError(null);
 
       try {
-        const payload = await fetchPinById(pinId);
+        const payload = await fetchPinById(pinId, { previewMode });
         if (ignore) {
           return;
         }
@@ -383,7 +441,7 @@ const pinExpired = useMemo(() => {
     return () => {
       ignore = true;
     };
-  }, [pinId, pinExpired]);
+  }, [pinId, previewMode]);
 
   useEffect(() => {
     if (!pinId) {
@@ -421,7 +479,7 @@ const pinExpired = useMemo(() => {
     return () => {
       ignore = true;
     };
-  }, [pinId, pinExpired]);
+  }, [pinId]);
 
   useEffect(() => {
     if (!attendeeOverlayOpen) {
@@ -547,28 +605,39 @@ const pinExpired = useMemo(() => {
   );
 
   const openAttendeeOverlay = useCallback(() => {
-    if (!isEventPin || pinExpired) {
+    if (!isEventPin) {
+      return;
+    }
+    if (pinExpired) {
+      return;
+    }
+    if (distanceLockActive) {
+      setAttendeesError('You are outside this pin\'s interaction radius.');
       return;
     }
     setAttendeesError(null);
     setAttendeeOverlayOpen(true);
-  }, [isEventPin, pinExpired]);
+  }, [isEventPin, pinExpired, distanceLockActive]);
 
   const closeAttendeeOverlay = useCallback(() => {
     setAttendeeOverlayOpen(false);
   }, []);
 
   const openReplyComposer = useCallback(() => {
+    if (!pinId) {
+      return;
+    }
     if (pinExpired) {
       setSubmitReplyError('Replies are closed because this pin has expired.');
       return;
     }
-    if (!pinId) {
+    if (distanceLockActive) {
+      setSubmitReplyError('Replies are disabled because you are outside this pin\'s interaction radius.');
       return;
     }
     setSubmitReplyError(null);
     setReplyComposerOpen(true);
-  }, [pinId, pinExpired]);
+  }, [pinId, pinExpired, distanceLockActive]);
 
   const closeReplyComposer = useCallback(() => {
     if (isSubmittingReply) {
@@ -579,9 +648,11 @@ const pinExpired = useMemo(() => {
   }, [isSubmittingReply]);
 
   const handleToggleBookmark = useCallback(async () => {
-    if (!pin || isUpdatingBookmark || pinExpired) {
+    if (!pin || isUpdatingBookmark || isInteractionLocked) {
       if (pinExpired) {
         setBookmarkError('Expired pins cannot be bookmarked.');
+      } else if (distanceLockActive) {
+        setBookmarkError('Pins outside your interaction radius cannot be bookmarked.');
       }
       return;
     }
@@ -657,12 +728,14 @@ const pinExpired = useMemo(() => {
     } finally {
       setIsUpdatingBookmark(false);
     }
-  }, [pin, bookmarked, isUpdatingBookmark, pinExpired]);
+  }, [pin, bookmarked, isUpdatingBookmark, isInteractionLocked, pinExpired, distanceLockActive]);
 
   const handleToggleAttendance = useCallback(async () => {
-    if (!pin || !isEventPin || isUpdatingAttendance || pinExpired) {
+    if (!pin || !isEventPin || isUpdatingAttendance || isInteractionLocked) {
       if (pinExpired) {
         setAttendanceError('This event has ended.');
+      } else if (distanceLockActive) {
+        setAttendanceError('You are outside this pin\'s interaction radius.');
       }
       return;
     }
@@ -729,12 +802,14 @@ const pinExpired = useMemo(() => {
     } finally {
       setIsUpdatingAttendance(false);
     }
-  }, [pin, attending, isEventPin, isUpdatingAttendance, pinExpired]);
+  }, [pin, attending, isEventPin, isUpdatingAttendance, isInteractionLocked, pinExpired, distanceLockActive]);
 
   const handleSubmitReply = useCallback(async () => {
-    if (!pinId || isSubmittingReply || pinExpired) {
+    if (!pinId || isSubmittingReply || isInteractionLocked) {
       if (pinExpired) {
         setSubmitReplyError('Replies are closed because this pin has expired.');
+      } else if (distanceLockActive) {
+        setSubmitReplyError('Replies are disabled because you are outside this pin\'s interaction radius.');
       }
       return;
     }
@@ -772,7 +847,7 @@ const pinExpired = useMemo(() => {
     } finally {
       setIsSubmittingReply(false);
     }
-  }, [pinId, replyMessage, isSubmittingReply, pinExpired]);
+  }, [pinId, replyMessage, isSubmittingReply, isInteractionLocked, pinExpired, distanceLockActive]);
 
   const expirationLabel = useMemo(() => formatDateTime(pin?.expiresAt ?? pin?.endDate), [pin]);
   const createdAtLabel = useMemo(() => formatDateTime(pin?.createdAt), [pin]);
@@ -780,11 +855,11 @@ const pinExpired = useMemo(() => {
 
   return (
     <div className='pin-details'>
-      {pinExpired ? (
+      {interactionOverlay ? (
         <div className='pin-expired-overlay' role='dialog' aria-modal='true'>
           <div className='pin-expired-modal'>
-            <h3>This pin has expired</h3>
-            <p>This activity is no longer available. Please head back to the home feed to explore current happenings.</p>
+            <h3>{interactionOverlay.title}</h3>
+            <p>{interactionOverlay.message}</p>
             <div className='expired-actions'>
               <Link to="/list" className='expired-return-button'>
                 Return to List
@@ -808,7 +883,7 @@ const pinExpired = useMemo(() => {
           <button
             className='bookmark-button'
             onClick={handleToggleBookmark}
-            disabled={isUpdatingBookmark || !pin || pinExpired}
+            disabled={isUpdatingBookmark || !pin || isInteractionLocked}
             aria-pressed={bookmarked ? 'true' : 'false'}
             aria-label={bookmarked ? 'Remove bookmark' : 'Save bookmark'}
             aria-busy={isUpdatingBookmark ? 'true' : 'false'}
@@ -835,6 +910,9 @@ const pinExpired = useMemo(() => {
         {pin?._id ? <span className="pin-id">ID: {pin._id}</span> : null}
         {proximityRadius ? (
           <span className="pin-radius">Proximity radius: {proximityRadius}</span>
+        ) : null}
+        {viewerDistanceLabel ? (
+          <span className="pin-radius">Approximate distance: {viewerDistanceLabel}</span>
         ) : null}
         {createdAtLabel || updatedAtLabel ? (
           <span className="pin-timestamps">
@@ -1001,7 +1079,7 @@ const pinExpired = useMemo(() => {
                   type="button"
                   className='view-attendees-button'
                   onClick={openAttendeeOverlay}
-                  disabled={pinExpired || (isLoadingAttendees && attendeeOverlayOpen)}
+                  disabled={isInteractionLocked || (isLoadingAttendees && attendeeOverlayOpen)}
                 >
                   {isLoadingAttendees && attendeeOverlayOpen ? 'Loading attendees...' : 'View Attendees'}
                 </button>
@@ -1015,7 +1093,7 @@ const pinExpired = useMemo(() => {
               <button
                 className={`attend-button ${attending ? 'attending' : ''}`}
                 onClick={handleToggleAttendance}
-                disabled={isUpdatingAttendance || !pin || pinExpired}
+                disabled={isUpdatingAttendance || !pin || isInteractionLocked}
                 aria-busy={isUpdatingAttendance ? 'true' : 'false'}
               >
                 {isUpdatingAttendance ? 'Updating...' : attending ? 'Attending!' : 'Attend'}
@@ -1105,7 +1183,7 @@ const pinExpired = useMemo(() => {
           </div>
 
           {/* Create comment button */}
-          <button className='create-comment' disabled={pinExpired} onClick={openReplyComposer} aria-label='Create reply'>
+          <button className='create-comment' disabled={isInteractionLocked} onClick={openReplyComposer} aria-label='Create reply'>
             <img
               src='https://www.svgrepo.com/show/489238/add-comment.svg'
               className='create-comment-button'
@@ -1134,7 +1212,7 @@ const pinExpired = useMemo(() => {
                 type='button'
                 className='reply-overlay-close'
                 onClick={closeReplyComposer}
-                disabled={isSubmittingReply || pinExpired}
+                disabled={isSubmittingReply || isInteractionLocked}
               >
                 Cancel
               </button>
@@ -1150,7 +1228,7 @@ const pinExpired = useMemo(() => {
                 onChange={(event) => setReplyMessage(event.target.value)}
                 placeholder='Type your reply here...'
                 maxLength={4000}
-                disabled={isSubmittingReply || pinExpired}
+                disabled={isSubmittingReply || isInteractionLocked}
               />
               <div className='reply-overlay-footer'>
                 <span className='reply-overlay-count'>{replyMessage.length}/4000</span>
@@ -1158,7 +1236,7 @@ const pinExpired = useMemo(() => {
                   type='button'
                   className='reply-overlay-submit'
                   onClick={handleSubmitReply}
-                  disabled={isSubmittingReply || pinExpired}
+                  disabled={isSubmittingReply || isInteractionLocked}
                 >
                   {isSubmittingReply ? 'Posting...' : 'Post Reply'}
                 </button>

@@ -81,18 +81,7 @@ and a "reset all badges" option.
 **A tiny popup overlay in bottom right that fades showing
 you earned Badge [x]!!! Yippeee confetti. 
 
-- **Pins outside Interaction Radius:** 
-"On the prompt for the Pin ID when navigating
-to the Pin Details page (v1 and v2),
-add a tooltip mention of how typing 'far'
-will fetch a pin that's far away to test
-locking users out of interacting with a pin 
-in a similar fashion to how expired pins 
-lock a user out of interacting with it with 
-a overlay explaining why they cant interact with the pin with a button going back to the List Page. 
-And add functionality for fetching a pin outside
-the users interaction radius so it can actually
-fetch a pin that's too far away."
+- **[Done 2025-10-22] Pins outside Interaction Radius:** Pin Details v1 and v2 now advertise the `"far"` preview shortcut, the pins API simulates viewers outside the interaction radius, and both UIs surface a lockout overlay (with distance context and a return-to-list CTA) that blocks bookmarking, attendance, and replies when the previewed pin is too far away.
 
 **Done**-Export Bookmarks as CSV, I guess add that 
 to the debug console and actual bookmark page

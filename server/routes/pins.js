@@ -185,6 +185,22 @@ const mapPinToFull = (pinDoc, creator, options = {}) => {
     base.viewerHasBookmarked = options.viewerHasBookmarked;
   }
 
+  if (typeof options.viewerDistanceMeters === 'number' && Number.isFinite(options.viewerDistanceMeters)) {
+    base.viewerDistanceMeters = options.viewerDistanceMeters;
+  }
+
+  if (typeof options.viewerWithinInteractionRadius === 'boolean') {
+    base.viewerWithinInteractionRadius = options.viewerWithinInteractionRadius;
+  }
+
+  if (typeof options.viewerInteractionLockReason === 'string' && options.viewerInteractionLockReason.trim()) {
+    base.viewerInteractionLockReason = options.viewerInteractionLockReason.trim();
+  }
+
+  if (typeof options.viewerInteractionLockMessage === 'string' && options.viewerInteractionLockMessage.trim()) {
+    base.viewerInteractionLockMessage = options.viewerInteractionLockMessage.trim();
+  }
+
   return PinSchema.parse(base);
 };
 
@@ -527,10 +543,24 @@ router.get('/:pinId', verifyToken, async (req, res) => {
       const bookmarkExists = await Bookmark.exists({ userId: viewer._id, pinId: pin._id });
       viewerHasBookmarked = Boolean(bookmarkExists);
     }
-    const payload = mapPinToFull(pin, mapUserToPublic(pin.creatorId), {
+    const previewModeRaw =
+      typeof req.query.preview === 'string' ? req.query.preview.trim().toLowerCase() : undefined;
+
+    const mapOptions = {
       viewerId,
       viewerHasBookmarked
-    });
+    };
+
+    if (previewModeRaw === 'far') {
+      const distanceMeters = Math.max(pin.proximityRadiusMeters ?? 1609, 1609) * 3;
+      mapOptions.viewerDistanceMeters = distanceMeters;
+      mapOptions.viewerWithinInteractionRadius = false;
+      mapOptions.viewerInteractionLockReason = 'outside-radius';
+      mapOptions.viewerInteractionLockMessage =
+        'You are outside this pin\'s interaction radius. Move closer to interact with it.';
+    }
+
+    const payload = mapPinToFull(pin, mapUserToPublic(pin.creatorId), mapOptions);
     res.json(payload);
   } catch (error) {
     if (error instanceof ZodError) {

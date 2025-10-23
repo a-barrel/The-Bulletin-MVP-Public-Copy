@@ -192,15 +192,26 @@ export async function createPin(input) {
   return payload;
 }
 
-export async function fetchPinById(pinId) {
+export async function fetchPinById(pinId, options = {}) {
   if (!pinId) {
     throw new Error('Pin id is required');
   }
 
+  const { signal, previewMode } = options;
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}`, {
+  const params = new URLSearchParams();
+  if (typeof previewMode === 'string' && previewMode.trim().length > 0) {
+    params.set('preview', previewMode.trim().toLowerCase());
+  }
+  const query = params.toString();
+  const url = query
+    ? `${baseUrl}/api/pins/${encodeURIComponent(pinId)}?${query}`
+    : `${baseUrl}/api/pins/${encodeURIComponent(pinId)}`;
+
+  const response = await fetch(url, {
     method: 'GET',
-    headers: await buildHeaders()
+    headers: await buildHeaders(),
+    signal
   });
 
   const payload = await response.json().catch(() => ({}));

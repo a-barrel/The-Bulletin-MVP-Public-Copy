@@ -41,7 +41,11 @@ const BasePinSchema = z.object({
   updatedAt: IsoDateStringSchema,
   audit: AuditMetadataSchema.optional(),
   viewerIsAttending: z.boolean().optional(),
-  viewerHasBookmarked: z.boolean().optional()
+  viewerHasBookmarked: z.boolean().optional(),
+  viewerDistanceMeters: z.number().nonnegative().optional(),
+  viewerWithinInteractionRadius: z.boolean().optional(),
+  viewerInteractionLockReason: z.string().optional(),
+  viewerInteractionLockMessage: z.string().optional()
 });
 
 const EventAddressComponentsSchema = z
