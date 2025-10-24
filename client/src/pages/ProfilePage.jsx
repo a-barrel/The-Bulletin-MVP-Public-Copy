@@ -58,10 +58,10 @@ const FALLBACK_AVATAR = '/images/profile/profile-01.jpg';
 
 const resolveBadgeImageUrl = (value) => {
   if (!value) {
-    return null;
+    return '—';
   }
   if (/^(?:https?:)?\/\//i.test(value) || value.startsWith('data:')) {
-    return value;
+    return '—';
   }
   const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
   const normalized = value.startsWith('/') ? value : `/${value}`;
@@ -119,20 +119,20 @@ const formatEntryValue = (value) => {
 };
 
 const METERS_PER_MILE = 1609.34;
-
 const formatDateTime = (value) => {
   if (!value) {
-    return '—';
+    return 'N/A';
   }
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return '—';
+    return 'N/A';
   }
   return date.toLocaleString(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short'
   });
 };
+
 
 const Section = ({ title, description, children }) => (
   <Stack spacing={1.5}>
@@ -491,6 +491,7 @@ const detailEntries = useMemo(() => {
     const trimmed = rawBio.trim();
     return trimmed.length > 0 ? trimmed : null;
   }, [effectiveUser?.bio]);
+  const statsVisible = effectiveUser?.preferences?.statsPublic !== false;
   const statsEntries = useMemo(() => {
     const stats = effectiveUser?.stats;
     if (!stats) {
@@ -593,8 +594,8 @@ const detailEntries = useMemo(() => {
       createdAt: formatDateTime(effectiveUser.createdAt),
       updatedAt: formatDateTime(effectiveUser.updatedAt),
       status: effectiveUser.accountStatus ?? 'unknown',
-      email: effectiveUser.email ?? '—',
-      userId: effectiveUser._id ?? targetUserId ?? '—'
+      email: effectiveUser.email ?? 'â€”',
+      userId: effectiveUser._id ?? targetUserId ?? 'â€”'
     };
   }, [effectiveUser, targetUserId]);
 
@@ -867,7 +868,7 @@ const detailEntries = useMemo(() => {
                     </Stack>
                   ) : (
                     <Typography variant="body2" color="text.secondary">
-                      No badges yet — they’ll appear here once this user starts collecting achievements.
+                      No badges yet â€” theyâ€™ll appear here once this user starts collecting achievements.
                     </Typography>
                   )}
                 </Section>
@@ -876,22 +877,28 @@ const detailEntries = useMemo(() => {
                   title="Highlights"
                   description="At-a-glance stats across this profile."
                 >
-                  {statsEntries.length ? (
-                    <Grid container spacing={2}>
-                      {statsEntries.map(({ key, label, value }) => (
-                        <Grid item xs={6} sm={4} key={key}>
-                          <Stack spacing={0.5}>
-                            <Typography variant="subtitle2" color="text.secondary">
-                              {label}
-                            </Typography>
-                            <Typography variant="h5">{value}</Typography>
-                          </Stack>
-                        </Grid>
-                      ))}
-                    </Grid>
+                  {statsVisible ? (
+                    statsEntries.length ? (
+                      <Grid container spacing={2}>
+                        {statsEntries.map(({ key, label, value }) => (
+                          <Grid item xs={6} sm={4} key={key}>
+                            <Stack spacing={0.5}>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                {label}
+                              </Typography>
+                              <Typography variant="h5">{value}</Typography>
+                            </Stack>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        Stats will appear here once this user starts hosting events, posting, or connecting with others.
+                      </Typography>
+                    )
                   ) : (
                     <Typography variant="body2" color="text.secondary">
-                      Stats will appear here once this user starts hosting events, posting, or connecting with others.
+                      This user keeps their stats private.
                     </Typography>
                   )}
                 </Section>
@@ -952,6 +959,14 @@ const detailEntries = useMemo(() => {
                           {preferenceSummary.locationSharing ? 'Enabled' : 'Disabled'}
                         </Typography>
                       </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Stats visibility
+                        </Typography>
+                        <Typography variant="body1">
+                          {statsVisible ? 'Shared' : 'Hidden'}
+                        </Typography>
+                      </Box>
                     </Stack>
 
                     <Divider flexItem />
@@ -1004,7 +1019,7 @@ const detailEntries = useMemo(() => {
                     </Stack>
                   ) : (
                     <Typography variant="body2" color="text.secondary">
-                      We’ll surface account timestamps once this profile finishes loading.
+                      Weâ€™ll surface account timestamps once this profile finishes loading.
                     </Typography>
                   )}
                 </Section>

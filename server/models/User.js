@@ -32,7 +32,8 @@ const userSchema = new mongoose.Schema(
         updates: { type: Boolean, default: true },
         marketing: { type: Boolean, default: false }
       },
-      radiusPreferenceMeters: { type: Number, default: 16093 }
+      radiusPreferenceMeters: { type: Number, default: 16093 },
+      statsPublic: { type: Boolean, default: true }
     },
     stats: {
       eventsHosted: { type: Number, default: 0 },

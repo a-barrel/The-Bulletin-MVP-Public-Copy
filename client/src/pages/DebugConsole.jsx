@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { signInWithCustomToken } from 'firebase/auth';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import Box from '@mui/material/Box';
@@ -1170,7 +1170,7 @@ const handleSubmit = async (event) => {
           indicatorColor="primary"
           orientation={isCompactTabs ? 'vertical' : 'horizontal'}
           variant="standard"
-          sx={{
+            sx={{
             width: '100%',
             ...(isCompactTabs
               ? {
@@ -1178,16 +1178,14 @@ const handleSubmit = async (event) => {
                   '& .MuiTabs-flexContainer': {
                     flexDirection: 'column',
                     alignItems: 'stretch',
-                    gap: 1
+                    gap: 1,
+                    flexWrap: 'nowrap'
                   },
                   '& .MuiTab-root': {
                     justifyContent: 'flex-start',
                     alignItems: 'flex-start',
                     textAlign: 'left',
                     minWidth: 'auto'
-                  },
-                  '& .MuiTabs-flexContainer': {
-                    flexWrap: 'nowrap'
                   },
                   '& .MuiTabs-indicator': {
                     left: 0
@@ -2848,7 +2846,7 @@ function ExperimentTab() {
         aria-labelledby={`${EXPERIMENT_TAB_ID}-dialog-title`}
       >
         <DialogTitle id={`${EXPERIMENT_TAB_ID}-dialog-title`}>
-          {EXPERIMENT_TITLE} — {activeScreen?.label}
+          {EXPERIMENT_TITLE} ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â {activeScreen?.label}
         </DialogTitle>
         <DialogContent dividers>
           <Box
@@ -4950,7 +4948,7 @@ function ChatRoomVisualizationTab() {
         {currentRoom ? (
           <Alert severity="info">
             Currently inside <strong>{currentRoom.name ?? 'Untitled chat room'}</strong>
-            {currentRoomDistanceLabel ? ` � ${currentRoomDistanceLabel}` : ''}
+            {currentRoomDistanceLabel ? ` - ${currentRoomDistanceLabel}` : ''}
           </Alert>
         ) : hasUserMovedRef.current ? (
           <Alert severity="warning">
@@ -5068,6 +5066,7 @@ function ChatRoomVisualizationTab() {
 }
 
 function BadgesTab() {
+  const { announceBadgeEarned } = useBadgeSound();
   const [currentUser] = useAuthState(auth);
   const [userIdInput, setUserIdInput] = useState('');
   const [autoUserId, setAutoUserId] = useState('');
@@ -6549,8 +6548,6 @@ function RepliesTab() {
 }
 
 export default DebugConsolePage;
-
-
 
 
 

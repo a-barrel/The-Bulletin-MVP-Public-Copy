@@ -79,6 +79,31 @@ const escapeCsvValue = (value) => {
   return stringValue;
 };
 
+const ensureUserStatsShape = (user) => {
+  if (!user) {
+    return;
+  }
+
+  if (!user.stats) {
+    user.stats = {
+      eventsHosted: 0,
+      eventsAttended: 0,
+      posts: 0,
+      bookmarks: 0,
+      followers: 0,
+      following: 0
+    };
+    return;
+  }
+
+  user.stats.eventsHosted = user.stats.eventsHosted ?? 0;
+  user.stats.eventsAttended = user.stats.eventsAttended ?? 0;
+  user.stats.posts = user.stats.posts ?? 0;
+  user.stats.bookmarks = user.stats.bookmarks ?? 0;
+  user.stats.followers = user.stats.followers ?? 0;
+  user.stats.following = user.stats.following ?? 0;
+};
+
 const mapMediaAsset = (asset) => {
   if (!asset) {
     return undefined;
@@ -382,6 +407,13 @@ router.post('/', verifyToken, async (req, res) => {
         tagIds: []
       });
 
+      ensureUserStatsShape(viewer);
+      viewer.stats.bookmarks = (viewer.stats.bookmarks ?? 0) + 1;
+      try {
+        await viewer.save();
+      } catch (error) {
+        console.error('Failed to update user bookmark stats:', error);
+      }
       pin.bookmarkCount = (pin.bookmarkCount ?? 0) + 1;
       if (pin.stats) {
         pin.stats.bookmarkCount = (pin.stats.bookmarkCount ?? 0) + 1;
@@ -471,6 +503,13 @@ router.delete('/:pinId', verifyToken, async (req, res) => {
       bookmarkCount = pin.bookmarkCount ?? 0;
     }
 
+    ensureUserStatsShape(viewer);
+    viewer.stats.bookmarks = Math.max(0, (viewer.stats.bookmarks ?? 0) - 1);
+    try {
+      await viewer.save();
+    } catch (error) {
+      console.error('Failed to update user bookmark stats:', error);
+    }
     res.json({
       removed: true,
       pinId: toIdString(pinObjectId),

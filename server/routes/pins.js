@@ -108,6 +108,25 @@ const mapPinToListItem = (pinDoc, creator) => {
   });
 };
 
+const ensureUserStats = (userDoc) => {
+  if (!userDoc) {
+    return null;
+  }
+
+  if (!userDoc.stats) {
+    userDoc.stats = {
+      eventsHosted: 0,
+      eventsAttended: 0,
+      posts: 0,
+      bookmarks: 0,
+      followers: 0,
+      following: 0
+    };
+  }
+
+  return userDoc.stats;
+};
+
 const resolveViewerUser = async (req) => {
   if (!req?.user?.uid) {
     return null;
@@ -360,27 +379,35 @@ router.post('/', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'endDate must be after startDate' });
     }
 
-    let creatorObjectId;
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(403).json({ message: 'Unable to resolve authenticated user for pin creation' });
+    }
+
+    let creatorObjectId = viewer._id;
+    let creatorUserDoc = viewer;
     if (input.creatorId) {
       if (!mongoose.Types.ObjectId.isValid(input.creatorId)) {
         return res.status(400).json({ message: 'Invalid creator id' });
       }
-      creatorObjectId = new mongoose.Types.ObjectId(input.creatorId);
-    } else {
-      let fallbackUser = await User.findOne().sort({ createdAt: 1 });
-      if (!fallbackUser) {
-        fallbackUser = await User.findOneAndUpdate(
-          { username: 'offline-demo' },
-          {
-            username: 'offline-demo',
-            displayName: 'Offline Demo User',
-            email: 'offline@example.com',
-            accountStatus: 'active'
-          },
-          { new: true, upsert: true, setDefaultsOnInsert: true }
-        );
+
+      const requestedCreatorId = new mongoose.Types.ObjectId(input.creatorId);
+      const viewerRoles = Array.isArray(viewer.roles) ? viewer.roles : [];
+      const viewerIsPrivileged =
+        viewerRoles.includes('admin') || viewerRoles.includes('super-admin') || viewerRoles.includes('system-admin');
+
+      if (!requestedCreatorId.equals(viewer._id) && !viewerIsPrivileged) {
+        return res.status(403).json({ message: 'You are not allowed to create pins for other users' });
       }
-      creatorObjectId = fallbackUser._id;
+
+      creatorObjectId = requestedCreatorId;
+      if (!requestedCreatorId.equals(viewer._id)) {
+        const overrideCreator = await User.findById(requestedCreatorId);
+        if (!overrideCreator) {
+          return res.status(404).json({ message: 'Specified creator user not found' });
+        }
+        creatorUserDoc = overrideCreator;
+      }
     }
 
     const coordinates = {
@@ -431,10 +458,21 @@ router.post('/', verifyToken, async (req, res) => {
     }
 
     const pin = await Pin.create(pinData);
+    try {
+      ensureUserStats(creatorUserDoc);
+      if (pin.type === 'event') {
+        creatorUserDoc.stats.eventsHosted = (creatorUserDoc.stats.eventsHosted ?? 0) + 1;
+      } else if (pin.type === 'discussion') {
+        creatorUserDoc.stats.posts = (creatorUserDoc.stats.posts ?? 0) + 1;
+      }
+      creatorUserDoc.markModified('stats');
+      await creatorUserDoc.save();
+    } catch (error) {
+      console.error('Failed to update creator stats after pin creation:', error);
+    }
     const hydrated = await Pin.findById(pin._id).populate('creatorId');
     const sourcePin = hydrated ?? pin;
     const creatorPublic = hydrated ? mapUserToPublic(hydrated.creatorId) : undefined;
-    const viewer = await resolveViewerUser(req);
     const viewerId = viewer ? toIdString(viewer._id) : undefined;
     let createBadgeResult = null;
     if (viewer) {
@@ -619,6 +657,8 @@ router.post('/:pinId/attendance', verifyToken, async (req, res) => {
     const viewerId = toIdString(viewer._id);
     const attendeeIds = pin.attendingUserIds.map((id) => toIdString(id));
     const isAlreadyAttending = attendeeIds.includes(viewerId);
+    let viewerJoined = false;
+    let viewerLeft = false;
 
     if (attending) {
       if (!isAlreadyAttending) {
@@ -626,17 +666,34 @@ router.post('/:pinId/attendance', verifyToken, async (req, res) => {
           return res.status(409).json({ message: 'Participant limit reached' });
         }
         pin.attendingUserIds.push(viewer._id);
+        viewerJoined = true;
       }
     } else if (isAlreadyAttending) {
       pin.attendingUserIds = pin.attendingUserIds.filter(
         (id) => toIdString(id) !== viewerId
       );
       pin.markModified('attendingUserIds');
+      viewerLeft = true;
     }
 
     pin.participantCount = pin.attendingUserIds.length;
 
     await pin.save();
+    if (viewerJoined || viewerLeft) {
+      try {
+        ensureUserStats(viewer);
+        const existingCount = viewer.stats.eventsAttended ?? 0;
+        if (viewerJoined) {
+          viewer.stats.eventsAttended = existingCount + 1;
+        } else if (viewerLeft) {
+          viewer.stats.eventsAttended = Math.max(0, existingCount - 1);
+        }
+        viewer.markModified('stats');
+        await viewer.save();
+      } catch (error) {
+        console.error('Failed to update attendee stats:', error);
+      }
+    }
 
     const bookmarkExists = await Bookmark.exists({ userId: viewer._id, pinId: pin._id });
     let attendanceBadgeResult = null;

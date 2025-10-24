@@ -38,6 +38,7 @@ const UserPreferencesUpdateSchema = z
   .object({
     theme: z.enum(['system', 'light', 'dark']).optional(),
     radiusPreferenceMeters: z.number().int().positive().max(160934, 'Radius must be under 100 miles').optional(),
+    statsPublic: z.boolean().optional(),
     notifications: z
       .object({
         proximity: z.boolean().optional(),
@@ -385,6 +386,9 @@ router.patch('/me', verifyToken, async (req, res) => {
       }
       if (input.preferences.radiusPreferenceMeters !== undefined) {
         setDoc['preferences.radiusPreferenceMeters'] = input.preferences.radiusPreferenceMeters;
+      }
+      if (input.preferences.statsPublic !== undefined) {
+        setDoc['preferences.statsPublic'] = input.preferences.statsPublic;
       }
       if (input.preferences.notifications && typeof input.preferences.notifications === 'object') {
         const notifications = input.preferences.notifications;

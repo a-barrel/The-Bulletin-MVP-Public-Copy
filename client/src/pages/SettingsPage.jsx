@@ -47,6 +47,7 @@ const DEFAULT_SETTINGS = {
   theme: 'system',
   radiusPreferenceMeters: 16093,
   locationSharingEnabled: false,
+  statsPublic: true,
   notifications: {
     proximity: true,
     updates: true,
@@ -102,6 +103,7 @@ function SettingsPage() {
           theme: result?.preferences?.theme ?? DEFAULT_SETTINGS.theme,
           radiusPreferenceMeters: roundRadius(result?.preferences?.radiusPreferenceMeters),
           locationSharingEnabled: Boolean(result?.locationSharingEnabled),
+          statsPublic: result?.preferences?.statsPublic ?? DEFAULT_SETTINGS.statsPublic,
           notifications: {
             proximity:
               result?.preferences?.notifications?.proximity ?? DEFAULT_SETTINGS.notifications.proximity,
@@ -138,6 +140,7 @@ function SettingsPage() {
       theme: profile?.preferences?.theme ?? DEFAULT_SETTINGS.theme,
       radiusPreferenceMeters: roundRadius(profile?.preferences?.radiusPreferenceMeters),
       locationSharingEnabled: Boolean(profile?.locationSharingEnabled),
+      statsPublic: profile?.preferences?.statsPublic ?? DEFAULT_SETTINGS.statsPublic,
       notifications: {
         proximity:
           profile?.preferences?.notifications?.proximity ?? DEFAULT_SETTINGS.notifications.proximity,
@@ -153,6 +156,7 @@ function SettingsPage() {
       settings.theme !== baselineSettings.theme ||
       settings.locationSharingEnabled !== baselineSettings.locationSharingEnabled ||
       settings.radiusPreferenceMeters !== baselineSettings.radiusPreferenceMeters ||
+      settings.statsPublic !== baselineSettings.statsPublic ||
       settings.notifications.proximity !== baselineSettings.notifications.proximity ||
       settings.notifications.updates !== baselineSettings.notifications.updates ||
       settings.notifications.marketing !== baselineSettings.notifications.marketing
@@ -191,6 +195,13 @@ function SettingsPage() {
     }));
   }, []);
 
+  const handleStatsVisibilityToggle = useCallback(() => {
+    setSettings((prev) => ({
+      ...prev,
+      statsPublic: !prev.statsPublic
+    }));
+  }, []);
+
   const handleReset = useCallback(() => {
     setSettings(baselineSettings);
     setSaveStatus(null);
@@ -208,6 +219,7 @@ function SettingsPage() {
         preferences: {
           theme: settings.theme,
           radiusPreferenceMeters: settings.radiusPreferenceMeters,
+          statsPublic: settings.statsPublic,
           notifications: {
             proximity: settings.notifications.proximity,
             updates: settings.notifications.updates,
@@ -353,6 +365,28 @@ function SettingsPage() {
               onChange={handleRadiusChange}
             />
           </Box>
+
+          <Divider />
+
+          <Stack spacing={0.5}>
+            <Typography variant="h6">Profile visibility</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Choose whether others can see your activity stats on your profile.
+            </Typography>
+          </Stack>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={settings.statsPublic}
+                onChange={handleStatsVisibilityToggle}
+              />
+            }
+            label={
+              settings.statsPublic
+                ? 'Show my stats on my profile'
+                : 'Hide my stats from other users'
+            }
+          />
 
           <Divider />
 

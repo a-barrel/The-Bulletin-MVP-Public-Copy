@@ -15,7 +15,8 @@ const UserPreferencesSchema = z.object({
     updates: z.boolean().default(true),
     marketing: z.boolean().default(false)
   }).partial(),
-  radiusPreferenceMeters: z.number().int().positive().default(16093).optional()
+  radiusPreferenceMeters: z.number().int().positive().default(16093).optional(),
+  statsPublic: z.boolean().default(true).optional()
 });
 
 const UserStatsSchema = z.object({
