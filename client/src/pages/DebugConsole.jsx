@@ -83,6 +83,7 @@ import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { useLocationContext } from '../contexts/LocationContext';
 import { auth } from '../firebase';
+import { applyAuthPersistence, AUTH_PERSISTENCE } from '../utils/authPersistence';
 ``
 //protected: true, //Firebase protection, requires login to see page
 export const pageConfig = {
@@ -3193,6 +3194,7 @@ function AccountSwapTab() {
       setPendingUid(account.uid);
       try {
         const token = await requestAccountSwap(account.uid);
+        await applyAuthPersistence(auth, AUTH_PERSISTENCE.LOCAL);
         await signInWithCustomToken(auth, token);
         setSwapStatus({
           type: 'success',

@@ -8,12 +8,22 @@ import {
 } from "firebase/auth";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "./LoginPage.css";
+import { applyAuthPersistence, AUTH_PERSISTENCE } from "../utils/authPersistence";
 
 function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(() => {
+    if (typeof window === "undefined") {
+      return true;
+    }
+    const stored = window.localStorage.getItem("bulletin:rememberMe");
+    if (stored === null) {
+      return true;
+    }
+    return stored === "true";
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [shake, setShake] = useState(false);
   const [error, setError] = useState(null);
@@ -39,6 +49,13 @@ function LoginPage() {
       return () => clearTimeout(timer);
       }
   }, [message]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem("bulletin:rememberMe", remember ? "true" : "false");
+  }, [remember]);
   
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -51,6 +68,8 @@ function LoginPage() {
     setPasswordError(passwordErr);
 
     try {
+      const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
+      await applyAuthPersistence(auth, persistenceMode);
       await signInWithEmailAndPassword(auth, email, password);
       navigate("/map");
     } catch (error) {
@@ -82,6 +101,8 @@ function LoginPage() {
       setError(null);
       try {
         const provider = new GoogleAuthProvider();
+        const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
+        await applyAuthPersistence(auth, persistenceMode);
         await signInWithPopup(auth, provider);
         navigate("/map");
       } catch (error) {
@@ -146,7 +167,7 @@ function LoginPage() {
         </div>
 
         <div className="additional-options">
-          <label className="remember-me-checkbox"> {/*NOTE: This doesn"t do anything currently*/}
+          <label className="remember-me-checkbox"> {/*Controls session persistence*/}
             <input
               type="checkbox"
               checked={remember}
