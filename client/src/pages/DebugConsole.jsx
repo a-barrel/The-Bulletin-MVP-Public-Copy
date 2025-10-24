@@ -33,12 +33,18 @@ import { useTheme } from '@mui/material/styles';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import ForumIcon from '@mui/icons-material/Forum';
+import HistoryToggleOffIcon from '@mui/icons-material/HistoryToggleOff';
 import MapIcon from '@mui/icons-material/Map';
+import NearMeIcon from '@mui/icons-material/NearMe';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import ScheduleIcon from '@mui/icons-material/Schedule';
 import {
   createPin,
   fetchPinById,
   fetchPinsNearby,
+  fetchPinsSortedByDistance,
+  fetchPinsSortedByExpiration,
+  fetchExpiredPins,
   listPins,
   insertLocationUpdate,
   fetchNearbyUsers,
@@ -659,9 +665,17 @@ function DebugConsolePage() {
   const [allPins, setAllPins] = useState([]);
   const [isFetchingAllPins, setIsFetchingAllPins] = useState(false);
   const [allPinsLimit, setAllPinsLimit] = useState('20');
+  const [distanceSortLatitude, setDistanceSortLatitude] = useState(
+    String(DEFAULT_LOCATION_COORDINATES.latitude)
+  );
+  const [distanceSortLongitude, setDistanceSortLongitude] = useState(
+    String(DEFAULT_LOCATION_COORDINATES.longitude)
+  );
   const [expiringPins, setExpiringPins] = useState([]);
   const [isFetchingExpiringPins, setIsFetchingExpiringPins] = useState(false);
   const [expiringDays, setExpiringDays] = useState('3');
+  const [expiredPins, setExpiredPins] = useState([]);
+  const [isFetchingExpiredPins, setIsFetchingExpiredPins] = useState(false);
   const [selectedPinId, setSelectedPinId] = useState(null);
   const [mapFocusLocation, setMapFocusLocation] = useState(null);
   const { announceBadgeEarned } = useBadgeSound();
@@ -713,8 +727,9 @@ function DebugConsolePage() {
     (Array.isArray(nearbyPins) ? nearbyPins : []).forEach(append);
     (Array.isArray(allPins) ? allPins : []).forEach(append);
     (Array.isArray(expiringPins) ? expiringPins : []).forEach(append);
+    (Array.isArray(expiredPins) ? expiredPins : []).forEach(append);
     return Array.from(seen.values());
-  }, [createdPin, nearbyPins, allPins, expiringPins]);
+  }, [createdPin, nearbyPins, allPins, expiringPins, expiredPins]);
 
   const latestCreatedPinLocation = useMemo(() => extractPinLocation(createdPin), [createdPin]);
   const createdPinMedia = useMemo(() => {
@@ -881,20 +896,25 @@ const handleAutofillDiscussion = () => {
     setAllPinsLimit(event.target.value);
   };
 
+  const resolvePinListLimit = () => {
+    let limitValue = parseOptionalNumber(allPinsLimit, 'Limit');
+    if (limitValue === undefined) {
+      limitValue = 20;
+    }
+    if (!Number.isFinite(limitValue) || limitValue <= 0) {
+      throw new Error('Limit must be greater than 0.');
+    }
+    if (limitValue > 50) {
+      throw new Error('Limit cannot exceed 50.');
+    }
+    return limitValue;
+  };
+
   const handleFetchAllPins = async () => {
     setStatus(null);
     let limitValue;
     try {
-      limitValue = parseOptionalNumber(allPinsLimit, 'Limit');
-      if (limitValue === undefined) {
-        limitValue = 20;
-      }
-      if (!Number.isFinite(limitValue) || limitValue <= 0) {
-        throw new Error('Limit must be greater than 0.');
-      }
-      if (limitValue > 50) {
-        throw new Error('Limit cannot exceed 50.');
-      }
+      limitValue = resolvePinListLimit();
     } catch (error) {
       setStatus({ type: 'error', message: error.message });
       return;
@@ -927,6 +947,143 @@ const handleAutofillDiscussion = () => {
     }
   };
 
+  const handleDistanceSortLatitudeChange = (event) => {
+    setDistanceSortLatitude(event.target.value);
+  };
+
+  const handleDistanceSortLongitudeChange = (event) => {
+    setDistanceSortLongitude(event.target.value);
+  };
+
+  const handleSortPinsByDistance = async () => {
+    setStatus(null);
+    let limitValue;
+    try {
+      limitValue = resolvePinListLimit();
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
+      return;
+    }
+
+    let latitude;
+    let longitude;
+    try {
+      latitude = parseCoordinate(distanceSortLatitude, 'Latitude');
+      longitude = parseCoordinate(distanceSortLongitude, 'Longitude');
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
+      return;
+    }
+
+    try {
+      setIsFetchingAllPins(true);
+      const pins = await fetchPinsSortedByDistance({
+        limit: limitValue,
+        latitude,
+        longitude
+      });
+      setAllPins(pins);
+      if (pins.length > 0) {
+        const focus = extractPinLocation(pins[0]);
+        if (focus) {
+          setMapFocusLocation(focus);
+        }
+        if (pins[0]?._id) {
+          setSelectedPinId(pins[0]._id);
+          setPinIdInput(pins[0]._id);
+        }
+      }
+      setStatus({
+        type: pins.length ? 'success' : 'info',
+        message: pins.length
+          ? `Loaded ${pins.length} pin${pins.length === 1 ? '' : 's'} sorted by distance (closest first).`
+          : 'No pins found for the provided coordinates.'
+      });
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message || 'Failed to sort pins by distance.' });
+    } finally {
+      setIsFetchingAllPins(false);
+    }
+  };
+
+  const handleSortPinsByExpiration = async () => {
+    setStatus(null);
+    let limitValue;
+    try {
+      limitValue = resolvePinListLimit();
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
+      return;
+    }
+
+    try {
+      setIsFetchingAllPins(true);
+      const pins = await fetchPinsSortedByExpiration({
+        limit: limitValue,
+        status: 'active'
+      });
+      setAllPins(pins);
+      if (pins.length > 0) {
+        const focus = extractPinLocation(pins[0]);
+        if (focus) {
+          setMapFocusLocation(focus);
+        }
+        if (pins[0]?._id) {
+          setSelectedPinId(pins[0]._id);
+          setPinIdInput(pins[0]._id);
+        }
+      }
+      setStatus({
+        type: pins.length ? 'success' : 'info',
+        message: pins.length
+          ? `Loaded ${pins.length} pin${pins.length === 1 ? '' : 's'} sorted by soonest expiration.`
+          : 'No pins with upcoming expiration dates were found.'
+      });
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message || 'Failed to sort pins by expiration.' });
+    } finally {
+      setIsFetchingAllPins(false);
+    }
+  };
+
+  const handleFetchExpiredPins = async () => {
+    setStatus(null);
+    let limitValue;
+    try {
+      limitValue = resolvePinListLimit();
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
+      return;
+    }
+
+    try {
+      setIsFetchingExpiredPins(true);
+      setExpiredPins([]);
+      const pins = await fetchExpiredPins({ limit: limitValue });
+      setExpiredPins(pins);
+      if (pins.length > 0) {
+        const focus = extractPinLocation(pins[0]);
+        if (focus) {
+          setMapFocusLocation(focus);
+        }
+        if (pins[0]?._id) {
+          setSelectedPinId(pins[0]._id);
+          setPinIdInput(pins[0]._id);
+        }
+      }
+      setStatus({
+        type: pins.length ? 'warning' : 'info',
+        message: pins.length
+          ? `Loaded ${pins.length} expired pin${pins.length === 1 ? '' : 's'} (oldest first).`
+          : 'No expired pins found.'
+      });
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message || 'Failed to load expired pins.' });
+    } finally {
+      setIsFetchingExpiredPins(false);
+    }
+  };
+
   const handleExpiringDaysChange = (event) => {
     setExpiringDays(event.target.value);
   };
@@ -949,7 +1106,7 @@ const handleAutofillDiscussion = () => {
 
     try {
       setIsFetchingExpiringPins(true);
-      const pins = await listPins({ limit: 50 });
+      const pins = await fetchPinsSortedByExpiration({ limit: 50, status: 'active' });
       const now = new Date();
       const cutoff = new Date(now.getTime() + daysValue * 24 * 60 * 60 * 1000);
       const filtered = pins.filter((pin) => {
@@ -1011,6 +1168,49 @@ const parseDate = (value, label) => {
     throw new Error(`${label} must be a valid date`);
   }
   return parsed.toISOString();
+};
+
+const getPinExpirationInfo = (pin) => {
+  const iso = pin?.expiresAt ?? pin?.endDate ?? null;
+  if (!iso) {
+    return null;
+  }
+
+  const target = new Date(iso);
+  if (Number.isNaN(target.getTime())) {
+    return {
+      primary: 'Expiration date unavailable',
+      secondary: null
+    };
+  }
+
+  const now = new Date();
+  const diffMs = target.getTime() - now.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+  if (diffMs >= 0) {
+    const remainingDays = diffDays >= 1 ? Math.ceil(diffDays) : 0;
+    const secondary =
+      remainingDays === 0
+        ? 'Less than one day remaining'
+        : `${remainingDays} day${remainingDays === 1 ? '' : 's'} remaining`;
+    return {
+      primary: `Expires ${target.toLocaleString()}`,
+      secondary
+    };
+  }
+
+  const absDays = Math.abs(diffDays);
+  const elapsedDays = absDays >= 1 ? Math.floor(absDays) : 0;
+  const secondary =
+    elapsedDays === 0
+      ? 'Expired less than one day ago'
+      : `Expired ${elapsedDays} day${elapsedDays === 1 ? '' : 's'} ago`;
+
+  return {
+    primary: `Expired ${target.toLocaleString()}`,
+    secondary
+  };
 };
 
 const handleSubmit = async (event) => {
@@ -1436,7 +1636,6 @@ const handleSubmit = async (event) => {
             </Button>
           </Stack>
           </Paper>
-
           <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Typography variant="h6">Test saved pin</Typography>
             <Typography variant="body2" color="text.secondary">
@@ -1587,60 +1786,128 @@ const handleSubmit = async (event) => {
           </Paper>
 
           <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Typography variant="h6">Load recent pins</Typography>
+            <Typography variant="h6">Load and sort pins</Typography>
             <Typography variant="body2" color="text.secondary">
-              Fetch the most recently updated pins regardless of distance.
+              Fetch the most recent pins or sort them by expiration or distance.
             </Typography>
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-              <TextField
-                label="Limit (max 50)"
-                value={allPinsLimit}
-                onChange={handleAllPinsLimitChange}
-                InputProps={{ inputMode: 'numeric' }}
-                sx={{ width: { xs: '100%', sm: 200 } }}
-              />
-              <Button
-                type="button"
-                variant="outlined"
-                startIcon={<MapIcon />}
-                onClick={handleFetchAllPins}
-                disabled={isFetchingAllPins}
+            <Stack spacing={2}>
+              <Stack
+                direction={{ xs: 'column', md: 'row' }}
+                spacing={2}
+                alignItems={{ xs: 'stretch', md: 'center' }}
               >
-                {isFetchingAllPins ? 'Loading...' : 'Fetch recent pins'}
-              </Button>
+                <TextField
+                  label="Limit (max 50)"
+                  value={allPinsLimit}
+                  onChange={handleAllPinsLimitChange}
+                  InputProps={{ inputMode: 'numeric' }}
+                  sx={{ width: { xs: '100%', md: 200 } }}
+                />
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    startIcon={<MapIcon />}
+                    onClick={handleFetchAllPins}
+                    disabled={isFetchingAllPins}
+                  >
+                    {isFetchingAllPins ? 'Loading...' : 'Fetch recent pins'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    startIcon={<ScheduleIcon />}
+                    onClick={handleSortPinsByExpiration}
+                    disabled={isFetchingAllPins}
+                  >
+                    {isFetchingAllPins ? 'Sorting...' : 'Sort by expiration'}
+                  </Button>
+                </Stack>
+              </Stack>
+
+              <Stack
+                direction={{ xs: 'column', md: 'row' }}
+                spacing={2}
+                alignItems={{ xs: 'stretch', md: 'center' }}
+              >
+                <TextField
+                  label="Latitude"
+                  value={distanceSortLatitude}
+                  onChange={handleDistanceSortLatitudeChange}
+                  InputProps={{ inputMode: 'decimal' }}
+                  sx={{ width: { xs: '100%', md: 200 } }}
+                />
+                <TextField
+                  label="Longitude"
+                  value={distanceSortLongitude}
+                  onChange={handleDistanceSortLongitudeChange}
+                  InputProps={{ inputMode: 'decimal' }}
+                  sx={{ width: { xs: '100%', md: 200 } }}
+                />
+                <Button
+                  type="button"
+                  variant="outlined"
+                  startIcon={<NearMeIcon />}
+                  onClick={handleSortPinsByDistance}
+                  disabled={isFetchingAllPins}
+                >
+                  {isFetchingAllPins ? 'Sorting...' : 'Sort by distance'}
+                </Button>
+              </Stack>
             </Stack>
 
             {allPins.length > 0 ? (
               <Stack spacing={1}>
-                {allPins.map((pin) => (
-                  <Paper
-                    key={pin._id}
-                    variant="outlined"
-                    sx={{ p: 2, cursor: 'pointer' }}
-                    onClick={() => {
-                      if (!pin?._id) {
-                        return;
-                      }
-                      setSelectedPinId(pin._id);
-                      setPinIdInput(pin._id);
-                      const focus = extractPinLocation(pin);
-                      if (focus) {
-                        setMapFocusLocation(focus);
-                      }
-                    }}
-                  >
-                    <Stack spacing={0.5}>
-                      <Typography variant="subtitle1">{pin.title}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {(pin.type === 'event' ? 'Event' : 'Discussion') + ' pin'}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {pin._id}
-                      </Typography>
-                    </Stack>
-                  </Paper>
-                ))}
+                {allPins.map((pin) => {
+                  const distanceLabel = formatDistanceMiles(pin.distanceMeters);
+                  const expirationInfo = getPinExpirationInfo(pin);
+                  return (
+                    <Paper
+                      key={pin._id}
+                      variant="outlined"
+                      sx={{ p: 2, cursor: 'pointer' }}
+                      onClick={() => {
+                        if (!pin?._id) {
+                          return;
+                        }
+                        setSelectedPinId(pin._id);
+                        setPinIdInput(pin._id);
+                        const focus = extractPinLocation(pin);
+                        if (focus) {
+                          setMapFocusLocation(focus);
+                        }
+                      }}
+                    >
+                      <Stack spacing={0.5}>
+                        <Typography variant="subtitle1">{pin.title}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {(pin.type === 'event' ? 'Event' : 'Discussion') + ' pin'}
+                        </Typography>
+                        {distanceLabel ? (
+                          <Typography variant="body2" color="text.secondary">
+                            Distance: {distanceLabel} mi
+                          </Typography>
+                        ) : null}
+                        {expirationInfo ? (
+                          <>
+                            <Typography variant="body2" color="text.secondary">
+                              {expirationInfo.primary}
+                            </Typography>
+                            {expirationInfo.secondary ? (
+                              <Typography variant="body2" color="text.secondary">
+                                {expirationInfo.secondary}
+                              </Typography>
+                            ) : null}
+                          </>
+                        ) : null}
+                        <Typography variant="body2" color="text.secondary">
+                          {pin._id}
+                        </Typography>
+                      </Stack>
+                    </Paper>
+                  );
+                })}
               </Stack>
             ) : (
               <Typography variant="body2" color="text.secondary">
@@ -1676,52 +1943,140 @@ const handleSubmit = async (event) => {
 
             {expiringPins.length > 0 ? (
               <Stack spacing={1}>
-                {expiringPins.map((pin) => (
-                  <Paper
-                    key={pin._id}
-                    variant="outlined"
-                    sx={{ p: 2, cursor: 'pointer' }}
-                    onClick={() => {
-                      if (!pin?._id) {
-                        return;
-                      }
-                      setSelectedPinId(pin._id);
-                      setPinIdInput(pin._id);
-                      const focus = extractPinLocation(pin);
-                      if (focus) {
-                        setMapFocusLocation(focus);
-                      }
-                    }}
-                  >
-                    <Stack spacing={0.5}>
-                      <Typography variant="subtitle1">{pin.title}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {(pin.type === 'event' ? 'Event' : 'Discussion') + ' pin'}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Expires{' '}
-                        {(() => {
-                          const iso = pin?.expiresAt ?? pin?.endDate ?? null;
-                          if (!iso) {
-                            return 'Unknown';
-                          }
-                          const parsed = new Date(iso);
-                          if (Number.isNaN(parsed.getTime())) {
-                            return 'Unknown';
-                          }
-                          return parsed.toLocaleString();
-                        })()}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {pin._id}
-                      </Typography>
-                    </Stack>
-                  </Paper>
-                ))}
+                {expiringPins.map((pin) => {
+                  const expirationInfo = getPinExpirationInfo(pin);
+                  return (
+                    <Paper
+                      key={pin._id}
+                      variant="outlined"
+                      sx={{ p: 2, cursor: 'pointer' }}
+                      onClick={() => {
+                        if (!pin?._id) {
+                          return;
+                        }
+                        setSelectedPinId(pin._id);
+                        setPinIdInput(pin._id);
+                        const focus = extractPinLocation(pin);
+                        if (focus) {
+                          setMapFocusLocation(focus);
+                        }
+                      }}
+                    >
+                      <Stack spacing={0.5}>
+                        <Typography variant="subtitle1">{pin.title}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {(pin.type === 'event' ? 'Event' : 'Discussion') + ' pin'}
+                        </Typography>
+                        {expirationInfo ? (
+                          <>
+                            <Typography variant="body2" color="text.secondary">
+                              {expirationInfo.primary}
+                            </Typography>
+                            {expirationInfo.secondary ? (
+                              <Typography variant="body2" color="text.secondary">
+                                {expirationInfo.secondary}
+                              </Typography>
+                            ) : null}
+                          </>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            No expiration date on record
+                          </Typography>
+                        )}
+                        <Typography variant="body2" color="text.secondary">
+                          {pin._id}
+                        </Typography>
+                      </Stack>
+                    </Paper>
+                  );
+                })}
               </Stack>
             ) : (
               <Typography variant="body2" color="text.secondary">
                 {isFetchingExpiringPins ? 'Scanning...' : 'Results will appear here after fetching.'}
+              </Typography>
+            )}
+          </Paper>
+
+          <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="h6">Expired pins</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Review pins whose expiration date has passed. They remain stored but are hidden from normal lists.
+            </Typography>
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+              <Button
+                type="button"
+                variant="outlined"
+                startIcon={<HistoryToggleOffIcon />}
+                onClick={handleFetchExpiredPins}
+                disabled={isFetchingExpiredPins}
+              >
+                {isFetchingExpiredPins ? 'Loading...' : 'Fetch expired pins'}
+              </Button>
+            </Stack>
+
+            {expiredPins.length > 0 ? (
+              <Stack spacing={1}>
+                {expiredPins.map((pin) => {
+                  const distanceLabel = formatDistanceMiles(pin.distanceMeters);
+                  const expirationInfo = getPinExpirationInfo(pin);
+                  return (
+                    <Paper
+                      key={pin._id}
+                      variant="outlined"
+                      sx={{ p: 2, cursor: 'pointer' }}
+                      onClick={() => {
+                        if (!pin?._id) {
+                          return;
+                        }
+                        setSelectedPinId(pin._id);
+                        setPinIdInput(pin._id);
+                        const focus = extractPinLocation(pin);
+                        if (focus) {
+                          setMapFocusLocation(focus);
+                        }
+                      }}
+                    >
+                      <Stack spacing={0.5}>
+                        <Typography variant="subtitle1">{pin.title}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {(pin.type === 'event' ? 'Event' : 'Discussion') + ' pin'}
+                        </Typography>
+                        {expirationInfo ? (
+                          <>
+                            <Typography variant="body2" color="text.secondary">
+                              {expirationInfo.primary}
+                            </Typography>
+                            {expirationInfo.secondary ? (
+                              <Typography variant="body2" color="text.secondary">
+                                {expirationInfo.secondary}
+                              </Typography>
+                            ) : null}
+                          </>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            No expiration date on record
+                          </Typography>
+                        )}
+                        {distanceLabel ? (
+                          <Typography variant="body2" color="text.secondary">
+                            Distance: {distanceLabel} mi
+                          </Typography>
+                        ) : null}
+                        <Typography variant="body2" color="text.secondary">
+                          {pin._id}
+                        </Typography>
+                      </Stack>
+                    </Paper>
+                  );
+                })}
+              </Stack>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                {isFetchingExpiredPins
+                  ? 'Loading expired pins...'
+                  : 'Expired pins stay hidden until you fetch them here.'}
               </Typography>
             )}
           </Paper>

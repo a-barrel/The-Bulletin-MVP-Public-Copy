@@ -156,6 +156,18 @@ export async function listPins(query = {}) {
   if (query.limit) {
     params.set('limit', String(query.limit));
   }
+  if (query.status) {
+    params.set('status', query.status);
+  }
+  if (query.sort) {
+    params.set('sort', query.sort);
+  }
+  if (query.latitude !== undefined && query.latitude !== null) {
+    params.set('latitude', String(query.latitude));
+  }
+  if (query.longitude !== undefined && query.longitude !== null) {
+    params.set('longitude', String(query.longitude));
+  }
 
   const queryString = params.toString();
   const url = queryString ? `${baseUrl}/api/pins?${queryString}` : `${baseUrl}/api/pins`;
@@ -171,6 +183,35 @@ export async function listPins(query = {}) {
   }
 
   return payload;
+}
+
+export async function fetchPinsSortedByExpiration({ limit = 20, status = 'active' } = {}) {
+  return listPins({
+    limit,
+    sort: 'expiration',
+    status
+  });
+}
+
+export async function fetchPinsSortedByDistance({ latitude, longitude, limit = 20 } = {}) {
+  if (latitude === undefined || latitude === null || longitude === undefined || longitude === null) {
+    throw new Error('Latitude and longitude are required to sort pins by distance');
+  }
+
+  return listPins({
+    limit,
+    sort: 'distance',
+    latitude,
+    longitude
+  });
+}
+
+export async function fetchExpiredPins({ limit = 20 } = {}) {
+  return listPins({
+    limit,
+    sort: 'expiration',
+    status: 'expired'
+  });
 }
 
 export async function createPin(input) {

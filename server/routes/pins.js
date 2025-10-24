@@ -21,7 +21,11 @@ const router = express.Router();
 const PinsQuerySchema = z.object({
   type: z.enum(['event', 'discussion']).optional(),
   creatorId: z.string().optional(),
-  limit: z.coerce.number().int().positive().max(50).default(20)
+  limit: z.coerce.number().int().positive().max(50).default(20),
+  status: z.enum(['active', 'expired', 'all']).optional(),
+  sort: z.enum(['recent', 'distance', 'expiration']).optional(),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional()
 });
 
 const PinIdSchema = z.object({
@@ -553,20 +557,94 @@ router.get('/nearby', verifyToken, async (req, res) => {
 router.get('/', verifyToken, async (req, res) => {
   try {
     const query = PinsQuerySchema.parse(req.query);
-    const criteria = {};
+    const limit = query.limit;
+    const now = new Date();
+    const filters = [];
+
     if (query.type) {
-      criteria.type = query.type;
+      filters.push({ type: query.type });
     }
+
     if (query.creatorId) {
       if (!mongoose.Types.ObjectId.isValid(query.creatorId)) {
         return res.status(400).json({ message: 'Invalid creator id' });
       }
-      criteria.creatorId = query.creatorId;
+      filters.push({ creatorId: new mongoose.Types.ObjectId(query.creatorId) });
     }
 
-    const pins = await Pin.find(criteria)
-      .sort({ updatedAt: -1 })
-      .limit(query.limit)
+    const sortMode = query.sort ?? 'recent';
+    const statusFilter = query.status ?? 'active';
+
+    if (statusFilter === 'active') {
+      if (sortMode === 'expiration') {
+        filters.push({ expiresAt: { $gt: now } });
+      } else {
+        filters.push({
+          $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gt: now } }]
+        });
+      }
+    } else if (statusFilter === 'expired') {
+      filters.push({ expiresAt: { $exists: true, $lte: now } });
+    } else if (statusFilter === 'all' && sortMode === 'expiration') {
+      filters.push({ expiresAt: { $exists: true } });
+    }
+
+    const matchQuery =
+      filters.length === 0
+        ? {}
+        : filters.length === 1
+        ? filters[0]
+        : { $and: filters };
+
+    if (sortMode === 'distance') {
+      if (
+        query.latitude === undefined ||
+        query.longitude === undefined ||
+        !Number.isFinite(query.latitude) ||
+        !Number.isFinite(query.longitude)
+      ) {
+        return res
+          .status(400)
+          .json({ message: 'Latitude and longitude are required for distance sorting' });
+      }
+
+      const geoNearStage = {
+        $geoNear: {
+          near: { type: 'Point', coordinates: [query.longitude, query.latitude] },
+          distanceField: 'distanceMeters',
+          spherical: true
+        }
+      };
+
+      if (Object.keys(matchQuery).length > 0) {
+        geoNearStage.$geoNear.query = matchQuery;
+      }
+
+      const pipeline = [geoNearStage, { $limit: limit }];
+      const aggregated = await Pin.aggregate(pipeline);
+      const hydrated = aggregated.map((doc) => Pin.hydrate(doc));
+      const populated = await Pin.populate(hydrated, { path: 'creatorId' });
+
+      const payload = populated.map((pinDoc, index) => {
+        const creatorPublic = mapUserToPublic(pinDoc.creatorId);
+        const listItem = mapPinToListItem(pinDoc, creatorPublic);
+        return {
+          ...listItem,
+          distanceMeters: aggregated[index]?.distanceMeters
+        };
+      });
+
+      return res.json(payload);
+    }
+
+    const sortSpec =
+      sortMode === 'expiration'
+        ? { expiresAt: 1, updatedAt: -1, _id: -1 }
+        : { updatedAt: -1, _id: -1 };
+
+    const pins = await Pin.find(matchQuery)
+      .sort(sortSpec)
+      .limit(limit)
       .populate('creatorId');
 
     const payload = pins.map((pin) => {
@@ -579,6 +657,7 @@ router.get('/', verifyToken, async (req, res) => {
     if (error instanceof ZodError) {
       return res.status(400).json({ message: 'Invalid pin query', issues: error.errors });
     }
+    console.error('Failed to load pins:', error);
     res.status(500).json({ message: 'Failed to load pins' });
   }
 });
