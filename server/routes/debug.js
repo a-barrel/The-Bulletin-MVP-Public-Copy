@@ -683,6 +683,7 @@ router.post('/chat-rooms', async (req, res) => {
     pinId: ObjectIdString.optional(),
     participantIds: z.array(ObjectIdString).optional(),
     moderatorIds: z.array(ObjectIdString).optional(),
+    presetKey: z.string().trim().optional(),
     isGlobal: z.boolean().optional()
   });
 
@@ -699,6 +700,7 @@ router.post('/chat-rooms', async (req, res) => {
       pinId: input.pinId,
       participantIds: input.participantIds,
       moderatorIds: input.moderatorIds,
+      presetKey: input.presetKey,
       isGlobal: input.isGlobal
     });
 

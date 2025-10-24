@@ -870,7 +870,7 @@ export async function createChatRoom(input) {
   return payload;
 }
 
-export async function fetchChatRooms({ pinId, ownerId } = {}) {
+export async function fetchChatRooms({ pinId, ownerId, latitude, longitude, includeBookmarked = true } = {}) {
   const baseUrl = resolveApiBaseUrl();
   const params = new URLSearchParams();
   if (pinId) {
@@ -878,6 +878,15 @@ export async function fetchChatRooms({ pinId, ownerId } = {}) {
   }
   if (ownerId) {
     params.set('ownerId', ownerId);
+  }
+  if (latitude !== undefined && latitude !== null && !Number.isNaN(latitude)) {
+    params.set('latitude', String(latitude));
+  }
+  if (longitude !== undefined && longitude !== null && !Number.isNaN(longitude)) {
+    params.set('longitude', String(longitude));
+  }
+  if (!includeBookmarked) {
+    params.set('includeBookmarked', 'false');
   }
 
   const query = params.toString();

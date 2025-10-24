@@ -41,6 +41,7 @@ import {
   fetchChatPresence,
   upsertChatPresence
 } from '../api/mongoDataApi';
+import { useLocationContext } from '../contexts/LocationContext';
 
 export const pageConfig = {
   id: 'chat',
@@ -64,6 +65,9 @@ const MESSAGES_REFRESH_MS = 7_000;
 function ChatPage() {
   const { announceBadgeEarned } = useBadgeSound();
   const [authUser, authLoading] = useAuthState(auth);
+  const { location: viewerLocation } = useLocationContext();
+  const viewerLatitude = viewerLocation?.latitude ?? null;
+  const viewerLongitude = viewerLocation?.longitude ?? null;
   const [rooms, setRooms] = useState([]);
   const [roomsError, setRoomsError] = useState(null);
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
@@ -126,7 +130,10 @@ function ChatPage() {
     setIsLoadingRooms(true);
     setRoomsError(null);
     try {
-      const data = await fetchChatRooms();
+      const data = await fetchChatRooms({
+        latitude: Number.isFinite(viewerLatitude) ? viewerLatitude : undefined,
+        longitude: Number.isFinite(viewerLongitude) ? viewerLongitude : undefined
+      });
       setRooms(data);
       if (data.length > 0 && !selectedRoomId) {
         setSelectedRoomId(data[0]._id);
@@ -137,7 +144,7 @@ function ChatPage() {
     } finally {
       setIsLoadingRooms(false);
     }
-  }, [authUser, selectedRoomId]);
+  }, [authUser, selectedRoomId, viewerLatitude, viewerLongitude]);
 
   useEffect(() => {
     if (!authLoading && authUser) {

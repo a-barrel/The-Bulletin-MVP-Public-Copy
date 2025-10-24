@@ -37,6 +37,7 @@ const proximityChatRoomSchema = new mongoose.Schema(
     participantIds: { type: [mongoose.Schema.Types.ObjectId], default: [] },
     moderatorIds: { type: [mongoose.Schema.Types.ObjectId], default: [] },
     pinId: { type: mongoose.Schema.Types.ObjectId, ref: 'Pin' },
+    presetKey: { type: String },
     audit: {
       createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }

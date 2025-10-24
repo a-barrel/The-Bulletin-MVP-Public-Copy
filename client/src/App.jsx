@@ -30,6 +30,7 @@ import { UpdatesProvider } from './contexts/UpdatesContext';
 import { BadgeSoundProvider } from './contexts/BadgeSoundContext';
 import { preloadBadgeSound, setBadgeSoundEnabled } from './utils/badgeSound';
 import { getBadgeLabel } from './utils/badges';
+import { LocationProvider } from './contexts/LocationContext';
 
 const theme = createTheme({
   palette: {
@@ -424,10 +425,11 @@ function App() {
   }, [location.pathname, navPages.length, navigate]);
 
   return (
-    <BadgeSoundProvider value={badgeSoundContextValue}>
-      <UpdatesProvider value={updatesContextValue}>
-        <NavOverlayProvider value={navOverlayContextValue}>
-          <ThemeProvider theme={theme}>
+    <LocationProvider>
+      <BadgeSoundProvider value={badgeSoundContextValue}>
+        <UpdatesProvider value={updatesContextValue}>
+          <NavOverlayProvider value={navOverlayContextValue}>
+            <ThemeProvider theme={theme}>
             <CssBaseline />
 
             <Modal open={navOverlayOpen} onClose={closeOverlay} closeAfterTransition keepMounted>
@@ -559,6 +561,7 @@ function App() {
         </NavOverlayProvider>
       </UpdatesProvider>
     </BadgeSoundProvider>
+  </LocationProvider>
   );
 }
 

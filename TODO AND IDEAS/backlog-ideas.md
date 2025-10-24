@@ -93,17 +93,18 @@ to the debug console and actual bookmark page
 as a tiny button at the bottom. 
 
 
--Fix Chat Room to display ONLY stuff the user is in vinciity of.
+-Fix Chat Room to display ONLY chat rooms the user is in vincity of,
+and the chatrooms of the pins they have bookmarked.
+
 And double check they can't interact with chat rooms outside
-their radius
+their interaction radius (unless it's bookmarked of course - 
+the chat rooms related to pins)
+
+-No updates on chat room changes if you GPS spoof on the Map page,
+make sure it works globally. Are we using different GPS variables 
+on different pages?
 
 -Let users interact with pins they bookmarked if its outside interaction radius
 
-
--Activity & collections not updating,
-bookmarks, pins, etc are at 0.
-
---No updates if you GPS spoof on the Map page,
-make sure it works globally. Persistent location issue?
 
 

@@ -81,6 +81,7 @@ import LeafletMap from '../components/Map';
 import runtimeConfig from '../config/runtime';
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
+import { useLocationContext } from '../contexts/LocationContext';
 import { auth } from '../firebase';
 ``
 //protected: true, //Firebase protection, requires login to see page
@@ -486,6 +487,78 @@ const deriveInitials = (value) => {
 
 const METERS_PER_MILE = 1609.34;
 const normalizeRoomName = (value) => `${value ?? ''}`.trim().toLowerCase();
+const coordinatesEqual = (left, right) => {
+  if (!left || !right) {
+    return false;
+  }
+  const latEqual = Math.abs(left.latitude - right.latitude) < 1e-9;
+  const lonEqual = Math.abs(left.longitude - right.longitude) < 1e-9;
+  const accuracyEqual =
+    (left.accuracy === undefined && right.accuracy === undefined) ||
+    Math.abs((left.accuracy ?? 0) - (right.accuracy ?? 0)) < 1e-6;
+  return latEqual && lonEqual && accuracyEqual;
+};
+const dedupeChatRooms = (rooms) => {
+  if (!Array.isArray(rooms)) {
+    return [];
+  }
+
+  const byPreset = new Map();
+  const byFallback = new Map();
+
+  const pickPreferred = (current, candidate) => {
+    if (!current) {
+      return candidate;
+    }
+    const currentHasPreset = Boolean(current?.presetKey);
+    const candidateHasPreset = Boolean(candidate?.presetKey);
+    if (currentHasPreset !== candidateHasPreset) {
+      return candidateHasPreset ? candidate : current;
+    }
+    const currentUpdated =
+      (current?.updatedAt && new Date(current.updatedAt).getTime()) ||
+      (current?.createdAt && new Date(current.createdAt).getTime()) ||
+      0;
+    const candidateUpdated =
+      (candidate?.updatedAt && new Date(candidate.updatedAt).getTime()) ||
+      (candidate?.createdAt && new Date(candidate.createdAt).getTime()) ||
+      0;
+    return candidateUpdated > currentUpdated ? candidate : current;
+  };
+
+  const toCoordinateKey = (room) => {
+    const coordinates = room?.coordinates?.coordinates;
+    if (!Array.isArray(coordinates) || coordinates.length < 2) {
+      return null;
+    }
+    const [longitude, latitude] = coordinates;
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return null;
+    }
+    return `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+  };
+
+  for (const room of rooms) {
+    if (!room) {
+      continue;
+    }
+    const presetKey = room.presetKey;
+    if (presetKey) {
+      const preferred = pickPreferred(byPreset.get(presetKey), room);
+      byPreset.set(presetKey, preferred);
+      continue;
+    }
+    const nameKey = normalizeRoomName(room.name);
+    const fallbackKey = `${nameKey}|${toCoordinateKey(room) ?? ''}`;
+    const preferred = pickPreferred(byFallback.get(fallbackKey), room);
+    byFallback.set(fallbackKey, preferred);
+  }
+
+  return [
+    ...byPreset.values(),
+    ...byFallback.values().filter((room) => !room?.presetKey || !byPreset.has(room.presetKey))
+  ];
+};
 const toIdString = (value) => {
   if (!value) {
     return '';
@@ -2228,6 +2301,76 @@ const handleSubmit = async (event) => {
   );
 }
 
+function useViewerLocation({ currentProfileId, selectedRoomKeyRef, ensurePresetRoomsRef, setLocationStatus }) {
+  const { location: sharedLocation, setLocation: setSharedLocation } = useLocationContext();
+  const defaultLocation = useMemo(
+    () => ({
+      latitude: DEFAULT_LOCATION_COORDINATES.latitude,
+      longitude: DEFAULT_LOCATION_COORDINATES.longitude
+    }),
+    []
+  );
+  const [location, setLocationState] = useState(() => sharedLocation ?? defaultLocation);
+
+  useEffect(() => {
+    if (!sharedLocation) {
+      setLocationState((previous) =>
+        coordinatesEqual(previous, defaultLocation) ? previous : defaultLocation
+      );
+      return;
+    }
+    setLocationState((previous) =>
+      coordinatesEqual(previous, sharedLocation) ? previous : sharedLocation
+    );
+  }, [sharedLocation, defaultLocation]);
+
+  const applyLocation = useCallback(
+    (nextLocation) => {
+      const applied = setSharedLocation(nextLocation, { source: 'debug-console' });
+      const effectiveLocation = applied ?? defaultLocation;
+      setLocationState((previous) =>
+        coordinatesEqual(previous, effectiveLocation) ? previous : effectiveLocation
+      );
+      return applied ?? null;
+    },
+    [setSharedLocation, defaultLocation]
+  );
+
+  const refresh = useCallback(async () => {
+    if (!currentProfileId || !mongooseObjectIdLike(currentProfileId)) {
+      return;
+    }
+
+    try {
+      const history = await fetchLocationHistory(currentProfileId);
+      const latest = Array.isArray(history) && history.length > 0 ? history[0] : null;
+      const coords = latest?.coordinates?.coordinates;
+      if (Array.isArray(coords) && coords.length >= 2) {
+        const [longitude, latitude] = coords;
+        if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+          const nextLocation = {
+            latitude,
+            longitude,
+            accuracy: latest?.coordinates?.accuracy ?? latest?.accuracy
+          };
+
+          applyLocation(nextLocation);
+          if (ensurePresetRoomsRef?.current && selectedRoomKeyRef) {
+            ensurePresetRoomsRef.current(selectedRoomKeyRef.current);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to refresh viewer location:', error);
+      setLocationStatus?.((prev) =>
+        prev ?? { type: 'error', message: 'Failed to refresh viewer location.' }
+      );
+    }
+  }, [currentProfileId, selectedRoomKeyRef, ensurePresetRoomsRef, setLocationStatus, applyLocation]);
+
+  return { location, setLocation: applyLocation, refresh };
+}
+
 function LiveChatTestTab() {
   const [currentUser] = useAuthState(auth);
   const [currentProfile, setCurrentProfile] = useState(null);
@@ -2274,7 +2417,16 @@ function LiveChatTestTab() {
   );
   const selectedRoomKeyRef = useRef(selectedRoomKey);
   const messagesEndRef = useRef(null);
+  const ensurePresetRoomsRef = useRef(null);
 
+  const effectiveLatitude = Number.isFinite(lastSpoofedLocation?.latitude)
+    ? lastSpoofedLocation.latitude
+    : null;
+  const effectiveLongitude = Number.isFinite(lastSpoofedLocation?.longitude)
+    ? lastSpoofedLocation.longitude
+    : null;
+
+  const lastEnsuredRef = useRef({ profileId: null, latitude: null, longitude: null });
   const currentProfileId = useMemo(() => toIdString(currentProfile?._id), [currentProfile]);
   const activeRoomRadiusLabel = useMemo(() => {
     if (!activeRoom?.radiusMeters) {
@@ -2293,6 +2445,50 @@ function LiveChatTestTab() {
     () => evaluateRoomAccess(activeRoom, lastSpoofedLocation),
     [activeRoom, lastSpoofedLocation]
   );
+  const {
+    location: viewerLocation,
+    setLocation: setViewerLocation,
+    refresh: refreshViewerLocation
+  } = useViewerLocation({
+    currentProfileId,
+    selectedRoomKeyRef,
+    ensurePresetRoomsRef,
+    setLocationStatus
+  });
+
+  useEffect(() => {
+    if (
+      !viewerLocation ||
+      !Number.isFinite(viewerLocation.latitude) ||
+      !Number.isFinite(viewerLocation.longitude)
+    ) {
+      return;
+    }
+
+    setLastSpoofedLocation((previous) => {
+      if (
+        previous &&
+        Math.abs(previous.latitude - viewerLocation.latitude) < 1e-9 &&
+        Math.abs(previous.longitude - viewerLocation.longitude) < 1e-9 &&
+        ((previous.accuracy ?? null) === (viewerLocation.accuracy ?? null))
+      ) {
+        return previous;
+      }
+      return viewerLocation;
+    });
+
+    if (ensurePresetRoomsRef.current && selectedRoomKeyRef.current) {
+      ensurePresetRoomsRef.current(selectedRoomKeyRef.current);
+    }
+  }, [viewerLocation, ensurePresetRoomsRef, selectedRoomKeyRef]);
+
+  useEffect(() => {
+    if (!currentProfileId || !mongooseObjectIdLike(currentProfileId)) {
+      return;
+    }
+    refreshViewerLocation();
+  }, [currentProfileId, refreshViewerLocation]);
+
   const distanceToRoomLabel = useMemo(() => {
     if (!roomAccess?.allowed || roomAccess.distanceMeters === undefined) {
       return null;
@@ -2359,6 +2555,17 @@ function LiveChatTestTab() {
 
   const ensurePresetRooms = useCallback(
     async (preferredKey) => {
+      const latitude = Number.isFinite(effectiveLatitude)
+        ? effectiveLatitude
+        : Number.isFinite(lastSpoofedLocation?.latitude)
+        ? lastSpoofedLocation.latitude
+        : null;
+      const longitude = Number.isFinite(effectiveLongitude)
+        ? effectiveLongitude
+        : Number.isFinite(lastSpoofedLocation?.longitude)
+        ? lastSpoofedLocation.longitude
+        : null;
+
       if (!currentUser) {
         setRoomsByKey({});
         setActiveRoom(null);
@@ -2385,20 +2592,35 @@ function LiveChatTestTab() {
 
       setIsEnsuringRooms(true);
       try {
-        const rooms = await fetchChatRooms();
+        let rooms = await fetchChatRooms({
+          latitude: Number.isFinite(latitude) ? latitude : undefined,
+          longitude: Number.isFinite(longitude) ? longitude : undefined
+        });
+        rooms = dedupeChatRooms(rooms);
         const remainingRooms = Array.isArray(rooms) ? [...rooms] : [];
         const nextRoomsByKey = {};
 
         for (const preset of LIVE_CHAT_ROOM_PRESETS) {
-          const targetNames = [preset.name, ...(preset.aliases ?? [])].map(normalizeRoomName);
-          const matchIndex = remainingRooms.findIndex((candidate) =>
-            targetNames.includes(normalizeRoomName(candidate?.name))
+          const presetKey = preset.key;
+          let resolvedRoom = null;
+
+          const presetIndex = remainingRooms.findIndex((candidate) =>
+            candidate?.presetKey && candidate.presetKey === presetKey
           );
 
-          let resolvedRoom;
-          if (matchIndex >= 0) {
-            resolvedRoom = remainingRooms.splice(matchIndex, 1)[0];
+          if (presetIndex >= 0) {
+            resolvedRoom = remainingRooms.splice(presetIndex, 1)[0];
           } else {
+            const targetNames = [preset.name, ...(preset.aliases ?? [])].map(normalizeRoomName);
+            const matchIndex = remainingRooms.findIndex((candidate) =>
+              targetNames.includes(normalizeRoomName(candidate?.name))
+            );
+            if (matchIndex >= 0) {
+              resolvedRoom = remainingRooms.splice(matchIndex, 1)[0];
+            }
+          }
+
+          if (!resolvedRoom) {
             const created = await createProximityChatRoom({
               ownerId: currentProfileId,
               name: preset.name,
@@ -2409,7 +2631,8 @@ function LiveChatTestTab() {
               radiusMeters: preset.radiusMeters,
               isGlobal: Boolean(preset.isGlobal),
               participantIds: [currentProfileId],
-              moderatorIds: [currentProfileId]
+              moderatorIds: [currentProfileId],
+              presetKey
             });
             resolvedRoom = created;
           }
@@ -2418,7 +2641,7 @@ function LiveChatTestTab() {
             ...resolvedRoom,
             _id: toIdString(resolvedRoom?._id),
             ownerId: toIdString(resolvedRoom?.ownerId),
-            presetKey: preset.key
+            presetKey
           };
           nextRoomsByKey[preset.key] = normalizedRoom;
         }
@@ -2464,8 +2687,12 @@ function LiveChatTestTab() {
         setIsEnsuringRooms(false);
       }
     },
-    [currentProfile, currentProfileId, currentUser, lastSpoofedLocation]
+    [currentProfile, currentProfileId, currentUser, effectiveLatitude, effectiveLongitude]
   );
+
+  useEffect(() => {
+    ensurePresetRoomsRef.current = ensurePresetRooms;
+  }, [ensurePresetRooms, ensurePresetRoomsRef]);
 
   const handleSelectRoom = useCallback(
     (roomKey) => {
@@ -2532,12 +2759,14 @@ function LiveChatTestTab() {
           source: 'web'
         });
 
-        setActiveLocationKey(preset.key);
-        setLastSpoofedLocation({
+        const nextLocation = {
           latitude: preset.latitude,
           longitude: preset.longitude,
           accuracy: preset.accuracy
-        });
+        };
+        setActiveLocationKey(preset.key);
+        setLastSpoofedLocation(nextLocation);
+        setViewerLocation(nextLocation);
         setLocationStatus({
           type: 'success',
           message: preset.statusMessage
@@ -2549,7 +2778,7 @@ function LiveChatTestTab() {
         setIsTeleporting(false);
       }
     },
-    [currentProfile, currentProfileId]
+    [currentProfile, currentProfileId, setViewerLocation]
   );
 
   useEffect(() => {
@@ -2560,8 +2789,8 @@ function LiveChatTestTab() {
     if (!currentUser || !currentProfile?._id) {
       return;
     }
-    ensurePresetRooms(selectedRoomKeyRef.current);
-  }, [currentUser, currentProfile, ensurePresetRooms]);
+    ensurePresetRoomsRef.current(selectedRoomKeyRef.current);
+  }, [currentUser, currentProfile, currentProfileId]);
 
   useEffect(() => {
     const roomId = toIdString(activeRoom?._id);
@@ -4671,6 +4900,61 @@ function ChatRoomVisualizationTab() {
     defaultTeleportPreset?.key ?? DEFAULT_LOCATION_TELEPORT_KEY
   );
   const [lastSpoofedLocation, setLastSpoofedLocation] = useState(initialSpoofLocation);
+  const [mapCenterOverride, setMapCenterOverride] = useState(() => ({
+    latitude: initialSpoofLocation.latitude,
+    longitude: initialSpoofLocation.longitude
+  }));
+  const currentProfileId = useMemo(() => toIdString(currentProfile?._id), [currentProfile]);
+
+  const {
+    location: viewerLocation,
+    setLocation: setViewerLocation,
+    refresh: refreshViewerLocation
+  } = useViewerLocation({
+    currentProfileId,
+    selectedRoomKeyRef: null,
+    ensurePresetRoomsRef: null
+  });
+
+  useEffect(() => {
+    if (
+      !viewerLocation ||
+      !Number.isFinite(viewerLocation.latitude) ||
+      !Number.isFinite(viewerLocation.longitude)
+    ) {
+      return;
+    }
+
+    setLastSpoofedLocation((previous) => {
+      if (
+        previous &&
+        Math.abs(previous.latitude - viewerLocation.latitude) < 1e-9 &&
+        Math.abs(previous.longitude - viewerLocation.longitude) < 1e-9 &&
+        ((previous.accuracy ?? null) === (viewerLocation.accuracy ?? null))
+      ) {
+        return previous;
+      }
+      return viewerLocation;
+    });
+
+    setMapCenterOverride((previous) => {
+      if (
+        previous &&
+        Math.abs(previous.latitude - viewerLocation.latitude) < 1e-9 &&
+        Math.abs(previous.longitude - viewerLocation.longitude) < 1e-9
+      ) {
+        return previous;
+      }
+      return { latitude: viewerLocation.latitude, longitude: viewerLocation.longitude };
+    });
+  }, [viewerLocation]);
+
+  useEffect(() => {
+    if (!currentProfileId || !mongooseObjectIdLike(currentProfileId)) {
+      return;
+    }
+    refreshViewerLocation();
+  }, [currentProfileId, refreshViewerLocation]);
   const [teleportStatus, setTeleportStatus] = useState(null);
   const [isTeleporting, setIsTeleporting] = useState(false);
 
@@ -4690,13 +4974,6 @@ function ChatRoomVisualizationTab() {
   useEffect(() => {
     selectedRoomIdRef.current = selectedRoomId;
   }, [selectedRoomId]);
-
-  const [mapCenterOverride, setMapCenterOverride] = useState(() => ({
-    latitude: initialSpoofLocation.latitude,
-    longitude: initialSpoofLocation.longitude
-  }));
-
-  const currentProfileId = useMemo(() => toIdString(currentProfile?._id), [currentProfile]);
 
   const loadProfile = useCallback(async () => {
     if (!currentUser) {
@@ -4724,21 +5001,25 @@ function ChatRoomVisualizationTab() {
     setIsFetchingRooms(true);
     let createdCount = 0;
     try {
-      let results = await fetchChatRooms({});
-      if (!Array.isArray(results)) {
-        results = [];
-      }
+      let results = dedupeChatRooms(await fetchChatRooms({}));
 
       if (currentProfileId && mongooseObjectIdLike(currentProfileId)) {
         const scratch = [...results];
 
         for (const preset of LIVE_CHAT_ROOM_PRESETS) {
-          const targetNames = [preset.name, ...(preset.aliases ?? [])].map(normalizeRoomName);
-          const matchIndex = scratch.findIndex((candidate) =>
-            targetNames.includes(normalizeRoomName(candidate?.name))
-          );
+          const presetKey = preset.key;
+          const existing = scratch.find((candidate) => {
+            if (!candidate) {
+              return false;
+            }
+            if (candidate.presetKey && candidate.presetKey === presetKey) {
+              return true;
+            }
+            const targetNames = [preset.name, ...(preset.aliases ?? [])].map(normalizeRoomName);
+            return targetNames.includes(normalizeRoomName(candidate.name));
+          });
 
-          if (matchIndex >= 0) {
+          if (existing) {
             continue;
           }
 
@@ -4753,9 +5034,10 @@ function ChatRoomVisualizationTab() {
               radiusMeters: preset.radiusMeters,
               isGlobal: Boolean(preset.isGlobal),
               participantIds: [currentProfileId],
-              moderatorIds: [currentProfileId]
+              moderatorIds: [currentProfileId],
+              presetKey
             });
-            scratch.push(created);
+            scratch.push({ ...created, presetKey });
             createdCount += 1;
           } catch (creationError) {
             console.warn('Failed to ensure preset chat room:', preset, creationError);
@@ -4763,10 +5045,7 @@ function ChatRoomVisualizationTab() {
         }
 
         if (createdCount > 0) {
-          results = await fetchChatRooms({});
-          if (!Array.isArray(results)) {
-            results = [];
-          }
+          results = dedupeChatRooms(await fetchChatRooms({}));
         }
       }
 
@@ -4841,12 +5120,14 @@ function ChatRoomVisualizationTab() {
           source: 'web'
         });
 
-        setActivePresetKey(preset.key);
-        setLastSpoofedLocation({
+        const nextLocation = {
           latitude: preset.latitude,
           longitude: preset.longitude,
           accuracy: preset.accuracy
-        });
+        };
+        setActivePresetKey(preset.key);
+        setLastSpoofedLocation(nextLocation);
+        setViewerLocation(nextLocation);
         setMapCenterOverride({ latitude: preset.latitude, longitude: preset.longitude });
         setTeleportStatus({
           type: 'success',
@@ -4860,7 +5141,7 @@ function ChatRoomVisualizationTab() {
         setIsTeleporting(false);
       }
     },
-    [currentUser, currentProfileId]
+    [currentUser, currentProfileId, lastSpoofedLocation, initialSpoofLocation, setViewerLocation]
   );
 
   const handleDirectionalSpoof = useCallback(
@@ -4923,6 +5204,7 @@ function ChatRoomVisualizationTab() {
 
         setActivePresetKey(null);
         setLastSpoofedLocation(nextLocation);
+        setViewerLocation(nextLocation);
         setMapCenterOverride({ latitude: nextLocation.latitude, longitude: nextLocation.longitude });
         setTeleportStatus({
           type: 'success',
@@ -4936,7 +5218,7 @@ function ChatRoomVisualizationTab() {
         setIsTeleporting(false);
       }
     },
-    [currentUser, currentProfileId, lastSpoofedLocation, initialSpoofLocation]
+    [currentUser, currentProfileId, lastSpoofedLocation, initialSpoofLocation, setViewerLocation]
   );
 
   useEffect(() => {
@@ -5762,6 +6044,7 @@ function ChatTab() {
     ownerId: '',
     name: '',
     description: '',
+    presetKey: '',
     latitude: '',
     longitude: '',
     radiusMeters: '',
@@ -5840,6 +6123,11 @@ function ChatTab() {
       const description = roomForm.description.trim();
       if (description) {
         payload.description = description;
+      }
+
+      const presetKey = roomForm.presetKey.trim();
+      if (presetKey) {
+        payload.presetKey = presetKey;
       }
 
       const accuracy = parseOptionalNumber(roomForm.accuracy, 'Accuracy');
@@ -6083,6 +6371,12 @@ function ChatTab() {
             minRows={2}
             fullWidth
           />
+          <TextField
+            label="Preset key (optional)"
+            value={roomForm.presetKey}
+            onChange={(event) => setRoomForm((prev) => ({ ...prev, presetKey: event.target.value }))}
+            fullWidth
+          />
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
               label="Latitude"
@@ -6138,6 +6432,7 @@ function ChatTab() {
                   ownerId: '',
                   name: '',
                   description: '',
+                  presetKey: '',
                   latitude: '',
                   longitude: '',
                   radiusMeters: '',

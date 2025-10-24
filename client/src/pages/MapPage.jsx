@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAuthState } from 'react-firebase-hooks/auth';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -11,7 +12,14 @@ import Button from '@mui/material/Button';
 import MapIcon from '@mui/icons-material/Map';
 import Map from '../components/Map';
 import LocationShare from '../components/LocationShare';
-import { insertLocationUpdate, fetchNearbyUsers, fetchPinsNearby } from '../api/mongoDataApi.js';
+import {
+  insertLocationUpdate,
+  fetchNearbyUsers,
+  fetchPinsNearby,
+  fetchCurrentUserProfile
+} from '../api/mongoDataApi.js';
+import { useLocationContext } from '../contexts/LocationContext';
+import { auth } from '../firebase';
 
 export const pageConfig = {
   id: 'map',
@@ -26,7 +34,7 @@ export const pageConfig = {
 const DEMO_USER_ID = 'demo-user';
 const METERS_PER_MILE = 1609.34;
 const DEFAULT_RADIUS_MILES = 10;
-const DEFAULT_MAX_DISTANCE_METERS = DEFAULT_RADIUS_MILES * METERS_PER_MILE;
+const DEFAULT_MAX_DISTANCE_METERS = Math.round(DEFAULT_RADIUS_MILES * METERS_PER_MILE);
 const SPOOF_STEP_METERS = 3218; // ~2 miles
 const EARTH_RADIUS_METERS = 6_371_000;
 const PIN_FETCH_LIMIT = 50;
@@ -63,8 +71,22 @@ const hasValidCoordinates = (coords) =>
   Number.isFinite(coords.longitude);
 
 function MapPage() {
-  const [userLocation, setUserLocation] = useState(FALLBACK_LOCATION);
-  const [isUsingFallbackLocation, setIsUsingFallbackLocation] = useState(true);
+  const [authUser] = useAuthState(auth);
+  const { location: sharedLocation, setLocation: setSharedLocation } = useLocationContext();
+  const sharedLatitude = sharedLocation?.latitude ?? null;
+  const sharedLongitude = sharedLocation?.longitude ?? null;
+  const sharedAccuracy = sharedLocation?.accuracy;
+  const initialLocation = hasValidCoordinates(sharedLocation)
+    ? {
+        latitude: sharedLatitude,
+        longitude: sharedLongitude,
+        ...(sharedAccuracy !== undefined ? { accuracy: sharedAccuracy } : {})
+      }
+    : FALLBACK_LOCATION;
+  const [userLocation, setUserLocation] = useState(initialLocation);
+  const [isUsingFallbackLocation, setIsUsingFallbackLocation] = useState(
+    !hasValidCoordinates(sharedLocation)
+  );
   const [nearbyUsers, setNearbyUsers] = useState([]);
   const [pins, setPins] = useState([]);
   const [isSharing, setIsSharing] = useState(false);
@@ -72,6 +94,37 @@ function MapPage() {
   const [isLoadingPins, setIsLoadingPins] = useState(false);
   const [error, setError] = useState(null);
   const lastSharedLocationRef = useRef(null);
+  const [currentProfileId, setCurrentProfileId] = useState(null);
+
+  useEffect(() => {
+    if (!Number.isFinite(sharedLatitude) || !Number.isFinite(sharedLongitude)) {
+      return;
+    }
+    setUserLocation((prev) => {
+      if (
+        prev &&
+        Math.abs(prev.latitude - sharedLatitude) < 1e-9 &&
+        Math.abs(prev.longitude - sharedLongitude) < 1e-9
+      ) {
+        if (
+          sharedAccuracy !== undefined &&
+          sharedAccuracy !== prev.accuracy
+        ) {
+          return {
+            ...prev,
+            accuracy: sharedAccuracy
+          };
+        }
+        return prev;
+      }
+      return {
+        latitude: sharedLatitude,
+        longitude: sharedLongitude,
+        ...(sharedAccuracy !== undefined ? { accuracy: sharedAccuracy } : {})
+      };
+    });
+    setIsUsingFallbackLocation(false);
+  }, [sharedLatitude, sharedLongitude, sharedAccuracy]);
 
   const requestBrowserLocation = useCallback(() => {
     return new Promise((resolve, reject) => {
@@ -84,7 +137,8 @@ function MapPage() {
         (position) => {
           resolve({
             latitude: position.coords.latitude,
-            longitude: position.coords.longitude
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy
           });
         },
         (error) => {
@@ -98,6 +152,90 @@ function MapPage() {
       );
     });
   }, []);
+
+  const updateGlobalLocation = useCallback(
+    (next, { source } = {}) => {
+      if (!hasValidCoordinates(next)) {
+        return null;
+      }
+      const normalized = {
+        latitude: Number(next.latitude),
+        longitude: Number(next.longitude)
+      };
+      if (Number.isFinite(next.accuracy)) {
+        normalized.accuracy = Number(next.accuracy);
+      }
+
+      let computed = normalized;
+      setUserLocation((prev) => {
+        if (
+          prev &&
+          Math.abs(prev.latitude - normalized.latitude) < 1e-9 &&
+          Math.abs(prev.longitude - normalized.longitude) < 1e-9
+        ) {
+          if (
+            normalized.accuracy !== undefined &&
+            normalized.accuracy !== prev.accuracy
+          ) {
+            computed = { ...prev, accuracy: normalized.accuracy };
+            return computed;
+          }
+          computed = prev;
+          return prev;
+        }
+        return normalized;
+      });
+
+      const accuracyMatches =
+        normalized.accuracy === undefined ||
+        (sharedAccuracy !== undefined &&
+          Math.abs(sharedAccuracy - normalized.accuracy) < 1e-6);
+
+      if (
+        !(
+          Math.abs((sharedLatitude ?? 0) - normalized.latitude) < 1e-9 &&
+          Math.abs((sharedLongitude ?? 0) - normalized.longitude) < 1e-9 &&
+          accuracyMatches
+        )
+      ) {
+        setSharedLocation({ ...normalized, source });
+      }
+
+      setIsUsingFallbackLocation(false);
+      return computed;
+    },
+    [setSharedLocation, sharedLatitude, sharedLongitude, sharedAccuracy]
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const resolveProfile = async () => {
+      if (!authUser) {
+        if (isMounted) {
+          setCurrentProfileId(null);
+        }
+        return;
+      }
+
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (isMounted) {
+          setCurrentProfileId(profile?._id ? String(profile._id) : null);
+        }
+      } catch (fetchError) {
+        console.error('Failed to load current user profile on MapPage:', fetchError);
+        if (isMounted) {
+          setCurrentProfileId(null);
+        }
+      }
+    };
+
+    resolveProfile();
+    return () => {
+      isMounted = false;
+    };
+  }, [authUser]);
 
   const refreshPins = useCallback(
     async (location = userLocation) => {
@@ -157,8 +295,9 @@ function MapPage() {
       throw new Error('Cannot share location without valid coordinates.');
     }
     const timestamp = new Date().toISOString();
+    const userId = currentProfileId ?? DEMO_USER_ID;
     await insertLocationUpdate({
-      userId: DEMO_USER_ID,
+      userId,
       coordinates: {
         type: 'Point',
         coordinates: [location.longitude, location.latitude]
@@ -168,25 +307,19 @@ function MapPage() {
       createdAt: timestamp,
       lastSeenAt: timestamp
     });
-  }, [insertLocationUpdate]);
+  }, [currentProfileId]);
 
   const handleStartSharing = useCallback(async () => {
     let locationToShare = userLocation;
 
     try {
       const resolvedLocation = await requestBrowserLocation();
-      locationToShare = resolvedLocation;
-      setUserLocation((prev) => {
-        if (
-          prev &&
-          Math.abs(prev.latitude - resolvedLocation.latitude) < 1e-9 &&
-          Math.abs(prev.longitude - resolvedLocation.longitude) < 1e-9
-        ) {
-          return prev;
-        }
-        return resolvedLocation;
-      });
-      setIsUsingFallbackLocation(false);
+      const normalized = updateGlobalLocation(resolvedLocation, { source: 'browser' });
+      if (normalized) {
+        locationToShare = normalized;
+      } else if (hasValidCoordinates(resolvedLocation)) {
+        locationToShare = resolvedLocation;
+      }
       setError(null);
     } catch (geoError) {
       console.error('Error getting browser location:', geoError);
@@ -212,14 +345,24 @@ function MapPage() {
     try {
       await pushLocationUpdate(locationToShare);
       lastSharedLocationRef.current = locationToShare;
-      await refreshNearby(locationToShare);
+      await Promise.all([
+        refreshNearby(locationToShare),
+        refreshPins(locationToShare)
+      ]);
     } catch (err) {
       console.error('Error sharing location:', err);
       setError(err.message || 'Failed to share your location.');
       lastSharedLocationRef.current = null;
       setIsSharing(false);
     }
-  }, [userLocation, requestBrowserLocation, pushLocationUpdate, refreshNearby]);
+  }, [
+    userLocation,
+    requestBrowserLocation,
+    updateGlobalLocation,
+    pushLocationUpdate,
+    refreshNearby,
+    refreshPins
+  ]);
 
   const shareDisabled = !hasValidCoordinates(userLocation);
   const shareHelperText = isUsingFallbackLocation
@@ -287,14 +430,24 @@ function MapPage() {
     return () => window.clearInterval(intervalId);
   }, [isSharing, refreshNearby]);
 
-  const shiftLocation = useCallback((direction) => {
-    setUserLocation((previous) => {
-      const source = previous ?? FALLBACK_LOCATION;
-      const latitudeStep = metersToLatitudeDegrees(SPOOF_STEP_METERS);
-      const longitudeStep = metersToLongitudeDegrees(SPOOF_STEP_METERS, source.latitude);
+  const shiftLocation = useCallback(
+    (direction) => {
+      const base =
+        hasValidCoordinates(userLocation)
+          ? userLocation
+          : Number.isFinite(sharedLatitude) && Number.isFinite(sharedLongitude)
+          ? {
+              latitude: sharedLatitude,
+              longitude: sharedLongitude,
+              ...(sharedAccuracy !== undefined ? { accuracy: sharedAccuracy } : {})
+            }
+          : FALLBACK_LOCATION;
 
-      let nextLatitude = source.latitude;
-      let nextLongitude = source.longitude;
+      const latitudeStep = metersToLatitudeDegrees(SPOOF_STEP_METERS);
+      const longitudeStep = metersToLongitudeDegrees(SPOOF_STEP_METERS, base.latitude);
+
+      let nextLatitude = base.latitude;
+      let nextLongitude = base.longitude;
 
       switch (direction) {
         case 'north':
@@ -310,32 +463,36 @@ function MapPage() {
           nextLongitude -= longitudeStep;
           break;
         default:
-          return source;
+          return;
       }
 
       const clampedLatitude = clampLatitude(nextLatitude);
       const normalizedLongitude = normalizeLongitude(nextLongitude);
 
       if (
-        Math.abs(clampedLatitude - source.latitude) < 1e-9 &&
-        Math.abs(normalizedLongitude - source.longitude) < 1e-9
+        Math.abs(clampedLatitude - base.latitude) < 1e-9 &&
+        Math.abs(normalizedLongitude - base.longitude) < 1e-9
       ) {
-        return source;
+        return;
       }
 
-      return {
-        latitude: clampedLatitude,
-        longitude: normalizedLongitude
-      };
-    });
-  }, []);
+      updateGlobalLocation(
+        {
+          latitude: clampedLatitude,
+          longitude: normalizedLongitude,
+          accuracy: base.accuracy
+        },
+        { source: 'map-spoof' }
+      );
+    },
+    [userLocation, sharedLatitude, sharedLongitude, sharedAccuracy, updateGlobalLocation]
+  );
 
   const handleSpoofMove = useCallback(
     (direction) => {
       setError((prev) =>
         prev && prev.toLowerCase().includes('failed to load') ? null : prev
       );
-      setIsUsingFallbackLocation(false);
       shiftLocation(direction);
     },
     [shiftLocation]
