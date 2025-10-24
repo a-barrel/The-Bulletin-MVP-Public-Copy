@@ -23,6 +23,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { createPin, uploadPinImage } from '../api/mongoDataApi';
 import { useNavOverlay } from '../contexts/NavOverlayContext';
+import './CreatePinPage.css';
 
 export const pageConfig = {
   id: 'create-pin',
@@ -650,7 +651,10 @@ function CreatePinPage() {
             className="btn-back"
             onClick={overlayBack}
           >
-            <ArrowBackIcon/> {backButtonLabel}
+            <img
+              src='https://www.svgrepo.com/show/326886/arrow-back-sharp.svg'
+              className='back-arrow'
+            />
           </button>
         )}
 
@@ -673,7 +677,198 @@ function CreatePinPage() {
         </button>
       </div>
 
+      <div className='body'>
+        {/* Title + Description */}
+        <div className="form-section">
+          <div className="input-group">
+            <label>Title</label>
+            <input
+              type="text"
+              value={formState.title}
+              onChange={handleFieldChange('title')}
+              placeholder={
+                pinType === 'event'
+                  ? FIGMA_TEMPLATE.fields.titlePlaceholder
+                  : "[Empty] Discussion Title"
+              }
+              required
+            />
+          </div>
+          <div className="input-group">
+            <label>Description</label>
+            <textarea
+              value={formState.description}
+              onChange={handleFieldChange('description')}
+              placeholder={
+                pinType === 'event'
+                  ? FIGMA_TEMPLATE.fields.descriptionPlaceholder
+                  : '[Empty] Discussion dets - what\'s being talked about?'
+              }
+              required
+            ></textarea>
+          </div>
+        </div>
+        
+        {/* Pin type toggle */}
+          <div className="field-group">
+            <label className="label">Pin type</label>
+            <div className="toggle-group">
+              <button
+                type="button"
+                className={`toggle-btn ${pinType === 'discussion' ? 'selected' : ''}`}
+                onClick={() => handleTypeChange(null, 'discussion')}
+              >
+                <MapIcon fontSize="small" /> Discussion
+              </button>
+              <button
+                type="button"
+                className={`toggle-btn ${pinType === 'event' ? 'selected' : ''}`}
+                onClick={() => handleTypeChange(null, 'event')}
+              >
+                <EventNoteIcon fontSize="small" /> Event
+              </button>
+            </div>
+          </div>
 
+          {/* Status Alert */}
+          {status && (
+            <div className={`alert alert-${status.type}`}>
+              <span>{status.message}</span>
+              <button type="button" onClick={() => setStatus(null)} className="alert-close">
+                ×
+              </button>
+            </div>
+          )}
+
+          {/* WIP CONTINUE HERE */}
+          {/* Event or Discussion Details */}
+          <div className="grid-item">
+            <div className="form-section">
+              {pinType === 'event' ? (
+                <>
+                  <h2>Event details</h2>
+                  <p>Let everyone know when and where to show up.</p>
+
+                  <div className="two-col">
+                    <div>
+                      <label>Start date</label>
+                      <input
+                        type="datetime-local"
+                        value={formState.startDate}
+                        onChange={handleFieldChange('startDate')}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label>End date</label>
+                      <input
+                        type="datetime-local"
+                        value={formState.endDate}
+                        onChange={handleFieldChange('endDate')}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <hr />
+
+                  <h3>Venue</h3>
+                  <label>Precise address</label>
+                  <input
+                    type="text"
+                    value={formState.addressPrecise}
+                    onChange={handleFieldChange('addressPrecise')}
+                    placeholder="University Student Union, Long Beach, CA"
+                  />
+
+                  <div className="two-col">
+                    <input
+                      type="text"
+                      placeholder="City"
+                      value={formState.addressCity}
+                      onChange={handleFieldChange('addressCity')}
+                    />
+                    <input
+                      type="text"
+                      placeholder="State"
+                      value={formState.addressState}
+                      onChange={handleFieldChange('addressState')}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Postal code"
+                      value={formState.addressPostalCode}
+                      onChange={handleFieldChange('addressPostalCode')}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Country"
+                      value={formState.addressCountry}
+                      onChange={handleFieldChange('addressCountry')}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2>Discussion details</h2>
+                  <p>Set how long this discussion should stay active.</p>
+
+                  <div className="two-col">
+                    <div>
+                      <label>Expires at</label>
+                      <input
+                        type="datetime-local"
+                        value={formState.expiresAt}
+                        onChange={handleFieldChange('expiresAt')}
+                        required
+                      />
+                    </div>
+                    <div className="switch-group">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={autoDelete}
+                          onChange={(e) => setAutoDelete(e.target.checked)}
+                        /> Auto delete
+                      </label>
+                    </div>
+                  </div>
+
+                  <hr />
+                  <h3>Approximate address</h3>
+                  <input
+                    type="text"
+                    placeholder="Formatted"
+                    value={formState.approxFormatted}
+                    onChange={handleFieldChange('approxFormatted')}
+                  />
+                  <div className="two-col">
+                    <input
+                      type="text"
+                      placeholder="City"
+                      value={formState.approxCity}
+                      onChange={handleFieldChange('approxCity')}
+                    />
+                    <input
+                      type="text"
+                      placeholder="State"
+                      value={formState.approxState}
+                      onChange={handleFieldChange('approxState')}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Country"
+                      value={formState.approxCountry}
+                      onChange={handleFieldChange('approxCountry')}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+
+      </div>
     </div>
   );
 }
