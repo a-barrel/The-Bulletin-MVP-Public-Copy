@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Navbar from '../components/Navbar';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
   Box,
@@ -634,7 +635,8 @@ function ChatPage() {
   );
 
   return (
-    <Box
+    <>
+      <Box
       sx={{
         width: '100%',
         maxWidth: 1200,
@@ -757,10 +759,14 @@ function ChatPage() {
           </DialogActions>
         </Box>
       </Dialog>
-    </Box>
+      </Box>
+      <Navbar />
+    </>
   );
 }
 
 export default ChatPage;
+
+
 
 

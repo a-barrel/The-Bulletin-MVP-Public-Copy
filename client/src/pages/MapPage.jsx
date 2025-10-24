@@ -20,6 +20,7 @@ import {
 } from '../api/mongoDataApi.js';
 import { useLocationContext } from '../contexts/LocationContext';
 import { auth } from '../firebase';
+import Navbar from '../components/Navbar';
 
 export const pageConfig = {
   id: 'map',
@@ -592,6 +593,8 @@ function MapPage() {
           </Stack>
         </Paper>
       </Stack>
+
+      <Navbar />
     </Box>
   );
 }

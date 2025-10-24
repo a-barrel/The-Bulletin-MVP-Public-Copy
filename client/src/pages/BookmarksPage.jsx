@@ -19,6 +19,7 @@ import {
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import LaunchIcon from '@mui/icons-material/Launch';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { auth } from '../firebase';
 import {
   exportBookmarks,
@@ -223,6 +224,16 @@ function BookmarksPage() {
       }}
     >
       <Stack spacing={3}>
+        <Button
+          variant="text"
+          color="inherit"
+          startIcon={<ArrowBackIcon fontSize="small" />}
+          onClick={() => navigate(-1)}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          Back
+        </Button>
+
         <Stack direction="row" spacing={1.5} alignItems="center">
           <BookmarkIcon color="primary" />
           <Typography variant="h4" component="h1">

@@ -1,6 +1,6 @@
 import runtimeConfig from '../config/runtime';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -20,6 +20,7 @@ import DoneAllIcon from '@mui/icons-material/DoneAll';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import UpdateIcon from '@mui/icons-material/Update';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { auth } from '../firebase';
 import {
   fetchCurrentUserProfile,
@@ -94,6 +95,7 @@ const formatAbsoluteDate = (value) => {
 };
 
 function UpdatesPage() {
+  const navigate = useNavigate();
   const [firebaseUser, firebaseLoading] = useAuthState(auth);
   const [profile, setProfile] = useState(null);
   const [profileError, setProfileError] = useState(null);
@@ -257,6 +259,15 @@ function UpdatesPage() {
       }}
     >
       <Stack spacing={3}>
+        <Button
+          variant="text"
+          color="inherit"
+          startIcon={<ArrowBackIcon fontSize="small" />}
+          onClick={() => navigate(-1)}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          Back
+        </Button>
         <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
           <Stack direction="row" spacing={1.5} alignItems="center">
             <UpdateIcon color="primary" />

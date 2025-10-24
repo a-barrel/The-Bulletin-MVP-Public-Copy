@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
@@ -36,6 +36,7 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import BlockIcon from '@mui/icons-material/Block';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { auth } from '../firebase';
 import {
   fetchBlockedUsers,
@@ -80,6 +81,7 @@ const roundRadius = (value) => {
 };
 
 function SettingsPage() {
+  const navigate = useNavigate();
   const [authUser, authLoading] = useAuthState(auth);
   const [profile, setProfile] = useState(null);
   const [profileError, setProfileError] = useState(null);
@@ -399,6 +401,16 @@ function SettingsPage() {
       }}
     >
       <Stack spacing={3}>
+        <Button
+          variant="text"
+          color="inherit"
+          startIcon={<ArrowBackIcon fontSize="small" />}
+          onClick={() => navigate(-1)}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          Back
+        </Button>
+
         <Stack direction="row" spacing={1.5} alignItems="center">
           <SettingsIcon color="primary" />
           <Typography variant="h4" component="h1">
