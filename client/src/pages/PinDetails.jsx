@@ -748,6 +748,7 @@ function PinDetails() {
     }
 
     const nextAttending = !attending;
+    const previousBookmarked = bookmarked;
 
     if (
       nextAttending &&
@@ -762,6 +763,9 @@ function PinDetails() {
     setAttendanceError(null);
     setIsUpdatingAttendance(true);
     setAttending(nextAttending);
+    if (nextAttending) {
+      setBookmarked(true);
+    }
 
     setPin((prev) => {
       if (
@@ -777,7 +781,8 @@ function PinDetails() {
       return {
         ...prev,
         participantCount: nextCount,
-        viewerIsAttending: nextAttending
+        viewerIsAttending: nextAttending,
+        viewerHasBookmarked: nextAttending ? true : prev.viewerHasBookmarked
       };
     });
 
@@ -785,6 +790,7 @@ function PinDetails() {
       const updatedPin = await updatePinAttendance(pin._id, nextAttending);
       setPin(updatedPin);
       setAttending(Boolean(updatedPin.viewerIsAttending));
+      setBookmarked(Boolean(updatedPin.viewerHasBookmarked));
       if (updatedPin?._badgeEarnedId) {
         playBadgeSound();
         announceBadgeEarned(updatedPin._badgeEarnedId);
@@ -810,10 +816,11 @@ function PinDetails() {
         };
       });
       setAttending(!nextAttending);
+      setBookmarked(previousBookmarked);
     } finally {
       setIsUpdatingAttendance(false);
     }
-  }, [announceBadgeEarned, attending, distanceLockActive, isEventPin, isInteractionLocked, isUpdatingAttendance, pin, pinExpired]);
+  }, [announceBadgeEarned, attending, bookmarked, distanceLockActive, isEventPin, isInteractionLocked, isUpdatingAttendance, pin, pinExpired]);
 
   const handleSubmitReply = useCallback(async () => {
     if (!pinId || isSubmittingReply || isInteractionLocked) {

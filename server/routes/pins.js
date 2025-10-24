@@ -12,7 +12,8 @@ const verifyToken = require('../middleware/verifyToken');
 const {
   broadcastPinCreated,
   broadcastPinReply,
-  broadcastAttendanceChange
+  broadcastAttendanceChange,
+  broadcastBookmarkCreated
 } = require('../services/updateFanoutService');
 const { grantBadge } = require('../services/badgeService');
 
@@ -129,6 +130,96 @@ const ensureUserStats = (userDoc) => {
   }
 
   return userDoc.stats;
+};
+
+const ensureBookmarkForUser = async ({ userDoc, pinDoc }) => {
+  if (!userDoc?._id || !pinDoc?._id) {
+    return {
+      created: false,
+      bookmark: null,
+      pin: pinDoc,
+      bookmarkCount: pinDoc?.bookmarkCount ?? 0
+    };
+  }
+
+  const userId = userDoc._id;
+  const pinId = pinDoc._id;
+
+  try {
+    const existing = await Bookmark.findOne({ userId, pinId });
+    if (existing) {
+      return {
+        created: false,
+        bookmark: existing,
+        pin: pinDoc,
+        bookmarkCount: pinDoc.bookmarkCount ?? 0
+      };
+    }
+
+    let bookmark;
+    try {
+      bookmark = await Bookmark.create({
+        userId,
+        pinId,
+        tagIds: []
+      });
+    } catch (error) {
+      if (error?.code === 11000 || error?.code === 11001) {
+        const duplicate = await Bookmark.findOne({ userId, pinId });
+        return {
+          created: false,
+          bookmark: duplicate,
+          pin: pinDoc,
+          bookmarkCount: pinDoc.bookmarkCount ?? 0
+        };
+      }
+      throw error;
+    }
+
+    try {
+      ensureUserStats(userDoc);
+      userDoc.stats.bookmarks = (userDoc.stats.bookmarks ?? 0) + 1;
+      userDoc.markModified('stats');
+      await userDoc.save();
+    } catch (error) {
+      console.error('Failed to update user bookmark stats during ensureBookmarkForUser:', error);
+    }
+
+    try {
+      const currentBookmarkCount = pinDoc.bookmarkCount ?? 0;
+      pinDoc.bookmarkCount = currentBookmarkCount + 1;
+      if (pinDoc.stats) {
+        pinDoc.stats.bookmarkCount = (pinDoc.stats.bookmarkCount ?? 0) + 1;
+      } else {
+        pinDoc.stats = {
+          bookmarkCount: pinDoc.bookmarkCount,
+          replyCount: pinDoc.replyCount ?? 0,
+          shareCount: 0,
+          viewCount: 0
+        };
+      }
+      pinDoc.markModified('stats');
+      await pinDoc.save();
+    } catch (error) {
+      console.error('Failed to update pin bookmark stats during ensureBookmarkForUser:', error);
+    }
+
+    return {
+      created: true,
+      bookmark,
+      pin: pinDoc,
+      bookmarkCount: pinDoc.bookmarkCount ?? 0
+    };
+  } catch (error) {
+    console.error('Failed to ensure bookmark for user:', error);
+    return {
+      created: false,
+      bookmark: null,
+      pin: pinDoc,
+      bookmarkCount: pinDoc?.bookmarkCount ?? 0,
+      error
+    };
+  }
 };
 
 const resolveViewerUser = async (req) => {
@@ -475,9 +566,40 @@ router.post('/', verifyToken, async (req, res) => {
       console.error('Failed to update creator stats after pin creation:', error);
     }
     const hydrated = await Pin.findById(pin._id).populate('creatorId');
-    const sourcePin = hydrated ?? pin;
+    let sourcePin = hydrated ?? pin;
     const creatorPublic = hydrated ? mapUserToPublic(hydrated.creatorId) : undefined;
     const viewerId = viewer ? toIdString(viewer._id) : undefined;
+
+    const bookmarkResult = await ensureBookmarkForUser({
+      userDoc: creatorUserDoc,
+      pinDoc: sourcePin
+    });
+    if (bookmarkResult?.pin) {
+      sourcePin = bookmarkResult.pin;
+    }
+
+    if (bookmarkResult?.created) {
+      broadcastBookmarkCreated({
+        pin: sourcePin,
+        bookmarker: creatorUserDoc
+      }).catch((error) => {
+        console.error('Failed to queue auto-bookmark updates after pin creation:', error);
+      });
+    }
+
+    let viewerHasBookmarked = false;
+    if (viewer) {
+      if (creatorUserDoc && viewer._id.equals(creatorUserDoc._id)) {
+        viewerHasBookmarked = Boolean(bookmarkResult?.created || bookmarkResult?.bookmark);
+      } else {
+        const viewerBookmarkExists = await Bookmark.exists({
+          userId: viewer._id,
+          pinId: sourcePin._id
+        });
+        viewerHasBookmarked = Boolean(viewerBookmarkExists);
+      }
+    }
+
     let createBadgeResult = null;
     if (viewer) {
       try {
@@ -493,7 +615,7 @@ router.post('/', verifyToken, async (req, res) => {
 
     const payload = mapPinToFull(sourcePin, creatorPublic, {
       viewerId,
-      viewerHasBookmarked: false
+      viewerHasBookmarked
     });
     if (createBadgeResult?.granted) {
       payload._badgeEarnedId = createBadgeResult.badge.id;
@@ -774,7 +896,25 @@ router.post('/:pinId/attendance', verifyToken, async (req, res) => {
       }
     }
 
-    const bookmarkExists = await Bookmark.exists({ userId: viewer._id, pinId: pin._id });
+    let viewerHasBookmarked = false;
+    if (attending && viewerJoined) {
+      const bookmarkResult = await ensureBookmarkForUser({
+        userDoc: viewer,
+        pinDoc: pin
+      });
+      viewerHasBookmarked = Boolean(bookmarkResult?.created || bookmarkResult?.bookmark);
+      if (bookmarkResult?.created) {
+        broadcastBookmarkCreated({
+          pin,
+          bookmarker: viewer
+        }).catch((error) => {
+          console.error('Failed to queue auto-bookmark updates after attendance change:', error);
+        });
+      }
+    } else {
+      const bookmarkExists = await Bookmark.exists({ userId: viewer._id, pinId: pin._id });
+      viewerHasBookmarked = Boolean(bookmarkExists);
+    }
     let attendanceBadgeResult = null;
     if (attending) {
       try {
@@ -790,7 +930,7 @@ router.post('/:pinId/attendance', verifyToken, async (req, res) => {
 
     const payload = mapPinToFull(pin, mapUserToPublic(pin.creatorId), {
       viewerId,
-      viewerHasBookmarked: Boolean(bookmarkExists)
+      viewerHasBookmarked
     });
     if (attendanceBadgeResult?.granted) {
       payload._badgeEarnedId = attendanceBadgeResult.badge.id;
