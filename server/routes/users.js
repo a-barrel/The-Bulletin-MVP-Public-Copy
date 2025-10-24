@@ -74,6 +74,14 @@ const UserSelfUpdateSchema = z
     'Provide at least one field to update.'
   );
 
+const ModifyBlockedUserSchema = z.object({
+  userId: z
+    .string()
+    .trim()
+    .min(1, 'User id is required')
+    .refine((value) => mongoose.Types.ObjectId.isValid(value), { message: 'Invalid user id' })
+});
+
 const parseDateOrNull = (value) => {
   if (!value) {
     return undefined;
@@ -172,6 +180,57 @@ const mapRelationships = (relationships) => {
   };
 };
 
+const ensureArray = (value) => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (value === undefined || value === null) {
+    return [];
+  }
+  return [];
+};
+
+const ensureUserRelationships = (userDoc) => {
+  if (!userDoc) {
+    return null;
+  }
+
+  if (!userDoc.relationships) {
+    userDoc.relationships = {
+      followerIds: [],
+      followingIds: [],
+      friendIds: [],
+      mutedUserIds: [],
+      blockedUserIds: []
+    };
+    return userDoc.relationships;
+  }
+
+  const relationships = userDoc.relationships;
+  relationships.followerIds = ensureArray(relationships.followerIds);
+  relationships.followingIds = ensureArray(relationships.followingIds);
+  relationships.friendIds = ensureArray(relationships.friendIds);
+  relationships.mutedUserIds = ensureArray(relationships.mutedUserIds);
+  relationships.blockedUserIds = ensureArray(relationships.blockedUserIds);
+
+  return relationships;
+};
+
+const blockRelationshipFieldsToClear = ['followerIds', 'followingIds', 'friendIds', 'mutedUserIds'];
+
+const toObjectIdOrNull = (value) => {
+  if (!value) {
+    return null;
+  }
+  if (value instanceof mongoose.Types.ObjectId) {
+    return value;
+  }
+  if (typeof value === 'string' && mongoose.Types.ObjectId.isValid(value)) {
+    return new mongoose.Types.ObjectId(value);
+  }
+  return null;
+};
+
 const mapUserToPublic = (userDoc) => {
   const doc = userDoc.toObject ? userDoc.toObject() : userDoc;
   const result = PublicUserSchema.safeParse({
@@ -230,6 +289,58 @@ const mapUserToProfile = (userDoc) => {
   }
 
   return result.data;
+};
+
+const loadBlockedUsers = async (userDoc) => {
+  const relationships = ensureUserRelationships(userDoc);
+  if (!relationships) {
+    return [];
+  }
+
+  const blockedIdStrings = relationships.blockedUserIds.map(toIdString).filter(Boolean);
+  if (blockedIdStrings.length === 0) {
+    return [];
+  }
+
+  const uniqueIds = Array.from(
+    new Set(
+      blockedIdStrings.filter((id) => mongoose.Types.ObjectId.isValid(id))
+    )
+  );
+
+  if (uniqueIds.length === 0) {
+    return [];
+  }
+
+  const objectIds = uniqueIds
+    .map((id) => toObjectIdOrNull(id))
+    .filter(Boolean);
+
+  if (!objectIds.length) {
+    return [];
+  }
+
+  const users = await User.find({ _id: { $in: objectIds } });
+  const usersById = new Map(users.map((user) => [toIdString(user._id), user]));
+
+  const blockedUsers = [];
+  for (const id of blockedIdStrings) {
+    const doc = usersById.get(id);
+    if (!doc) {
+      continue;
+    }
+
+    try {
+      blockedUsers.push(mapUserToPublic(doc));
+    } catch (error) {
+      console.warn('Failed to map blocked user while building payload', {
+        userId: id,
+        error
+      });
+    }
+  }
+
+  return blockedUsers;
 };
 
 const mapPinToListItem = (pinDoc, creator) => {
@@ -472,6 +583,116 @@ router.post('/me/badges/:badgeId', verifyToken, async (req, res) => {
     }
     console.error('Failed to grant badge to current user:', error);
     res.status(500).json({ message: 'Failed to grant badge' });
+  }
+});
+
+router.get('/me/blocked', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    ensureUserRelationships(viewer);
+    const blockedUsers = await loadBlockedUsers(viewer);
+    res.json({
+      blockedUsers,
+      relationships: mapRelationships(viewer.relationships)
+    });
+  } catch (error) {
+    console.error('Failed to load blocked users:', error);
+    res.status(500).json({ message: 'Failed to load blocked users' });
+  }
+});
+
+router.post('/me/blocked', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { userId } = ModifyBlockedUserSchema.parse(req.body ?? {});
+    const viewerId = toIdString(viewer._id);
+    if (viewerId === userId) {
+      return res.status(400).json({ message: 'You cannot block yourself' });
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({ message: 'Target user not found' });
+    }
+
+    const relationships = ensureUserRelationships(viewer);
+    const targetIdString = toIdString(targetUser._id);
+    let changed = false;
+
+    if (!relationships.blockedUserIds.some((entry) => toIdString(entry) === targetIdString)) {
+      relationships.blockedUserIds.push(targetUser._id);
+      changed = true;
+    }
+
+    for (const field of blockRelationshipFieldsToClear) {
+      const currentList = ensureArray(relationships[field]);
+      const filtered = currentList.filter((entry) => toIdString(entry) !== targetIdString);
+      if (filtered.length !== currentList.length) {
+        relationships[field] = filtered;
+        changed = true;
+      } else {
+        relationships[field] = currentList;
+      }
+    }
+
+    if (changed) {
+      viewer.markModified('relationships');
+      await viewer.save();
+    }
+
+    const blockedUsers = await loadBlockedUsers(viewer);
+    res.json({
+      blockedUsers,
+      updatedRelationships: mapRelationships(viewer.relationships)
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid block request', issues: error.errors });
+    }
+    console.error('Failed to block user:', error);
+    res.status(500).json({ message: 'Failed to block user' });
+  }
+});
+
+router.delete('/me/blocked/:userId', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { userId } = ModifyBlockedUserSchema.parse({ userId: req.params.userId });
+    const relationships = ensureUserRelationships(viewer);
+
+    const previousCount = relationships.blockedUserIds.length;
+    relationships.blockedUserIds = relationships.blockedUserIds.filter(
+      (entry) => toIdString(entry) !== userId
+    );
+
+    if (relationships.blockedUserIds.length !== previousCount) {
+      viewer.markModified('relationships');
+      await viewer.save();
+    }
+
+    const blockedUsers = await loadBlockedUsers(viewer);
+    res.json({
+      blockedUsers,
+      updatedRelationships: mapRelationships(viewer.relationships)
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid unblock request', issues: error.errors });
+    }
+    console.error('Failed to unblock user:', error);
+    res.status(500).json({ message: 'Failed to unblock user' });
   }
 });
 

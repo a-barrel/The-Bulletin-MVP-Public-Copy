@@ -11,6 +11,15 @@ import {
   Alert,
   Button,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Avatar,
   FormControl,
   FormControlLabel,
   FormLabel,
@@ -25,8 +34,15 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import SaveIcon from '@mui/icons-material/Save';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
+import BlockIcon from '@mui/icons-material/Block';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
 import { auth } from '../firebase';
-import { fetchCurrentUserProfile, updateCurrentUserProfile } from '../api/mongoDataApi';
+import {
+  fetchBlockedUsers,
+  fetchCurrentUserProfile,
+  unblockUser,
+  updateCurrentUserProfile
+} from '../api/mongoDataApi';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 
 export const pageConfig = {
@@ -73,6 +89,11 @@ function SettingsPage() {
   const [saveStatus, setSaveStatus] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const { enabled: badgeSoundEnabled, setEnabled: setBadgeSoundEnabled } = useBadgeSound();
+  const [blockedOverlayOpen, setBlockedOverlayOpen] = useState(false);
+  const [blockedUsers, setBlockedUsers] = useState([]);
+  const [isLoadingBlockedUsers, setIsLoadingBlockedUsers] = useState(false);
+  const [isManagingBlockedUsers, setIsManagingBlockedUsers] = useState(false);
+  const [blockedOverlayStatus, setBlockedOverlayStatus] = useState(null);
 
   const theme = settings.theme;
   const notifications = settings.notifications;
@@ -131,6 +152,68 @@ function SettingsPage() {
       cancelled = true;
     };
   }, [authLoading, authUser]);
+
+  useEffect(() => {
+    if (!blockedOverlayOpen) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadBlocked = async () => {
+      setIsLoadingBlockedUsers(true);
+      setBlockedOverlayStatus(null);
+      try {
+        const response = await fetchBlockedUsers();
+        if (cancelled) {
+          return;
+        }
+        setBlockedUsers(Array.isArray(response?.blockedUsers) ? response.blockedUsers : []);
+        if (response?.relationships) {
+          setProfile((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  relationships: response.relationships
+                }
+              : prev
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setBlockedUsers([]);
+          setBlockedOverlayStatus({
+            type: 'error',
+            message: error?.message || 'Failed to load blocked users.'
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingBlockedUsers(false);
+        }
+      }
+    };
+
+    loadBlocked();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [blockedOverlayOpen, setProfile]);
+
+  useEffect(() => {
+    if (!blockedOverlayStatus || blockedOverlayStatus.type !== 'success') {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setBlockedOverlayStatus(null);
+    }, 4000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [blockedOverlayStatus]);
 
   const baselineSettings = useMemo(() => {
     if (!profile) {
@@ -201,6 +284,58 @@ function SettingsPage() {
       statsPublic: !prev.statsPublic
     }));
   }, []);
+
+  const handleOpenBlockedOverlay = useCallback(() => {
+    setBlockedOverlayStatus(null);
+    setBlockedOverlayOpen(true);
+  }, []);
+
+  const handleCloseBlockedOverlay = useCallback(() => {
+    if (isManagingBlockedUsers) {
+      return;
+    }
+    setBlockedOverlayOpen(false);
+  }, [isManagingBlockedUsers]);
+
+  const handleUnblockUser = useCallback(
+    async (userId) => {
+      if (!userId) {
+        return;
+      }
+
+      const targetUser = blockedUsers.find((user) => user._id === userId);
+      setIsManagingBlockedUsers(true);
+      setBlockedOverlayStatus(null);
+      try {
+        const response = await unblockUser(userId);
+        setBlockedUsers(Array.isArray(response?.blockedUsers) ? response.blockedUsers : []);
+        if (response?.updatedRelationships) {
+          setProfile((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  relationships: response.updatedRelationships
+                }
+              : prev
+          );
+        }
+        setBlockedOverlayStatus({
+          type: 'success',
+          message: targetUser
+            ? `Unblocked ${targetUser.displayName || targetUser.username || targetUser._id}.`
+            : 'User unblocked.'
+        });
+      } catch (error) {
+        setBlockedOverlayStatus({
+          type: 'error',
+          message: error?.message || 'Failed to unblock user.'
+        });
+      } finally {
+        setIsManagingBlockedUsers(false);
+      }
+    },
+    [blockedUsers, setProfile]
+  );
 
   const handleReset = useCallback(() => {
     setSettings(baselineSettings);
@@ -459,6 +594,14 @@ function SettingsPage() {
           </Stack>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <Button
+              onClick={handleOpenBlockedOverlay}
+              variant="outlined"
+              color="warning"
+              startIcon={<BlockIcon />}
+            >
+              Manage blocked users
+            </Button>
+            <Button
               component={Link}
               to="/profile/me"
               variant="outlined"
@@ -498,6 +641,77 @@ function SettingsPage() {
           </Button>
         </Stack>
       </Stack>
+      <Dialog
+        open={blockedOverlayOpen}
+        onClose={handleCloseBlockedOverlay}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Blocked users</DialogTitle>
+        <DialogContent dividers>
+          {blockedOverlayStatus ? (
+            <Alert
+              severity={blockedOverlayStatus.type}
+              sx={{ mb: 2 }}
+              onClose={() => setBlockedOverlayStatus(null)}
+            >
+              {blockedOverlayStatus.message}
+            </Alert>
+          ) : null}
+          {isLoadingBlockedUsers ? (
+            <Stack alignItems="center" spacing={2} sx={{ py: 3 }}>
+              <CircularProgress size={24} />
+              <Typography variant="body2" color="text.secondary">
+                Loading blocked users...
+              </Typography>
+            </Stack>
+          ) : blockedUsers.length ? (
+            <List disablePadding sx={{ mt: -1 }}>
+              {blockedUsers.map((user) => {
+                const primary = user.displayName || user.username || user._id;
+                const secondary =
+                  user.username && user.username !== primary
+                    ? `@${user.username}`
+                    : user.email || user._id;
+                const avatarSource =
+                  user?.avatar?.url || user?.avatar?.thumbnailUrl || user?.avatar?.path || null;
+                return (
+                  <ListItem
+                    key={user._id}
+                    secondaryAction={
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<HowToRegIcon />}
+                        onClick={() => handleUnblockUser(user._id)}
+                        disabled={isManagingBlockedUsers}
+                      >
+                        Unblock
+                      </Button>
+                    }
+                  >
+                    <ListItemAvatar>
+                      <Avatar src={avatarSource || undefined}>
+                        {primary?.charAt(0)?.toUpperCase() ?? 'U'}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText primary={primary} secondary={secondary} />
+                  </ListItem>
+                );
+              })}
+            </List>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+              You haven't blocked any users yet. Block someone from their profile to see them here.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseBlockedOverlay} disabled={isManagingBlockedUsers}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

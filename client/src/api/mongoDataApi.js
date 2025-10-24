@@ -518,6 +518,60 @@ export async function updateCurrentUserProfile(input) {
   return payload;
 }
 
+export async function fetchBlockedUsers() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/blocked`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load blocked users');
+  }
+
+  return payload;
+}
+
+export async function blockUser(userId) {
+  if (!userId) {
+    throw new Error('User id is required to block a user');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/blocked`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ userId })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to block user');
+  }
+
+  return payload;
+}
+
+export async function unblockUser(userId) {
+  if (!userId) {
+    throw new Error('User id is required to unblock a user');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/blocked/${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to unblock user');
+  }
+
+  return payload;
+}
+
 export async function createBookmark(input) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/debug/bookmarks`, {
