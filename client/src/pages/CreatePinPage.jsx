@@ -1,3 +1,5 @@
+import { playBadgeSound } from '../utils/badgeSound';
+import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
@@ -224,6 +226,7 @@ function CreatePinPage() {
   const backButtonLabel = previousNavPage?.label ? `Back to ${previousNavPage.label}` : 'Back';
   const startDateValue = formState.startDate;
   const endDateValue = formState.endDate;
+  const { announceBadgeEarned } = useBadgeSound();
   const eventHeaderSubtitle = useMemo(() => {
     if (pinType !== 'event') {
       return '';
@@ -615,6 +618,10 @@ function CreatePinPage() {
         setIsSubmitting(true);
         const result = await createPin(payload);
         setCreatedPin(result);
+        if (result?._badgeEarnedId) {
+          playBadgeSound();
+          announceBadgeEarned(result._badgeEarnedId);
+        }
         setStatus({
           type: 'success',
           message: result?._id
@@ -631,7 +638,7 @@ function CreatePinPage() {
         setIsSubmitting(false);
       }
     },
-    [autoDelete, coverPhotoId, formState, photoAssets, pinType]
+    [announceBadgeEarned, autoDelete, coverPhotoId, formState, photoAssets, pinType]
   );
 
   const resultJson = useMemo(() => {

@@ -32,7 +32,8 @@ const userSchema = new mongoose.Schema(
         updates: { type: Boolean, default: true },
         marketing: { type: Boolean, default: false }
       },
-      radiusPreferenceMeters: { type: Number, default: 16093 }
+      radiusPreferenceMeters: { type: Number, default: 16093 },
+      statsPublic: { type: Boolean, default: true }
     },
     stats: {
       eventsHosted: { type: Number, default: 0 },
@@ -42,6 +43,7 @@ const userSchema = new mongoose.Schema(
       followers: { type: Number, default: 0 },
       following: { type: Number, default: 0 }
     },
+    badges: { type: [String], default: [] },
     relationships: {
       followerIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
       followingIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],

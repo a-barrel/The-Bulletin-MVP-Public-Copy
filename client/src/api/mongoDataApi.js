@@ -43,6 +43,28 @@ async function buildHeaders(extra = {}, options = {}) {
   };
 }
 
+function parseFilenameFromContentDisposition(headerValue, fallback = 'bookmarks.csv') {
+  if (!headerValue) {
+    return fallback;
+  }
+
+  const match = headerValue.match(/filename\*?=(?:UTF-8'')?([^;]+)/i);
+  if (!match || !match[1]) {
+    return fallback;
+  }
+
+  let filename = match[1].trim();
+  if (filename.startsWith('"') && filename.endsWith('"')) {
+    filename = filename.slice(1, -1);
+  }
+
+  try {
+    return decodeURIComponent(filename);
+  } catch {
+    return filename || fallback;
+  }
+}
+
 export function isMongoDataApiConfigured() {
   if (!API_BASE_URL && runtimeConfig.isOnline) {
     console.warn(
@@ -134,6 +156,18 @@ export async function listPins(query = {}) {
   if (query.limit) {
     params.set('limit', String(query.limit));
   }
+  if (query.status) {
+    params.set('status', query.status);
+  }
+  if (query.sort) {
+    params.set('sort', query.sort);
+  }
+  if (query.latitude !== undefined && query.latitude !== null) {
+    params.set('latitude', String(query.latitude));
+  }
+  if (query.longitude !== undefined && query.longitude !== null) {
+    params.set('longitude', String(query.longitude));
+  }
 
   const queryString = params.toString();
   const url = queryString ? `${baseUrl}/api/pins?${queryString}` : `${baseUrl}/api/pins`;
@@ -149,6 +183,35 @@ export async function listPins(query = {}) {
   }
 
   return payload;
+}
+
+export async function fetchPinsSortedByExpiration({ limit = 20, status = 'active' } = {}) {
+  return listPins({
+    limit,
+    sort: 'expiration',
+    status
+  });
+}
+
+export async function fetchPinsSortedByDistance({ latitude, longitude, limit = 20 } = {}) {
+  if (latitude === undefined || latitude === null || longitude === undefined || longitude === null) {
+    throw new Error('Latitude and longitude are required to sort pins by distance');
+  }
+
+  return listPins({
+    limit,
+    sort: 'distance',
+    latitude,
+    longitude
+  });
+}
+
+export async function fetchExpiredPins({ limit = 20 } = {}) {
+  return listPins({
+    limit,
+    sort: 'expiration',
+    status: 'expired'
+  });
 }
 
 export async function createPin(input) {
@@ -170,15 +233,26 @@ export async function createPin(input) {
   return payload;
 }
 
-export async function fetchPinById(pinId) {
+export async function fetchPinById(pinId, options = {}) {
   if (!pinId) {
     throw new Error('Pin id is required');
   }
 
+  const { signal, previewMode } = options;
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}`, {
+  const params = new URLSearchParams();
+  if (typeof previewMode === 'string' && previewMode.trim().length > 0) {
+    params.set('preview', previewMode.trim().toLowerCase());
+  }
+  const query = params.toString();
+  const url = query
+    ? `${baseUrl}/api/pins/${encodeURIComponent(pinId)}?${query}`
+    : `${baseUrl}/api/pins/${encodeURIComponent(pinId)}`;
+
+  const response = await fetch(url, {
     method: 'GET',
-    headers: await buildHeaders()
+    headers: await buildHeaders(),
+    signal
   });
 
   const payload = await response.json().catch(() => ({}));
@@ -485,6 +559,60 @@ export async function updateCurrentUserProfile(input) {
   return payload;
 }
 
+export async function fetchBlockedUsers() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/blocked`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load blocked users');
+  }
+
+  return payload;
+}
+
+export async function blockUser(userId) {
+  if (!userId) {
+    throw new Error('User id is required to block a user');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/blocked`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ userId })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to block user');
+  }
+
+  return payload;
+}
+
+export async function unblockUser(userId) {
+  if (!userId) {
+    throw new Error('User id is required to unblock a user');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/blocked/${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to unblock user');
+  }
+
+  return payload;
+}
+
 export async function createBookmark(input) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/debug/bookmarks`, {
@@ -551,6 +679,38 @@ export async function removeBookmark(pinId) {
   return payload;
 }
 
+export async function exportBookmarks({ userId } = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const params = new URLSearchParams();
+  if (userId) {
+    params.set('userId', userId);
+  }
+
+  const query = params.toString();
+  const url = query ? `${baseUrl}/api/bookmarks/export?${query}` : `${baseUrl}/api/bookmarks/export`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: await buildHeaders({ Accept: 'text/csv' }, { skipJson: true })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    try {
+      const payload = errorText ? JSON.parse(errorText) : {};
+      throw new Error(payload?.message || 'Failed to export bookmarks');
+    } catch {
+      throw new Error(errorText || 'Failed to export bookmarks');
+    }
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get('Content-Disposition');
+  const filename = parseFilenameFromContentDisposition(disposition);
+
+  return { blob, filename };
+}
+
 export async function createBookmarkCollection(input) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/debug/bookmark-collections`, {
@@ -578,6 +738,101 @@ export async function fetchBookmarkCollections(userId) {
   const payload = await response.json().catch(() => []);
   if (!response.ok) {
     throw new Error(payload?.message || 'Failed to load bookmark collections');
+  }
+
+  return payload;
+}
+
+export async function awardBadge(badgeId) {
+  if (!badgeId) {
+    throw new Error('Badge id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/badges/${encodeURIComponent(badgeId)}`, {
+    method: 'POST',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to award badge');
+  }
+
+  return payload;
+}
+
+export async function debugListBadges({ userId } = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const params = new URLSearchParams();
+  if (userId) {
+    params.set('userId', userId);
+  }
+  const query = params.toString();
+  const url = query ? `${baseUrl}/api/debug/badges?${query}` : `${baseUrl}/api/debug/badges`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load badges');
+  }
+
+  return payload;
+}
+
+export async function debugGrantBadge({ userId, badgeId }) {
+  if (!badgeId) {
+    throw new Error('Badge id is required to grant');
+  }
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/badges/grant`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ userId, badgeId })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to grant badge');
+  }
+
+  return payload;
+}
+
+export async function debugRevokeBadge({ userId, badgeId }) {
+  if (!badgeId) {
+    throw new Error('Badge id is required to revoke');
+  }
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/badges/revoke`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ userId, badgeId })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to revoke badge');
+  }
+
+  return payload;
+}
+
+export async function debugResetBadges({ userId } = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/badges/reset`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ userId })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to reset badges');
   }
 
   return payload;
@@ -615,7 +870,7 @@ export async function createChatRoom(input) {
   return payload;
 }
 
-export async function fetchChatRooms({ pinId, ownerId } = {}) {
+export async function fetchChatRooms({ pinId, ownerId, latitude, longitude, includeBookmarked = true } = {}) {
   const baseUrl = resolveApiBaseUrl();
   const params = new URLSearchParams();
   if (pinId) {
@@ -623,6 +878,15 @@ export async function fetchChatRooms({ pinId, ownerId } = {}) {
   }
   if (ownerId) {
     params.set('ownerId', ownerId);
+  }
+  if (latitude !== undefined && latitude !== null && !Number.isNaN(latitude)) {
+    params.set('latitude', String(latitude));
+  }
+  if (longitude !== undefined && longitude !== null && !Number.isNaN(longitude)) {
+    params.set('longitude', String(longitude));
+  }
+  if (!includeBookmarked) {
+    params.set('includeBookmarked', 'false');
   }
 
   const query = params.toString();

@@ -5,9 +5,9 @@ import Navbar from "../components/Navbar";
 import SortToggle from "../components/SortToggle";
 import settingsIcon from "../assets/GearIcon.svg";
 import addIcon from "../assets/AddIcon.svg";
-import menuIcon from "../assets/MenuIcon.svg";
 import updatesIcon from "../assets/UpdateIcon.svg";
 import Feed from "../components/Feed";
+import GlobalNavMenu from "../components/GlobalNavMenu";
 import PlaceIcon from '@mui/icons-material/Place'; // TODO: used only for Icon on pageConfig, maybe change with a list icon?
 
 export const pageConfig = {
@@ -103,6 +103,9 @@ export default function ListPage() {
   const handleCreatePin = useCallback(() => {
     navigate("/create-pin");
   }, [navigate]);
+  const handleSettings = useCallback(() => {
+    navigate("/settings");
+  }, [navigate]);
 
   const filteredAndSortedFeed = useMemo(() => {
     // Step 1: Filter out expired pins
@@ -131,9 +134,7 @@ export default function ListPage() {
       <div className="list-frame">
         {/* Header */}
         <header className="header-bar">
-          <button className="header-icon-btn" aria-label="Menu">
-            <img src={menuIcon} alt="Menu" className="header-icon" />
-          </button>
+          <GlobalNavMenu />
           <h1 className="header-title">List</h1>
           <button
             className="header-icon-btn"
@@ -148,7 +149,7 @@ export default function ListPage() {
         {/* Topbar */}
         <div className="topbar">
           <div className="top-left">
-            <button className="icon-btn" type="button" aria-label="Settings">
+            <button className="icon-btn" type="button" aria-label="Settings" onClick={handleSettings}>
               <img src={settingsIcon} alt="Settings" />
             </button>
 
@@ -177,3 +178,7 @@ export default function ListPage() {
     </div>
   );
 }
+
+
+
+

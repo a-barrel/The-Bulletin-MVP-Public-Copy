@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import './PinDetails.css';
 import PlaceIcon from '@mui/icons-material/Place';
 import LeafletMap from '../components/Map';
@@ -12,6 +12,7 @@ const SAMPLE_PIN_IDS = [
   '68e061721329566a22d474ab',
   '68e061721329566a22d474ac'
 ];
+const FAR_PIN_ID = SAMPLE_PIN_IDS[0] ?? '68e061721329566a22d474aa';
 
 export const pageConfig = {
   id: 'pin-details-v2-wip',
@@ -22,7 +23,7 @@ export const pageConfig = {
   showInNav: true,
   resolveNavTarget: ({ currentPath } = {}) => {
     const input = window.prompt(
-      'Enter a pin ID to view in Pin Details v2 (type "expired" to preview an expired pin, leave blank for a random sample, cancel to stay put):'
+      'Enter a pin ID to view in Pin Details v2 (type "expired" for an expired preview, type "far" to preview a pin outside your interaction radius, leave blank for a random sample, cancel to stay put):'
     );
     if (input === null) {
       return currentPath ?? null;
@@ -30,6 +31,10 @@ export const pageConfig = {
     const trimmed = input.trim();
     if (trimmed.toLowerCase() === 'expired') {
       return `/pin-v2/${EXPIRED_PIN_ID}`;
+    }
+    if (trimmed.toLowerCase() === 'far') {
+      const farId = FAR_PIN_ID;
+      return `/pin-v2/${farId}?preview=far`;
     }
     if (!trimmed) {
       const randomId =
@@ -209,6 +214,7 @@ const sortRepliesByDateDesc = (list) =>
 
 function PinDetailsV2WIP() {
   const { pinId } = useParams();
+  const location = useLocation();
   const [pin, setPin] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -216,6 +222,74 @@ function PinDetailsV2WIP() {
   const [isLoadingReplies, setIsLoadingReplies] = useState(false);
   const [repliesError, setRepliesError] = useState(null);
   const [attending, setAttending] = useState(false);
+
+  const previewMode = useMemo(() => {
+    const params = new URLSearchParams(location.search ?? '');
+    return (params.get('preview') || '').toLowerCase();
+  }, [location.search]);
+
+  const pinExpired = useMemo(() => {
+    if (!pin) {
+      return false;
+    }
+    const expiresSource = pin.expiresAt ?? pin.endDate;
+    if (!expiresSource) {
+      return false;
+    }
+    const expiry = new Date(expiresSource);
+    if (Number.isNaN(expiry.getTime())) {
+      return false;
+    }
+    return expiry.getTime() < Date.now();
+  }, [pin]);
+
+  const simulatedFarPreview = previewMode === 'far';
+  const viewerWithinInteractionRadius =
+    typeof pin?.viewerWithinInteractionRadius === 'boolean' ? pin.viewerWithinInteractionRadius : undefined;
+  const viewerDistanceMeters =
+    typeof pin?.viewerDistanceMeters === 'number' && Number.isFinite(pin.viewerDistanceMeters)
+      ? pin.viewerDistanceMeters
+      : null;
+  const distanceLockActive = !pinExpired && (simulatedFarPreview || viewerWithinInteractionRadius === false);
+  const isInteractionLocked = pinExpired || distanceLockActive;
+  const viewerInteractionLockMessage = pin?.viewerInteractionLockMessage;
+
+  const viewerDistanceLabel = useMemo(() => {
+    if (viewerDistanceMeters === null) {
+      return null;
+    }
+    if (viewerDistanceMeters >= 1609.34) {
+      const miles = viewerDistanceMeters / 1609.34;
+      return `${miles.toFixed(1)} miles`;
+    }
+    if (viewerDistanceMeters >= 10) {
+      return `${Math.round(viewerDistanceMeters)} meters`;
+    }
+    return `${viewerDistanceMeters.toFixed(1)} meters`;
+  }, [viewerDistanceMeters]);
+
+  const interactionOverlay = useMemo(() => {
+    if (pinExpired) {
+      return {
+        title: 'This pin has expired',
+        message:
+          'This activity is no longer available. Please head back to the home feed to explore current happenings.'
+      };
+    }
+
+    if (distanceLockActive) {
+      const defaultMessage = viewerDistanceLabel
+        ? `This pin is approximately ${viewerDistanceLabel} away and sits outside your interaction radius. Move closer to engage with it.`
+        : 'This pin is outside your interaction radius. Move closer to interact with it.';
+
+      return {
+        title: 'Outside interaction radius',
+        message: viewerInteractionLockMessage || defaultMessage
+      };
+    }
+
+    return null;
+  }, [pinExpired, distanceLockActive, viewerInteractionLockMessage, viewerDistanceLabel]);
 
   useEffect(() => {
     if (!pinId) {
@@ -230,7 +304,7 @@ function PinDetailsV2WIP() {
       setIsLoading(true);
       setError(null);
       try {
-        const result = await fetchPinById(pinId, { signal });
+        const result = await fetchPinById(pinId, { signal, previewMode });
         if (!isMounted) {
           return;
         }
@@ -254,7 +328,7 @@ function PinDetailsV2WIP() {
       isMounted = false;
       controller.abort();
     };
-  }, [pinId]);
+  }, [pinId, previewMode]);
 
   useEffect(() => {
     if (!pinId) {
@@ -330,11 +404,25 @@ function PinDetailsV2WIP() {
         <p className='muted'>Previewing Wai's in-progress design.</p>
       </header>
 
+      {interactionOverlay ? (
+        <div className='pin-expired-overlay' role='dialog' aria-modal='true'>
+          <div className='pin-expired-modal'>
+            <h3>{interactionOverlay.title}</h3>
+            <p>{interactionOverlay.message}</p>
+            <div className='expired-actions'>
+              <Link to="/list" className='expired-return-button'>
+                Return to List
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className='pin-actions'>
         <Link to='/list' className='back-button'>
           &larr; Back to List
         </Link>
-        <button type='button' className='primary-action'>
+        <button type='button' className='primary-action' disabled={isInteractionLocked}>
           Share
         </button>
       </div>
@@ -378,14 +466,20 @@ function PinDetailsV2WIP() {
                   <p>
                     Bookmarks: {pin.bookmarkCount ?? 0}
                     {pin.type === 'event' ? (
-                      <>
-                        <br />
-                      Attending: {pin.participantCount ?? 0}
-                      {pin.participantLimit ? ` / ${pin.participantLimit}` : ''}
-                    </>
-                  ) : null}
-                </p>
-              </div>
+                  <>
+                    <br />
+                    Attending: {pin.participantCount ?? 0}
+                    {pin.participantLimit ? ` / ${pin.participantLimit}` : ''}
+                  </>
+                ) : null}
+                {viewerDistanceLabel ? (
+                  <>
+                    <br />
+                    Distance: {viewerDistanceLabel}
+                  </>
+                ) : null}
+              </p>
+            </div>
             </aside>
           </section>
 
@@ -400,7 +494,7 @@ function PinDetailsV2WIP() {
                 <h3>{pin.creator?.displayName || pin.creator?.username || 'Unknown creator'}</h3>
                 <p className='muted'>@{pin.creator?.username || 'unknown'}</p>
               </div>
-              <button type='button' className='secondary-action'>
+              <button type='button' className='secondary-action' disabled={isInteractionLocked}>
                 Message
               </button>
             </div>
@@ -439,7 +533,13 @@ function PinDetailsV2WIP() {
               <button
                 type='button'
                 className={`attend-button ${attending ? 'attending' : ''}`}
-                onClick={() => setAttending((prev) => !prev)}
+                disabled={isInteractionLocked}
+                onClick={() => {
+                  if (isInteractionLocked) {
+                    return;
+                  }
+                  setAttending((prev) => !prev);
+                }}
               >
                 {attending ? 'Attending!' : 'Attend'}
               </button>
@@ -485,10 +585,10 @@ function PinDetailsV2WIP() {
           </section>
 
           <section className='pin-actions-footer'>
-            <button type='button' className='primary-action'>
+            <button type='button' className='primary-action' disabled={isInteractionLocked}>
               Create Comment
             </button>
-            <button type='button' className='secondary-action'>
+            <button type='button' className='secondary-action' disabled={isInteractionLocked}>
               Bookmark
             </button>
           </section>

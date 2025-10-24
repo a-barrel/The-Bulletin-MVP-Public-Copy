@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
+import { useCallback, useEffect, useRef, Fragment } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -52,8 +52,16 @@ const selectedPinIcon = new L.Icon({
 function MapUpdater({ center }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center);
+    map.setView(center, undefined, { animate: true });
   }, [center, map]);
+  return null;
+}
+
+function ResizeHandler({ signature }) {
+  const map = useMap();
+  useEffect(() => {
+    map.invalidateSize();
+  }, [signature, map]);
   return null;
 }
 
@@ -150,19 +158,49 @@ const Map = ({
   centerOverride,
   userRadiusMeters
 }) => {
+  const tileLayerRef = useRef(null);
+  const handleTileError = useCallback(() => {
+    const layer = tileLayerRef.current;
+    if (!layer || typeof layer.redraw !== 'function') {
+      return;
+    }
+    // Small delay lets transient network hiccups settle before refreshing tiles.
+    window.setTimeout(() => {
+      try {
+        layer.redraw();
+      } catch (error) {
+        console.warn('Failed to redraw tile layer after error:', error);
+      }
+    }, 500);
+  }, []);
+
   const resolvedCenter = toLatLng(centerOverride) ?? toLatLng(userLocation) ?? [0, 0];
   const userMarkerPosition = toLatLng(userLocation);
   const resolvedPins = Array.isArray(pins) ? pins : [];
+  const resizeSignature = `${resolvedCenter?.[0] ?? 'na'}-${resolvedCenter?.[1] ?? 'na'}-${resolvedPins.length}-${nearbyUsers.length}-${userRadiusMeters ?? 'no-radius'}`;
 
   return (
     <MapContainer
       center={resolvedCenter}
       zoom={13}
       style={{ width: '100%', height: '100%' }}
+      whenCreated={(map) => {
+        window.setTimeout(() => {
+          try {
+            map.invalidateSize();
+          } catch {
+            // ignore
+          }
+        }, 0);
+      }}
     >
       <TileLayer
+        ref={tileLayerRef}
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        eventHandlers={{
+          tileerror: handleTileError
+        }}
       />
       
       {userMarkerPosition && (
@@ -209,15 +247,63 @@ const Map = ({
           return null;
         }
 
-        const markerIcon = pin._id && pin._id === selectedPinId ? selectedPinIcon : pinIcon;
         const providedDistance = typeof pin.distanceMeters === 'number' ? pin.distanceMeters : null;
         const computedDistance = providedDistance ?? calculateDistanceMeters(userMarkerPosition, [latitude, longitude]);
         const distanceLabel = formatDistanceMiles(computedDistance);
         const expirationLabel = formatExpiration(pin);
+        const key = pin._id ?? `pin-${index}-${latitude}-${longitude}`;
+        const popupContent = (
+          <div>
+            <strong>{pin.title ?? 'Untitled pin'}</strong>
+            {pin.type ? <div>Type: {pin.type}</div> : null}
+            {pin._id ? <div>ID: {pin._id}</div> : null}
+            {distanceLabel ? <div>Distance: {distanceLabel} mi</div> : null}
+            {expirationLabel ? <div>{expirationLabel}</div> : null}
+          </div>
+        );
 
+        const isChatRoom = pin.type === 'chat-room' || pin.type === 'global-chat-room';
+        if (isChatRoom) {
+          const color = pin.type === 'global-chat-room' ? '#ffb300' : '#ff7043';
+          const isSelected = pin._id && pin._id === selectedPinId;
+          const radius = isSelected ? 10 : 7;
+
+          return (
+            <Fragment key={key}>
+              {Number.isFinite(pin.proximityRadiusMeters) && pin.proximityRadiusMeters > 0 ? (
+                <Circle
+                  center={[latitude, longitude]}
+                  radius={pin.proximityRadiusMeters}
+                  pathOptions={{ color, weight: 1.5, dashArray: '6 4', fillOpacity: 0.04 }}
+                />
+              ) : null}
+              <CircleMarker
+                center={[latitude, longitude]}
+                radius={radius}
+                pathOptions={{
+                  color,
+                  weight: isSelected ? 3 : 2,
+                  fillColor: color,
+                  fillOpacity: 0.7
+                }}
+                eventHandlers={
+                  onPinSelect
+                    ? {
+                        click: () => onPinSelect(pin)
+                      }
+                    : undefined
+                }
+              >
+                <Popup>{popupContent}</Popup>
+              </CircleMarker>
+            </Fragment>
+          );
+        }
+
+        const markerIcon = pin._id && pin._id === selectedPinId ? selectedPinIcon : pinIcon;
         return (
           <Marker
-            key={pin._id ?? `pin-${index}-${latitude}-${longitude}`}
+            key={key}
             position={[latitude, longitude]}
             icon={markerIcon}
             eventHandlers={
@@ -228,20 +314,13 @@ const Map = ({
                 : undefined
             }
           >
-            <Popup>
-              <div>
-                <strong>{pin.title ?? 'Untitled pin'}</strong>
-                {pin.type ? <div>Type: {pin.type}</div> : null}
-                {pin._id ? <div>ID: {pin._id}</div> : null}
-                {distanceLabel ? <div>Distance: {distanceLabel} mi</div> : null}
-                {expirationLabel ? <div>{expirationLabel}</div> : null}
-              </div>
-            </Popup>
+            <Popup>{popupContent}</Popup>
           </Marker>
         );
       })}
 
       <MapUpdater center={resolvedCenter} />
+      <ResizeHandler signature={resizeSignature} />
     </MapContainer>
   );
 };

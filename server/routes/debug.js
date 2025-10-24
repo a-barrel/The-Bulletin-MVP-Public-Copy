@@ -23,12 +23,28 @@ const {
   createMessage: createChatMessageRecord,
   upsertPresence: upsertChatPresenceRecord
 } = require('../services/proximityChatService');
+const {
+  listBadges,
+  grantBadge,
+  revokeBadge,
+  resetBadges,
+  getBadgeStatusForUser
+} = require('../services/badgeService');
 
 const router = express.Router();
 
 const ObjectIdString = z
   .string()
   .refine((value) => mongoose.Types.ObjectId.isValid(value), { message: 'Invalid object id' });
+
+const BadgeQuerySchema = z.object({
+  userId: z.string().trim().optional()
+});
+
+const BadgeMutationSchema = z.object({
+  userId: z.string().trim().optional(),
+  badgeId: z.string().trim().min(1)
+});
 
 const toObjectId = (value) => (value ? new mongoose.Types.ObjectId(value) : undefined);
 
@@ -49,6 +65,19 @@ const toIsoDateString = (value) => {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 };
 
+const resolveViewerUser = async (req) => {
+  if (!req?.user?.uid) {
+    return null;
+  }
+
+  try {
+    const viewer = await User.findOne({ firebaseUid: req.user.uid });
+    return viewer;
+  } catch (error) {
+    console.error('Failed to resolve viewer user for debug route:', error);
+    return null;
+  }
+};
 const mapMediaAsset = (asset) => {
   if (!asset) {
     return undefined;
@@ -192,6 +221,116 @@ const mapReply = (replyDoc) => {
 };
 
 router.use(verifyToken);
+
+router.get('/badges', async (req, res) => {
+  try {
+    const query = BadgeQuerySchema.parse(req.query);
+    const viewer = await resolveViewerUser(req);
+    const targetUserId = query.userId?.trim() || viewer?._id;
+    if (!targetUserId) {
+      return res.status(400).json({ message: 'Provide a userId or authenticate to view badges.' });
+    }
+
+    const status = await getBadgeStatusForUser(targetUserId);
+    res.json(status);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid badge query', issues: error.errors });
+    }
+    if (error.message === 'User not found') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    console.error('Failed to load badge status:', error);
+    res.status(500).json({ message: 'Failed to load badges' });
+  }
+});
+
+router.post('/badges/grant', async (req, res) => {
+  try {
+    const input = BadgeMutationSchema.parse(req.body);
+    const viewer = await resolveViewerUser(req);
+    const targetUserId = input.userId?.trim() || viewer?._id;
+    if (!targetUserId) {
+      return res.status(400).json({ message: 'Provide a userId or authenticate to grant a badge.' });
+    }
+
+    await grantBadge({
+      userId: targetUserId,
+      badgeId: input.badgeId.trim().toLowerCase(),
+      sourceUserId: viewer?._id ?? targetUserId
+    });
+
+    const status = await getBadgeStatusForUser(targetUserId);
+    res.json(status);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid badge payload', issues: error.errors });
+    }
+    if (error.message && error.message.startsWith('Unknown badge')) {
+      return res.status(400).json({ message: error.message });
+    }
+    if (error.message === 'User not found') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    console.error('Failed to grant badge (debug):', error);
+    res.status(500).json({ message: 'Failed to grant badge' });
+  }
+});
+
+router.post('/badges/revoke', async (req, res) => {
+  try {
+    const input = BadgeMutationSchema.parse(req.body);
+    const viewer = await resolveViewerUser(req);
+    const targetUserId = input.userId?.trim() || viewer?._id;
+    if (!targetUserId) {
+      return res.status(400).json({ message: 'Provide a userId or authenticate to revoke a badge.' });
+    }
+
+    await revokeBadge({
+      userId: targetUserId,
+      badgeId: input.badgeId.trim().toLowerCase()
+    });
+
+    const status = await getBadgeStatusForUser(targetUserId);
+    res.json(status);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid badge payload', issues: error.errors });
+    }
+    if (error.message && error.message.startsWith('Unknown badge')) {
+      return res.status(400).json({ message: error.message });
+    }
+    if (error.message === 'User not found') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    console.error('Failed to revoke badge (debug):', error);
+    res.status(500).json({ message: 'Failed to revoke badge' });
+  }
+});
+
+router.post('/badges/reset', async (req, res) => {
+  try {
+    const input = BadgeQuerySchema.parse(req.body);
+    const viewer = await resolveViewerUser(req);
+    const targetUserId = input.userId?.trim() || viewer?._id;
+    if (!targetUserId) {
+      return res.status(400).json({ message: 'Provide a userId or authenticate to reset badges.' });
+    }
+
+    await resetBadges(targetUserId);
+    const status = await getBadgeStatusForUser(targetUserId);
+    res.json(status);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid badge payload', issues: error.errors });
+    }
+    if (error.message === 'User not found') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    console.error('Failed to reset badges (debug):', error);
+    res.status(500).json({ message: 'Failed to reset badges' });
+  }
+});
 
 router.get('/auth/accounts', async (req, res) => {
   if (!runtime.isOffline) {
@@ -544,6 +683,7 @@ router.post('/chat-rooms', async (req, res) => {
     pinId: ObjectIdString.optional(),
     participantIds: z.array(ObjectIdString).optional(),
     moderatorIds: z.array(ObjectIdString).optional(),
+    presetKey: z.string().trim().optional(),
     isGlobal: z.boolean().optional()
   });
 
@@ -560,6 +700,7 @@ router.post('/chat-rooms', async (req, res) => {
       pinId: input.pinId,
       participantIds: input.participantIds,
       moderatorIds: input.moderatorIds,
+      presetKey: input.presetKey,
       isGlobal: input.isGlobal
     });
 
@@ -644,11 +785,14 @@ router.post('/updates', async (req, res) => {
         'new-pin',
         'pin-update',
         'event-starting-soon',
+        'event-reminder',
         'popular-pin',
         'bookmark-update',
         'system',
         'chat-message',
-        'friend-request'
+        'friend-request',
+        'chat-room-transition',
+        'badge-earned'
       ]),
       title: z.string().min(1),
       body: z.string().optional(),
@@ -787,3 +931,4 @@ router.post('/replies', async (req, res) => {
 });
 
 module.exports = router;
+

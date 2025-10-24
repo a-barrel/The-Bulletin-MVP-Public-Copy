@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { signInWithCustomToken } from 'firebase/auth';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import Box from '@mui/material/Box';
@@ -33,12 +33,18 @@ import { useTheme } from '@mui/material/styles';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import ForumIcon from '@mui/icons-material/Forum';
+import HistoryToggleOffIcon from '@mui/icons-material/HistoryToggleOff';
 import MapIcon from '@mui/icons-material/Map';
+import NearMeIcon from '@mui/icons-material/NearMe';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import ScheduleIcon from '@mui/icons-material/Schedule';
 import {
   createPin,
   fetchPinById,
   fetchPinsNearby,
+  fetchPinsSortedByDistance,
+  fetchPinsSortedByExpiration,
+  fetchExpiredPins,
   listPins,
   insertLocationUpdate,
   fetchNearbyUsers,
@@ -49,6 +55,7 @@ import {
   fetchCurrentUserProfile,
   updateUserProfile,
   createBookmark,
+  exportBookmarks,
   fetchBookmarks,
   createBookmarkCollection,
   fetchBookmarkCollections,
@@ -63,11 +70,20 @@ import {
   createReply,
   fetchReplies,
   fetchDebugAuthAccounts,
-  requestAccountSwap
+  requestAccountSwap,
+  awardBadge,
+  debugListBadges,
+  debugGrantBadge,
+  debugRevokeBadge,
+  debugResetBadges
 } from '../api/mongoDataApi';
 import LeafletMap from '../components/Map';
 import runtimeConfig from '../config/runtime';
+import { playBadgeSound } from '../utils/badgeSound';
+import { useBadgeSound } from '../contexts/BadgeSoundContext';
+import { useLocationContext } from '../contexts/LocationContext';
 import { auth } from '../firebase';
+import { applyAuthPersistence, AUTH_PERSISTENCE } from '../utils/authPersistence';
 ``
 //protected: true, //Firebase protection, requires login to see page
 export const pageConfig = {
@@ -149,27 +165,52 @@ const LIVE_CHAT_ROOM_PRESETS = [
     radiusMeters: 3000
   },
   {
-    key: 'north-pole',
-    label: 'North Pole',
-    name: 'North Pole Debug Chat',
-    aliases: ['North Pole Chat Room'],
-    description: 'Geofenced chat positioned at the North Pole for negative access testing.',
-    latitude: 89.95,
-    longitude: 135,
-    accuracy: 30,
-    radiusMeters: 3000
+    key: 'shoreline-village',
+    label: 'Shoreline Village',
+    name: 'Long Beach Shoreline Village Chat',
+    aliases: ['Shoreline Village Chat', 'Downtown Waterfront Chat'],
+    description: 'Waterfront chats along Shoreline Village for debugging short hops between rooms.',
+    latitude: 33.7633,
+    longitude: -118.1899,
+    accuracy: 12,
+    radiusMeters: 1200
+  },
+  {
+    key: 'belmont-shore',
+    label: 'Belmont Shore',
+    name: 'Belmont Shore Meetups',
+    aliases: ['Belmont Shore Chat', 'Belmont Shore Debug'],
+    description: 'Beachside chat circle for Belmont Shore events and meetups.',
+    latitude: 33.7603,
+    longitude: -118.1309,
+    accuracy: 12,
+    radiusMeters: 1400
+  },
+  {
+    key: 'signal-hill',
+    label: 'Signal Hill Overlook',
+    name: 'Signal Hill Lookout Chat',
+    aliases: ['Signal Hill Chat Room'],
+    description: 'Hilltop coverage to validate elevation and short-distance transitions.',
+    latitude: 33.8044,
+    longitude: -118.1678,
+    accuracy: 12,
+    radiusMeters: 1300
+  },
+  {
+    key: 'csulb',
+    label: 'CSULB Campus',
+    name: 'CSULB Campus Chat',
+    aliases: ['Campus Chat Room', 'Long Beach State Chat'],
+    description: 'Geofenced room covering the Cal State Long Beach campus.',
+    latitude: 33.7838,
+    longitude: -118.1141,
+    accuracy: 12,
+    radiusMeters: 1600
   }
 ];
 
 const TELEPORT_PRESETS = [
-  {
-    key: 'north-pole',
-    label: 'Teleport user location to North Pole',
-    latitude: 89.95,
-    longitude: 135,
-    accuracy: 25,
-    statusMessage: 'Location spoofed to the North Pole.'
-  },
   {
     key: 'long-beach',
     label: 'Teleport user location to Long Beach, California',
@@ -177,6 +218,38 @@ const TELEPORT_PRESETS = [
     longitude: -118.193739,
     accuracy: 12,
     statusMessage: 'Location spoofed to Long Beach, CA.'
+  },
+  {
+    key: 'shoreline-village',
+    label: 'Teleport to Shoreline Village waterfront',
+    latitude: 33.7633,
+    longitude: -118.1899,
+    accuracy: 12,
+    statusMessage: 'Location spoofed to Long Beach Shoreline Village.'
+  },
+  {
+    key: 'belmont-shore',
+    label: 'Teleport to Belmont Shore',
+    latitude: 33.7603,
+    longitude: -118.1309,
+    accuracy: 12,
+    statusMessage: 'Location spoofed to Belmont Shore.'
+  },
+  {
+    key: 'csulb-campus',
+    label: 'Teleport to CSULB campus',
+    latitude: 33.7838,
+    longitude: -118.1141,
+    accuracy: 12,
+    statusMessage: 'Location spoofed to the CSULB campus.'
+  },
+  {
+    key: 'signal-hill',
+    label: 'Teleport to Signal Hill overlook',
+    latitude: 33.8044,
+    longitude: -118.1678,
+    accuracy: 12,
+    statusMessage: 'Location spoofed to Signal Hill.'
   },
   {
     key: DEFAULT_LOCATION_TELEPORT_KEY,
@@ -290,6 +363,47 @@ const evaluateRoomAccess = (room, location) => {
   };
 };
 
+const isGlobalChatRoom = (room) =>
+  Boolean(room?.isGlobal) ||
+  (Number.isFinite(room?.radiusMeters) && room.radiusMeters >= 40000000);
+
+const resolveActiveRoomForLocation = (rooms, location) => {
+  if (!Array.isArray(rooms) || rooms.length === 0) {
+    return null;
+  }
+
+  let bestRoom = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (const room of rooms) {
+    const access = evaluateRoomAccess(room, location);
+    if (!access.allowed) {
+      continue;
+    }
+
+    const isGlobal = isGlobalChatRoom(room);
+    const distance = Number.isFinite(access.distanceMeters) ? access.distanceMeters : Number.POSITIVE_INFINITY;
+    const score = isGlobal ? distance + 1e6 : distance;
+
+    if (score < bestScore) {
+      bestRoom = room;
+      bestScore = score;
+    }
+  }
+
+  return bestRoom;
+};
+
+const formatDistanceMetersLabel = (value) => {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)} km`;
+  }
+  return `${Math.round(value)} m`;
+};
+
 const shiftLocationByDirection = (source, direction, stepMeters = SPOOF_STEP_METERS) => {
   if (
     !source ||
@@ -374,6 +488,78 @@ const deriveInitials = (value) => {
 
 const METERS_PER_MILE = 1609.34;
 const normalizeRoomName = (value) => `${value ?? ''}`.trim().toLowerCase();
+const coordinatesEqual = (left, right) => {
+  if (!left || !right) {
+    return false;
+  }
+  const latEqual = Math.abs(left.latitude - right.latitude) < 1e-9;
+  const lonEqual = Math.abs(left.longitude - right.longitude) < 1e-9;
+  const accuracyEqual =
+    (left.accuracy === undefined && right.accuracy === undefined) ||
+    Math.abs((left.accuracy ?? 0) - (right.accuracy ?? 0)) < 1e-6;
+  return latEqual && lonEqual && accuracyEqual;
+};
+const dedupeChatRooms = (rooms) => {
+  if (!Array.isArray(rooms)) {
+    return [];
+  }
+
+  const byPreset = new Map();
+  const byFallback = new Map();
+
+  const pickPreferred = (current, candidate) => {
+    if (!current) {
+      return candidate;
+    }
+    const currentHasPreset = Boolean(current?.presetKey);
+    const candidateHasPreset = Boolean(candidate?.presetKey);
+    if (currentHasPreset !== candidateHasPreset) {
+      return candidateHasPreset ? candidate : current;
+    }
+    const currentUpdated =
+      (current?.updatedAt && new Date(current.updatedAt).getTime()) ||
+      (current?.createdAt && new Date(current.createdAt).getTime()) ||
+      0;
+    const candidateUpdated =
+      (candidate?.updatedAt && new Date(candidate.updatedAt).getTime()) ||
+      (candidate?.createdAt && new Date(candidate.createdAt).getTime()) ||
+      0;
+    return candidateUpdated > currentUpdated ? candidate : current;
+  };
+
+  const toCoordinateKey = (room) => {
+    const coordinates = room?.coordinates?.coordinates;
+    if (!Array.isArray(coordinates) || coordinates.length < 2) {
+      return null;
+    }
+    const [longitude, latitude] = coordinates;
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return null;
+    }
+    return `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+  };
+
+  for (const room of rooms) {
+    if (!room) {
+      continue;
+    }
+    const presetKey = room.presetKey;
+    if (presetKey) {
+      const preferred = pickPreferred(byPreset.get(presetKey), room);
+      byPreset.set(presetKey, preferred);
+      continue;
+    }
+    const nameKey = normalizeRoomName(room.name);
+    const fallbackKey = `${nameKey}|${toCoordinateKey(room) ?? ''}`;
+    const preferred = pickPreferred(byFallback.get(fallbackKey), room);
+    byFallback.set(fallbackKey, preferred);
+  }
+
+  return [
+    ...byPreset.values(),
+    ...byFallback.values().filter((room) => !room?.presetKey || !byPreset.has(room.presetKey))
+  ];
+};
 const toIdString = (value) => {
   if (!value) {
     return '';
@@ -400,6 +586,7 @@ const TAB_OPTIONS = [
   { id: 'profile', label: 'Profiles' },
   { id: 'locations', label: 'Locations' },
   { id: 'bookmarks', label: 'Bookmarks' },
+  { id: 'badges', label: 'Badges' },
   { id: 'chat', label: 'Chat' },
   { id: LIVE_CHAT_TAB_ID, label: 'Live Chat Test' },
   { id: CHAT_VIS_TAB_ID, label: 'Chat Room Visualization' },
@@ -412,6 +599,7 @@ const PIN_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'pin');
 const PROFILE_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'profile');
 const LOCATIONS_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'locations');
 const BOOKMARKS_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'bookmarks');
+const BADGES_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'badges');
 const CHAT_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'chat');
 const LIVE_CHAT_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === LIVE_CHAT_TAB_ID);
 const CHAT_VIS_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === CHAT_VIS_TAB_ID);
@@ -425,11 +613,13 @@ const UPDATE_TYPE_OPTIONS = [
   'new-pin',
   'pin-update',
   'event-starting-soon',
+  'event-reminder',
   'popular-pin',
   'bookmark-update',
   'system',
   'chat-message',
-  'friend-request'
+  'friend-request',
+  'chat-room-transition'
 ];
 const LOCATION_SOURCE_OPTIONS = ['web', 'ios', 'android', 'background'];
 
@@ -549,11 +739,31 @@ function DebugConsolePage() {
   const [allPins, setAllPins] = useState([]);
   const [isFetchingAllPins, setIsFetchingAllPins] = useState(false);
   const [allPinsLimit, setAllPinsLimit] = useState('20');
+  const [distanceSortLatitude, setDistanceSortLatitude] = useState(
+    String(DEFAULT_LOCATION_COORDINATES.latitude)
+  );
+  const [distanceSortLongitude, setDistanceSortLongitude] = useState(
+    String(DEFAULT_LOCATION_COORDINATES.longitude)
+  );
   const [expiringPins, setExpiringPins] = useState([]);
   const [isFetchingExpiringPins, setIsFetchingExpiringPins] = useState(false);
   const [expiringDays, setExpiringDays] = useState('3');
+  const [expiredPins, setExpiredPins] = useState([]);
+  const [isFetchingExpiredPins, setIsFetchingExpiredPins] = useState(false);
   const [selectedPinId, setSelectedPinId] = useState(null);
   const [mapFocusLocation, setMapFocusLocation] = useState(null);
+  const { announceBadgeEarned } = useBadgeSound();
+
+  useEffect(() => {
+    awardBadge('enter-debug-console')
+      .then((result) => {
+        if (result?.granted) {
+          playBadgeSound();
+          announceBadgeEarned(result?.badgeId ?? 'enter-debug-console');
+        }
+      })
+      .catch(() => {});
+  }, [announceBadgeEarned]);
 
   const theme = useTheme();
   const isCompactTabs = useMediaQuery(theme.breakpoints.down('md'));
@@ -591,8 +801,9 @@ function DebugConsolePage() {
     (Array.isArray(nearbyPins) ? nearbyPins : []).forEach(append);
     (Array.isArray(allPins) ? allPins : []).forEach(append);
     (Array.isArray(expiringPins) ? expiringPins : []).forEach(append);
+    (Array.isArray(expiredPins) ? expiredPins : []).forEach(append);
     return Array.from(seen.values());
-  }, [createdPin, nearbyPins, allPins, expiringPins]);
+  }, [createdPin, nearbyPins, allPins, expiringPins, expiredPins]);
 
   const latestCreatedPinLocation = useMemo(() => extractPinLocation(createdPin), [createdPin]);
   const createdPinMedia = useMemo(() => {
@@ -759,20 +970,25 @@ const handleAutofillDiscussion = () => {
     setAllPinsLimit(event.target.value);
   };
 
+  const resolvePinListLimit = () => {
+    let limitValue = parseOptionalNumber(allPinsLimit, 'Limit');
+    if (limitValue === undefined) {
+      limitValue = 20;
+    }
+    if (!Number.isFinite(limitValue) || limitValue <= 0) {
+      throw new Error('Limit must be greater than 0.');
+    }
+    if (limitValue > 50) {
+      throw new Error('Limit cannot exceed 50.');
+    }
+    return limitValue;
+  };
+
   const handleFetchAllPins = async () => {
     setStatus(null);
     let limitValue;
     try {
-      limitValue = parseOptionalNumber(allPinsLimit, 'Limit');
-      if (limitValue === undefined) {
-        limitValue = 20;
-      }
-      if (!Number.isFinite(limitValue) || limitValue <= 0) {
-        throw new Error('Limit must be greater than 0.');
-      }
-      if (limitValue > 50) {
-        throw new Error('Limit cannot exceed 50.');
-      }
+      limitValue = resolvePinListLimit();
     } catch (error) {
       setStatus({ type: 'error', message: error.message });
       return;
@@ -805,6 +1021,143 @@ const handleAutofillDiscussion = () => {
     }
   };
 
+  const handleDistanceSortLatitudeChange = (event) => {
+    setDistanceSortLatitude(event.target.value);
+  };
+
+  const handleDistanceSortLongitudeChange = (event) => {
+    setDistanceSortLongitude(event.target.value);
+  };
+
+  const handleSortPinsByDistance = async () => {
+    setStatus(null);
+    let limitValue;
+    try {
+      limitValue = resolvePinListLimit();
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
+      return;
+    }
+
+    let latitude;
+    let longitude;
+    try {
+      latitude = parseCoordinate(distanceSortLatitude, 'Latitude');
+      longitude = parseCoordinate(distanceSortLongitude, 'Longitude');
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
+      return;
+    }
+
+    try {
+      setIsFetchingAllPins(true);
+      const pins = await fetchPinsSortedByDistance({
+        limit: limitValue,
+        latitude,
+        longitude
+      });
+      setAllPins(pins);
+      if (pins.length > 0) {
+        const focus = extractPinLocation(pins[0]);
+        if (focus) {
+          setMapFocusLocation(focus);
+        }
+        if (pins[0]?._id) {
+          setSelectedPinId(pins[0]._id);
+          setPinIdInput(pins[0]._id);
+        }
+      }
+      setStatus({
+        type: pins.length ? 'success' : 'info',
+        message: pins.length
+          ? `Loaded ${pins.length} pin${pins.length === 1 ? '' : 's'} sorted by distance (closest first).`
+          : 'No pins found for the provided coordinates.'
+      });
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message || 'Failed to sort pins by distance.' });
+    } finally {
+      setIsFetchingAllPins(false);
+    }
+  };
+
+  const handleSortPinsByExpiration = async () => {
+    setStatus(null);
+    let limitValue;
+    try {
+      limitValue = resolvePinListLimit();
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
+      return;
+    }
+
+    try {
+      setIsFetchingAllPins(true);
+      const pins = await fetchPinsSortedByExpiration({
+        limit: limitValue,
+        status: 'active'
+      });
+      setAllPins(pins);
+      if (pins.length > 0) {
+        const focus = extractPinLocation(pins[0]);
+        if (focus) {
+          setMapFocusLocation(focus);
+        }
+        if (pins[0]?._id) {
+          setSelectedPinId(pins[0]._id);
+          setPinIdInput(pins[0]._id);
+        }
+      }
+      setStatus({
+        type: pins.length ? 'success' : 'info',
+        message: pins.length
+          ? `Loaded ${pins.length} pin${pins.length === 1 ? '' : 's'} sorted by soonest expiration.`
+          : 'No pins with upcoming expiration dates were found.'
+      });
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message || 'Failed to sort pins by expiration.' });
+    } finally {
+      setIsFetchingAllPins(false);
+    }
+  };
+
+  const handleFetchExpiredPins = async () => {
+    setStatus(null);
+    let limitValue;
+    try {
+      limitValue = resolvePinListLimit();
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
+      return;
+    }
+
+    try {
+      setIsFetchingExpiredPins(true);
+      setExpiredPins([]);
+      const pins = await fetchExpiredPins({ limit: limitValue });
+      setExpiredPins(pins);
+      if (pins.length > 0) {
+        const focus = extractPinLocation(pins[0]);
+        if (focus) {
+          setMapFocusLocation(focus);
+        }
+        if (pins[0]?._id) {
+          setSelectedPinId(pins[0]._id);
+          setPinIdInput(pins[0]._id);
+        }
+      }
+      setStatus({
+        type: pins.length ? 'warning' : 'info',
+        message: pins.length
+          ? `Loaded ${pins.length} expired pin${pins.length === 1 ? '' : 's'} (oldest first).`
+          : 'No expired pins found.'
+      });
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message || 'Failed to load expired pins.' });
+    } finally {
+      setIsFetchingExpiredPins(false);
+    }
+  };
+
   const handleExpiringDaysChange = (event) => {
     setExpiringDays(event.target.value);
   };
@@ -827,7 +1180,7 @@ const handleAutofillDiscussion = () => {
 
     try {
       setIsFetchingExpiringPins(true);
-      const pins = await listPins({ limit: 50 });
+      const pins = await fetchPinsSortedByExpiration({ limit: 50, status: 'active' });
       const now = new Date();
       const cutoff = new Date(now.getTime() + daysValue * 24 * 60 * 60 * 1000);
       const filtered = pins.filter((pin) => {
@@ -889,6 +1242,49 @@ const parseDate = (value, label) => {
     throw new Error(`${label} must be a valid date`);
   }
   return parsed.toISOString();
+};
+
+const getPinExpirationInfo = (pin) => {
+  const iso = pin?.expiresAt ?? pin?.endDate ?? null;
+  if (!iso) {
+    return null;
+  }
+
+  const target = new Date(iso);
+  if (Number.isNaN(target.getTime())) {
+    return {
+      primary: 'Expiration date unavailable',
+      secondary: null
+    };
+  }
+
+  const now = new Date();
+  const diffMs = target.getTime() - now.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+  if (diffMs >= 0) {
+    const remainingDays = diffDays >= 1 ? Math.ceil(diffDays) : 0;
+    const secondary =
+      remainingDays === 0
+        ? 'Less than one day remaining'
+        : `${remainingDays} day${remainingDays === 1 ? '' : 's'} remaining`;
+    return {
+      primary: `Expires ${target.toLocaleString()}`,
+      secondary
+    };
+  }
+
+  const absDays = Math.abs(diffDays);
+  const elapsedDays = absDays >= 1 ? Math.floor(absDays) : 0;
+  const secondary =
+    elapsedDays === 0
+      ? 'Expired less than one day ago'
+      : `Expired ${elapsedDays} day${elapsedDays === 1 ? '' : 's'} ago`;
+
+  return {
+    primary: `Expired ${target.toLocaleString()}`,
+    secondary
+  };
 };
 
 const handleSubmit = async (event) => {
@@ -1047,9 +1443,8 @@ const handleSubmit = async (event) => {
           textColor="primary"
           indicatorColor="primary"
           orientation={isCompactTabs ? 'vertical' : 'horizontal'}
-          variant={isCompactTabs ? 'standard' : 'scrollable'}
-          allowScrollButtonsMobile={!isCompactTabs}
-          sx={{
+          variant="standard"
+            sx={{
             width: '100%',
             ...(isCompactTabs
               ? {
@@ -1057,7 +1452,8 @@ const handleSubmit = async (event) => {
                   '& .MuiTabs-flexContainer': {
                     flexDirection: 'column',
                     alignItems: 'stretch',
-                    gap: 1
+                    gap: 1,
+                    flexWrap: 'nowrap'
                   },
                   '& .MuiTab-root': {
                     justifyContent: 'flex-start',
@@ -1070,8 +1466,15 @@ const handleSubmit = async (event) => {
                   }
                 }
               : {
+                  '& .MuiTabs-flexContainer': {
+                    flexWrap: 'wrap',
+                    columnGap: 1,
+                    rowGap: 1,
+                    justifyContent: 'flex-start'
+                  },
                   '& .MuiTab-root': {
-                    minWidth: 'auto'
+                    minWidth: 'auto',
+                    flex: '0 0 auto'
                   }
                 })
           }}
@@ -1307,7 +1710,6 @@ const handleSubmit = async (event) => {
             </Button>
           </Stack>
           </Paper>
-
           <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Typography variant="h6">Test saved pin</Typography>
             <Typography variant="body2" color="text.secondary">
@@ -1458,60 +1860,128 @@ const handleSubmit = async (event) => {
           </Paper>
 
           <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Typography variant="h6">Load recent pins</Typography>
+            <Typography variant="h6">Load and sort pins</Typography>
             <Typography variant="body2" color="text.secondary">
-              Fetch the most recently updated pins regardless of distance.
+              Fetch the most recent pins or sort them by expiration or distance.
             </Typography>
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-              <TextField
-                label="Limit (max 50)"
-                value={allPinsLimit}
-                onChange={handleAllPinsLimitChange}
-                InputProps={{ inputMode: 'numeric' }}
-                sx={{ width: { xs: '100%', sm: 200 } }}
-              />
-              <Button
-                type="button"
-                variant="outlined"
-                startIcon={<MapIcon />}
-                onClick={handleFetchAllPins}
-                disabled={isFetchingAllPins}
+            <Stack spacing={2}>
+              <Stack
+                direction={{ xs: 'column', md: 'row' }}
+                spacing={2}
+                alignItems={{ xs: 'stretch', md: 'center' }}
               >
-                {isFetchingAllPins ? 'Loading...' : 'Fetch recent pins'}
-              </Button>
+                <TextField
+                  label="Limit (max 50)"
+                  value={allPinsLimit}
+                  onChange={handleAllPinsLimitChange}
+                  InputProps={{ inputMode: 'numeric' }}
+                  sx={{ width: { xs: '100%', md: 200 } }}
+                />
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    startIcon={<MapIcon />}
+                    onClick={handleFetchAllPins}
+                    disabled={isFetchingAllPins}
+                  >
+                    {isFetchingAllPins ? 'Loading...' : 'Fetch recent pins'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    startIcon={<ScheduleIcon />}
+                    onClick={handleSortPinsByExpiration}
+                    disabled={isFetchingAllPins}
+                  >
+                    {isFetchingAllPins ? 'Sorting...' : 'Sort by expiration'}
+                  </Button>
+                </Stack>
+              </Stack>
+
+              <Stack
+                direction={{ xs: 'column', md: 'row' }}
+                spacing={2}
+                alignItems={{ xs: 'stretch', md: 'center' }}
+              >
+                <TextField
+                  label="Latitude"
+                  value={distanceSortLatitude}
+                  onChange={handleDistanceSortLatitudeChange}
+                  InputProps={{ inputMode: 'decimal' }}
+                  sx={{ width: { xs: '100%', md: 200 } }}
+                />
+                <TextField
+                  label="Longitude"
+                  value={distanceSortLongitude}
+                  onChange={handleDistanceSortLongitudeChange}
+                  InputProps={{ inputMode: 'decimal' }}
+                  sx={{ width: { xs: '100%', md: 200 } }}
+                />
+                <Button
+                  type="button"
+                  variant="outlined"
+                  startIcon={<NearMeIcon />}
+                  onClick={handleSortPinsByDistance}
+                  disabled={isFetchingAllPins}
+                >
+                  {isFetchingAllPins ? 'Sorting...' : 'Sort by distance'}
+                </Button>
+              </Stack>
             </Stack>
 
             {allPins.length > 0 ? (
               <Stack spacing={1}>
-                {allPins.map((pin) => (
-                  <Paper
-                    key={pin._id}
-                    variant="outlined"
-                    sx={{ p: 2, cursor: 'pointer' }}
-                    onClick={() => {
-                      if (!pin?._id) {
-                        return;
-                      }
-                      setSelectedPinId(pin._id);
-                      setPinIdInput(pin._id);
-                      const focus = extractPinLocation(pin);
-                      if (focus) {
-                        setMapFocusLocation(focus);
-                      }
-                    }}
-                  >
-                    <Stack spacing={0.5}>
-                      <Typography variant="subtitle1">{pin.title}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {(pin.type === 'event' ? 'Event' : 'Discussion') + ' pin'}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {pin._id}
-                      </Typography>
-                    </Stack>
-                  </Paper>
-                ))}
+                {allPins.map((pin) => {
+                  const distanceLabel = formatDistanceMiles(pin.distanceMeters);
+                  const expirationInfo = getPinExpirationInfo(pin);
+                  return (
+                    <Paper
+                      key={pin._id}
+                      variant="outlined"
+                      sx={{ p: 2, cursor: 'pointer' }}
+                      onClick={() => {
+                        if (!pin?._id) {
+                          return;
+                        }
+                        setSelectedPinId(pin._id);
+                        setPinIdInput(pin._id);
+                        const focus = extractPinLocation(pin);
+                        if (focus) {
+                          setMapFocusLocation(focus);
+                        }
+                      }}
+                    >
+                      <Stack spacing={0.5}>
+                        <Typography variant="subtitle1">{pin.title}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {(pin.type === 'event' ? 'Event' : 'Discussion') + ' pin'}
+                        </Typography>
+                        {distanceLabel ? (
+                          <Typography variant="body2" color="text.secondary">
+                            Distance: {distanceLabel} mi
+                          </Typography>
+                        ) : null}
+                        {expirationInfo ? (
+                          <>
+                            <Typography variant="body2" color="text.secondary">
+                              {expirationInfo.primary}
+                            </Typography>
+                            {expirationInfo.secondary ? (
+                              <Typography variant="body2" color="text.secondary">
+                                {expirationInfo.secondary}
+                              </Typography>
+                            ) : null}
+                          </>
+                        ) : null}
+                        <Typography variant="body2" color="text.secondary">
+                          {pin._id}
+                        </Typography>
+                      </Stack>
+                    </Paper>
+                  );
+                })}
               </Stack>
             ) : (
               <Typography variant="body2" color="text.secondary">
@@ -1547,52 +2017,140 @@ const handleSubmit = async (event) => {
 
             {expiringPins.length > 0 ? (
               <Stack spacing={1}>
-                {expiringPins.map((pin) => (
-                  <Paper
-                    key={pin._id}
-                    variant="outlined"
-                    sx={{ p: 2, cursor: 'pointer' }}
-                    onClick={() => {
-                      if (!pin?._id) {
-                        return;
-                      }
-                      setSelectedPinId(pin._id);
-                      setPinIdInput(pin._id);
-                      const focus = extractPinLocation(pin);
-                      if (focus) {
-                        setMapFocusLocation(focus);
-                      }
-                    }}
-                  >
-                    <Stack spacing={0.5}>
-                      <Typography variant="subtitle1">{pin.title}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {(pin.type === 'event' ? 'Event' : 'Discussion') + ' pin'}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Expires{' '}
-                        {(() => {
-                          const iso = pin?.expiresAt ?? pin?.endDate ?? null;
-                          if (!iso) {
-                            return 'Unknown';
-                          }
-                          const parsed = new Date(iso);
-                          if (Number.isNaN(parsed.getTime())) {
-                            return 'Unknown';
-                          }
-                          return parsed.toLocaleString();
-                        })()}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {pin._id}
-                      </Typography>
-                    </Stack>
-                  </Paper>
-                ))}
+                {expiringPins.map((pin) => {
+                  const expirationInfo = getPinExpirationInfo(pin);
+                  return (
+                    <Paper
+                      key={pin._id}
+                      variant="outlined"
+                      sx={{ p: 2, cursor: 'pointer' }}
+                      onClick={() => {
+                        if (!pin?._id) {
+                          return;
+                        }
+                        setSelectedPinId(pin._id);
+                        setPinIdInput(pin._id);
+                        const focus = extractPinLocation(pin);
+                        if (focus) {
+                          setMapFocusLocation(focus);
+                        }
+                      }}
+                    >
+                      <Stack spacing={0.5}>
+                        <Typography variant="subtitle1">{pin.title}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {(pin.type === 'event' ? 'Event' : 'Discussion') + ' pin'}
+                        </Typography>
+                        {expirationInfo ? (
+                          <>
+                            <Typography variant="body2" color="text.secondary">
+                              {expirationInfo.primary}
+                            </Typography>
+                            {expirationInfo.secondary ? (
+                              <Typography variant="body2" color="text.secondary">
+                                {expirationInfo.secondary}
+                              </Typography>
+                            ) : null}
+                          </>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            No expiration date on record
+                          </Typography>
+                        )}
+                        <Typography variant="body2" color="text.secondary">
+                          {pin._id}
+                        </Typography>
+                      </Stack>
+                    </Paper>
+                  );
+                })}
               </Stack>
             ) : (
               <Typography variant="body2" color="text.secondary">
                 {isFetchingExpiringPins ? 'Scanning...' : 'Results will appear here after fetching.'}
+              </Typography>
+            )}
+          </Paper>
+
+          <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="h6">Expired pins</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Review pins whose expiration date has passed. They remain stored but are hidden from normal lists.
+            </Typography>
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+              <Button
+                type="button"
+                variant="outlined"
+                startIcon={<HistoryToggleOffIcon />}
+                onClick={handleFetchExpiredPins}
+                disabled={isFetchingExpiredPins}
+              >
+                {isFetchingExpiredPins ? 'Loading...' : 'Fetch expired pins'}
+              </Button>
+            </Stack>
+
+            {expiredPins.length > 0 ? (
+              <Stack spacing={1}>
+                {expiredPins.map((pin) => {
+                  const distanceLabel = formatDistanceMiles(pin.distanceMeters);
+                  const expirationInfo = getPinExpirationInfo(pin);
+                  return (
+                    <Paper
+                      key={pin._id}
+                      variant="outlined"
+                      sx={{ p: 2, cursor: 'pointer' }}
+                      onClick={() => {
+                        if (!pin?._id) {
+                          return;
+                        }
+                        setSelectedPinId(pin._id);
+                        setPinIdInput(pin._id);
+                        const focus = extractPinLocation(pin);
+                        if (focus) {
+                          setMapFocusLocation(focus);
+                        }
+                      }}
+                    >
+                      <Stack spacing={0.5}>
+                        <Typography variant="subtitle1">{pin.title}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {(pin.type === 'event' ? 'Event' : 'Discussion') + ' pin'}
+                        </Typography>
+                        {expirationInfo ? (
+                          <>
+                            <Typography variant="body2" color="text.secondary">
+                              {expirationInfo.primary}
+                            </Typography>
+                            {expirationInfo.secondary ? (
+                              <Typography variant="body2" color="text.secondary">
+                                {expirationInfo.secondary}
+                              </Typography>
+                            ) : null}
+                          </>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            No expiration date on record
+                          </Typography>
+                        )}
+                        {distanceLabel ? (
+                          <Typography variant="body2" color="text.secondary">
+                            Distance: {distanceLabel} mi
+                          </Typography>
+                        ) : null}
+                        <Typography variant="body2" color="text.secondary">
+                          {pin._id}
+                        </Typography>
+                      </Stack>
+                    </Paper>
+                  );
+                })}
+              </Stack>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                {isFetchingExpiredPins
+                  ? 'Loading expired pins...'
+                  : 'Expired pins stay hidden until you fetch them here.'}
               </Typography>
             )}
           </Paper>
@@ -1652,6 +2210,16 @@ const handleSubmit = async (event) => {
           sx={{ display: activeTab === BOOKMARKS_TAB_INDEX ? 'block' : 'none' }}
         >
           <BookmarksTab />
+        </Box>
+
+        <Box
+          role="tabpanel"
+          hidden={activeTab !== BADGES_TAB_INDEX}
+          id="debug-tabpanel-badges"
+          aria-labelledby="debug-tab-badges"
+          sx={{ display: activeTab === BADGES_TAB_INDEX ? 'block' : 'none' }}
+        >
+          <BadgesTab />
         </Box>
 
         <Box
@@ -1734,6 +2302,76 @@ const handleSubmit = async (event) => {
   );
 }
 
+function useViewerLocation({ currentProfileId, selectedRoomKeyRef, ensurePresetRoomsRef, setLocationStatus }) {
+  const { location: sharedLocation, setLocation: setSharedLocation } = useLocationContext();
+  const defaultLocation = useMemo(
+    () => ({
+      latitude: DEFAULT_LOCATION_COORDINATES.latitude,
+      longitude: DEFAULT_LOCATION_COORDINATES.longitude
+    }),
+    []
+  );
+  const [location, setLocationState] = useState(() => sharedLocation ?? defaultLocation);
+
+  useEffect(() => {
+    if (!sharedLocation) {
+      setLocationState((previous) =>
+        coordinatesEqual(previous, defaultLocation) ? previous : defaultLocation
+      );
+      return;
+    }
+    setLocationState((previous) =>
+      coordinatesEqual(previous, sharedLocation) ? previous : sharedLocation
+    );
+  }, [sharedLocation, defaultLocation]);
+
+  const applyLocation = useCallback(
+    (nextLocation) => {
+      const applied = setSharedLocation(nextLocation, { source: 'debug-console' });
+      const effectiveLocation = applied ?? defaultLocation;
+      setLocationState((previous) =>
+        coordinatesEqual(previous, effectiveLocation) ? previous : effectiveLocation
+      );
+      return applied ?? null;
+    },
+    [setSharedLocation, defaultLocation]
+  );
+
+  const refresh = useCallback(async () => {
+    if (!currentProfileId || !mongooseObjectIdLike(currentProfileId)) {
+      return;
+    }
+
+    try {
+      const history = await fetchLocationHistory(currentProfileId);
+      const latest = Array.isArray(history) && history.length > 0 ? history[0] : null;
+      const coords = latest?.coordinates?.coordinates;
+      if (Array.isArray(coords) && coords.length >= 2) {
+        const [longitude, latitude] = coords;
+        if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+          const nextLocation = {
+            latitude,
+            longitude,
+            accuracy: latest?.coordinates?.accuracy ?? latest?.accuracy
+          };
+
+          applyLocation(nextLocation);
+          if (ensurePresetRoomsRef?.current && selectedRoomKeyRef) {
+            ensurePresetRoomsRef.current(selectedRoomKeyRef.current);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to refresh viewer location:', error);
+      setLocationStatus?.((prev) =>
+        prev ?? { type: 'error', message: 'Failed to refresh viewer location.' }
+      );
+    }
+  }, [currentProfileId, selectedRoomKeyRef, ensurePresetRoomsRef, setLocationStatus, applyLocation]);
+
+  return { location, setLocation: applyLocation, refresh };
+}
+
 function LiveChatTestTab() {
   const [currentUser] = useAuthState(auth);
   const [currentProfile, setCurrentProfile] = useState(null);
@@ -1780,7 +2418,16 @@ function LiveChatTestTab() {
   );
   const selectedRoomKeyRef = useRef(selectedRoomKey);
   const messagesEndRef = useRef(null);
+  const ensurePresetRoomsRef = useRef(null);
 
+  const effectiveLatitude = Number.isFinite(lastSpoofedLocation?.latitude)
+    ? lastSpoofedLocation.latitude
+    : null;
+  const effectiveLongitude = Number.isFinite(lastSpoofedLocation?.longitude)
+    ? lastSpoofedLocation.longitude
+    : null;
+
+  const lastEnsuredRef = useRef({ profileId: null, latitude: null, longitude: null });
   const currentProfileId = useMemo(() => toIdString(currentProfile?._id), [currentProfile]);
   const activeRoomRadiusLabel = useMemo(() => {
     if (!activeRoom?.radiusMeters) {
@@ -1799,6 +2446,50 @@ function LiveChatTestTab() {
     () => evaluateRoomAccess(activeRoom, lastSpoofedLocation),
     [activeRoom, lastSpoofedLocation]
   );
+  const {
+    location: viewerLocation,
+    setLocation: setViewerLocation,
+    refresh: refreshViewerLocation
+  } = useViewerLocation({
+    currentProfileId,
+    selectedRoomKeyRef,
+    ensurePresetRoomsRef,
+    setLocationStatus
+  });
+
+  useEffect(() => {
+    if (
+      !viewerLocation ||
+      !Number.isFinite(viewerLocation.latitude) ||
+      !Number.isFinite(viewerLocation.longitude)
+    ) {
+      return;
+    }
+
+    setLastSpoofedLocation((previous) => {
+      if (
+        previous &&
+        Math.abs(previous.latitude - viewerLocation.latitude) < 1e-9 &&
+        Math.abs(previous.longitude - viewerLocation.longitude) < 1e-9 &&
+        ((previous.accuracy ?? null) === (viewerLocation.accuracy ?? null))
+      ) {
+        return previous;
+      }
+      return viewerLocation;
+    });
+
+    if (ensurePresetRoomsRef.current && selectedRoomKeyRef.current) {
+      ensurePresetRoomsRef.current(selectedRoomKeyRef.current);
+    }
+  }, [viewerLocation, ensurePresetRoomsRef, selectedRoomKeyRef]);
+
+  useEffect(() => {
+    if (!currentProfileId || !mongooseObjectIdLike(currentProfileId)) {
+      return;
+    }
+    refreshViewerLocation();
+  }, [currentProfileId, refreshViewerLocation]);
+
   const distanceToRoomLabel = useMemo(() => {
     if (!roomAccess?.allowed || roomAccess.distanceMeters === undefined) {
       return null;
@@ -1865,6 +2556,17 @@ function LiveChatTestTab() {
 
   const ensurePresetRooms = useCallback(
     async (preferredKey) => {
+      const latitude = Number.isFinite(effectiveLatitude)
+        ? effectiveLatitude
+        : Number.isFinite(lastSpoofedLocation?.latitude)
+        ? lastSpoofedLocation.latitude
+        : null;
+      const longitude = Number.isFinite(effectiveLongitude)
+        ? effectiveLongitude
+        : Number.isFinite(lastSpoofedLocation?.longitude)
+        ? lastSpoofedLocation.longitude
+        : null;
+
       if (!currentUser) {
         setRoomsByKey({});
         setActiveRoom(null);
@@ -1891,20 +2593,35 @@ function LiveChatTestTab() {
 
       setIsEnsuringRooms(true);
       try {
-        const rooms = await fetchChatRooms();
+        let rooms = await fetchChatRooms({
+          latitude: Number.isFinite(latitude) ? latitude : undefined,
+          longitude: Number.isFinite(longitude) ? longitude : undefined
+        });
+        rooms = dedupeChatRooms(rooms);
         const remainingRooms = Array.isArray(rooms) ? [...rooms] : [];
         const nextRoomsByKey = {};
 
         for (const preset of LIVE_CHAT_ROOM_PRESETS) {
-          const targetNames = [preset.name, ...(preset.aliases ?? [])].map(normalizeRoomName);
-          const matchIndex = remainingRooms.findIndex((candidate) =>
-            targetNames.includes(normalizeRoomName(candidate?.name))
+          const presetKey = preset.key;
+          let resolvedRoom = null;
+
+          const presetIndex = remainingRooms.findIndex((candidate) =>
+            candidate?.presetKey && candidate.presetKey === presetKey
           );
 
-          let resolvedRoom;
-          if (matchIndex >= 0) {
-            resolvedRoom = remainingRooms.splice(matchIndex, 1)[0];
+          if (presetIndex >= 0) {
+            resolvedRoom = remainingRooms.splice(presetIndex, 1)[0];
           } else {
+            const targetNames = [preset.name, ...(preset.aliases ?? [])].map(normalizeRoomName);
+            const matchIndex = remainingRooms.findIndex((candidate) =>
+              targetNames.includes(normalizeRoomName(candidate?.name))
+            );
+            if (matchIndex >= 0) {
+              resolvedRoom = remainingRooms.splice(matchIndex, 1)[0];
+            }
+          }
+
+          if (!resolvedRoom) {
             const created = await createProximityChatRoom({
               ownerId: currentProfileId,
               name: preset.name,
@@ -1915,7 +2632,8 @@ function LiveChatTestTab() {
               radiusMeters: preset.radiusMeters,
               isGlobal: Boolean(preset.isGlobal),
               participantIds: [currentProfileId],
-              moderatorIds: [currentProfileId]
+              moderatorIds: [currentProfileId],
+              presetKey
             });
             resolvedRoom = created;
           }
@@ -1924,7 +2642,7 @@ function LiveChatTestTab() {
             ...resolvedRoom,
             _id: toIdString(resolvedRoom?._id),
             ownerId: toIdString(resolvedRoom?.ownerId),
-            presetKey: preset.key
+            presetKey
           };
           nextRoomsByKey[preset.key] = normalizedRoom;
         }
@@ -1970,8 +2688,12 @@ function LiveChatTestTab() {
         setIsEnsuringRooms(false);
       }
     },
-    [currentProfile, currentProfileId, currentUser, lastSpoofedLocation]
+    [currentProfile, currentProfileId, currentUser, effectiveLatitude, effectiveLongitude]
   );
+
+  useEffect(() => {
+    ensurePresetRoomsRef.current = ensurePresetRooms;
+  }, [ensurePresetRooms, ensurePresetRoomsRef]);
 
   const handleSelectRoom = useCallback(
     (roomKey) => {
@@ -2038,12 +2760,14 @@ function LiveChatTestTab() {
           source: 'web'
         });
 
-        setActiveLocationKey(preset.key);
-        setLastSpoofedLocation({
+        const nextLocation = {
           latitude: preset.latitude,
           longitude: preset.longitude,
           accuracy: preset.accuracy
-        });
+        };
+        setActiveLocationKey(preset.key);
+        setLastSpoofedLocation(nextLocation);
+        setViewerLocation(nextLocation);
         setLocationStatus({
           type: 'success',
           message: preset.statusMessage
@@ -2055,7 +2779,7 @@ function LiveChatTestTab() {
         setIsTeleporting(false);
       }
     },
-    [currentProfile, currentProfileId]
+    [currentProfile, currentProfileId, setViewerLocation]
   );
 
   useEffect(() => {
@@ -2066,8 +2790,8 @@ function LiveChatTestTab() {
     if (!currentUser || !currentProfile?._id) {
       return;
     }
-    ensurePresetRooms(selectedRoomKeyRef.current);
-  }, [currentUser, currentProfile, ensurePresetRooms]);
+    ensurePresetRoomsRef.current(selectedRoomKeyRef.current);
+  }, [currentUser, currentProfile, currentProfileId]);
 
   useEffect(() => {
     const roomId = toIdString(activeRoom?._id);
@@ -2470,6 +3194,7 @@ function AccountSwapTab() {
       setPendingUid(account.uid);
       try {
         const token = await requestAccountSwap(account.uid);
+        await applyAuthPersistence(auth, AUTH_PERSISTENCE.LOCAL);
         await signInWithCustomToken(auth, token);
         setSwapStatus({
           type: 'success',
@@ -2707,7 +3432,7 @@ function ExperimentTab() {
         aria-labelledby={`${EXPERIMENT_TAB_ID}-dialog-title`}
       >
         <DialogTitle id={`${EXPERIMENT_TAB_ID}-dialog-title`}>
-          {EXPERIMENT_TITLE} â€” {activeScreen?.label}
+          {EXPERIMENT_TITLE} ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â {activeScreen?.label}
         </DialogTitle>
         <DialogContent dividers>
           <Box
@@ -3729,6 +4454,8 @@ function BookmarksTab() {
   const [bookmarksStatus, setBookmarksStatus] = useState(null);
   const [bookmarksResult, setBookmarksResult] = useState(null);
   const [isFetchingBookmarks, setIsFetchingBookmarks] = useState(false);
+  const [exportBookmarksStatus, setExportBookmarksStatus] = useState(null);
+  const [isExportingBookmarks, setIsExportingBookmarks] = useState(false);
 
   const [collectionsUserId, setCollectionsUserId] = useState('');
   const [collectionsStatus, setCollectionsStatus] = useState(null);
@@ -3822,6 +4549,7 @@ function BookmarksTab() {
   const handleFetchBookmarks = async (event) => {
     event.preventDefault();
     setBookmarksStatus(null);
+    setExportBookmarksStatus(null);
 
     const userId = bookmarksQuery.userId.trim();
     if (!userId) {
@@ -3850,6 +4578,40 @@ function BookmarksTab() {
       setBookmarksStatus({ type: 'error', message: error.message || 'Failed to load bookmarks.' });
     } finally {
       setIsFetchingBookmarks(false);
+    }
+  };
+
+  const handleExportBookmarksCsv = async () => {
+    setExportBookmarksStatus(null);
+    const userId = bookmarksQuery.userId.trim();
+    if (!userId) {
+      setExportBookmarksStatus({ type: 'error', message: 'User ID is required to export bookmarks.' });
+      return;
+    }
+
+    try {
+      setIsExportingBookmarks(true);
+      const { blob, filename } = await exportBookmarks({ userId });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = downloadUrl;
+      anchor.download = filename || `bookmarks-${userId}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      window.setTimeout(() => {
+        document.body.removeChild(anchor);
+        window.URL.revokeObjectURL(downloadUrl);
+      }, 0);
+
+      setExportBookmarksStatus({
+        type: 'success',
+        message: `Exported bookmarks for ${userId} to ${filename || 'bookmarks.csv'}.`
+      });
+    } catch (error) {
+      console.error('Failed to export bookmarks:', error);
+      setExportBookmarksStatus({ type: 'error', message: error?.message || 'Failed to export bookmarks.' });
+    } finally {
+      setIsExportingBookmarks(false);
     }
   };
 
@@ -4044,7 +4806,17 @@ function BookmarksTab() {
             {bookmarksStatus.message}
           </Alert>
         )}
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        {exportBookmarksStatus && (
+          <Alert severity={exportBookmarksStatus.type} onClose={() => setExportBookmarksStatus(null)}>
+            {exportBookmarksStatus.message}
+          </Alert>
+        )}
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          alignItems={{ xs: 'stretch', sm: 'flex-end' }}
+          sx={{ flexWrap: 'wrap' }}
+        >
           <TextField
             label="User ID"
             value={bookmarksQuery.userId}
@@ -4058,9 +4830,19 @@ function BookmarksTab() {
             onChange={(event) => setBookmarksQuery((prev) => ({ ...prev, limit: event.target.value }))}
             sx={{ width: { xs: '100%', sm: 120 } }}
           />
-          <Button type="submit" variant="outlined" disabled={isFetchingBookmarks}>
-            {isFetchingBookmarks ? 'Loading...' : 'Fetch'}
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button type="submit" variant="outlined" disabled={isFetchingBookmarks}>
+              {isFetchingBookmarks ? 'Loading...' : 'Fetch'}
+            </Button>
+            <Button
+              type="button"
+              variant="contained"
+              onClick={handleExportBookmarksCsv}
+              disabled={isExportingBookmarks || isFetchingBookmarks}
+            >
+              {isExportingBookmarks ? 'Exporting...' : 'Export CSV'}
+            </Button>
+          </Stack>
         </Stack>
         <JsonPreview data={bookmarksResult} />
       </Paper>
@@ -4120,6 +4902,61 @@ function ChatRoomVisualizationTab() {
     defaultTeleportPreset?.key ?? DEFAULT_LOCATION_TELEPORT_KEY
   );
   const [lastSpoofedLocation, setLastSpoofedLocation] = useState(initialSpoofLocation);
+  const [mapCenterOverride, setMapCenterOverride] = useState(() => ({
+    latitude: initialSpoofLocation.latitude,
+    longitude: initialSpoofLocation.longitude
+  }));
+  const currentProfileId = useMemo(() => toIdString(currentProfile?._id), [currentProfile]);
+
+  const {
+    location: viewerLocation,
+    setLocation: setViewerLocation,
+    refresh: refreshViewerLocation
+  } = useViewerLocation({
+    currentProfileId,
+    selectedRoomKeyRef: null,
+    ensurePresetRoomsRef: null
+  });
+
+  useEffect(() => {
+    if (
+      !viewerLocation ||
+      !Number.isFinite(viewerLocation.latitude) ||
+      !Number.isFinite(viewerLocation.longitude)
+    ) {
+      return;
+    }
+
+    setLastSpoofedLocation((previous) => {
+      if (
+        previous &&
+        Math.abs(previous.latitude - viewerLocation.latitude) < 1e-9 &&
+        Math.abs(previous.longitude - viewerLocation.longitude) < 1e-9 &&
+        ((previous.accuracy ?? null) === (viewerLocation.accuracy ?? null))
+      ) {
+        return previous;
+      }
+      return viewerLocation;
+    });
+
+    setMapCenterOverride((previous) => {
+      if (
+        previous &&
+        Math.abs(previous.latitude - viewerLocation.latitude) < 1e-9 &&
+        Math.abs(previous.longitude - viewerLocation.longitude) < 1e-9
+      ) {
+        return previous;
+      }
+      return { latitude: viewerLocation.latitude, longitude: viewerLocation.longitude };
+    });
+  }, [viewerLocation]);
+
+  useEffect(() => {
+    if (!currentProfileId || !mongooseObjectIdLike(currentProfileId)) {
+      return;
+    }
+    refreshViewerLocation();
+  }, [currentProfileId, refreshViewerLocation]);
   const [teleportStatus, setTeleportStatus] = useState(null);
   const [isTeleporting, setIsTeleporting] = useState(false);
 
@@ -4129,17 +4966,16 @@ function ChatRoomVisualizationTab() {
 
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const selectedRoomIdRef = useRef(null);
+  const [currentRoomId, setCurrentRoomId] = useState(null);
+  const currentRoomRef = useRef(null);
+  const lastAnnouncedTransitionRef = useRef(null);
+  const pendingTransitionRef = useRef(null);
+  const hasUserMovedRef = useRef(false);
+  const [movementStatus, setMovementStatus] = useState(null);
 
   useEffect(() => {
     selectedRoomIdRef.current = selectedRoomId;
   }, [selectedRoomId]);
-
-  const [mapCenterOverride, setMapCenterOverride] = useState(() => ({
-    latitude: initialSpoofLocation.latitude,
-    longitude: initialSpoofLocation.longitude
-  }));
-
-  const currentProfileId = useMemo(() => toIdString(currentProfile?._id), [currentProfile]);
 
   const loadProfile = useCallback(async () => {
     if (!currentUser) {
@@ -4165,12 +5001,62 @@ function ChatRoomVisualizationTab() {
   const fetchRooms = useCallback(async () => {
     setRoomsStatus(null);
     setIsFetchingRooms(true);
+    let createdCount = 0;
     try {
-      const results = await fetchChatRooms({});
+      let results = dedupeChatRooms(await fetchChatRooms({}));
+
+      if (currentProfileId && mongooseObjectIdLike(currentProfileId)) {
+        const scratch = [...results];
+
+        for (const preset of LIVE_CHAT_ROOM_PRESETS) {
+          const presetKey = preset.key;
+          const existing = scratch.find((candidate) => {
+            if (!candidate) {
+              return false;
+            }
+            if (candidate.presetKey && candidate.presetKey === presetKey) {
+              return true;
+            }
+            const targetNames = [preset.name, ...(preset.aliases ?? [])].map(normalizeRoomName);
+            return targetNames.includes(normalizeRoomName(candidate.name));
+          });
+
+          if (existing) {
+            continue;
+          }
+
+          try {
+            const created = await createProximityChatRoom({
+              ownerId: currentProfileId,
+              name: preset.name,
+              description: preset.description,
+              latitude: preset.latitude,
+              longitude: preset.longitude,
+              accuracy: preset.accuracy,
+              radiusMeters: preset.radiusMeters,
+              isGlobal: Boolean(preset.isGlobal),
+              participantIds: [currentProfileId],
+              moderatorIds: [currentProfileId],
+              presetKey
+            });
+            scratch.push({ ...created, presetKey });
+            createdCount += 1;
+          } catch (creationError) {
+            console.warn('Failed to ensure preset chat room:', preset, creationError);
+          }
+        }
+
+        if (createdCount > 0) {
+          results = dedupeChatRooms(await fetchChatRooms({}));
+        }
+      }
+
       setRooms(results);
       setRoomsStatus({
         type: 'success',
-        message: `Loaded ${results.length} chat room${results.length === 1 ? '' : 's'}.`
+        message: `Loaded ${results.length} chat room${results.length === 1 ? '' : 's'}${
+          createdCount ? ` (created ${createdCount} preset${createdCount === 1 ? '' : 's'})` : ''
+        }.`
       });
 
       if (!selectedRoomIdRef.current) {
@@ -4189,7 +5075,7 @@ function ChatRoomVisualizationTab() {
     } finally {
       setIsFetchingRooms(false);
     }
-  }, []);
+  }, [currentProfileId]);
 
   useEffect(() => {
     fetchRooms();
@@ -4236,17 +5122,20 @@ function ChatRoomVisualizationTab() {
           source: 'web'
         });
 
-        setActivePresetKey(preset.key);
-        setLastSpoofedLocation({
+        const nextLocation = {
           latitude: preset.latitude,
           longitude: preset.longitude,
           accuracy: preset.accuracy
-        });
+        };
+        setActivePresetKey(preset.key);
+        setLastSpoofedLocation(nextLocation);
+        setViewerLocation(nextLocation);
         setMapCenterOverride({ latitude: preset.latitude, longitude: preset.longitude });
         setTeleportStatus({
           type: 'success',
           message: preset.statusMessage
         });
+        hasUserMovedRef.current = true;
       } catch (error) {
         console.error('Failed to spoof location from visualization tab:', error);
         setTeleportStatus({ type: 'error', message: error.message || 'Failed to spoof location.' });
@@ -4254,7 +5143,7 @@ function ChatRoomVisualizationTab() {
         setIsTeleporting(false);
       }
     },
-    [currentUser, currentProfileId]
+    [currentUser, currentProfileId, lastSpoofedLocation, initialSpoofLocation, setViewerLocation]
   );
 
   const handleDirectionalSpoof = useCallback(
@@ -4317,11 +5206,13 @@ function ChatRoomVisualizationTab() {
 
         setActivePresetKey(null);
         setLastSpoofedLocation(nextLocation);
+        setViewerLocation(nextLocation);
         setMapCenterOverride({ latitude: nextLocation.latitude, longitude: nextLocation.longitude });
         setTeleportStatus({
           type: 'success',
           message: DIRECTION_SUCCESS_MESSAGES[direction] ?? 'Spoofed location updated.'
         });
+        hasUserMovedRef.current = true;
       } catch (error) {
         console.error('Failed to adjust spoofed location:', error);
         setTeleportStatus({ type: 'error', message: error.message || 'Failed to adjust location.' });
@@ -4329,8 +5220,127 @@ function ChatRoomVisualizationTab() {
         setIsTeleporting(false);
       }
     },
-    [currentUser, currentProfileId, lastSpoofedLocation, initialSpoofLocation]
+    [currentUser, currentProfileId, lastSpoofedLocation, initialSpoofLocation, setViewerLocation]
   );
+
+  useEffect(() => {
+    if (!Array.isArray(rooms) || rooms.length === 0) {
+      setCurrentRoomId(null);
+      currentRoomRef.current = null;
+      return;
+    }
+
+    const nextRoom = resolveActiveRoomForLocation(rooms, lastSpoofedLocation);
+    const nextRoomId = toIdString(nextRoom?._id) || null;
+    setCurrentRoomId(nextRoomId);
+
+    const previousRoom = currentRoomRef.current;
+    const previousRoomId = toIdString(previousRoom?._id) || null;
+
+    if (previousRoomId === nextRoomId) {
+      return;
+    }
+
+    currentRoomRef.current = nextRoom;
+
+    if (!hasUserMovedRef.current) {
+      return;
+    }
+
+    if (!currentProfileId || !mongooseObjectIdLike(currentProfileId)) {
+      return;
+    }
+
+    const transitionKey = `${previousRoomId ?? 'none'}->${nextRoomId ?? 'none'}`;
+    if (
+      pendingTransitionRef.current === transitionKey ||
+      lastAnnouncedTransitionRef.current === transitionKey
+    ) {
+      return;
+    }
+
+    pendingTransitionRef.current = transitionKey;
+    let isCancelled = false;
+
+    (async () => {
+      try {
+        if (nextRoomId) {
+          await createProximityChatPresence({
+            roomId: nextRoomId,
+            userId: currentProfileId
+          });
+        }
+
+        const fromLabel = previousRoom?.name ?? 'Outside chat rooms';
+        const toLabel = nextRoom?.name ?? 'Outside chat rooms';
+        const title = nextRoom
+          ? previousRoom
+            ? `Moved from ${fromLabel} to ${toLabel}`
+            : `Entered ${toLabel}`
+          : `Left ${fromLabel}`;
+
+        const metadata = {
+          fromRoomId: previousRoomId,
+          toRoomId: nextRoomId,
+          latitude: Number.isFinite(lastSpoofedLocation?.latitude) ? lastSpoofedLocation.latitude : null,
+          longitude: Number.isFinite(lastSpoofedLocation?.longitude) ? lastSpoofedLocation.longitude : null
+        };
+
+        let distanceLabel = null;
+        if (nextRoom && !isGlobalChatRoom(nextRoom)) {
+          const nextLocation = extractPinLocation(nextRoom);
+          const distanceMeters = nextLocation
+            ? haversineDistanceMeters(lastSpoofedLocation, nextLocation)
+            : Number.NaN;
+          if (Number.isFinite(distanceMeters)) {
+            metadata.distanceMeters = Number(distanceMeters.toFixed(2));
+            distanceLabel = formatDistanceMetersLabel(distanceMeters);
+          }
+        }
+
+        const bodyParts = [];
+        if (distanceLabel) {
+          bodyParts.push(`Now approximately ${distanceLabel} from the ${toLabel} center.`);
+        }
+
+        if (lastSpoofedLocation?.accuracy !== undefined) {
+          metadata.accuracy = lastSpoofedLocation.accuracy;
+        }
+
+        await createUpdate({
+          userId: currentProfileId,
+          payload: {
+            type: 'chat-room-transition',
+            title,
+            body: bodyParts.length ? bodyParts.join(' ') : undefined,
+            metadata
+          }
+        });
+
+        if (!isCancelled) {
+          const severity = nextRoom ? 'success' : 'warning';
+          setMovementStatus({ type: severity, message: title });
+          lastAnnouncedTransitionRef.current = transitionKey;
+        }
+      } catch (error) {
+        console.warn('Failed to record chat room transition:', error);
+        if (!isCancelled) {
+          setMovementStatus({
+            type: 'error',
+            message: error.message || 'Failed to record chat room movement.'
+          });
+        }
+      } finally {
+        if (pendingTransitionRef.current === transitionKey) {
+          pendingTransitionRef.current = null;
+        }
+      }
+    })();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [rooms, lastSpoofedLocation, currentProfileId]);
 
   const mapPins = useMemo(
     () =>
@@ -4378,6 +5388,11 @@ function ChatRoomVisualizationTab() {
     [rooms, selectedRoomId]
   );
 
+  const currentRoom = useMemo(
+    () => rooms.find((room) => toIdString(room?._id) === currentRoomId) ?? null,
+    [rooms, currentRoomId]
+  );
+
   const selectedRoomDistanceLabel = useMemo(() => {
     if (!selectedRoom || !lastSpoofedLocation) {
       return null;
@@ -4392,6 +5407,22 @@ function ChatRoomVisualizationTab() {
     }
     return distance >= 1000 ? `${(distance / 1000).toFixed(2)} km away` : `${Math.round(distance)} m away`;
   }, [selectedRoom, lastSpoofedLocation]);
+
+  const currentRoomDistanceLabel = useMemo(() => {
+    if (!currentRoom || !lastSpoofedLocation) {
+      return null;
+    }
+    const location = extractPinLocation(currentRoom);
+    if (!location) {
+      return null;
+    }
+    const distance = haversineDistanceMeters(lastSpoofedLocation, location);
+    if (!Number.isFinite(distance)) {
+      return null;
+    }
+    const label = formatDistanceMetersLabel(distance);
+    return label ? `${label} from the center` : null;
+  }, [currentRoom, lastSpoofedLocation]);
 
   const handlePinSelect = useCallback((pin) => {
     const id = toIdString(pin?._id);
@@ -4416,7 +5447,10 @@ function ChatRoomVisualizationTab() {
     [activePresetKey]
   );
 
-  const userRadiusMeters = Number.isFinite(selectedRoom?.radiusMeters) ? selectedRoom.radiusMeters : undefined;
+  const activeRadiusSource = selectedRoom ?? currentRoom;
+  const userRadiusMeters = Number.isFinite(activeRadiusSource?.radiusMeters)
+    ? activeRadiusSource.radiusMeters
+    : undefined;
 
   return (
     <Stack spacing={2}>
@@ -4545,6 +5579,21 @@ function ChatRoomVisualizationTab() {
             Click a marker to focus a chat room and compare against your spoofed location.
           </Typography>
         </Stack>
+        {movementStatus && (
+          <Alert severity={movementStatus.type} onClose={() => setMovementStatus(null)}>
+            {movementStatus.message}
+          </Alert>
+        )}
+        {currentRoom ? (
+          <Alert severity="info">
+            Currently inside <strong>{currentRoom.name ?? 'Untitled chat room'}</strong>
+            {currentRoomDistanceLabel ? ` - ${currentRoomDistanceLabel}` : ''}
+          </Alert>
+        ) : hasUserMovedRef.current ? (
+          <Alert severity="warning">
+            Not currently inside any geofenced chat room. Move closer to one of the markers to join it.
+          </Alert>
+        ) : null}
         <Box sx={{ height: 420, borderRadius: 2, overflow: 'hidden' }}>
           <LeafletMap
             userLocation={lastSpoofedLocation ?? undefined}
@@ -4588,6 +5637,7 @@ function ChatRoomVisualizationTab() {
               const id = toIdString(room?._id);
               const key = id || `${index}-${room?.name ?? 'room'}`;
               const isSelected = id && id === selectedRoomId;
+              const isCurrent = id && id === currentRoomId;
               const location = extractPinLocation(room);
               return (
                 <Paper
@@ -4595,8 +5645,9 @@ function ChatRoomVisualizationTab() {
                   variant="outlined"
                   sx={{
                     p: 2,
-                    borderColor: isSelected ? 'primary.main' : 'divider',
-                    borderWidth: isSelected ? 2 : 1
+                    borderColor: isCurrent ? 'success.main' : isSelected ? 'primary.main' : 'divider',
+                    borderWidth: isCurrent || isSelected ? 2 : 1,
+                    backgroundColor: isCurrent ? 'success.light' : undefined
                   }}
                 >
                   <Stack
@@ -4605,8 +5656,13 @@ function ChatRoomVisualizationTab() {
                     justifyContent="space-between"
                     alignItems={{ xs: 'flex-start', sm: 'center' }}
                   >
-                    <Box>
-                      <Typography variant="subtitle1">{room?.name ?? 'Untitled chat room'}</Typography>
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                        <Typography variant="subtitle1">{room?.name ?? 'Untitled chat room'}</Typography>
+                        {isCurrent && <Chip label="Current" color="success" size="small" />}
+                        {isSelected && !isCurrent && <Chip label="Focused" color="primary" size="small" />}
+                        {room?.isGlobal && <Chip label="Global" color="default" size="small" />}
+                      </Stack>
                       {room?.description ? (
                         <Typography variant="body2" color="text.secondary">
                           {room.description}
@@ -4621,16 +5677,16 @@ function ChatRoomVisualizationTab() {
                           ? `Center: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`
                           : 'Missing coordinates'}
                         {Number.isFinite(room?.radiusMeters) ? ` | Radius: ${room.radiusMeters} m` : ''}
-                        {room?.isGlobal ? ' (global room)' : ''}
                       </Typography>
                     </Box>
                     <Stack direction="row" spacing={1} alignItems="center">
-                      {isSelected ? (
-                        <Chip label="Focused" color="primary" size="small" />
-                      ) : (
+                      {!isSelected && (
                         <Button size="small" onClick={() => handleFocusRoom(room)}>
                           Focus on map
                         </Button>
+                      )}
+                      {isSelected && (
+                        <Chip label={isCurrent ? 'Current focus' : 'Focused'} color={isCurrent ? 'success' : 'primary'} size="small" />
                       )}
                     </Stack>
                   </Stack>
@@ -4648,11 +5704,349 @@ function ChatRoomVisualizationTab() {
   );
 }
 
+function BadgesTab() {
+  const { announceBadgeEarned } = useBadgeSound();
+  const [currentUser] = useAuthState(auth);
+  const [userIdInput, setUserIdInput] = useState('');
+  const [autoUserId, setAutoUserId] = useState('');
+  const [badgeStatus, setBadgeStatus] = useState(null);
+  const [status, setStatus] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [mutatingBadgeId, setMutatingBadgeId] = useState(null);
+  const [isResetting, setIsResetting] = useState(false);
+
+  const isMutating = Boolean(mutatingBadgeId) || isResetting;
+
+  const resolveBadgeImageUrl = useCallback((value) => {
+    if (!value) {
+      return undefined;
+    }
+    if (/^(?:https?:)?\/\//i.test(value) || value.startsWith('data:')) {
+      return value;
+    }
+    const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+    const normalized = value.startsWith('/') ? value : `/${value}`;
+    return base ? `${base}${normalized}` : normalized;
+  }, []);
+
+  const effectiveUserId = useMemo(() => {
+    const trimmedInput = userIdInput.trim();
+    if (trimmedInput) {
+      return trimmedInput;
+    }
+    if (badgeStatus?.user?._id) {
+      return badgeStatus.user._id;
+    }
+    return autoUserId;
+  }, [userIdInput, badgeStatus, autoUserId]);
+
+  const loadBadges = useCallback(
+    async (targetId, { suppressStatus = false } = {}) => {
+      const trimmed = targetId ? String(targetId).trim() : '';
+      if (!trimmed) {
+        if (!suppressStatus) {
+          setStatus({ type: 'error', message: 'Enter a user ID to load badges.' });
+        }
+        return null;
+      }
+      if (!suppressStatus) {
+        setStatus(null);
+      }
+      setIsLoading(true);
+      try {
+        const data = await debugListBadges({ userId: trimmed });
+        setBadgeStatus(data);
+        setUserIdInput((prev) => (prev.trim() ? prev : data.user?._id ?? trimmed));
+        if (!suppressStatus) {
+          const displayName = data.user?.displayName || data.user?.username || trimmed;
+          setStatus({ type: 'success', message: `Loaded badges for ${displayName}.` });
+        }
+        return data;
+      } catch (error) {
+        console.error('Failed to load badge status:', error);
+        if (!suppressStatus) {
+          setStatus({ type: 'error', message: error?.message || 'Failed to load badges.' });
+        }
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!currentUser) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (cancelled || !profile?._id) {
+          return;
+        }
+        setAutoUserId(profile._id);
+        setUserIdInput((prev) => (prev.trim() ? prev : profile._id));
+        await loadBadges(profile._id, { suppressStatus: true });
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to load default badge status:', error);
+          setStatus({ type: 'error', message: error?.message || 'Failed to load badges.' });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, loadBadges]);
+
+  const handleSubmit = useCallback(
+    async (event) => {
+      event.preventDefault();
+      const targetId = userIdInput.trim() || autoUserId;
+      try {
+        await loadBadges(targetId);
+      } catch {
+        // status handled within loadBadges
+      }
+    },
+    [userIdInput, autoUserId, loadBadges]
+  );
+
+  const handleGrant = useCallback(
+    async (badgeId) => {
+      if (!badgeId) {
+        return;
+      }
+      if (!effectiveUserId) {
+        setStatus({ type: 'error', message: 'Load a user before granting badges.' });
+        return;
+      }
+      setMutatingBadgeId(badgeId);
+      setStatus(null);
+      try {
+        const data = await debugGrantBadge({ userId: effectiveUserId, badgeId });
+        setBadgeStatus(data);
+        const badgeMeta = data.badges?.find((badge) => badge.id === badgeId);
+        setStatus({
+          type: 'success',
+          message: `Granted "${badgeMeta?.label || badgeId}" badge.`
+        });
+        if (badgeMeta?.earned) {
+          playBadgeSound();
+          const earnedBadgeId = badgeMeta?.id ?? badgeId;
+          announceBadgeEarned(earnedBadgeId);
+        }
+      } catch (error) {
+        console.error('Failed to grant badge:', error);
+        setStatus({ type: 'error', message: error?.message || 'Failed to grant badge.' });
+      } finally {
+        setMutatingBadgeId(null);
+      }
+    },
+    [effectiveUserId]
+  );
+
+  const handleRevoke = useCallback(
+    async (badgeId) => {
+      if (!badgeId) {
+        return;
+      }
+      if (!effectiveUserId) {
+        setStatus({ type: 'error', message: 'Load a user before removing badges.' });
+        return;
+      }
+      setMutatingBadgeId(badgeId);
+      setStatus(null);
+      try {
+        const data = await debugRevokeBadge({ userId: effectiveUserId, badgeId });
+        setBadgeStatus(data);
+        const badgeMeta = data.badges?.find((badge) => badge.id === badgeId);
+        setStatus({
+          type: 'success',
+          message: `Removed "${badgeMeta?.label || badgeId}" badge.`
+        });
+      } catch (error) {
+        console.error('Failed to remove badge:', error);
+        setStatus({ type: 'error', message: error?.message || 'Failed to remove badge.' });
+      } finally {
+        setMutatingBadgeId(null);
+      }
+    },
+    [effectiveUserId]
+  );
+
+  const handleReset = useCallback(async () => {
+    if (!effectiveUserId) {
+      setStatus({ type: 'error', message: 'Load a user before resetting badges.' });
+      return;
+    }
+    setIsResetting(true);
+    setStatus(null);
+    try {
+      const data = await debugResetBadges({ userId: effectiveUserId });
+      setBadgeStatus(data);
+      setStatus({ type: 'success', message: 'All badges reset.' });
+    } catch (error) {
+      console.error('Failed to reset badges:', error);
+      setStatus({ type: 'error', message: error?.message || 'Failed to reset badges.' });
+    } finally {
+      setIsResetting(false);
+    }
+  }, [effectiveUserId]);
+
+  const badges = badgeStatus?.badges ?? [];
+
+  return (
+    <Stack spacing={2}>
+      <Paper
+        component="form"
+        onSubmit={handleSubmit}
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Badge management</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Enter a MongoDB user ID to review or edit badges. Leave blank to manage your own badges.
+        </Typography>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          alignItems={{ xs: 'stretch', sm: 'flex-end' }}
+        >
+          <TextField
+            label="User ID"
+            value={userIdInput}
+            onChange={(event) => setUserIdInput(event.target.value)}
+            placeholder={autoUserId || '64...'}
+            fullWidth
+          />
+          <Stack direction="row" spacing={1}>
+            <Button type="submit" variant="outlined" disabled={isLoading}>
+              {isLoading ? 'Loading...' : 'Load'}
+            </Button>
+            <Button
+              type="button"
+              variant="text"
+              onClick={() => {
+                if (autoUserId) {
+                  setUserIdInput(autoUserId);
+                  loadBadges(autoUserId).catch(() => {});
+                }
+              }}
+              disabled={isLoading || !autoUserId}
+            >
+              Use my ID
+            </Button>
+            <Button
+              type="button"
+              variant="contained"
+              color="error"
+              onClick={handleReset}
+              disabled={isResetting || !effectiveUserId}
+            >
+              {isResetting ? 'Resetting...' : 'Reset all'}
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
+
+      {status ? (
+        <Alert severity={status.type} onClose={() => setStatus(null)}>
+          {status.message}
+        </Alert>
+      ) : null}
+
+      {isLoading ? (
+        <Stack alignItems="center" justifyContent="center" spacing={2} sx={{ py: 4 }}>
+          <CircularProgress />
+          <Typography variant="body2" color="text.secondary">
+            Loading badges...
+          </Typography>
+        </Stack>
+      ) : badgeStatus ? (
+        <Stack spacing={2}>
+          <Typography variant="subtitle1">
+            Viewing badges for {badgeStatus.user?.displayName || badgeStatus.user?.username || badgeStatus.user?._id}
+          </Typography>
+          {badges.map((badge) => {
+            const processing = isMutating && mutatingBadgeId === badge.id;
+            const badgeImageUrl = resolveBadgeImageUrl(badge.image);
+            return (
+              <Paper
+                key={badge.id}
+                variant="outlined"
+                sx={{
+                  p: { xs: 2, sm: 3 },
+                  display: 'flex',
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  gap: 2,
+                  alignItems: { xs: 'flex-start', sm: 'center' }
+                }}
+              >
+                <Box
+                  component="img"
+                  src={badgeImageUrl}
+                  alt={`${badge.label} badge`}
+                  sx={{
+                    width: { xs: 96, sm: 120 },
+                    height: { xs: 96, sm: 120 },
+                    objectFit: 'cover',
+                    borderRadius: 2,
+                    border: (theme) => `1px solid ${theme.palette.divider}`
+                  }}
+                />
+                <Stack spacing={0.5} sx={{ flexGrow: 1 }}>
+                  <Typography variant="h6">{badge.label}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {badge.description}
+                  </Typography>
+                </Stack>
+                <Stack spacing={1} alignItems="flex-end">
+                  <Chip
+                    label={badge.earned ? 'Earned' : 'Locked'}
+                    color={badge.earned ? 'success' : 'default'}
+                    variant={badge.earned ? 'filled' : 'outlined'}
+                  />
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => handleGrant(badge.id)}
+                      disabled={badge.earned || isMutating}
+                    >
+                      {processing && badge.earned ? 'Updating...' : processing ? 'Granting...' : 'Grant'}
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="warning"
+                      onClick={() => handleRevoke(badge.id)}
+                      disabled={!badge.earned || isMutating}
+                    >
+                      {processing && !badge.earned ? 'Updating...' : processing ? 'Removing...' : 'Remove'}
+                    </Button>
+                  </Stack>
+                </Stack>
+              </Paper>
+            );
+          })}
+        </Stack>
+      ) : (
+        <Typography variant="body2" color="text.secondary">
+          Load a user to view badge progress.
+        </Typography>
+      )}
+    </Stack>
+  );
+}
+
 function ChatTab() {
   const [roomForm, setRoomForm] = useState({
     ownerId: '',
     name: '',
     description: '',
+    presetKey: '',
     latitude: '',
     longitude: '',
     radiusMeters: '',
@@ -4731,6 +6125,11 @@ function ChatTab() {
       const description = roomForm.description.trim();
       if (description) {
         payload.description = description;
+      }
+
+      const presetKey = roomForm.presetKey.trim();
+      if (presetKey) {
+        payload.presetKey = presetKey;
       }
 
       const accuracy = parseOptionalNumber(roomForm.accuracy, 'Accuracy');
@@ -4974,6 +6373,12 @@ function ChatTab() {
             minRows={2}
             fullWidth
           />
+          <TextField
+            label="Preset key (optional)"
+            value={roomForm.presetKey}
+            onChange={(event) => setRoomForm((prev) => ({ ...prev, presetKey: event.target.value }))}
+            fullWidth
+          />
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
               label="Latitude"
@@ -5029,6 +6434,7 @@ function ChatTab() {
                   ownerId: '',
                   name: '',
                   description: '',
+                  presetKey: '',
                   latitude: '',
                   longitude: '',
                   radiusMeters: '',
@@ -5794,6 +7200,12 @@ function RepliesTab() {
 }
 
 export default DebugConsolePage;
+
+
+
+
+
+
 
 
 

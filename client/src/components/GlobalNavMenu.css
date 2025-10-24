@@ -1,0 +1,132 @@
+.global-nav-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.global-nav-menu__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.global-nav-menu__backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: rgba(10, 12, 16, 0.55);
+}
+
+.global-nav-menu__panel {
+  position: relative;
+  width: min(320px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(24, 28, 38, 0.95) 0%, rgba(14, 18, 26, 0.95) 100%);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+  color: #f5f7fb;
+}
+
+.global-nav-menu__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.global-nav-menu__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.global-nav-menu__close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  transition: background 120ms ease, transform 120ms ease;
+}
+
+.global-nav-menu__close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(1.05);
+}
+
+.global-nav-menu__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.global-nav-menu__list-item {
+  display: contents;
+}
+
+.global-nav-menu__action {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.06);
+  text-align: left;
+  transition: background 120ms ease, transform 120ms ease;
+}
+
+.global-nav-menu__action:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.global-nav-menu__action-icon {
+  font-size: 1.6rem;
+  opacity: 0.9;
+}
+
+.global-nav-menu__action-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.global-nav-menu__action-label {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.global-nav-menu__action-description {
+  font-size: 0.82rem;
+  color: rgba(245, 247, 251, 0.7);
+}
+
+@media (max-width: 480px) {
+  .global-nav-menu__panel {
+    border-radius: 16px;
+    padding: 1.25rem;
+  }
+
+  .global-nav-menu__action {
+    padding: 0.75rem 0.9rem;
+  }
+}

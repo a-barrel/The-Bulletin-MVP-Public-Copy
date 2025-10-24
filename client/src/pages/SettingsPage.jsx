@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
@@ -11,6 +11,15 @@ import {
   Alert,
   Button,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Avatar,
   FormControl,
   FormControlLabel,
   FormLabel,
@@ -25,8 +34,17 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import SaveIcon from '@mui/icons-material/Save';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
+import BlockIcon from '@mui/icons-material/Block';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { auth } from '../firebase';
-import { fetchCurrentUserProfile, updateCurrentUserProfile } from '../api/mongoDataApi';
+import {
+  fetchBlockedUsers,
+  fetchCurrentUserProfile,
+  unblockUser,
+  updateCurrentUserProfile
+} from '../api/mongoDataApi';
+import { useBadgeSound } from '../contexts/BadgeSoundContext';
 
 export const pageConfig = {
   id: 'settings',
@@ -46,6 +64,7 @@ const DEFAULT_SETTINGS = {
   theme: 'system',
   radiusPreferenceMeters: 16093,
   locationSharingEnabled: false,
+  statsPublic: true,
   notifications: {
     proximity: true,
     updates: true,
@@ -62,6 +81,7 @@ const roundRadius = (value) => {
 };
 
 function SettingsPage() {
+  const navigate = useNavigate();
   const [authUser, authLoading] = useAuthState(auth);
   const [profile, setProfile] = useState(null);
   const [profileError, setProfileError] = useState(null);
@@ -70,6 +90,12 @@ function SettingsPage() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [saveStatus, setSaveStatus] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const { enabled: badgeSoundEnabled, setEnabled: setBadgeSoundEnabled } = useBadgeSound();
+  const [blockedOverlayOpen, setBlockedOverlayOpen] = useState(false);
+  const [blockedUsers, setBlockedUsers] = useState([]);
+  const [isLoadingBlockedUsers, setIsLoadingBlockedUsers] = useState(false);
+  const [isManagingBlockedUsers, setIsManagingBlockedUsers] = useState(false);
+  const [blockedOverlayStatus, setBlockedOverlayStatus] = useState(null);
 
   const theme = settings.theme;
   const notifications = settings.notifications;
@@ -100,6 +126,7 @@ function SettingsPage() {
           theme: result?.preferences?.theme ?? DEFAULT_SETTINGS.theme,
           radiusPreferenceMeters: roundRadius(result?.preferences?.radiusPreferenceMeters),
           locationSharingEnabled: Boolean(result?.locationSharingEnabled),
+          statsPublic: result?.preferences?.statsPublic ?? DEFAULT_SETTINGS.statsPublic,
           notifications: {
             proximity:
               result?.preferences?.notifications?.proximity ?? DEFAULT_SETTINGS.notifications.proximity,
@@ -128,6 +155,68 @@ function SettingsPage() {
     };
   }, [authLoading, authUser]);
 
+  useEffect(() => {
+    if (!blockedOverlayOpen) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadBlocked = async () => {
+      setIsLoadingBlockedUsers(true);
+      setBlockedOverlayStatus(null);
+      try {
+        const response = await fetchBlockedUsers();
+        if (cancelled) {
+          return;
+        }
+        setBlockedUsers(Array.isArray(response?.blockedUsers) ? response.blockedUsers : []);
+        if (response?.relationships) {
+          setProfile((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  relationships: response.relationships
+                }
+              : prev
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setBlockedUsers([]);
+          setBlockedOverlayStatus({
+            type: 'error',
+            message: error?.message || 'Failed to load blocked users.'
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingBlockedUsers(false);
+        }
+      }
+    };
+
+    loadBlocked();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [blockedOverlayOpen, setProfile]);
+
+  useEffect(() => {
+    if (!blockedOverlayStatus || blockedOverlayStatus.type !== 'success') {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setBlockedOverlayStatus(null);
+    }, 4000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [blockedOverlayStatus]);
+
   const baselineSettings = useMemo(() => {
     if (!profile) {
       return DEFAULT_SETTINGS;
@@ -136,6 +225,7 @@ function SettingsPage() {
       theme: profile?.preferences?.theme ?? DEFAULT_SETTINGS.theme,
       radiusPreferenceMeters: roundRadius(profile?.preferences?.radiusPreferenceMeters),
       locationSharingEnabled: Boolean(profile?.locationSharingEnabled),
+      statsPublic: profile?.preferences?.statsPublic ?? DEFAULT_SETTINGS.statsPublic,
       notifications: {
         proximity:
           profile?.preferences?.notifications?.proximity ?? DEFAULT_SETTINGS.notifications.proximity,
@@ -151,6 +241,7 @@ function SettingsPage() {
       settings.theme !== baselineSettings.theme ||
       settings.locationSharingEnabled !== baselineSettings.locationSharingEnabled ||
       settings.radiusPreferenceMeters !== baselineSettings.radiusPreferenceMeters ||
+      settings.statsPublic !== baselineSettings.statsPublic ||
       settings.notifications.proximity !== baselineSettings.notifications.proximity ||
       settings.notifications.updates !== baselineSettings.notifications.updates ||
       settings.notifications.marketing !== baselineSettings.notifications.marketing
@@ -189,6 +280,65 @@ function SettingsPage() {
     }));
   }, []);
 
+  const handleStatsVisibilityToggle = useCallback(() => {
+    setSettings((prev) => ({
+      ...prev,
+      statsPublic: !prev.statsPublic
+    }));
+  }, []);
+
+  const handleOpenBlockedOverlay = useCallback(() => {
+    setBlockedOverlayStatus(null);
+    setBlockedOverlayOpen(true);
+  }, []);
+
+  const handleCloseBlockedOverlay = useCallback(() => {
+    if (isManagingBlockedUsers) {
+      return;
+    }
+    setBlockedOverlayOpen(false);
+  }, [isManagingBlockedUsers]);
+
+  const handleUnblockUser = useCallback(
+    async (userId) => {
+      if (!userId) {
+        return;
+      }
+
+      const targetUser = blockedUsers.find((user) => user._id === userId);
+      setIsManagingBlockedUsers(true);
+      setBlockedOverlayStatus(null);
+      try {
+        const response = await unblockUser(userId);
+        setBlockedUsers(Array.isArray(response?.blockedUsers) ? response.blockedUsers : []);
+        if (response?.updatedRelationships) {
+          setProfile((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  relationships: response.updatedRelationships
+                }
+              : prev
+          );
+        }
+        setBlockedOverlayStatus({
+          type: 'success',
+          message: targetUser
+            ? `Unblocked ${targetUser.displayName || targetUser.username || targetUser._id}.`
+            : 'User unblocked.'
+        });
+      } catch (error) {
+        setBlockedOverlayStatus({
+          type: 'error',
+          message: error?.message || 'Failed to unblock user.'
+        });
+      } finally {
+        setIsManagingBlockedUsers(false);
+      }
+    },
+    [blockedUsers, setProfile]
+  );
+
   const handleReset = useCallback(() => {
     setSettings(baselineSettings);
     setSaveStatus(null);
@@ -206,6 +356,7 @@ function SettingsPage() {
         preferences: {
           theme: settings.theme,
           radiusPreferenceMeters: settings.radiusPreferenceMeters,
+          statsPublic: settings.statsPublic,
           notifications: {
             proximity: settings.notifications.proximity,
             updates: settings.notifications.updates,
@@ -250,6 +401,16 @@ function SettingsPage() {
       }}
     >
       <Stack spacing={3}>
+        <Button
+          variant="text"
+          color="inherit"
+          startIcon={<ArrowBackIcon fontSize="small" />}
+          onClick={() => navigate(-1)}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          Back
+        </Button>
+
         <Stack direction="row" spacing={1.5} alignItems="center">
           <SettingsIcon color="primary" />
           <Typography variant="h4" component="h1">
@@ -355,6 +516,51 @@ function SettingsPage() {
           <Divider />
 
           <Stack spacing={0.5}>
+            <Typography variant="h6">Profile visibility</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Choose whether others can see your activity stats on your profile.
+            </Typography>
+          </Stack>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={settings.statsPublic}
+                onChange={handleStatsVisibilityToggle}
+              />
+            }
+            label={
+              settings.statsPublic
+                ? 'Show my stats on my profile'
+                : 'Hide my stats from other users'
+            }
+          />
+
+          <Divider />
+
+          <Stack spacing={0.5}>
+            <Typography variant="h6">Audio</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Decide whether new badges should play a celebration sound.
+            </Typography>
+          </Stack>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={badgeSoundEnabled}
+                onChange={(event) => setBadgeSoundEnabled(event.target.checked)}
+              />
+            }
+            label="Play sound when I earn a badge"
+          />
+          <Typography variant="body2" color="text.secondary">
+            {badgeSoundEnabled
+              ? 'The badge chime is enabled and will play the next time you unlock something.'
+              : 'Badge chime remains muted. Turn it on here whenever you want to hear it.'}
+          </Typography>
+
+          <Divider />
+
+          <Stack spacing={0.5}>
             <Typography variant="h6">Notifications</Typography>
             <Typography variant="body2" color="text.secondary">
               Control when Pinpoint should nudge you.
@@ -400,6 +606,14 @@ function SettingsPage() {
           </Stack>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <Button
+              onClick={handleOpenBlockedOverlay}
+              variant="outlined"
+              color="warning"
+              startIcon={<BlockIcon />}
+            >
+              Manage blocked users
+            </Button>
+            <Button
               component={Link}
               to="/profile/me"
               variant="outlined"
@@ -439,6 +653,77 @@ function SettingsPage() {
           </Button>
         </Stack>
       </Stack>
+      <Dialog
+        open={blockedOverlayOpen}
+        onClose={handleCloseBlockedOverlay}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Blocked users</DialogTitle>
+        <DialogContent dividers>
+          {blockedOverlayStatus ? (
+            <Alert
+              severity={blockedOverlayStatus.type}
+              sx={{ mb: 2 }}
+              onClose={() => setBlockedOverlayStatus(null)}
+            >
+              {blockedOverlayStatus.message}
+            </Alert>
+          ) : null}
+          {isLoadingBlockedUsers ? (
+            <Stack alignItems="center" spacing={2} sx={{ py: 3 }}>
+              <CircularProgress size={24} />
+              <Typography variant="body2" color="text.secondary">
+                Loading blocked users...
+              </Typography>
+            </Stack>
+          ) : blockedUsers.length ? (
+            <List disablePadding sx={{ mt: -1 }}>
+              {blockedUsers.map((user) => {
+                const primary = user.displayName || user.username || user._id;
+                const secondary =
+                  user.username && user.username !== primary
+                    ? `@${user.username}`
+                    : user.email || user._id;
+                const avatarSource =
+                  user?.avatar?.url || user?.avatar?.thumbnailUrl || user?.avatar?.path || null;
+                return (
+                  <ListItem
+                    key={user._id}
+                    secondaryAction={
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<HowToRegIcon />}
+                        onClick={() => handleUnblockUser(user._id)}
+                        disabled={isManagingBlockedUsers}
+                      >
+                        Unblock
+                      </Button>
+                    }
+                  >
+                    <ListItemAvatar>
+                      <Avatar src={avatarSource || undefined}>
+                        {primary?.charAt(0)?.toUpperCase() ?? 'U'}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText primary={primary} secondary={secondary} />
+                  </ListItem>
+                );
+              })}
+            </List>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+              You haven't blocked any users yet. Block someone from their profile to see them here.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseBlockedOverlay} disabled={isManagingBlockedUsers}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

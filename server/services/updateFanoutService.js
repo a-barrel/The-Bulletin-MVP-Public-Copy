@@ -430,12 +430,48 @@ const broadcastChatMessage = async ({ room, message, author }) => {
   }
 };
 
+const broadcastBadgeEarned = async ({ userId, badge, sourceUserId }) => {
+  try {
+    const recipientId = toIdString(userId);
+    if (!recipientId) {
+      return;
+    }
+
+    const filteredRecipients = await filterRecipientsByPreference([recipientId]);
+    if (!filteredRecipients.length) {
+      return;
+    }
+
+    const updates = filteredRecipients.map((id) => ({
+      userId: toObjectId(id),
+      sourceUserId: toObjectId(sourceUserId ?? userId),
+      payload: {
+        type: 'badge-earned',
+        title: `You earned the "${badge.label}" badge`,
+        body: badge.description,
+        metadata: {
+          badgeId: badge.id,
+          badgeImage: badge.image
+        },
+        relatedEntities: [
+          createRelatedEntity(userId, 'user', 'You')
+        ].filter(Boolean)
+      }
+    }));
+
+    await insertUpdates(updates, 'badge-earned');
+  } catch (error) {
+    console.error('Failed to fan out badge earned update', error);
+  }
+};
+
 module.exports = {
   broadcastPinCreated,
   broadcastPinReply,
   broadcastAttendanceChange,
   broadcastBookmarkCreated,
-  broadcastChatMessage
+  broadcastChatMessage,
+  broadcastBadgeEarned
 };
 
 

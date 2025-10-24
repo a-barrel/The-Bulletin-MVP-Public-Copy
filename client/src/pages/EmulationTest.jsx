@@ -1,5 +1,8 @@
+import { useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import runtimeConfig from '../config/runtime';
+import { playBadgeSound } from '../utils/badgeSound';
+import { awardBadge } from '../api/mongoDataApi';
 
 export const pageConfig = {
   id: 'emulation-test',
@@ -16,6 +19,46 @@ const OVERLAY_URL = `${API_BASE_URL || ''}/images/emulation/gifs/engine-engineer
 const SOUND_URL = `${API_BASE_URL || ''}/images/emulation/sounds/gamestartup23.mp3`;
 
 function EmulationTestPage() {
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    awardBadge('how-badge')
+      .then((result) => {
+        if (result?.granted) {
+          playBadgeSound();
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const node = audioRef.current;
+    if (!node) {
+      return;
+    }
+
+    const attemptPlay = () => {
+      node.volume = 0.75;
+      node.play().catch(() => {});
+    };
+
+    attemptPlay();
+
+    const resumeOnInteraction = () => {
+      attemptPlay();
+      window.removeEventListener('click', resumeOnInteraction);
+      window.removeEventListener('keydown', resumeOnInteraction);
+    };
+
+    window.addEventListener('click', resumeOnInteraction);
+    window.addEventListener('keydown', resumeOnInteraction);
+
+    return () => {
+      window.removeEventListener('click', resumeOnInteraction);
+      window.removeEventListener('keydown', resumeOnInteraction);
+    };
+  }, []);
+
   return (
     <Box
       component="section"
@@ -82,9 +125,12 @@ function EmulationTestPage() {
       >
         LMAO GOTTEM
       </Box>
-      <audio src={SOUND_URL} autoPlay loop />
+      <audio ref={audioRef} src={SOUND_URL} autoPlay loop preload="auto" />
     </Box>
   );
 }
 
 export default EmulationTestPage;
+
+
+

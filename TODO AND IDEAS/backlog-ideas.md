@@ -32,8 +32,9 @@ double check the chat page if they swapped rooms.
 
 Persistent storage: Firebase persistent storage for online testing. Going to 
 wait on this since our demos are localhost offline testing for now. 
+- Firebase Storage groundwork: enable Storage in Firebase, provision per-env buckets with CORS, extend runtime config for bucket names/credentials, sketch security rules for user/pin paths, and decide on direct-upload vs server-proxy flow (plus metadata/backfill plan).
 
-Remove "Replies: 3" from the 
+- **[Done 2025-10-22]** Remove "Replies: 3" from the 
 "Bookmarks: 13
 Replies: 3
 Attending: 3 / 50" window
@@ -44,10 +45,66 @@ Attending: 3 / 50" window
 - **[Done 2025-10-22] Fix reply ordering:** Replies now sort by creation timestamp (newest first) in the pins API and both Pin Details UIs, so timelines no longer shuffle based on author data. Added client-side defensive sorting (with updatedAt/ObjectId fallbacks and future-date guards) to keep things stable even if upstream ordering changes or legacy replies use seeded timestamps.
 - **Reply follow-ups:** consider threading UI once parent reply support lands, and surface relative timestamps.
 
+- **[Done 2025-10-22] Add Jest coverage baseline:** Added feed/render checks, updates context assertions, and service-level suites (fan-out + Firebase sync) with a multi-project Jest config so future tests drop in cleanly. Deferred full page navigation specs until we settle on a router harness.
+- **Testing follow-ups:** layer Supertest routes for pins/updates, cover bookmark flows end-to-end, revisit Pin Details/List routing tests with a stable router harness, and wire CI to run the new suites.
+
 - **[Done 2025-10-22] Backfill Firebase accounts for legacy samples:** added provisioning to `server/scripts/sync-firebase-users.js` so any Mongo users without a Firebase auth record get an emulator account (with default password support and dry-run mode). Linking now runs before the usual Firebase-to-Mongo sync, so older fixtures authenticate like the newer ones.
 - **Firebase follow-ups:** document the generated passwords and consider per-environment secrets before pointing at production auth.
 
 - **[Done 2025-10-22] Route list + button to pin creation:** wired the List screen CTA to navigate to `/create-pin`, so the quick action now opens the pin composer instead of doing nothing.
 - **List follow-ups:** consider guarding with auth state and showing a tooltip/disabled state when offline data is unavailable.
 
--
+
+
+
+
+- **Goals for 10/23/2025:** 
+
+**Done** -Make tabs start a new row in debug_console
+instead of endlessly scrolling left and right.
+
+**Done** In uploads/images, create a /badge/ folder
+with some tiny image badges
+
+Badge functionality for the following: 
+
+1. Enter debug console for first time badge
+2. Chat for first time badge
+3. Create your first Pin badge
+4. Bookmark a Pin badge
+5. Attend an Event badge
+6. The "how" badge (access the hidden page from pressing Ctrl + ` (tilde))
+
+Create a "Badges" tab in the debug_console for viewing all Badges in debug_console, where you can add/remove these badges,
+and a "reset all badges" option. 
+
+-Have it send an update to the user when they earn a 
+badge that shows up on the update page
+
+-Have these badges display on the profile page (both self and others)
+
+**A tiny popup overlay in bottom right that fades showing
+you earned Badge [x]!!! Yippeee confetti. 
+
+- **[Done 2025-10-22] Pins outside Interaction Radius:** Pin Details v1 and v2 now advertise the `"far"` preview shortcut, the pins API simulates viewers outside the interaction radius, and both UIs surface a lockout overlay (with distance context and a return-to-list CTA) that blocks bookmarking, attendance, and replies when the previewed pin is too far away.
+
+**Done**-Export Bookmarks as CSV, I guess add that 
+to the debug console and actual bookmark page
+as a tiny button at the bottom. 
+
+
+-Fix Chat Room to display ONLY chat rooms the user is in vincity of,
+and the chatrooms of the pins they have bookmarked.
+
+And double check they can't interact with chat rooms outside
+their interaction radius (unless it's bookmarked of course - 
+the chat rooms related to pins)
+
+-No updates on chat room changes if you GPS spoof on the Map page,
+make sure it works globally. Are we using different GPS variables 
+on different pages?
+
+-Let users interact with pins they bookmarked if its outside interaction radius
+
+
+

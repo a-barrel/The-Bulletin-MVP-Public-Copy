@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import BlockIcon from '@mui/icons-material/Block';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -18,8 +20,22 @@ import MenuItem from '@mui/material/MenuItem';
 import Chip from '@mui/material/Chip';
 import Grid from '@mui/material/Grid';
 import Collapse from '@mui/material/Collapse';
-import { fetchCurrentUserProfile, fetchUserProfile, updateCurrentUserProfile, uploadImage } from '../api/mongoDataApi';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import { playBadgeSound } from '../utils/badgeSound';
+import Tooltip from '@mui/material/Tooltip';
+import {
+  blockUser,
+  fetchCurrentUserProfile,
+  fetchUserProfile,
+  unblockUser,
+  updateCurrentUserProfile,
+  uploadImage
+} from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
+import { BADGE_METADATA } from '../utils/badges';
 
 export const pageConfig = {
   id: 'profile',
@@ -52,6 +68,18 @@ export const pageConfig = {
 };
 
 const FALLBACK_AVATAR = '/images/profile/profile-01.jpg';
+
+const resolveBadgeImageUrl = (value) => {
+  if (!value) {
+    return '—';
+  }
+  if (/^(?:https?:)?\/\//i.test(value) || value.startsWith('data:')) {
+    return '—';
+  }
+  const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+  const normalized = value.startsWith('/') ? value : `/${value}`;
+  return base ? `${base}${normalized}` : normalized;
+};
 
 const resolveAvatarUrl = (avatar) => {
   const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
@@ -104,20 +132,20 @@ const formatEntryValue = (value) => {
 };
 
 const METERS_PER_MILE = 1609.34;
-
 const formatDateTime = (value) => {
   if (!value) {
-    return '—';
+    return 'N/A';
   }
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return '—';
+    return 'N/A';
   }
   return date.toLocaleString(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short'
   });
 };
+
 
 const Section = ({ title, description, children }) => (
   <Stack spacing={1.5}>
@@ -161,6 +189,10 @@ function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [updateStatus, setUpdateStatus] = useState(null);
+  const [viewerProfile, setViewerProfile] = useState(null);
+  const [relationshipStatus, setRelationshipStatus] = useState(null);
+  const [blockDialogMode, setBlockDialogMode] = useState(null);
+  const [isProcessingBlockAction, setIsProcessingBlockAction] = useState(false);
   const [showRawData, setShowRawData] = useState(false);
   const [formState, setFormState] = useState({
     displayName: '',
@@ -178,6 +210,30 @@ function ProfilePage() {
       URL.revokeObjectURL(avatarPreviewUrlRef.current);
     }
     avatarPreviewUrlRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadViewerProfile() {
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (!ignore) {
+          setViewerProfile(profile);
+        }
+      } catch (error) {
+        if (!ignore) {
+          console.warn('Failed to load viewer profile for relationship management', error);
+          setViewerProfile(null);
+        }
+      }
+    }
+
+    loadViewerProfile();
+
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const initializeFormState = useCallback(
@@ -250,6 +306,12 @@ function ProfilePage() {
 
   const effectiveUser = userFromState ?? fetchedUser ?? null;
 
+  useEffect(() => {
+    if (shouldLoadCurrentUser && effectiveUser) {
+      setViewerProfile(effectiveUser);
+    }
+  }, [effectiveUser, shouldLoadCurrentUser]);
+
   const displayName = useMemo(() => {
     if (effectiveUser) {
       return (
@@ -270,6 +332,22 @@ function ProfilePage() {
     (shouldLoadCurrentUser ||
       (effectiveUser && targetUserId && effectiveUser._id && effectiveUser._id === targetUserId));
   const editingAvatarSrc = formState.avatarCleared ? null : formState.avatarPreviewUrl ?? avatarUrl;
+  const viewerId = viewerProfile?._id ? String(viewerProfile._id) : null;
+  const normalizedTargetId = effectiveUser?._id
+    ? String(effectiveUser._id)
+    : targetUserId && targetUserId !== 'me'
+    ? targetUserId
+    : null;
+  const normalizedBlockedIds = Array.isArray(viewerProfile?.relationships?.blockedUserIds)
+    ? viewerProfile.relationships.blockedUserIds.map((id) => String(id))
+    : [];
+  const isViewingSelf =
+    shouldLoadCurrentUser ||
+    Boolean(viewerId && normalizedTargetId && viewerId === normalizedTargetId);
+  const isBlocked = Boolean(
+    normalizedTargetId && normalizedBlockedIds.includes(String(normalizedTargetId))
+  );
+  const canManageBlock = Boolean(!isViewingSelf && viewerProfile && normalizedTargetId);
 
   useEffect(() => {
     if (!isEditing && effectiveUser) {
@@ -454,10 +532,10 @@ function ProfilePage() {
     ]
   );
 
-  const detailEntries = useMemo(() => {
-    if (!effectiveUser || typeof effectiveUser !== 'object') {
-      return [];
-    }
+const detailEntries = useMemo(() => {
+  if (!effectiveUser || typeof effectiveUser !== 'object') {
+    return [];
+  }
 
     return Object.entries(effectiveUser)
       .filter(([, value]) => value !== undefined)
@@ -468,6 +546,15 @@ function ProfilePage() {
       }));
   }, [effectiveUser]);
   const hasProfile = Boolean(effectiveUser);
+  const bioText = useMemo(() => {
+    const rawBio = effectiveUser?.bio;
+    if (typeof rawBio !== 'string') {
+      return null;
+    }
+    const trimmed = rawBio.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }, [effectiveUser?.bio]);
+  const statsVisible = effectiveUser?.preferences?.statsPublic !== false;
   const statsEntries = useMemo(() => {
     const stats = effectiveUser?.stats;
     if (!stats) {
@@ -484,6 +571,14 @@ function ProfilePage() {
   }, [effectiveUser]);
 
   const badgeList = effectiveUser?.badges ?? [];
+  const previousBadgeCountRef = useRef(badgeList.length);
+
+  useEffect(() => {
+    if (badgeList.length > previousBadgeCountRef.current) {
+      playBadgeSound();
+    }
+    previousBadgeCountRef.current = badgeList.length;
+  }, [badgeList.length]);
 
   const activityEntries = useMemo(() => {
     if (!effectiveUser) {
@@ -562,8 +657,8 @@ function ProfilePage() {
       createdAt: formatDateTime(effectiveUser.createdAt),
       updatedAt: formatDateTime(effectiveUser.updatedAt),
       status: effectiveUser.accountStatus ?? 'unknown',
-      email: effectiveUser.email ?? '—',
-      userId: effectiveUser._id ?? targetUserId ?? '—'
+      email: effectiveUser.email ?? 'â€”',
+      userId: effectiveUser._id ?? targetUserId ?? 'â€”'
     };
   }, [effectiveUser, targetUserId]);
 
@@ -576,6 +671,106 @@ function ProfilePage() {
       navigate(-1);
     }
   };
+
+  const handleRequestBlock = useCallback(() => {
+    if (!canManageBlock) {
+      return;
+    }
+    setRelationshipStatus(null);
+    setBlockDialogMode('block');
+  }, [canManageBlock]);
+
+  const handleRequestUnblock = useCallback(() => {
+    if (!canManageBlock) {
+      return;
+    }
+    setRelationshipStatus(null);
+    setBlockDialogMode('unblock');
+  }, [canManageBlock]);
+
+  const handleCloseBlockDialog = useCallback(() => {
+    if (isProcessingBlockAction) {
+      return;
+    }
+    setBlockDialogMode(null);
+  }, [isProcessingBlockAction]);
+
+  const handleConfirmBlockDialog = useCallback(async () => {
+    if (!blockDialogMode) {
+      return;
+    }
+
+    const targetId = effectiveUser?._id ? String(effectiveUser._id) : normalizedTargetId;
+    if (!targetId) {
+      return;
+    }
+
+    setIsProcessingBlockAction(true);
+    setRelationshipStatus(null);
+    try {
+      const response =
+        blockDialogMode === 'block' ? await blockUser(targetId) : await unblockUser(targetId);
+
+      setViewerProfile((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        if (response?.updatedRelationships) {
+          return {
+            ...prev,
+            relationships: response.updatedRelationships
+          };
+        }
+
+        const currentRelationships = prev.relationships ?? {};
+        const currentBlockedIds = Array.isArray(currentRelationships.blockedUserIds)
+          ? currentRelationships.blockedUserIds.map((id) => String(id))
+          : [];
+        const blockedSet = new Set(currentBlockedIds);
+        if (blockDialogMode === 'block') {
+          blockedSet.add(targetId);
+        } else {
+          blockedSet.delete(targetId);
+        }
+        return {
+          ...prev,
+          relationships: {
+            ...currentRelationships,
+            blockedUserIds: Array.from(blockedSet)
+          }
+        };
+      });
+
+      setRelationshipStatus({
+        type: 'success',
+        message:
+          blockDialogMode === 'block'
+            ? `${displayName} has been blocked.`
+            : `${displayName} has been unblocked.`
+      });
+      setBlockDialogMode(null);
+    } catch (error) {
+      setRelationshipStatus({
+        type: 'error',
+        message: error?.message || 'Failed to update block status.'
+      });
+    } finally {
+      setIsProcessingBlockAction(false);
+    }
+  }, [blockDialogMode, displayName, effectiveUser, normalizedTargetId]);
+
+  useEffect(() => {
+    if (!relationshipStatus) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      setRelationshipStatus(null);
+    }, 5000);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [relationshipStatus]);
 
   return (
     <Box
@@ -626,6 +821,12 @@ function ProfilePage() {
             </Alert>
           ) : null}
 
+          {relationshipStatus ? (
+            <Alert severity={relationshipStatus.type} onClose={() => setRelationshipStatus(null)}>
+              {relationshipStatus.message}
+            </Alert>
+          ) : null}
+
           <Stack spacing={2} alignItems="center" textAlign="center">
             <Avatar
               src={avatarUrl}
@@ -649,6 +850,20 @@ function ProfilePage() {
               </Typography>
             ) : null}
           </Stack>
+
+          {canManageBlock ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              <Button
+                variant="outlined"
+                color={isBlocked ? 'primary' : 'error'}
+                startIcon={isBlocked ? <HowToRegIcon /> : <BlockIcon />}
+                onClick={isBlocked ? handleRequestUnblock : handleRequestBlock}
+                disabled={isProcessingBlockAction || isFetchingProfile}
+              >
+                {isBlocked ? 'Unblock user' : 'Block user'}
+              </Button>
+            </Box>
+          ) : null}
 
           {canEditProfile ? (
             <Stack spacing={2} sx={{ alignSelf: 'stretch' }}>
@@ -780,25 +995,93 @@ function ProfilePage() {
               <Divider />
               <Stack spacing={3}>
                 <Section
+                  title="Bio"
+                  description="Everything they want you to know right now."
+                >
+                  {bioText ? (
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {bioText}
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      This user hasn't added a bio yet.
+                    </Typography>
+                  )}
+                </Section>
+
+                <Section
+                  title="Badges & achievements"
+                  description="Recognition earned by this community member."
+                >
+                  {badgeList.length ? (
+                    <Stack direction="row" flexWrap="wrap" gap={1.5}>
+                      {badgeList.map((badgeId) => {
+                        const badgeInfo =
+                          BADGE_METADATA[badgeId] ?? {
+                            label: badgeId,
+                            description: 'Earn this badge to uncover its story.',
+                            image: undefined
+                          };
+                        const badgeImageUrl = resolveBadgeImageUrl(badgeInfo.image);
+                        return (
+                          <Tooltip key={badgeId} title={badgeInfo.description} arrow enterTouchDelay={0}>
+                            <Chip
+                              label={badgeInfo.label}
+                              color="primary"
+                              variant="outlined"
+                              sx={{
+                                fontSize: '1rem',
+                                px: 1.5,
+                                py: 0.75,
+                                borderWidth: 2
+                              }}
+                              avatar={
+                                badgeImageUrl ? (
+                                  <Avatar
+                                    src={badgeImageUrl}
+                                    alt={`${badgeInfo.label} badge`}
+                                    sx={{ width: 56, height: 56 }}
+                                  />
+                                ) : undefined
+                              }
+                            />
+                          </Tooltip>
+                        );
+                      })}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No badges yet â€” theyâ€™ll appear here once this user starts collecting achievements.
+                    </Typography>
+                  )}
+                </Section>
+
+                <Section
                   title="Highlights"
                   description="At-a-glance stats across this profile."
                 >
-                  {statsEntries.length ? (
-                    <Grid container spacing={2}>
-                      {statsEntries.map(({ key, label, value }) => (
-                        <Grid item xs={6} sm={4} key={key}>
-                          <Stack spacing={0.5}>
-                            <Typography variant="subtitle2" color="text.secondary">
-                              {label}
-                            </Typography>
-                            <Typography variant="h5">{value}</Typography>
-                          </Stack>
-                        </Grid>
-                      ))}
-                    </Grid>
+                  {statsVisible ? (
+                    statsEntries.length ? (
+                      <Grid container spacing={2}>
+                        {statsEntries.map(({ key, label, value }) => (
+                          <Grid item xs={6} sm={4} key={key}>
+                            <Stack spacing={0.5}>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                {label}
+                              </Typography>
+                              <Typography variant="h5">{value}</Typography>
+                            </Stack>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        Stats will appear here once this user starts hosting events, posting, or connecting with others.
+                      </Typography>
+                    )
                   ) : (
                     <Typography variant="body2" color="text.secondary">
-                      Stats will appear here once this user starts hosting events, posting, or connecting with others.
+                      This user keeps their stats private.
                     </Typography>
                   )}
                 </Section>
@@ -859,6 +1142,14 @@ function ProfilePage() {
                           {preferenceSummary.locationSharing ? 'Enabled' : 'Disabled'}
                         </Typography>
                       </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Stats visibility
+                        </Typography>
+                        <Typography variant="body1">
+                          {statsVisible ? 'Shared' : 'Hidden'}
+                        </Typography>
+                      </Box>
                     </Stack>
 
                     <Divider flexItem />
@@ -870,28 +1161,10 @@ function ProfilePage() {
                           label={`${label}${enabled ? '' : ' (off)'}`}
                           color={enabled ? 'success' : 'default'}
                           variant={enabled ? 'filled' : 'outlined'}
-                          size="small"
                         />
                       ))}
                     </Stack>
                   </Stack>
-                </Section>
-
-                <Section
-                  title="Badges & achievements"
-                  description="Recognition earned by this community member."
-                >
-                  {badgeList.length ? (
-                    <Stack direction="row" flexWrap="wrap" gap={1.5}>
-                      {badgeList.map((badge) => (
-                        <Chip key={badge} label={badge} color="primary" variant="outlined" />
-                      ))}
-                    </Stack>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      No badges yet — they’ll appear here once this user starts collecting achievements.
-                    </Typography>
-                  )}
                 </Section>
 
                 <Section
@@ -929,7 +1202,7 @@ function ProfilePage() {
                     </Stack>
                   ) : (
                     <Typography variant="body2" color="text.secondary">
-                      We’ll surface account timestamps once this profile finishes loading.
+                      Weâ€™ll surface account timestamps once this profile finishes loading.
                     </Typography>
                   )}
                 </Section>
@@ -999,8 +1272,46 @@ function ProfilePage() {
           ) : null}
         </Stack>
       </Paper>
+      <Dialog
+        open={Boolean(blockDialogMode)}
+        onClose={handleCloseBlockDialog}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>{blockDialogMode === 'block' ? 'Block this user?' : 'Unblock this user?'}</DialogTitle>
+        <DialogContent sx={{ pt: 1, pb: 0 }}>
+          <Typography variant="body2" color="text.secondary">
+            {blockDialogMode === 'block'
+              ? 'Blocked users cannot interact with you and their activity is hidden. You can review blocked users in Settings whenever you change your mind.'
+              : 'Unblocking lets this user interact with you again and restores their activity in your feeds.'}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleCloseBlockDialog} disabled={isProcessingBlockAction}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmBlockDialog}
+            color={blockDialogMode === 'block' ? 'error' : 'primary'}
+            variant="contained"
+            disabled={isProcessingBlockAction}
+          >
+            {isProcessingBlockAction
+              ? 'Updating...'
+              : blockDialogMode === 'block'
+              ? 'Block user'
+              : 'Unblock user'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
 
 export default ProfilePage;
+
+
+
+
+
+

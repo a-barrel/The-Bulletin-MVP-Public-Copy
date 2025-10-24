@@ -12,15 +12,21 @@ const verifyToken = require('../middleware/verifyToken');
 const {
   broadcastPinCreated,
   broadcastPinReply,
-  broadcastAttendanceChange
+  broadcastAttendanceChange,
+  broadcastBookmarkCreated
 } = require('../services/updateFanoutService');
+const { grantBadge } = require('../services/badgeService');
 
 const router = express.Router();
 
 const PinsQuerySchema = z.object({
   type: z.enum(['event', 'discussion']).optional(),
   creatorId: z.string().optional(),
-  limit: z.coerce.number().int().positive().max(50).default(20)
+  limit: z.coerce.number().int().positive().max(50).default(20),
+  status: z.enum(['active', 'expired', 'all']).optional(),
+  sort: z.enum(['recent', 'distance', 'expiration']).optional(),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional()
 });
 
 const PinIdSchema = z.object({
@@ -107,6 +113,115 @@ const mapPinToListItem = (pinDoc, creator) => {
   });
 };
 
+const ensureUserStats = (userDoc) => {
+  if (!userDoc) {
+    return null;
+  }
+
+  if (!userDoc.stats) {
+    userDoc.stats = {
+      eventsHosted: 0,
+      eventsAttended: 0,
+      posts: 0,
+      bookmarks: 0,
+      followers: 0,
+      following: 0
+    };
+  }
+
+  return userDoc.stats;
+};
+
+const ensureBookmarkForUser = async ({ userDoc, pinDoc }) => {
+  if (!userDoc?._id || !pinDoc?._id) {
+    return {
+      created: false,
+      bookmark: null,
+      pin: pinDoc,
+      bookmarkCount: pinDoc?.bookmarkCount ?? 0
+    };
+  }
+
+  const userId = userDoc._id;
+  const pinId = pinDoc._id;
+
+  try {
+    const existing = await Bookmark.findOne({ userId, pinId });
+    if (existing) {
+      return {
+        created: false,
+        bookmark: existing,
+        pin: pinDoc,
+        bookmarkCount: pinDoc.bookmarkCount ?? 0
+      };
+    }
+
+    let bookmark;
+    try {
+      bookmark = await Bookmark.create({
+        userId,
+        pinId,
+        tagIds: []
+      });
+    } catch (error) {
+      if (error?.code === 11000 || error?.code === 11001) {
+        const duplicate = await Bookmark.findOne({ userId, pinId });
+        return {
+          created: false,
+          bookmark: duplicate,
+          pin: pinDoc,
+          bookmarkCount: pinDoc.bookmarkCount ?? 0
+        };
+      }
+      throw error;
+    }
+
+    try {
+      ensureUserStats(userDoc);
+      userDoc.stats.bookmarks = (userDoc.stats.bookmarks ?? 0) + 1;
+      userDoc.markModified('stats');
+      await userDoc.save();
+    } catch (error) {
+      console.error('Failed to update user bookmark stats during ensureBookmarkForUser:', error);
+    }
+
+    try {
+      const currentBookmarkCount = pinDoc.bookmarkCount ?? 0;
+      pinDoc.bookmarkCount = currentBookmarkCount + 1;
+      if (pinDoc.stats) {
+        pinDoc.stats.bookmarkCount = (pinDoc.stats.bookmarkCount ?? 0) + 1;
+      } else {
+        pinDoc.stats = {
+          bookmarkCount: pinDoc.bookmarkCount,
+          replyCount: pinDoc.replyCount ?? 0,
+          shareCount: 0,
+          viewCount: 0
+        };
+      }
+      pinDoc.markModified('stats');
+      await pinDoc.save();
+    } catch (error) {
+      console.error('Failed to update pin bookmark stats during ensureBookmarkForUser:', error);
+    }
+
+    return {
+      created: true,
+      bookmark,
+      pin: pinDoc,
+      bookmarkCount: pinDoc.bookmarkCount ?? 0
+    };
+  } catch (error) {
+    console.error('Failed to ensure bookmark for user:', error);
+    return {
+      created: false,
+      bookmark: null,
+      pin: pinDoc,
+      bookmarkCount: pinDoc?.bookmarkCount ?? 0,
+      error
+    };
+  }
+};
+
 const resolveViewerUser = async (req) => {
   if (!req?.user?.uid) {
     return null;
@@ -183,6 +298,22 @@ const mapPinToFull = (pinDoc, creator, options = {}) => {
 
   if (typeof options.viewerHasBookmarked === 'boolean') {
     base.viewerHasBookmarked = options.viewerHasBookmarked;
+  }
+
+  if (typeof options.viewerDistanceMeters === 'number' && Number.isFinite(options.viewerDistanceMeters)) {
+    base.viewerDistanceMeters = options.viewerDistanceMeters;
+  }
+
+  if (typeof options.viewerWithinInteractionRadius === 'boolean') {
+    base.viewerWithinInteractionRadius = options.viewerWithinInteractionRadius;
+  }
+
+  if (typeof options.viewerInteractionLockReason === 'string' && options.viewerInteractionLockReason.trim()) {
+    base.viewerInteractionLockReason = options.viewerInteractionLockReason.trim();
+  }
+
+  if (typeof options.viewerInteractionLockMessage === 'string' && options.viewerInteractionLockMessage.trim()) {
+    base.viewerInteractionLockMessage = options.viewerInteractionLockMessage.trim();
   }
 
   return PinSchema.parse(base);
@@ -343,27 +474,35 @@ router.post('/', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'endDate must be after startDate' });
     }
 
-    let creatorObjectId;
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(403).json({ message: 'Unable to resolve authenticated user for pin creation' });
+    }
+
+    let creatorObjectId = viewer._id;
+    let creatorUserDoc = viewer;
     if (input.creatorId) {
       if (!mongoose.Types.ObjectId.isValid(input.creatorId)) {
         return res.status(400).json({ message: 'Invalid creator id' });
       }
-      creatorObjectId = new mongoose.Types.ObjectId(input.creatorId);
-    } else {
-      let fallbackUser = await User.findOne().sort({ createdAt: 1 });
-      if (!fallbackUser) {
-        fallbackUser = await User.findOneAndUpdate(
-          { username: 'offline-demo' },
-          {
-            username: 'offline-demo',
-            displayName: 'Offline Demo User',
-            email: 'offline@example.com',
-            accountStatus: 'active'
-          },
-          { new: true, upsert: true, setDefaultsOnInsert: true }
-        );
+
+      const requestedCreatorId = new mongoose.Types.ObjectId(input.creatorId);
+      const viewerRoles = Array.isArray(viewer.roles) ? viewer.roles : [];
+      const viewerIsPrivileged =
+        viewerRoles.includes('admin') || viewerRoles.includes('super-admin') || viewerRoles.includes('system-admin');
+
+      if (!requestedCreatorId.equals(viewer._id) && !viewerIsPrivileged) {
+        return res.status(403).json({ message: 'You are not allowed to create pins for other users' });
       }
-      creatorObjectId = fallbackUser._id;
+
+      creatorObjectId = requestedCreatorId;
+      if (!requestedCreatorId.equals(viewer._id)) {
+        const overrideCreator = await User.findById(requestedCreatorId);
+        if (!overrideCreator) {
+          return res.status(404).json({ message: 'Specified creator user not found' });
+        }
+        creatorUserDoc = overrideCreator;
+      }
     }
 
     const coordinates = {
@@ -414,15 +553,73 @@ router.post('/', verifyToken, async (req, res) => {
     }
 
     const pin = await Pin.create(pinData);
+    try {
+      ensureUserStats(creatorUserDoc);
+      if (pin.type === 'event') {
+        creatorUserDoc.stats.eventsHosted = (creatorUserDoc.stats.eventsHosted ?? 0) + 1;
+      } else if (pin.type === 'discussion') {
+        creatorUserDoc.stats.posts = (creatorUserDoc.stats.posts ?? 0) + 1;
+      }
+      creatorUserDoc.markModified('stats');
+      await creatorUserDoc.save();
+    } catch (error) {
+      console.error('Failed to update creator stats after pin creation:', error);
+    }
     const hydrated = await Pin.findById(pin._id).populate('creatorId');
-    const sourcePin = hydrated ?? pin;
+    let sourcePin = hydrated ?? pin;
     const creatorPublic = hydrated ? mapUserToPublic(hydrated.creatorId) : undefined;
-    const viewer = await resolveViewerUser(req);
     const viewerId = viewer ? toIdString(viewer._id) : undefined;
+
+    const bookmarkResult = await ensureBookmarkForUser({
+      userDoc: creatorUserDoc,
+      pinDoc: sourcePin
+    });
+    if (bookmarkResult?.pin) {
+      sourcePin = bookmarkResult.pin;
+    }
+
+    if (bookmarkResult?.created) {
+      broadcastBookmarkCreated({
+        pin: sourcePin,
+        bookmarker: creatorUserDoc
+      }).catch((error) => {
+        console.error('Failed to queue auto-bookmark updates after pin creation:', error);
+      });
+    }
+
+    let viewerHasBookmarked = false;
+    if (viewer) {
+      if (creatorUserDoc && viewer._id.equals(creatorUserDoc._id)) {
+        viewerHasBookmarked = Boolean(bookmarkResult?.created || bookmarkResult?.bookmark);
+      } else {
+        const viewerBookmarkExists = await Bookmark.exists({
+          userId: viewer._id,
+          pinId: sourcePin._id
+        });
+        viewerHasBookmarked = Boolean(viewerBookmarkExists);
+      }
+    }
+
+    let createBadgeResult = null;
+    if (viewer) {
+      try {
+        createBadgeResult = await grantBadge({
+          userId: viewer._id,
+          badgeId: 'create-first-pin',
+          sourceUserId: viewer._id
+        });
+      } catch (error) {
+        console.error('Failed to grant create pin badge:', error);
+      }
+    }
+
     const payload = mapPinToFull(sourcePin, creatorPublic, {
       viewerId,
-      viewerHasBookmarked: false
+      viewerHasBookmarked
     });
+    if (createBadgeResult?.granted) {
+      payload._badgeEarnedId = createBadgeResult.badge.id;
+    }
     broadcastPinCreated(sourcePin).catch((error) => {
       console.error('Failed to queue pin creation updates:', error);
     });
@@ -482,20 +679,94 @@ router.get('/nearby', verifyToken, async (req, res) => {
 router.get('/', verifyToken, async (req, res) => {
   try {
     const query = PinsQuerySchema.parse(req.query);
-    const criteria = {};
+    const limit = query.limit;
+    const now = new Date();
+    const filters = [];
+
     if (query.type) {
-      criteria.type = query.type;
+      filters.push({ type: query.type });
     }
+
     if (query.creatorId) {
       if (!mongoose.Types.ObjectId.isValid(query.creatorId)) {
         return res.status(400).json({ message: 'Invalid creator id' });
       }
-      criteria.creatorId = query.creatorId;
+      filters.push({ creatorId: new mongoose.Types.ObjectId(query.creatorId) });
     }
 
-    const pins = await Pin.find(criteria)
-      .sort({ updatedAt: -1 })
-      .limit(query.limit)
+    const sortMode = query.sort ?? 'recent';
+    const statusFilter = query.status ?? 'active';
+
+    if (statusFilter === 'active') {
+      if (sortMode === 'expiration') {
+        filters.push({ expiresAt: { $gt: now } });
+      } else {
+        filters.push({
+          $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gt: now } }]
+        });
+      }
+    } else if (statusFilter === 'expired') {
+      filters.push({ expiresAt: { $exists: true, $lte: now } });
+    } else if (statusFilter === 'all' && sortMode === 'expiration') {
+      filters.push({ expiresAt: { $exists: true } });
+    }
+
+    const matchQuery =
+      filters.length === 0
+        ? {}
+        : filters.length === 1
+        ? filters[0]
+        : { $and: filters };
+
+    if (sortMode === 'distance') {
+      if (
+        query.latitude === undefined ||
+        query.longitude === undefined ||
+        !Number.isFinite(query.latitude) ||
+        !Number.isFinite(query.longitude)
+      ) {
+        return res
+          .status(400)
+          .json({ message: 'Latitude and longitude are required for distance sorting' });
+      }
+
+      const geoNearStage = {
+        $geoNear: {
+          near: { type: 'Point', coordinates: [query.longitude, query.latitude] },
+          distanceField: 'distanceMeters',
+          spherical: true
+        }
+      };
+
+      if (Object.keys(matchQuery).length > 0) {
+        geoNearStage.$geoNear.query = matchQuery;
+      }
+
+      const pipeline = [geoNearStage, { $limit: limit }];
+      const aggregated = await Pin.aggregate(pipeline);
+      const hydrated = aggregated.map((doc) => Pin.hydrate(doc));
+      const populated = await Pin.populate(hydrated, { path: 'creatorId' });
+
+      const payload = populated.map((pinDoc, index) => {
+        const creatorPublic = mapUserToPublic(pinDoc.creatorId);
+        const listItem = mapPinToListItem(pinDoc, creatorPublic);
+        return {
+          ...listItem,
+          distanceMeters: aggregated[index]?.distanceMeters
+        };
+      });
+
+      return res.json(payload);
+    }
+
+    const sortSpec =
+      sortMode === 'expiration'
+        ? { expiresAt: 1, updatedAt: -1, _id: -1 }
+        : { updatedAt: -1, _id: -1 };
+
+    const pins = await Pin.find(matchQuery)
+      .sort(sortSpec)
+      .limit(limit)
       .populate('creatorId');
 
     const payload = pins.map((pin) => {
@@ -508,6 +779,7 @@ router.get('/', verifyToken, async (req, res) => {
     if (error instanceof ZodError) {
       return res.status(400).json({ message: 'Invalid pin query', issues: error.errors });
     }
+    console.error('Failed to load pins:', error);
     res.status(500).json({ message: 'Failed to load pins' });
   }
 });
@@ -527,10 +799,24 @@ router.get('/:pinId', verifyToken, async (req, res) => {
       const bookmarkExists = await Bookmark.exists({ userId: viewer._id, pinId: pin._id });
       viewerHasBookmarked = Boolean(bookmarkExists);
     }
-    const payload = mapPinToFull(pin, mapUserToPublic(pin.creatorId), {
+    const previewModeRaw =
+      typeof req.query.preview === 'string' ? req.query.preview.trim().toLowerCase() : undefined;
+
+    const mapOptions = {
       viewerId,
       viewerHasBookmarked
-    });
+    };
+
+    if (previewModeRaw === 'far') {
+      const distanceMeters = Math.max(pin.proximityRadiusMeters ?? 1609, 1609) * 3;
+      mapOptions.viewerDistanceMeters = distanceMeters;
+      mapOptions.viewerWithinInteractionRadius = false;
+      mapOptions.viewerInteractionLockReason = 'outside-radius';
+      mapOptions.viewerInteractionLockMessage =
+        'You are outside this pin\'s interaction radius. Move closer to interact with it.';
+    }
+
+    const payload = mapPinToFull(pin, mapUserToPublic(pin.creatorId), mapOptions);
     res.json(payload);
   } catch (error) {
     if (error instanceof ZodError) {
@@ -572,6 +858,8 @@ router.post('/:pinId/attendance', verifyToken, async (req, res) => {
     const viewerId = toIdString(viewer._id);
     const attendeeIds = pin.attendingUserIds.map((id) => toIdString(id));
     const isAlreadyAttending = attendeeIds.includes(viewerId);
+    let viewerJoined = false;
+    let viewerLeft = false;
 
     if (attending) {
       if (!isAlreadyAttending) {
@@ -579,23 +867,75 @@ router.post('/:pinId/attendance', verifyToken, async (req, res) => {
           return res.status(409).json({ message: 'Participant limit reached' });
         }
         pin.attendingUserIds.push(viewer._id);
+        viewerJoined = true;
       }
     } else if (isAlreadyAttending) {
       pin.attendingUserIds = pin.attendingUserIds.filter(
         (id) => toIdString(id) !== viewerId
       );
       pin.markModified('attendingUserIds');
+      viewerLeft = true;
     }
 
     pin.participantCount = pin.attendingUserIds.length;
 
     await pin.save();
+    if (viewerJoined || viewerLeft) {
+      try {
+        ensureUserStats(viewer);
+        const existingCount = viewer.stats.eventsAttended ?? 0;
+        if (viewerJoined) {
+          viewer.stats.eventsAttended = existingCount + 1;
+        } else if (viewerLeft) {
+          viewer.stats.eventsAttended = Math.max(0, existingCount - 1);
+        }
+        viewer.markModified('stats');
+        await viewer.save();
+      } catch (error) {
+        console.error('Failed to update attendee stats:', error);
+      }
+    }
 
-    const bookmarkExists = await Bookmark.exists({ userId: viewer._id, pinId: pin._id });
+    let viewerHasBookmarked = false;
+    if (attending && viewerJoined) {
+      const bookmarkResult = await ensureBookmarkForUser({
+        userDoc: viewer,
+        pinDoc: pin
+      });
+      viewerHasBookmarked = Boolean(bookmarkResult?.created || bookmarkResult?.bookmark);
+      if (bookmarkResult?.created) {
+        broadcastBookmarkCreated({
+          pin,
+          bookmarker: viewer
+        }).catch((error) => {
+          console.error('Failed to queue auto-bookmark updates after attendance change:', error);
+        });
+      }
+    } else {
+      const bookmarkExists = await Bookmark.exists({ userId: viewer._id, pinId: pin._id });
+      viewerHasBookmarked = Boolean(bookmarkExists);
+    }
+    let attendanceBadgeResult = null;
+    if (attending) {
+      try {
+        attendanceBadgeResult = await grantBadge({
+          userId: viewer._id,
+          badgeId: 'attend-first-event',
+          sourceUserId: viewer._id
+        });
+      } catch (error) {
+        console.error('Failed to grant attendance badge:', error);
+      }
+    }
+
     const payload = mapPinToFull(pin, mapUserToPublic(pin.creatorId), {
       viewerId,
-      viewerHasBookmarked: Boolean(bookmarkExists)
+      viewerHasBookmarked
     });
+    if (attendanceBadgeResult?.granted) {
+      payload._badgeEarnedId = attendanceBadgeResult.badge.id;
+    }
+
     broadcastAttendanceChange({ pin, attendee: viewer, attending }).catch((error) => {
       console.error('Failed to queue attendance updates:', error);
     });

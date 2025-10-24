@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Navbar from '../components/Navbar';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
   Box,
@@ -31,6 +32,8 @@ import SendIcon from '@mui/icons-material/Send';
 import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
 import { auth } from '../firebase';
+import { playBadgeSound } from '../utils/badgeSound';
+import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import {
   fetchChatRooms,
   createChatRoom,
@@ -39,6 +42,7 @@ import {
   fetchChatPresence,
   upsertChatPresence
 } from '../api/mongoDataApi';
+import { useLocationContext } from '../contexts/LocationContext';
 
 export const pageConfig = {
   id: 'chat',
@@ -60,7 +64,11 @@ const PRESENCE_HEARTBEAT_MS = 30_000;
 const MESSAGES_REFRESH_MS = 7_000;
 
 function ChatPage() {
+  const { announceBadgeEarned } = useBadgeSound();
   const [authUser, authLoading] = useAuthState(auth);
+  const { location: viewerLocation } = useLocationContext();
+  const viewerLatitude = viewerLocation?.latitude ?? null;
+  const viewerLongitude = viewerLocation?.longitude ?? null;
   const [rooms, setRooms] = useState([]);
   const [roomsError, setRoomsError] = useState(null);
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
@@ -123,7 +131,10 @@ function ChatPage() {
     setIsLoadingRooms(true);
     setRoomsError(null);
     try {
-      const data = await fetchChatRooms();
+      const data = await fetchChatRooms({
+        latitude: Number.isFinite(viewerLatitude) ? viewerLatitude : undefined,
+        longitude: Number.isFinite(viewerLongitude) ? viewerLongitude : undefined
+      });
       setRooms(data);
       if (data.length > 0 && !selectedRoomId) {
         setSelectedRoomId(data[0]._id);
@@ -134,7 +145,7 @@ function ChatPage() {
     } finally {
       setIsLoadingRooms(false);
     }
-  }, [authUser, selectedRoomId]);
+  }, [authUser, selectedRoomId, viewerLatitude, viewerLongitude]);
 
   useEffect(() => {
     if (!authLoading && authUser) {
@@ -308,6 +319,10 @@ function ChatPage() {
       try {
         const message = await createChatMessage(selectedRoomId, { message: trimmed });
         setMessages((prev) => [...prev, message]);
+        if (message?.badgeEarnedId) {
+          playBadgeSound();
+          announceBadgeEarned(message.badgeEarnedId);
+        }
         setMessageDraft('');
         scrollMessagesToBottom();
       } catch (error) {
@@ -316,7 +331,7 @@ function ChatPage() {
         setIsSendingMessage(false);
       }
     },
-    [authUser, messageDraft, scrollMessagesToBottom, selectedRoomId]
+    [announceBadgeEarned, authUser, messageDraft, scrollMessagesToBottom, selectedRoomId]
   );
 
   const filteredPresence = useMemo(() => {
@@ -620,7 +635,8 @@ function ChatPage() {
   );
 
   return (
-    <Box
+    <>
+      <Box
       sx={{
         width: '100%',
         maxWidth: 1200,
@@ -743,9 +759,14 @@ function ChatPage() {
           </DialogActions>
         </Box>
       </Dialog>
-    </Box>
+      </Box>
+      <Navbar />
+    </>
   );
 }
 
 export default ChatPage;
+
+
+
 
