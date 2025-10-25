@@ -27,6 +27,40 @@ const PIN_FETCH_LIMIT = 50;
 const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
 const DESCRIPTION_PREVIEW_LIMIT = 50;
 
+const toIdString = (value) => {
+  if (!value && value !== 0) {
+    return null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+  if (typeof value === "object") {
+    if (typeof value.$oid === "string") {
+      const trimmed = value.$oid.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+    if (typeof value._id === "string") {
+      const trimmed = value._id.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+    if (typeof value.id === "string") {
+      const trimmed = value.id.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+    if (typeof value.toString === "function") {
+      const stringValue = value.toString();
+      if (stringValue && stringValue !== "[object Object]") {
+        return stringValue;
+      }
+    }
+  }
+  return null;
+};
+
 const hasValidCoordinates = (coords) =>
   coords &&
   typeof coords === "object" &&
@@ -157,6 +191,12 @@ const resolveImageSources = (pin) => {
 };
 
 const mapPinToFeedItem = (pin) => {
+  const pinId = toIdString(pin?._id) ?? toIdString(pin?.id);
+  const creatorId =
+    toIdString(pin?.creatorId) ??
+    toIdString(pin?.creator?._id) ??
+    toIdString(pin?.creator?._id?.$oid);
+
   const distanceMiles = toDistanceMiles(pin?.distanceMeters);
   const distanceLabel = formatDistanceLabel(distanceMiles);
   const referenceDate = resolveReferenceDate(pin);
@@ -172,14 +212,21 @@ const mapPinToFeedItem = (pin) => {
       ? pin.stats.replyCount
       : 0;
   const participantCount =
-    typeof pin?.stats?.participantCount === "number" ? pin.stats.participantCount : null;
+    typeof pin?.stats?.participantCount === "number"
+      ? pin.stats.participantCount
+      : Array.isArray(pin?.participants)
+      ? pin.participants.length
+      : typeof pin?.participantCount === "number"
+      ? pin.participantCount
+      : null;
 
   const type = pin?.type === "event" ? "pin" : "discussion";
   const tagSource = Array.isArray(pin?.tags) && pin.tags.length > 0 ? pin.tags[0] : null;
 
   return {
-    id: pin?._id,
-    _id: pin?._id,
+    id: pinId ?? pin?._id ?? pin?.id ?? null,
+    _id: pinId ?? pin?._id ?? pin?.id ?? null,
+    pinId,
     type,
     tag: tagSource || (type === "pin" ? "Event" : "Discussion"),
     distance: distanceLabel,
@@ -188,7 +235,8 @@ const mapPinToFeedItem = (pin) => {
     images,
     author: resolveAuthorName(pin),
     authorName: resolveAuthorName(pin),
-    creatorId: pin?.creatorId,
+    creatorId,
+    authorId: creatorId,
     creator: pin?.creator,
     comments,
     interested: [],
@@ -348,6 +396,26 @@ export default function ListPage() {
   const handleSettings = useCallback(() => {
     navigate("/settings");
   }, [navigate]);
+  const handleFeedItemSelect = useCallback(
+    (pinId) => {
+      const normalized = toIdString(pinId);
+      if (!normalized) {
+        return;
+      }
+      navigate(`/pin/${normalized}`);
+    },
+    [navigate]
+  );
+  const handleFeedAuthorSelect = useCallback(
+    (creatorId) => {
+      const normalized = toIdString(creatorId);
+      if (!normalized) {
+        return;
+      }
+      navigate(`/profile/${normalized}`);
+    },
+    [navigate]
+  );
 
   const feedItems = useMemo(() => pins.map((pin) => mapPinToFeedItem(pin)), [pins]);
 
@@ -425,7 +493,12 @@ export default function ListPage() {
         {error && <p>Error: {error}</p>}
 
         {!loading && !error && (
-          <Feed items={filteredAndSortedFeed} isUsingFallbackLocation={isUsingFallbackLocation} />
+          <Feed
+            items={filteredAndSortedFeed}
+            isUsingFallbackLocation={isUsingFallbackLocation}
+            onSelectItem={handleFeedItemSelect}
+            onSelectAuthor={handleFeedAuthorSelect}
+          />
         )}
 
         <Navbar />

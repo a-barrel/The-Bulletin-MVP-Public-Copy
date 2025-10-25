@@ -1,15 +1,15 @@
 /* ===== Feed + Cards ===== */
 .feed {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
   width: 100%;
   margin: 0 auto;
 }
 
 .card {
-  width: 100%;
-  margin: 0;
+  width: 92%;
+  margin: 0 auto;
   background: #fff;
   border: 1.5px solid #111;
   border-radius: 14px;
@@ -17,6 +17,15 @@
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+}
+
+.card.clickable {
+  cursor: pointer;
+}
+
+.card.clickable:focus-visible {
+  outline: 2px solid #6a25d7;
+  outline-offset: 3px;
 }
 
 /* Header row */
@@ -64,10 +73,42 @@
 
 .media {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  height: 150px;
   object-fit: cover;
   border: none;
   border-radius: 4px;
+}
+
+.media-scroll {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  padding-bottom: 0.25rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.media-scroll .media {
+  flex: 0 0 calc(40% - 0.3rem);
+  width: calc(40% - 0.3rem);
+  min-width: calc(40% - 0.3rem);
+  scroll-snap-align: start;
+}
+
+.media-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.media-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+}
+
+.media-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* Footer layout (author | interested | counts) */
@@ -88,6 +129,33 @@
   min-width: 0;                               /* allow truncation */
 }
 
+.author-button {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.author-button:not(:disabled) {
+  cursor: pointer;
+}
+
+.author-button:disabled {
+  opacity: 0.85;
+  cursor: default;
+}
+
+.author-button:focus-visible {
+  outline: 2px solid #6a25d7;
+  outline-offset: 3px;
+}
+
 /* truncate long names so counts never get pushed */
 .author .name {
   max-width: 180px;                 /* tune per breakpoint */
@@ -106,6 +174,15 @@
   object-fit: cover;
 }
 .name { font-weight: 600; color: black; }
+
+.author-button:not(:disabled) .name {
+  color: #6a25d7;
+  text-decoration: underline;
+}
+
+.author-button:not(:disabled):hover .name {
+  color: #4a1a9e;
+}
 
 .counts {
   flex: 0 0 auto;
@@ -142,10 +219,30 @@
   min-height: 28px;
 }
 
+.interested-row.scrollable {
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.interested-row.scrollable::-webkit-scrollbar {
+  height: 6px;
+}
+
+.interested-row.scrollable::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+}
+
+.interested-row.scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .interest-bubble {
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;                   /* <-- prevents squishing */
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;                   /* <-- prevents squishing */
   border-radius: 50%;
   border: 1.5px solid black;
   background: #f4f4f7;
@@ -153,6 +250,13 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+}
+
+.interest-bubble:focus-visible {
+  outline: 2px solid #6a25d7;
+  outline-offset: 3px;
 }
 
 .interest-avatar {
@@ -196,8 +300,8 @@
 
 /* ---------- Responsive tweaks ---------- */
 @media (max-width: 768px) {
-  .feed {
-    grid-template-columns: minmax(0, 1fr);
+  .card {
+    width: 94%;
   }
 }
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./Feed.css";
 import PinTagIcon from "../assets/Event_Pin.svg";
 import DiscussionTagIcon from "../assets/chat-filled.svg";
@@ -17,14 +17,13 @@ const resolveAuthorName = (item) =>
   "Unknown";
 
 const resolveAvatar = (item) =>
-  item?.creator?.avatar?.url ||
-  item?.creator?.avatar?.thumbnailUrl ||
-  item?.avatar ||
+  resolveAssetUrl(item?.creator?.avatar) ||
+  resolveAssetUrl(item?.avatar) ||
   DEFAULT_AVATAR;
 
 const TAG_ICON_MAP = {
   pin: {
-    label: "Pin",
+    label: "Event",
     icon: PinTagIcon,
   },
   discussion: {
@@ -35,10 +34,13 @@ const TAG_ICON_MAP = {
 
 const resolveTagBadge = (type) => {
   const key = typeof type === "string" ? type.toLowerCase() : "";
-  return TAG_ICON_MAP[key] || {
-    label: "Item",
-    icon: PinTagIcon,
-  };
+  if (key === "event") {
+    return TAG_ICON_MAP.pin;
+  }
+  if (key === "chat") {
+    return TAG_ICON_MAP.discussion;
+  }
+  return TAG_ICON_MAP[key] || TAG_ICON_MAP.pin;
 };
 
 const attendeeCache = new Map();
@@ -66,26 +68,99 @@ const FALLBACK_NAMES = [
   "Spy",
 ];
 
+const resolveAssetUrl = (asset, fallback = null) => {
+  if (!asset) {
+    return fallback;
+  }
+  if (typeof asset === "object") {
+    return (
+      resolveAssetUrl(asset.thumbnailUrl, fallback) ||
+      resolveAssetUrl(asset.url, fallback) ||
+      resolveAssetUrl(asset.path, fallback) ||
+      fallback
+    );
+  }
+  if (typeof asset === "string") {
+    const trimmed = asset.trim();
+    if (!trimmed) {
+      return fallback;
+    }
+    if (/^(?:[a-z]+:)?\/\//i.test(trimmed) || trimmed.startsWith("data:")) {
+      return trimmed;
+    }
+    const normalized = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+    return API_BASE_URL ? `${API_BASE_URL}${normalized}` : normalized;
+  }
+  return fallback;
+};
+
 const resolveLibraryAvatar = (seed = 0) => {
   if (!AVATAR_LIBRARY.length) {
     return DEFAULT_AVATAR;
   }
   const index = Math.abs(seed) % AVATAR_LIBRARY.length;
   const relative = AVATAR_LIBRARY[index];
-  if (!relative) {
-    return DEFAULT_AVATAR;
-  }
-  return API_BASE_URL ? `${API_BASE_URL}${relative}` : relative;
+  const resolved = resolveAssetUrl(relative, DEFAULT_AVATAR);
+  return resolved ?? DEFAULT_AVATAR;
 };
 
-function FeedCard({ item }) {
-  const cardType = item?.type ? String(item.type).toLowerCase() : "";
+const toIdString = (value) => {
+  if (!value && value !== 0) {
+    return null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+  if (typeof value === "object") {
+    if (typeof value.$oid === "string") {
+      const trimmed = value.$oid.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+    if (typeof value._id === "string") {
+      const trimmed = value._id.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+    if (typeof value.id === "string") {
+      const trimmed = value.id.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+    if (typeof value.toString === "function") {
+      const stringValue = value.toString();
+      if (stringValue && stringValue !== "[object Object]") {
+        return stringValue;
+      }
+    }
+  }
+  return null;
+};
+
+function FeedCard({ item, onSelectItem, onSelectAuthor }) {
+  const rawType = item?.type ? String(item.type).toLowerCase() : "";
+  const normalizedType =
+    rawType === "event"
+      ? "pin"
+      : rawType === "chat"
+      ? "discussion"
+      : rawType;
+  const visualType = normalizedType === "discussion" ? "discussion" : "pin";
   const images = Array.isArray(item?.images) ? item.images.filter(Boolean) : [];
   const authorName = resolveAuthorName(item);
-  const baseKey = item?.id || item?._id || authorName || "item";
-  const tagBadge = resolveTagBadge(cardType);
-  const pinId = item?._id || item?.id;
-  const isEventPin = cardType === "pin";
+  const pinId =
+    toIdString(item?.pinId) ??
+    toIdString(item?._id) ??
+    toIdString(item?.id);
+  const authorId =
+    toIdString(item?.authorId) ??
+    toIdString(item?.creatorId) ??
+    toIdString(item?.creator?._id);
+  const baseKey = pinId || item?.id || item?._id || authorName || "item";
+  const tagBadge = resolveTagBadge(normalizedType);
+  const cardClassName = `card ${visualType}${pinId ? " clickable" : ""}`;
+  const isEventPin = visualType === "pin";
   const isValidPinId =
     typeof pinId === "string" && /^[0-9a-fA-F]{24}$/.test(pinId);
   const participantCount =
@@ -117,21 +192,35 @@ function FeedCard({ item }) {
           return;
         }
         const mapped = Array.isArray(payload)
-          ? payload.map((record, idx) => ({
-              id:
-                record?._id ||
-                record?.userId ||
-                `${pinId}-attendee-${idx}`,
-              name:
+          ? payload.map((record, idx) => {
+              const attendeeId =
+                toIdString(record?.userId) ??
+                toIdString(record?._id) ??
+                toIdString(record?.profile?._id) ??
+                toIdString(record?.profile?.userId) ??
+                toIdString(record?.user?._id);
+              const name =
                 record?.displayName ||
                 record?.username ||
+                record?.profile?.displayName ||
+                record?.profile?.username ||
                 record?.email ||
-                `Guest ${idx + 1}`,
-              avatar:
-                record?.avatar?.thumbnailUrl ||
-                record?.avatar?.url ||
-                resolveLibraryAvatar(idx),
-            }))
+                record?.profile?.email ||
+                `Guest ${idx + 1}`;
+              const avatar =
+                resolveAssetUrl(
+                  record?.avatar ||
+                    record?.profile?.avatar ||
+                    record?.user?.avatar
+                ) ?? resolveLibraryAvatar(idx);
+              return {
+                id: attendeeId ?? `${pinId}-attendee-${idx}`,
+                userId: attendeeId ?? null,
+                name,
+                avatar,
+                raw: record,
+              };
+            })
           : [];
         attendeeCache.set(pinId, mapped);
         setAttendees(mapped);
@@ -151,13 +240,17 @@ function FeedCard({ item }) {
     if (!isEventPin) {
       return [];
     }
-    if (participantCount === 0) {
+    const interestedCount = interestedNames.length;
+    const statsCount = Number.isFinite(participantCount) ? participantCount : 0;
+    const desiredCount = Math.max(interestedCount, statsCount);
+    if (desiredCount <= 0) {
       return [];
     }
     const seeds =
-      interestedNames.length > 0 ? interestedNames : FALLBACK_NAMES;
-    return seeds.map((name, idx) => ({
+      interestedCount > 0 ? interestedNames : FALLBACK_NAMES;
+    return seeds.slice(0, desiredCount).map((name, idx) => ({
       id: `${baseKey}-fallback-${idx}`,
+      userId: null,
       name: String(name),
       avatar: resolveLibraryAvatar(idx),
     }));
@@ -167,20 +260,137 @@ function FeedCard({ item }) {
   const attendeeTotal = attendees.length
     ? attendees.length
     : participantCount ?? resolvedAttendees.length;
-  const displayedAttendees = resolvedAttendees.slice(
-    0,
-    Math.min(5, attendeeTotal)
-  );
   const remainingAttendees = Math.max(
     0,
-    attendeeTotal - displayedAttendees.length
+    attendeeTotal - resolvedAttendees.length
   );
   const shouldShowAttendees =
-    isEventPin && displayedAttendees.length > 0 && attendeeTotal > 0;
+    isEventPin && resolvedAttendees.length > 0 && attendeeTotal > 0;
+  const displayAttendees = useMemo(() => {
+    if (!shouldShowAttendees) {
+      return [];
+    }
+    const creatorAvatarUrl = resolveAssetUrl(item?.creator?.avatar, DEFAULT_AVATAR);
+    return resolvedAttendees.map((attendee, idx) => {
+      if (!attendee) {
+        return null;
+      }
+      const normalizedId =
+        toIdString(attendee.userId) ??
+        toIdString(attendee.id) ??
+        toIdString(attendee._id) ??
+        toIdString(attendee.raw?.userId) ??
+        toIdString(attendee.raw?._id) ??
+        toIdString(attendee.raw?.profile?._id) ??
+        toIdString(attendee.raw?.profile?.userId);
+
+      const rawAvatar =
+        resolveAssetUrl(attendee.avatar) ??
+        resolveAssetUrl(attendee.raw?.avatar) ??
+        resolveAssetUrl(attendee.raw?.profile?.avatar) ??
+        resolveAssetUrl(attendee.raw?.user?.avatar);
+
+      const matchesCreator = authorId && normalizedId && normalizedId === authorId;
+      const avatar =
+        rawAvatar ||
+        (matchesCreator ? creatorAvatarUrl : null) ||
+        resolveLibraryAvatar(idx);
+
+      return {
+        ...attendee,
+        userId: normalizedId ?? attendee.userId ?? attendee.id ?? null,
+        avatar,
+      };
+    }).filter(Boolean);
+  }, [authorId, item, resolvedAttendees, shouldShowAttendees]);
+  const handleCardClick = useCallback(() => {
+    if (typeof onSelectItem === "function" && pinId) {
+      onSelectItem(pinId, item);
+    }
+  }, [onSelectItem, pinId, item]);
+  const handleCardKeyDown = useCallback(
+    (event) => {
+      if (event.target !== event.currentTarget) {
+        return;
+      }
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        handleCardClick();
+      }
+    },
+    [handleCardClick]
+  );
+  const handleAuthorClick = useCallback(
+    (event) => {
+      event.stopPropagation();
+      if (typeof onSelectAuthor === "function" && authorId) {
+        onSelectAuthor(authorId, item);
+      }
+    },
+    [authorId, item, onSelectAuthor]
+  );
+  const handleBookmarkClick = useCallback((event) => {
+    event.stopPropagation();
+  }, []);
+  const handleAttendeeClick = useCallback(
+    (event, attendee) => {
+      event.stopPropagation();
+      if (!attendee) {
+        return;
+      }
+      const attendeeId =
+        toIdString(attendee.userId) ??
+        toIdString(attendee.id) ??
+        toIdString(attendee._id);
+      if (typeof onSelectAuthor === "function" && attendeeId) {
+        onSelectAuthor(attendeeId, attendee);
+      }
+    },
+    [onSelectAuthor]
+  );
+  const attendeesRowRef = useRef(null);
+  const [attendeesScrollable, setAttendeesScrollable] = useState(false);
+
+  useEffect(() => {
+    const node = attendeesRowRef.current;
+    if (!node || !shouldShowAttendees) {
+      setAttendeesScrollable(false);
+      return;
+    }
+
+    const updateScrollable = () => {
+      const scrollable = node.scrollWidth - node.clientWidth > 1;
+      setAttendeesScrollable(scrollable);
+    };
+
+    updateScrollable();
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(updateScrollable);
+      observer.observe(node);
+      return () => {
+        observer.disconnect();
+      };
+    }
+
+    window.addEventListener("resize", updateScrollable);
+    return () => {
+      window.removeEventListener("resize", updateScrollable);
+    };
+  }, [displayAttendees, shouldShowAttendees]);
+
+  const attendeesRequireScroll =
+    shouldShowAttendees && attendeesScrollable;
 
   return (
-    <article className={`card ${cardType}`}>
-      <header className={`card-header ${cardType}`}>
+    <article
+      className={cardClassName}
+      onClick={pinId ? handleCardClick : undefined}
+      onKeyDown={pinId ? handleCardKeyDown : undefined}
+      tabIndex={pinId ? 0 : undefined}
+      data-pin-id={pinId ?? undefined}
+    >
+      <header className={`card-header ${visualType}`}>
         <div className="tag">
           <img
             src={tagBadge.icon}
@@ -188,13 +398,18 @@ function FeedCard({ item }) {
             alt=""
             aria-hidden="true"
           />
-          <span>{item?.tag || tagBadge.label}</span>
+          <span>{tagBadge.label}</span>
         </div>
         <div className="meta-right">
           {item?.distance && <span className="distance">{item.distance}</span>}
           {item?.distance && item?.timeLabel && <span className="dot">|</span>}
           {item?.timeLabel && <span className="time">{item.timeLabel}</span>}
-          <button type="button" className="bookmark-btn" aria-label="Bookmark pin">
+          <button
+            type="button"
+            className="bookmark-btn"
+            aria-label="Bookmark pin"
+            onClick={handleBookmarkClick}
+          >
             <span className="bookmark-emoji" role="img" aria-hidden="true">
               [*]
             </span>
@@ -205,25 +420,48 @@ function FeedCard({ item }) {
       {item?.text && <p className="card-text">{item.text}</p>}
 
       {images.length > 0 && (
-        <div
-          className={`media-grid ${
-            images.length === 1 ? "one" : images.length === 2 ? "two" : ""
-          }`}
-        >
-          {images.map((src, imgIndex) => (
-            <img
-              key={`${baseKey}-media-${imgIndex}`}
-              src={src}
-              className="media"
-              alt=""
-              loading="lazy"
-            />
-          ))}
-        </div>
+        images.length >= 3 ? (
+          <div className="media-scroll" aria-label="Pin photos" role="list">
+            {images.map((src, imgIndex) => (
+              <img
+                key={`${baseKey}-media-${imgIndex}`}
+                src={src}
+                className="media scroll-item"
+                alt=""
+                loading="lazy"
+                role="listitem"
+              />
+            ))}
+          </div>
+        ) : (
+          <div
+            className={`media-grid ${
+              images.length === 1 ? "one" : "two"
+            }`}
+          >
+            {images.map((src, imgIndex) => (
+              <img
+                key={`${baseKey}-media-${imgIndex}`}
+                src={src}
+                className="media"
+                alt=""
+                loading="lazy"
+              />
+            ))}
+          </div>
+        )
       )}
 
       <footer className="card-footer">
-        <div className="author">
+        <button
+          type="button"
+          className="author author-button"
+          onClick={handleAuthorClick}
+          aria-label={
+            authorId ? `View ${authorName}'s profile` : undefined
+          }
+          disabled={!authorId}
+        >
           <img
             className="avatar"
             src={resolveAvatar(item)}
@@ -234,15 +472,27 @@ function FeedCard({ item }) {
             }}
           />
           <span className="name">{authorName}</span>
-        </div>
+        </button>
 
-        <div className="interested-row">
+        <div
+          className={`interested-row${
+            attendeesRequireScroll ? " scrollable" : ""
+          }`}
+          ref={attendeesRowRef}
+        >
           {shouldShowAttendees &&
-            displayedAttendees.map((attendee) => (
-              <span
+            displayAttendees.map((attendee, attendeeIndex) => (
+              <button
+                type="button"
                 className="interest-bubble"
-                key={attendee.id ?? `${baseKey}-attendee-${attendee.name}`}
+                key={
+                  attendee.userId ??
+                  attendee.id ??
+                  attendee._id ??
+                  `${baseKey}-attendee-${attendee.name}-${attendeeIndex}`
+                }
                 title={attendee.name}
+                onClick={(event) => handleAttendeeClick(event, attendee)}
               >
                 <img
                   src={attendee.avatar || DEFAULT_AVATAR}
@@ -253,9 +503,9 @@ function FeedCard({ item }) {
                     event.currentTarget.src = DEFAULT_AVATAR;
                   }}
                 />
-              </span>
+              </button>
             ))}
-          {shouldShowAttendees && remainingAttendees > 0 && (
+          {shouldShowAttendees && attendeeTotal > resolvedAttendees.length && (
             <span className="interest-more">+{remainingAttendees}</span>
           )}
         </div>
@@ -280,7 +530,7 @@ function FeedCard({ item }) {
   );
 }
 
-export default function Feed({ items }) {
+export default function Feed({ items, onSelectItem, onSelectAuthor }) {
   if (!Array.isArray(items) || items.length === 0) {
     return (
       <div className="feed">
@@ -296,6 +546,8 @@ export default function Feed({ items }) {
       {items.map((item, index) => (
         <FeedCard
           item={item}
+          onSelectItem={onSelectItem}
+          onSelectAuthor={onSelectAuthor}
           key={item?.id || item?._id || `${index}-${resolveAuthorName(item)}`}
         />
       ))}
