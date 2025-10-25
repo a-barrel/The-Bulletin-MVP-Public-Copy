@@ -28,9 +28,21 @@ const mongoUri = isOffline
 
 const offlineAuthToken = process.env.PINPOINT_OFFLINE_DEMO_TOKEN || 'demo-token';
 
+const normalizeStorageBucket = (value) => {
+  if (!value) {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return trimmed.replace(/^gs:\/\//i, '');
+};
+
 const firebase = {
   serviceAccountJson: process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
-  emulatorHost: process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099'
+  emulatorHost: process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099',
+  storageBucket: normalizeStorageBucket(process.env.FIREBASE_STORAGE_BUCKET)
 };
 
 module.exports = {

@@ -901,6 +901,100 @@ router.post('/updates', async (req, res) => {
   }
 });
 
+router.get('/bad-users', async (req, res) => {
+  try {
+    const users = await User.find({ 'stats.cussCount': { $gt: 0 } })
+      .select({
+        username: 1,
+        displayName: 1,
+        avatar: 1,
+        stats: 1,
+        accountStatus: 1,
+        createdAt: 1
+      })
+      .sort({ 'stats.cussCount': -1, createdAt: 1 })
+      .lean();
+
+    const payload = users.map((user) => ({
+      id: toIdString(user._id),
+      username: user.username || null,
+      displayName: user.displayName || null,
+      avatar: user.avatar
+        ? {
+            url: user.avatar.url || null,
+            thumbnailUrl: user.avatar.thumbnailUrl || null
+          }
+        : null,
+      cussCount: user?.stats?.cussCount ?? 0,
+      accountStatus: user.accountStatus || 'active',
+      createdAt: user.createdAt ? user.createdAt.toISOString() : null
+    }));
+
+    res.json(payload);
+  } catch (error) {
+    console.error('Failed to load users with cuss stats', error);
+    res.status(500).json({ message: 'Failed to load cuss stats' });
+  }
+});
+
+router.post('/bad-users/:userId/increment', async (req, res) => {
+  const { userId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: 'Invalid user id' });
+  }
+
+  try {
+    const result = await User.findByIdAndUpdate(
+      userId,
+      { $inc: { 'stats.cussCount': 1 } },
+      { new: true, projection: { username: 1, displayName: 1, stats: 1 } }
+    );
+
+    if (!result) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      id: toIdString(result._id),
+      username: result.username || null,
+      displayName: result.displayName || null,
+      cussCount: result?.stats?.cussCount ?? 0
+    });
+  } catch (error) {
+    console.error('Failed to increment cuss count', error);
+    res.status(500).json({ message: 'Failed to increment cuss count' });
+  }
+});
+
+router.post('/bad-users/:userId/reset', async (req, res) => {
+  const { userId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: 'Invalid user id' });
+  }
+
+  try {
+    const result = await User.findByIdAndUpdate(
+      userId,
+      { $set: { 'stats.cussCount': 0 } },
+      { new: true, projection: { username: 1, displayName: 1, stats: 1 } }
+    );
+
+    if (!result) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      id: toIdString(result._id),
+      username: result.username || null,
+      displayName: result.displayName || null,
+      cussCount: result?.stats?.cussCount ?? 0
+    });
+  } catch (error) {
+    console.error('Failed to reset cuss count', error);
+    res.status(500).json({ message: 'Failed to reset cuss count' });
+  }
+});
+
 router.post('/replies', async (req, res) => {
   const CreateReplySchema = z.object({
     pinId: ObjectIdString,
