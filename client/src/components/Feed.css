@@ -60,6 +60,8 @@
   line-height: 1.35rem;
   text-align: left;
   margin: 0.25rem 0 0.2rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Images */
