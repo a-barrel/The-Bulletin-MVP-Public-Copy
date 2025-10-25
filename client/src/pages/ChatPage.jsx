@@ -71,6 +71,19 @@ function ChatPage() {
   const { location: viewerLocation } = useLocationContext();
   const viewerLatitude = viewerLocation?.latitude ?? null;
   const viewerLongitude = viewerLocation?.longitude ?? null;
+  const viewerAccuracy = Number.isFinite(viewerLocation?.accuracy)
+    ? viewerLocation.accuracy
+    : undefined;
+  const viewerCoordinates = useMemo(() => {
+    if (!Number.isFinite(viewerLatitude) || !Number.isFinite(viewerLongitude)) {
+      return null;
+    }
+    return {
+      latitude: viewerLatitude,
+      longitude: viewerLongitude,
+      ...(viewerAccuracy !== undefined ? { accuracy: viewerAccuracy } : {})
+    };
+  }, [viewerLatitude, viewerLongitude, viewerAccuracy]);
   const [rooms, setRooms] = useState([]);
   const [roomsError, setRoomsError] = useState(null);
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
@@ -197,7 +210,10 @@ function ChatPage() {
       }
       setMessagesError(null);
       try {
-        const data = await fetchChatMessages(roomId);
+        const data = await fetchChatMessages(roomId, {
+          latitude: viewerCoordinates?.latitude,
+          longitude: viewerCoordinates?.longitude
+        });
         setMessages(data);
       } catch (error) {
         setMessages([]);
@@ -208,7 +224,7 @@ function ChatPage() {
         }
       }
     },
-    []
+    [viewerCoordinates]
   );
 
   const loadPresence = useCallback(async (roomId) => {
@@ -216,14 +232,17 @@ function ChatPage() {
       return;
     }
     try {
-      const data = await fetchChatPresence(roomId);
+      const data = await fetchChatPresence(roomId, {
+        latitude: viewerCoordinates?.latitude,
+        longitude: viewerCoordinates?.longitude
+      });
       setPresence(data);
       setPresenceError(null);
     } catch (error) {
       setPresence([]);
       setPresenceError(error?.message || 'Failed to load room presence.');
     }
-  }, []);
+  }, [viewerCoordinates]);
 
   useEffect(() => {
     if (!selectedRoomId) {
@@ -268,7 +287,18 @@ function ChatPage() {
 
     const sendPresence = async () => {
       try {
-        await upsertChatPresence(selectedRoomId, {});
+        await upsertChatPresence(
+          selectedRoomId,
+          viewerCoordinates
+            ? {
+                latitude: viewerCoordinates.latitude,
+                longitude: viewerCoordinates.longitude,
+                ...(viewerCoordinates.accuracy !== undefined
+                  ? { accuracy: viewerCoordinates.accuracy }
+                  : {})
+              }
+            : {}
+        );
       } catch (error) {
         console.warn('Failed to update chat presence', error);
       }
@@ -277,7 +307,7 @@ function ChatPage() {
     sendPresence();
     const interval = setInterval(sendPresence, PRESENCE_HEARTBEAT_MS);
     return () => clearInterval(interval);
-  }, [authUser, selectedRoomId]);
+  }, [authUser, selectedRoomId, viewerCoordinates]);
 
   const handleSelectRoom = useCallback((roomId) => {
     setSelectedRoomId(roomId);
@@ -351,7 +381,15 @@ function ChatPage() {
 
       setIsSendingMessage(true);
       try {
-        const message = await createChatMessage(selectedRoomId, { message: trimmed });
+        const payload = { message: trimmed };
+        if (viewerCoordinates) {
+          payload.latitude = viewerCoordinates.latitude;
+          payload.longitude = viewerCoordinates.longitude;
+          if (viewerCoordinates.accuracy !== undefined) {
+            payload.accuracy = viewerCoordinates.accuracy;
+          }
+        }
+        const message = await createChatMessage(selectedRoomId, payload);
         setMessages((prev) => [...prev, message]);
         if (message?.badgeEarnedId) {
           playBadgeSound();
@@ -365,7 +403,14 @@ function ChatPage() {
         setIsSendingMessage(false);
       }
     },
-    [announceBadgeEarned, authUser, messageDraft, scrollMessagesToBottom, selectedRoomId]
+    [
+      announceBadgeEarned,
+      authUser,
+      messageDraft,
+      scrollMessagesToBottom,
+      selectedRoomId,
+      viewerCoordinates
+    ]
   );
 
   const filteredPresence = useMemo(() => {

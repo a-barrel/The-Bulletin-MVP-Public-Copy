@@ -1020,13 +1020,25 @@ export async function createChatMessage(roomId, input) {
   return payload;
 }
 
-export async function fetchChatMessages(roomId) {
+export async function fetchChatMessages(roomId, { latitude, longitude } = {}) {
   if (!roomId) {
     throw new Error('Room id is required to load messages');
   }
 
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/messages`, {
+  const params = new URLSearchParams();
+  if (latitude !== undefined && latitude !== null && !Number.isNaN(latitude)) {
+    params.set('latitude', String(latitude));
+  }
+  if (longitude !== undefined && longitude !== null && !Number.isNaN(longitude)) {
+    params.set('longitude', String(longitude));
+  }
+  const query = params.toString();
+  const url = query
+    ? `${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/messages?${query}`
+    : `${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/messages`;
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: await buildHeaders()
   });
@@ -1075,13 +1087,26 @@ export async function upsertChatPresence(roomId, input = {}) {
   return payload;
 }
 
-export async function fetchChatPresence(roomId) {
+export async function fetchChatPresence(roomId, { latitude, longitude } = {}) {
   if (!roomId) {
     throw new Error('Room id is required to load presence');
   }
 
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/presence`, {
+  const params = new URLSearchParams();
+  if (latitude !== undefined && latitude !== null && !Number.isNaN(latitude)) {
+    params.set('latitude', String(latitude));
+  }
+  if (longitude !== undefined && longitude !== null && !Number.isNaN(longitude)) {
+    params.set('longitude', String(longitude));
+  }
+
+  const query = params.toString();
+  const url = query
+    ? `${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/presence?${query}`
+    : `${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/presence`;
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: await buildHeaders()
   });
@@ -1200,6 +1225,35 @@ export async function fetchReplies(pinId) {
   const payload = await response.json().catch(() => []);
   if (!response.ok) {
     throw new Error(payload?.message || 'Failed to load replies');
+  }
+
+  return payload;
+}
+
+export async function fetchStorageObjects({ prefix, limit } = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const params = new URLSearchParams();
+
+  if (typeof prefix === 'string') {
+    params.set('prefix', prefix);
+  }
+
+  if (Number.isFinite(limit) && limit > 0) {
+    params.set('limit', String(limit));
+  }
+
+  const queryString = params.toString();
+  const response = await fetch(
+    `${baseUrl}/api/storage/objects${queryString ? `?${queryString}` : ''}`,
+    {
+      method: 'GET',
+      headers: await buildHeaders()
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load Firebase Storage objects');
   }
 
   return payload;

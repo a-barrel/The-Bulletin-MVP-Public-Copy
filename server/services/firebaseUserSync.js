@@ -510,18 +510,52 @@ function loadUsersFromExport(exportPath) {
   }));
 }
 
-async function fetchAllAuthUsersViaAdmin() {
-  const collected = [];
-  let pageToken;
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const DEFAULT_AUTH_FETCH_RETRY_ATTEMPTS = 5;
+const DEFAULT_AUTH_FETCH_RETRY_DELAY_MS = 500;
 
-  do {
-    // eslint-disable-next-line no-await-in-loop
-    const result = await admin.auth().listUsers(1000, pageToken);
-    collected.push(...result.users);
-    pageToken = result.pageToken;
-  } while (pageToken);
+async function fetchAllAuthUsersViaAdmin({
+  maxAttempts = runtime.isOffline ? DEFAULT_AUTH_FETCH_RETRY_ATTEMPTS : 1,
+  baseDelayMs = DEFAULT_AUTH_FETCH_RETRY_DELAY_MS
+} = {}) {
+  let attempt = 0;
 
-  return collected;
+  while (attempt < maxAttempts) {
+    try {
+      const collected = [];
+      let pageToken;
+
+      do {
+        // eslint-disable-next-line no-await-in-loop
+        const result = await admin.auth().listUsers(1000, pageToken);
+        collected.push(...result.users);
+        pageToken = result.pageToken;
+      } while (pageToken);
+
+      return collected;
+    } catch (error) {
+      const message = error?.message || '';
+      const isConnectionRefused =
+        error?.code === 'ECONNREFUSED' ||
+        (typeof message === 'string' && message.includes('ECONNREFUSED'));
+
+      const isRetryable = runtime.isOffline && isConnectionRefused && attempt < maxAttempts - 1;
+      if (!isRetryable) {
+        throw error;
+      }
+
+      const backoffMs = Math.min(baseDelayMs * 2 ** attempt, 5000);
+      console.info(
+        `Firebase Auth emulator not ready (attempt ${attempt + 1}/${maxAttempts}). Retrying in ${backoffMs}ms.`
+      );
+      // eslint-disable-next-line no-await-in-loop
+      await wait(backoffMs);
+      attempt += 1;
+    }
+  }
+
+  // Should never reach here because we either return or throw.
+  return [];
 }
 
 async function syncAllFirebaseUsers({ dryRun = false, fallbackExportPath } = {}) {

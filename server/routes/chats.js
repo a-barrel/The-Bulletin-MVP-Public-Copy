@@ -140,10 +140,25 @@ const CreateMessageRequestSchema = z
     { message: 'Latitude and longitude must both be provided together.' }
   );
 
-const CreatePresenceRequestSchema = z.object({
-  sessionId: ObjectIdString.optional(),
-  joinedAt: z.string().datetime().optional(),
-  lastActiveAt: z.string().datetime().optional()
+const CreatePresenceRequestSchema = z
+  .object({
+    sessionId: ObjectIdString.optional(),
+    joinedAt: z.string().datetime().optional(),
+    lastActiveAt: z.string().datetime().optional(),
+    latitude: z.number().min(-90).max(90).optional(),
+    longitude: z.number().min(-180).max(180).optional(),
+    accuracy: z.number().nonnegative().optional()
+  })
+  .refine(
+    (value) =>
+      (value.latitude === undefined && value.longitude === undefined) ||
+      (value.latitude !== undefined && value.longitude !== undefined),
+    { message: 'Latitude and longitude must both be provided together.' }
+  );
+
+const AccessQuerySchema = z.object({
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional()
 });
 
 const resolveViewerUser = async (req) => {
@@ -535,6 +550,8 @@ router.post('/rooms/:roomId/presence', verifyToken, async (req, res) => {
 
     const accessContext = await buildViewerAccessContext({
       viewer,
+      latitude: input.latitude,
+      longitude: input.longitude,
       includeBookmarked: true
     });
     const access = evaluateRoomAccess(room, accessContext);
@@ -622,8 +639,11 @@ router.get('/rooms/:roomId/messages', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Chat room not found' });
     }
 
+    const query = AccessQuerySchema.parse(req.query);
     const accessContext = await buildViewerAccessContext({
       viewer,
+      latitude: query.latitude,
+      longitude: query.longitude,
       includeBookmarked: true
     });
     const access = evaluateRoomAccess(room, accessContext);
@@ -661,8 +681,11 @@ router.get('/rooms/:roomId/presence', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Chat room not found' });
     }
 
+    const query = AccessQuerySchema.parse(req.query);
     const accessContext = await buildViewerAccessContext({
       viewer,
+      latitude: query.latitude,
+      longitude: query.longitude,
       includeBookmarked: true
     });
     const access = evaluateRoomAccess(room, accessContext);
