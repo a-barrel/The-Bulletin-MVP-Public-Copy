@@ -106,6 +106,7 @@ app.use('/api/chats', verifyToken, require('./routes/chats'));
 app.use('/api/updates', verifyToken, require('./routes/updates'));
 app.use('/api/media', verifyToken, require('./routes/media'));
 app.use('/api/debug', require('./routes/debug'));
+app.use('/api/auth', require('./routes/auth'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

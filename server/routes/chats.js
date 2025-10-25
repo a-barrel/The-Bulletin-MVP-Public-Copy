@@ -23,6 +23,74 @@ const { grantBadge } = require('../services/badgeService');
 
 const router = express.Router();
 
+const PROFANITY_WORDS = [
+  'fuck',
+  'fucking',
+  'fucker',
+  'fuckers',
+  'shit',
+  'bitch',
+  'bitches',
+  'ass',
+  'asshole',
+  'bastard',
+  'damn',
+  'dick',
+  'dicks',
+  'piss',
+  'cunt'
+];
+
+const FRUITS = [
+  'Apple',
+  'Banana',
+  'Cherry',
+  'Mango',
+  'Pineapple',
+  'Watermelon',
+  'Peach',
+  'Kiwi',
+  'Grapefruit',
+  'Blueberry'
+];
+
+const PROFANITY_REGEX = new RegExp(`\\b(${PROFANITY_WORDS.join('|')})\\b`, 'gi');
+
+const normalizeFruit = (fruit, original) => {
+  if (original === original.toUpperCase()) {
+    return fruit.toUpperCase();
+  }
+  if (original[0] === original[0].toUpperCase()) {
+    return fruit.charAt(0).toUpperCase() + fruit.slice(1).toLowerCase();
+  }
+  return fruit.toLowerCase();
+};
+
+const pickFruitForWord = (word) => {
+  const normalized = word.toLowerCase();
+  let hash = 0;
+  for (let index = 0; index < normalized.length; index += 1) {
+    hash = (hash + normalized.charCodeAt(index)) % FRUITS.length;
+  }
+  return FRUITS[hash];
+};
+
+const replaceProfanityWithFruit = (text = '') => {
+  if (typeof text !== 'string' || !text) {
+    return text;
+  }
+  return text.replace(PROFANITY_REGEX, (match) => normalizeFruit(pickFruitForWord(match), match));
+};
+
+const countProfanityInstances = (text = '') => {
+  if (typeof text !== 'string' || !text) {
+    return 0;
+  }
+
+  const matches = text.match(PROFANITY_REGEX);
+  return matches ? matches.length : 0;
+};
+
 const RoomQuerySchema = z.object({
   pinId: z.string().optional(),
   ownerId: z.string().optional(),
@@ -391,10 +459,13 @@ router.post('/rooms/:roomId/messages', verifyToken, async (req, res) => {
         .json({ message: buildAccessDeniedMessage(access.reason) });
     }
 
+    const profanityCount = countProfanityInstances(input.message);
+    const sanitizedMessage = replaceProfanityWithFruit(input.message);
+
     const { messageDoc, response } = await createMessage({
       roomId,
       authorId: viewer._id.toString(),
-      message: input.message,
+      message: sanitizedMessage,
       pinId: input.pinId,
       replyToMessageId: input.replyToMessageId,
       latitude: input.latitude,
@@ -415,6 +486,19 @@ router.post('/rooms/:roomId/messages', verifyToken, async (req, res) => {
 
     if (chatBadgeResult?.granted) {
       response.badgeEarnedId = chatBadgeResult.badge.id;
+    }
+
+    response.message = messageDoc.message;
+
+    if (profanityCount > 0) {
+      try {
+        await User.updateOne(
+          { _id: viewer._id },
+          { $inc: { 'stats.cussCount': profanityCount } }
+        );
+      } catch (error) {
+        console.error('Failed to increment cuss count for user', viewer._id, error);
+      }
     }
 
     res.status(201).json(response);

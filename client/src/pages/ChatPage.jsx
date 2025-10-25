@@ -33,6 +33,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
 import { auth } from '../firebase';
 import { playBadgeSound } from '../utils/badgeSound';
+import { replaceProfanityWithFruit } from '../utils/profanityFilter';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import {
   fetchChatRooms,
@@ -40,7 +41,8 @@ import {
   fetchChatMessages,
   createChatMessage,
   fetchChatPresence,
-  upsertChatPresence
+  upsertChatPresence,
+  fetchCurrentUserProfile
 } from '../api/mongoDataApi';
 import { useLocationContext } from '../contexts/LocationContext';
 
@@ -100,6 +102,8 @@ function ChatPage() {
     radiusMeters: 500,
     isGlobal: false
   });
+  const [viewerProfile, setViewerProfile] = useState(null);
+  const filterCussWordsEnabled = Boolean(viewerProfile?.preferences?.filterCussWords);
 
   const messagesEndRef = useRef(null);
   const presenceIntervalRef = useRef(null);
@@ -121,8 +125,38 @@ function ChatPage() {
       setSelectedRoomId(null);
       setMessages([]);
       setPresence([]);
+      setViewerProfile(null);
     }
   }, [authLoading, authUser]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!authUser) {
+      setViewerProfile(null);
+      return;
+    }
+
+    const loadProfile = async () => {
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (!cancelled) {
+          setViewerProfile(profile);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Failed to load viewer profile for chat preferences', error);
+          setViewerProfile(null);
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authUser]);
 
   const loadRooms = useCallback(async () => {
     if (!authUser) {
@@ -544,6 +578,10 @@ function ChatPage() {
             ) : (
               messages.map((message) => {
                 const isSelf = authUser && message.authorId === authUser.uid;
+                const rawMessage = message.message ?? '';
+                const messageText = filterCussWordsEnabled
+                  ? replaceProfanityWithFruit(rawMessage)
+                  : rawMessage;
                 return (
                   <Stack
                     key={message._id}
@@ -568,7 +606,7 @@ function ChatPage() {
                           </Typography>
                         </Stack>
                         <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                          {message.message}
+                          {messageText}
                         </Typography>
                       </Stack>
                     </Paper>

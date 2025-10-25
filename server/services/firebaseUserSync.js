@@ -31,8 +31,11 @@ const resolveProfileImageBaseUrl = () => {
   return fallback ? fallback.replace(/\/+$/, '') : null;
 };
 
+const firebasePhotoSyncEnabled = process.env.PINPOINT_ENABLE_FIREBASE_PHOTO_SYNC === 'true';
 const PROFILE_IMAGE_BASE_URL = resolveProfileImageBaseUrl();
-const shouldAssignFirebasePhotos = Boolean(PROFILE_IMAGE_BASE_URL && hasProfileImages);
+const shouldAssignFirebasePhotos = Boolean(
+  firebasePhotoSyncEnabled && PROFILE_IMAGE_BASE_URL && hasProfileImages
+);
 
 const sanitizeUsername = (value) => {
   if (!value) {
@@ -156,7 +159,11 @@ if (!hasProfileImages) {
   console.warn(
     'No default profile images found. Set PINPOINT_PROFILE_IMAGE_COUNT or ensure uploaded images are available.'
   );
-} else if (!shouldAssignFirebasePhotos) {
+} else if (!firebasePhotoSyncEnabled) {
+  console.info(
+    'Firebase profile photo synchronization disabled. Set PINPOINT_ENABLE_FIREBASE_PHOTO_SYNC=true to enable updating Firebase avatars.'
+  );
+} else if (!PROFILE_IMAGE_BASE_URL) {
   console.warn(
     'Firebase profile photo assignment disabled. Provide PINPOINT_PROFILE_IMAGE_BASE_URL or run in offline mode to enable default avatars.'
   );
@@ -545,10 +552,21 @@ async function syncAllFirebaseUsers({ dryRun = false, fallbackExportPath } = {})
       throw error;
     }
 
-    summary.warnings.push({
-      type: 'firebase-admin',
-      message: error.message || 'Failed to list users via Firebase Admin SDK'
-    });
+    const errorMessage = error?.message || 'Failed to list users via Firebase Admin SDK';
+    const isConnectionRefused =
+      error?.code === 'ECONNREFUSED' ||
+      (typeof errorMessage === 'string' && errorMessage.includes('ECONNREFUSED'));
+
+    if (!(runtime.isOffline && isConnectionRefused)) {
+      summary.warnings.push({
+        type: 'firebase-admin',
+        message: errorMessage
+      });
+    } else {
+      console.info(
+        `Firebase Auth emulator not reachable (${errorMessage}). Falling back to local export for user sync.`
+      );
+    }
 
     try {
       authUsers = loadUsersFromExport(fallbackExportPath);

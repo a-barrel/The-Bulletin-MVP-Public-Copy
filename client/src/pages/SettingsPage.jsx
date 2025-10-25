@@ -41,6 +41,7 @@ import { auth } from '../firebase';
 import {
   fetchBlockedUsers,
   fetchCurrentUserProfile,
+  revokeCurrentSession,
   unblockUser,
   updateCurrentUserProfile
 } from '../api/mongoDataApi';
@@ -64,6 +65,7 @@ const DEFAULT_SETTINGS = {
   theme: 'system',
   radiusPreferenceMeters: 16093,
   locationSharingEnabled: false,
+  filterCussWords: false,
   statsPublic: true,
   notifications: {
     proximity: true,
@@ -126,6 +128,7 @@ function SettingsPage() {
           theme: result?.preferences?.theme ?? DEFAULT_SETTINGS.theme,
           radiusPreferenceMeters: roundRadius(result?.preferences?.radiusPreferenceMeters),
           locationSharingEnabled: Boolean(result?.locationSharingEnabled),
+          filterCussWords: result?.preferences?.filterCussWords ?? DEFAULT_SETTINGS.filterCussWords,
           statsPublic: result?.preferences?.statsPublic ?? DEFAULT_SETTINGS.statsPublic,
           notifications: {
             proximity:
@@ -225,6 +228,7 @@ function SettingsPage() {
       theme: profile?.preferences?.theme ?? DEFAULT_SETTINGS.theme,
       radiusPreferenceMeters: roundRadius(profile?.preferences?.radiusPreferenceMeters),
       locationSharingEnabled: Boolean(profile?.locationSharingEnabled),
+      filterCussWords: profile?.preferences?.filterCussWords ?? DEFAULT_SETTINGS.filterCussWords,
       statsPublic: profile?.preferences?.statsPublic ?? DEFAULT_SETTINGS.statsPublic,
       notifications: {
         proximity:
@@ -241,6 +245,7 @@ function SettingsPage() {
       settings.theme !== baselineSettings.theme ||
       settings.locationSharingEnabled !== baselineSettings.locationSharingEnabled ||
       settings.radiusPreferenceMeters !== baselineSettings.radiusPreferenceMeters ||
+      settings.filterCussWords !== baselineSettings.filterCussWords ||
       settings.statsPublic !== baselineSettings.statsPublic ||
       settings.notifications.proximity !== baselineSettings.notifications.proximity ||
       settings.notifications.updates !== baselineSettings.notifications.updates ||
@@ -284,6 +289,13 @@ function SettingsPage() {
     setSettings((prev) => ({
       ...prev,
       statsPublic: !prev.statsPublic
+    }));
+  }, []);
+
+  const handleFilterCussWordsToggle = useCallback(() => {
+    setSettings((prev) => ({
+      ...prev,
+      filterCussWords: !prev.filterCussWords
     }));
   }, []);
 
@@ -356,6 +368,7 @@ function SettingsPage() {
         preferences: {
           theme: settings.theme,
           radiusPreferenceMeters: settings.radiusPreferenceMeters,
+          filterCussWords: settings.filterCussWords,
           statsPublic: settings.statsPublic,
           notifications: {
             proximity: settings.notifications.proximity,
@@ -380,15 +393,31 @@ function SettingsPage() {
   }, [authUser, hasChanges, settings]);
 
   const handleSignOut = useCallback(async () => {
+    let revokeError = null;
+    try {
+      await revokeCurrentSession();
+    } catch (error) {
+      console.error('Failed to revoke server session during sign out.', error);
+      revokeError = error;
+    }
+
     try {
       await signOut(auth);
+      if (revokeError) {
+        setSaveStatus({
+          type: 'error',
+          message:
+            revokeError?.message ||
+            'Signed out locally, but failed to invalidate the server session. Please retry if concerned.'
+        });
+      }
     } catch (error) {
       setSaveStatus({
         type: 'error',
         message: error?.message || 'Failed to sign out.'
       });
     }
-  }, []);
+  }, [revokeCurrentSession]);
 
   return (
     <Box
@@ -556,6 +585,29 @@ function SettingsPage() {
             {badgeSoundEnabled
               ? 'The badge chime is enabled and will play the next time you unlock something.'
               : 'Badge chime remains muted. Turn it on here whenever you want to hear it.'}
+          </Typography>
+
+          <Divider />
+
+          <Stack spacing={0.5}>
+            <Typography variant="h6">Moderation</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Replace strong language in chats with friendlier wording.
+            </Typography>
+          </Stack>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={settings.filterCussWords}
+                onChange={handleFilterCussWordsToggle}
+              />
+            }
+            label="Swap offensive language for fruit names"
+          />
+          <Typography variant="body2" color="text.secondary">
+            {settings.filterCussWords
+              ? 'Chats will show cheerful fruit names whenever someone drops a curse word.'
+              : 'Leave chat messages untouched, even if they include colorful language.'}
           </Typography>
 
           <Divider />

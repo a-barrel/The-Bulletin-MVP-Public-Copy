@@ -1,6 +1,7 @@
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -207,6 +208,8 @@ function sanitizeDateField(value, label) {
 }
 
 function CreatePinPage() {
+  const navigate = useNavigate();
+  const { announceBadgeEarned } = useBadgeSound();
   const [pinType, setPinType] = useState('discussion');
   const [formState, setFormState] = useState(INITIAL_FORM_STATE);
   const [autoDelete, setAutoDelete] = useState(true);
@@ -226,7 +229,6 @@ function CreatePinPage() {
   const backButtonLabel = previousNavPage?.label ? `Back to ${previousNavPage.label}` : 'Back';
   const startDateValue = formState.startDate;
   const endDateValue = formState.endDate;
-  const { announceBadgeEarned } = useBadgeSound();
   const eventHeaderSubtitle = useMemo(() => {
     if (pinType !== 'event') {
       return '';
@@ -628,6 +630,9 @@ function CreatePinPage() {
             ? `Pin created successfully (ID: ${result._id}).`
             : 'Pin created successfully.'
         });
+        if (result?._id) {
+          navigate(`/pin/${result._id}`);
+        }
       } catch (error) {
         setStatus({
           type: 'error',
@@ -638,7 +643,7 @@ function CreatePinPage() {
         setIsSubmitting(false);
       }
     },
-    [announceBadgeEarned, autoDelete, coverPhotoId, formState, photoAssets, pinType]
+    [announceBadgeEarned, autoDelete, coverPhotoId, formState, navigate, photoAssets, pinType]
   );
 
   const resultJson = useMemo(() => {

@@ -233,6 +233,25 @@ export async function createPin(input) {
   return payload;
 }
 
+export async function revokeCurrentSession(options = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/auth/logout`, {
+    method: 'POST',
+    headers: await buildHeaders({}, { skipJson: true, ...options })
+  });
+
+  if (response.status === 204) {
+    return;
+  }
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to revoke session.');
+  }
+
+  return payload;
+}
+
 export async function fetchPinById(pinId, options = {}) {
   if (!pinId) {
     throw new Error('Pin id is required');
