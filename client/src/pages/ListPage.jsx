@@ -27,7 +27,7 @@ const METERS_PER_MILE = 1609.34;
 const DEFAULT_RADIUS_MILES = 10;
 const PIN_FETCH_LIMIT = 50;
 const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
-const DESCRIPTION_PREVIEW_LIMIT = 50;
+const DESCRIPTION_PREVIEW_LIMIT = 250;
 const API_BASE_URL = (runtimeConfig?.apiBaseUrl ?? "").replace(/\/$/, "");
 
 const toIdString = (value) => {
