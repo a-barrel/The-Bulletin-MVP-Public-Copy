@@ -17,7 +17,10 @@
     "install:all": "npm install && cd server && npm install && cd ../client && npm install",
     "lint": "eslint .",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "server:firebase": "cross-env PORT=8000 GOOGLE_APPLICATION_CREDENTIALS=\"../.vscode/bulletin-app-6548a-firebase-adminsdk-fbsvc-33332cd77e.json\" FIREBASE_AUTH_EMULATOR_HOST= PINPOINT_RUNTIME_MODE=online npm --prefix server run dev",
+    "client:firebase": "cross-env VITE_RUNTIME_MODE=online VITE_API_BASE_URL=http://localhost:8000 VITE_FIREBASE_AUTH_EMULATOR_URL= npm --prefix client run dev",
+    "devFirebase": "concurrently \"npm run server:firebase\" \"npm run client:firebase\""
   },
   "keywords": [
     "social",
@@ -37,6 +40,7 @@
     "babel-jest": "^30.2.0",
     "babel-plugin-transform-import-meta": "^2.3.3",
     "concurrently": "^8.2.2",
+    "cross-env": "^10.1.0",
     "eslint": "^8.57.0",
     "eslint-plugin-jsx-a11y": "^6.8.0",
     "eslint-plugin-react": "^7.35.0",

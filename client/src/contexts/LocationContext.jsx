@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import runtimeConfig from '../config/runtime';
 
 const LocationContext = createContext(null);
 
@@ -64,20 +65,56 @@ const sanitizeLocation = (input = {}, { source } = {}) => {
   return payload;
 };
 
+const resolveOfflineFallbackLocation = () => {
+  if (!runtimeConfig.isOffline) {
+    return null;
+  }
+
+  const fallback = sanitizeLocation(
+    {
+      latitude: import.meta.env.VITE_OFFLINE_FALLBACK_LATITUDE ?? 33.7838,
+      longitude: import.meta.env.VITE_OFFLINE_FALLBACK_LONGITUDE ?? -118.1136
+    },
+    { source: 'offline-fallback' }
+  );
+
+  if (!fallback) {
+    return null;
+  }
+
+  return {
+    ...fallback,
+    source: 'offline-fallback',
+    updatedAt: new Date().toISOString()
+  };
+};
+
+const OFFLINE_FALLBACK_LOCATION = resolveOfflineFallbackLocation();
+
 export function LocationProvider({ children }) {
   const [location, setLocationState] = useState(() => {
+    const fallbackLocation = OFFLINE_FALLBACK_LOCATION;
+
     if (typeof window === 'undefined') {
-      return null;
+      return fallbackLocation;
     }
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) {
-        return null;
+        return fallbackLocation;
       }
       const parsed = JSON.parse(raw);
-      return sanitizeLocation(parsed, { source: parsed?.source || 'storage' });
+      const sanitized = sanitizeLocation(parsed, { source: parsed?.source || 'storage' });
+      if (!sanitized) {
+        return fallbackLocation;
+      }
+
+      if (typeof parsed?.updatedAt === 'string' && parsed.updatedAt.trim()) {
+        return { ...sanitized, updatedAt: parsed.updatedAt };
+      }
+      return { ...sanitized, updatedAt: new Date().toISOString() };
     } catch {
-      return null;
+      return fallbackLocation;
     }
   });
 

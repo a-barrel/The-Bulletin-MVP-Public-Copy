@@ -33,6 +33,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
 import { auth } from '../firebase';
 import { playBadgeSound } from '../utils/badgeSound';
+import { replaceProfanityWithFruit } from '../utils/profanityFilter';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import {
   fetchChatRooms,
@@ -40,7 +41,8 @@ import {
   fetchChatMessages,
   createChatMessage,
   fetchChatPresence,
-  upsertChatPresence
+  upsertChatPresence,
+  fetchCurrentUserProfile
 } from '../api/mongoDataApi';
 import { useLocationContext } from '../contexts/LocationContext';
 
@@ -69,6 +71,19 @@ function ChatPage() {
   const { location: viewerLocation } = useLocationContext();
   const viewerLatitude = viewerLocation?.latitude ?? null;
   const viewerLongitude = viewerLocation?.longitude ?? null;
+  const viewerAccuracy = Number.isFinite(viewerLocation?.accuracy)
+    ? viewerLocation.accuracy
+    : undefined;
+  const viewerCoordinates = useMemo(() => {
+    if (!Number.isFinite(viewerLatitude) || !Number.isFinite(viewerLongitude)) {
+      return null;
+    }
+    return {
+      latitude: viewerLatitude,
+      longitude: viewerLongitude,
+      ...(viewerAccuracy !== undefined ? { accuracy: viewerAccuracy } : {})
+    };
+  }, [viewerLatitude, viewerLongitude, viewerAccuracy]);
   const [rooms, setRooms] = useState([]);
   const [roomsError, setRoomsError] = useState(null);
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
@@ -100,6 +115,8 @@ function ChatPage() {
     radiusMeters: 500,
     isGlobal: false
   });
+  const [viewerProfile, setViewerProfile] = useState(null);
+  const filterCussWordsEnabled = Boolean(viewerProfile?.preferences?.filterCussWords);
 
   const messagesEndRef = useRef(null);
   const presenceIntervalRef = useRef(null);
@@ -121,8 +138,38 @@ function ChatPage() {
       setSelectedRoomId(null);
       setMessages([]);
       setPresence([]);
+      setViewerProfile(null);
     }
   }, [authLoading, authUser]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!authUser) {
+      setViewerProfile(null);
+      return;
+    }
+
+    const loadProfile = async () => {
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (!cancelled) {
+          setViewerProfile(profile);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Failed to load viewer profile for chat preferences', error);
+          setViewerProfile(null);
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authUser]);
 
   const loadRooms = useCallback(async () => {
     if (!authUser) {
@@ -163,7 +210,10 @@ function ChatPage() {
       }
       setMessagesError(null);
       try {
-        const data = await fetchChatMessages(roomId);
+        const data = await fetchChatMessages(roomId, {
+          latitude: viewerCoordinates?.latitude,
+          longitude: viewerCoordinates?.longitude
+        });
         setMessages(data);
       } catch (error) {
         setMessages([]);
@@ -174,7 +224,7 @@ function ChatPage() {
         }
       }
     },
-    []
+    [viewerCoordinates]
   );
 
   const loadPresence = useCallback(async (roomId) => {
@@ -182,14 +232,17 @@ function ChatPage() {
       return;
     }
     try {
-      const data = await fetchChatPresence(roomId);
+      const data = await fetchChatPresence(roomId, {
+        latitude: viewerCoordinates?.latitude,
+        longitude: viewerCoordinates?.longitude
+      });
       setPresence(data);
       setPresenceError(null);
     } catch (error) {
       setPresence([]);
       setPresenceError(error?.message || 'Failed to load room presence.');
     }
-  }, []);
+  }, [viewerCoordinates]);
 
   useEffect(() => {
     if (!selectedRoomId) {
@@ -234,7 +287,18 @@ function ChatPage() {
 
     const sendPresence = async () => {
       try {
-        await upsertChatPresence(selectedRoomId, {});
+        await upsertChatPresence(
+          selectedRoomId,
+          viewerCoordinates
+            ? {
+                latitude: viewerCoordinates.latitude,
+                longitude: viewerCoordinates.longitude,
+                ...(viewerCoordinates.accuracy !== undefined
+                  ? { accuracy: viewerCoordinates.accuracy }
+                  : {})
+              }
+            : {}
+        );
       } catch (error) {
         console.warn('Failed to update chat presence', error);
       }
@@ -243,7 +307,7 @@ function ChatPage() {
     sendPresence();
     const interval = setInterval(sendPresence, PRESENCE_HEARTBEAT_MS);
     return () => clearInterval(interval);
-  }, [authUser, selectedRoomId]);
+  }, [authUser, selectedRoomId, viewerCoordinates]);
 
   const handleSelectRoom = useCallback((roomId) => {
     setSelectedRoomId(roomId);
@@ -317,7 +381,15 @@ function ChatPage() {
 
       setIsSendingMessage(true);
       try {
-        const message = await createChatMessage(selectedRoomId, { message: trimmed });
+        const payload = { message: trimmed };
+        if (viewerCoordinates) {
+          payload.latitude = viewerCoordinates.latitude;
+          payload.longitude = viewerCoordinates.longitude;
+          if (viewerCoordinates.accuracy !== undefined) {
+            payload.accuracy = viewerCoordinates.accuracy;
+          }
+        }
+        const message = await createChatMessage(selectedRoomId, payload);
         setMessages((prev) => [...prev, message]);
         if (message?.badgeEarnedId) {
           playBadgeSound();
@@ -331,7 +403,14 @@ function ChatPage() {
         setIsSendingMessage(false);
       }
     },
-    [announceBadgeEarned, authUser, messageDraft, scrollMessagesToBottom, selectedRoomId]
+    [
+      announceBadgeEarned,
+      authUser,
+      messageDraft,
+      scrollMessagesToBottom,
+      selectedRoomId,
+      viewerCoordinates
+    ]
   );
 
   const filteredPresence = useMemo(() => {
@@ -544,6 +623,10 @@ function ChatPage() {
             ) : (
               messages.map((message) => {
                 const isSelf = authUser && message.authorId === authUser.uid;
+                const rawMessage = message.message ?? '';
+                const messageText = filterCussWordsEnabled
+                  ? replaceProfanityWithFruit(rawMessage)
+                  : rawMessage;
                 return (
                   <Stack
                     key={message._id}
@@ -568,7 +651,7 @@ function ChatPage() {
                           </Typography>
                         </Stack>
                         <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                          {message.message}
+                          {messageText}
                         </Typography>
                       </Stack>
                     </Paper>

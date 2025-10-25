@@ -8,8 +8,9 @@ import addIcon from "../assets/AddIcon.svg";
 import updatesIcon from "../assets/UpdateIcon.svg";
 import Feed from "../components/Feed";
 import GlobalNavMenu from "../components/GlobalNavMenu";
-import PlaceIcon from "@mui/icons-material/Place"; // TODO: used only for Icon on pageConfig, maybe change with a list icon?
 import { fetchPinsNearby, fetchPinById } from "../api/mongoDataApi";
+import PlaceIcon from '@mui/icons-material/Place'; // TODO: used only for Icon on pageConfig, maybe change with a list icon?
+import { useUpdates } from "../contexts/UpdatesContext";
 
 export const pageConfig = {
   id: "list",
@@ -267,7 +268,7 @@ export default function ListPage() {
     };
 
     if (!("geolocation" in navigator)) {
-      useFallbackLocation("Geolocation is not supported. Showing default Long Beach area.");
+      useFallbackLocation("Using Long Beach area as location!!!");
       setLoading(false);
       return () => {
         cancelled = true;
@@ -384,6 +385,8 @@ export default function ListPage() {
     };
   }, [userLocation]);
 
+  const { unreadCount } = useUpdates();
+  //const [sortByExpiration, setSortByExpiration] = useState(false); // false = distance, true = expiration
   const handleSortToggle = useCallback(() => {
     setSortByExpiration((prev) => !prev);
   }, []);
@@ -450,6 +453,10 @@ export default function ListPage() {
     return sortedItems;
   }, [feedItems, sortByExpiration]);
 
+  const notificationsLabel =
+    unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
+  const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
+
   return (
     <div className="list-page">
       <div className="list-frame">
@@ -460,10 +467,15 @@ export default function ListPage() {
           <button
             className="header-icon-btn"
             type="button"
-            aria-label="Notifications"
+            aria-label={notificationsLabel}
             onClick={handleNotifications}
           >
-            <img src={updatesIcon} alt="Notifications" className="header-icon" />
+            <img src={updatesIcon} alt="" className="header-icon" aria-hidden="true" />
+            {displayBadge ? (
+              <span className="header-icon-badge" aria-hidden="true">
+                {displayBadge}
+              </span>
+            ) : null}
           </button>
         </header>
 

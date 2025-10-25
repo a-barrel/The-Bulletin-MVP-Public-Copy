@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 import './LogoutPage.css'; // Same as LoginPage.css
+import { revokeCurrentSession } from '../api/mongoDataApi';
 
 export const pageConfig = {
   id: 'logout',
@@ -19,6 +20,12 @@ function LogoutPage() {
   useEffect(() => {
     const handleLogout = async () => {
       try {
+        try {
+          await revokeCurrentSession();
+        } catch (error) {
+          console.error('Failed to revoke server session during logout.', error);
+        }
+
         await signOut(auth);
         navigate('/login');
       } catch (error) {
