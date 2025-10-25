@@ -11,6 +11,7 @@ import GlobalNavMenu from "../components/GlobalNavMenu";
 import { fetchPinsNearby, fetchPinById } from "../api/mongoDataApi";
 import PlaceIcon from '@mui/icons-material/Place'; // TODO: used only for Icon on pageConfig, maybe change with a list icon?
 import { useUpdates } from "../contexts/UpdatesContext";
+import runtimeConfig from "../config/runtime";
 
 export const pageConfig = {
   id: "list",
@@ -27,6 +28,7 @@ const DEFAULT_RADIUS_MILES = 10;
 const PIN_FETCH_LIMIT = 50;
 const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
 const DESCRIPTION_PREVIEW_LIMIT = 50;
+const API_BASE_URL = (runtimeConfig?.apiBaseUrl ?? "").replace(/\/$/, "");
 
 const toIdString = (value) => {
   if (!value && value !== 0) {
@@ -155,15 +157,38 @@ const truncateText = (value, limit = DESCRIPTION_PREVIEW_LIMIT) => {
   return `${truncated}…`;
 };
 
-const normalizeMediaEntry = (asset) => {
+const resolveAssetUrl = (asset, fallback = null) => {
   if (!asset) {
-    return null;
-  }
-  if (typeof asset === "string") {
-    return asset;
+    return fallback;
   }
   if (typeof asset === "object") {
-    return asset.url || asset.thumbnailUrl || asset.previewUrl || null;
+    return (
+      resolveAssetUrl(asset.thumbnailUrl, fallback) ||
+      resolveAssetUrl(asset.url, fallback) ||
+      resolveAssetUrl(asset.previewUrl, fallback) ||
+      resolveAssetUrl(asset.path, fallback) ||
+      fallback
+    );
+  }
+  if (typeof asset === "string") {
+    const trimmed = asset.trim();
+    if (!trimmed) {
+      return fallback;
+    }
+    if (/^(?:[a-z]+:)?\/\//i.test(trimmed) || trimmed.startsWith("data:")) {
+      return trimmed;
+    }
+    const normalized = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+    return API_BASE_URL ? `${API_BASE_URL}${normalized}` : normalized;
+  }
+  return fallback;
+};
+
+const normalizeMediaEntry = (asset) => {
+  const resolved = resolveAssetUrl(asset, null);
+  if (typeof resolved === "string") {
+    const trimmed = resolved.trim();
+    return trimmed.length > 0 ? trimmed : null;
   }
   return null;
 };
@@ -204,7 +229,11 @@ const mapPinToFeedItem = (pin) => {
   const hoursUntil = computeHoursUntil(referenceDate);
   const timeLabel = formatTimeLabel(hoursUntil);
   const description = resolveDescription(pin);
-  const text = truncateText(description) ?? pin?.title ?? "Untitled pin";
+  const title =
+    typeof pin?.title === "string" && pin.title.trim().length > 0
+      ? pin.title.trim()
+      : null;
+  const text = truncateText(description) ?? title ?? "Untitled pin";
   const images = resolveImageSources(pin);
   const comments =
     typeof pin?.replyCount === "number"
@@ -221,6 +250,17 @@ const mapPinToFeedItem = (pin) => {
       ? pin.participantCount
       : null;
 
+  const attendeeIds = [];
+  if (Array.isArray(pin?.attendingUserIds) && pin.attendingUserIds.length > 0) {
+    for (const value of pin.attendingUserIds) {
+      const normalized = toIdString(value);
+      if (normalized && !attendeeIds.includes(normalized)) {
+        attendeeIds.push(normalized);
+      }
+    }
+  }
+  const attendeeVersion = attendeeIds.length > 0 ? attendeeIds.join("|") : null;
+
   const type = pin?.type === "event" ? "pin" : "discussion";
   const tagSource = Array.isArray(pin?.tags) && pin.tags.length > 0 ? pin.tags[0] : null;
 
@@ -233,6 +273,7 @@ const mapPinToFeedItem = (pin) => {
     distance: distanceLabel,
     timeLabel,
     text,
+    title,
     images,
     author: resolveAuthorName(pin),
     authorName: resolveAuthorName(pin),
@@ -242,6 +283,8 @@ const mapPinToFeedItem = (pin) => {
     comments,
     interested: [],
     participantCount,
+    attendeeIds,
+    attendeeVersion,
     distanceMiles,
     expiresInHours: hoursUntil,
   };

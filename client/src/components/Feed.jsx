@@ -166,6 +166,24 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
   const participantCount =
     typeof item?.participantCount === "number" ? item.participantCount : null;
 
+  const attendeeIds = useMemo(
+    () =>
+      Array.isArray(item?.attendeeIds)
+        ? item.attendeeIds.filter(Boolean)
+        : [],
+    [item?.attendeeIds]
+  );
+
+  const attendeeSignature = useMemo(() => {
+    if (typeof item?.attendeeVersion === "string") {
+      const trimmed = item.attendeeVersion.trim();
+      if (trimmed) {
+        return trimmed;
+      }
+    }
+    return attendeeIds.length > 0 ? attendeeIds.join("|") : null;
+  }, [attendeeIds, item?.attendeeVersion]);
+
   const interestedNames = useMemo(
     () =>
       Array.isArray(item?.interested) ? item.interested.filter(Boolean) : [],
@@ -174,15 +192,36 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
 
   const [attendees, setAttendees] = useState([]);
 
+  const badgeLabel =
+    typeof item?.title === "string" && item.title.trim()
+      ? item.title.trim()
+      : tagBadge.label;
+  const badgeTitle =
+    badgeLabel === tagBadge.label
+      ? tagBadge.label
+      : `${tagBadge.label} - ${badgeLabel}`;
+
   useEffect(() => {
     if (!isEventPin || !isValidPinId) {
       setAttendees([]);
       return;
     }
 
-    if (attendeeCache.has(pinId)) {
-      setAttendees(attendeeCache.get(pinId));
-      return;
+    const expectedCount = Number.isFinite(participantCount)
+      ? participantCount
+      : null;
+    const expectedSignature = attendeeSignature || null;
+
+    const cachedEntry = attendeeCache.get(pinId);
+    if (cachedEntry) {
+      setAttendees(Array.isArray(cachedEntry.items) ? cachedEntry.items : []);
+      const matchesCount =
+        expectedCount === null || cachedEntry.count === expectedCount;
+      const matchesSignature =
+        expectedSignature === null || cachedEntry.signature === expectedSignature;
+      if (matchesCount && matchesSignature) {
+        return;
+      }
     }
 
     let cancelled = false;
@@ -191,14 +230,18 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
         if (cancelled) {
           return;
         }
+        const normalizedIds = [];
         const mapped = Array.isArray(payload)
           ? payload.map((record, idx) => {
-              const attendeeId =
+              const normalizedId =
                 toIdString(record?.userId) ??
                 toIdString(record?._id) ??
                 toIdString(record?.profile?._id) ??
                 toIdString(record?.profile?.userId) ??
                 toIdString(record?.user?._id);
+              if (normalizedId && !normalizedIds.includes(normalizedId)) {
+                normalizedIds.push(normalizedId);
+              }
               const name =
                 record?.displayName ||
                 record?.username ||
@@ -214,19 +257,34 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
                     record?.user?.avatar
                 ) ?? resolveLibraryAvatar(idx);
               return {
-                id: attendeeId ?? `${pinId}-attendee-${idx}`,
-                userId: attendeeId ?? null,
+                id: normalizedId ?? `${pinId}-attendee-${idx}`,
+                userId: normalizedId ?? null,
                 name,
                 avatar,
                 raw: record,
               };
             })
           : [];
-        attendeeCache.set(pinId, mapped);
+        const signature =
+          normalizedIds.length > 0
+            ? normalizedIds.join("|")
+            : expectedSignature;
+        attendeeCache.set(pinId, {
+          items: mapped,
+          count: mapped.length,
+          signature,
+          updatedAt: Date.now(),
+        });
         setAttendees(mapped);
       })
       .catch(() => {
         if (!cancelled) {
+          attendeeCache.set(pinId, {
+            items: [],
+            count: 0,
+            signature: expectedSignature,
+            updatedAt: Date.now(),
+          });
           setAttendees([]);
         }
       });
@@ -234,7 +292,7 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
     return () => {
       cancelled = true;
     };
-  }, [isEventPin, isValidPinId, pinId]);
+  }, [attendeeSignature, isEventPin, isValidPinId, participantCount, pinId]);
 
   const fallbackAttendees = useMemo(() => {
     if (!isEventPin) {
@@ -257,15 +315,8 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
   }, [isEventPin, interestedNames, baseKey, participantCount]);
 
   const resolvedAttendees = attendees.length ? attendees : fallbackAttendees;
-  const attendeeTotal = attendees.length
-    ? attendees.length
-    : participantCount ?? resolvedAttendees.length;
-  const remainingAttendees = Math.max(
-    0,
-    attendeeTotal - resolvedAttendees.length
-  );
-  const shouldShowAttendees =
-    isEventPin && resolvedAttendees.length > 0 && attendeeTotal > 0;
+  const hasAttendeeAvatars = resolvedAttendees.length > 0;
+  const shouldShowAttendees = isEventPin && hasAttendeeAvatars;
   const displayAttendees = useMemo(() => {
     if (!shouldShowAttendees) {
       return [];
@@ -303,6 +354,13 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
       };
     }).filter(Boolean);
   }, [authorId, item, resolvedAttendees, shouldShowAttendees]);
+  const attendeeTotal = Number.isFinite(participantCount)
+    ? Math.max(participantCount, resolvedAttendees.length)
+    : resolvedAttendees.length;
+  const remainingAttendees = Math.max(
+    0,
+    attendeeTotal - displayAttendees.length
+  );
   const handleCardClick = useCallback(() => {
     if (typeof onSelectItem === "function" && pinId) {
       onSelectItem(pinId, item);
@@ -391,14 +449,14 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
       data-pin-id={pinId ?? undefined}
     >
       <header className={`card-header ${visualType}`}>
-        <div className="tag">
+        <div className="tag" title={badgeTitle}>
           <img
             src={tagBadge.icon}
             className="tag-icon"
             alt=""
             aria-hidden="true"
           />
-          <span>{tagBadge.label}</span>
+          <span>{badgeLabel}</span>
         </div>
         <div className="meta-right">
           {item?.distance && <span className="distance">{item.distance}</span>}
