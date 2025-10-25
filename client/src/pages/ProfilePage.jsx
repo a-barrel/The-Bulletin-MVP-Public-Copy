@@ -24,7 +24,6 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
-import { playBadgeSound } from '../utils/badgeSound';
 import Tooltip from '@mui/material/Tooltip';
 import {
   blockUser,
@@ -46,6 +45,14 @@ export const pageConfig = {
   showInNav: true,
   protected: true,
   resolveNavTarget: ({ currentPath } = {}) => {
+    if (!runtimeConfig.isOffline) {
+      return '/profile/me';
+    }
+
+    if (typeof window === 'undefined') {
+      return '/profile/me';
+    }
+
     const input = window.prompt(
       'Enter a profile ID (leave blank for your profile, type "me" or cancel to stay put):'
     );
@@ -566,19 +573,12 @@ const detailEntries = useMemo(() => {
       { key: 'posts', label: 'Posts', value: stats.posts ?? 0 },
       { key: 'bookmarks', label: 'Bookmarks', value: stats.bookmarks ?? 0 },
       { key: 'followers', label: 'Followers', value: stats.followers ?? 0 },
-      { key: 'following', label: 'Following', value: stats.following ?? 0 }
+      { key: 'following', label: 'Following', value: stats.following ?? 0 },
+      { key: 'cussCount', label: 'Times cussed', value: stats.cussCount ?? 0 }
     ];
   }, [effectiveUser]);
 
   const badgeList = effectiveUser?.badges ?? [];
-  const previousBadgeCountRef = useRef(badgeList.length);
-
-  useEffect(() => {
-    if (badgeList.length > previousBadgeCountRef.current) {
-      playBadgeSound();
-    }
-    previousBadgeCountRef.current = badgeList.length;
-  }, [badgeList.length]);
 
   const activityEntries = useMemo(() => {
     if (!effectiveUser) {

@@ -8,8 +8,10 @@ import addIcon from "../assets/AddIcon.svg";
 import updatesIcon from "../assets/UpdateIcon.svg";
 import Feed from "../components/Feed";
 import GlobalNavMenu from "../components/GlobalNavMenu";
-import PlaceIcon from "@mui/icons-material/Place"; // TODO: used only for Icon on pageConfig, maybe change with a list icon?
 import { fetchPinsNearby, fetchPinById } from "../api/mongoDataApi";
+import PlaceIcon from '@mui/icons-material/Place'; // TODO: used only for Icon on pageConfig, maybe change with a list icon?
+import { useUpdates } from "../contexts/UpdatesContext";
+import runtimeConfig from "../config/runtime";
 
 export const pageConfig = {
   id: "list",
@@ -25,7 +27,8 @@ const METERS_PER_MILE = 1609.34;
 const DEFAULT_RADIUS_MILES = 10;
 const PIN_FETCH_LIMIT = 50;
 const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
-const DESCRIPTION_PREVIEW_LIMIT = 50;
+const DESCRIPTION_PREVIEW_LIMIT = 250;
+const API_BASE_URL = (runtimeConfig?.apiBaseUrl ?? "").replace(/\/$/, "");
 
 const toIdString = (value) => {
   if (!value && value !== 0) {
@@ -154,15 +157,38 @@ const truncateText = (value, limit = DESCRIPTION_PREVIEW_LIMIT) => {
   return `${truncated}…`;
 };
 
-const normalizeMediaEntry = (asset) => {
+const resolveAssetUrl = (asset, fallback = null) => {
   if (!asset) {
-    return null;
-  }
-  if (typeof asset === "string") {
-    return asset;
+    return fallback;
   }
   if (typeof asset === "object") {
-    return asset.url || asset.thumbnailUrl || asset.previewUrl || null;
+    return (
+      resolveAssetUrl(asset.thumbnailUrl, fallback) ||
+      resolveAssetUrl(asset.url, fallback) ||
+      resolveAssetUrl(asset.previewUrl, fallback) ||
+      resolveAssetUrl(asset.path, fallback) ||
+      fallback
+    );
+  }
+  if (typeof asset === "string") {
+    const trimmed = asset.trim();
+    if (!trimmed) {
+      return fallback;
+    }
+    if (/^(?:[a-z]+:)?\/\//i.test(trimmed) || trimmed.startsWith("data:")) {
+      return trimmed;
+    }
+    const normalized = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+    return API_BASE_URL ? `${API_BASE_URL}${normalized}` : normalized;
+  }
+  return fallback;
+};
+
+const normalizeMediaEntry = (asset) => {
+  const resolved = resolveAssetUrl(asset, null);
+  if (typeof resolved === "string") {
+    const trimmed = resolved.trim();
+    return trimmed.length > 0 ? trimmed : null;
   }
   return null;
 };
@@ -203,7 +229,11 @@ const mapPinToFeedItem = (pin) => {
   const hoursUntil = computeHoursUntil(referenceDate);
   const timeLabel = formatTimeLabel(hoursUntil);
   const description = resolveDescription(pin);
-  const text = truncateText(description) ?? pin?.title ?? "Untitled pin";
+  const title =
+    typeof pin?.title === "string" && pin.title.trim().length > 0
+      ? pin.title.trim()
+      : null;
+  const text = truncateText(description) ?? title ?? "Untitled pin";
   const images = resolveImageSources(pin);
   const comments =
     typeof pin?.replyCount === "number"
@@ -220,6 +250,17 @@ const mapPinToFeedItem = (pin) => {
       ? pin.participantCount
       : null;
 
+  const attendeeIds = [];
+  if (Array.isArray(pin?.attendingUserIds) && pin.attendingUserIds.length > 0) {
+    for (const value of pin.attendingUserIds) {
+      const normalized = toIdString(value);
+      if (normalized && !attendeeIds.includes(normalized)) {
+        attendeeIds.push(normalized);
+      }
+    }
+  }
+  const attendeeVersion = attendeeIds.length > 0 ? attendeeIds.join("|") : null;
+
   const type = pin?.type === "event" ? "pin" : "discussion";
   const tagSource = Array.isArray(pin?.tags) && pin.tags.length > 0 ? pin.tags[0] : null;
 
@@ -232,6 +273,7 @@ const mapPinToFeedItem = (pin) => {
     distance: distanceLabel,
     timeLabel,
     text,
+    title,
     images,
     author: resolveAuthorName(pin),
     authorName: resolveAuthorName(pin),
@@ -241,6 +283,8 @@ const mapPinToFeedItem = (pin) => {
     comments,
     interested: [],
     participantCount,
+    attendeeIds,
+    attendeeVersion,
     distanceMiles,
     expiresInHours: hoursUntil,
   };
@@ -267,7 +311,7 @@ export default function ListPage() {
     };
 
     if (!("geolocation" in navigator)) {
-      useFallbackLocation("Geolocation is not supported. Showing default Long Beach area.");
+      useFallbackLocation("Using Long Beach area as location!!!");
       setLoading(false);
       return () => {
         cancelled = true;
@@ -384,6 +428,8 @@ export default function ListPage() {
     };
   }, [userLocation]);
 
+  const { unreadCount } = useUpdates();
+  //const [sortByExpiration, setSortByExpiration] = useState(false); // false = distance, true = expiration
   const handleSortToggle = useCallback(() => {
     setSortByExpiration((prev) => !prev);
   }, []);
@@ -450,6 +496,10 @@ export default function ListPage() {
     return sortedItems;
   }, [feedItems, sortByExpiration]);
 
+  const notificationsLabel =
+    unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
+  const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
+
   return (
     <div className="list-page">
       <div className="list-frame">
@@ -460,10 +510,15 @@ export default function ListPage() {
           <button
             className="header-icon-btn"
             type="button"
-            aria-label="Notifications"
+            aria-label={notificationsLabel}
             onClick={handleNotifications}
           >
-            <img src={updatesIcon} alt="Notifications" className="header-icon" />
+            <img src={updatesIcon} alt="" className="header-icon" aria-hidden="true" />
+            {displayBadge ? (
+              <span className="header-icon-badge" aria-hidden="true">
+                {displayBadge}
+              </span>
+            ) : null}
           </button>
         </header>
 
