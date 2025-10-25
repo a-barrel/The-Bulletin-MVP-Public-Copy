@@ -1,0 +1,217 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap');
+
+* {
+  font-family: "Urbanist", sans-serif;
+}
+
+/* ===== Outer Shell ===== */
+.chat-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: black;
+  width: 100vw;
+  height: 100vh;
+}
+
+.chat-frame {
+  --header-h: 72px;
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  background: #fff;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-bottom: calc(90px + env(safe-area-inset-bottom, 0)); 
+}
+
+/* ===== Header (purple) ===== */
+.chat-header-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: #d1b4f5;
+
+  /* stretch edge-to-edge inside .list-frame (which has 0 1rem padding) */
+  margin-left: -1rem;
+  margin-right: -1rem;
+  width: calc(100% + 2rem);     /* ✅ prevents off-by-1 overflow */
+  box-sizing: border-box;
+
+  min-height: var(--header-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  border-bottom: 2px solid #000;
+  /* transform: translateY(-1px); <-- remove this if you see a 1px jump */
+}
+
+.chat-header-title {
+  color: #5D3889;
+  font-size: 2rem;
+  font-weight: 500;
+  text-align: center;
+  flex: 1;
+}
+
+.header-icon-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2rem;
+  transition: transform .2s ease;
+}
+.header-icon-btn:hover { transform: scale(1.1); }
+
+@media (max-width: 480px) {
+  .header-bar { border-radius: 0; width: calc(100% + 3rem);}
+  .header-title { font-size: 25px; }
+}
+
+.chat-messages-field {
+  background-color: #F5EFFD;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+}
+
+.chat-message {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background-color: #F5EFFD;
+  border: 0.1rem solid black;
+  padding-bottom: 1rem;
+}
+
+.chat-message.self {
+  flex-direction: row-reverse;
+}
+
+.chat-avatar {
+  margin-top: 0.5rem;
+  margin-left: 0.5rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: #CDAEF2;
+}
+
+.chat-text-area {
+  background-color: #F5EFFD;
+  padding: 10px 14px;
+  max-width: 80%;
+  word-wrap: break-word;
+  position: relative;
+}
+
+.chat-text-area-header {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.chat-message.self .chat-text-area {
+  background-color: #d1b2f5;
+  text-align: right;
+}
+
+.chat-author {
+  font-family: 'Urbanist';
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #F15BB5;
+}
+
+.chat-text {
+  font-family: 'Urbanist';
+  margin-top: 2px;
+  font-size: 0.9rem;
+  color: #222;
+}
+
+.chat-image {
+  margin-top: 8px;
+  border-radius: 10px;
+  max-width: 100%;
+  height: auto;
+}
+
+.chat-time {
+  font-family: 'Urbanist';
+  font-size: 0.7rem;
+  color: #b6b6b6;
+  margin-top: 3px;
+}
+
+.chat-input-container {
+  position: sticky;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: #CDAEF2;
+  border-top: 1px solid #ddd;
+  margin-bottom: -0.6rem;
+}
+
+.chat-input input {
+  font-family: 'Urbanist';
+  font-weight: 600;
+  color: #CDAEF2;
+}
+
+.chat-input .MuiOutlinedInput-root {
+  border-radius: 120px;
+  background: #9B5DE5;
+}
+
+/* ===== Responsive for topbar spacing ===== */
+@media (max-width: 480px) {
+  .topbar {
+    width: calc(100% + 2rem);
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding: 0.5rem 1rem;
+    gap: 0.5rem;
+  }
+
+  .top-left { gap: 0.35rem; }
+
+  .sort-row .sort-label {
+    display: inline;
+    font-size: 1rem;
+  }
+  .sort-row {
+    margin-left: 0.25rem;
+    gap: 0.25rem;
+  }
+
+  .icon-btn img { width: 28px; height: 28px; }
+  .toggle-container { width: 44px; height: 24px; }
+  .toggle-circle { width: 20px; height: 20px; top: 2px; left: 2px; }
+  .toggle-container.active .toggle-circle { left: 22px; }
+
+  .add-btn {
+    width: 52px; height: 52px;
+    margin-left: auto;
+    margin-right: 0.25rem;
+    margin-top: -7px;
+  }
+  .add-btn img { width: 64px; height: 54px; }
+}
+
+/* Tablet tweaks */
+@media (max-width: 768px) {
+  .list-frame {
+    width: 100vw;
+    height: 100vh;
+  }
+}

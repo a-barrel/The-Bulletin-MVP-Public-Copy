@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from "react-router-dom";
 import Navbar from '../components/Navbar';
+import "./ChatPage.css";
+import GlobalNavMenu from '../components/GlobalNavMenu';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
   Box,
@@ -31,6 +34,7 @@ import RoomIcon from '@mui/icons-material/Room';
 import SendIcon from '@mui/icons-material/Send';
 import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
+import updatesIcon from "../assets/UpdateIcon.svg";
 import { auth } from '../firebase';
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
@@ -64,6 +68,8 @@ const PRESENCE_HEARTBEAT_MS = 30_000;
 const MESSAGES_REFRESH_MS = 7_000;
 
 function ChatPage() {
+  const navigate = useNavigate();
+  const [debugMode, setDebugMode] = useState(false);
   const { announceBadgeEarned } = useBadgeSound();
   const [authUser, authLoading] = useAuthState(auth);
   const { location: viewerLocation } = useLocationContext();
@@ -634,6 +640,10 @@ function ChatPage() {
     </Paper>
   );
 
+  const handleNotifications = useCallback(() => {
+      navigate("/updates");
+    }, [navigate]);
+
   return (
     <>
       <Box
@@ -645,44 +655,51 @@ function ChatPage() {
         py: { xs: 2, md: 4 }
       }}
     >
-      <Stack spacing={2}>
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <SmsIcon color="primary" />
-          <Typography variant="h4" component="h1">
-            Chat
-          </Typography>
-          {authUser ? (
-            <Chip
-              label={`Signed in as ${authUser.displayName || authUser.email || 'You'}`}
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
-          ) : (
-            <Chip
-              label="Sign in to participate"
-              size="small"
-              color="warning"
-              variant="outlined"
-            />
+      {debugMode && (
+        <Stack spacing={2}>
+          {debugMode && (
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <SmsIcon color="primary" />
+            <Typography variant="h4" component="h1">
+              Chat
+            </Typography>
+            {authUser ? (
+              <Chip
+                label={`Signed in as ${authUser.displayName || authUser.email || 'You'}`}
+                size="small"
+                color="primary"
+                variant="outlined"
+              />
+            ) : (
+              <Chip
+                label="Sign in to participate"
+                size="small"
+                color="warning"
+                variant="outlined"
+              />
+            )}
+          </Stack>
           )}
-        </Stack>
 
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={2}
-          sx={{ minHeight: { md: 560 } }}
-        >
-          {renderRoomList()}
-          {renderConversation()}
-        </Stack>
+
+        {debugMode && (
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            sx={{ minHeight: { md: 560 } }}
+          >
+            {renderRoomList()}
+            {renderConversation()}
+          </Stack>
+        )}
 
         {presenceError ? (
           <Typography variant="body2" color="error">
             {presenceError}
           </Typography>
         ) : null}
-      </Stack>
+        </Stack>
+      )}
 
       <Dialog open={isCreateDialogOpen} onClose={handleCloseCreateDialog} fullWidth maxWidth="sm">
         <DialogTitle>Create chat room</DialogTitle>
@@ -760,7 +777,75 @@ function ChatPage() {
         </Box>
       </Dialog>
       </Box>
-      <Navbar />
+
+    <Button
+      variant="text"
+      size="small"
+      onClick={() => setDebugMode((prev) => !prev)}
+      sx={{ position: 'absolute', top: 8, right: 8 }}
+    >
+      {debugMode ? 'Hide Debug' : 'Show Debug'}
+    </Button>
+
+    <div className="chat-page">
+      <div className="chat-frame">
+
+        <header className="chat-header-bar">
+          <GlobalNavMenu />
+          <h1 className="chat-header-title">Chat</h1>
+
+          <button
+            className="header-icon-btn"
+            type="button"
+            aria-label="Notifications"
+            onClick={handleNotifications}
+          >
+            <img src={updatesIcon} alt="Notifications" className="header-icon" />
+          </button>
+        </header>
+
+        <Box className="chat-messages-field">
+          {messages.map((msg) => {
+            const isSelf = authUser && msg.authorId === authUser.uid;
+            return (
+              <Box
+                key={msg._id}
+                className={`chat-message ${isSelf ? 'self' : ''}`}
+              >
+                <Box className="chat-avatar" />
+                <Box className="chat-text-area">
+                  <div className="chat-text-area-header">
+                    <Typography className="chat-author">{msg.author?.displayName || 'User'}</Typography>
+                    <Typography className="chat-time">
+                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                    </Typography>
+                  </div>
+                  <Typography className="chat-text">{msg.message}</Typography>
+                  {msg.imageUrl && <img src={msg.imageUrl} alt="attachment" className="chat-image" />}
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
+
+        <Box className="chat-input-container">
+          <TextField
+            value={messageDraft}
+            onChange={(e) => setMessageDraft(e.target.value)}
+            placeholder="Send a message"
+            fullWidth
+            variant="outlined"
+            className="chat-input"
+          />
+          <IconButton color="primary" onClick={handleSendMessage}>
+            <SendIcon />
+          </IconButton>
+        </Box>
+
+        <Navbar />
+
+      </div>
+    </div>
     </>
   );
 }
