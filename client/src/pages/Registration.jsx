@@ -6,6 +6,18 @@ import "./Registration.css";
 
 function RegistrationPage() {
   const navigate = useNavigate();
+  const [shake, setShake] = useState(false);
+  const [message, setMessage] = useState(null);
+
+  // Formats the phone number input 
+  const formatPhoneNumber = (value) => {
+  const digits = value.replace(/\D/g, "");
+  const len = digits.length;
+
+  if (len < 4) return digits;
+  if (len < 7) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+};
 
   const [form, setForm] = useState({
     username: "",
@@ -23,8 +35,12 @@ function RegistrationPage() {
 
   const onChange = (e) => {
     const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
-    setErrors((er) => ({ ...er, [name]: "" })); // clear field error on type
+    if (name === "phone") {
+      setForm((f) => ({ ...f, phone: formatPhoneNumber(value) }));
+    } else {
+      setForm((f) => ({ ...f, [name]: value }));
+    }
+    setErrors((er) => ({ ...er, [name]: "" }));
   };
 
   // simple validators to mirror your red helper text behavior
@@ -50,85 +66,96 @@ function RegistrationPage() {
     e.preventDefault();
     if (!validate()) return;
 
-     // If using Firebase later, uncomment:
-     try {
-       await createUserWithEmailAndPassword(auth, form.email, form.password);
-       // optionally save username/phone to your DB here
-       navigate("/login");
-     } catch (err) {
-       // map Firebase errors if desired
-       alert(err.message);
-     }
+    // If using Firebase later, uncomment:
+    try {
+      //await createUserWithEmailAndPassword(auth, form.email, form.password);
+      // optionally save username/phone to your DB here
+      setMessage("Your account has been created successfully! \nRedirecting to login...");
+      const timer = setTimeout(() => navigate("/login"), 2000);
+    } catch (err) {
+      // map Firebase errors if desired
+      alert(err.message);
+    }
 
     // For now just go back to login to match your ask:
-    navigate("/login");
+    //navigate("/login");
   };
 
   return (
-    <div className="register-page">
-      <div className="register-frame">
+    <div className={`page-background ${shake ? "shake" : ""}`}>
+
+      {message && (
+        <div className="message-overlay" onClick={() => setMessage(null)}>
+          <div className="message-box">
+            <p>{message}</p>
+          </div>
+        </div>
+      )}
+      
+      <div className="page-header">
         {/* back chevron */}
         <button
-          className="back-btn"
+          className="page-back-btn"
           aria-label="Go back"
           onClick={() => navigate("/login")}
         >
           &#8592;
         </button>
 
-        <h1 className="register-title">Registration</h1>
+        <h1 className="page-sub-title">Registration</h1>
+      </div>  
 
         <form className="register-form" onSubmit={handleSubmit} noValidate>
           {/* Username */}
-          <div className="field">
+          <div className="register-input-container">
             <input
               name="username"
               type="text"
               value={form.username}
               onChange={onChange}
-              placeholder="[Empty Username, Click to Fill]"
+              placeholder="Choose a Username"
               className={`input ${errors.username ? "input-error" : ""}`}
             />
-            {errors.username && <p className="helper-error">{errors.username}</p>}
+            {errors.username && <p className="register-input-error-text">{errors.username}</p>}
           </div>
 
           {/* Email */}
-          <div className="field">
+          <div className="register-input-container">
             <input
               name="email"
-              type="email"
+              type="text"
               value={form.email}
               onChange={onChange}
-              placeholder="[Empty Email, Click to Fill]"
+              placeholder="Enter your Email"
               className={`input ${errors.email ? "input-error" : ""}`}
             />
-            {errors.email && <p className="helper-error">{errors.email}</p>}
+            {errors.email && <p className="register-input-error-text">{errors.email}</p>}
           </div>
 
           {/* Phone */}
-          <div className="field">
+          <div className="register-input-container">
             <input
               name="phone"
               type="tel"
               value={form.phone}
               onChange={onChange}
-              placeholder="[Empty Phone #, Click to Fill]"
+              placeholder="Enter your Phone Number"
               className={`input ${errors.phone ? "input-error" : ""}`}
             />
-            {errors.phone && <p className="helper-error">{errors.phone}</p>}
+            {errors.phone && <p className="register-input-error-text">{errors.phone}</p>}
           </div>
 
           {/* Password */}
-          <div className="field">
+          <div className="register-input-container">
             <input
               name="password"
               type="password"
               value={form.password}
               onChange={onChange}
-              placeholder="[Empty Password, Click to Fill]"
+              placeholder="Choose a Password"
               className={`input ${errors.password ? "input-error" : ""}`}
             />
-            {errors.password && <p className="helper-error">{errors.password}</p>}
+            {errors.password && <p className="register-input-error-text">{errors.password}</p>}
           </div>
 
           {/* Submit */}
@@ -136,7 +163,6 @@ function RegistrationPage() {
             Register
           </button>
         </form>
-      </div>
     </div>
   );
 }

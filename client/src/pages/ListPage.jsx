@@ -1,11 +1,25 @@
 import React, { useState, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import "./ListPage.css";
 import Navbar from "../components/Navbar";
+import SortToggle from "../components/SortToggle";
 import settingsIcon from "../assets/GearIcon.svg";
 import addIcon from "../assets/AddIcon.svg";
-import menuIcon from "../assets/MenuIcon.svg";
 import updatesIcon from "../assets/UpdateIcon.svg";
 import Feed from "../components/Feed";
+import GlobalNavMenu from "../components/GlobalNavMenu";
+import PlaceIcon from '@mui/icons-material/Place'; // TODO: used only for Icon on pageConfig, maybe change with a list icon?
+import { useUpdates } from "../contexts/UpdatesContext";
+
+export const pageConfig = {
+  id: 'list',      // id
+  label: 'List',   // Label (used in debug nav.)
+  icon: PlaceIcon, // TODO: maybe change with a list icon? Don't forget the import!
+  path: '/list',   // Path
+  order: 4,        // Where in debug nav it is ordered
+  showInNav: true, // Shows in Debug Navigator(?)
+  protected: true, // Checks if user is logged in
+};
 
 /* ---------- dummy feed (has `interested`) ---------- */
 const DUMMY_FEED = [
@@ -79,81 +93,103 @@ function hoursUntil(label = "") {
 }
 
 export default function ListPage() {
+  const navigate = useNavigate();
+  const { unreadCount } = useUpdates();
   const [sortByExpiration, setSortByExpiration] = useState(false); // false = distance, true = expiration
-  const handleToggle = useCallback(() => setSortByExpiration(v => !v), []);
-  const onToggleKeyDown = useCallback((e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      setSortByExpiration(v => !v);
-    }
+  const handleSortToggle = useCallback(() => {
+    setSortByExpiration((prev) => !prev);
   }, []);
+  const handleNotifications = useCallback(() => {
+    navigate("/updates");
+  }, [navigate]);
+  const handleCreatePin = useCallback(() => {
+    navigate("/create-pin");
+  }, [navigate]);
+  const handleSettings = useCallback(() => {
+    navigate("/settings");
+  }, [navigate]);
 
-  const sortedFeed = useMemo(() => {
-    const items = [...DUMMY_FEED];
+  const filteredAndSortedFeed = useMemo(() => {
+    // Step 1: Filter out expired pins
+    const filteredItems = DUMMY_FEED.filter((pin) => {
+      const hoursLeft = hoursUntil(pin.timeLabel);
+      return hoursLeft > 0; // Only show non-expired pins
+    });
+
+    // Step 2: Sort the filtered items
     if (sortByExpiration) {
-      items.sort((a, b) => {
+      filteredItems.sort((a, b) => {
         const ha = hoursUntil(a.timeLabel);
         const hb = hoursUntil(b.timeLabel);
         if (ha !== hb) return ha - hb;
         return milesFrom(a.distance) - milesFrom(b.distance);
       });
     } else {
-      items.sort((a, b) => milesFrom(a.distance) - milesFrom(b.distance));
+      filteredItems.sort((a, b) => milesFrom(a.distance) - milesFrom(b.distance));
     }
-    return items;
+
+    return filteredItems;
   }, [sortByExpiration]);
+
+  const notificationsLabel =
+    unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
+  const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
 
   return (
     <div className="list-page">
       <div className="list-frame">
         {/* Header */}
         <header className="header-bar">
-          <button className="header-icon-btn" aria-label="Menu">
-            <img src={menuIcon} alt="Menu" className="header-icon" />
-          </button>
+          <GlobalNavMenu />
           <h1 className="header-title">List</h1>
-          <button className="header-icon-btn" aria-label="Notifications">
-            <img src={updatesIcon} alt="Notifications" className="header-icon" />
+          <button
+            className="header-icon-btn"
+            type="button"
+            aria-label={notificationsLabel}
+            onClick={handleNotifications}
+          >
+            <img src={updatesIcon} alt="" className="header-icon" aria-hidden="true" />
+            {displayBadge ? (
+              <span className="header-icon-badge" aria-hidden="true">
+                {displayBadge}
+              </span>
+            ) : null}
           </button>
         </header>
 
         {/* Topbar */}
         <div className="topbar">
           <div className="top-left">
-            <button className="icon-btn" type="button" aria-label="Settings">
+            <button className="icon-btn" type="button" aria-label="Settings" onClick={handleSettings}>
               <img src={settingsIcon} alt="Settings" />
             </button>
 
-            <div
-              className={`toggle-container ${sortByExpiration ? "active" : ""}`}
-              role="switch"
-              aria-checked={sortByExpiration}
-              tabIndex={0}
-              onClick={handleToggle}
-              onKeyDown={onToggleKeyDown}
-              title="Toggle sort"
-            >
-              <div className="toggle-circle" />
-            </div>
-
-            <div className="sort-row">
-              <span className="sort-label">Sort by:</span>
-              <button className="sort-link" type="button" onClick={handleToggle}>
-                {sortByExpiration ? "Expiration" : "Distance"}
-              </button>
-            </div>
+            {/* Sort Toggle */}
+            <SortToggle
+              sortByExpiration={sortByExpiration}
+              onToggle={handleSortToggle}
+            />
           </div>
 
-          <button className="add-btn" type="button" aria-label="Add">
+          <button
+            className="add-btn"
+            type="button"
+            aria-label="Create pin"
+            onClick={handleCreatePin}
+          >
             <img src={addIcon} alt="Add" />
           </button>
         </div>
 
         {/* Feed (now a component) */}
-        <Feed items={sortedFeed} />
+        <Feed items={filteredAndSortedFeed} />
 
         <Navbar />
       </div>
     </div>
   );
 }
+
+
+
+

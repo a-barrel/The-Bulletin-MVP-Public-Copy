@@ -7,69 +7,98 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
+  const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
+  const [emailError, setEmailError] = useState("");
   const [shake, setShake] = useState(false);
   
-    useEffect(() => {
+  const validateEmail = (value) => {
+    if (!value) return "Please enter an email address.";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(value) ? "" : "Please enter a valid email address.";
+  };
+
+  // Clear error pop-up after 3 seconds
+  useEffect(() => {
     if (error) {
-      const timer = setTimeout(() => setError(null), 3000); // hide after 3 seconds
+      const timer = setTimeout(() => setError(null), 3000); 
       return () => clearTimeout(timer);
     }
   }, [error]);
  
   const handleEmailSubmission = async (e) => {
-  e.preventDefault();
-  setError(null);
+    e.preventDefault();
+    setError(null);
 
-  // Check for empty fields before calling Firebase
+    const emailErr = validateEmail(email);
+    setEmailError(emailErr);
+
+    // Check for empty fields before calling Firebase
     if (!email) {
-      setError('Please enter an email.');
+      setEmailError('Please enter an email.');
       setShake(true);
       setTimeout(() => setShake(false), 300);
       return;
     }
   
-  // TODO: DARREL - Messy implementation, it does send a email, refactor later. 
-  // DARREL - Made errors the same to avoid email enumeration
-  try {
-      await sendPasswordResetEmail(auth, email);
-      setError('If this email is in use, a password reset email will be sent!');
+    // TODO: DARREL - Messy implementation, it does send a email, refactor later. 
+    // DARREL - Made errors the same to avoid email enumeration
+    try {
+      //await sendPasswordResetEmail(auth, email);
+      setMessage('If this email is in use, a password reset email will be sent!');
     } catch (error) {
-      setError('If this email is in use, a password reset email will be sent!');
+      setMessage('If this email is in use, a password reset email will be sent!');
     }
-};
+  };
 
   return (
-    <div className={`forgot-password-page ${shake ? 'shake' : ''}`}>
-      <div className="forgot-password-frame">
-        <h1 className="forgot-password-title">The Bulletin</h1>
+    <div className={`page-background ${shake ? 'shake' : ''}`}>
+      <div className="page-header">
+        <button
+          className="page-back-btn"
+          aria-label="Go back"
+          onClick={() => navigate("./login")}
+        >
+        &#8592;
+        </button>
 
-        <p className="instruction-text">
-          Enter the email of the account you are trying to access.
-        </p>
+        <h1 className="page-sub-title">Forgot Password?</h1>
+      </div>
 
-        {error && (
-          <div className="error-overlay" onClick={() => setError(null)}>
-            <div className="error-box">
-              <p>{error}</p>
-            </div>
+      <p className="instruction-text">
+        Enter the email of the account you are trying to access.
+      </p>
+
+      {message && (
+        <div className="message-overlay" onClick={() => setMessage(null)}>
+          <div className="message-box">
+            <p>{message}</p>
           </div>
-        )}
+        </div>
+      )}
 
-        <form onSubmit={handleEmailSubmission} className={"forgot-password-form"}>
+      <form onSubmit={handleEmailSubmission} className={"page-form"}>
+        <div className="input-container">
           <input
-            type="email"
+            type="text" // Allow as text, external function will verify if it is email and call error if needed   
             placeholder="Enter Email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              setEmailError("")
+            }}
+            className={emailError ? "input-error" : ""}
           />
-          <button type="submit" className="submit-email-btn">Submit</button>
-
-          <button className="cancel-btn" onClick={() => navigate('/login')}>
-            Cancel
-          </button>
-        </form>
-      </div>
+          {emailError && <span className="input-error-text">{emailError}</span>}
+        </div>
+        
+        <button 
+          type="submit" 
+          className="forgot-password-page-submit-email-btn"
+        >
+          Submit
+        </button>
+      </form>
     </div>
   );
 }

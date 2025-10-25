@@ -43,6 +43,28 @@ async function buildHeaders(extra = {}, options = {}) {
   };
 }
 
+function parseFilenameFromContentDisposition(headerValue, fallback = 'bookmarks.csv') {
+  if (!headerValue) {
+    return fallback;
+  }
+
+  const match = headerValue.match(/filename\*?=(?:UTF-8'')?([^;]+)/i);
+  if (!match || !match[1]) {
+    return fallback;
+  }
+
+  let filename = match[1].trim();
+  if (filename.startsWith('"') && filename.endsWith('"')) {
+    filename = filename.slice(1, -1);
+  }
+
+  try {
+    return decodeURIComponent(filename);
+  } catch {
+    return filename || fallback;
+  }
+}
+
 export function isMongoDataApiConfigured() {
   if (!API_BASE_URL && runtimeConfig.isOnline) {
     console.warn(
@@ -134,6 +156,18 @@ export async function listPins(query = {}) {
   if (query.limit) {
     params.set('limit', String(query.limit));
   }
+  if (query.status) {
+    params.set('status', query.status);
+  }
+  if (query.sort) {
+    params.set('sort', query.sort);
+  }
+  if (query.latitude !== undefined && query.latitude !== null) {
+    params.set('latitude', String(query.latitude));
+  }
+  if (query.longitude !== undefined && query.longitude !== null) {
+    params.set('longitude', String(query.longitude));
+  }
 
   const queryString = params.toString();
   const url = queryString ? `${baseUrl}/api/pins?${queryString}` : `${baseUrl}/api/pins`;
@@ -149,6 +183,35 @@ export async function listPins(query = {}) {
   }
 
   return payload;
+}
+
+export async function fetchPinsSortedByExpiration({ limit = 20, status = 'active' } = {}) {
+  return listPins({
+    limit,
+    sort: 'expiration',
+    status
+  });
+}
+
+export async function fetchPinsSortedByDistance({ latitude, longitude, limit = 20 } = {}) {
+  if (latitude === undefined || latitude === null || longitude === undefined || longitude === null) {
+    throw new Error('Latitude and longitude are required to sort pins by distance');
+  }
+
+  return listPins({
+    limit,
+    sort: 'distance',
+    latitude,
+    longitude
+  });
+}
+
+export async function fetchExpiredPins({ limit = 20 } = {}) {
+  return listPins({
+    limit,
+    sort: 'expiration',
+    status: 'expired'
+  });
 }
 
 export async function createPin(input) {
@@ -170,20 +233,161 @@ export async function createPin(input) {
   return payload;
 }
 
-export async function fetchPinById(pinId) {
+export async function revokeCurrentSession(options = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/auth/logout`, {
+    method: 'POST',
+    headers: await buildHeaders({}, { skipJson: true, ...options })
+  });
+
+  if (response.status === 204) {
+    return;
+  }
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to revoke session.');
+  }
+
+  return payload;
+}
+
+export async function fetchPinById(pinId, options = {}) {
   if (!pinId) {
     throw new Error('Pin id is required');
   }
 
+  const { signal, previewMode } = options;
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}`, {
+  const params = new URLSearchParams();
+  if (typeof previewMode === 'string' && previewMode.trim().length > 0) {
+    params.set('preview', previewMode.trim().toLowerCase());
+  }
+  const query = params.toString();
+  const url = query
+    ? `${baseUrl}/api/pins/${encodeURIComponent(pinId)}?${query}`
+    : `${baseUrl}/api/pins/${encodeURIComponent(pinId)}`;
+
+  const response = await fetch(url, {
     method: 'GET',
-    headers: await buildHeaders()
+    headers: await buildHeaders(),
+    signal
   });
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(payload?.message || 'Failed to load pin');
+  }
+
+  return payload;
+}
+
+export async function fetchPinAttendees(pinId) {
+  if (!pinId) {
+    throw new Error('Pin id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/attendees`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => []);
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load attendees');
+  }
+
+  return payload;
+}
+
+export async function updatePinAttendance(pinId, attending) {
+  if (!pinId) {
+    throw new Error('Pin id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/attendance`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ attending })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to update attendance');
+  }
+
+  return payload;
+}
+
+export async function createPinBookmark(pinId) {
+  if (!pinId) {
+    throw new Error('Pin id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/bookmarks`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ pinId })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to create bookmark');
+  }
+
+  return payload;
+}
+
+export async function deletePinBookmark(pinId) {
+  if (!pinId) {
+    throw new Error('Pin id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/bookmarks/${encodeURIComponent(pinId)}`, {
+    method: 'DELETE',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to remove bookmark');
+  }
+
+  return payload;
+}
+
+export async function createPinReply(pinId, { message, parentReplyId } = {}) {
+  if (!pinId) {
+    throw new Error('Pin id is required');
+  }
+  if (!message || typeof message !== 'string') {
+    throw new Error('Reply message is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const body = {
+    message: message,
+    ...(parentReplyId ? { parentReplyId } : {})
+  };
+
+  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/replies`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify(body)
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const details = Array.isArray(payload?.issues)
+      ? `: ${payload.issues
+          .map((issue) => `${issue.path?.join('.') ?? ''} ${issue.message}`.trim())
+          .join('; ')}`
+      : '';
+    throw new Error((payload?.message || 'Failed to create reply') + details);
   }
 
   return payload;
@@ -212,7 +416,7 @@ export async function updatePin(pinId, input) {
   return payload;
 }
 
-export async function uploadPinImage(file) {
+async function uploadImageInternal(file) {
   if (!file) {
     throw new Error('Image file is required');
   }
@@ -335,6 +539,99 @@ export async function fetchUserProfile(userId) {
   return payload;
 }
 
+export async function fetchCurrentUserProfile() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load current user profile');
+  }
+
+  return payload;
+}
+
+export async function uploadImage(file) {
+  return uploadImageInternal(file);
+}
+
+export async function uploadPinImage(file) {
+  return uploadImageInternal(file);
+}
+
+export async function updateCurrentUserProfile(input) {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me`, {
+    method: 'PATCH',
+    headers: await buildHeaders(),
+    body: JSON.stringify(input)
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to update current user profile');
+  }
+
+  return payload;
+}
+
+export async function fetchBlockedUsers() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/blocked`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load blocked users');
+  }
+
+  return payload;
+}
+
+export async function blockUser(userId) {
+  if (!userId) {
+    throw new Error('User id is required to block a user');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/blocked`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ userId })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to block user');
+  }
+
+  return payload;
+}
+
+export async function unblockUser(userId) {
+  if (!userId) {
+    throw new Error('User id is required to unblock a user');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/blocked/${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to unblock user');
+  }
+
+  return payload;
+}
+
 export async function createBookmark(input) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/debug/bookmarks`, {
@@ -352,29 +649,85 @@ export async function createBookmark(input) {
 }
 
 export async function fetchBookmarks({ userId, limit } = {}) {
-  if (!userId) {
-    throw new Error('User id is required to load bookmarks');
-  }
-
   const baseUrl = resolveApiBaseUrl();
-  const params = new URLSearchParams({
-    userId: userId
-  });
-  if (limit !== undefined) {
-    params.set('limit', String(limit));
+  const params = new URLSearchParams();
+  if (userId) {
+    params.set('userId', userId);
+  }
+  if (limit !== undefined && limit !== null) {
+    const numericLimit = Number(limit);
+    if (Number.isFinite(numericLimit)) {
+      const constrained = Math.min(100, Math.max(1, Math.trunc(numericLimit)));
+      params.set('limit', String(constrained));
+    }
   }
 
-  const response = await fetch(`${baseUrl}/api/bookmarks?${params.toString()}`, {
+  const query = params.toString();
+  const url = query ? `${baseUrl}/api/bookmarks?${query}` : `${baseUrl}/api/bookmarks`;
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: await buildHeaders()
   });
 
   const payload = await response.json().catch(() => []);
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load bookmarks');
+    const details = payload?.issues ? `: ${JSON.stringify(payload.issues)}` : '';
+    throw new Error((payload?.message || `Failed to load bookmarks (status ${response.status})`) + details);
   }
 
   return payload;
+}
+
+export async function removeBookmark(pinId) {
+  if (!pinId) {
+    throw new Error('Pin id is required to remove a bookmark');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/bookmarks/${encodeURIComponent(pinId)}`, {
+    method: 'DELETE',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to remove bookmark');
+  }
+
+  return payload;
+}
+
+export async function exportBookmarks({ userId } = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const params = new URLSearchParams();
+  if (userId) {
+    params.set('userId', userId);
+  }
+
+  const query = params.toString();
+  const url = query ? `${baseUrl}/api/bookmarks/export?${query}` : `${baseUrl}/api/bookmarks/export`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: await buildHeaders({ Accept: 'text/csv' }, { skipJson: true })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    try {
+      const payload = errorText ? JSON.parse(errorText) : {};
+      throw new Error(payload?.message || 'Failed to export bookmarks');
+    } catch {
+      throw new Error(errorText || 'Failed to export bookmarks');
+    }
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get('Content-Disposition');
+  const filename = parseFilenameFromContentDisposition(disposition);
+
+  return { blob, filename };
 }
 
 export async function createBookmarkCollection(input) {
@@ -394,12 +747,9 @@ export async function createBookmarkCollection(input) {
 }
 
 export async function fetchBookmarkCollections(userId) {
-  if (!userId) {
-    throw new Error('User id is required to load bookmark collections');
-  }
-
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/bookmarks/collections?userId=${encodeURIComponent(userId)}`, {
+  const params = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+  const response = await fetch(`${baseUrl}/api/bookmarks/collections${params}`, {
     method: 'GET',
     headers: await buildHeaders()
   });
@@ -407,6 +757,160 @@ export async function fetchBookmarkCollections(userId) {
   const payload = await response.json().catch(() => []);
   if (!response.ok) {
     throw new Error(payload?.message || 'Failed to load bookmark collections');
+  }
+
+  return payload;
+}
+
+export async function awardBadge(badgeId) {
+  if (!badgeId) {
+    throw new Error('Badge id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/badges/${encodeURIComponent(badgeId)}`, {
+    method: 'POST',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to award badge');
+  }
+
+  return payload;
+}
+
+export async function debugListBadges({ userId } = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const params = new URLSearchParams();
+  if (userId) {
+    params.set('userId', userId);
+  }
+  const query = params.toString();
+  const url = query ? `${baseUrl}/api/debug/badges?${query}` : `${baseUrl}/api/debug/badges`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load badges');
+  }
+
+  return payload;
+}
+
+export async function debugGrantBadge({ userId, badgeId }) {
+  if (!badgeId) {
+    throw new Error('Badge id is required to grant');
+  }
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/badges/grant`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ userId, badgeId })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to grant badge');
+  }
+
+  return payload;
+}
+
+export async function debugRevokeBadge({ userId, badgeId }) {
+  if (!badgeId) {
+    throw new Error('Badge id is required to revoke');
+  }
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/badges/revoke`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ userId, badgeId })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to revoke badge');
+  }
+
+  return payload;
+}
+
+export async function debugResetBadges({ userId } = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/badges/reset`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ userId })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to reset badges');
+  }
+
+  return payload;
+}
+
+export async function fetchUsersWithCussCount() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/bad-users`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => []);
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load cuss stats');
+  }
+
+  return payload;
+}
+
+export async function incrementUserCussCount(userId) {
+  if (!userId) {
+    throw new Error('User id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(
+    `${baseUrl}/api/debug/bad-users/${encodeURIComponent(userId)}/increment`,
+    {
+      method: 'POST',
+      headers: await buildHeaders()
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to increment cuss count');
+  }
+
+  return payload;
+}
+
+export async function resetUserCussCount(userId) {
+  if (!userId) {
+    throw new Error('User id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(
+    `${baseUrl}/api/debug/bad-users/${encodeURIComponent(userId)}/reset`,
+    {
+      method: 'POST',
+      headers: await buildHeaders()
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to reset cuss count');
   }
 
   return payload;
@@ -428,7 +932,23 @@ export async function createProximityChatRoom(input) {
   return payload;
 }
 
-export async function fetchChatRooms({ pinId, ownerId } = {}) {
+export async function createChatRoom(input) {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/chats/rooms`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify(input)
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to create chat room');
+  }
+
+  return payload;
+}
+
+export async function fetchChatRooms({ pinId, ownerId, latitude, longitude, includeBookmarked = true } = {}) {
   const baseUrl = resolveApiBaseUrl();
   const params = new URLSearchParams();
   if (pinId) {
@@ -436,6 +956,15 @@ export async function fetchChatRooms({ pinId, ownerId } = {}) {
   }
   if (ownerId) {
     params.set('ownerId', ownerId);
+  }
+  if (latitude !== undefined && latitude !== null && !Number.isNaN(latitude)) {
+    params.set('latitude', String(latitude));
+  }
+  if (longitude !== undefined && longitude !== null && !Number.isNaN(longitude)) {
+    params.set('longitude', String(longitude));
+  }
+  if (!includeBookmarked) {
+    params.set('includeBookmarked', 'false');
   }
 
   const query = params.toString();
@@ -464,19 +993,52 @@ export async function createProximityChatMessage(input) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
+    const details = payload?.issues ? `: ${JSON.stringify(payload.issues)}` : '';
+    throw new Error((payload?.message || 'Failed to create chat message') + details);
+  }
+
+  return payload;
+}
+
+export async function createChatMessage(roomId, input) {
+  if (!roomId) {
+    throw new Error('Room id is required to create a chat message');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/messages`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify(input)
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
     throw new Error(payload?.message || 'Failed to create chat message');
   }
 
   return payload;
 }
 
-export async function fetchChatMessages(roomId) {
+export async function fetchChatMessages(roomId, { latitude, longitude } = {}) {
   if (!roomId) {
     throw new Error('Room id is required to load messages');
   }
 
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/messages`, {
+  const params = new URLSearchParams();
+  if (latitude !== undefined && latitude !== null && !Number.isNaN(latitude)) {
+    params.set('latitude', String(latitude));
+  }
+  if (longitude !== undefined && longitude !== null && !Number.isNaN(longitude)) {
+    params.set('longitude', String(longitude));
+  }
+  const query = params.toString();
+  const url = query
+    ? `${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/messages?${query}`
+    : `${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/messages`;
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: await buildHeaders()
   });
@@ -505,13 +1067,46 @@ export async function createProximityChatPresence(input) {
   return payload;
 }
 
-export async function fetchChatPresence(roomId) {
+export async function upsertChatPresence(roomId, input = {}) {
+  if (!roomId) {
+    throw new Error('Room id is required to update presence');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/presence`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify(input)
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to update chat presence');
+  }
+
+  return payload;
+}
+
+export async function fetchChatPresence(roomId, { latitude, longitude } = {}) {
   if (!roomId) {
     throw new Error('Room id is required to load presence');
   }
 
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/presence`, {
+  const params = new URLSearchParams();
+  if (latitude !== undefined && latitude !== null && !Number.isNaN(latitude)) {
+    params.set('latitude', String(latitude));
+  }
+  if (longitude !== undefined && longitude !== null && !Number.isNaN(longitude)) {
+    params.set('longitude', String(longitude));
+  }
+
+  const query = params.toString();
+  const url = query
+    ? `${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/presence?${query}`
+    : `${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/presence`;
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: await buildHeaders()
   });
@@ -566,6 +1161,40 @@ export async function fetchUpdates({ userId, limit } = {}) {
   return payload;
 }
 
+export async function markUpdateRead(updateId) {
+  if (!updateId) {
+    throw new Error('Update id is required to mark an update as read');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/updates/${encodeURIComponent(updateId)}/read`, {
+    method: 'PATCH',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to mark update as read');
+  }
+
+  return payload;
+}
+
+export async function markAllUpdatesRead() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/updates/mark-all-read`, {
+    method: 'PATCH',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to mark all updates as read');
+  }
+
+  return payload;
+}
+
 export async function createReply(input) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/debug/replies`, {
@@ -599,4 +1228,72 @@ export async function fetchReplies(pinId) {
   }
 
   return payload;
+}
+
+export async function fetchStorageObjects({ prefix, limit } = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const params = new URLSearchParams();
+
+  if (typeof prefix === 'string') {
+    params.set('prefix', prefix);
+  }
+
+  if (Number.isFinite(limit) && limit > 0) {
+    params.set('limit', String(limit));
+  }
+
+  const queryString = params.toString();
+  const response = await fetch(
+    `${baseUrl}/api/storage/objects${queryString ? `?${queryString}` : ''}`,
+    {
+      method: 'GET',
+      headers: await buildHeaders()
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load Firebase Storage objects');
+  }
+
+  return payload;
+}
+
+export async function fetchDebugAuthAccounts() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/auth/accounts`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load Firebase accounts');
+  }
+
+  return Array.isArray(payload?.accounts) ? payload.accounts : [];
+}
+
+export async function requestAccountSwap(uid) {
+  if (!uid) {
+    throw new Error('Firebase UID is required to swap accounts');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/auth/swap`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ uid })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to request account swap');
+  }
+
+  if (!payload?.token) {
+    throw new Error('Server did not return a custom token');
+  }
+
+  return payload.token;
 }

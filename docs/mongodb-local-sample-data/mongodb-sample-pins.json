@@ -60,10 +60,10 @@
     "bookmarkCount": 12,
     "replyCount": 3,
     "startDate": {
-      "$date": "2025-10-04T23:51:14.276Z"
+      "$date": "2026-10-04T23:51:14.276Z"
     },
     "endDate": {
-      "$date": "2025-10-05T02:51:14.276Z"
+      "$date": "2026-10-05T02:51:14.276Z"
     },
     "address": {
       "precise": "Long Beach Shoreline Marina",
@@ -88,10 +88,10 @@
     "attendeeWaitlistIds": [],
     "attendable": true,
     "createdAt": {
-      "$date": "2025-09-25T18:31:00.000Z"
+      "$date": "2026-09-25T18:31:00.000Z"
     },
     "updatedAt": {
-      "$date": "2025-10-03T23:51:14.276Z"
+      "$date": "2026-10-03T23:51:14.276Z"
     }
   },
   {
@@ -162,14 +162,14 @@
       "formatted": "Long Beach, CA"
     },
     "expiresAt": {
-      "$date": "2025-10-06T05:51:14.276Z"
+      "$date": "2026-10-06T05:51:14.276Z"
     },
     "autoDelete": true,
     "createdAt": {
-      "$date": "2025-09-20T16:10:00.000Z"
+      "$date": "2026-09-20T16:10:00.000Z"
     },
     "updatedAt": {
-      "$date": "2025-10-03T23:51:14.276Z"
+      "$date": "2026-10-03T23:51:14.276Z"
     }
   },
   {
@@ -231,10 +231,10 @@
     "bookmarkCount": 21,
     "replyCount": 1,
     "startDate": {
-      "$date": "2025-10-12T01:00:00.000Z"
+      "$date": "2026-10-12T01:00:00.000Z"
     },
     "endDate": {
-      "$date": "2025-10-12T06:00:00.000Z"
+      "$date": "2026-10-12T06:00:00.000Z"
     },
     "address": {
       "precise": "Pine Avenue & Broadway",
@@ -259,10 +259,10 @@
     "attendeeWaitlistIds": [],
     "attendable": true,
     "createdAt": {
-      "$date": "2025-09-05T14:30:00.000Z"
+      "$date": "2026-09-05T14:30:00.000Z"
     },
     "updatedAt": {
-      "$date": "2025-10-03T23:51:14.276Z"
+      "$date": "2026-10-03T23:51:14.276Z"
     }
   },
   {
@@ -319,10 +319,10 @@
     "bookmarkCount": 4,
     "replyCount": 1,
     "startDate": {
-      "$date": "2025-10-18T16:00:00.000Z"
+      "$date": "2026-10-18T16:00:00.000Z"
     },
     "endDate": {
-      "$date": "2025-10-18T19:00:00.000Z"
+      "$date": "2026-10-18T19:00:00.000Z"
     },
     "address": {
       "precise": "Belmont Shore Bike Trail Meetup",
@@ -342,10 +342,10 @@
     "attendeeWaitlistIds": [],
     "attendable": true,
     "createdAt": {
-      "$date": "2025-10-01T18:00:00.000Z"
+      "$date": "2026-10-01T18:00:00.000Z"
     },
     "updatedAt": {
-      "$date": "2025-10-03T23:51:14.276Z"
+      "$date": "2026-10-03T23:51:14.276Z"
     }
   },
   {
@@ -408,14 +408,14 @@
       "formatted": "North Long Beach, CA"
     },
     "expiresAt": {
-      "$date": "2025-10-20T06:00:00.000Z"
+      "$date": "2026-10-20T06:00:00.000Z"
     },
     "autoDelete": true,
     "createdAt": {
-      "$date": "2025-09-29T21:30:00.000Z"
+      "$date": "2026-09-29T21:30:00.000Z"
     },
     "updatedAt": {
-      "$date": "2025-10-03T23:51:14.276Z"
+      "$date": "2026-10-03T23:51:14.276Z"
     }
   },
   {
@@ -472,10 +472,10 @@
     "bookmarkCount": 10,
     "replyCount": 1,
     "startDate": {
-      "$date": "2025-10-25T14:00:00.000Z"
+      "$date": "2026-10-25T14:00:00.000Z"
     },
     "endDate": {
-      "$date": "2025-10-25T17:30:00.000Z"
+      "$date": "2026-10-25T17:30:00.000Z"
     },
     "address": {
       "precise": "Puente Hills Trailhead",
@@ -499,10 +499,10 @@
     "attendeeWaitlistIds": [],
     "attendable": true,
     "createdAt": {
-      "$date": "2025-09-28T20:45:00.000Z"
+      "$date": "2026-09-28T20:45:00.000Z"
     },
     "updatedAt": {
-      "$date": "2025-10-03T23:51:14.276Z"
+      "$date": "2026-10-03T23:51:14.276Z"
     }
   },
   {
@@ -568,10 +568,10 @@
     "bookmarkCount": 9,
     "replyCount": 3,
     "startDate": {
-      "$date": "2025-10-17T18:00:00.000Z"
+      "$date": "2026-10-17T18:00:00.000Z"
     },
     "endDate": {
-      "$date": "2025-10-17T23:00:00.000Z"
+      "$date": "2026-10-17T23:00:00.000Z"
     },
     "address": {
       "precise": "University Student Union Plaza",
@@ -606,10 +606,10 @@
     ],
     "attendable": true,
     "createdAt": {
-      "$date": "2025-09-30T20:15:00.000Z"
+      "$date": "2026-09-30T20:15:00.000Z"
     },
     "updatedAt": {
-      "$date": "2025-10-09T19:00:00.000Z"
+      "$date": "2026-10-09T19:00:00.000Z"
     }
   },
   {
@@ -672,10 +672,10 @@
     "bookmarkCount": 7,
     "replyCount": 1,
     "startDate": {
-      "$date": "2025-10-19T16:30:00.000Z"
+      "$date": "2026-10-19T16:30:00.000Z"
     },
     "endDate": {
-      "$date": "2025-10-19T18:30:00.000Z"
+      "$date": "2026-10-19T18:30:00.000Z"
     },
     "address": {
       "precise": "Recreation Park Soccer Fields",
@@ -707,10 +707,10 @@
     ],
     "attendable": true,
     "createdAt": {
-      "$date": "2025-10-02T18:05:00.000Z"
+      "$date": "2026-10-02T18:05:00.000Z"
     },
     "updatedAt": {
-      "$date": "2025-10-08T17:45:00.000Z"
+      "$date": "2026-10-08T17:45:00.000Z"
     }
   },
   {
@@ -780,14 +780,79 @@
       "formatted": "Long Beach Bluff Park"
     },
     "expiresAt": {
-      "$date": "2025-10-21T14:30:00.000Z"
+      "$date": "2026-10-21T14:30:00.000Z"
     },
     "autoDelete": true,
     "createdAt": {
-      "$date": "2025-10-02T13:15:00.000Z"
+      "$date": "2026-10-02T13:15:00.000Z"
     },
     "updatedAt": {
-      "$date": "2025-10-08T22:30:00.000Z"
+      "$date": "2026-10-08T22:30:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47fff"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "title": "Millennium Celebration",
+    "description": "Y2K-themed throwback meetup to celebrate the turn of the century.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.115,
+        33.785
+      ],
+      "accuracy": 10
+    },
+    "proximityRadiusMeters": 800,
+    "photos": [],
+    "coverPhoto": {
+      "url": "/images/event/event-02.jpg",
+      "thumbnailUrl": "/images/event/event-02.jpg",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "throwback",
+      "party"
+    ],
+    "relatedPinIds": [],
+    "linkedLocationId": null,
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": false,
+    "stats": {
+      "bookmarkCount": 0,
+      "replyCount": 0,
+      "shareCount": 0,
+      "viewCount": 0
+    },
+    "bookmarkCount": 0,
+    "replyCount": 0,
+    "startDate": {
+      "$date": "2000-01-01T02:00:00.000Z"
+    },
+    "endDate": {
+      "$date": "2000-01-01T05:00:00.000Z"
+    },
+    "expiresAt": {
+      "$date": "2000-01-01T05:00:00.000Z"
+    },
+    "autoDelete": false,
+    "participantLimit": 50,
+    "participantCount": 0,
+    "attendable": false,
+    "createdAt": {
+      "$date": "1999-12-20T12:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2000-01-02T12:00:00.000Z"
     }
   }
 ]

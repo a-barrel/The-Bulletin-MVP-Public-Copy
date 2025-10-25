@@ -1,30 +1,50 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const admin = require('firebase-admin');
 const { z, ZodError } = require('zod');
 
+const runtime = require('../config/runtime');
 const User = require('../models/User');
 const { Bookmark, BookmarkCollection } = require('../models/Bookmark');
-const {
-  ProximityChatRoom,
-  ProximityChatMessage,
-  ProximityChatPresence
-} = require('../models/ProximityChat');
 const Update = require('../models/Update');
 const Reply = require('../models/Reply');
 const Pin = require('../models/Pin');
 const verifyToken = require('../middleware/verifyToken');
 const { UserProfileSchema } = require('../schemas/user');
 const { BookmarkSchema, BookmarkCollectionSchema } = require('../schemas/bookmark');
-const { ProximityChatRoomSchema, ProximityChatMessageSchema, ProximityChatPresenceSchema } = require('../schemas/proximityChat');
 const { UpdateSchema } = require('../schemas/update');
 const { PinReplySchema } = require('../schemas/reply');
 const { PinPreviewSchema } = require('../schemas/pin');
+const {
+  mapRoom: mapChatRoom,
+  mapMessage: mapChatMessage,
+  mapPresence: mapChatPresence,
+  createRoom: createChatRoomRecord,
+  createMessage: createChatMessageRecord,
+  upsertPresence: upsertChatPresenceRecord
+} = require('../services/proximityChatService');
+const {
+  listBadges,
+  grantBadge,
+  revokeBadge,
+  resetBadges,
+  getBadgeStatusForUser
+} = require('../services/badgeService');
 
 const router = express.Router();
 
 const ObjectIdString = z
   .string()
   .refine((value) => mongoose.Types.ObjectId.isValid(value), { message: 'Invalid object id' });
+
+const BadgeQuerySchema = z.object({
+  userId: z.string().trim().optional()
+});
+
+const BadgeMutationSchema = z.object({
+  userId: z.string().trim().optional(),
+  badgeId: z.string().trim().min(1)
+});
 
 const toObjectId = (value) => (value ? new mongoose.Types.ObjectId(value) : undefined);
 
@@ -34,6 +54,55 @@ const toIdString = (value) => {
   if (value instanceof mongoose.Types.ObjectId) return value.toString();
   if (value._id) return value._id.toString();
   return String(value);
+};
+
+const toIsoDateString = (value) => {
+  if (!value) return undefined;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value.toISOString === 'function') return value.toISOString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+};
+
+const resolveViewerUser = async (req) => {
+  if (!req?.user?.uid) {
+    return null;
+  }
+
+  try {
+    const viewer = await User.findOne({ firebaseUid: req.user.uid });
+    return viewer;
+  } catch (error) {
+    console.error('Failed to resolve viewer user for debug route:', error);
+    return null;
+  }
+};
+const mapMediaAsset = (asset) => {
+  if (!asset) {
+    return undefined;
+  }
+
+  const doc = asset.toObject ? asset.toObject() : asset;
+  const url = doc.url || doc.thumbnailUrl;
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return undefined;
+  }
+
+  const payload = {
+    url: url.trim(),
+    thumbnailUrl: doc.thumbnailUrl || undefined,
+    width: doc.width ?? undefined,
+    height: doc.height ?? undefined,
+    mimeType: doc.mimeType || undefined,
+    description: doc.description || undefined,
+    uploadedAt: toIsoDateString(doc.uploadedAt),
+    uploadedBy: toIdString(doc.uploadedBy)
+  };
+
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined && value !== null)
+  );
 };
 
 const buildAudit = (audit, createdAt, updatedAt) => ({
@@ -49,14 +118,14 @@ const mapUserToProfile = (userDoc) => {
     _id: toIdString(doc._id),
     username: doc.username,
     displayName: doc.displayName,
-    avatar: doc.avatar || undefined,
+    avatar: mapMediaAsset(doc.avatar),
     stats: doc.stats || undefined,
     badges: doc.badges || [],
     primaryLocationId: toIdString(doc.primaryLocationId),
     accountStatus: doc.accountStatus || 'active',
     email: doc.email || undefined,
     bio: doc.bio || undefined,
-    banner: doc.banner || undefined,
+    banner: mapMediaAsset(doc.banner),
     preferences: doc.preferences || undefined,
     relationships: doc.relationships || undefined,
     locationSharingEnabled: Boolean(doc.locationSharingEnabled),
@@ -99,77 +168,6 @@ const mapCollection = (collectionDoc, bookmarks) => {
     createdAt: collectionDoc.createdAt.toISOString(),
     updatedAt: collectionDoc.updatedAt.toISOString(),
     bookmarks
-  });
-};
-
-const mapChatRoom = (roomDoc) => {
-  const doc = roomDoc.toObject();
-  return ProximityChatRoomSchema.parse({
-    _id: toIdString(doc._id),
-    ownerId: toIdString(doc.ownerId),
-    name: doc.name,
-    description: doc.description || undefined,
-    coordinates: {
-      type: 'Point',
-      coordinates: doc.coordinates.coordinates,
-      accuracy: doc.coordinates.accuracy ?? undefined
-    },
-    radiusMeters: doc.radiusMeters,
-    participantCount: doc.participantCount ?? 0,
-    participantIds: (doc.participantIds || []).map(toIdString),
-    moderatorIds: (doc.moderatorIds || []).map(toIdString),
-    pinId: toIdString(doc.pinId),
-    createdAt: roomDoc.createdAt.toISOString(),
-    updatedAt: roomDoc.updatedAt.toISOString(),
-    audit: doc.audit ? buildAudit(doc.audit, roomDoc.createdAt, roomDoc.updatedAt) : undefined
-  });
-};
-
-const mapChatMessage = (messageDoc) => {
-  const doc = messageDoc.toObject();
-  const coordinates = doc.coordinates && Array.isArray(doc.coordinates.coordinates) && doc.coordinates.coordinates.length === 2
-    ? {
-        type: 'Point',
-        coordinates: doc.coordinates.coordinates,
-        accuracy: doc.coordinates.accuracy ?? undefined
-      }
-    : undefined;
-
-  return ProximityChatMessageSchema.parse({
-    _id: toIdString(doc._id),
-    roomId: toIdString(doc.roomId),
-    pinId: toIdString(doc.pinId),
-    authorId: toIdString(doc.authorId),
-    author: doc.authorId && doc.authorId.username
-      ? {
-          _id: toIdString(doc.authorId._id),
-          username: doc.authorId.username,
-          displayName: doc.authorId.displayName,
-          avatar: doc.authorId.avatar || undefined,
-          stats: doc.authorId.stats || undefined,
-          badges: doc.authorId.badges || [],
-          primaryLocationId: toIdString(doc.authorId.primaryLocationId),
-          accountStatus: doc.authorId.accountStatus || 'active'
-        }
-      : undefined,
-    replyToMessageId: toIdString(doc.replyToMessageId),
-    message: doc.message,
-    coordinates,
-    attachments: doc.attachments || [],
-    createdAt: messageDoc.createdAt.toISOString(),
-    updatedAt: messageDoc.updatedAt.toISOString(),
-    audit: doc.audit ? buildAudit(doc.audit, messageDoc.createdAt, messageDoc.updatedAt) : undefined
-  });
-};
-
-const mapChatPresence = (presenceDoc) => {
-  const doc = presenceDoc.toObject();
-  return ProximityChatPresenceSchema.parse({
-    roomId: toIdString(doc.roomId),
-    userId: toIdString(doc.userId),
-    sessionId: toIdString(doc.sessionId),
-    joinedAt: doc.joinedAt.toISOString(),
-    lastActiveAt: doc.lastActiveAt.toISOString()
   });
 };
 
@@ -223,6 +221,194 @@ const mapReply = (replyDoc) => {
 };
 
 router.use(verifyToken);
+
+router.get('/badges', async (req, res) => {
+  try {
+    const query = BadgeQuerySchema.parse(req.query);
+    const viewer = await resolveViewerUser(req);
+    const targetUserId = query.userId?.trim() || viewer?._id;
+    if (!targetUserId) {
+      return res.status(400).json({ message: 'Provide a userId or authenticate to view badges.' });
+    }
+
+    const status = await getBadgeStatusForUser(targetUserId);
+    res.json(status);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid badge query', issues: error.errors });
+    }
+    if (error.message === 'User not found') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    console.error('Failed to load badge status:', error);
+    res.status(500).json({ message: 'Failed to load badges' });
+  }
+});
+
+router.post('/badges/grant', async (req, res) => {
+  try {
+    const input = BadgeMutationSchema.parse(req.body);
+    const viewer = await resolveViewerUser(req);
+    const targetUserId = input.userId?.trim() || viewer?._id;
+    if (!targetUserId) {
+      return res.status(400).json({ message: 'Provide a userId or authenticate to grant a badge.' });
+    }
+
+    await grantBadge({
+      userId: targetUserId,
+      badgeId: input.badgeId.trim().toLowerCase(),
+      sourceUserId: viewer?._id ?? targetUserId
+    });
+
+    const status = await getBadgeStatusForUser(targetUserId);
+    res.json(status);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid badge payload', issues: error.errors });
+    }
+    if (error.message && error.message.startsWith('Unknown badge')) {
+      return res.status(400).json({ message: error.message });
+    }
+    if (error.message === 'User not found') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    console.error('Failed to grant badge (debug):', error);
+    res.status(500).json({ message: 'Failed to grant badge' });
+  }
+});
+
+router.post('/badges/revoke', async (req, res) => {
+  try {
+    const input = BadgeMutationSchema.parse(req.body);
+    const viewer = await resolveViewerUser(req);
+    const targetUserId = input.userId?.trim() || viewer?._id;
+    if (!targetUserId) {
+      return res.status(400).json({ message: 'Provide a userId or authenticate to revoke a badge.' });
+    }
+
+    await revokeBadge({
+      userId: targetUserId,
+      badgeId: input.badgeId.trim().toLowerCase()
+    });
+
+    const status = await getBadgeStatusForUser(targetUserId);
+    res.json(status);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid badge payload', issues: error.errors });
+    }
+    if (error.message && error.message.startsWith('Unknown badge')) {
+      return res.status(400).json({ message: error.message });
+    }
+    if (error.message === 'User not found') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    console.error('Failed to revoke badge (debug):', error);
+    res.status(500).json({ message: 'Failed to revoke badge' });
+  }
+});
+
+router.post('/badges/reset', async (req, res) => {
+  try {
+    const input = BadgeQuerySchema.parse(req.body);
+    const viewer = await resolveViewerUser(req);
+    const targetUserId = input.userId?.trim() || viewer?._id;
+    if (!targetUserId) {
+      return res.status(400).json({ message: 'Provide a userId or authenticate to reset badges.' });
+    }
+
+    await resetBadges(targetUserId);
+    const status = await getBadgeStatusForUser(targetUserId);
+    res.json(status);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid badge payload', issues: error.errors });
+    }
+    if (error.message === 'User not found') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    console.error('Failed to reset badges (debug):', error);
+    res.status(500).json({ message: 'Failed to reset badges' });
+  }
+});
+
+router.get('/auth/accounts', async (req, res) => {
+  if (!runtime.isOffline) {
+    return res.status(403).json({ message: 'Account swapping is only available in offline mode.' });
+  }
+
+  try {
+    const accounts = [];
+    let nextPageToken = undefined;
+
+    do {
+      // Firebase Admin paginates results; pull everything so the debug UI has the full list.
+      const result = await admin.auth().listUsers(1000, nextPageToken);
+      result.users.forEach((userRecord) => {
+        accounts.push({
+          uid: userRecord.uid,
+          displayName: userRecord.displayName || null,
+          email: userRecord.email || null,
+          photoUrl: userRecord.photoURL || null,
+          disabled: Boolean(userRecord.disabled),
+          providerIds: (userRecord.providerData || []).map((provider) => provider.providerId).filter(Boolean),
+          lastLoginAt: userRecord.metadata?.lastSignInTime || null,
+          createdAt: userRecord.metadata?.creationTime || null
+        });
+      });
+      nextPageToken = result.pageToken;
+    } while (nextPageToken);
+
+    accounts.sort((a, b) => {
+      const labelA = (a.displayName || a.email || a.uid).toLowerCase();
+      const labelB = (b.displayName || b.email || b.uid).toLowerCase();
+      return labelA.localeCompare(labelB);
+    });
+
+    res.json({ accounts });
+  } catch (error) {
+    console.error('Failed to list Firebase accounts for debug swap', error);
+    res.status(500).json({ message: 'Failed to load Firebase accounts' });
+  }
+});
+
+router.post('/auth/swap', async (req, res) => {
+  if (!runtime.isOffline) {
+    return res.status(403).json({ message: 'Account swapping is only available in offline mode.' });
+  }
+
+  const SwapSchema = z.object({
+    uid: z.string().min(1, 'A Firebase UID is required')
+  });
+
+  let input;
+  try {
+    input = SwapSchema.parse(req.body);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid swap payload', issues: error.errors });
+    }
+    return res.status(400).json({ message: 'Invalid swap payload' });
+  }
+
+  try {
+    await admin.auth().getUser(input.uid);
+  } catch (error) {
+    if (error.code === 'auth/user-not-found') {
+      return res.status(404).json({ message: 'Firebase account not found' });
+    }
+    console.error('Failed to verify Firebase account before issuing custom token', error);
+    return res.status(500).json({ message: 'Failed to verify Firebase account' });
+  }
+
+  try {
+    const token = await admin.auth().createCustomToken(input.uid);
+    res.json({ token });
+  } catch (error) {
+    console.error('Failed to issue custom token for debug swap', error);
+    res.status(500).json({ message: 'Failed to issue custom token' });
+  }
+});
 
 router.post('/users', async (req, res) => {
   const CreateUserSchema = z.object({
@@ -496,28 +682,29 @@ router.post('/chat-rooms', async (req, res) => {
     radiusMeters: z.number().positive(),
     pinId: ObjectIdString.optional(),
     participantIds: z.array(ObjectIdString).optional(),
-    moderatorIds: z.array(ObjectIdString).optional()
+    moderatorIds: z.array(ObjectIdString).optional(),
+    presetKey: z.string().trim().optional(),
+    isGlobal: z.boolean().optional()
   });
 
   try {
     const input = CreateRoomSchema.parse(req.body);
-    const room = await ProximityChatRoom.create({
-      ownerId: toObjectId(input.ownerId),
+    const room = await createChatRoomRecord({
+      ownerId: input.ownerId,
       name: input.name,
       description: input.description,
-      coordinates: {
-        type: 'Point',
-        coordinates: [input.longitude, input.latitude],
-        accuracy: input.accuracy
-      },
+      latitude: input.latitude,
+      longitude: input.longitude,
+      accuracy: input.accuracy,
       radiusMeters: input.radiusMeters,
-      participantIds: input.participantIds ? input.participantIds.map(toObjectId) : [],
-      participantCount: input.participantIds ? input.participantIds.length : 0,
-      moderatorIds: input.moderatorIds ? input.moderatorIds.map(toObjectId) : [],
-      pinId: toObjectId(input.pinId)
+      pinId: input.pinId,
+      participantIds: input.participantIds,
+      moderatorIds: input.moderatorIds,
+      presetKey: input.presetKey,
+      isGlobal: input.isGlobal
     });
 
-    res.status(201).json(mapChatRoom(room));
+    res.status(201).json(room);
   } catch (error) {
     if (error instanceof ZodError) {
       return res.status(400).json({ message: 'Invalid chat room payload', issues: error.errors });
@@ -540,27 +727,18 @@ router.post('/chat-messages', async (req, res) => {
 
   try {
     const input = CreateMessageSchema.parse(req.body);
-
-    let coordinates;
-    if (input.latitude !== undefined && input.longitude !== undefined) {
-      coordinates = {
-        type: 'Point',
-        coordinates: [input.longitude, input.latitude],
-        accuracy: input.accuracy
-      };
-    }
-
-    const message = await ProximityChatMessage.create({
-      roomId: toObjectId(input.roomId),
-      pinId: toObjectId(input.pinId),
-      authorId: toObjectId(input.authorId),
-      replyToMessageId: toObjectId(input.replyToMessageId),
+    const { messageDoc, response } = await createChatMessageRecord({
+      roomId: input.roomId,
+      pinId: input.pinId,
+      authorId: input.authorId,
+      replyToMessageId: input.replyToMessageId,
       message: input.message,
-      coordinates
+      latitude: input.latitude,
+      longitude: input.longitude,
+      accuracy: input.accuracy
     });
 
-    const populated = await message.populate('authorId');
-    res.status(201).json(mapChatMessage(populated));
+    res.status(201).json(response);
   } catch (error) {
     if (error instanceof ZodError) {
       return res.status(400).json({ message: 'Invalid chat message payload', issues: error.errors });
@@ -580,26 +758,15 @@ router.post('/chat-presence', async (req, res) => {
 
   try {
     const input = CreatePresenceSchema.parse(req.body);
-    const now = new Date();
-    const joinedAt = input.joinedAt ? new Date(input.joinedAt) : now;
-    const lastActiveAt = input.lastActiveAt ? new Date(input.lastActiveAt) : now;
+    const presence = await upsertChatPresenceRecord({
+      roomId: input.roomId,
+      userId: input.userId,
+      sessionId: input.sessionId,
+      joinedAt: input.joinedAt,
+      lastActiveAt: input.lastActiveAt
+    });
 
-    const presence = await ProximityChatPresence.findOneAndUpdate(
-      {
-        roomId: toObjectId(input.roomId),
-        userId: toObjectId(input.userId)
-      },
-      {
-        roomId: toObjectId(input.roomId),
-        userId: toObjectId(input.userId),
-        sessionId: toObjectId(input.sessionId),
-        joinedAt,
-        lastActiveAt
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-
-    res.status(201).json(mapChatPresence(presence));
+    res.status(201).json(presence);
   } catch (error) {
     if (error instanceof ZodError) {
       return res.status(400).json({ message: 'Invalid chat presence payload', issues: error.errors });
@@ -618,11 +785,14 @@ router.post('/updates', async (req, res) => {
         'new-pin',
         'pin-update',
         'event-starting-soon',
+        'event-reminder',
         'popular-pin',
         'bookmark-update',
         'system',
         'chat-message',
-        'friend-request'
+        'friend-request',
+        'chat-room-transition',
+        'badge-earned'
       ]),
       title: z.string().min(1),
       body: z.string().optional(),
@@ -731,6 +901,100 @@ router.post('/updates', async (req, res) => {
   }
 });
 
+router.get('/bad-users', async (req, res) => {
+  try {
+    const users = await User.find({ 'stats.cussCount': { $gt: 0 } })
+      .select({
+        username: 1,
+        displayName: 1,
+        avatar: 1,
+        stats: 1,
+        accountStatus: 1,
+        createdAt: 1
+      })
+      .sort({ 'stats.cussCount': -1, createdAt: 1 })
+      .lean();
+
+    const payload = users.map((user) => ({
+      id: toIdString(user._id),
+      username: user.username || null,
+      displayName: user.displayName || null,
+      avatar: user.avatar
+        ? {
+            url: user.avatar.url || null,
+            thumbnailUrl: user.avatar.thumbnailUrl || null
+          }
+        : null,
+      cussCount: user?.stats?.cussCount ?? 0,
+      accountStatus: user.accountStatus || 'active',
+      createdAt: user.createdAt ? user.createdAt.toISOString() : null
+    }));
+
+    res.json(payload);
+  } catch (error) {
+    console.error('Failed to load users with cuss stats', error);
+    res.status(500).json({ message: 'Failed to load cuss stats' });
+  }
+});
+
+router.post('/bad-users/:userId/increment', async (req, res) => {
+  const { userId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: 'Invalid user id' });
+  }
+
+  try {
+    const result = await User.findByIdAndUpdate(
+      userId,
+      { $inc: { 'stats.cussCount': 1 } },
+      { new: true, projection: { username: 1, displayName: 1, stats: 1 } }
+    );
+
+    if (!result) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      id: toIdString(result._id),
+      username: result.username || null,
+      displayName: result.displayName || null,
+      cussCount: result?.stats?.cussCount ?? 0
+    });
+  } catch (error) {
+    console.error('Failed to increment cuss count', error);
+    res.status(500).json({ message: 'Failed to increment cuss count' });
+  }
+});
+
+router.post('/bad-users/:userId/reset', async (req, res) => {
+  const { userId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: 'Invalid user id' });
+  }
+
+  try {
+    const result = await User.findByIdAndUpdate(
+      userId,
+      { $set: { 'stats.cussCount': 0 } },
+      { new: true, projection: { username: 1, displayName: 1, stats: 1 } }
+    );
+
+    if (!result) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      id: toIdString(result._id),
+      username: result.username || null,
+      displayName: result.displayName || null,
+      cussCount: result?.stats?.cussCount ?? 0
+    });
+  } catch (error) {
+    console.error('Failed to reset cuss count', error);
+    res.status(500).json({ message: 'Failed to reset cuss count' });
+  }
+});
+
 router.post('/replies', async (req, res) => {
   const CreateReplySchema = z.object({
     pinId: ObjectIdString,
@@ -761,3 +1025,4 @@ router.post('/replies', async (req, res) => {
 });
 
 module.exports = router;
+
