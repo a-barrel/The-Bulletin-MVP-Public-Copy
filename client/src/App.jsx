@@ -9,7 +9,6 @@ import {
 } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import Snackbar from '@mui/material/Snackbar';
 import Modal from '@mui/material/Modal';
 import Fade from '@mui/material/Fade';
 import Paper from '@mui/material/Paper';
@@ -29,8 +28,11 @@ import RegistrationPage from './pages/Registration';
 import { UpdatesProvider } from './contexts/UpdatesContext';
 import { BadgeSoundProvider } from './contexts/BadgeSoundContext';
 import { preloadBadgeSound, setBadgeSoundEnabled } from './utils/badgeSound';
-import { getBadgeLabel } from './utils/badges';
 import { LocationProvider } from './contexts/LocationContext';
+import {
+  BadgeCelebrationToast,
+  useBadgeCelebrationToast
+} from './components/BadgeCelebrationToast';
 
 const theme = createTheme({
   palette: {
@@ -152,7 +154,11 @@ function App() {
   const [badgeSoundEnabled, setBadgeSoundEnabledState] = useState(
     () => readStoredBadgeSoundPreference()
   );
-  const [badgeToast, setBadgeToast] = useState({ open: false, message: '', key: 0 });
+  const {
+    toastState: badgeToast,
+    announceBadgeEarned,
+    handleClose: handleBadgeToastClose
+  } = useBadgeCelebrationToast();
 
   useEffect(() => {
     setBadgeSoundEnabled(badgeSoundEnabled);
@@ -170,29 +176,6 @@ function App() {
       }
     }
   }, [badgeSoundEnabled]);
-
-  const announceBadgeEarned = useCallback(
-    (badgeId) => {
-      if (!badgeId) {
-        return;
-      }
-      const label = getBadgeLabel(badgeId);
-      const message = `you earned ${label} badge!!`;
-      setBadgeToast({
-        open: true,
-        message,
-        key: Date.now()
-      });
-    },
-    []
-  );
-
-  const handleBadgeToastClose = useCallback((event, reason) => {
-    if (reason === 'clickaway') {
-      return;
-    }
-    setBadgeToast((prev) => (prev.open ? { ...prev, open: false } : prev));
-  }, []);
 
   const navPages = useMemo(
     () => pages.filter((page) => page.showInNav),
@@ -548,15 +531,7 @@ function App() {
                 }
               />
             </Routes>
-            <Snackbar
-              key={badgeToast.key}
-              open={badgeToast.open}
-              message={badgeToast.message}
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-              autoHideDuration={4000}
-              onClose={handleBadgeToastClose}
-              sx={{ '& .MuiSnackbarContent-root': { fontSize: '0.9rem' } }}
-            />
+            <BadgeCelebrationToast toastState={badgeToast} onClose={handleBadgeToastClose} />
           </ThemeProvider>
         </NavOverlayProvider>
       </UpdatesProvider>
