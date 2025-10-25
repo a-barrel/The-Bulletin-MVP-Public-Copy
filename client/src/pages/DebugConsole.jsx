@@ -67,6 +67,9 @@ import {
   fetchChatPresence,
   createUpdate,
   fetchUpdates,
+  fetchUsersWithCussCount,
+  incrementUserCussCount,
+  resetUserCussCount,
   createReply,
   fetchReplies,
   fetchDebugAuthAccounts,
@@ -581,6 +584,226 @@ const toIdString = (value) => {
   return `${value}`;
 };
 const mongooseObjectIdLike = (value) => typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+
+function BadUsersTab() {
+  const [users, setUsers] = useState([]);
+  const [status,       setStatus] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [profileError, setProfileError] = useState(null);
+
+  const loadUsers = useCallback(async () => {
+          setStatus(null);
+    setIsLoading(true);
+    try {
+      const data = await fetchUsersWithCussCount();
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (error) {
+              setStatus({ type: 'error', message: error?.message || 'Failed to load cuss stats.' });
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (cancelled) {
+          return;
+        }
+        const id = profile?._id || profile?.userId || profile?.id || '';
+        if (id) {
+          setCurrentUserId(id);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setProfileError(error?.message || 'Failed to load current user id.');
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleIncrement = useCallback(async () => {
+    if (!currentUserId) {
+      setStatus({ type: 'error', message: 'Load your profile id first.' });
+      return;
+    }
+    try {
+      setIsLoading(true);
+      await incrementUserCussCount(currentUserId);
+      await loadUsers();
+      setStatus({ type: 'success', message: 'Added 1 cuss to your profile.' });
+    } catch (error) {
+      setStatus({ type: 'error', message: error?.message || 'Failed to increment.' });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentUserId, loadUsers]);
+
+  const handleReset = useCallback(async () => {
+    if (!currentUserId) {
+      setStatus({ type: 'error', message: 'Load your profile id first.' });
+      return;
+    }
+    try {
+      setIsLoading(true);
+      await resetUserCussCount(currentUserId);
+      await loadUsers();
+      setStatus({ type: 'success', message: 'Cuss count cleared.' });
+    } catch (error) {
+      setStatus({ type: 'error', message: error?.message || 'Failed to reset.' });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentUserId, loadUsers]);
+
+  const resolveAvatarUrl = useCallback((avatar) => {
+    if (!avatar) {
+      return BAD_USERS_FALLBACK_AVATAR;
+    }
+
+    const toAbsolute = (value) => {
+      if (!value) {
+        return null;
+      }
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return null;
+      }
+      if (/^(?:[a-z]+:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
+        return trimmed;
+      }
+      const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+      const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+      return base ? `${base}${normalized}` : normalized;
+    };
+
+    if (typeof avatar === 'string') {
+      return toAbsolute(avatar) || BAD_USERS_FALLBACK_AVATAR;
+    }
+    if (typeof avatar === 'object') {
+      const source = avatar.thumbnailUrl || avatar.url || avatar.path;
+      return toAbsolute(typeof source === 'string' ? source : null) || BAD_USERS_FALLBACK_AVATAR;
+    }
+    return BAD_USERS_FALLBACK_AVATAR;
+  }, []);
+
+  const buildSummary = useCallback((user) => {
+    const parts = [];
+    if (user.username) {
+      parts.push(`@${user.username}`);
+    }
+    if (user.accountStatus && user.accountStatus !== 'active') {
+      parts.push(`status: ${user.accountStatus}`);
+    }
+    if (user.createdAt) {
+      try {
+        parts.push(`joined ${new Date(user.createdAt).toLocaleDateString()}`);
+      } catch {
+        // ignore parse errors
+      }
+    }
+    return parts.join(' • ');
+  }, []);
+
+  return (
+    <Stack spacing={2}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          justifyContent="space-between"
+        >
+          <Typography variant="h6">Users with cuss logs</Typography>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Button onClick={loadUsers} variant="outlined" disabled={isLoading}>
+              {isLoading ? 'Refreshing…' : 'Refresh'}
+            </Button>
+            <Button
+              variant="contained"
+              color="warning"
+              onClick={handleIncrement}
+              disabled={isLoading || !currentUserId}
+            >
+              😈 +1 Cuss
+            </Button>
+            <Button
+              variant="outlined"
+              color="success"
+              onClick={handleReset}
+              disabled={isLoading || !currentUserId}
+            >
+              😇 Remove All Cuss
+            </Button>
+          </Stack>
+        </Stack>
+        <Typography variant="body2" color="text.secondary">
+          Preview of accounts that triggered the cuss-word filter. Counts reflect total filtered messages.
+        </Typography>
+        {status ? (
+          <Alert severity={status.type} onClose={() =>       setStatus(null)}>
+            {status.message}
+          </Alert>
+        ) : null}
+        {profileError && !currentUserId ? (
+          <Alert
+            severity="warning"
+            onClose={() => setProfileError(null)}
+          >
+            {profileError}
+          </Alert>
+        ) : null}
+        {isLoading && users.length === 0 ? (
+          <Stack direction="row" spacing={2} alignItems="center">
+            <CircularProgress size={20} />
+            <Typography variant="body2" color="text.secondary">
+              Loading…
+            </Typography>
+          </Stack>
+        ) : null}
+        {users.length === 0 && !isLoading ? (
+          <Typography variant="body2" color="text.secondary">
+            No colorful language detected yet. 🌈
+          </Typography>
+        ) : null}
+        {users.length > 0 ? (
+          <List sx={{ width: '100%', bgcolor: 'background.paper', borderRadius: 2 }}>
+            {users.map((user) => {
+              const avatarUrl = resolveAvatarUrl(user.avatar);
+              const name = user.displayName || user.username || user.id;
+              const cussCount = Number(user?.cussCount ?? 0);
+              const countLabel = `${cussCount} ${cussCount === 1 ? 'cuss' : 'cusses'}`;
+              return (
+                <ListItem key={user.id} alignItems="center" sx={{ py: 1 }}>
+                  <ListItemAvatar>
+                    <Avatar src={avatarUrl} alt={name} />
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={name}
+                    secondary={buildSummary(user)}
+                    primaryTypographyProps={{ fontWeight: 600 }}
+                  />
+                  <Chip label={countLabel} color="warning" size="small" />
+                </ListItem>
+              );
+            })}
+          </List>
+        ) : null}
+      </Paper>
+    </Stack>
+  );
+}
 const TAB_OPTIONS = [
   { id: 'pin', label: 'Pins & Events' },
   { id: 'profile', label: 'Profiles' },
@@ -591,6 +814,7 @@ const TAB_OPTIONS = [
   { id: LIVE_CHAT_TAB_ID, label: 'Live Chat Test' },
   { id: CHAT_VIS_TAB_ID, label: 'Chat Room Visualization' },
   { id: 'updates', label: 'Updates' },
+  { id: 'bad-users', label: 'BAD USERS >:(' },
   { id: 'replies', label: 'Replies' },
   { id: ACCOUNT_SWAP_TAB_ID, label: 'Account Swap' },
   ...(EXPERIMENT_ENABLED ? [{ id: EXPERIMENT_TAB_ID, label: EXPERIMENT_TITLE }] : [])
@@ -604,9 +828,12 @@ const CHAT_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'chat');
 const LIVE_CHAT_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === LIVE_CHAT_TAB_ID);
 const CHAT_VIS_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === CHAT_VIS_TAB_ID);
 const UPDATES_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'updates');
+const BAD_USERS_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'bad-users');
 const REPLIES_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === 'replies');
 const ACCOUNT_SWAP_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === ACCOUNT_SWAP_TAB_ID);
 const EXPERIMENT_TAB_INDEX = TAB_OPTIONS.findIndex((tab) => tab.id === EXPERIMENT_TAB_ID);
+
+const BAD_USERS_FALLBACK_AVATAR = '/images/profile/profile-01.jpg';
 
 const ACCOUNT_STATUS_OPTIONS = ['active', 'inactive', 'suspended', 'deleted'];
 const UPDATE_TYPE_OPTIONS = [
@@ -728,7 +955,7 @@ function DebugConsolePage() {
     approximateCountry: '',
     approximateFormatted: ''
   });
-  const [status, setStatus] = useState(null);
+  const [status,       setStatus] = useState(null);
   const [createdPin, setCreatedPin] = useState(null);
   const [pinIdInput, setPinIdInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -840,7 +1067,7 @@ function DebugConsolePage() {
   const handlePinTypeChange = (_event, value) => {
     if (value) {
       setPinType(value);
-      setStatus(null);
+            setStatus(null);
     }
   };
 
@@ -853,7 +1080,7 @@ function DebugConsolePage() {
   };
 
   const applyPreset = (type, values) => {
-    setStatus(null);
+          setStatus(null);
     setPinType(type);
     setFormState((prev) => ({
       ...prev,
@@ -918,10 +1145,10 @@ const handleAutofillDiscussion = () => {
   };
 
   const handleFetchNearbyPins = async () => {
-    setStatus(null);
+          setStatus(null);
     const miles = Number.parseFloat(distanceMiles);
     if (Number.isNaN(miles) || miles <= 0) {
-      setStatus({ type: 'error', message: 'Provide a distance in miles greater than 0.' });
+              setStatus({ type: 'error', message: 'Provide a distance in miles greater than 0.' });
       return;
     }
 
@@ -931,7 +1158,7 @@ const handleAutofillDiscussion = () => {
       latitude = parseCoordinate(formState.latitude, 'Latitude');
       longitude = parseCoordinate(formState.longitude, 'Longitude');
     } catch (error) {
-      setStatus({ type: 'error', message: error.message });
+              setStatus({ type: 'error', message: error.message });
       return;
     }
 
@@ -953,14 +1180,14 @@ const handleAutofillDiscussion = () => {
         setMapFocusLocation(focus);
       }
     }
-    setStatus({
+            setStatus({
       type: 'success',
       message: pins.length
         ? `Loaded ${pins.length} pin${pins.length === 1 ? '' : 's'} within ${miles} miles.`
         : `No pins found within ${miles} miles.`
       });
     } catch (error) {
-      setStatus({ type: 'error', message: error.message || 'Failed to fetch nearby pins.' });
+              setStatus({ type: 'error', message: error.message || 'Failed to fetch nearby pins.' });
     } finally {
       setIsFetchingNearby(false);
     }
@@ -985,12 +1212,12 @@ const handleAutofillDiscussion = () => {
   };
 
   const handleFetchAllPins = async () => {
-    setStatus(null);
+          setStatus(null);
     let limitValue;
     try {
       limitValue = resolvePinListLimit();
     } catch (error) {
-      setStatus({ type: 'error', message: error.message });
+              setStatus({ type: 'error', message: error.message });
       return;
     }
 
@@ -1008,14 +1235,14 @@ const handleAutofillDiscussion = () => {
           setPinIdInput(pins[0]._id);
         }
       }
-      setStatus({
+              setStatus({
         type: pins.length ? 'success' : 'info',
         message: pins.length
           ? `Loaded ${pins.length} pin${pins.length === 1 ? '' : 's'} (latest first).`
           : 'No pins found.'
       });
     } catch (error) {
-      setStatus({ type: 'error', message: error.message || 'Failed to load pins.' });
+              setStatus({ type: 'error', message: error.message || 'Failed to load pins.' });
     } finally {
       setIsFetchingAllPins(false);
     }
@@ -1030,12 +1257,12 @@ const handleAutofillDiscussion = () => {
   };
 
   const handleSortPinsByDistance = async () => {
-    setStatus(null);
+          setStatus(null);
     let limitValue;
     try {
       limitValue = resolvePinListLimit();
     } catch (error) {
-      setStatus({ type: 'error', message: error.message });
+              setStatus({ type: 'error', message: error.message });
       return;
     }
 
@@ -1045,7 +1272,7 @@ const handleAutofillDiscussion = () => {
       latitude = parseCoordinate(distanceSortLatitude, 'Latitude');
       longitude = parseCoordinate(distanceSortLongitude, 'Longitude');
     } catch (error) {
-      setStatus({ type: 'error', message: error.message });
+              setStatus({ type: 'error', message: error.message });
       return;
     }
 
@@ -1067,26 +1294,26 @@ const handleAutofillDiscussion = () => {
           setPinIdInput(pins[0]._id);
         }
       }
-      setStatus({
+              setStatus({
         type: pins.length ? 'success' : 'info',
         message: pins.length
           ? `Loaded ${pins.length} pin${pins.length === 1 ? '' : 's'} sorted by distance (closest first).`
           : 'No pins found for the provided coordinates.'
       });
     } catch (error) {
-      setStatus({ type: 'error', message: error.message || 'Failed to sort pins by distance.' });
+              setStatus({ type: 'error', message: error.message || 'Failed to sort pins by distance.' });
     } finally {
       setIsFetchingAllPins(false);
     }
   };
 
   const handleSortPinsByExpiration = async () => {
-    setStatus(null);
+          setStatus(null);
     let limitValue;
     try {
       limitValue = resolvePinListLimit();
     } catch (error) {
-      setStatus({ type: 'error', message: error.message });
+              setStatus({ type: 'error', message: error.message });
       return;
     }
 
@@ -1107,26 +1334,26 @@ const handleAutofillDiscussion = () => {
           setPinIdInput(pins[0]._id);
         }
       }
-      setStatus({
+              setStatus({
         type: pins.length ? 'success' : 'info',
         message: pins.length
           ? `Loaded ${pins.length} pin${pins.length === 1 ? '' : 's'} sorted by soonest expiration.`
           : 'No pins with upcoming expiration dates were found.'
       });
     } catch (error) {
-      setStatus({ type: 'error', message: error.message || 'Failed to sort pins by expiration.' });
+              setStatus({ type: 'error', message: error.message || 'Failed to sort pins by expiration.' });
     } finally {
       setIsFetchingAllPins(false);
     }
   };
 
   const handleFetchExpiredPins = async () => {
-    setStatus(null);
+          setStatus(null);
     let limitValue;
     try {
       limitValue = resolvePinListLimit();
     } catch (error) {
-      setStatus({ type: 'error', message: error.message });
+              setStatus({ type: 'error', message: error.message });
       return;
     }
 
@@ -1145,14 +1372,14 @@ const handleAutofillDiscussion = () => {
           setPinIdInput(pins[0]._id);
         }
       }
-      setStatus({
+              setStatus({
         type: pins.length ? 'warning' : 'info',
         message: pins.length
           ? `Loaded ${pins.length} expired pin${pins.length === 1 ? '' : 's'} (oldest first).`
           : 'No expired pins found.'
       });
     } catch (error) {
-      setStatus({ type: 'error', message: error.message || 'Failed to load expired pins.' });
+              setStatus({ type: 'error', message: error.message || 'Failed to load expired pins.' });
     } finally {
       setIsFetchingExpiredPins(false);
     }
@@ -1163,7 +1390,7 @@ const handleAutofillDiscussion = () => {
   };
 
   const handleFetchExpiringPins = async () => {
-    setStatus(null);
+          setStatus(null);
     let daysValue;
     try {
       daysValue = parseOptionalNumber(expiringDays, 'Days');
@@ -1174,7 +1401,7 @@ const handleAutofillDiscussion = () => {
         throw new Error('Days must be greater than 0.');
       }
     } catch (error) {
-      setStatus({ type: 'error', message: error.message });
+              setStatus({ type: 'error', message: error.message });
       return;
     }
 
@@ -1205,14 +1432,14 @@ const handleAutofillDiscussion = () => {
           setPinIdInput(filtered[0]._id);
         }
       }
-      setStatus({
+              setStatus({
         type: filtered.length ? 'success' : 'info',
         message: filtered.length
           ? `Found ${filtered.length} pin${filtered.length === 1 ? '' : 's'} expiring in the next ${daysValue} day${daysValue === 1 ? '' : 's'}.`
           : `No pins expire within the next ${daysValue} day${daysValue === 1 ? '' : 's'}.`
       });
     } catch (error) {
-      setStatus({ type: 'error', message: error.message || 'Failed to load expiring pins.' });
+              setStatus({ type: 'error', message: error.message || 'Failed to load expiring pins.' });
     } finally {
       setIsFetchingExpiringPins(false);
     }
@@ -1289,7 +1516,7 @@ const getPinExpirationInfo = (pin) => {
 
 const handleSubmit = async (event) => {
     event.preventDefault();
-    setStatus(null);
+          setStatus(null);
 
     let payload;
     try {
@@ -1355,7 +1582,7 @@ const handleSubmit = async (event) => {
         }
       }
     } catch (error) {
-      setStatus({ type: 'error', message: error.message });
+              setStatus({ type: 'error', message: error.message });
       return;
     }
 
@@ -1389,9 +1616,9 @@ const handleSubmit = async (event) => {
         }
       }
 
-      setStatus({ type: 'success', message: statusMessage });
+              setStatus({ type: 'success', message: statusMessage });
     } catch (error) {
-      setStatus({ type: 'error', message: error.message || 'Failed to create pin.' });
+              setStatus({ type: 'error', message: error.message || 'Failed to create pin.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -1400,7 +1627,7 @@ const handleSubmit = async (event) => {
   const handleFetchPin = async () => {
     const pinId = pinIdInput.trim();
     if (!pinId) {
-      setStatus({ type: 'error', message: 'Provide a Pin ID to fetch.' });
+              setStatus({ type: 'error', message: 'Provide a Pin ID to fetch.' });
       return;
     }
 
@@ -1413,9 +1640,9 @@ const handleSubmit = async (event) => {
       if (pinLocation) {
         setMapFocusLocation(pinLocation);
       }
-      setStatus({ type: 'success', message: 'Pin loaded from MongoDB.' });
+              setStatus({ type: 'success', message: 'Pin loaded from MongoDB.' });
     } catch (error) {
-      setStatus({ type: 'error', message: error.message || 'Failed to fetch pin.' });
+              setStatus({ type: 'error', message: error.message || 'Failed to fetch pin.' });
     } finally {
       setIsFetchingPin(false);
     }
@@ -1498,7 +1725,7 @@ const handleSubmit = async (event) => {
           sx={{ display: activeTab === PIN_TAB_INDEX ? 'contents' : 'none' }}
         >
           {status && (
-            <Alert severity={status.type} onClose={() => setStatus(null)}>
+            <Alert severity={status.type} onClose={() =>       setStatus(null)}>
               {status.message}
             </Alert>
           )}
@@ -2268,6 +2495,16 @@ const handleSubmit = async (event) => {
 
         <Box
           role="tabpanel"
+          hidden={activeTab !== BAD_USERS_TAB_INDEX}
+          id="debug-tabpanel-bad-users"
+          aria-labelledby="debug-tab-bad-users"
+          sx={{ display: activeTab === BAD_USERS_TAB_INDEX ? 'block' : 'none' }}
+        >
+          <BadUsersTab />
+        </Box>
+
+        <Box
+          role="tabpanel"
           hidden={activeTab !== REPLIES_TAB_INDEX}
           id="debug-tabpanel-replies"
           aria-labelledby="debug-tab-replies"
@@ -2380,7 +2617,7 @@ function LiveChatTestTab() {
   const [activeRoom, setActiveRoom] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState('');
-  const [status, setStatus] = useState(null);
+  const [status,       setStatus] = useState(null);
   const [locationStatus, setLocationStatus] = useState(null);
   const [isEnsuringRooms, setIsEnsuringRooms] = useState(false);
   const [isRefreshingMessages, setIsRefreshingMessages] = useState(false);
@@ -2519,7 +2756,7 @@ function LiveChatTestTab() {
       setCurrentProfile(profile);
     } catch (error) {
       console.error('Failed to load current user profile:', error);
-      setStatus({ type: 'error', message: error.message || 'Failed to load current user profile.' });
+              setStatus({ type: 'error', message: error.message || 'Failed to load current user profile.' });
       setCurrentProfile(null);
     }
   }, [currentUser]);
@@ -2528,12 +2765,12 @@ function LiveChatTestTab() {
     const roomId = toIdString(room?._id);
     if (!roomId || !mongooseObjectIdLike(roomId)) {
       if (!roomId) {
-        setStatus({
+                setStatus({
           type: 'warning',
           message: 'Select a valid chat room before refreshing messages.'
         });
       } else {
-        setStatus({
+                setStatus({
           type: 'error',
           message: `Selected chat room has an invalid id (${roomId}). Reload the rooms.`
         });
@@ -2548,7 +2785,7 @@ function LiveChatTestTab() {
       setMessages(list);
     } catch (error) {
       console.error('Failed to refresh chat messages:', error);
-      setStatus({ type: 'error', message: error.message || 'Failed to refresh messages.' });
+              setStatus({ type: 'error', message: error.message || 'Failed to refresh messages.' });
     } finally {
       setIsRefreshingMessages(false);
     }
@@ -2571,12 +2808,12 @@ function LiveChatTestTab() {
         setRoomsByKey({});
         setActiveRoom(null);
         setMessages([]);
-        setStatus({ type: 'warning', message: 'Sign in to test the live chat rooms.' });
+                setStatus({ type: 'warning', message: 'Sign in to test the live chat rooms.' });
         return;
       }
 
       if (!currentProfile?._id) {
-        setStatus({
+                setStatus({
           type: 'warning',
           message: 'Current user profile is unavailable. Swap accounts or refresh the page.'
         });
@@ -2584,7 +2821,7 @@ function LiveChatTestTab() {
       }
 
       if (!currentProfileId || !mongooseObjectIdLike(currentProfileId)) {
-        setStatus({
+                setStatus({
           type: 'error',
           message: 'Current user profile is missing a valid ObjectId.'
         });
@@ -2676,14 +2913,14 @@ function LiveChatTestTab() {
         if (!nextRoom) {
           setMessages([]);
         } else {
-          setStatus(null);
+                setStatus(null);
         }
       } catch (error) {
         console.error('Failed to ensure chat rooms:', error);
         setRoomsByKey({});
         setActiveRoom(null);
         setMessages([]);
-        setStatus({ type: 'error', message: error.message || 'Failed to load chat rooms.' });
+                setStatus({ type: 'error', message: error.message || 'Failed to load chat rooms.' });
       } finally {
         setIsEnsuringRooms(false);
       }
@@ -2717,11 +2954,11 @@ function LiveChatTestTab() {
 
   const handleRefreshMessages = useCallback(() => {
     if (!activeRoom) {
-      setStatus({ type: 'warning', message: 'Select a chat room before refreshing messages.' });
+              setStatus({ type: 'warning', message: 'Select a chat room before refreshing messages.' });
       return;
     }
     if (!roomAccess.allowed) {
-      setStatus({ type: 'warning', message: roomAccess.reason });
+              setStatus({ type: 'warning', message: roomAccess.reason });
       return;
     }
     loadMessages(activeRoom);
@@ -2833,16 +3070,16 @@ function LiveChatTestTab() {
 
   const handleSendMessage = async (event) => {
     event.preventDefault();
-    setStatus(null);
+          setStatus(null);
 
     const roomId = toIdString(activeRoom?._id);
     if (!roomId || !mongooseObjectIdLike(roomId)) {
-      setStatus({ type: 'warning', message: 'Select a chat room before sending a message.' });
+              setStatus({ type: 'warning', message: 'Select a chat room before sending a message.' });
       return;
     }
 
     if (!currentProfileId || !mongooseObjectIdLike(currentProfileId)) {
-      setStatus({
+              setStatus({
         type: 'error',
         message: 'Current user profile is unavailable. Try swapping accounts again.'
       });
@@ -2850,13 +3087,13 @@ function LiveChatTestTab() {
     }
 
     if (!roomAccess.allowed) {
-      setStatus({ type: 'warning', message: roomAccess.reason });
+              setStatus({ type: 'warning', message: roomAccess.reason });
       return;
     }
 
     const trimmed = messageInput.trim();
     if (!trimmed) {
-      setStatus({ type: 'warning', message: 'Enter a message before sending.' });
+              setStatus({ type: 'warning', message: 'Enter a message before sending.' });
       return;
     }
 
@@ -2889,7 +3126,7 @@ function LiveChatTestTab() {
       }
     } catch (error) {
       console.error('Failed to send chat message:', error);
-      setStatus({ type: 'error', message: error.message || 'Failed to send message.' });
+              setStatus({ type: 'error', message: error.message || 'Failed to send message.' });
     } finally {
       setIsSending(false);
     }
@@ -2923,7 +3160,7 @@ function LiveChatTestTab() {
         </Stack>
 
         {status && (
-          <Alert severity={status.type} onClose={() => setStatus(null)}>
+          <Alert severity={status.type} onClose={() =>       setStatus(null)}>
             {status.message}
           </Alert>
         )}
@@ -3166,6 +3403,7 @@ function LiveChatTestTab() {
 function AccountSwapTab() {
   const [accounts, setAccounts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+
   const [fetchError, setFetchError] = useState(null);
   const [swapStatus, setSwapStatus] = useState(null);
   const [pendingUid, setPendingUid] = useState(null);
@@ -5710,9 +5948,9 @@ function BadgesTab() {
   const [userIdInput, setUserIdInput] = useState('');
   const [autoUserId, setAutoUserId] = useState('');
   const [badgeStatus, setBadgeStatus] = useState(null);
-  const [status, setStatus] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [status,       setStatus] = useState(null);
   const [mutatingBadgeId, setMutatingBadgeId] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
   const isMutating = Boolean(mutatingBadgeId) || isResetting;
@@ -5745,12 +5983,12 @@ function BadgesTab() {
       const trimmed = targetId ? String(targetId).trim() : '';
       if (!trimmed) {
         if (!suppressStatus) {
-          setStatus({ type: 'error', message: 'Enter a user ID to load badges.' });
+                  setStatus({ type: 'error', message: 'Enter a user ID to load badges.' });
         }
         return null;
       }
       if (!suppressStatus) {
-        setStatus(null);
+              setStatus(null);
       }
       setIsLoading(true);
       try {
@@ -5759,17 +5997,17 @@ function BadgesTab() {
         setUserIdInput((prev) => (prev.trim() ? prev : data.user?._id ?? trimmed));
         if (!suppressStatus) {
           const displayName = data.user?.displayName || data.user?.username || trimmed;
-          setStatus({ type: 'success', message: `Loaded badges for ${displayName}.` });
+                  setStatus({ type: 'success', message: `Loaded badges for ${displayName}.` });
         }
         return data;
       } catch (error) {
         console.error('Failed to load badge status:', error);
         if (!suppressStatus) {
-          setStatus({ type: 'error', message: error?.message || 'Failed to load badges.' });
+                  setStatus({ type: 'error', message: error?.message || 'Failed to load badges.' });
         }
         throw error;
       } finally {
-        setIsLoading(false);
+      setIsLoading(false);
       }
     },
     []
@@ -5792,7 +6030,7 @@ function BadgesTab() {
       } catch (error) {
         if (!cancelled) {
           console.error('Failed to load default badge status:', error);
-          setStatus({ type: 'error', message: error?.message || 'Failed to load badges.' });
+                  setStatus({ type: 'error', message: error?.message || 'Failed to load badges.' });
         }
       }
     })();
@@ -5820,16 +6058,16 @@ function BadgesTab() {
         return;
       }
       if (!effectiveUserId) {
-        setStatus({ type: 'error', message: 'Load a user before granting badges.' });
+                setStatus({ type: 'error', message: 'Load a user before granting badges.' });
         return;
       }
       setMutatingBadgeId(badgeId);
-      setStatus(null);
+            setStatus(null);
       try {
         const data = await debugGrantBadge({ userId: effectiveUserId, badgeId });
         setBadgeStatus(data);
         const badgeMeta = data.badges?.find((badge) => badge.id === badgeId);
-        setStatus({
+                setStatus({
           type: 'success',
           message: `Granted "${badgeMeta?.label || badgeId}" badge.`
         });
@@ -5840,7 +6078,7 @@ function BadgesTab() {
         }
       } catch (error) {
         console.error('Failed to grant badge:', error);
-        setStatus({ type: 'error', message: error?.message || 'Failed to grant badge.' });
+                setStatus({ type: 'error', message: error?.message || 'Failed to grant badge.' });
       } finally {
         setMutatingBadgeId(null);
       }
@@ -5854,22 +6092,22 @@ function BadgesTab() {
         return;
       }
       if (!effectiveUserId) {
-        setStatus({ type: 'error', message: 'Load a user before removing badges.' });
+                setStatus({ type: 'error', message: 'Load a user before removing badges.' });
         return;
       }
       setMutatingBadgeId(badgeId);
-      setStatus(null);
+            setStatus(null);
       try {
         const data = await debugRevokeBadge({ userId: effectiveUserId, badgeId });
         setBadgeStatus(data);
         const badgeMeta = data.badges?.find((badge) => badge.id === badgeId);
-        setStatus({
+                setStatus({
           type: 'success',
           message: `Removed "${badgeMeta?.label || badgeId}" badge.`
         });
       } catch (error) {
         console.error('Failed to remove badge:', error);
-        setStatus({ type: 'error', message: error?.message || 'Failed to remove badge.' });
+                setStatus({ type: 'error', message: error?.message || 'Failed to remove badge.' });
       } finally {
         setMutatingBadgeId(null);
       }
@@ -5877,20 +6115,20 @@ function BadgesTab() {
     [effectiveUserId]
   );
 
-  const handleReset = useCallback(async () => {
-    if (!effectiveUserId) {
-      setStatus({ type: 'error', message: 'Load a user before resetting badges.' });
+    const handleReset = useCallback(async () => {
+      if (!effectiveUserId) {
+              setStatus({ type: 'error', message: 'Load a user before resetting badges.' });
       return;
     }
     setIsResetting(true);
-    setStatus(null);
+          setStatus(null);
     try {
       const data = await debugResetBadges({ userId: effectiveUserId });
       setBadgeStatus(data);
-      setStatus({ type: 'success', message: 'All badges reset.' });
+              setStatus({ type: 'success', message: 'All badges reset.' });
     } catch (error) {
       console.error('Failed to reset badges:', error);
-      setStatus({ type: 'error', message: error?.message || 'Failed to reset badges.' });
+              setStatus({ type: 'error', message: error?.message || 'Failed to reset badges.' });
     } finally {
       setIsResetting(false);
     }
@@ -5952,7 +6190,7 @@ function BadgesTab() {
       </Paper>
 
       {status ? (
-        <Alert severity={status.type} onClose={() => setStatus(null)}>
+        <Alert severity={status.type} onClose={() =>       setStatus(null)}>
           {status.message}
         </Alert>
       ) : null}
@@ -6741,6 +6979,31 @@ function UpdatesTab() {
   const [updatesStatus, setUpdatesStatus] = useState(null);
   const [updatesResult, setUpdatesResult] = useState(null);
   const [isFetchingUpdates, setIsFetchingUpdates] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState('');
+  const [isSendingDummy, setIsSendingDummy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (cancelled) {
+          return;
+        }
+        const resolved = profile?._id || profile?.userId || profile?.id;
+        if (resolved) {
+          setCurrentUserId(resolved);
+          setUpdatesQuery((prev) => ({ ...prev, userId: prev.userId || resolved }));
+        }
+      } catch (error) {
+        console.warn('Failed to auto-load current profile for updates tab', error);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleCreateUpdate = async (event) => {
     event.preventDefault();
@@ -6843,6 +7106,96 @@ function UpdatesTab() {
 
   return (
     <Stack spacing={2}>
+      <Paper
+        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        <Typography variant="h6">Quick actions</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Drop a canned notification for whichever account you&apos;re logged in with.
+        </Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
+          <Button
+            variant="contained"
+            disabled={!currentUserId || isSendingDummy}
+            onClick={async () => {
+              setUpdatesStatus(null);
+            if (!currentUserId) {
+                setUpdatesStatus({ type: 'error', message: 'Load your profile first.' });
+                return;
+              }
+              try {
+                setIsSendingDummy(true);
+                const now = new Date();
+                const title = 'Debug badge unlocked';
+                const body = `You earned a tester badge at ${now.toLocaleTimeString([], {
+                  hour: 'numeric',
+                  minute: '2-digit'
+                })}.`;
+                await createUpdate({
+                  userId: currentUserId,
+                  payload: {
+                    type: 'badge-earned',
+                    title,
+                    body,
+                    metadata: {
+                      badgeId: 'debug-dummy',
+                      badgeLabel: 'Debugger',
+                      issuedAt: now.toISOString()
+                    },
+                    relatedEntities: [
+                      { id: currentUserId, type: 'user', label: 'You' }
+                    ]
+                  }
+                });
+                try {
+                  const query = { userId: currentUserId };
+                  const limitValue = parseOptionalNumber(updatesQuery.limit, 'Limit');
+                  if (limitValue && limitValue > 0) {
+                    query.limit = limitValue;
+                  }
+                  const refreshed = await fetchUpdates(query);
+                  setUpdatesResult(refreshed);
+                } catch (fetchError) {
+                  console.warn('Failed to refresh updates after dummy send', fetchError);
+                }
+                setUpdatesStatus({ type: 'success', message: 'Dummy update queued for your account.' });
+              } catch (error) {
+                setUpdatesStatus({
+                  type: 'error',
+                  message: error?.message || 'Failed to send dummy update.'
+                });
+              } finally {
+                setIsSendingDummy(false);
+              }
+            }}
+          >
+            {isSendingDummy ? 'Sending...' : 'Send dummy update to me'}
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={async () => {
+              try {
+                const profile = await fetchCurrentUserProfile();
+                const resolved = profile?._id || profile?.userId || profile?.id;
+                if (resolved) {
+                  setCurrentUserId(resolved);
+                  setUpdatesQuery((prev) => ({ ...prev, userId: resolved }));
+                } else {
+                  setUpdatesStatus({ type: 'error', message: 'Current profile id is unavailable.' });
+                }
+              } catch (error) {
+                setUpdatesStatus({
+                  type: 'error',
+                  message: error?.message || 'Failed to load current user profile.'
+                });
+              }
+            }}
+          >
+            Use my profile id
+          </Button>
+        </Stack>
+      </Paper>
+
       <Paper
         component="form"
         onSubmit={handleCreateUpdate}
@@ -7200,13 +7553,6 @@ function RepliesTab() {
 }
 
 export default DebugConsolePage;
-
-
-
-
-
-
-
 
 
 

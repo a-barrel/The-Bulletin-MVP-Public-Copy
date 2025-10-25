@@ -90,6 +90,9 @@ const PIN_TYPE_THEMES = {
   }
 };
 
+const DRAFT_STORAGE_KEY = 'pinpoint:createPinDraft';
+const AUTOSAVE_DELAY_MS = 1500;
+
 const FIGMA_TEMPLATE = {
   header: {
     title: 'Event',
@@ -222,7 +225,148 @@ function CreatePinPage() {
   const [uploadStatus, setUploadStatus] = useState(null);
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [locationStatus, setLocationStatus] = useState(null);
+  const [draftStatus, setDraftStatus] = useState(null);
+  const autosaveTimeoutRef = useRef(null);
+  const draftInitializedRef = useRef(false);
+  const skipNextAutosaveRef = useRef(false);
   const lastReverseGeocodeRef = useRef(null);
+
+  const writeDraft = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    const draftPayload = {
+      version: 1,
+      pinType,
+      autoDelete,
+      formState,
+      photoAssets,
+      coverPhotoId,
+      timestamp: Date.now()
+    };
+
+    try {
+      window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftPayload));
+      return true;
+    } catch (error) {
+      console.error('Failed to save pin draft', error);
+      return false;
+    }
+  }, [autoDelete, coverPhotoId, formState, photoAssets, pinType]);
+
+  const clearDraft = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    try {
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch (error) {
+      console.warn('Failed to clear saved pin draft', error);
+    }
+    skipNextAutosaveRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      draftInitializedRef.current = true;
+      skipNextAutosaveRef.current = true;
+      return;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+
+      const data = JSON.parse(raw);
+      if (data && typeof data === 'object') {
+        if (data.pinType === 'event' || data.pinType === 'discussion') {
+          setPinType(data.pinType);
+        }
+        if (typeof data.autoDelete === 'boolean') {
+          setAutoDelete(data.autoDelete);
+        }
+        if (data.formState && typeof data.formState === 'object') {
+          setFormState((prev) => ({
+            ...prev,
+            ...data.formState
+          }));
+        }
+        if (Array.isArray(data.photoAssets)) {
+          setPhotoAssets(data.photoAssets);
+        }
+        if (typeof data.coverPhotoId === 'string' && data.coverPhotoId.trim()) {
+          setCoverPhotoId(data.coverPhotoId);
+        }
+
+        setDraftStatus({
+          type: 'info',
+          message: 'Draft restored from your last session.'
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to load saved pin draft', error);
+    } finally {
+      draftInitializedRef.current = true;
+      skipNextAutosaveRef.current = true;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!draftInitializedRef.current) {
+      return;
+    }
+
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false;
+      return;
+    }
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (autosaveTimeoutRef.current) {
+      window.clearTimeout(autosaveTimeoutRef.current);
+    }
+
+    autosaveTimeoutRef.current = window.setTimeout(() => {
+      const success = writeDraft();
+      if (success) {
+        setDraftStatus({
+          type: 'info',
+          message: `Draft saved at ${new Date().toLocaleTimeString([], {
+            hour: 'numeric',
+            minute: '2-digit'
+          })}.`
+        });
+      }
+    }, AUTOSAVE_DELAY_MS);
+
+    return () => {
+      if (autosaveTimeoutRef.current) {
+        window.clearTimeout(autosaveTimeoutRef.current);
+      }
+    };
+  }, [autoDelete, coverPhotoId, formState, photoAssets, pinType, writeDraft]);
+
+  useEffect(() => {
+    if (!draftStatus) {
+      return;
+    }
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const timeoutId = window.setTimeout(
+      () => setDraftStatus(null),
+      draftStatus.type === 'error' ? 8000 : 4000
+    );
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [draftStatus]);
   const activeTheme = useMemo(() => PIN_TYPE_THEMES[pinType], [pinType]);
   const { handleBack: overlayBack, previousNavPath, previousNavPage } = useNavOverlay();
   const canNavigateBack = Boolean(previousNavPath);
@@ -404,10 +548,12 @@ function CreatePinPage() {
   }, [isReverseGeocoding, reverseGeocodeCoordinates, selectedCoordinates]);
 
   const resetForm = useCallback(() => {
+    clearDraft();
     setPinType('discussion');
     setFormState(INITIAL_FORM_STATE);
     setAutoDelete(true);
     setStatus(null);
+    setDraftStatus(null);
     setCreatedPin(null);
     setPhotoAssets([]);
     setCoverPhotoId(null);
@@ -415,7 +561,15 @@ function CreatePinPage() {
     setLocationStatus(null);
     setIsReverseGeocoding(false);
     setIsUploading(false);
-  }, []);
+  }, [clearDraft]);
+
+  const handleSaveDraft = useCallback(() => {
+    const success = writeDraft();
+    setDraftStatus({
+      type: success ? 'success' : 'error',
+      message: success ? 'Draft saved.' : 'Unable to save draft locally.'
+    });
+  }, [writeDraft]);
 
   useEffect(() => {
     if (!photoAssets.length) {
@@ -630,6 +784,8 @@ function CreatePinPage() {
             ? `Pin created successfully (ID: ${result._id}).`
             : 'Pin created successfully.'
         });
+        clearDraft();
+        setDraftStatus(null);
         if (result?._id) {
           navigate(`/pin/${result._id}`);
         }
@@ -643,7 +799,7 @@ function CreatePinPage() {
         setIsSubmitting(false);
       }
     },
-    [announceBadgeEarned, autoDelete, coverPhotoId, formState, navigate, photoAssets, pinType]
+    [announceBadgeEarned, autoDelete, clearDraft, coverPhotoId, formState, navigate, photoAssets, pinType]
   );
 
   const resultJson = useMemo(() => {
@@ -771,18 +927,24 @@ function CreatePinPage() {
                 <MapIcon fontSize="small" sx={{ mr: 1 }} />
                 Discussion
               </ToggleButton>
-              <ToggleButton value="event">
-                <EventNoteIcon fontSize="small" sx={{ mr: 1 }} />
-                Event
-              </ToggleButton>
-            </ToggleButtonGroup>
-          </Stack>
+          <ToggleButton value="event">
+            <EventNoteIcon fontSize="small" sx={{ mr: 1 }} />
+            Event
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Stack>
 
-          {status && (
-            <Alert severity={status.type} onClose={() => setStatus(null)}>
-              {status.message}
-            </Alert>
-          )}
+      {status && (
+        <Alert severity={status.type} onClose={() => setStatus(null)}>
+          {status.message}
+        </Alert>
+      )}
+
+      {draftStatus && (
+        <Alert severity={draftStatus.type} onClose={() => setDraftStatus(null)}>
+          {draftStatus.message}
+        </Alert>
+      )}
 
           <Paper
             variant="outlined"
@@ -1196,10 +1358,20 @@ function CreatePinPage() {
             </Stack>
           </Paper>
 
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between">
-            <Button type="button" variant="outlined" onClick={resetForm}>
-              Reset form
-            </Button>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={2}
+            justifyContent="space-between"
+            alignItems={{ xs: 'stretch', sm: 'center' }}
+          >
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
+              <Button type="button" variant="outlined" onClick={resetForm}>
+                Reset form
+              </Button>
+              <Button type="button" variant="outlined" onClick={handleSaveDraft} disabled={isSubmitting}>
+                Save draft
+              </Button>
+            </Stack>
             <Button type="submit" variant="contained" disabled={isSubmitting}>
               {isSubmitting ? 'Creating...' : 'Create Pin'}
             </Button>

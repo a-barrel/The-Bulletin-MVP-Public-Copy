@@ -857,6 +857,65 @@ export async function debugResetBadges({ userId } = {}) {
   return payload;
 }
 
+export async function fetchUsersWithCussCount() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/bad-users`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => []);
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load cuss stats');
+  }
+
+  return payload;
+}
+
+export async function incrementUserCussCount(userId) {
+  if (!userId) {
+    throw new Error('User id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(
+    `${baseUrl}/api/debug/bad-users/${encodeURIComponent(userId)}/increment`,
+    {
+      method: 'POST',
+      headers: await buildHeaders()
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to increment cuss count');
+  }
+
+  return payload;
+}
+
+export async function resetUserCussCount(userId) {
+  if (!userId) {
+    throw new Error('User id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(
+    `${baseUrl}/api/debug/bad-users/${encodeURIComponent(userId)}/reset`,
+    {
+      method: 'POST',
+      headers: await buildHeaders()
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to reset cuss count');
+  }
+
+  return payload;
+}
+
 export async function createProximityChatRoom(input) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/debug/chat-rooms`, {
