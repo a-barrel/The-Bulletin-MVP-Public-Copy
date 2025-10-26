@@ -98,7 +98,7 @@ const FIGMA_TEMPLATE = {
     titlePlaceholder: '[Empty] Event Title',
     descriptionPlaceholder: "[Empty] Event dets - what's cooking?",
     modeLabel: 'Event',
-    locationPrompt: 'Tap where the event will take place'
+    locationPrompt: 'Tap where the event will take place.'
   }
 };
 
@@ -643,7 +643,7 @@ function CreatePinPage() {
   }, [createdPin]);
 
   return (
-    <div className="create-pin">
+    <div className={`create-pin ${pinType === 'event' ? 'bg-event' : 'bg-discussion'}`}>
       <div className='header' style={{background: activeTheme.headerBackground, color: activeTheme.headerTextColor}}>
         {canNavigateBack && (
           <button
@@ -678,6 +678,26 @@ function CreatePinPage() {
       </div>
 
       <div className='body'>
+        {/* Pin type toggle */}
+        <div className="field-group">
+          <div className="toggle-group">
+            <button
+              type="button"
+              className={`toggle-btn ${pinType === 'discussion' ? 'selected' : ''}`}
+              onClick={() => handleTypeChange(null, 'discussion')}
+            >
+              <MapIcon fontSize="small" /> Discussion
+            </button>
+            <button
+              type="button"
+              className={`toggle-btn ${pinType === 'event' ? 'selected' : ''}`}
+              onClick={() => handleTypeChange(null, 'event')}
+            >
+              <EventNoteIcon fontSize="small" /> Event
+            </button>
+          </div>
+        </div>
+
         {/* Title + Description */}
         <div className="form-section">
           <div className="input-group">
@@ -708,27 +728,6 @@ function CreatePinPage() {
             ></textarea>
           </div>
         </div>
-        
-        {/* Pin type toggle */}
-        <div className="field-group">
-          <label className="label">Pin type</label>
-          <div className="toggle-group">
-            <button
-              type="button"
-              className={`toggle-btn ${pinType === 'discussion' ? 'selected' : ''}`}
-              onClick={() => handleTypeChange(null, 'discussion')}
-            >
-              <MapIcon fontSize="small" /> Discussion
-            </button>
-            <button
-              type="button"
-              className={`toggle-btn ${pinType === 'event' ? 'selected' : ''}`}
-              onClick={() => handleTypeChange(null, 'event')}
-            >
-              <EventNoteIcon fontSize="small" /> Event
-            </button>
-          </div>
-        </div>
 
         {/* Status Alert */}
         {status && (
@@ -746,7 +745,7 @@ function CreatePinPage() {
             {pinType === 'event' ? (
               <>
                 <div className='details-info'>
-                  <h2>Event details</h2>
+                  <h2>Event Details</h2>
                   <p>Let everyone know when and where to show up.</p>
                 </div>
                 
@@ -771,8 +770,69 @@ function CreatePinPage() {
                   </div>
                 </div>
 
+                {/* Images Section */}
+                <div className="form-section">
+                  <h2>Images</h2>
+                  <p>Upload up to 10 square images. Select the cover photo.</p>
+
+                  {uploadStatus && (
+                    <div className={`alert alert-${uploadStatus.type}`}>
+                      {uploadStatus.message}
+                      <button type="button" onClick={() => setUploadStatus(null)} className="alert-close">
+                        ×
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="upload-row">
+                    <label className="btn-outline">
+                      {isUploading ? 'Uploading...' : 'Upload images'}
+                      <input
+                        type="file"
+                        hidden
+                        multiple
+                        accept="image/*"
+                        onChange={handleImageSelection}
+                        disabled={isUploading || photoAssets.length >= 10}
+                      />
+                    </label>
+                    <span>{photoAssets.length}/10 Images attached</span>
+                  </div>
+
+                  {photoAssets.length > 0 && (
+                    <div className="photo-grid">
+                      {photoAssets.map((photo) => {
+                        const isCover = coverPhotoId === photo.id;
+                        return (
+                          <div className="photo-card" key={photo.id}>
+                            <img src={photo.asset.url} alt={photo.asset.description || 'Pin image'} />
+                            {isCover && <div className="cover-label">Cover photo</div>}
+                            <div className="photo-actions">
+                              <button
+                                type="button"
+                                className={isCover ? 'btn-selected' : 'btn-outline'}
+                                onClick={() => handleSetCoverPhoto(photo.id)}
+                                disabled={isCover}
+                              >
+                                {isCover ? 'Selected' : 'Set as cover'}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-danger"
+                                onClick={() => handleRemovePhoto(photo.id)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
                 <h2>Venue</h2>
-                <label>Precise address</label>
+                <label>Precise Address</label>
                 <input
                   type="text"
                   value={formState.addressPrecise}
@@ -810,7 +870,7 @@ function CreatePinPage() {
             ) : (
               <>
                 <div className='details-info'>
-                  <h2>Discussion details</h2>
+                  <h2>Discussion Details</h2>
                   <p>Set how long this discussion should stay active.</p>
                 </div>
                 
@@ -835,14 +895,75 @@ function CreatePinPage() {
                   </div>
                 </div>
 
-                <h3>Approximate address</h3>
-                <input
-                  type="text"
-                  placeholder="Formatted"
-                  value={formState.approxFormatted}
-                  onChange={handleFieldChange('approxFormatted')}
-                />
+                {/* Images Section */}
+                <div className="form-section">
+                  <h2>Images</h2>
+                  <p>Upload up to 10 square images. Select the cover photo.</p>
+
+                  {uploadStatus && (
+                    <div className={`alert alert-${uploadStatus.type}`}>
+                      {uploadStatus.message}
+                      <button type="button" onClick={() => setUploadStatus(null)} className="alert-close">
+                        ×
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="upload-row">
+                    <label className="btn-outline">
+                      {isUploading ? 'Uploading...' : 'Upload images'}
+                      <input
+                        type="file"
+                        hidden
+                        multiple
+                        accept="image/*"
+                        onChange={handleImageSelection}
+                        disabled={isUploading || photoAssets.length >= 10}
+                      />
+                    </label>
+                    <span>{photoAssets.length}/10 Images attached</span>
+                  </div>
+
+                  {photoAssets.length > 0 && (
+                    <div className="photo-grid">
+                      {photoAssets.map((photo) => {
+                        const isCover = coverPhotoId === photo.id;
+                        return (
+                          <div className="photo-card" key={photo.id}>
+                            <img src={photo.asset.url} alt={photo.asset.description || 'Pin image'} />
+                            {isCover && <div className="cover-label">Cover photo</div>}
+                            <div className="photo-actions">
+                              <button
+                                type="button"
+                                className={isCover ? 'btn-selected' : 'btn-outline'}
+                                onClick={() => handleSetCoverPhoto(photo.id)}
+                                disabled={isCover}
+                              >
+                                {isCover ? 'Selected' : 'Set as cover'}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-danger"
+                                onClick={() => handleRemovePhoto(photo.id)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <h2>Approximate Address</h2>
                 <div className="two-col">
+                  <input
+                    type="text"
+                    placeholder="Formatted"
+                    value={formState.approxFormatted}
+                    onChange={handleFieldChange('approxFormatted')}
+                  />
                   <input
                     type="text"
                     placeholder="City"
@@ -866,72 +987,15 @@ function CreatePinPage() {
             )}
           </div>
         </div>
-        
-        {/* Images Section */}
-        <div className="form-section">
-          <h2>Images</h2>
-          <p>Upload up to 10 square images. The highlighted one becomes the cover photo.</p>
-
-          {uploadStatus && (
-            <div className={`alert alert-${uploadStatus.type}`}>
-              {uploadStatus.message}
-              <button type="button" onClick={() => setUploadStatus(null)} className="alert-close">
-                ×
-              </button>
-            </div>
-          )}
-
-          <div className="upload-row">
-            <label className="btn-outline">
-              {isUploading ? 'Uploading...' : 'Upload images'}
-              <input
-                type="file"
-                hidden
-                multiple
-                accept="image/*"
-                onChange={handleImageSelection}
-                disabled={isUploading || photoAssets.length >= 10}
-              />
-            </label>
-            <span>{photoAssets.length}/10 images attached</span>
-          </div>
-
-          {photoAssets.length > 0 && (
-            <div className="photo-grid">
-              {photoAssets.map((photo) => {
-                const isCover = coverPhotoId === photo.id;
-                return (
-                  <div className="photo-card" key={photo.id}>
-                    <img src={photo.asset.url} alt={photo.asset.description || 'Pin image'} />
-                    {isCover && <div className="cover-label">Cover photo</div>}
-                    <div className="photo-actions">
-                      <button
-                        type="button"
-                        className={isCover ? 'btn-selected' : 'btn-outline'}
-                        onClick={() => handleSetCoverPhoto(photo.id)}
-                        disabled={isCover}
-                      >
-                        {isCover ? 'Selected' : 'Set as cover'}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-danger"
-                        onClick={() => handleRemovePhoto(photo.id)}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
 
         {/* LOCATION SECTION */}
         <div className="form-section">
           <h2>Location</h2>
-          <p>{FIGMA_TEMPLATE.fields.locationPrompt}</p>
+          <p>
+            {pinType === 'event'
+              ? 'Tap where the event will take place at.'
+              : 'Tap where the approximate location of the discussion is at.'}
+          </p>
 
           {locationStatus && (
             <div className={`alert alert-${locationStatus.type}`}>
@@ -962,32 +1026,39 @@ function CreatePinPage() {
             when possible.
           </p>
 
-          <label>Latitude</label>
-          <input
-            type="text"
-            value={formState.latitude}
-            onChange={handleFieldChange("latitude")}
-            required
-          />
+          <div className='map-coords'>
+            <label>Latitude</label>
+            <input
+              type="text"
+              value={formState.latitude}
+              onChange={handleFieldChange("latitude")}
+              required
+            />
 
-          <label>Longitude</label>
-          <input
-            type="text"
-            value={formState.longitude}
-            onChange={handleFieldChange("longitude")}
-            required
-          />
+            <label>Longitude</label>
+            <input
+              type="text"
+              value={formState.longitude}
+              onChange={handleFieldChange("longitude")}
+              required
+            />
 
-          <label>Proximity radius (miles)</label>
-          <input
-            type="text"
-            value={formState.proximityRadiusMiles}
-            onChange={handleFieldChange("proximityRadiusMiles")}
-            placeholder="Optional. Defaults to 1 mile."
-          />
+            <label>Proximity Radius (miles)</label>
+            <input
+              type="text"
+              value={formState.proximityRadiusMiles}
+              onChange={handleFieldChange("proximityRadiusMiles")}
+              placeholder="Optional. Defaults to 1 mile."
+            />
+          </div>
         </div>
 
-        
+        {/* Footer Buttons */}
+        <div className="footer-actions">
+          <button type="button" className="btn-outline" onClick={resetForm}>
+            Reset form
+          </button>
+        </div>
 
       </div>
     </div>

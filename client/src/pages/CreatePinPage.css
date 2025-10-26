@@ -72,13 +72,23 @@
 .form-section {
   background-color: rgba(255,255,255,0.02);
   border-radius: 1rem;
-  padding: 1.5rem;
+  padding: 0 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
   width: 100vw;
   box-sizing: border-box;
   margin-left: calc(-50vw + 50%);
+}
+
+.form-section h2 {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.form-section p {
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .grid {
@@ -104,16 +114,24 @@ textarea {
 .field-group { 
   display: flex; 
   flex-direction: column; 
+  text-align: center;
   gap: 0.5rem; 
+  margin: 1rem 0;
 }
 
 .toggle-group { 
   display: flex; 
   gap: 1rem; 
+  justify-content: center; 
+  align-items: center; 
+  margin-top: 0.5rem;
 }
 
 .toggle-btn {
-  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   border: none;
   padding: 0.75rem;
   border-radius: 0.75rem;
@@ -165,6 +183,7 @@ textarea {
 .details-info {
   display: flex;
   flex-direction: column;
+  padding: 0.5rem 0;
 }
 
 .two-col {
@@ -172,12 +191,14 @@ textarea {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
   width: 100%;
+  padding-bottom: 1rem;
+  
 }
 
 .switch-group {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 1rem;
   width: 100%;
@@ -216,7 +237,6 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-top: 1rem;
 }
 
 .btn-outline,
@@ -232,6 +252,7 @@ textarea {
   border: 1px solid #ccc;
   background: none;
   box-sizing: border-box;
+  background-color: #FFFFFF;
 }
 
 .btn-danger { 
@@ -247,8 +268,9 @@ textarea {
 
 .photo-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); 
   gap: 1rem;
+  justify-content: start;
 }
 
 .photo-card {
@@ -256,12 +278,16 @@ textarea {
   border-radius: 0.75rem;
   overflow: visible;
   border: 1px solid rgba(255,255,255,0.08);
+  max-width: 180px;
+  margin: 0 auto;
 }
 
 .photo-card img {
   width: 100%;
-  aspect-ratio: 1/1;
+  aspect-ratio: 1/1; 
   object-fit: cover;
+  border-radius: 0.75rem;
+  max-height: 180px; 
 }
 
 .cover-label {
@@ -278,29 +304,53 @@ textarea {
 .photo-actions {
   display: flex;
   flex-wrap: wrap; 
-  gap: 0.5rem; 
+  gap: 0.5rem;
   justify-content: flex-start;
 }
 
 /* location section */
 .map-container {
   width: 100%;
-  height: 280px;
+  height: 260px;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid #ccc;
-  margin-bottom: 1rem;
 }
 
 .loading-text {
   color: #0073e6;
   font-weight: 500;
-  margin-bottom: 1rem;
 }
 
 .note-text {
   color: #777;
   font-size: 0.9rem;
-  margin-bottom: 1rem;
 }
 
+.map-coords {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-bottom: 1.5rem;
+}
+
+/* background color */
+.bg-event {
+  background-color: #F4F0FC;
+}
+
+.bg-discussion {
+  background-color: #EFF8FC;
+}
+
+/* footer actions */
+.footer-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.5rem;
+}
+
+.footer-actions .btn-outline {
+  background-color: #e74c3c;
+}
