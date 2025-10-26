@@ -35,6 +35,7 @@ import {
 } from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
 import { BADGE_METADATA } from '../utils/badges';
+import './_v2_WIP_ProfilePage.css';
 
 export const pageConfig = {
   // EDIT THIS ONCE READY TO REPLACE ProfilePage.jsx
@@ -162,9 +163,11 @@ const Section = ({ title, description, children }) => (
         {title}
       </Typography>
       {description ? (
-        <Typography variant="body2" color="text.secondary">
-          {description}
-        </Typography>
+        <div className="description-box">
+          <Typography variant="body2" color="text.secondary">
+            {description}
+          </Typography>
+        </div>
       ) : null}
     </Box>
     <Box
@@ -774,26 +777,8 @@ const detailEntries = useMemo(() => {
   }, [relationshipStatus]);
 
   return (
-    <Box
-      component="section"
-      sx={{
-        minHeight: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        p: { xs: 2, md: 4 }
-      }}
-    >
-      <Paper
-        elevation={6}
-        sx={{
-          width: '100%',
-          maxWidth: 680,
-          borderRadius: 4,
-          p: { xs: 3, md: 4 },
-          backgroundColor: 'background.paper'
-        }}
-      >
+    <div className="profile-page-container">
+      <div className="profile-page-frame">
         <Stack spacing={3}>
           <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
             <Button
@@ -1272,7 +1257,7 @@ const detailEntries = useMemo(() => {
             </>
           ) : null}
         </Stack>
-      </Paper>
+      </div>
       <Dialog
         open={Boolean(blockDialogMode)}
         onClose={handleCloseBlockDialog}
@@ -1305,7 +1290,7 @@ const detailEntries = useMemo(() => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </div>
   );
 }
 
