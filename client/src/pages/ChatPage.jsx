@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
+  Alert,
   Box,
   Stack,
   Typography,
@@ -45,6 +46,7 @@ import {
   fetchCurrentUserProfile
 } from '../api/mongoDataApi';
 import { useLocationContext } from '../contexts/LocationContext';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 
 export const pageConfig = {
   id: 'chat',
@@ -69,6 +71,7 @@ function ChatPage() {
   const { announceBadgeEarned } = useBadgeSound();
   const [authUser, authLoading] = useAuthState(auth);
   const { location: viewerLocation } = useLocationContext();
+  const { isOffline } = useNetworkStatusContext();
   const viewerLatitude = viewerLocation?.latitude ?? null;
   const viewerLongitude = viewerLocation?.longitude ?? null;
   const viewerAccuracy = Number.isFinite(viewerLocation?.accuracy)
@@ -175,6 +178,11 @@ function ChatPage() {
     if (!authUser) {
       return;
     }
+    if (isOffline) {
+      setRooms([]);
+      setRoomsError('You are offline. Connect to load nearby chat rooms.');
+      return;
+    }
     setIsLoadingRooms(true);
     setRoomsError(null);
     try {
@@ -192,17 +200,22 @@ function ChatPage() {
     } finally {
       setIsLoadingRooms(false);
     }
-  }, [authUser, selectedRoomId, viewerLatitude, viewerLongitude]);
+  }, [authUser, isOffline, selectedRoomId, viewerLatitude, viewerLongitude]);
 
   useEffect(() => {
-    if (!authLoading && authUser) {
+    if (!authLoading && authUser && !isOffline) {
       loadRooms();
     }
-  }, [authLoading, authUser, loadRooms]);
+  }, [authLoading, authUser, isOffline, loadRooms]);
 
   const loadMessages = useCallback(
     async (roomId, { silent } = {}) => {
       if (!roomId) {
+        return;
+      }
+      if (isOffline) {
+        setMessages([]);
+        setMessagesError('You are offline. Connect to view messages.');
         return;
       }
       if (!silent) {
@@ -224,11 +237,16 @@ function ChatPage() {
         }
       }
     },
-    [viewerCoordinates]
+    [isOffline, viewerCoordinates]
   );
 
   const loadPresence = useCallback(async (roomId) => {
     if (!roomId) {
+      return;
+    }
+    if (isOffline) {
+      setPresence([]);
+      setPresenceError('You are offline. Presence data is unavailable.');
       return;
     }
     try {
@@ -242,10 +260,10 @@ function ChatPage() {
       setPresence([]);
       setPresenceError(error?.message || 'Failed to load room presence.');
     }
-  }, [viewerCoordinates]);
+  }, [isOffline, viewerCoordinates]);
 
   useEffect(() => {
-    if (!selectedRoomId) {
+    if (!selectedRoomId || isOffline) {
       setMessages([]);
       setPresence([]);
       return;
@@ -278,10 +296,10 @@ function ChatPage() {
         presenceIntervalRef.current = null;
       }
     };
-  }, [loadMessages, loadPresence, selectedRoomId]);
+  }, [isOffline, loadMessages, loadPresence, selectedRoomId]);
 
   useEffect(() => {
-    if (!authUser || !selectedRoomId) {
+    if (!authUser || !selectedRoomId || isOffline) {
       return;
     }
 
@@ -307,7 +325,7 @@ function ChatPage() {
     sendPresence();
     const interval = setInterval(sendPresence, PRESENCE_HEARTBEAT_MS);
     return () => clearInterval(interval);
-  }, [authUser, selectedRoomId, viewerCoordinates]);
+  }, [authUser, isOffline, selectedRoomId, viewerCoordinates]);
 
   const handleSelectRoom = useCallback((roomId) => {
     setSelectedRoomId(roomId);
@@ -338,6 +356,11 @@ function ChatPage() {
         return;
       }
 
+      if (isOffline) {
+        setCreateError('You are offline. Connect to create a chat room.');
+        return;
+      }
+
       if (!createForm.name.trim()) {
         setCreateError('Room name is required.');
         return;
@@ -365,7 +388,7 @@ function ChatPage() {
         setIsCreatingRoom(false);
       }
     },
-    [authUser, createForm]
+    [authUser, createForm, isOffline]
   );
 
   const handleSendMessage = useCallback(
@@ -376,6 +399,11 @@ function ChatPage() {
       }
       const trimmed = messageDraft.trim();
       if (!trimmed) {
+        return;
+      }
+
+      if (isOffline) {
+        setMessagesError('You are offline. Connect to send messages.');
         return;
       }
 
@@ -406,6 +434,7 @@ function ChatPage() {
     [
       announceBadgeEarned,
       authUser,
+      isOffline,
       messageDraft,
       scrollMessagesToBottom,
       selectedRoomId,
@@ -422,6 +451,15 @@ function ChatPage() {
   }, [presence]);
 
   const activeUserCount = filteredPresence.length;
+  const locationWarning = useMemo(() => {
+    if (isOffline) {
+      return null;
+    }
+    if (!viewerCoordinates) {
+      return 'Precise location is unavailable. Showing global rooms and limited nearby data.';
+    }
+    return null;
+  }, [isOffline, viewerCoordinates]);
 
   const renderRoomList = () => (
     <Paper
@@ -459,17 +497,23 @@ function ChatPage() {
           />
         </Stack>
         <Stack direction="row" spacing={1}>
-          <Tooltip title="Refresh rooms">
+          <Tooltip title={isOffline ? 'Reconnect to refresh rooms' : 'Refresh rooms'}>
             <span>
-              <IconButton onClick={loadRooms} disabled={isLoadingRooms}>
+              <IconButton onClick={loadRooms} disabled={isOffline || isLoadingRooms}>
                 {isLoadingRooms ? <CircularProgress size={20} /> : <RefreshIcon fontSize="small" />}
               </IconButton>
             </span>
           </Tooltip>
-          <Tooltip title="Create room">
-            <IconButton color="primary" onClick={handleOpenCreateDialog}>
-              <AddCommentIcon fontSize="small" />
-            </IconButton>
+          <Tooltip title={isOffline ? 'Reconnect to create a room' : 'Create room'}>
+            <span>
+              <IconButton
+                color="primary"
+                onClick={handleOpenCreateDialog}
+                disabled={isOffline}
+              >
+                <AddCommentIcon fontSize="small" />
+              </IconButton>
+            </span>
           </Tooltip>
         </Stack>
       </Box>
@@ -684,14 +728,14 @@ function ChatPage() {
               minRows={1}
               maxRows={4}
               fullWidth
-              disabled={!authUser || isSendingMessage}
+              disabled={!authUser || isSendingMessage || isOffline}
             />
             <Button
               type="submit"
               variant="contained"
               color="primary"
               startIcon={<SendIcon />}
-              disabled={!authUser || !messageDraft.trim() || isSendingMessage}
+              disabled={!authUser || !messageDraft.trim() || isSendingMessage || isOffline}
             >
               {isSendingMessage ? 'Sending…' : 'Send'}
             </Button>
@@ -709,7 +753,12 @@ function ChatPage() {
           <Typography variant="body2" color="text.secondary">
             Choose a chat from the list or create a new space for your team.
           </Typography>
-          <Button variant="outlined" onClick={handleOpenCreateDialog}>
+          <Button
+            variant="outlined"
+            onClick={handleOpenCreateDialog}
+            disabled={isOffline}
+            title={isOffline ? 'Reconnect to create a room' : undefined}
+          >
             Create room
           </Button>
         </Stack>
@@ -729,6 +778,12 @@ function ChatPage() {
       }}
     >
       <Stack spacing={2}>
+        {isOffline ? (
+          <Alert severity="warning">
+            You are offline. Chat lists and messages will refresh once you reconnect.
+          </Alert>
+        ) : null}
+        {locationWarning ? <Alert severity="info">{locationWarning}</Alert> : null}
         <Stack direction="row" spacing={1.5} alignItems="center">
           <SmsIcon color="primary" />
           <Typography variant="h4" component="h1">

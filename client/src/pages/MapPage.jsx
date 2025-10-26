@@ -9,6 +9,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
+import Slider from '@mui/material/Slider';
 import MapIcon from '@mui/icons-material/Map';
 import Map from '../components/Map';
 import LocationShare from '../components/LocationShare';
@@ -35,12 +36,15 @@ export const pageConfig = {
 
 const DEMO_USER_ID = 'demo-user';
 const METERS_PER_MILE = 1609.34;
-const DEFAULT_RADIUS_MILES = 10;
+const DEFAULT_RADIUS_MILES = 25;
 const DEFAULT_MAX_DISTANCE_METERS = Math.round(DEFAULT_RADIUS_MILES * METERS_PER_MILE);
-const SPOOF_STEP_METERS = 3218; // ~2 miles
 const EARTH_RADIUS_METERS = 6_371_000;
 const PIN_FETCH_LIMIT = 50;
 const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
+const DEFAULT_SPOOF_STEP_MILES = 1;
+const SPOOF_MIN_MILES = 0.25;
+const SPOOF_MAX_MILES = 5;
+const SPOOF_STEP_INCREMENT = 0.25;
 
 const toRadians = (value) => (value * Math.PI) / 180;
 const metersToLatitudeDegrees = (meters) => (meters / EARTH_RADIUS_METERS) * (180 / Math.PI);
@@ -71,6 +75,24 @@ const hasValidCoordinates = (coords) =>
   typeof coords === 'object' &&
   Number.isFinite(coords.latitude) &&
   Number.isFinite(coords.longitude);
+const haversineDistanceMeters = (a, b) => {
+  if (!a || !b) {
+    return Infinity;
+  }
+  const lat1 = toRadians(a.latitude);
+  const lat2 = toRadians(b.latitude);
+  const deltaLat = lat2 - lat1;
+  const deltaLon = toRadians(b.longitude - a.longitude);
+
+  const sinLat = Math.sin(deltaLat / 2);
+  const sinLon = Math.sin(deltaLon / 2);
+
+  const h =
+    sinLat * sinLat +
+    Math.cos(lat1) * Math.cos(lat2) * sinLon * sinLon;
+  const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+  return EARTH_RADIUS_METERS * c;
+};
 
 function MapPage() {
   const [authUser] = useAuthState(auth);
@@ -98,6 +120,8 @@ function MapPage() {
   const [error, setError] = useState(null);
   const lastSharedLocationRef = useRef(null);
   const [currentProfileId, setCurrentProfileId] = useState(null);
+  const spoofAnchorRef = useRef(null);
+  const [spoofStepMiles, setSpoofStepMiles] = useState(DEFAULT_SPOOF_STEP_MILES);
 
   useEffect(() => {
     if (!Number.isFinite(sharedLatitude) || !Number.isFinite(sharedLongitude)) {
@@ -415,6 +439,11 @@ function MapPage() {
     }
     refreshPins(userLocation);
   }, [isOffline, refreshPins, userLocation]);
+  useEffect(() => {
+    if (hasValidCoordinates(userLocation)) {
+      spoofAnchorRef.current = spoofAnchorRef.current ?? userLocation;
+    }
+  }, [userLocation]);
 
   useEffect(() => {
     if (!hasValidCoordinates(userLocation) || !isSharing || isOffline) {
@@ -477,8 +506,9 @@ function MapPage() {
             }
           : FALLBACK_LOCATION;
 
-      const latitudeStep = metersToLatitudeDegrees(SPOOF_STEP_METERS);
-      const longitudeStep = metersToLongitudeDegrees(SPOOF_STEP_METERS, base.latitude);
+      const stepMeters = spoofStepMiles * METERS_PER_MILE;
+      const latitudeStep = metersToLatitudeDegrees(stepMeters);
+      const longitudeStep = metersToLongitudeDegrees(stepMeters, base.latitude);
 
       let nextLatitude = base.latitude;
       let nextLongitude = base.longitude;
@@ -510,6 +540,27 @@ function MapPage() {
         return;
       }
 
+      const anchor = spoofAnchorRef.current || base;
+      const proposed = { latitude: clampedLatitude, longitude: normalizedLongitude };
+      const distanceFromAnchor = haversineDistanceMeters(anchor, proposed);
+      if (distanceFromAnchor > DEFAULT_MAX_DISTANCE_METERS) {
+        setError(
+          `Spoofing limited to ${Math.round(DEFAULT_MAX_DISTANCE_METERS / METERS_PER_MILE)} miles from your anchor location.`
+        );
+        return;
+      }
+
+      const MAX_LATITUDE = 85;
+      if (Math.abs(clampedLatitude) > MAX_LATITUDE) {
+        setError(
+          'That move would take you outside the supported map bounds. Resetting to Long Beach.'
+        );
+        const resetAnchor = FALLBACK_LOCATION;
+        spoofAnchorRef.current = resetAnchor;
+        updateGlobalLocation(resetAnchor, { source: 'map-spoof-reset' });
+        return;
+      }
+
       updateGlobalLocation(
         {
           latitude: clampedLatitude,
@@ -519,7 +570,7 @@ function MapPage() {
         { source: 'map-spoof' }
       );
     },
-    [userLocation, sharedLatitude, sharedLongitude, sharedAccuracy, updateGlobalLocation]
+    [sharedAccuracy, sharedLatitude, sharedLongitude, spoofStepMiles, updateGlobalLocation, userLocation]
   );
 
   const handleSpoofMove = useCallback(
@@ -613,6 +664,24 @@ function MapPage() {
         <Paper elevation={1} sx={{ p: 2 }}>
           <Stack spacing={1.5}>
             <Typography variant="subtitle2">GPS Spoofing</Typography>
+            <Stack spacing={1}>
+              <Typography variant="body2" color="text.secondary">
+                Step size: {spoofStepMiles.toFixed(2)} mile{spoofStepMiles === 1 ? '' : 's'}
+              </Typography>
+              <Slider
+                min={SPOOF_MIN_MILES}
+                max={SPOOF_MAX_MILES}
+                step={SPOOF_STEP_INCREMENT}
+                value={spoofStepMiles}
+                onChange={(_, value) => {
+                  if (typeof value === 'number') {
+                    setSpoofStepMiles(value);
+                  }
+                }}
+                valueLabelDisplay="auto"
+                valueLabelFormat={(value) => `${value.toFixed(2)} mi`}
+              />
+            </Stack>
             <Stack direction="row" spacing={1} justifyContent="center">
               <Button
                 variant="contained"

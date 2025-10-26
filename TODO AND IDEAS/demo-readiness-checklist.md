@@ -7,7 +7,7 @@ Use this as the running list for the “lock it down” sprint before next week�
 - [x] Build a dedicated `NotFound` / crash-fallback page and confirm React Router falls back to it on unknown routes or component errors.
 - [x] Audit every page for offline guard-rails (cached data, graceful retry messaging, disabled controls when offline).
 - [x] Add global error boundaries so catastrophic component failures render the fallback instead of white-screening.
-- [ ] Verify map/chat components degrade gracefully when geolocation or WebSocket APIs fail or are denied.
+- [x] Verify map/chat components degrade gracefully when geolocation or WebSocket APIs fail or are denied.
 - [ ] Implement smoke tests (manual or automated) that hit critical flows after each deploy/handover.
 
 ## UI / UX Polish
@@ -22,7 +22,7 @@ Use this as the running list for the “lock it down” sprint before next week�
 
 - [ ] Expose a real map toggle for the chat-room visualizer layer (lift logic from Debug Console).
 - [ ] Rework GPS spoofer to use ±1 mile hops (configurable), and ensure it respects interaction radius rules.
-- [ ] Add guard rail when spoofed position exits valid map bounds (auto reset or confirm dialog).
+- [x] Add guard rail when spoofed position exits valid map bounds (auto reset or confirm dialog).
 - [ ] Pre-cache common map tiles or provide offline fallback messaging when tiles fail to load.
 
 ## Notifications & Updates
