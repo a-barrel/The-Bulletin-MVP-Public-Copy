@@ -35,6 +35,7 @@ import {
 } from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
 import { BADGE_METADATA } from '../utils/badges';
+import BackButton from '../components/BackButton';
 import './_v2_WIP_ProfilePage.css';
 
 export const pageConfig = {
@@ -668,14 +669,6 @@ const detailEntries = useMemo(() => {
 
   const rawDataAvailable = detailEntries.length > 0;
 
-  const handleBack = () => {
-    if (originPath) {
-      navigate(originPath);
-    } else {
-      navigate(-1);
-    }
-  };
-
   const handleRequestBlock = useCallback(() => {
     if (!canManageBlock) {
       return;
@@ -781,8 +774,8 @@ const detailEntries = useMemo(() => {
       <div className="profile-page-frame">
         <Stack spacing={3}>
           <BackButton 
-            className="profile-back-button"
-            buttonClassName="back-button back-button--light back-button--small"
+            className="profile-back-nav"
+            buttonClassName="back-button"
             ariaLabel="Go back to previous page"
           />
 
