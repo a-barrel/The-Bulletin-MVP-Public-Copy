@@ -36,6 +36,13 @@
   margin: 8px 0;
 }
 
+/* ===== Back Button Styling ===== */
+.profile-back-button {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 1rem;
+}
+
 /* ===== Responsive Width Adjustments ===== */
 @media (max-width: 480px) {
   .profile-page-container {

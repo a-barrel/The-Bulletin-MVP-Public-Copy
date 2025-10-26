@@ -780,17 +780,11 @@ const detailEntries = useMemo(() => {
     <div className="profile-page-container">
       <div className="profile-page-frame">
         <Stack spacing={3}>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-            <Button
-              onClick={handleBack}
-              startIcon={<ArrowBackIcon />}
-              size="small"
-              color="primary"
-              sx={{ alignSelf: 'flex-start' }}
-            >
-              Back
-            </Button>
-          </Box>
+          <BackButton 
+            className="profile-back-button"
+            buttonClassName="back-button back-button--light back-button--small"
+            ariaLabel="Go back to previous page"
+          />
 
           {isFetchingProfile ? (
             <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
