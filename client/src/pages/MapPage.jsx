@@ -21,6 +21,7 @@ import {
 import { useLocationContext } from '../contexts/LocationContext';
 import { auth } from '../firebase';
 import Navbar from '../components/Navbar';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 
 export const pageConfig = {
   id: 'map',
@@ -73,6 +74,7 @@ const hasValidCoordinates = (coords) =>
 
 function MapPage() {
   const [authUser] = useAuthState(auth);
+  const { isOffline } = useNetworkStatusContext();
   const { location: sharedLocation, setLocation: setSharedLocation } = useLocationContext();
   const sharedLatitude = sharedLocation?.latitude ?? null;
   const sharedLongitude = sharedLocation?.longitude ?? null;
@@ -219,6 +221,13 @@ function MapPage() {
         return;
       }
 
+      if (isOffline) {
+        if (isMounted) {
+          setCurrentProfileId(null);
+        }
+        return;
+      }
+
       try {
         const profile = await fetchCurrentUserProfile();
         if (isMounted) {
@@ -236,7 +245,7 @@ function MapPage() {
     return () => {
       isMounted = false;
     };
-  }, [authUser]);
+  }, [authUser, isOffline]);
 
   const refreshPins = useCallback(
     async (location = userLocation) => {
@@ -244,6 +253,12 @@ function MapPage() {
         if (!location) {
           setPins([]);
         }
+        return;
+      }
+
+      if (isOffline) {
+        setIsLoadingPins(false);
+        setError((prev) => prev ?? 'Offline mode: pin data may be stale.');
         return;
       }
 
@@ -266,11 +281,17 @@ function MapPage() {
         setIsLoadingPins(false);
       }
     },
-    [userLocation, fetchPinsNearby]
+    [fetchPinsNearby, isOffline, userLocation]
   );
 
   const refreshNearby = useCallback(async (location = userLocation) => {
     if (!hasValidCoordinates(location)) return;
+
+    if (isOffline) {
+      setIsLoadingNearby(false);
+      setError((prev) => prev ?? 'Offline mode: nearby activity is unavailable.');
+      return;
+    }
 
     setIsLoadingNearby(true);
     try {
@@ -289,11 +310,14 @@ function MapPage() {
     } finally {
       setIsLoadingNearby(false);
     }
-  }, [userLocation, fetchNearbyUsers]);
+  }, [fetchNearbyUsers, isOffline, userLocation]);
 
   const pushLocationUpdate = useCallback(async (location) => {
     if (!hasValidCoordinates(location)) {
       throw new Error('Cannot share location without valid coordinates.');
+    }
+    if (isOffline) {
+      throw new Error('Location sharing is unavailable while offline.');
     }
     const timestamp = new Date().toISOString();
     const userId = currentProfileId ?? DEMO_USER_ID;
@@ -308,9 +332,15 @@ function MapPage() {
       createdAt: timestamp,
       lastSeenAt: timestamp
     });
-  }, [currentProfileId]);
+  }, [currentProfileId, isOffline]);
 
   const handleStartSharing = useCallback(async () => {
+    if (isOffline) {
+      setError('You are offline. Connect to share your location.');
+      setIsSharing(false);
+      return;
+    }
+
     let locationToShare = userLocation;
 
     try {
@@ -357,16 +387,19 @@ function MapPage() {
       setIsSharing(false);
     }
   }, [
-    userLocation,
+    isOffline,
+    refreshNearby,
+    refreshPins,
+    pushLocationUpdate,
     requestBrowserLocation,
     updateGlobalLocation,
-    pushLocationUpdate,
-    refreshNearby,
-    refreshPins
+    userLocation
   ]);
 
-  const shareDisabled = !hasValidCoordinates(userLocation);
-  const shareHelperText = isUsingFallbackLocation
+  const shareDisabled = isOffline || !hasValidCoordinates(userLocation);
+  const shareHelperText = isOffline
+    ? 'Offline mode: reconnect to share your real-time location.'
+    : isUsingFallbackLocation
     ? 'Using default Long Beach location. Enable GPS for precise results.'
     : null;
 
@@ -377,14 +410,14 @@ function MapPage() {
   }, []);
 
   useEffect(() => {
-    if (!hasValidCoordinates(userLocation)) {
+    if (!hasValidCoordinates(userLocation) || isOffline) {
       return;
     }
     refreshPins(userLocation);
-  }, [userLocation, refreshPins]);
+  }, [isOffline, refreshPins, userLocation]);
 
   useEffect(() => {
-    if (!hasValidCoordinates(userLocation) || !isSharing) {
+    if (!hasValidCoordinates(userLocation) || !isSharing || isOffline) {
       return;
     }
 
@@ -421,15 +454,15 @@ function MapPage() {
     return () => {
       cancelled = true;
     };
-  }, [userLocation, isSharing, pushLocationUpdate, refreshNearby]);
+  }, [isOffline, isSharing, pushLocationUpdate, refreshNearby, userLocation]);
 
   useEffect(() => {
-    if (!isSharing) {
+    if (!isSharing || isOffline) {
       return undefined;
     }
     const intervalId = window.setInterval(refreshNearby, 60000);
     return () => window.clearInterval(intervalId);
-  }, [isSharing, refreshNearby]);
+  }, [isOffline, isSharing, refreshNearby]);
 
   const shiftLocation = useCallback(
     (direction) => {
@@ -491,12 +524,16 @@ function MapPage() {
 
   const handleSpoofMove = useCallback(
     (direction) => {
+      if (isOffline) {
+        setError((prev) => prev ?? 'Reconnect to adjust spoofed location.');
+        return;
+      }
       setError((prev) =>
         prev && prev.toLowerCase().includes('failed to load') ? null : prev
       );
       shiftLocation(direction);
     },
-    [shiftLocation]
+    [isOffline, shiftLocation]
   );
 
   return (
@@ -551,6 +588,13 @@ function MapPage() {
           helperText={shareHelperText}
         />
 
+        {isOffline ? (
+          <Alert severity="warning">
+            Offline mode: map data is read-only. Location sharing and live updates will resume when
+            you reconnect.
+          </Alert>
+        ) : null}
+
         {error && (
           <Alert severity="error" onClose={() => setError(null)}>
             {error}
@@ -570,20 +614,44 @@ function MapPage() {
           <Stack spacing={1.5}>
             <Typography variant="subtitle2">GPS Spoofing</Typography>
             <Stack direction="row" spacing={1} justifyContent="center">
-              <Button variant="contained" size="small" onClick={() => handleSpoofMove('north')} sx={{ minWidth: 96 }}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleSpoofMove('north')}
+                disabled={isOffline}
+                sx={{ minWidth: 96 }}
+              >
                 North
               </Button>
             </Stack>
             <Stack direction="row" spacing={1} justifyContent="center">
-              <Button variant="contained" size="small" onClick={() => handleSpoofMove('west')} sx={{ minWidth: 96 }}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleSpoofMove('west')}
+                disabled={isOffline}
+                sx={{ minWidth: 96 }}
+              >
                 West
               </Button>
-              <Button variant="contained" size="small" onClick={() => handleSpoofMove('east')} sx={{ minWidth: 96 }}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleSpoofMove('east')}
+                disabled={isOffline}
+                sx={{ minWidth: 96 }}
+              >
                 East
               </Button>
             </Stack>
             <Stack direction="row" spacing={1} justifyContent="center">
-              <Button variant="contained" size="small" onClick={() => handleSpoofMove('south')} sx={{ minWidth: 96 }}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleSpoofMove('south')}
+                disabled={isOffline}
+                sx={{ minWidth: 96 }}
+              >
                 South
               </Button>
             </Stack>

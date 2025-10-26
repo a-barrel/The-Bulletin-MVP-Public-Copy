@@ -28,6 +28,7 @@ import {
   removeBookmark
 } from '../api/mongoDataApi';
 import { routes } from '../routes';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 
 export const pageConfig = {
   id: 'bookmarks',
@@ -71,6 +72,7 @@ function groupBookmarks(bookmarks, collectionsById) {
 
 function BookmarksPage() {
   const navigate = useNavigate();
+  const { isOffline } = useNetworkStatusContext();
   const [authUser, authLoading] = useAuthState(auth);
 
   const [bookmarks, setBookmarks] = useState([]);
@@ -105,6 +107,12 @@ function BookmarksPage() {
       return;
     }
 
+    if (isOffline) {
+      setIsLoading(false);
+      setError('You are offline. Connect to refresh your bookmarks.');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -122,7 +130,7 @@ function BookmarksPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [authUser]);
+  }, [authUser, isOffline]);
 
   useEffect(() => {
     if (authLoading) {
@@ -136,7 +144,7 @@ function BookmarksPage() {
       return;
     }
     loadData();
-  }, [authLoading, authUser, loadData]);
+  }, [authLoading, authUser, isOffline, loadData]);
 
   const handleViewPin = useCallback(
     (pinId) => {
@@ -152,6 +160,11 @@ function BookmarksPage() {
       const pinId = bookmark?.pinId || bookmark?.pin?._id;
       if (!pinId) {
         setRemovalStatus({ type: 'error', message: 'Bookmark does not include a pin id.' });
+        return;
+      }
+
+      if (isOffline) {
+        setRemovalStatus({ type: 'warning', message: 'Reconnect to remove bookmarks.' });
         return;
       }
 
@@ -175,12 +188,17 @@ function BookmarksPage() {
         setRemovingPinId(null);
       }
     },
-    []
+    [isOffline]
   );
 
   const handleExport = useCallback(async () => {
     if (!authUser) {
       setExportStatus({ type: 'error', message: 'Sign in to export your bookmarks.' });
+      return;
+    }
+
+    if (isOffline) {
+      setExportStatus({ type: 'warning', message: 'Reconnect to export your bookmarks.' });
       return;
     }
 
@@ -212,7 +230,7 @@ function BookmarksPage() {
     } finally {
       setIsExporting(false);
     }
-  }, [authUser, totalCount]);
+  }, [authUser, isOffline, totalCount]);
 
   return (
     <Box
@@ -267,7 +285,8 @@ function BookmarksPage() {
               variant="outlined"
               size="small"
               onClick={loadData}
-              disabled={isLoading || authLoading || !authUser}
+              disabled={isOffline || isLoading || authLoading || !authUser}
+              title={isOffline ? 'Reconnect to refresh bookmarks' : undefined}
             >
               {isLoading ? 'Loading...' : 'Refresh'}
             </Button>
@@ -276,12 +295,20 @@ function BookmarksPage() {
               variant="contained"
               size="small"
               onClick={handleExport}
-              disabled={isExporting || authLoading || !authUser}
+              disabled={isOffline || isExporting || authLoading || !authUser}
+              title={isOffline ? 'Reconnect to export bookmarks' : undefined}
             >
               {isExporting ? 'Exporting...' : 'Export CSV'}
             </Button>
           </Stack>
         </Stack>
+
+        {isOffline ? (
+          <Alert severity="warning">
+            You are offline. You can browse existing bookmarks, but refresh, removal, and export actions
+            require a connection.
+          </Alert>
+        ) : null}
 
         {exportStatus ? (
           <Alert severity={exportStatus.type} onClose={() => setExportStatus(null)}>
@@ -392,11 +419,12 @@ function BookmarksPage() {
                           variant="text"
                           color="error"
                           startIcon={<DeleteOutlineIcon fontSize="small" />}
-                          disabled={isRemoving}
+                          disabled={isOffline || isRemoving}
                           onClick={(event) => {
                             event.stopPropagation();
                             handleRemoveBookmark(bookmark);
                           }}
+                          title={isOffline ? 'Reconnect to remove bookmarks' : undefined}
                         >
                           {isRemoving ? 'Removing...' : 'Remove'}
                         </Button>

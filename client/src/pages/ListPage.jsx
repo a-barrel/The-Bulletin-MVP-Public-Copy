@@ -13,6 +13,7 @@ import PlaceIcon from '@mui/icons-material/Place'; // TODO: used only for Icon o
 import { useUpdates } from "../contexts/UpdatesContext";
 import runtimeConfig from "../config/runtime";
 import { routes } from "../routes";
+import { useNetworkStatusContext } from "../contexts/NetworkStatusContext";
 
 export const pageConfig = {
   id: "list",
@@ -293,6 +294,7 @@ const mapPinToFeedItem = (pin) => {
 
 export default function ListPage() {
   const navigate = useNavigate();
+  const { isOffline } = useNetworkStatusContext();
   const [sortByExpiration, setSortByExpiration] = useState(false);
   const [pins, setPins] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -363,6 +365,12 @@ export default function ListPage() {
       return;
     }
 
+    if (isOffline) {
+      setLoading(false);
+      setError((prev) => prev ?? "Offline mode: showing previously loaded pins.");
+      return;
+    }
+
     let cancelled = false;
 
     const loadPins = async () => {
@@ -427,22 +435,37 @@ export default function ListPage() {
     return () => {
       cancelled = true;
     };
-  }, [userLocation]);
+  }, [isOffline, userLocation]);
 
-  const { unreadCount } = useUpdates();
+  const { unreadCount, refreshUnreadCount } = useUpdates();
+
+  useEffect(() => {
+    if (typeof refreshUnreadCount === 'function' && !isOffline) {
+      refreshUnreadCount({ silent: true });
+    }
+  }, [isOffline, refreshUnreadCount]);
   //const [sortByExpiration, setSortByExpiration] = useState(false); // false = distance, true = expiration
   const handleSortToggle = useCallback(() => {
     setSortByExpiration((prev) => !prev);
   }, []);
   const handleNotifications = useCallback(() => {
+    if (isOffline) {
+      return;
+    }
     navigate(routes.updates.base);
-  }, [navigate]);
+  }, [isOffline, navigate]);
   const handleCreatePin = useCallback(() => {
+    if (isOffline) {
+      return;
+    }
     navigate(routes.createPin.base);
-  }, [navigate]);
+  }, [isOffline, navigate]);
   const handleSettings = useCallback(() => {
+    if (isOffline) {
+      return;
+    }
     navigate(routes.settings.base);
-  }, [navigate]);
+  }, [isOffline, navigate]);
   const handleFeedItemSelect = useCallback(
     (pinId) => {
       const normalized = toIdString(pinId);
@@ -513,6 +536,8 @@ export default function ListPage() {
             type="button"
             aria-label={notificationsLabel}
             onClick={handleNotifications}
+            disabled={isOffline}
+            title={isOffline ? 'Reconnect to view updates' : undefined}
           >
             <img src={updatesIcon} alt="" className="header-icon" aria-hidden="true" />
             {displayBadge ? (
@@ -526,7 +551,14 @@ export default function ListPage() {
         {/* Topbar */}
         <div className="topbar">
           <div className="top-left">
-            <button className="icon-btn" type="button" aria-label="Settings" onClick={handleSettings}>
+            <button
+              className="icon-btn"
+              type="button"
+              aria-label="Settings"
+              onClick={handleSettings}
+              disabled={isOffline}
+              title={isOffline ? 'Settings unavailable offline' : undefined}
+            >
               <img src={settingsIcon} alt="Settings" />
             </button>
 
@@ -539,6 +571,8 @@ export default function ListPage() {
             type="button"
             aria-label="Create pin"
             onClick={handleCreatePin}
+            disabled={isOffline}
+            title={isOffline ? 'Reconnect to create a pin' : undefined}
           >
             <img src={addIcon} alt="Add" />
           </button>

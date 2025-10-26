@@ -4,9 +4,9 @@ Use this as the running list for the “lock it down” sprint before next week�
 
 ## Stability & Safety Nets
 
-- [ ] Build a dedicated `NotFound` / crash-fallback page and confirm React Router falls back to it on unknown routes or component errors.
-- [ ] Audit every page for offline guard-rails (cached data, graceful retry messaging, disabled controls when offline).
-- [ ] Add global error boundaries so catastrophic component failures render the fallback instead of white-screening.
+- [x] Build a dedicated `NotFound` / crash-fallback page and confirm React Router falls back to it on unknown routes or component errors.
+- [x] Audit every page for offline guard-rails (cached data, graceful retry messaging, disabled controls when offline).
+- [x] Add global error boundaries so catastrophic component failures render the fallback instead of white-screening.
 - [ ] Verify map/chat components degrade gracefully when geolocation or WebSocket APIs fail or are denied.
 - [ ] Implement smoke tests (manual or automated) that hit critical flows after each deploy/handover.
 
@@ -77,4 +77,3 @@ Use this as the running list for the “lock it down” sprint before next week�
 - [ ] Explore progressive web app (PWA) setup for offline caching and installability.
 - [ ] Add feature metrics dashboard (Map usage, chat joins, bookmarks) for post-demo insights.
 - [ ] Plan post-demo backlog grooming session to re-prioritize based on feedback.
-

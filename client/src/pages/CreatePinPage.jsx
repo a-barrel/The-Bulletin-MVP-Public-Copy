@@ -3,6 +3,7 @@ import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { routes } from '../routes';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -213,6 +214,7 @@ function sanitizeDateField(value, label) {
 
 function CreatePinPage() {
   const navigate = useNavigate();
+  const { isOffline } = useNetworkStatusContext();
   const { announceBadgeEarned } = useBadgeSound();
   const [pinType, setPinType] = useState('discussion');
   const [formState, setFormState] = useState(INITIAL_FORM_STATE);
@@ -592,6 +594,12 @@ function CreatePinPage() {
         return;
       }
 
+      if (isOffline) {
+        setUploadStatus({ type: 'warning', message: 'You are offline. Connect to upload images.' });
+        event.target.value = '';
+        return;
+      }
+
       const remainingSlots = 10 - photoAssets.length;
       if (remainingSlots <= 0) {
         setUploadStatus({ type: 'warning', message: 'You can attach up to 10 images per pin.' });
@@ -656,7 +664,7 @@ function CreatePinPage() {
       setIsUploading(false);
       event.target.value = '';
     },
-    [photoAssets.length, uploadPinImage]
+    [isOffline, photoAssets.length, uploadPinImage]
   );
 
   const handleRemovePhoto = useCallback((photoId) => {
@@ -673,6 +681,11 @@ function CreatePinPage() {
     async (event) => {
       event.preventDefault();
       setStatus(null);
+
+      if (isOffline) {
+        setStatus({ type: 'warning', message: 'You are offline. Connect to publish a pin.' });
+        return;
+      }
 
       try {
         const title = formState.title.trim();
@@ -800,7 +813,17 @@ function CreatePinPage() {
         setIsSubmitting(false);
       }
     },
-    [announceBadgeEarned, autoDelete, clearDraft, coverPhotoId, formState, navigate, photoAssets, pinType]
+    [
+      announceBadgeEarned,
+      autoDelete,
+      clearDraft,
+      coverPhotoId,
+      formState,
+      isOffline,
+      navigate,
+      photoAssets,
+      pinType
+    ]
   );
 
   const resultJson = useMemo(() => {
@@ -881,7 +904,7 @@ function CreatePinPage() {
             <Button
               type="submit"
               variant="contained"
-              disabled={isSubmitting}
+              disabled={isOffline || isSubmitting}
               sx={{
                 minWidth: 96,
                 fontWeight: 600,
@@ -891,11 +914,18 @@ function CreatePinPage() {
                   backgroundColor: activeTheme.ctaHoverBackground
                 }
               }}
+              title={isOffline ? 'Reconnect to publish a pin' : undefined}
             >
               {isSubmitting ? 'Posting...' : FIGMA_TEMPLATE.header.cta}
             </Button>
           </Box>
         </Box>
+
+        {isOffline ? (
+          <Alert severity="warning">
+            You are offline. Drafts will save locally, but publishing and uploads require a connection.
+          </Alert>
+        ) : null}
 
         <Box sx={{ px: { xs: 2, sm: 4 }, py: { xs: 3, sm: 4 }, display: 'flex', flexDirection: 'column', gap: 3 }}>
           <Stack spacing={1}>
@@ -1266,8 +1296,9 @@ function CreatePinPage() {
                 <Button
                   component="label"
                   variant="outlined"
-                  disabled={isUploading || photoAssets.length >= 10}
+                  disabled={isOffline || isUploading || photoAssets.length >= 10}
                   sx={{ minWidth: 180 }}
+                  title={isOffline ? 'Reconnect to upload images' : undefined}
                 >
                   {isUploading ? (
                     <Stack direction="row" alignItems="center" spacing={1}>
@@ -1373,7 +1404,12 @@ function CreatePinPage() {
                 Save draft
               </Button>
             </Stack>
-            <Button type="submit" variant="contained" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={isOffline || isSubmitting}
+              title={isOffline ? 'Reconnect to publish a pin' : undefined}
+            >
               {isSubmitting ? 'Creating...' : 'Create Pin'}
             </Button>
           </Stack>

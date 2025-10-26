@@ -35,6 +35,9 @@ import {
 } from './components/BadgeCelebrationToast';
 import { routes } from './routes';
 import NotFoundPage from './pages/NotFoundPage';
+import { fetchCurrentUserProfile, fetchUpdates } from './api/mongoDataApi';
+import { useNetworkStatusContext } from './contexts/NetworkStatusContext.jsx';
+import OfflineBanner from './components/OfflineBanner.jsx';
 
 const theme = createTheme({
   palette: {
@@ -151,6 +154,7 @@ function App() {
   const pages = useMemo(loadPages, []);
   const location = useLocation();
   const navigate = useNavigate();
+  const { isOffline } = useNetworkStatusContext();
   const [navOverlayOpen, setNavOverlayOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [badgeSoundEnabled, setBadgeSoundEnabledState] = useState(
@@ -205,6 +209,7 @@ function App() {
     navPathSet.has(location.pathname) ? [location.pathname] : []
   );
   const backTargetRef = useRef(null);
+  const unreadRefreshPendingRef = useRef(false);
 
   const defaultNavPage = useMemo(() => {
     return (
@@ -327,6 +332,35 @@ function App() {
     [handleBack, previousNavPage, previousNavPath]
   );
 
+  const refreshUnreadCount = useCallback(
+    async ({ silent } = {}) => {
+      if (unreadRefreshPendingRef.current) {
+        return;
+      }
+
+      unreadRefreshPendingRef.current = true;
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (!profile?._id) {
+          setUnreadCount(0);
+          return;
+        }
+
+        const updates = await fetchUpdates({ userId: profile._id, limit: 100 });
+        const unread = updates.filter((update) => !update?.readAt).length;
+        setUnreadCount(unread);
+      } catch (error) {
+        if (!silent) {
+          console.warn('Failed to refresh unread update count', error);
+        }
+        setUnreadCount(0);
+      } finally {
+        unreadRefreshPendingRef.current = false;
+      }
+    },
+    [setUnreadCount]
+  );
+
   const badgeSoundContextValue = useMemo(
     () => ({
       enabled: badgeSoundEnabled,
@@ -336,12 +370,53 @@ function App() {
     [announceBadgeEarned, badgeSoundEnabled]
   );
 
+  useEffect(() => {
+    if (AUTH_ROUTES.has(location.pathname)) {
+      setUnreadCount(0);
+      return;
+    }
+    refreshUnreadCount({ silent: true });
+  }, [location.pathname, refreshUnreadCount, setUnreadCount]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const shouldRefresh = () => !AUTH_ROUTES.has(location.pathname);
+
+    const handleFocus = () => {
+      if (shouldRefresh()) {
+        refreshUnreadCount({ silent: true });
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && !document.hidden && shouldRefresh()) {
+        refreshUnreadCount({ silent: true });
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    };
+  }, [location.pathname, refreshUnreadCount]);
+
   const updatesContextValue = useMemo(
     () => ({
       unreadCount,
-      setUnreadCount
+      setUnreadCount,
+      refreshUnreadCount
     }),
-    [unreadCount]
+    [refreshUnreadCount, setUnreadCount, unreadCount]
   );
 
   const handleNavigate = useCallback(
@@ -517,6 +592,9 @@ function App() {
               </Fade>
             </Modal>
 
+            {isOffline && !AUTH_ROUTES.has(location.pathname) ? (
+              <OfflineBanner message="You are offline. Data may be stale and actions are temporarily disabled." />
+            ) : null}
             <Routes>
               <Route path={routes.auth.login} element={<LoginPage />} />
               <Route path={routes.auth.register} element={<RegistrationPage />} />

@@ -16,6 +16,7 @@ import {
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { routes } from '../routes';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
@@ -270,6 +271,7 @@ const buildUserProfileLink = (user, originPath) => {
 function PinDetails() {
   const { pinId } = useParams();
   const location = useLocation();
+  const { isOffline } = useNetworkStatusContext();
   const [pin, setPin] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -414,6 +416,12 @@ function PinDetails() {
         return;
       }
 
+      if (isOffline) {
+        setIsLoading(false);
+        setError((prev) => prev ?? 'You are offline. Connect to load the latest pin details.');
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
 
@@ -445,11 +453,17 @@ function PinDetails() {
     return () => {
       ignore = true;
     };
-  }, [pinId, previewMode]);
+  }, [isOffline, pinId, previewMode]);
 
   useEffect(() => {
     if (!pinId) {
       setReplies([]);
+      return;
+    }
+
+    if (isOffline) {
+      setIsLoadingReplies(false);
+      setRepliesError((prev) => prev ?? 'Replies unavailable while offline.');
       return;
     }
 
@@ -483,7 +497,7 @@ function PinDetails() {
     return () => {
       ignore = true;
     };
-  }, [pinId]);
+  }, [isOffline, pinId]);
 
   useEffect(() => {
     if (!attendeeOverlayOpen) {
@@ -493,6 +507,12 @@ function PinDetails() {
       setAttendees([]);
       setIsLoadingAttendees(false);
       setAttendeesError(null);
+      return;
+    }
+
+    if (isOffline) {
+      setIsLoadingAttendees(false);
+      setAttendeesError((prev) => prev ?? 'Attendee list unavailable while offline.');
       return;
     }
 
@@ -527,7 +547,7 @@ function PinDetails() {
     return () => {
       ignore = true;
     };
-  }, [attendeeOverlayOpen, pinId, isEventPin]);
+  }, [attendeeOverlayOpen, isEventPin, isOffline, pinId]);
 
   const coverImageUrl = useMemo(
     () => resolveMediaAssetUrl(pin?.coverPhoto, DEFAULT_COVER_PATH),
@@ -612,6 +632,10 @@ function PinDetails() {
     if (!isEventPin) {
       return;
     }
+    if (isOffline) {
+      setAttendeesError('You are offline. Connect to view attendees.');
+      return;
+    }
     if (pinExpired) {
       return;
     }
@@ -621,7 +645,7 @@ function PinDetails() {
     }
     setAttendeesError(null);
     setAttendeeOverlayOpen(true);
-  }, [isEventPin, pinExpired, distanceLockActive]);
+  }, [distanceLockActive, isEventPin, isOffline, pinExpired]);
 
   const closeAttendeeOverlay = useCallback(() => {
     setAttendeeOverlayOpen(false);
@@ -629,6 +653,10 @@ function PinDetails() {
 
   const openReplyComposer = useCallback(() => {
     if (!pinId) {
+      return;
+    }
+    if (isOffline) {
+      setSubmitReplyError('Replies are unavailable while offline.');
       return;
     }
     if (pinExpired) {
@@ -641,7 +669,7 @@ function PinDetails() {
     }
     setSubmitReplyError(null);
     setReplyComposerOpen(true);
-  }, [pinId, pinExpired, distanceLockActive]);
+  }, [distanceLockActive, isOffline, pinExpired, pinId]);
 
   const closeReplyComposer = useCallback(() => {
     if (isSubmittingReply) {
@@ -652,6 +680,10 @@ function PinDetails() {
   }, [isSubmittingReply]);
 
   const handleToggleBookmark = useCallback(async () => {
+    if (isOffline) {
+      setBookmarkError('Bookmarks are unavailable while offline.');
+      return;
+    }
     if (!pin || isUpdatingBookmark || isInteractionLocked) {
       if (pinExpired) {
         setBookmarkError('Expired pins cannot be bookmarked.');
@@ -736,9 +768,13 @@ function PinDetails() {
     } finally {
       setIsUpdatingBookmark(false);
     }
-  }, [announceBadgeEarned, bookmarked, distanceLockActive, isInteractionLocked, isUpdatingBookmark, pin, pinExpired]);
+  }, [announceBadgeEarned, bookmarked, distanceLockActive, isInteractionLocked, isOffline, isUpdatingBookmark, pin, pinExpired]);
 
   const handleToggleAttendance = useCallback(async () => {
+    if (isOffline) {
+      setAttendanceError('Attendance cannot be updated while offline.');
+      return;
+    }
     if (!pin || !isEventPin || isUpdatingAttendance || isInteractionLocked) {
       if (pinExpired) {
         setAttendanceError('This event has ended.');
@@ -821,9 +857,13 @@ function PinDetails() {
     } finally {
       setIsUpdatingAttendance(false);
     }
-  }, [announceBadgeEarned, attending, bookmarked, distanceLockActive, isEventPin, isInteractionLocked, isUpdatingAttendance, pin, pinExpired]);
+  }, [announceBadgeEarned, attending, bookmarked, distanceLockActive, isEventPin, isInteractionLocked, isOffline, isUpdatingAttendance, pin, pinExpired]);
 
   const handleSubmitReply = useCallback(async () => {
+    if (isOffline) {
+      setSubmitReplyError('Replies are unavailable while offline.');
+      return;
+    }
     if (!pinId || isSubmittingReply || isInteractionLocked) {
       if (pinExpired) {
         setSubmitReplyError('Replies are closed because this pin has expired.');
@@ -866,7 +906,7 @@ function PinDetails() {
     } finally {
       setIsSubmittingReply(false);
     }
-  }, [pinId, replyMessage, isSubmittingReply, isInteractionLocked, pinExpired, distanceLockActive]);
+  }, [distanceLockActive, isInteractionLocked, isOffline, isSubmittingReply, pinExpired, pinId, replyMessage]);
 
   const expirationLabel = useMemo(() => formatDateTime(pin?.expiresAt ?? pin?.endDate), [pin]);
   const createdAtLabel = useMemo(() => formatDateTime(pin?.createdAt), [pin]);
@@ -902,10 +942,11 @@ function PinDetails() {
           <button
             className='bookmark-button'
             onClick={handleToggleBookmark}
-            disabled={isUpdatingBookmark || !pin || isInteractionLocked}
+            disabled={isOffline || isUpdatingBookmark || !pin || isInteractionLocked}
             aria-pressed={bookmarked ? 'true' : 'false'}
             aria-label={bookmarked ? 'Remove bookmark' : 'Save bookmark'}
             aria-busy={isUpdatingBookmark ? 'true' : 'false'}
+            title={isOffline ? 'Reconnect to manage bookmarks' : undefined}
           >
             <img
               src={
@@ -1098,7 +1139,8 @@ function PinDetails() {
                   type="button"
                   className='view-attendees-button'
                   onClick={openAttendeeOverlay}
-                  disabled={isInteractionLocked || (isLoadingAttendees && attendeeOverlayOpen)}
+                  disabled={isOffline || isInteractionLocked || (isLoadingAttendees && attendeeOverlayOpen)}
+                  title={isOffline ? 'Reconnect to view attendees' : undefined}
                 >
                   {isLoadingAttendees && attendeeOverlayOpen ? 'Loading attendees...' : 'View Attendees'}
                 </button>
@@ -1112,8 +1154,9 @@ function PinDetails() {
               <button
                 className={`attend-button ${attending ? 'attending' : ''}`}
                 onClick={handleToggleAttendance}
-                disabled={isUpdatingAttendance || !pin || isInteractionLocked}
+                disabled={isOffline || isUpdatingAttendance || !pin || isInteractionLocked}
                 aria-busy={isUpdatingAttendance ? 'true' : 'false'}
+                title={isOffline ? 'Reconnect to update attendance' : undefined}
               >
                 {isUpdatingAttendance ? 'Updating...' : attending ? 'Attending!' : 'Attend'}
               </button>
@@ -1202,7 +1245,13 @@ function PinDetails() {
           </div>
 
           {/* Create comment button */}
-          <button className='create-comment' disabled={isInteractionLocked} onClick={openReplyComposer} aria-label='Create reply'>
+          <button
+            className='create-comment'
+            disabled={isOffline || isInteractionLocked}
+            onClick={openReplyComposer}
+            aria-label='Create reply'
+            title={isOffline ? 'Reconnect to add a reply' : undefined}
+          >
             <img
               src='https://www.svgrepo.com/show/489238/add-comment.svg'
               className='create-comment-button'
@@ -1247,7 +1296,7 @@ function PinDetails() {
                 onChange={(event) => setReplyMessage(event.target.value)}
                 placeholder='Type your reply here...'
                 maxLength={4000}
-                disabled={isSubmittingReply || isInteractionLocked}
+                disabled={isOffline || isSubmittingReply || isInteractionLocked}
               />
               <div className='reply-overlay-footer'>
                 <span className='reply-overlay-count'>{replyMessage.length}/4000</span>
@@ -1255,7 +1304,8 @@ function PinDetails() {
                   type='button'
                   className='reply-overlay-submit'
                   onClick={handleSubmitReply}
-                  disabled={isSubmittingReply || isInteractionLocked}
+                  disabled={isOffline || isSubmittingReply || isInteractionLocked}
+                  title={isOffline ? 'Reconnect to post a reply' : undefined}
                 >
                   {isSubmittingReply ? 'Posting...' : 'Post Reply'}
                 </button>
