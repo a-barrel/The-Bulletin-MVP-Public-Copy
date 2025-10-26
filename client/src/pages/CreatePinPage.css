@@ -161,3 +161,146 @@ textarea {
   cursor: pointer;
 }
 
+/* Event/Discussion Details */
+.details-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.switch-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  width: 100%;
+}
+
+.two-col input,
+.two-col select,
+.two-col textarea {
+  width: 100%;
+}
+
+.switch-group input[type="checkbox"],
+.switch-group input[type="radio"] {
+  transform: scale(1.2);
+}
+
+.switch-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; 
+}
+
+.switch-group input[type="checkbox"] {
+  vertical-align: middle;
+  accent-color: #007bff; /* optional: change checkbox color */
+  width: 18px;
+  height: 18px;
+  transform: scale(1.2);
+  margin: 0;
+}
+
+/* images section */
+.upload-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.btn-outline,
+.btn-danger,
+.btn-selected {
+  flex: 1 1 auto; 
+  min-width: 100px;
+  text-align: center;
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #ccc;
+  background: none;
+  box-sizing: border-box;
+}
+
+.btn-danger { 
+  color: #e74c3c; 
+  border-color: #e74c3c; 
+}
+
+.btn-selected { 
+  background: #0073e6; 
+  color: white; 
+  border: none; 
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.photo-card {
+  position: relative;
+  border-radius: 0.75rem;
+  overflow: visible;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.photo-card img {
+  width: 100%;
+  aspect-ratio: 1/1;
+  object-fit: cover;
+}
+
+.cover-label {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+
+.photo-actions {
+  display: flex;
+  flex-wrap: wrap; 
+  gap: 0.5rem; 
+  justify-content: flex-start;
+}
+
+/* location section */
+.map-container {
+  width: 100%;
+  height: 280px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #ccc;
+  margin-bottom: 1rem;
+}
+
+.loading-text {
+  color: #0073e6;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.note-text {
+  color: #777;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+

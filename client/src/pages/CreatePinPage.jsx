@@ -710,163 +710,284 @@ function CreatePinPage() {
         </div>
         
         {/* Pin type toggle */}
-          <div className="field-group">
-            <label className="label">Pin type</label>
-            <div className="toggle-group">
-              <button
-                type="button"
-                className={`toggle-btn ${pinType === 'discussion' ? 'selected' : ''}`}
-                onClick={() => handleTypeChange(null, 'discussion')}
-              >
-                <MapIcon fontSize="small" /> Discussion
-              </button>
-              <button
-                type="button"
-                className={`toggle-btn ${pinType === 'event' ? 'selected' : ''}`}
-                onClick={() => handleTypeChange(null, 'event')}
-              >
-                <EventNoteIcon fontSize="small" /> Event
-              </button>
-            </div>
+        <div className="field-group">
+          <label className="label">Pin type</label>
+          <div className="toggle-group">
+            <button
+              type="button"
+              className={`toggle-btn ${pinType === 'discussion' ? 'selected' : ''}`}
+              onClick={() => handleTypeChange(null, 'discussion')}
+            >
+              <MapIcon fontSize="small" /> Discussion
+            </button>
+            <button
+              type="button"
+              className={`toggle-btn ${pinType === 'event' ? 'selected' : ''}`}
+              onClick={() => handleTypeChange(null, 'event')}
+            >
+              <EventNoteIcon fontSize="small" /> Event
+            </button>
           </div>
+        </div>
 
-          {/* Status Alert */}
-          {status && (
-            <div className={`alert alert-${status.type}`}>
-              <span>{status.message}</span>
-              <button type="button" onClick={() => setStatus(null)} className="alert-close">
+        {/* Status Alert */}
+        {status && (
+          <div className={`alert alert-${status.type}`}>
+            <span>{status.message}</span>
+            <button type="button" onClick={() => setStatus(null)} className="alert-close">
+              ×
+            </button>
+          </div>
+        )}
+
+        {/* Event or Discussion Details */}
+        <div className="grid-item">
+          <div className="form-section">
+            {pinType === 'event' ? (
+              <>
+                <div className='details-info'>
+                  <h2>Event details</h2>
+                  <p>Let everyone know when and where to show up.</p>
+                </div>
+                
+                <div className="two-col">
+                  <div>
+                    <label>Start date </label>
+                    <input
+                      type="datetime-local"
+                      value={formState.startDate}
+                      onChange={handleFieldChange('startDate')}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label>End date </label>
+                    <input
+                      type="datetime-local"
+                      value={formState.endDate}
+                      onChange={handleFieldChange('endDate')}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <h2>Venue</h2>
+                <label>Precise address</label>
+                <input
+                  type="text"
+                  value={formState.addressPrecise}
+                  onChange={handleFieldChange('addressPrecise')}
+                  placeholder="University Student Union, Long Beach, CA"
+                />
+
+                <div className="two-col">
+                  <input
+                    type="text"
+                    placeholder="City"
+                    value={formState.addressCity}
+                    onChange={handleFieldChange('addressCity')}
+                  />
+                  <input
+                    type="text"
+                    placeholder="State"
+                    value={formState.addressState}
+                    onChange={handleFieldChange('addressState')}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Postal code"
+                    value={formState.addressPostalCode}
+                    onChange={handleFieldChange('addressPostalCode')}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Country"
+                    value={formState.addressCountry}
+                    onChange={handleFieldChange('addressCountry')}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className='details-info'>
+                  <h2>Discussion details</h2>
+                  <p>Set how long this discussion should stay active.</p>
+                </div>
+                
+                <div className="two-col">
+                  <div>
+                    <label>Expires at </label>
+                    <input
+                      type="datetime-local"
+                      value={formState.expiresAt}
+                      onChange={handleFieldChange('expiresAt')}
+                      required
+                    />
+                  </div>
+                  <div className="switch-group">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={autoDelete}
+                        onChange={(e) => setAutoDelete(e.target.checked)}
+                      /> Auto delete
+                    </label>
+                  </div>
+                </div>
+
+                <h3>Approximate address</h3>
+                <input
+                  type="text"
+                  placeholder="Formatted"
+                  value={formState.approxFormatted}
+                  onChange={handleFieldChange('approxFormatted')}
+                />
+                <div className="two-col">
+                  <input
+                    type="text"
+                    placeholder="City"
+                    value={formState.approxCity}
+                    onChange={handleFieldChange('approxCity')}
+                  />
+                  <input
+                    type="text"
+                    placeholder="State"
+                    value={formState.approxState}
+                    onChange={handleFieldChange('approxState')}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Country"
+                    value={formState.approxCountry}
+                    onChange={handleFieldChange('approxCountry')}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        
+        {/* Images Section */}
+        <div className="form-section">
+          <h2>Images</h2>
+          <p>Upload up to 10 square images. The highlighted one becomes the cover photo.</p>
+
+          {uploadStatus && (
+            <div className={`alert alert-${uploadStatus.type}`}>
+              {uploadStatus.message}
+              <button type="button" onClick={() => setUploadStatus(null)} className="alert-close">
                 ×
               </button>
             </div>
           )}
 
-          {/* WIP CONTINUE HERE */}
-          {/* Event or Discussion Details */}
-          <div className="grid-item">
-            <div className="form-section">
-              {pinType === 'event' ? (
-                <>
-                  <h2>Event details</h2>
-                  <p>Let everyone know when and where to show up.</p>
-
-                  <div className="two-col">
-                    <div>
-                      <label>Start date</label>
-                      <input
-                        type="datetime-local"
-                        value={formState.startDate}
-                        onChange={handleFieldChange('startDate')}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label>End date</label>
-                      <input
-                        type="datetime-local"
-                        value={formState.endDate}
-                        onChange={handleFieldChange('endDate')}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <hr />
-
-                  <h3>Venue</h3>
-                  <label>Precise address</label>
-                  <input
-                    type="text"
-                    value={formState.addressPrecise}
-                    onChange={handleFieldChange('addressPrecise')}
-                    placeholder="University Student Union, Long Beach, CA"
-                  />
-
-                  <div className="two-col">
-                    <input
-                      type="text"
-                      placeholder="City"
-                      value={formState.addressCity}
-                      onChange={handleFieldChange('addressCity')}
-                    />
-                    <input
-                      type="text"
-                      placeholder="State"
-                      value={formState.addressState}
-                      onChange={handleFieldChange('addressState')}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Postal code"
-                      value={formState.addressPostalCode}
-                      onChange={handleFieldChange('addressPostalCode')}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Country"
-                      value={formState.addressCountry}
-                      onChange={handleFieldChange('addressCountry')}
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <h2>Discussion details</h2>
-                  <p>Set how long this discussion should stay active.</p>
-
-                  <div className="two-col">
-                    <div>
-                      <label>Expires at</label>
-                      <input
-                        type="datetime-local"
-                        value={formState.expiresAt}
-                        onChange={handleFieldChange('expiresAt')}
-                        required
-                      />
-                    </div>
-                    <div className="switch-group">
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={autoDelete}
-                          onChange={(e) => setAutoDelete(e.target.checked)}
-                        /> Auto delete
-                      </label>
-                    </div>
-                  </div>
-
-                  <hr />
-                  <h3>Approximate address</h3>
-                  <input
-                    type="text"
-                    placeholder="Formatted"
-                    value={formState.approxFormatted}
-                    onChange={handleFieldChange('approxFormatted')}
-                  />
-                  <div className="two-col">
-                    <input
-                      type="text"
-                      placeholder="City"
-                      value={formState.approxCity}
-                      onChange={handleFieldChange('approxCity')}
-                    />
-                    <input
-                      type="text"
-                      placeholder="State"
-                      value={formState.approxState}
-                      onChange={handleFieldChange('approxState')}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Country"
-                      value={formState.approxCountry}
-                      onChange={handleFieldChange('approxCountry')}
-                    />
-                  </div>
-                </>
-              )}
-            </div>
+          <div className="upload-row">
+            <label className="btn-outline">
+              {isUploading ? 'Uploading...' : 'Upload images'}
+              <input
+                type="file"
+                hidden
+                multiple
+                accept="image/*"
+                onChange={handleImageSelection}
+                disabled={isUploading || photoAssets.length >= 10}
+              />
+            </label>
+            <span>{photoAssets.length}/10 images attached</span>
           </div>
 
+          {photoAssets.length > 0 && (
+            <div className="photo-grid">
+              {photoAssets.map((photo) => {
+                const isCover = coverPhotoId === photo.id;
+                return (
+                  <div className="photo-card" key={photo.id}>
+                    <img src={photo.asset.url} alt={photo.asset.description || 'Pin image'} />
+                    {isCover && <div className="cover-label">Cover photo</div>}
+                    <div className="photo-actions">
+                      <button
+                        type="button"
+                        className={isCover ? 'btn-selected' : 'btn-outline'}
+                        onClick={() => handleSetCoverPhoto(photo.id)}
+                        disabled={isCover}
+                      >
+                        {isCover ? 'Selected' : 'Set as cover'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-danger"
+                        onClick={() => handleRemovePhoto(photo.id)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* LOCATION SECTION */}
+        <div className="form-section">
+          <h2>Location</h2>
+          <p>{FIGMA_TEMPLATE.fields.locationPrompt}</p>
+
+          {locationStatus && (
+            <div className={`alert alert-${locationStatus.type}`}>
+              {locationStatus.message}
+              <button
+                type="button"
+                onClick={() => setLocationStatus(null)}
+                className="alert-close"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
+          <div className="map-container">
+            <SelectableLocationMap
+              value={selectedCoordinates}
+              onChange={handleMapLocationSelect}
+            />
+          </div>
+
+          {isReverseGeocoding && (
+            <p className="loading-text">Looking up address details...</p>
+          )}
+
+          <p className="note-text">
+            Click or tap the map to set coordinates. We will auto-fill the address
+            when possible.
+          </p>
+
+          <label>Latitude</label>
+          <input
+            type="text"
+            value={formState.latitude}
+            onChange={handleFieldChange("latitude")}
+            required
+          />
+
+          <label>Longitude</label>
+          <input
+            type="text"
+            value={formState.longitude}
+            onChange={handleFieldChange("longitude")}
+            required
+          />
+
+          <label>Proximity radius (miles)</label>
+          <input
+            type="text"
+            value={formState.proximityRadiusMiles}
+            onChange={handleFieldChange("proximityRadiusMiles")}
+            placeholder="Optional. Defaults to 1 mile."
+          />
+        </div>
+
+        
 
       </div>
     </div>
