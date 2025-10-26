@@ -664,17 +664,19 @@ function CreatePinPage() {
           </h1>
         </div>
 
-        <button
-          type="submit"
-          className="btn-submit"
-          disabled={isSubmitting}
-          style={{
-            backgroundColor: activeTheme.ctaBackground,
-            color: activeTheme.ctaTextColor
-          }}
-        >
-          {isSubmitting ? 'Posting...' : FIGMA_TEMPLATE.header.cta}
-        </button>
+        <form onSubmit={handleSubmit}>
+          <button
+            type="submit"
+            className="btn-submit"
+            disabled={isSubmitting}
+            style={{
+              backgroundColor: activeTheme.ctaBackground,
+              color: activeTheme.ctaTextColor
+            }}
+          >
+            {isSubmitting ? 'Posting...' : FIGMA_TEMPLATE.header.cta}
+          </button>
+        </form>
       </div>
 
       <div className='body'>
