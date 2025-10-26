@@ -36,7 +36,7 @@ export default function BackButton({
   }, [navigate, originPath, fallbackPath, onClick]);
 
   return (
-    <div className={`back-button-container ${className}`}>
+    <div className={`back-nav-bar ${className}`}>
       <button
         type="button"
         className={buttonClassName}
