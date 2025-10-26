@@ -260,20 +260,23 @@ const Map = ({
         />
       )}
 
-      {nearbyUsers.map((user, index) => (
-        <Marker
-          key={index}
-          position={[
-            user.coordinates.coordinates[1],
-            user.coordinates.coordinates[0]
-          ]}
-          icon={nearbyIcon}
-        >
-          <Popup>
-            <h3>User {user.userId}</h3>
-          </Popup>
-        </Marker>
-      ))}
+      {nearbyUsers.map((user, index) => {
+        const coordsArray = user?.coordinates?.coordinates || user?.location?.coordinates;
+        if (!Array.isArray(coordsArray) || coordsArray.length < 2) {
+          return null;
+        }
+        const [lon, lat] = coordsArray;
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+          return null;
+        }
+        return (
+          <Marker key={index} position={[lat, lon]} icon={nearbyIcon}>
+            <Popup>
+              <h3>User {user.userId ?? index + 1}</h3>
+            </Popup>
+          </Marker>
+        );
+      })}
 
       {resolvedPins.map((pin, index) => {
         const coordinates = pin?.coordinates?.coordinates;
@@ -305,7 +308,7 @@ const Map = ({
         if (isChatRoom) {
           const color = pin.type === 'global-chat-room' ? '#ffb300' : '#ff7043';
           const isSelected = pin._id && pin._id === selectedPinId;
-          const radius = isSelected ? 10 : 7;
+          const radius = isSelected ? 12 : 8;
 
           return (
             <Fragment key={key}>
@@ -313,7 +316,7 @@ const Map = ({
                 <Circle
                   center={[latitude, longitude]}
                   radius={pin.proximityRadiusMeters}
-                  pathOptions={{ color, weight: 1.5, dashArray: '6 4', fillOpacity: 0.04 }}
+                  pathOptions={{ color, weight: isSelected ? 2 : 1.2, dashArray: '6 6', fillColor: color, fillOpacity: 0.08 }}
                 />
               ) : null}
               <CircleMarker
@@ -323,7 +326,7 @@ const Map = ({
                   color,
                   weight: isSelected ? 3 : 2,
                   fillColor: color,
-                  fillOpacity: 0.7
+                  fillOpacity: 0.85
                 }}
                 eventHandlers={
                   onPinSelect

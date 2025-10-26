@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
@@ -10,6 +10,8 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Slider from '@mui/material/Slider';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch from '@mui/material/Switch';
 import MapIcon from '@mui/icons-material/Map';
 import Map from '../components/Map';
 import LocationShare from '../components/LocationShare';
@@ -17,7 +19,8 @@ import {
   insertLocationUpdate,
   fetchNearbyUsers,
   fetchPinsNearby,
-  fetchCurrentUserProfile
+  fetchCurrentUserProfile,
+  fetchChatRooms
 } from '../api/mongoDataApi.js';
 import { useLocationContext } from '../contexts/LocationContext';
 import { auth } from '../firebase';
@@ -93,6 +96,12 @@ const haversineDistanceMeters = (a, b) => {
   const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
   return EARTH_RADIUS_METERS * c;
 };
+const formatDistanceMiles = (meters) => {
+  if (!Number.isFinite(meters)) {
+    return null;
+  }
+  return (meters / METERS_PER_MILE).toFixed(2);
+};
 
 function MapPage() {
   const [authUser] = useAuthState(auth);
@@ -114,6 +123,11 @@ function MapPage() {
   );
   const [nearbyUsers, setNearbyUsers] = useState([]);
   const [pins, setPins] = useState([]);
+  const [showChatRooms, setShowChatRooms] = useState(false);
+  const [chatRooms, setChatRooms] = useState([]);
+  const [isLoadingChatRooms, setIsLoadingChatRooms] = useState(false);
+  const [chatRoomsError, setChatRoomsError] = useState(null);
+  const [selectedChatRoomId, setSelectedChatRoomId] = useState(null);
   const [isSharing, setIsSharing] = useState(false);
   const [isLoadingNearby, setIsLoadingNearby] = useState(false);
   const [isLoadingPins, setIsLoadingPins] = useState(false);
@@ -439,6 +453,144 @@ function MapPage() {
     }
     refreshPins(userLocation);
   }, [isOffline, refreshPins, userLocation]);
+
+  useEffect(() => {
+    if (!showChatRooms) {
+      setChatRooms([]);
+      setChatRoomsError(null);
+      setIsLoadingChatRooms(false);
+      setSelectedChatRoomId(null);
+      return;
+    }
+
+    if (isOffline) {
+      setChatRooms([]);
+      setChatRoomsError('Reconnect to load chat rooms.');
+      setIsLoadingChatRooms(false);
+      return;
+    }
+
+    const latitude = Number.isFinite(userLocation?.latitude) ? userLocation.latitude : undefined;
+    const longitude = Number.isFinite(userLocation?.longitude) ? userLocation.longitude : undefined;
+
+    let cancelled = false;
+    setIsLoadingChatRooms(true);
+    setChatRoomsError(null);
+
+    fetchChatRooms({ latitude, longitude, maxDistanceMiles: 50 })
+      .then((rooms) => {
+        if (!cancelled) {
+          setChatRooms(Array.isArray(rooms) ? rooms : []);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Failed to load chat rooms:', err);
+          setChatRooms([]);
+          setChatRoomsError(err?.message || 'Failed to load chat rooms.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingChatRooms(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOffline, showChatRooms, userLocation]);
+
+  const chatRoomPins = useMemo(() => {
+    if (!showChatRooms) {
+      return [];
+    }
+
+    return chatRooms
+      .map((room, index) => {
+        const coordinatesArray = room?.coordinates?.coordinates || room?.location?.coordinates;
+        if (!Array.isArray(coordinatesArray) || coordinatesArray.length < 2) {
+          return null;
+        }
+        const [longitude, latitude] = coordinatesArray;
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+          return null;
+        }
+
+        const id = room?._id ? String(room._id) : `chat-room-${index}`;
+        const distance = hasValidCoordinates(userLocation)
+          ? haversineDistanceMeters(userLocation, { latitude, longitude })
+          : null;
+
+        return {
+          _id: id,
+          title: room?.name || 'Chat room',
+          type: room?.isGlobal ? 'global-chat-room' : 'chat-room',
+          coordinates: {
+            type: 'Point',
+            coordinates: [longitude, latitude]
+          },
+          proximityRadiusMeters: Number.isFinite(room?.radiusMeters) ? room.radiusMeters : undefined,
+          description: room?.description || undefined,
+          distanceMeters: Number.isFinite(distance) ? distance : undefined,
+          metadata: room
+        };
+      })
+      .filter(Boolean);
+  }, [chatRooms, showChatRooms, userLocation]);
+
+  const combinedPins = useMemo(() => {
+    if (!showChatRooms) {
+      return pins;
+    }
+    return [...pins, ...chatRoomPins];
+  }, [chatRoomPins, pins, showChatRooms]);
+
+  const selectedChatRoom = useMemo(() => {
+    if (!selectedChatRoomId) {
+      return null;
+    }
+    return chatRooms.find((room) => String(room?._id) === String(selectedChatRoomId)) ?? null;
+  }, [chatRooms, selectedChatRoomId]);
+
+  const selectedChatRoomPin = useMemo(() => {
+    if (!selectedChatRoomId) {
+      return null;
+    }
+    return chatRoomPins.find((pin) => pin._id === selectedChatRoomId) ?? null;
+  }, [chatRoomPins, selectedChatRoomId]);
+
+  const selectedChatRoomDistanceLabel = useMemo(() => {
+    const miles = formatDistanceMiles(selectedChatRoomPin?.distanceMeters);
+    return miles ? `${miles} mi` : null;
+  }, [selectedChatRoomPin]);
+
+  const selectedChatRoomRadiusLabel = useMemo(() => {
+    if (!selectedChatRoom || !Number.isFinite(selectedChatRoom.radiusMeters)) {
+      return null;
+    }
+    const miles = formatDistanceMiles(selectedChatRoom.radiusMeters);
+    return miles ? `${Math.round(selectedChatRoom.radiusMeters)} m (${miles} mi)` : `${Math.round(selectedChatRoom.radiusMeters)} m`;
+  }, [selectedChatRoom]);
+
+  useEffect(() => {
+    if (!selectedChatRoomId) {
+      return;
+    }
+    if (!chatRooms.some((room) => String(room?._id) === String(selectedChatRoomId))) {
+      setSelectedChatRoomId(null);
+    }
+  }, [chatRooms, selectedChatRoomId]);
+
+  useEffect(() => {
+    if (!showChatRooms || !chatRoomPins.length) {
+      return;
+    }
+    if (!selectedChatRoomId) {
+      const first = chatRoomPins[0];
+      setSelectedChatRoomId(first._id ?? null);
+    }
+  }, [chatRoomPins, selectedChatRoomId, showChatRooms]);
   useEffect(() => {
     if (hasValidCoordinates(userLocation)) {
       spoofAnchorRef.current = spoofAnchorRef.current ?? userLocation;
@@ -587,6 +739,18 @@ function MapPage() {
     [isOffline, shiftLocation]
   );
 
+  const handleMapPinSelect = useCallback(
+    (pin) => {
+      if (!pin || !showChatRooms) {
+        return;
+      }
+      if (pin.type === 'chat-room' || pin.type === 'global-chat-room') {
+        setSelectedChatRoomId(pin._id ?? null);
+      }
+    },
+    [showChatRooms]
+  );
+
   return (
     <Box
       sx={{
@@ -626,8 +790,10 @@ function MapPage() {
         <Map
           userLocation={userLocation}
           nearbyUsers={nearbyUsers}
-          pins={pins}
+          pins={combinedPins}
           userRadiusMeters={DEFAULT_MAX_DISTANCE_METERS}
+          selectedPinId={showChatRooms ? selectedChatRoomId : undefined}
+          onPinSelect={showChatRooms ? handleMapPinSelect : undefined}
           isOffline={isOffline}
         />
       </Box>
@@ -639,6 +805,27 @@ function MapPage() {
           disabled={shareDisabled}
           helperText={shareHelperText}
         />
+
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showChatRooms}
+              onChange={(event) => setShowChatRooms(event.target.checked)}
+              disabled={isOffline}
+            />
+          }
+          label="Show chat room coverage"
+        />
+
+        {isLoadingChatRooms ? (
+          <Alert severity="info">Loading chat rooms…</Alert>
+        ) : null}
+
+        {chatRoomsError ? (
+          <Alert severity="warning" onClose={() => setChatRoomsError(null)}>
+            {chatRoomsError}
+          </Alert>
+        ) : null}
 
         {isOffline ? (
           <Alert severity="warning">
@@ -730,6 +917,48 @@ function MapPage() {
             </Typography>
           </Stack>
         </Paper>
+
+        {showChatRooms ? (
+          <Paper elevation={1} sx={{ p: 2 }}>
+            <Stack spacing={1.25}>
+              <Typography variant="subtitle2">Chat room coverage</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {isLoadingChatRooms
+                  ? 'Loading chat rooms…'
+                  : chatRoomPins.length
+                  ? `Displaying ${chatRoomPins.length} chat room${chatRoomPins.length === 1 ? '' : 's'} near this area.`
+                  : 'No chat rooms found near this location.'}
+              </Typography>
+              {selectedChatRoom ? (
+                <Stack spacing={0.5}>
+                  <Typography variant="subtitle1">
+                    {selectedChatRoom.name ?? 'Untitled chat room'}
+                    {selectedChatRoom.isGlobal ? ' (global)' : ''}
+                  </Typography>
+                  {selectedChatRoom.description ? (
+                    <Typography variant="body2" color="text.secondary">
+                      {selectedChatRoom.description}
+                    </Typography>
+                  ) : null}
+                  {selectedChatRoomRadiusLabel ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Radius: {selectedChatRoomRadiusLabel}
+                    </Typography>
+                  ) : null}
+                  {selectedChatRoomDistanceLabel ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Distance from you: {selectedChatRoomDistanceLabel}
+                    </Typography>
+                  ) : null}
+                </Stack>
+              ) : chatRoomPins.length ? (
+                <Typography variant="body2" color="text.secondary">
+                  Select a chat room marker to view details.
+                </Typography>
+              ) : null}
+            </Stack>
+          </Paper>
+        ) : null}
       </Stack>
 
       <Navbar />
