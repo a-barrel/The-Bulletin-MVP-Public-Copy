@@ -33,6 +33,8 @@ import {
   BadgeCelebrationToast,
   useBadgeCelebrationToast
 } from './components/BadgeCelebrationToast';
+import { routes } from './routes';
+import NotFoundPage from './pages/NotFoundPage';
 
 const theme = createTheme({
   palette: {
@@ -516,10 +518,10 @@ function App() {
             </Modal>
 
             <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegistrationPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path={routes.auth.login} element={<LoginPage />} />
+              <Route path={routes.auth.register} element={<RegistrationPage />} />
+              <Route path={routes.auth.forgotPassword} element={<ForgotPasswordPage />} />
+              <Route path={routes.auth.resetPassword} element={<ResetPasswordPage />} />
 
               {pages.map((page) => (
                 <Route
@@ -539,15 +541,18 @@ function App() {
                 ))
               )}
 
-              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path={routes.root} element={<Navigate to={routes.auth.login} replace />} />
               <Route
                 path="*"
                 element={
-                  defaultNavPage ? (
-                    <Navigate to={defaultNavPage.path} replace />
-                  ) : (
-                    <Navigate to="/login" replace />
-                  )
+                  <NotFoundPage
+                    defaultPath={defaultNavPage?.path ?? routes.auth.login}
+                    defaultLabel={
+                      defaultNavPage?.label
+                        ? `Go to ${defaultNavPage.label}`
+                        : 'Go to login'
+                    }
+                  />
                 }
               />
             </Routes>

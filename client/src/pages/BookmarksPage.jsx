@@ -27,6 +27,7 @@ import {
   fetchBookmarkCollections,
   removeBookmark
 } from '../api/mongoDataApi';
+import { routes } from '../routes';
 
 export const pageConfig = {
   id: 'bookmarks',
@@ -140,7 +141,7 @@ function BookmarksPage() {
   const handleViewPin = useCallback(
     (pinId) => {
       if (pinId) {
-        navigate(`/pin/${pinId}`);
+        navigate(routes.pin.byId(pinId));
       }
     },
     [navigate]
@@ -414,4 +415,3 @@ function BookmarksPage() {
 }
 
 export default BookmarksPage;
-

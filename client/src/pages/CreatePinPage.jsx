@@ -2,6 +2,7 @@ import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { routes } from '../routes';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -787,7 +788,7 @@ function CreatePinPage() {
         clearDraft();
         setDraftStatus(null);
         if (result?._id) {
-          navigate(`/pin/${result._id}`);
+          navigate(routes.pin.byId(result._id));
         }
       } catch (error) {
         setStatus({

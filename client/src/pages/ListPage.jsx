@@ -12,6 +12,7 @@ import { fetchPinsNearby, fetchPinById } from "../api/mongoDataApi";
 import PlaceIcon from '@mui/icons-material/Place'; // TODO: used only for Icon on pageConfig, maybe change with a list icon?
 import { useUpdates } from "../contexts/UpdatesContext";
 import runtimeConfig from "../config/runtime";
+import { routes } from "../routes";
 
 export const pageConfig = {
   id: "list",
@@ -434,13 +435,13 @@ export default function ListPage() {
     setSortByExpiration((prev) => !prev);
   }, []);
   const handleNotifications = useCallback(() => {
-    navigate("/updates");
+    navigate(routes.updates.base);
   }, [navigate]);
   const handleCreatePin = useCallback(() => {
-    navigate("/create-pin");
+    navigate(routes.createPin.base);
   }, [navigate]);
   const handleSettings = useCallback(() => {
-    navigate("/settings");
+    navigate(routes.settings.base);
   }, [navigate]);
   const handleFeedItemSelect = useCallback(
     (pinId) => {
@@ -448,7 +449,7 @@ export default function ListPage() {
       if (!normalized) {
         return;
       }
-      navigate(`/pin/${normalized}`);
+      navigate(routes.pin.byId(normalized));
     },
     [navigate]
   );
@@ -458,7 +459,7 @@ export default function ListPage() {
       if (!normalized) {
         return;
       }
-      navigate(`/profile/${normalized}`);
+      navigate(routes.profile.byId(normalized));
     },
     [navigate]
   );

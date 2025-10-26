@@ -15,6 +15,7 @@ import {
 } from '../api/mongoDataApi';
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
+import { routes } from '../routes';
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
@@ -40,18 +41,18 @@ export const pageConfig = {
     }
     const trimmed = input.trim();
     if (trimmed.toLowerCase() === 'expired') {
-      return `/pin/${EXPIRED_PIN_ID}`;
+      return routes.pin.byId(EXPIRED_PIN_ID);
     }
     if (trimmed.toLowerCase() === 'far') {
       const farId = FAR_PIN_ID;
-      return `/pin/${farId}?preview=far`;
+      return `${routes.pin.byId(farId)}?preview=far`;
     }
     if (!trimmed) {
       const randomId =
         SAMPLE_PIN_IDS[Math.floor(Math.random() * SAMPLE_PIN_IDS.length)] ?? '68e061721329566a22d474aa';
-      return `/pin/${randomId}`;
+      return routes.pin.byId(randomId);
     }
-    return `/pin/${trimmed}`;
+    return routes.pin.byId(trimmed);
   }
 };
 
@@ -261,7 +262,7 @@ const buildUserProfileLink = (user, originPath) => {
       : undefined;
 
   return {
-    pathname: `/profile/${encodeURIComponent(identifier)}`,
+    pathname: routes.profile.byId(identifier),
     state: linkState
   };
 };
@@ -879,7 +880,7 @@ function PinDetails() {
             <h3>{interactionOverlay.title}</h3>
             <p>{interactionOverlay.message}</p>
             <div className='expired-actions'>
-              <Link to="/list" className='expired-return-button'>
+              <Link to={routes.list.base} className='expired-return-button'>
                 Return to List
               </Link>
             </div>
@@ -888,7 +889,7 @@ function PinDetails() {
       ) : null}
       {/* Header */}
       <header className='header'>
-        <Link to="/list" className="back-button">
+        <Link to={routes.list.base} className="back-button">
           <img
             src='https://www.svgrepo.com/show/326886/arrow-back-sharp.svg'
             className='back-arrow'

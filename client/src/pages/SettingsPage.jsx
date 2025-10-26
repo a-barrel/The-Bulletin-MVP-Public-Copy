@@ -38,6 +38,7 @@ import BlockIcon from '@mui/icons-material/Block';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { auth } from '../firebase';
+import { routes } from '../routes';
 import {
   fetchBlockedUsers,
   fetchCurrentUserProfile,
@@ -667,7 +668,7 @@ function SettingsPage() {
             </Button>
             <Button
               component={Link}
-              to="/profile/me"
+              to={routes.profile.me}
               variant="outlined"
               startIcon={<ManageAccountsIcon />}
             >

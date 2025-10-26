@@ -35,6 +35,7 @@ import {
 } from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
 import { BADGE_METADATA } from '../utils/badges';
+import { routes } from '../routes';
 
 export const pageConfig = {
   id: 'profile',
@@ -46,11 +47,11 @@ export const pageConfig = {
   protected: true,
   resolveNavTarget: ({ currentPath } = {}) => {
     if (!runtimeConfig.isOffline) {
-      return '/profile/me';
+      return routes.profile.me;
     }
 
     if (typeof window === 'undefined') {
-      return '/profile/me';
+      return routes.profile.me;
     }
 
     const input = window.prompt(
@@ -61,7 +62,7 @@ export const pageConfig = {
     }
     const trimmed = input.trim();
     if (!trimmed || trimmed.toLowerCase() === 'me') {
-      return '/profile/me';
+      return routes.profile.me;
     }
     const sanitized = trimmed.replace(/^\/+/, '');
     if (/^profile\/.+/i.test(sanitized)) {
@@ -70,7 +71,7 @@ export const pageConfig = {
     if (/^\/profile\/.+/i.test(trimmed)) {
       return trimmed;
     }
-    return `/profile/${sanitized}`;
+    return routes.profile.byId(sanitized);
   }
 };
 

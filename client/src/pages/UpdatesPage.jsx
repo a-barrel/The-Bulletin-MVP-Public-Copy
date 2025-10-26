@@ -29,6 +29,7 @@ import {
   markAllUpdatesRead
 } from '../api/mongoDataApi';
 import { useUpdates } from '../contexts/UpdatesContext';
+import { routes } from '../routes';
 
 export const pageConfig = {
   id: 'updates',
@@ -427,7 +428,7 @@ function UpdatesPage() {
                         {pinId ? (
                           <Button
                             component={Link}
-                            to={`/pin/${pinId}`}
+                            to={routes.pin.byId(pinId)}
                             size="small"
                             variant="outlined"
                           >
@@ -467,8 +468,6 @@ function UpdatesPage() {
 }
 
 export default UpdatesPage;
-
-
 
 
 
