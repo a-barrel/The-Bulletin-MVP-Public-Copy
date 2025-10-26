@@ -444,7 +444,7 @@ function App() {
                       backgroundColor: muiTheme.palette.background.paper
                     })}
                   >
-                    <Stack spacing={1.5}>
+                    <Stack spacing={1.5} sx={{ flex: 1, minHeight: 0 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Typography variant="h6" component="h2">
                           Navigation Console
@@ -455,7 +455,15 @@ function App() {
                       </Box>
                       <Divider />
                       {navPages.length > 0 ? (
-                        <Stack spacing={1}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 1,
+                            flex: 1,
+                            minHeight: 0
+                          }}
+                        >
                           {previousNavPath && (
                             <Button
                               onClick={handleBack}
@@ -467,23 +475,35 @@ function App() {
                               {previousNavPage ? `Back to ${previousNavPage.label}` : 'Back'}
                             </Button>
                           )}
-                          {navPages.map((page) => {
-                            const IconComponent = page.icon ?? ArticleIcon;
-                            const isActive = page.path === currentNavPath;
-                            return (
-                              <Button
-                                key={page.id}
-                                onClick={() => handleNavigate(page)}
-                                variant={isActive ? 'contained' : 'outlined'}
-                                color={isActive ? 'primary' : 'inherit'}
-                                startIcon={<IconComponent fontSize="small" />}
-                                sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-                              >
-                                {page.label}
-                              </Button>
-                            );
-                          })}
-                        </Stack>
+                          <Box
+                            sx={{
+                              flex: 1,
+                              minHeight: 0,
+                              overflowY: 'auto',
+                              pr: 0.5,
+                              scrollbarGutter: 'stable'
+                            }}
+                          >
+                            <Stack spacing={1}>
+                              {navPages.map((page) => {
+                                const IconComponent = page.icon ?? ArticleIcon;
+                                const isActive = page.path === currentNavPath;
+                                return (
+                                  <Button
+                                    key={page.id}
+                                    onClick={() => handleNavigate(page)}
+                                    variant={isActive ? 'contained' : 'outlined'}
+                                    color={isActive ? 'primary' : 'inherit'}
+                                    startIcon={<IconComponent fontSize="small" />}
+                                    sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+                                  >
+                                    {page.label}
+                                  </Button>
+                                );
+                              })}
+                            </Stack>
+                          </Box>
+                        </Box>
                       ) : (
                         <Typography variant="body2" color="text.secondary">
                           Add a new page under `src/pages` with `showInNav: true` to populate this console.
