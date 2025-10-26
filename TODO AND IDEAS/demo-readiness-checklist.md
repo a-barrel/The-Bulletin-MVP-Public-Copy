@@ -23,7 +23,7 @@ Use this as the running list for the “lock it down” sprint before next week�
 - [ ] Expose a real map toggle for the chat-room visualizer layer (lift logic from Debug Console).
 - [ ] Rework GPS spoofer to use ±1 mile hops (configurable), and ensure it respects interaction radius rules.
 - [x] Add guard rail when spoofed position exits valid map bounds (auto reset or confirm dialog).
-- [ ] Pre-cache common map tiles or provide offline fallback messaging when tiles fail to load.
+- [x] Pre-cache common map tiles or provide offline fallback messaging when tiles fail to load.
 
 ## Notifications & Updates
 
@@ -37,7 +37,7 @@ Use this as the running list for the “lock it down” sprint before next week�
 - [ ] Set up environment variables / secrets in Vercel + Render so we never ship dev keys (include Firebase, Mongo, Map, Auth providers).
 - [ ] Create a secrets checklist for teammates (naming, rotation cadence, how to request access).
 - [ ] Validate API rate limits, CORS, auth guards, and data validation for all exposed endpoints.
-- [ ] Run a dependency vulnerability scan (npm audit / snyk) and document required patches.
+- [x] Run a dependency vulnerability scan (npm audit / snyk) and document required patches.
 
 ## Sprint 3 Foundations
 

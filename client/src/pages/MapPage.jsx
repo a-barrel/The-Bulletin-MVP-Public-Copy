@@ -628,6 +628,7 @@ function MapPage() {
           nearbyUsers={nearbyUsers}
           pins={pins}
           userRadiusMeters={DEFAULT_MAX_DISTANCE_METERS}
+          isOffline={isOffline}
         />
       </Box>
 

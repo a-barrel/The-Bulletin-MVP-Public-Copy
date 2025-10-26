@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, Fragment } from 'react';
+import { useCallback, useEffect, useRef, useState, Fragment } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -156,12 +156,20 @@ const Map = ({
   onPinSelect,
   selectedPinId,
   centerOverride,
-  userRadiusMeters
+  userRadiusMeters,
+  isOffline = false
 }) => {
   const tileLayerRef = useRef(null);
+  const tileErrorCountRef = useRef(0);
+  const [tilesUnavailable, setTilesUnavailable] = useState(false);
   const handleTileError = useCallback(() => {
     const layer = tileLayerRef.current;
     if (!layer || typeof layer.redraw !== 'function') {
+      return;
+    }
+    tileErrorCountRef.current += 1;
+    if (isOffline || tileErrorCountRef.current >= 2) {
+      setTilesUnavailable(true);
       return;
     }
     // Small delay lets transient network hiccups settle before refreshing tiles.
@@ -172,6 +180,36 @@ const Map = ({
         console.warn('Failed to redraw tile layer after error:', error);
       }
     }, 500);
+  }, [isOffline]);
+
+  useEffect(() => {
+    if (isOffline) {
+      setTilesUnavailable(true);
+    } else {
+      tileErrorCountRef.current = 0;
+      setTilesUnavailable(false);
+      const layer = tileLayerRef.current;
+      if (layer && typeof layer.redraw === 'function') {
+        try {
+          layer.redraw();
+        } catch (error) {
+          console.warn('Failed to redraw tile layer after regaining connection:', error);
+        }
+      }
+    }
+  }, [isOffline]);
+
+  const handleRetryTiles = useCallback(() => {
+    tileErrorCountRef.current = 0;
+    setTilesUnavailable(false);
+    const layer = tileLayerRef.current;
+    if (layer && typeof layer.redraw === 'function') {
+      try {
+        layer.redraw();
+      } catch (error) {
+        console.warn('Failed to redraw tile layer during manual retry:', error);
+      }
+    }
   }, []);
 
   const resolvedCenter = toLatLng(centerOverride) ?? toLatLng(userLocation) ?? [0, 0];
@@ -180,28 +218,29 @@ const Map = ({
   const resizeSignature = `${resolvedCenter?.[0] ?? 'na'}-${resolvedCenter?.[1] ?? 'na'}-${resolvedPins.length}-${nearbyUsers.length}-${userRadiusMeters ?? 'no-radius'}`;
 
   return (
-    <MapContainer
-      center={resolvedCenter}
-      zoom={13}
-      style={{ width: '100%', height: '100%' }}
-      whenCreated={(map) => {
-        window.setTimeout(() => {
-          try {
-            map.invalidateSize();
-          } catch {
-            // ignore
-          }
-        }, 0);
-      }}
-    >
-      <TileLayer
-        ref={tileLayerRef}
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        eventHandlers={{
-          tileerror: handleTileError
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <MapContainer
+        center={resolvedCenter}
+        zoom={13}
+        style={{ width: '100%', height: '100%' }}
+        whenCreated={(map) => {
+          window.setTimeout(() => {
+            try {
+              map.invalidateSize();
+            } catch {
+              // ignore
+            }
+          }, 0);
         }}
-      />
+      >
+        <TileLayer
+          ref={tileLayerRef}
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          eventHandlers={{
+            tileerror: handleTileError
+          }}
+        />
       
       {userMarkerPosition && (
         <Marker
@@ -321,7 +360,49 @@ const Map = ({
 
       <MapUpdater center={resolvedCenter} />
       <ResizeHandler signature={resizeSignature} />
-    </MapContainer>
+      </MapContainer>
+      {tilesUnavailable ? (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: 'rgba(9, 13, 20, 0.85)',
+            color: '#fff',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+            padding: '16px',
+            textAlign: 'center'
+          }}
+        >
+          <strong style={{ fontSize: '1.1rem' }}>Map tiles unavailable</strong>
+          <span style={{ maxWidth: 360 }}>
+            {isOffline
+              ? 'You appear to be offline. Reconnect to reload the map tiles.'
+              : 'We could not load map tiles right now. Check your connection or try again.'}
+          </span>
+          {!isOffline ? (
+            <button
+              type="button"
+              onClick={handleRetryTiles}
+              style={{
+                border: 'none',
+                backgroundColor: '#90caf9',
+                color: '#0b0f16',
+                fontWeight: 600,
+                padding: '8px 18px',
+                borderRadius: '999px',
+                cursor: 'pointer'
+              }}
+            >
+              Retry tiles
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 };
 
