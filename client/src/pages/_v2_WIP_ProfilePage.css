@@ -4,28 +4,29 @@
   font-family: "Urbanist", sans-serif;
 }
 
-/* ===== Full Viewport Width Strategy ===== */
+/* ===== Outer Shell (modified for BackButton layout) ===== */
 .profile-page-container {
+  display: flex;
+  flex-direction: column;
+  background-color: black;
   width: 100vw;
   height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #f5f5f5;
-  overflow-x: hidden;
 }
 
 .profile-page-frame {
   width: 100vw;
   max-width: none;
-  height: 100vh;
+  flex: 1;  /* Take remaining space after BackButton */
   background: #fff;
   border-radius: 0;
-  padding: 0 1rem 1.5rem;
+
+  /* ⬇ Remove top padding */
+  padding: 60px 1rem 1.5rem; /* Added 60px top padding for fixed BackButton */
+
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  padding-bottom: calc(90px + env(safe-area-inset-bottom, 0));
+  padding-bottom: calc(90px + env(safe-area-inset-bottom, 0)); 
 }
 
 /* ===== Description Box Styling ===== */
@@ -36,7 +37,7 @@
   margin: 8px 0;
 }
 
-/* ===== Responsive Width Adjustments ===== */
+/* ===== Responsive Width Adjustments (matches ListPage) ===== */
 @media (max-width: 480px) {
   .profile-page-container {
     width: 100vw;
@@ -45,8 +46,8 @@
   
   .profile-page-frame {
     width: 100vw;
-    height: 100vh;
-    padding: 0 0.5rem 1rem;
+    flex: 1;
+    padding: 56px 0.5rem 1rem; /* Added 56px top padding for mobile BackButton height */
   }
   
   .description-box {
@@ -55,28 +56,10 @@
   }
 }
 
-/* Tablet adjustments */
+/* Tablet tweaks (matches ListPage) */
 @media (max-width: 768px) {
   .profile-page-frame {
     width: 100vw;
-    height: 100vh;
-  }
-}
-
-/* Large screens - maintain full width but add max-width for readability */
-@media (min-width: 1200px) {
-  .profile-page-frame {
-    width: 100vw;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-}
-
-/* Ultra-wide screens */
-@media (min-width: 1920px) {
-  .profile-page-frame {
-    width: 100vw;
-    max-width: 1400px;
-    margin: 0 auto;
+    flex: 1;
   }
 }

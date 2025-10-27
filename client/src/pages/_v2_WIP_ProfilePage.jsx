@@ -771,14 +771,14 @@ const detailEntries = useMemo(() => {
 
   return (
     <div className="profile-page-container">
+      <BackButton 
+        className="profile-back-nav"
+        buttonClassName="back-button"
+        ariaLabel="Go back to previous page"
+        centerText="Profile"
+      />
       <div className="profile-page-frame">
         <Stack spacing={3}>
-          <BackButton 
-            className="profile-back-nav"
-            buttonClassName="back-button"
-            ariaLabel="Go back to previous page"
-          />
-
           {isFetchingProfile ? (
             <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
               <CircularProgress size={18} thickness={5} />
