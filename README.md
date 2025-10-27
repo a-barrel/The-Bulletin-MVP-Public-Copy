@@ -50,7 +50,7 @@ FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
 
 FIREBASE_PROJECT_ID=bulletin-app-6548a
 
-# Server port
+# Server port (8000 should work with mac)
 PORT=8000
 ```
 
