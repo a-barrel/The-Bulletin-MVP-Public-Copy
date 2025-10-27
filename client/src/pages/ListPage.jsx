@@ -14,6 +14,7 @@ import { useUpdates } from "../contexts/UpdatesContext";
 import runtimeConfig from "../config/runtime";
 import { routes } from "../routes";
 import { useNetworkStatusContext } from "../contexts/NetworkStatusContext";
+import { useLocationContext } from "../contexts/LocationContext";
 
 export const pageConfig = {
   id: "list",
@@ -295,70 +296,53 @@ const mapPinToFeedItem = (pin) => {
 export default function ListPage() {
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
+  const { location: sharedLocation } = useLocationContext();
+  const sharedLatitude = sharedLocation?.latitude ?? null;
+  const sharedLongitude = sharedLocation?.longitude ?? null;
+  const hasSharedLocation = hasValidCoordinates(sharedLocation);
+  const initialLocation = hasSharedLocation
+    ? { latitude: sharedLatitude, longitude: sharedLongitude }
+    : FALLBACK_LOCATION;
+
   const [sortByExpiration, setSortByExpiration] = useState(false);
   const [pins, setPins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [userLocation, setUserLocation] = useState(null);
-  const [isUsingFallbackLocation, setIsUsingFallbackLocation] = useState(false);
-  const [locationNotice, setLocationNotice] = useState(null);
+  const [userLocation, setUserLocation] = useState(initialLocation);
+  const [isUsingFallbackLocation, setIsUsingFallbackLocation] = useState(!hasSharedLocation);
+  const [locationNotice, setLocationNotice] = useState(
+    hasSharedLocation ? null : "Showing popular pins near Long Beach until you share your location."
+  );
 
   useEffect(() => {
-    let cancelled = false;
-
-    const useFallbackLocation = (message) => {
-      if (cancelled) return;
-      setIsUsingFallbackLocation(true);
-      setLocationNotice(message);
-      setUserLocation(FALLBACK_LOCATION);
-    };
-
-    if (!("geolocation" in navigator)) {
-      useFallbackLocation("Using Long Beach area as location!!!");
-      setLoading(false);
-      return () => {
-        cancelled = true;
-      };
+    if (hasValidCoordinates(sharedLocation)) {
+      setUserLocation((previous) => {
+        if (
+          previous &&
+          Math.abs(previous.latitude - sharedLocation.latitude) < 1e-9 &&
+          Math.abs(previous.longitude - sharedLocation.longitude) < 1e-9
+        ) {
+          return previous;
+        }
+        return {
+          latitude: sharedLocation.latitude,
+          longitude: sharedLocation.longitude
+        };
+      });
+      setIsUsingFallbackLocation(false);
+      setLocationNotice(null);
+      return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        if (cancelled) return;
-        const { latitude, longitude } = position.coords;
-        setIsUsingFallbackLocation(false);
-        setLocationNotice(null);
-        setUserLocation({ latitude, longitude });
-      },
-      (geolocationError) => {
-        let message = "We could not access your location. Showing default Long Beach area.";
-        if (geolocationError) {
-          switch (geolocationError.code) {
-            case 1:
-              message = "Location permission denied. Showing default Long Beach area.";
-              break;
-            case 2:
-              message = "Device location unavailable. Showing default Long Beach area.";
-              break;
-            case 3:
-              message = "Timed out retrieving location. Showing default Long Beach area.";
-              break;
-            default:
-              break;
-          }
-        }
-        useFallbackLocation(message);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
+    setIsUsingFallbackLocation(true);
+    setLocationNotice("Showing popular pins near Long Beach until you share your location.");
+    setUserLocation((previous) => {
+      if (hasValidCoordinates(previous)) {
+        return previous;
       }
-    );
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      return FALLBACK_LOCATION;
+    });
+  }, [sharedLocation]);
 
   useEffect(() => {
     if (!hasValidCoordinates(userLocation)) {

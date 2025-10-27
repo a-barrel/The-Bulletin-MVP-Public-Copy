@@ -28,6 +28,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { createPin, uploadPinImage } from '../api/mongoDataApi';
 import { useNavOverlay } from '../contexts/NavOverlayContext';
+import { useLocationContext } from '../contexts/LocationContext';
 
 export const pageConfig = {
   id: 'create-pin',
@@ -40,6 +41,8 @@ export const pageConfig = {
 };
 
 const METERS_PER_MILE = 1609.34;
+const MAX_PIN_DISTANCE_MILES = 50;
+const MAX_PIN_DISTANCE_METERS = MAX_PIN_DISTANCE_MILES * METERS_PER_MILE;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const EVENT_MAX_LEAD_TIME_DAYS = 14;
 const DISCUSSION_MAX_DURATION_DAYS = 3;
@@ -77,6 +80,28 @@ L.Icon.Default.mergeOptions({
 const DEFAULT_MAP_CENTER = {
   lat: 33.7838,
   lng: -118.1136
+};
+
+const haversineDistanceMeters = (pointA, pointB) => {
+  if (!pointA || !pointB) {
+    return Number.NaN;
+  }
+  const { latitude: lat1, longitude: lon1 } = pointA;
+  const { latitude: lat2, longitude: lon2 } = pointB;
+  if (!Number.isFinite(lat1) || !Number.isFinite(lon1) || !Number.isFinite(lat2) || !Number.isFinite(lon2)) {
+    return Number.NaN;
+  }
+
+  const toRadians = (degrees) => (degrees * Math.PI) / 180;
+  const earthRadiusMeters = 6371000;
+
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusMeters * c;
 };
 
 const PIN_TYPE_THEMES = {
@@ -138,13 +163,14 @@ function MapCenterUpdater({ position }) {
   return null;
 }
 
-function SelectableLocationMap({ value, onChange }) {
-  const center = value ?? DEFAULT_MAP_CENTER;
+function SelectableLocationMap({ value, onChange, anchor }) {
+  const center = value ?? anchor ?? DEFAULT_MAP_CENTER;
+  const trackingPosition = value ?? anchor ?? null;
 
   return (
     <MapContainer
       center={[center.lat, center.lng]}
-      zoom={14}
+      zoom={12}
       style={{ width: '100%', height: '100%' }}
       scrollWheelZoom
     >
@@ -153,7 +179,7 @@ function SelectableLocationMap({ value, onChange }) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <MapClickHandler onSelect={onChange} />
-      <MapCenterUpdater position={value} />
+      <MapCenterUpdater position={trackingPosition} />
       {value ? <Marker position={[value.lat, value.lng]} /> : null}
     </MapContainer>
   );
@@ -284,6 +310,7 @@ function sanitizeDateField(value, label, options = {}) {
 function CreatePinPage() {
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
+  const { location: viewerLocation } = useLocationContext();
   const { announceBadgeEarned } = useBadgeSound();
   const [pinType, setPinType] = useState('discussion');
   const [formState, setFormState] = useState(INITIAL_FORM_STATE);
@@ -495,6 +522,20 @@ function CreatePinPage() {
     }
     return null;
   }, [formState.latitude, formState.longitude]);
+  const viewerCoordinates = useMemo(() => {
+    const latitude = Number.parseFloat(viewerLocation?.latitude);
+    const longitude = Number.parseFloat(viewerLocation?.longitude);
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      return { latitude, longitude };
+    }
+    return null;
+  }, [viewerLocation]);
+  const viewerMapAnchor = useMemo(() => {
+    if (!viewerCoordinates) {
+      return null;
+    }
+    return { lat: viewerCoordinates.latitude, lng: viewerCoordinates.longitude };
+  }, [viewerCoordinates]);
   const nowReference = useMemo(() => new Date(), []);
   const eventMaxDateRef = useMemo(
     () => new Date(nowReference.getTime() + EVENT_MAX_LEAD_TIME_MS),
@@ -629,6 +670,33 @@ function CreatePinPage() {
 
   const handleMapLocationSelect = useCallback(
     ({ lat, lng }) => {
+      if (!viewerCoordinates) {
+        setLocationStatus({
+          type: 'warning',
+          message: 'We need your current location to place an event. Enable location sharing and try again.'
+        });
+        return;
+      }
+      const distanceMeters = haversineDistanceMeters(viewerCoordinates, {
+        latitude: lat,
+        longitude: lng
+      });
+      if (!Number.isFinite(distanceMeters)) {
+        setLocationStatus({
+          type: 'error',
+          message: 'Unable to validate the selected spot. Please try a different location.'
+        });
+        return;
+      }
+      if (distanceMeters > MAX_PIN_DISTANCE_METERS) {
+        const miles = distanceMeters / METERS_PER_MILE;
+        setLocationStatus({
+          type: 'error',
+          message: `Pins must be within ${MAX_PIN_DISTANCE_MILES} miles of you. This spot is about ${miles.toFixed(1)} miles away.`
+        });
+        return;
+      }
+
       const formattedLat = lat.toFixed(6);
       const formattedLng = lng.toFixed(6);
       setFormState((prev) => ({
@@ -642,7 +710,7 @@ function CreatePinPage() {
       });
       void reverseGeocodeCoordinates(lat, lng, { force: true });
     },
-    [reverseGeocodeCoordinates]
+    [reverseGeocodeCoordinates, viewerCoordinates]
   );
 
   useEffect(() => {
@@ -793,15 +861,6 @@ function CreatePinPage() {
       }
 
       try {
-        const title = formState.title.trim();
-        const description = formState.description.trim();
-        if (!title) {
-          throw new Error('Title is required.');
-        }
-        if (!description) {
-          throw new Error('Description is required.');
-        }
-
         const latitude = sanitizeNumberField(formState.latitude);
         const longitude = sanitizeNumberField(formState.longitude);
 
@@ -810,6 +869,32 @@ function CreatePinPage() {
         }
         if (longitude === null || longitude < -180 || longitude > 180) {
           throw new Error('Longitude must be between -180 and 180.');
+        }
+
+        if (!viewerCoordinates) {
+          throw new Error('We need your current location to confirm this pin. Enable location sharing and try again.');
+        }
+        const distanceMeters = haversineDistanceMeters(viewerCoordinates, {
+          latitude,
+          longitude
+        });
+        if (!Number.isFinite(distanceMeters)) {
+          throw new Error('Unable to validate the selected location. Please try again.');
+        }
+        if (distanceMeters > MAX_PIN_DISTANCE_METERS) {
+          const miles = distanceMeters / METERS_PER_MILE;
+          throw new Error(
+            `Pins must be within ${MAX_PIN_DISTANCE_MILES} miles of you. This spot is about ${miles.toFixed(1)} miles away.`
+          );
+        }
+
+        const title = formState.title.trim();
+        const description = formState.description.trim();
+        if (!title) {
+          throw new Error('Title is required.');
+        }
+        if (!description) {
+          throw new Error('Description is required.');
         }
 
         const proximityMiles = sanitizeNumberField(formState.proximityRadiusMiles);
@@ -946,7 +1031,8 @@ function CreatePinPage() {
       isOffline,
       navigate,
       photoAssets,
-      pinType
+      pinType,
+      viewerCoordinates
     ]
   );
 
@@ -1175,6 +1261,7 @@ function CreatePinPage() {
                   <SelectableLocationMap
                     value={selectedCoordinates}
                     onChange={handleMapLocationSelect}
+                    anchor={viewerMapAnchor}
                   />
                 </Box>
                 {isReverseGeocoding && (

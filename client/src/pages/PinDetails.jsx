@@ -11,7 +11,8 @@ import {
   updatePinAttendance,
   createPinBookmark,
   deletePinBookmark,
-  createPinReply
+  createPinReply,
+  fetchCurrentUserProfile
 } from '../api/mongoDataApi';
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
@@ -268,10 +269,39 @@ const buildUserProfileLink = (user, originPath) => {
   };
 };
 
+const extractViewerProfileIdFromState = (state) => {
+  if (!state || typeof state !== 'object') {
+    return null;
+  }
+
+  const candidates = [
+    state.viewerProfile?._id,
+    state.currentProfile?._id,
+    state.user?._id,
+    state.profile?._id,
+    state.creator?._id,
+    state.viewerId,
+    state.userId,
+    state.currentProfileId
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+  }
+
+  return null;
+};
+
 function PinDetails() {
   const { pinId } = useParams();
   const location = useLocation();
+  const locationState = location?.state;
   const { isOffline } = useNetworkStatusContext();
+  const [viewerProfileId, setViewerProfileId] = useState(() =>
+    extractViewerProfileIdFromState(locationState)
+  );
   const [pin, setPin] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -297,6 +327,44 @@ function PinDetails() {
     () => (typeof pin?.type === 'string' ? pin.type.toLowerCase() === 'event' : false),
     [pin?.type]
   );
+
+  useEffect(() => {
+    if (viewerProfileId) {
+      return;
+    }
+    const candidate = extractViewerProfileIdFromState(locationState);
+    if (candidate) {
+      setViewerProfileId(candidate);
+    }
+  }, [locationState, viewerProfileId]);
+
+  useEffect(() => {
+    if (viewerProfileId || isOffline) {
+      return;
+    }
+
+    let ignore = false;
+
+    (async () => {
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (ignore) {
+          return;
+        }
+        const normalized = profile?._id ? String(profile._id) : null;
+        setViewerProfileId(normalized);
+      } catch (error) {
+        if (!ignore) {
+          console.warn('Failed to load viewer profile for pin details:', error);
+          setViewerProfileId(null);
+        }
+      }
+    })();
+
+    return () => {
+      ignore = true;
+    };
+  }, [viewerProfileId, isOffline]);
 
   const pinExpired = useMemo(() => {
   if (!pin) {
@@ -365,6 +433,41 @@ function PinDetails() {
 
     return null;
   }, [pinExpired, distanceLockActive, viewerInteractionLockMessage, viewerDistanceLabel]);
+
+  const pinCreatorId = useMemo(() => {
+    if (!pin) {
+      return null;
+    }
+    if (typeof pin.creatorId === 'string' && pin.creatorId.trim().length > 0) {
+      return pin.creatorId.trim();
+    }
+    const nestedId = pin.creator?._id;
+    if (typeof nestedId === 'string' && nestedId.trim().length > 0) {
+      return nestedId.trim();
+    }
+    return null;
+  }, [pin]);
+
+  const isOwnPin = useMemo(() => {
+    if (!pinCreatorId || !viewerProfileId) {
+      return false;
+    }
+    return pinCreatorId === viewerProfileId;
+  }, [pinCreatorId, viewerProfileId]);
+
+  const pinTypeHeading = useMemo(() => {
+    if (!pin) {
+      return 'Loading...';
+    }
+    const rawType = typeof pin.type === 'string' ? pin.type : '';
+    const capitalized =
+      rawType && rawType.length > 0 ? rawType.charAt(0).toUpperCase() + rawType.slice(1) : 'Pin';
+    const normalizedType = rawType.toLowerCase();
+    if (isOwnPin && (normalizedType === 'event' || normalizedType === 'discussion')) {
+      return `(Your) ${capitalized}`;
+    }
+    return capitalized || 'Pin';
+  }, [pin, isOwnPin]);
 
   useEffect(() => {
     setBookmarked(false);
@@ -936,7 +1039,7 @@ function PinDetails() {
           />
         </Link>
 
-        <h2>{pin ? pin.type.charAt(0).toUpperCase() + pin.type.slice(1) : 'Loading...'}</h2>
+        <h2>{pinTypeHeading}</h2>
 
         <div className='bookmark-button-wrapper'>
           <button

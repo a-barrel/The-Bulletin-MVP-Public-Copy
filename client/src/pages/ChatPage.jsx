@@ -393,7 +393,9 @@ function ChatPage() {
 
   const handleSendMessage = useCallback(
     async (event) => {
-      event.preventDefault();
+      if (event && typeof event.preventDefault === 'function') {
+        event.preventDefault();
+      }
       if (!selectedRoomId || !authUser) {
         return;
       }
@@ -440,6 +442,17 @@ function ChatPage() {
       selectedRoomId,
       viewerCoordinates
     ]
+  );
+
+  const handleDraftKeyDown = useCallback(
+    (event) => {
+      if (event.key !== 'Enter' || event.shiftKey) {
+        return;
+      }
+      event.preventDefault();
+      handleSendMessage();
+    },
+    [handleSendMessage]
   );
 
   const filteredPresence = useMemo(() => {
@@ -723,6 +736,7 @@ function ChatPage() {
             <TextField
               value={messageDraft}
               onChange={(event) => setMessageDraft(event.target.value)}
+              onKeyDown={handleDraftKeyDown}
               placeholder={authUser ? 'Type your message…' : 'Sign in to chat'}
               multiline
               minRows={1}

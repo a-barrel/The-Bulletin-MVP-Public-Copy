@@ -14,7 +14,9 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import Divider from '@mui/material/Divider';
 
 import {
+  createProximityChatPresence,
   createProximityChatRoom,
+  createUpdate,
   fetchChatRooms,
   fetchCurrentUserProfile,
   insertLocationUpdate
@@ -39,6 +41,7 @@ import {
   extractPinLocation,
   formatDistanceMetersLabel,
   haversineDistanceMeters,
+  isGlobalChatRoom,
   mongooseObjectIdLike,
   normalizeRoomName,
   resolveActiveRoomForLocation,
