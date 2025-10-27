@@ -20,6 +20,7 @@ const ProximityChatRoomSchema = z.object({
   participantIds: z.array(ObjectIdSchema).default([]),
   moderatorIds: z.array(ObjectIdSchema).default([]),
   pinId: ObjectIdSchema.optional(),
+  presetKey: z.string().trim().optional(),
   createdAt: IsoDateStringSchema,
   updatedAt: IsoDateStringSchema,
   audit: AuditMetadataSchema.optional()

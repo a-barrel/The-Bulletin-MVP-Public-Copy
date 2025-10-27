@@ -1,5 +1,6 @@
+import runtimeConfig from '../config/runtime';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -19,6 +20,7 @@ import DoneAllIcon from '@mui/icons-material/DoneAll';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import UpdateIcon from '@mui/icons-material/Update';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { auth } from '../firebase';
 import {
   fetchCurrentUserProfile,
@@ -27,6 +29,7 @@ import {
   markAllUpdatesRead
 } from '../api/mongoDataApi';
 import { useUpdates } from '../contexts/UpdatesContext';
+import { routes } from '../routes';
 
 export const pageConfig = {
   id: 'updates',
@@ -37,6 +40,19 @@ export const pageConfig = {
   order: 93,
   showInNav: true,
   protected: true
+};
+
+const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+
+const resolveBadgeImageUrl = (value) => {
+  if (!value) {
+    return null;
+  }
+  if (/^(?:https?:)?\/\//i.test(value) || value.startsWith('data:')) {
+    return value;
+  }
+  const normalized = value.startsWith('/') ? value : `/${value}`;
+  return API_BASE_URL ? `${API_BASE_URL}${normalized}` : normalized;
 };
 
 const formatRelativeTime = (value) => {
@@ -80,6 +96,7 @@ const formatAbsoluteDate = (value) => {
 };
 
 function UpdatesPage() {
+  const navigate = useNavigate();
   const [firebaseUser, firebaseLoading] = useAuthState(auth);
   const [profile, setProfile] = useState(null);
   const [profileError, setProfileError] = useState(null);
@@ -91,7 +108,7 @@ function UpdatesPage() {
 
   const [pendingUpdateIds, setPendingUpdateIds] = useState([]);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
-  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+  const [showUnreadOnly, setShowUnreadOnly] = useState(true);
   const pendingRefreshRef = useRef(false);
 
   const { setUnreadCount } = useUpdates();
@@ -243,6 +260,15 @@ function UpdatesPage() {
       }}
     >
       <Stack spacing={3}>
+        <Button
+          variant="text"
+          color="inherit"
+          startIcon={<ArrowBackIcon fontSize="small" />}
+          onClick={() => navigate(-1)}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          Back
+        </Button>
         <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
           <Stack direction="row" spacing={1.5} alignItems="center">
             <UpdateIcon color="primary" />
@@ -338,7 +364,12 @@ function UpdatesPage() {
               const message = update.payload?.body;
               const pinTitle = update.payload?.pin?.title;
               const pinId = update.payload?.pin?._id;
-              const typeLabel = update.payload?.type ?? 'update';
+              const typeKey = update.payload?.type ?? 'update';
+              const displayTypeLabel = typeKey.replace(/-/g, ' ');
+              const isBadgeUpdate = typeKey === 'badge-earned';
+              const badgeId = update.payload?.metadata?.badgeId;
+              const badgeImage = update.payload?.metadata?.badgeImage;
+              const badgeImageUrl = badgeImage ? resolveBadgeImageUrl(badgeImage) : null;
 
               return (
                 <Paper
@@ -355,7 +386,7 @@ function UpdatesPage() {
                     <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
                       <Stack direction="row" spacing={1} alignItems="center">
                         <Chip
-                          label={typeLabel.replace(/-/g, ' ')}
+                          label={displayTypeLabel}
                           size="small"
                           color={read ? 'default' : 'secondary'}
                         />
@@ -374,6 +405,22 @@ function UpdatesPage() {
                       </Typography>
                     ) : null}
 
+                    {isBadgeUpdate && badgeImageUrl ? (
+                      <Box
+                        component="img"
+                        src={badgeImageUrl || undefined}
+                        alt={badgeId ? `${badgeId} badge` : 'Badge earned'}
+                        sx={{
+                          width: { xs: 96, sm: 128 },
+                          height: { xs: 96, sm: 128 },
+                          borderRadius: 3,
+                          alignSelf: 'flex-start',
+                          border: (theme) => `1px solid ${theme.palette.divider}`,
+                          objectFit: 'cover'
+                        }}
+                      />
+                    ) : null}
+
                     <Divider />
 
                     <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
@@ -381,7 +428,7 @@ function UpdatesPage() {
                         {pinId ? (
                           <Button
                             component={Link}
-                            to={`/pin/${pinId}`}
+                            to={routes.pin.byId(pinId)}
                             size="small"
                             variant="outlined"
                           >
@@ -421,3 +468,7 @@ function UpdatesPage() {
 }
 
 export default UpdatesPage;
+
+
+
+

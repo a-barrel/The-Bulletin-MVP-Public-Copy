@@ -1,23 +1,13 @@
+import { playBadgeSound } from '../utils/badgeSound';
+import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import Container from '@mui/material/Container';
-import Paper from '@mui/material/Paper';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import ToggleButton from '@mui/material/ToggleButton';
-import TextField from '@mui/material/TextField';
-import Divider from '@mui/material/Divider';
-import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
-import Alert from '@mui/material/Alert';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Switch from '@mui/material/Switch';
-import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid';
+import { useNavigate } from 'react-router-dom';
+import { routes } from '../routes';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
+import { useLocationContext } from '../contexts/LocationContext';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import MapIcon from '@mui/icons-material/Map';
 import EventNoteIcon from '@mui/icons-material/EventNote';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -36,6 +26,16 @@ export const pageConfig = {
 };
 
 const METERS_PER_MILE = 1609.34;
+const MAX_PIN_DISTANCE_MILES = 50;
+const MAX_PIN_DISTANCE_METERS = MAX_PIN_DISTANCE_MILES * METERS_PER_MILE;
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+const EVENT_MAX_LEAD_TIME_DAYS = 14;
+const DISCUSSION_MAX_DURATION_DAYS = 3;
+const EVENT_MAX_LEAD_TIME_MS = EVENT_MAX_LEAD_TIME_DAYS * MILLISECONDS_PER_DAY;
+const DISCUSSION_MAX_DURATION_MS = DISCUSSION_MAX_DURATION_DAYS * MILLISECONDS_PER_DAY;
+const FUTURE_TOLERANCE_MS = 60 * 1000;
+const DRAFT_STORAGE_KEY = 'pinpoint:createPinDraft';
+const AUTOSAVE_DELAY_MS = 1500;
 
 const INITIAL_FORM_STATE = {
   title: '',
@@ -67,6 +67,28 @@ L.Icon.Default.mergeOptions({
 const DEFAULT_MAP_CENTER = {
   lat: 33.7838,
   lng: -118.1136
+};
+
+const haversineDistanceMeters = (pointA, pointB) => {
+  if (!pointA || !pointB) {
+    return Number.NaN;
+  }
+  const { latitude: lat1, longitude: lon1 } = pointA;
+  const { latitude: lat2, longitude: lon2 } = pointB;
+  if (!Number.isFinite(lat1) || !Number.isFinite(lon1) || !Number.isFinite(lat2) || !Number.isFinite(lon2)) {
+    return Number.NaN;
+  }
+
+  const toRadians = (degrees) => (degrees * Math.PI) / 180;
+  const earthRadiusMeters = 6371000;
+
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusMeters * c;
 };
 
 const PIN_TYPE_THEMES = {
@@ -125,8 +147,9 @@ function MapCenterUpdater({ position }) {
   return null;
 }
 
-function SelectableLocationMap({ value, onChange }) {
-  const center = value ?? DEFAULT_MAP_CENTER;
+function SelectableLocationMap({ value, onChange, anchor }) {
+  const center = value ?? anchor ?? DEFAULT_MAP_CENTER;
+  const trackingPosition = value ?? anchor ?? null;
 
   return (
     <MapContainer
@@ -140,7 +163,7 @@ function SelectableLocationMap({ value, onChange }) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <MapClickHandler onSelect={onChange} />
-      <MapCenterUpdater position={value} />
+      <MapCenterUpdater position={trackingPosition} />
       {value ? <Marker position={[value.lat, value.lng]} /> : null}
     </MapContainer>
   );
@@ -193,7 +216,33 @@ function sanitizeNumberField(value) {
   return parsed;
 }
 
-function sanitizeDateField(value, label) {
+function formatDateTimeLocalInput(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return '';
+  }
+  const pad = (input) => String(input).padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function formatDateForMessage(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return 'the specified date';
+  }
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
+function sanitizeDateField(value, label, options = {}) {
   const trimmed = `${value ?? ''}`.trim();
   if (!trimmed) {
     throw new Error(`${label} is required.`);
@@ -202,10 +251,51 @@ function sanitizeDateField(value, label) {
   if (Number.isNaN(date.getTime())) {
     throw new Error(`${label} must be a valid date/time.`);
   }
-  return date.toISOString();
+
+  const {
+    allowPast = false,
+    min,
+    max,
+    minMessage,
+    maxMessage,
+    toleranceMs = FUTURE_TOLERANCE_MS
+  } = options;
+
+  if (!allowPast) {
+    const now = Date.now();
+    if (date.getTime() < now - toleranceMs) {
+      throw new Error(`${label} cannot be in the past.`);
+    }
+  }
+
+  if (min) {
+    const minDate = min instanceof Date ? min : new Date(min);
+    if (Number.isNaN(minDate.getTime())) {
+      throw new Error(`${label} has an invalid minimum date.`);
+    }
+    if (date.getTime() < minDate.getTime()) {
+      throw new Error(minMessage ?? `${label} must be on or after ${formatDateForMessage(minDate)}.`);
+    }
+  }
+
+  if (max) {
+    const maxDate = max instanceof Date ? max : new Date(max);
+    if (Number.isNaN(maxDate.getTime())) {
+      throw new Error(`${label} has an invalid maximum date.`);
+    }
+    if (date.getTime() > maxDate.getTime()) {
+      throw new Error(maxMessage ?? `${label} must be on or before ${formatDateForMessage(maxDate)}.`);
+    }
+  }
+
+  return date;
 }
 
 function CreatePinPage() {
+  const navigate = useNavigate();
+  const { isOffline } = useNetworkStatusContext();
+  const { location: viewerLocation } = useLocationContext();
+  const { announceBadgeEarned } = useBadgeSound();
   const [pinType, setPinType] = useState('discussion');
   const [formState, setFormState] = useState(INITIAL_FORM_STATE);
   const [autoDelete, setAutoDelete] = useState(true);
@@ -218,16 +308,159 @@ function CreatePinPage() {
   const [uploadStatus, setUploadStatus] = useState(null);
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [locationStatus, setLocationStatus] = useState(null);
+  const [draftStatus, setDraftStatus] = useState(null);
+  const autosaveTimeoutRef = useRef(null);
+  const draftInitializedRef = useRef(false);
+  const skipNextAutosaveRef = useRef(false);
   const lastReverseGeocodeRef = useRef(null);
+
+  const writeDraft = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    const draftPayload = {
+      version: 1,
+      pinType,
+      autoDelete,
+      formState,
+      photoAssets,
+      coverPhotoId,
+      timestamp: Date.now()
+    };
+
+    try {
+      window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftPayload));
+      return true;
+    } catch (error) {
+      console.error('Failed to save pin draft', error);
+      return false;
+    }
+  }, [autoDelete, coverPhotoId, formState, photoAssets, pinType]);
+
+  const clearDraft = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    try {
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch (error) {
+      console.warn('Failed to clear saved pin draft', error);
+    }
+    skipNextAutosaveRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      draftInitializedRef.current = true;
+      skipNextAutosaveRef.current = true;
+      return;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+
+      const data = JSON.parse(raw);
+      if (data && typeof data === 'object') {
+        if (data.pinType === 'event' || data.pinType === 'discussion') {
+          setPinType(data.pinType);
+        }
+        if (typeof data.autoDelete === 'boolean') {
+          setAutoDelete(data.autoDelete);
+        }
+        if (data.formState && typeof data.formState === 'object') {
+          setFormState((prev) => ({
+            ...prev,
+            ...data.formState
+          }));
+        }
+        if (Array.isArray(data.photoAssets)) {
+          setPhotoAssets(data.photoAssets);
+        }
+        if (typeof data.coverPhotoId === 'string' && data.coverPhotoId.trim()) {
+          setCoverPhotoId(data.coverPhotoId);
+        }
+
+        setDraftStatus({
+          type: 'info',
+          message: 'Draft restored from your last session.'
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to load saved pin draft', error);
+    } finally {
+      draftInitializedRef.current = true;
+      skipNextAutosaveRef.current = true;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!draftInitializedRef.current) {
+      return;
+    }
+
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false;
+      return;
+    }
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (autosaveTimeoutRef.current) {
+      window.clearTimeout(autosaveTimeoutRef.current);
+    }
+
+    autosaveTimeoutRef.current = window.setTimeout(() => {
+      const success = writeDraft();
+      if (success) {
+        setDraftStatus({
+          type: 'info',
+          message: `Draft saved at ${new Date().toLocaleTimeString([], {
+            hour: 'numeric',
+            minute: '2-digit'
+          })}.`
+        });
+      }
+    }, AUTOSAVE_DELAY_MS);
+
+    return () => {
+      if (autosaveTimeoutRef.current) {
+        window.clearTimeout(autosaveTimeoutRef.current);
+      }
+    };
+  }, [autoDelete, coverPhotoId, formState, photoAssets, pinType, writeDraft]);
+
+  useEffect(() => {
+    if (!draftStatus) {
+      return;
+    }
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const timeoutId = window.setTimeout(
+      () => setDraftStatus(null),
+      draftStatus.type === 'error' ? 8000 : 4000
+    );
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [draftStatus]);
+
   const activeTheme = useMemo(() => PIN_TYPE_THEMES[pinType], [pinType]);
   const { handleBack: overlayBack, previousNavPath, previousNavPage } = useNavOverlay();
   const canNavigateBack = Boolean(previousNavPath);
   const backButtonLabel = previousNavPage?.label ? `Back to ${previousNavPage.label}` : 'Back';
   const startDateValue = formState.startDate;
   const endDateValue = formState.endDate;
+
   const eventHeaderSubtitle = useMemo(() => {
     if (pinType !== 'event') {
-      return '';
+      return 'Share what is happening and invite others to join.';
     }
 
     const fallback = 'Set your event schedule so attendees know when to show up.';
@@ -261,12 +494,13 @@ function CreatePinPage() {
     const sameDay = start.toDateString() === end.toDateString();
     if (sameDay) {
       const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
-      return `${startLabel} – ${timeFormatter.format(end)}`;
+      return `${startLabel} - ${timeFormatter.format(end)}`;
     }
 
     const endLabel = dateFormatter.format(end);
-    return `${startLabel} → ${endLabel}`;
+    return `${startLabel} - ${endLabel}`;
   }, [pinType, startDateValue, endDateValue]);
+
   const selectedCoordinates = useMemo(() => {
     const latitude = Number.parseFloat(formState.latitude);
     const longitude = Number.parseFloat(formState.longitude);
@@ -275,6 +509,59 @@ function CreatePinPage() {
     }
     return null;
   }, [formState.latitude, formState.longitude]);
+
+  const viewerCoordinates = useMemo(() => {
+    const latitude = Number.parseFloat(viewerLocation?.latitude);
+    const longitude = Number.parseFloat(viewerLocation?.longitude);
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      return { latitude, longitude };
+    }
+    return null;
+  }, [viewerLocation]);
+
+  const viewerMapAnchor = useMemo(() => {
+    if (!viewerCoordinates) {
+      return null;
+    }
+    return { lat: viewerCoordinates.latitude, lng: viewerCoordinates.longitude };
+  }, [viewerCoordinates]);
+
+  const nowReference = useMemo(() => new Date(), []);
+  const eventMaxDateRef = useMemo(
+    () => new Date(nowReference.getTime() + EVENT_MAX_LEAD_TIME_MS),
+    [nowReference]
+  );
+  const discussionMaxDateRef = useMemo(
+    () => new Date(nowReference.getTime() + DISCUSSION_MAX_DURATION_MS),
+    [nowReference]
+  );
+  const eventStartMinInput = useMemo(
+    () => formatDateTimeLocalInput(nowReference),
+    [nowReference]
+  );
+  const eventStartMaxInput = useMemo(
+    () => formatDateTimeLocalInput(eventMaxDateRef),
+    [eventMaxDateRef]
+  );
+  const eventEndMinDate = useMemo(() => {
+    if (!formState.startDate) {
+      return nowReference;
+    }
+    const parsed = new Date(formState.startDate);
+    if (Number.isNaN(parsed.getTime())) {
+      return nowReference;
+    }
+    return parsed;
+  }, [formState.startDate, nowReference]);
+  const eventEndMinInput = useMemo(
+    () => formatDateTimeLocalInput(eventEndMinDate),
+    [eventEndMinDate]
+  );
+  const discussionMinInput = eventStartMinInput;
+  const discussionMaxInput = useMemo(
+    () => formatDateTimeLocalInput(discussionMaxDateRef),
+    [discussionMaxDateRef]
+  );
 
   const handleTypeChange = useCallback((event, nextType) => {
     if (nextType) {
@@ -373,6 +660,33 @@ function CreatePinPage() {
 
   const handleMapLocationSelect = useCallback(
     ({ lat, lng }) => {
+      if (!viewerCoordinates) {
+        setLocationStatus({
+          type: 'warning',
+          message: 'We need your current location to place an event. Enable location sharing and try again.'
+        });
+        return;
+      }
+      const distanceMeters = haversineDistanceMeters(viewerCoordinates, {
+        latitude: lat,
+        longitude: lng
+      });
+      if (!Number.isFinite(distanceMeters)) {
+        setLocationStatus({
+          type: 'error',
+          message: 'Unable to validate the selected spot. Please try a different location.'
+        });
+        return;
+      }
+      if (distanceMeters > MAX_PIN_DISTANCE_METERS) {
+        const miles = distanceMeters / METERS_PER_MILE;
+        setLocationStatus({
+          type: 'error',
+          message: `Pins must be within ${MAX_PIN_DISTANCE_MILES} miles of you. This spot is about ${miles.toFixed(1)} miles away.`
+        });
+        return;
+      }
+
       const formattedLat = lat.toFixed(6);
       const formattedLng = lng.toFixed(6);
       setFormState((prev) => ({
@@ -386,7 +700,7 @@ function CreatePinPage() {
       });
       void reverseGeocodeCoordinates(lat, lng, { force: true });
     },
-    [reverseGeocodeCoordinates]
+    [reverseGeocodeCoordinates, viewerCoordinates]
   );
 
   useEffect(() => {
@@ -400,10 +714,12 @@ function CreatePinPage() {
   }, [isReverseGeocoding, reverseGeocodeCoordinates, selectedCoordinates]);
 
   const resetForm = useCallback(() => {
+    clearDraft();
     setPinType('discussion');
     setFormState(INITIAL_FORM_STATE);
     setAutoDelete(true);
     setStatus(null);
+    setDraftStatus(null);
     setCreatedPin(null);
     setPhotoAssets([]);
     setCoverPhotoId(null);
@@ -411,7 +727,15 @@ function CreatePinPage() {
     setLocationStatus(null);
     setIsReverseGeocoding(false);
     setIsUploading(false);
-  }, []);
+  }, [clearDraft]);
+
+  const handleSaveDraft = useCallback(() => {
+    const success = writeDraft();
+    setDraftStatus({
+      type: success ? 'success' : 'error',
+      message: success ? 'Draft saved.' : 'Unable to save draft locally.'
+    });
+  }, [writeDraft]);
 
   useEffect(() => {
     if (!photoAssets.length) {
@@ -430,6 +754,12 @@ function CreatePinPage() {
     async (event) => {
       const files = Array.from(event.target.files ?? []);
       if (!files.length) {
+        return;
+      }
+
+      if (isOffline) {
+        setUploadStatus({ type: 'warning', message: 'You are offline. Connect to upload images.' });
+        event.target.value = '';
         return;
       }
 
@@ -461,8 +791,8 @@ function CreatePinPage() {
               url: uploaded.url,
               width: uploaded.width,
               height: uploaded.height,
-            mimeType: uploaded.mimeType ?? (file.type || 'image/jpeg'),
-            description: uploaded.fileName || file.name || 'Pin image'
+              mimeType: uploaded.mimeType ?? (file.type || 'image/jpeg'),
+              description: uploaded.fileName || file.name || 'Pin image'
             }
           });
         } catch (error) {
@@ -497,7 +827,7 @@ function CreatePinPage() {
       setIsUploading(false);
       event.target.value = '';
     },
-    [photoAssets.length, uploadPinImage]
+    [isOffline, photoAssets.length, uploadPinImage]
   );
 
   const handleRemovePhoto = useCallback((photoId) => {
@@ -515,16 +845,12 @@ function CreatePinPage() {
       event.preventDefault();
       setStatus(null);
 
-      try {
-        const title = formState.title.trim();
-        const description = formState.description.trim();
-        if (!title) {
-          throw new Error('Title is required.');
-        }
-        if (!description) {
-          throw new Error('Description is required.');
-        }
+      if (isOffline) {
+        setStatus({ type: 'warning', message: 'You are offline. Connect to publish a pin.' });
+        return;
+      }
 
+      try {
         const latitude = sanitizeNumberField(formState.latitude);
         const longitude = sanitizeNumberField(formState.longitude);
 
@@ -535,10 +861,40 @@ function CreatePinPage() {
           throw new Error('Longitude must be between -180 and 180.');
         }
 
+        if (!viewerCoordinates) {
+          throw new Error('We need your current location to confirm this pin. Enable location sharing and try again.');
+        }
+        const distanceMeters = haversineDistanceMeters(viewerCoordinates, {
+          latitude,
+          longitude
+        });
+        if (!Number.isFinite(distanceMeters)) {
+          throw new Error('Unable to validate the selected location. Please try again.');
+        }
+        if (distanceMeters > MAX_PIN_DISTANCE_METERS) {
+          const miles = distanceMeters / METERS_PER_MILE;
+          throw new Error(
+            `Pins must be within ${MAX_PIN_DISTANCE_MILES} miles of you. This spot is about ${miles.toFixed(1)} miles away.`
+          );
+        }
+
+        const title = formState.title.trim();
+        const description = formState.description.trim();
+        if (!title) {
+          throw new Error('Title is required.');
+        }
+        if (!description) {
+          throw new Error('Description is required.');
+        }
+
         const proximityMiles = sanitizeNumberField(formState.proximityRadiusMiles);
         if (proximityMiles !== null && proximityMiles <= 0) {
           throw new Error('Proximity radius must be greater than zero.');
         }
+
+        const submissionNow = new Date();
+        const eventMaxDate = new Date(submissionNow.getTime() + EVENT_MAX_LEAD_TIME_MS);
+        const discussionMaxDate = new Date(submissionNow.getTime() + DISCUSSION_MAX_DURATION_MS);
 
         const payload = {
           type: pinType,
@@ -553,8 +909,19 @@ function CreatePinPage() {
         };
 
         if (pinType === 'event') {
-          payload.startDate = sanitizeDateField(formState.startDate, 'Start date');
-          payload.endDate = sanitizeDateField(formState.endDate, 'End date');
+          const startDate = sanitizeDateField(formState.startDate, 'Start date', {
+            max: eventMaxDate,
+            maxMessage: 'Events can only be scheduled up to 14 days in advance.'
+          });
+          const endDate = sanitizeDateField(formState.endDate, 'End date', {
+            min: startDate,
+            minMessage: 'End date must be on or after the start date.',
+            max: eventMaxDate,
+            maxMessage: 'Events can only be scheduled up to 14 days in advance.'
+          });
+
+          payload.startDate = startDate.toISOString();
+          payload.endDate = endDate.toISOString();
 
           const precise = formState.addressPrecise.trim();
           const city = formState.addressCity.trim();
@@ -576,7 +943,11 @@ function CreatePinPage() {
             };
           }
         } else {
-          payload.expiresAt = sanitizeDateField(formState.expiresAt, 'Expiration date');
+          const expiresAt = sanitizeDateField(formState.expiresAt, 'Expiration date', {
+            max: discussionMaxDate,
+            maxMessage: 'Discussions can only stay active for up to 3 days.'
+          });
+          payload.expiresAt = expiresAt.toISOString();
           payload.autoDelete = autoDelete;
 
           const approximateAddress = {
@@ -616,12 +987,21 @@ function CreatePinPage() {
         setIsSubmitting(true);
         const result = await createPin(payload);
         setCreatedPin(result);
+        if (result?._badgeEarnedId) {
+          playBadgeSound();
+          announceBadgeEarned(result._badgeEarnedId);
+        }
         setStatus({
           type: 'success',
           message: result?._id
             ? `Pin created successfully (ID: ${result._id}).`
             : 'Pin created successfully.'
         });
+        clearDraft();
+        setDraftStatus(null);
+        if (result?._id) {
+          navigate(routes.pin.byId(result._id));
+        }
       } catch (error) {
         setStatus({
           type: 'error',
@@ -632,7 +1012,18 @@ function CreatePinPage() {
         setIsSubmitting(false);
       }
     },
-    [autoDelete, coverPhotoId, formState, photoAssets, pinType]
+    [
+      announceBadgeEarned,
+      autoDelete,
+      clearDraft,
+      coverPhotoId,
+      formState,
+      isOffline,
+      navigate,
+      photoAssets,
+      pinType,
+      viewerCoordinates
+    ]
   );
 
   const resultJson = useMemo(() => {
@@ -644,31 +1035,43 @@ function CreatePinPage() {
 
   return (
     <div className={`create-pin ${pinType === 'event' ? 'bg-event' : 'bg-discussion'}`}>
-      <div className='header' style={{background: activeTheme.headerBackground, color: activeTheme.headerTextColor}}>
+      <div
+        className="header"
+        style={{ background: activeTheme.headerBackground, color: activeTheme.headerTextColor }}
+      >
         {canNavigateBack && (
           <button
             type="button"
             className="btn-back"
             onClick={overlayBack}
+            title={backButtonLabel}
           >
             <img
-              src='https://www.svgrepo.com/show/326886/arrow-back-sharp.svg'
-              className='back-arrow'
+              src="https://www.svgrepo.com/show/326886/arrow-back-sharp.svg"
+              className="back-arrow"
+              alt={backButtonLabel}
             />
           </button>
         )}
 
-        <div>
-          <h1 className="form-title">
-            {pinType === 'event' ? 'Event' : 'Discussion'}
-          </h1>
+        <div className="header-info">
+          <h1 className="form-title">{pinType === 'event' ? 'Event' : 'Discussion'}</h1>
+          <p
+            className="form-subtitle"
+            style={{ color: activeTheme.headerSubtitleColor }}
+          >
+            {pinType === 'event'
+              ? eventHeaderSubtitle
+              : "Share what's happening around campus."}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit}>
           <button
             type="submit"
             className="btn-submit"
-            disabled={isSubmitting}
+            disabled={isOffline || isSubmitting}
+            title={isOffline ? 'Reconnect to publish a pin' : undefined}
             style={{
               backgroundColor: activeTheme.ctaBackground,
               color: activeTheme.ctaTextColor
@@ -679,7 +1082,31 @@ function CreatePinPage() {
         </form>
       </div>
 
-      <div className='body'>
+      <div className="body">
+        {isOffline && (
+          <div className="alert alert-warning static-alert">
+            You are offline. Drafts save locally, but publishing and uploads need a connection.
+          </div>
+        )}
+
+        {status && (
+          <div className={`alert alert-${status.type}`}>
+            <span>{status.message}</span>
+            <button type="button" onClick={() => setStatus(null)} className="alert-close">
+              x
+            </button>
+          </div>
+        )}
+
+        {draftStatus && (
+          <div className={`alert alert-${draftStatus.type}`}>
+            <span>{draftStatus.message}</span>
+            <button type="button" onClick={() => setDraftStatus(null)} className="alert-close">
+              x
+            </button>
+          </div>
+        )}
+
         {/* Pin type toggle */}
         <div className="field-group">
           <div className="toggle-group">
@@ -711,7 +1138,7 @@ function CreatePinPage() {
               placeholder={
                 pinType === 'event'
                   ? FIGMA_TEMPLATE.fields.titlePlaceholder
-                  : "[Empty] Discussion Title"
+                  : "What's the discussion about?"
               }
               required
             />
@@ -724,125 +1151,58 @@ function CreatePinPage() {
               placeholder={
                 pinType === 'event'
                   ? FIGMA_TEMPLATE.fields.descriptionPlaceholder
-                  : '[Empty] Discussion dets - what\'s being talked about?'
+                  : "[Empty] Discussion dets - what's being talked about?"
               }
               required
             ></textarea>
           </div>
         </div>
 
-        {/* Status Alert */}
-        {status && (
-          <div className={`alert alert-${status.type}`}>
-            <span>{status.message}</span>
-            <button type="button" onClick={() => setStatus(null)} className="alert-close">
-              ×
-            </button>
-          </div>
-        )}
-
         {/* Event or Discussion Details */}
         <div className="grid-item">
           <div className="form-section">
             {pinType === 'event' ? (
               <>
-                <div className='details-info'>
+                <div className="details-info">
                   <h2>Event Details</h2>
                   <p>Let everyone know when and where to show up.</p>
                 </div>
-                
+
                 <div className="two-col">
                   <div>
-                    <label>Start date </label>
+                    <label>Start date</label>
                     <input
                       type="datetime-local"
                       value={formState.startDate}
                       onChange={handleFieldChange('startDate')}
                       required
+                      min={eventStartMinInput}
+                      max={eventStartMaxInput}
                     />
+                    <small className="field-hint">Must be within the next 14 days.</small>
                   </div>
                   <div>
-                    <label>End date </label>
+                    <label>End date</label>
                     <input
                       type="datetime-local"
                       value={formState.endDate}
                       onChange={handleFieldChange('endDate')}
                       required
+                      min={eventEndMinInput}
+                      max={eventStartMaxInput}
                     />
+                    <small className="field-hint">Must be on or after the start date.</small>
                   </div>
                 </div>
 
-                {/* Images Section */}
-                <div className="form-section">
-                  <h2>Images</h2>
-                  <p>Upload up to 10 square images. Select the cover photo.</p>
-
-                  {uploadStatus && (
-                    <div className={`alert alert-${uploadStatus.type}`}>
-                      {uploadStatus.message}
-                      <button type="button" onClick={() => setUploadStatus(null)} className="alert-close">
-                        ×
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="upload-row">
-                    <label className="btn-outline">
-                      {isUploading ? 'Uploading...' : 'Upload images'}
-                      <input
-                        type="file"
-                        hidden
-                        multiple
-                        accept="image/*"
-                        onChange={handleImageSelection}
-                        disabled={isUploading || photoAssets.length >= 10}
-                      />
-                    </label>
-                    <span>{photoAssets.length}/10 Images attached</span>
-                  </div>
-
-                  {photoAssets.length > 0 && (
-                    <div className="photo-grid">
-                      {photoAssets.map((photo) => {
-                        const isCover = coverPhotoId === photo.id;
-                        return (
-                          <div className="photo-card" key={photo.id}>
-                            <img src={photo.asset.url} alt={photo.asset.description || 'Pin image'} />
-                            {isCover && <div className="cover-label">Cover photo</div>}
-                            <div className="photo-actions">
-                              <button
-                                type="button"
-                                className={isCover ? 'btn-selected' : 'btn-outline'}
-                                onClick={() => handleSetCoverPhoto(photo.id)}
-                                disabled={isCover}
-                              >
-                                {isCover ? 'Selected' : 'Set as cover'}
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-danger"
-                                onClick={() => handleRemovePhoto(photo.id)}
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                <h2>Venue</h2>
-                <label>Precise Address</label>
-                <input
-                  type="text"
-                  value={formState.addressPrecise}
-                  onChange={handleFieldChange('addressPrecise')}
-                  placeholder="University Student Union, Long Beach, CA"
-                />
-
+                <h3>Venue</h3>
                 <div className="two-col">
+                  <input
+                    type="text"
+                    placeholder="Precise address"
+                    value={formState.addressPrecise}
+                    onChange={handleFieldChange('addressPrecise')}
+                  />
                   <input
                     type="text"
                     placeholder="City"
@@ -868,36 +1228,7 @@ function CreatePinPage() {
                     onChange={handleFieldChange('addressCountry')}
                   />
                 </div>
-              </>
-            ) : (
-              <>
-                <div className='details-info'>
-                  <h2>Discussion Details</h2>
-                  <p>Set how long this discussion should stay active.</p>
-                </div>
-                
-                <div className="two-col">
-                  <div>
-                    <label>Expires at </label>
-                    <input
-                      type="datetime-local"
-                      value={formState.expiresAt}
-                      onChange={handleFieldChange('expiresAt')}
-                      required
-                    />
-                  </div>
-                  <div className="switch-group">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={autoDelete}
-                        onChange={(e) => setAutoDelete(e.target.checked)}
-                      /> Auto delete
-                    </label>
-                  </div>
-                </div>
 
-                {/* Images Section */}
                 <div className="form-section">
                   <h2>Images</h2>
                   <p>Upload up to 10 square images. Select the cover photo.</p>
@@ -905,14 +1236,23 @@ function CreatePinPage() {
                   {uploadStatus && (
                     <div className={`alert alert-${uploadStatus.type}`}>
                       {uploadStatus.message}
-                      <button type="button" onClick={() => setUploadStatus(null)} className="alert-close">
-                        ×
+                      <button
+                        type="button"
+                        onClick={() => setUploadStatus(null)}
+                        className="alert-close"
+                      >
+                        x
                       </button>
                     </div>
                   )}
 
                   <div className="upload-row">
-                    <label className="btn-outline">
+                    <label
+                      className={`btn-outline upload-btn${
+                        isOffline || isUploading || photoAssets.length >= 10 ? ' disabled' : ''
+                      }`}
+                      title={isOffline ? 'Reconnect to upload images' : undefined}
+                    >
                       {isUploading ? 'Uploading...' : 'Upload images'}
                       <input
                         type="file"
@@ -920,7 +1260,7 @@ function CreatePinPage() {
                         multiple
                         accept="image/*"
                         onChange={handleImageSelection}
-                        disabled={isUploading || photoAssets.length >= 10}
+                        disabled={isOffline || isUploading || photoAssets.length >= 10}
                       />
                     </label>
                     <span>{photoAssets.length}/10 Images attached</span>
@@ -957,8 +1297,39 @@ function CreatePinPage() {
                     </div>
                   )}
                 </div>
+              </>
+            ) : (
+              <>
+                <div className="details-info">
+                  <h2>Discussion Details</h2>
+                  <p>Set how long this discussion should stay active.</p>
+                </div>
 
-                <h2>Approximate Address</h2>
+                <div className="two-col">
+                  <div>
+                    <label>Expires at</label>
+                    <input
+                      type="datetime-local"
+                      value={formState.expiresAt}
+                      onChange={handleFieldChange('expiresAt')}
+                      required
+                      min={discussionMinInput}
+                      max={discussionMaxInput}
+                    />
+                    <small className="field-hint">Must be within the next 3 days.</small>
+                  </div>
+                  <div className="switch-group">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={autoDelete}
+                        onChange={(event) => setAutoDelete(event.target.checked)}
+                      /> Auto delete
+                    </label>
+                  </div>
+                </div>
+
+                <h3>Approximate Address</h3>
                 <div className="two-col">
                   <input
                     type="text"
@@ -995,7 +1366,7 @@ function CreatePinPage() {
           <h2>Location</h2>
           <p>
             {pinType === 'event'
-              ? 'Tap where the event will take place at.'
+              ? FIGMA_TEMPLATE.fields.locationPrompt
               : 'Tap where the approximate location of the discussion is at.'}
           </p>
 
@@ -1007,7 +1378,7 @@ function CreatePinPage() {
                 onClick={() => setLocationStatus(null)}
                 className="alert-close"
               >
-                ×
+                x
               </button>
             </div>
           )}
@@ -1016,6 +1387,7 @@ function CreatePinPage() {
             <SelectableLocationMap
               value={selectedCoordinates}
               onChange={handleMapLocationSelect}
+              anchor={viewerMapAnchor}
             />
           </div>
 
@@ -1024,32 +1396,33 @@ function CreatePinPage() {
           )}
 
           <p className="note-text">
-            Click or tap the map to set coordinates. We will auto-fill the address
-            when possible.
+            Click or tap the map to set coordinates. We will auto-fill the address when possible.
           </p>
 
-          <div className='map-coords'>
+          <div className="map-coords">
             <label>Latitude</label>
             <input
               type="text"
               value={formState.latitude}
-              onChange={handleFieldChange("latitude")}
+              onChange={handleFieldChange('latitude')}
               required
+              placeholder="33.783800"
             />
 
             <label>Longitude</label>
             <input
               type="text"
               value={formState.longitude}
-              onChange={handleFieldChange("longitude")}
+              onChange={handleFieldChange('longitude')}
               required
+              placeholder="-118.113600"
             />
 
             <label>Proximity Radius (miles)</label>
             <input
               type="text"
               value={formState.proximityRadiusMiles}
-              onChange={handleFieldChange("proximityRadiusMiles")}
+              onChange={handleFieldChange('proximityRadiusMiles')}
               placeholder="Optional. Defaults to 1 mile."
             />
           </div>
@@ -1057,11 +1430,20 @@ function CreatePinPage() {
 
         {/* Footer Buttons */}
         <div className="footer-actions">
-          <button type="button" className="btn-outline" onClick={resetForm}>
+          <button type="button" className="btn-outline btn-reset" onClick={resetForm}>
             Reset form
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={handleSaveDraft}
+            disabled={isSubmitting}
+          >
+            Save draft
           </button>
         </div>
 
+        {resultJson && <pre className="result-json">{resultJson}</pre>}
       </div>
     </div>
   );

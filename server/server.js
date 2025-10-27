@@ -19,19 +19,27 @@ if (runtime.isOffline) {
     process.env.FIREBASE_AUTH_EMULATOR_HOST = runtime.firebase.emulatorHost;
   }
 
-  const projectId = process.env.FIREBASE_PROJECT_ID || 'pinpoint-offline';
-  admin.initializeApp({ projectId });
+  const projectId = process.env.FIREBASE_PROJECT_ID || 'bulletin-app-6548a';
+  const appOptions = { projectId };
+  if (runtime.firebase.storageBucket) {
+    appOptions.storageBucket = runtime.firebase.storageBucket;
+  }
+  admin.initializeApp(appOptions);
   console.log(`Firebase Auth emulator enabled at ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
 } else {
   const serviceAccount = runtime.firebase.serviceAccountJson
     ? JSON.parse(runtime.firebase.serviceAccountJson)
     : undefined;
 
-  admin.initializeApp({
+  const appOptions = {
     credential: serviceAccount
       ? admin.credential.cert(serviceAccount)
       : admin.credential.applicationDefault()
-  });
+  };
+  if (runtime.firebase.storageBucket) {
+    appOptions.storageBucket = runtime.firebase.storageBucket;
+  }
+  admin.initializeApp(appOptions);
 }
 
 const Location = require('./models/Location');
@@ -46,10 +54,14 @@ app.use(express.json());
 
 const uploadsDir = path.join(__dirname, 'uploads');
 const imagesDir = path.join(uploadsDir, 'images');
+const soundsDir = path.join(uploadsDir, 'sounds');
 fs.mkdirSync(imagesDir, { recursive: true });
+fs.mkdirSync(soundsDir, { recursive: true });
 app.set('uploadsDir', uploadsDir);
 app.set('imagesDir', imagesDir);
+app.set('soundsDir', soundsDir);
 app.use('/images', express.static(imagesDir));
+app.use('/sounds', express.static(soundsDir));
 
 // MongoDB connection
 mongoose
@@ -101,7 +113,9 @@ app.use('/api/bookmarks', verifyToken, require('./routes/bookmarks'));
 app.use('/api/chats', verifyToken, require('./routes/chats'));
 app.use('/api/updates', verifyToken, require('./routes/updates'));
 app.use('/api/media', verifyToken, require('./routes/media'));
+app.use('/api/storage', require('./routes/storage'));
 app.use('/api/debug', require('./routes/debug'));
+app.use('/api/auth', require('./routes/auth'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

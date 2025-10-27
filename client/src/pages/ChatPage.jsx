@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Navbar from '../components/Navbar';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
+  Alert,
   Box,
   Stack,
   Typography,
@@ -31,14 +33,20 @@ import SendIcon from '@mui/icons-material/Send';
 import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
 import { auth } from '../firebase';
+import { playBadgeSound } from '../utils/badgeSound';
+import { replaceProfanityWithFruit } from '../utils/profanityFilter';
+import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import {
   fetchChatRooms,
   createChatRoom,
   fetchChatMessages,
   createChatMessage,
   fetchChatPresence,
-  upsertChatPresence
+  upsertChatPresence,
+  fetchCurrentUserProfile
 } from '../api/mongoDataApi';
+import { useLocationContext } from '../contexts/LocationContext';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 
 export const pageConfig = {
   id: 'chat',
@@ -60,7 +68,25 @@ const PRESENCE_HEARTBEAT_MS = 30_000;
 const MESSAGES_REFRESH_MS = 7_000;
 
 function ChatPage() {
+  const { announceBadgeEarned } = useBadgeSound();
   const [authUser, authLoading] = useAuthState(auth);
+  const { location: viewerLocation } = useLocationContext();
+  const { isOffline } = useNetworkStatusContext();
+  const viewerLatitude = viewerLocation?.latitude ?? null;
+  const viewerLongitude = viewerLocation?.longitude ?? null;
+  const viewerAccuracy = Number.isFinite(viewerLocation?.accuracy)
+    ? viewerLocation.accuracy
+    : undefined;
+  const viewerCoordinates = useMemo(() => {
+    if (!Number.isFinite(viewerLatitude) || !Number.isFinite(viewerLongitude)) {
+      return null;
+    }
+    return {
+      latitude: viewerLatitude,
+      longitude: viewerLongitude,
+      ...(viewerAccuracy !== undefined ? { accuracy: viewerAccuracy } : {})
+    };
+  }, [viewerLatitude, viewerLongitude, viewerAccuracy]);
   const [rooms, setRooms] = useState([]);
   const [roomsError, setRoomsError] = useState(null);
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
@@ -92,6 +118,8 @@ function ChatPage() {
     radiusMeters: 500,
     isGlobal: false
   });
+  const [viewerProfile, setViewerProfile] = useState(null);
+  const filterCussWordsEnabled = Boolean(viewerProfile?.preferences?.filterCussWords);
 
   const messagesEndRef = useRef(null);
   const presenceIntervalRef = useRef(null);
@@ -113,17 +141,55 @@ function ChatPage() {
       setSelectedRoomId(null);
       setMessages([]);
       setPresence([]);
+      setViewerProfile(null);
     }
   }, [authLoading, authUser]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!authUser) {
+      setViewerProfile(null);
+      return;
+    }
+
+    const loadProfile = async () => {
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (!cancelled) {
+          setViewerProfile(profile);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Failed to load viewer profile for chat preferences', error);
+          setViewerProfile(null);
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authUser]);
 
   const loadRooms = useCallback(async () => {
     if (!authUser) {
       return;
     }
+    if (isOffline) {
+      setRooms([]);
+      setRoomsError('You are offline. Connect to load nearby chat rooms.');
+      return;
+    }
     setIsLoadingRooms(true);
     setRoomsError(null);
     try {
-      const data = await fetchChatRooms();
+      const data = await fetchChatRooms({
+        latitude: Number.isFinite(viewerLatitude) ? viewerLatitude : undefined,
+        longitude: Number.isFinite(viewerLongitude) ? viewerLongitude : undefined
+      });
       setRooms(data);
       if (data.length > 0 && !selectedRoomId) {
         setSelectedRoomId(data[0]._id);
@@ -134,17 +200,22 @@ function ChatPage() {
     } finally {
       setIsLoadingRooms(false);
     }
-  }, [authUser, selectedRoomId]);
+  }, [authUser, isOffline, selectedRoomId, viewerLatitude, viewerLongitude]);
 
   useEffect(() => {
-    if (!authLoading && authUser) {
+    if (!authLoading && authUser && !isOffline) {
       loadRooms();
     }
-  }, [authLoading, authUser, loadRooms]);
+  }, [authLoading, authUser, isOffline, loadRooms]);
 
   const loadMessages = useCallback(
     async (roomId, { silent } = {}) => {
       if (!roomId) {
+        return;
+      }
+      if (isOffline) {
+        setMessages([]);
+        setMessagesError('You are offline. Connect to view messages.');
         return;
       }
       if (!silent) {
@@ -152,7 +223,10 @@ function ChatPage() {
       }
       setMessagesError(null);
       try {
-        const data = await fetchChatMessages(roomId);
+        const data = await fetchChatMessages(roomId, {
+          latitude: viewerCoordinates?.latitude,
+          longitude: viewerCoordinates?.longitude
+        });
         setMessages(data);
       } catch (error) {
         setMessages([]);
@@ -163,25 +237,33 @@ function ChatPage() {
         }
       }
     },
-    []
+    [isOffline, viewerCoordinates]
   );
 
   const loadPresence = useCallback(async (roomId) => {
     if (!roomId) {
       return;
     }
+    if (isOffline) {
+      setPresence([]);
+      setPresenceError('You are offline. Presence data is unavailable.');
+      return;
+    }
     try {
-      const data = await fetchChatPresence(roomId);
+      const data = await fetchChatPresence(roomId, {
+        latitude: viewerCoordinates?.latitude,
+        longitude: viewerCoordinates?.longitude
+      });
       setPresence(data);
       setPresenceError(null);
     } catch (error) {
       setPresence([]);
       setPresenceError(error?.message || 'Failed to load room presence.');
     }
-  }, []);
+  }, [isOffline, viewerCoordinates]);
 
   useEffect(() => {
-    if (!selectedRoomId) {
+    if (!selectedRoomId || isOffline) {
       setMessages([]);
       setPresence([]);
       return;
@@ -214,16 +296,27 @@ function ChatPage() {
         presenceIntervalRef.current = null;
       }
     };
-  }, [loadMessages, loadPresence, selectedRoomId]);
+  }, [isOffline, loadMessages, loadPresence, selectedRoomId]);
 
   useEffect(() => {
-    if (!authUser || !selectedRoomId) {
+    if (!authUser || !selectedRoomId || isOffline) {
       return;
     }
 
     const sendPresence = async () => {
       try {
-        await upsertChatPresence(selectedRoomId, {});
+        await upsertChatPresence(
+          selectedRoomId,
+          viewerCoordinates
+            ? {
+                latitude: viewerCoordinates.latitude,
+                longitude: viewerCoordinates.longitude,
+                ...(viewerCoordinates.accuracy !== undefined
+                  ? { accuracy: viewerCoordinates.accuracy }
+                  : {})
+              }
+            : {}
+        );
       } catch (error) {
         console.warn('Failed to update chat presence', error);
       }
@@ -232,7 +325,7 @@ function ChatPage() {
     sendPresence();
     const interval = setInterval(sendPresence, PRESENCE_HEARTBEAT_MS);
     return () => clearInterval(interval);
-  }, [authUser, selectedRoomId]);
+  }, [authUser, isOffline, selectedRoomId, viewerCoordinates]);
 
   const handleSelectRoom = useCallback((roomId) => {
     setSelectedRoomId(roomId);
@@ -263,6 +356,11 @@ function ChatPage() {
         return;
       }
 
+      if (isOffline) {
+        setCreateError('You are offline. Connect to create a chat room.');
+        return;
+      }
+
       if (!createForm.name.trim()) {
         setCreateError('Room name is required.');
         return;
@@ -290,12 +388,14 @@ function ChatPage() {
         setIsCreatingRoom(false);
       }
     },
-    [authUser, createForm]
+    [authUser, createForm, isOffline]
   );
 
   const handleSendMessage = useCallback(
     async (event) => {
-      event.preventDefault();
+      if (event && typeof event.preventDefault === 'function') {
+        event.preventDefault();
+      }
       if (!selectedRoomId || !authUser) {
         return;
       }
@@ -304,10 +404,27 @@ function ChatPage() {
         return;
       }
 
+      if (isOffline) {
+        setMessagesError('You are offline. Connect to send messages.');
+        return;
+      }
+
       setIsSendingMessage(true);
       try {
-        const message = await createChatMessage(selectedRoomId, { message: trimmed });
+        const payload = { message: trimmed };
+        if (viewerCoordinates) {
+          payload.latitude = viewerCoordinates.latitude;
+          payload.longitude = viewerCoordinates.longitude;
+          if (viewerCoordinates.accuracy !== undefined) {
+            payload.accuracy = viewerCoordinates.accuracy;
+          }
+        }
+        const message = await createChatMessage(selectedRoomId, payload);
         setMessages((prev) => [...prev, message]);
+        if (message?.badgeEarnedId) {
+          playBadgeSound();
+          announceBadgeEarned(message.badgeEarnedId);
+        }
         setMessageDraft('');
         scrollMessagesToBottom();
       } catch (error) {
@@ -316,7 +433,26 @@ function ChatPage() {
         setIsSendingMessage(false);
       }
     },
-    [authUser, messageDraft, scrollMessagesToBottom, selectedRoomId]
+    [
+      announceBadgeEarned,
+      authUser,
+      isOffline,
+      messageDraft,
+      scrollMessagesToBottom,
+      selectedRoomId,
+      viewerCoordinates
+    ]
+  );
+
+  const handleDraftKeyDown = useCallback(
+    (event) => {
+      if (event.key !== 'Enter' || event.shiftKey) {
+        return;
+      }
+      event.preventDefault();
+      handleSendMessage();
+    },
+    [handleSendMessage]
   );
 
   const filteredPresence = useMemo(() => {
@@ -328,6 +464,15 @@ function ChatPage() {
   }, [presence]);
 
   const activeUserCount = filteredPresence.length;
+  const locationWarning = useMemo(() => {
+    if (isOffline) {
+      return null;
+    }
+    if (!viewerCoordinates) {
+      return 'Precise location is unavailable. Showing global rooms and limited nearby data.';
+    }
+    return null;
+  }, [isOffline, viewerCoordinates]);
 
   const renderRoomList = () => (
     <Paper
@@ -365,17 +510,23 @@ function ChatPage() {
           />
         </Stack>
         <Stack direction="row" spacing={1}>
-          <Tooltip title="Refresh rooms">
+          <Tooltip title={isOffline ? 'Reconnect to refresh rooms' : 'Refresh rooms'}>
             <span>
-              <IconButton onClick={loadRooms} disabled={isLoadingRooms}>
+              <IconButton onClick={loadRooms} disabled={isOffline || isLoadingRooms}>
                 {isLoadingRooms ? <CircularProgress size={20} /> : <RefreshIcon fontSize="small" />}
               </IconButton>
             </span>
           </Tooltip>
-          <Tooltip title="Create room">
-            <IconButton color="primary" onClick={handleOpenCreateDialog}>
-              <AddCommentIcon fontSize="small" />
-            </IconButton>
+          <Tooltip title={isOffline ? 'Reconnect to create a room' : 'Create room'}>
+            <span>
+              <IconButton
+                color="primary"
+                onClick={handleOpenCreateDialog}
+                disabled={isOffline}
+              >
+                <AddCommentIcon fontSize="small" />
+              </IconButton>
+            </span>
           </Tooltip>
         </Stack>
       </Box>
@@ -529,6 +680,10 @@ function ChatPage() {
             ) : (
               messages.map((message) => {
                 const isSelf = authUser && message.authorId === authUser.uid;
+                const rawMessage = message.message ?? '';
+                const messageText = filterCussWordsEnabled
+                  ? replaceProfanityWithFruit(rawMessage)
+                  : rawMessage;
                 return (
                   <Stack
                     key={message._id}
@@ -553,7 +708,7 @@ function ChatPage() {
                           </Typography>
                         </Stack>
                         <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                          {message.message}
+                          {messageText}
                         </Typography>
                       </Stack>
                     </Paper>
@@ -581,19 +736,20 @@ function ChatPage() {
             <TextField
               value={messageDraft}
               onChange={(event) => setMessageDraft(event.target.value)}
+              onKeyDown={handleDraftKeyDown}
               placeholder={authUser ? 'Type your message…' : 'Sign in to chat'}
               multiline
               minRows={1}
               maxRows={4}
               fullWidth
-              disabled={!authUser || isSendingMessage}
+              disabled={!authUser || isSendingMessage || isOffline}
             />
             <Button
               type="submit"
               variant="contained"
               color="primary"
               startIcon={<SendIcon />}
-              disabled={!authUser || !messageDraft.trim() || isSendingMessage}
+              disabled={!authUser || !messageDraft.trim() || isSendingMessage || isOffline}
             >
               {isSendingMessage ? 'Sending…' : 'Send'}
             </Button>
@@ -611,7 +767,12 @@ function ChatPage() {
           <Typography variant="body2" color="text.secondary">
             Choose a chat from the list or create a new space for your team.
           </Typography>
-          <Button variant="outlined" onClick={handleOpenCreateDialog}>
+          <Button
+            variant="outlined"
+            onClick={handleOpenCreateDialog}
+            disabled={isOffline}
+            title={isOffline ? 'Reconnect to create a room' : undefined}
+          >
             Create room
           </Button>
         </Stack>
@@ -620,7 +781,8 @@ function ChatPage() {
   );
 
   return (
-    <Box
+    <>
+      <Box
       sx={{
         width: '100%',
         maxWidth: 1200,
@@ -630,6 +792,12 @@ function ChatPage() {
       }}
     >
       <Stack spacing={2}>
+        {isOffline ? (
+          <Alert severity="warning">
+            You are offline. Chat lists and messages will refresh once you reconnect.
+          </Alert>
+        ) : null}
+        {locationWarning ? <Alert severity="info">{locationWarning}</Alert> : null}
         <Stack direction="row" spacing={1.5} alignItems="center">
           <SmsIcon color="primary" />
           <Typography variant="h4" component="h1">
@@ -743,9 +911,14 @@ function ChatPage() {
           </DialogActions>
         </Box>
       </Dialog>
-    </Box>
+      </Box>
+      <Navbar />
+    </>
   );
 }
 
 export default ChatPage;
+
+
+
 

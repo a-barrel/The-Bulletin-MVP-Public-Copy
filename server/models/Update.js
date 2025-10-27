@@ -56,13 +56,15 @@ const updateSchema = new mongoose.Schema(
           'event-starting-soon',
           'event-reminder',
           'popular-pin',
-          'bookmark-update',
-          'system',
-          'chat-message',
-          'friend-request'
-        ],
-        required: true
-      },
+      'bookmark-update',
+      'system',
+      'chat-message',
+      'friend-request',
+      'chat-room-transition',
+      'badge-earned'
+    ],
+    required: true
+  },
       pin: pinPreviewSchema,
       title: { type: String, required: true },
       body: String,

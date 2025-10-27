@@ -1,0 +1,7 @@
+.user-location-icon {
+  filter: saturate(220%) hue-rotate(-8deg);
+}
+
+.self-pin-icon {
+  filter: saturate(220%) hue-rotate(-8deg);
+}

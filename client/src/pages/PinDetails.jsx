@@ -11,8 +11,13 @@ import {
   updatePinAttendance,
   createPinBookmark,
   deletePinBookmark,
-  createPinReply
+  createPinReply,
+  fetchCurrentUserProfile
 } from '../api/mongoDataApi';
+import { playBadgeSound } from '../utils/badgeSound';
+import { useBadgeSound } from '../contexts/BadgeSoundContext';
+import { routes } from '../routes';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
@@ -20,6 +25,7 @@ const SAMPLE_PIN_IDS = [
   '68e061721329566a22d474ab',
   '68e061721329566a22d474ac'
 ];
+const FAR_PIN_ID = SAMPLE_PIN_IDS[0] ?? '68e061721329566a22d474aa';
 
 export const pageConfig = {
   id: 'pin-details',
@@ -30,21 +36,25 @@ export const pageConfig = {
   showInNav: true,
   resolveNavTarget: ({ currentPath } = {}) => {
     const input = window.prompt(
-      'Enter a pin ID to view (type "expired" to preview an expired pin, leave blank for a random sample, cancel to stay put):'
+      'Enter a pin ID to view (type "expired" for an expired preview, type "far" to preview a pin outside your interaction radius, leave blank for a random sample, cancel to stay put):'
     );
     if (input === null) {
       return currentPath ?? null;
     }
     const trimmed = input.trim();
     if (trimmed.toLowerCase() === 'expired') {
-      return `/pin/${EXPIRED_PIN_ID}`;
+      return routes.pin.byId(EXPIRED_PIN_ID);
+    }
+    if (trimmed.toLowerCase() === 'far') {
+      const farId = FAR_PIN_ID;
+      return `${routes.pin.byId(farId)}?preview=far`;
     }
     if (!trimmed) {
       const randomId =
         SAMPLE_PIN_IDS[Math.floor(Math.random() * SAMPLE_PIN_IDS.length)] ?? '68e061721329566a22d474aa';
-      return `/pin/${randomId}`;
+      return routes.pin.byId(randomId);
     }
-    return `/pin/${trimmed}`;
+    return routes.pin.byId(trimmed);
   }
 };
 
@@ -254,14 +264,44 @@ const buildUserProfileLink = (user, originPath) => {
       : undefined;
 
   return {
-    pathname: `/profile/${encodeURIComponent(identifier)}`,
+    pathname: routes.profile.byId(identifier),
     state: linkState
   };
+};
+
+const extractViewerProfileIdFromState = (state) => {
+  if (!state || typeof state !== 'object') {
+    return null;
+  }
+
+  const candidates = [
+    state.viewerProfile?._id,
+    state.currentProfile?._id,
+    state.user?._id,
+    state.profile?._id,
+    state.creator?._id,
+    state.viewerId,
+    state.userId,
+    state.currentProfileId
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+  }
+
+  return null;
 };
 
 function PinDetails() {
   const { pinId } = useParams();
   const location = useLocation();
+  const locationState = location?.state;
+  const { isOffline } = useNetworkStatusContext();
+  const [viewerProfileId, setViewerProfileId] = useState(() =>
+    extractViewerProfileIdFromState(locationState)
+  );
   const [pin, setPin] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -282,12 +322,51 @@ function PinDetails() {
   const [replyMessage, setReplyMessage] = useState('');
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
   const [submitReplyError, setSubmitReplyError] = useState(null);
-const isEventPin = useMemo(
-  () => (typeof pin?.type === 'string' ? pin.type.toLowerCase() === 'event' : false),
-  [pin?.type]
-);
+  const { announceBadgeEarned } = useBadgeSound();
+  const isEventPin = useMemo(
+    () => (typeof pin?.type === 'string' ? pin.type.toLowerCase() === 'event' : false),
+    [pin?.type]
+  );
 
-const pinExpired = useMemo(() => {
+  useEffect(() => {
+    if (viewerProfileId) {
+      return;
+    }
+    const candidate = extractViewerProfileIdFromState(locationState);
+    if (candidate) {
+      setViewerProfileId(candidate);
+    }
+  }, [locationState, viewerProfileId]);
+
+  useEffect(() => {
+    if (viewerProfileId || isOffline) {
+      return;
+    }
+
+    let ignore = false;
+
+    (async () => {
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (ignore) {
+          return;
+        }
+        const normalized = profile?._id ? String(profile._id) : null;
+        setViewerProfileId(normalized);
+      } catch (error) {
+        if (!ignore) {
+          console.warn('Failed to load viewer profile for pin details:', error);
+          setViewerProfileId(null);
+        }
+      }
+    })();
+
+    return () => {
+      ignore = true;
+    };
+  }, [viewerProfileId, isOffline]);
+
+  const pinExpired = useMemo(() => {
   if (!pin) {
     return false;
   }
@@ -301,6 +380,104 @@ const pinExpired = useMemo(() => {
   }
   return expiry.getTime() < Date.now();
 }, [pin]);
+
+  const previewMode = useMemo(() => {
+    const params = new URLSearchParams(location.search ?? '');
+    return (params.get('preview') || '').toLowerCase();
+  }, [location.search]);
+
+  const simulatedFarPreview = previewMode === 'far';
+  const viewerWithinInteractionRadius =
+    typeof pin?.viewerWithinInteractionRadius === 'boolean' ? pin.viewerWithinInteractionRadius : undefined;
+  const viewerDistanceMeters =
+    typeof pin?.viewerDistanceMeters === 'number' && Number.isFinite(pin.viewerDistanceMeters)
+      ? pin.viewerDistanceMeters
+      : null;
+  const distanceLockActive = !pinExpired && (simulatedFarPreview || viewerWithinInteractionRadius === false);
+  const isInteractionLocked = pinExpired || distanceLockActive;
+  const viewerInteractionLockMessage = pin?.viewerInteractionLockMessage;
+
+  const viewerDistanceLabel = useMemo(() => {
+    if (viewerDistanceMeters === null) {
+      return null;
+    }
+    if (viewerDistanceMeters >= 1609.34) {
+      const miles = viewerDistanceMeters / 1609.34;
+      return `${miles.toFixed(1)} miles`;
+    }
+    if (viewerDistanceMeters >= 10) {
+      return `${Math.round(viewerDistanceMeters)} meters`;
+    }
+    return `${viewerDistanceMeters.toFixed(1)} meters`;
+  }, [viewerDistanceMeters]);
+
+  const interactionOverlay = useMemo(() => {
+    if (pinExpired) {
+      return {
+        title: 'This pin has expired',
+        message:
+          'This activity is no longer available. Please head back to the home feed to explore current happenings.'
+      };
+    }
+
+    if (distanceLockActive) {
+      const defaultMessage = viewerDistanceLabel
+        ? `This pin is approximately ${viewerDistanceLabel} away and sits outside your interaction radius. Move closer to engage with it.`
+        : 'This pin is outside your interaction radius. Move closer to interact with it.';
+
+      return {
+        title: 'Outside interaction radius',
+        message: viewerInteractionLockMessage || defaultMessage
+      };
+    }
+
+    return null;
+  }, [pinExpired, distanceLockActive, viewerInteractionLockMessage, viewerDistanceLabel]);
+
+  const pinCreatorId = useMemo(() => {
+    if (!pin) {
+      return null;
+    }
+    if (typeof pin.creatorId === 'string' && pin.creatorId.trim().length > 0) {
+      return pin.creatorId.trim();
+    }
+    const nestedId = pin.creator?._id;
+    if (typeof nestedId === 'string' && nestedId.trim().length > 0) {
+      return nestedId.trim();
+    }
+    return null;
+  }, [pin]);
+
+  const isOwnPin = useMemo(() => {
+    if (!pinCreatorId || !viewerProfileId) {
+      return false;
+    }
+    return pinCreatorId === viewerProfileId;
+  }, [pinCreatorId, viewerProfileId]);
+
+  const pinTypeHeading = useMemo(() => {
+    if (!pin) {
+      return 'Loading...';
+    }
+    const rawType = typeof pin.type === 'string' ? pin.type : '';
+    const capitalized =
+      rawType && rawType.length > 0 ? rawType.charAt(0).toUpperCase() + rawType.slice(1) : 'Pin';
+    const normalizedType = rawType.toLowerCase();
+    if (isOwnPin && (normalizedType === 'event' || normalizedType === 'discussion')) {
+      return `(Your) ${capitalized}`;
+    }
+    return capitalized || 'Pin';
+  }, [pin, isOwnPin]);
+
+  const mapPins = useMemo(() => {
+    if (!pin) {
+      return [];
+    }
+    if (pin.isSelf === isOwnPin) {
+      return [pin];
+    }
+    return [{ ...pin, isSelf: isOwnPin }];
+  }, [pin, isOwnPin]);
 
   useEffect(() => {
     setBookmarked(false);
@@ -317,7 +494,7 @@ const pinExpired = useMemo(() => {
     setReplyMessage('');
     setIsSubmittingReply(false);
     setSubmitReplyError(null);
-  }, [pinId, pinExpired]);
+  }, [pinId, isInteractionLocked]);
 
   useEffect(() => {
     if (!pin) {
@@ -352,11 +529,17 @@ const pinExpired = useMemo(() => {
         return;
       }
 
+      if (isOffline) {
+        setIsLoading(false);
+        setError((prev) => prev ?? 'You are offline. Connect to load the latest pin details.');
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
 
       try {
-        const payload = await fetchPinById(pinId);
+        const payload = await fetchPinById(pinId, { previewMode });
         if (ignore) {
           return;
         }
@@ -383,11 +566,17 @@ const pinExpired = useMemo(() => {
     return () => {
       ignore = true;
     };
-  }, [pinId, pinExpired]);
+  }, [isOffline, pinId, previewMode]);
 
   useEffect(() => {
     if (!pinId) {
       setReplies([]);
+      return;
+    }
+
+    if (isOffline) {
+      setIsLoadingReplies(false);
+      setRepliesError((prev) => prev ?? 'Replies unavailable while offline.');
       return;
     }
 
@@ -421,7 +610,7 @@ const pinExpired = useMemo(() => {
     return () => {
       ignore = true;
     };
-  }, [pinId, pinExpired]);
+  }, [isOffline, pinId]);
 
   useEffect(() => {
     if (!attendeeOverlayOpen) {
@@ -431,6 +620,12 @@ const pinExpired = useMemo(() => {
       setAttendees([]);
       setIsLoadingAttendees(false);
       setAttendeesError(null);
+      return;
+    }
+
+    if (isOffline) {
+      setIsLoadingAttendees(false);
+      setAttendeesError((prev) => prev ?? 'Attendee list unavailable while offline.');
       return;
     }
 
@@ -465,7 +660,7 @@ const pinExpired = useMemo(() => {
     return () => {
       ignore = true;
     };
-  }, [attendeeOverlayOpen, pinId, isEventPin]);
+  }, [attendeeOverlayOpen, isEventPin, isOffline, pinId]);
 
   const coverImageUrl = useMemo(
     () => resolveMediaAssetUrl(pin?.coverPhoto, DEFAULT_COVER_PATH),
@@ -547,28 +742,47 @@ const pinExpired = useMemo(() => {
   );
 
   const openAttendeeOverlay = useCallback(() => {
-    if (!isEventPin || pinExpired) {
+    if (!isEventPin) {
+      return;
+    }
+    if (isOffline) {
+      setAttendeesError('You are offline. Connect to view attendees.');
+      return;
+    }
+    if (pinExpired) {
+      return;
+    }
+    if (distanceLockActive) {
+      setAttendeesError('You are outside this pin\'s interaction radius.');
       return;
     }
     setAttendeesError(null);
     setAttendeeOverlayOpen(true);
-  }, [isEventPin, pinExpired]);
+  }, [distanceLockActive, isEventPin, isOffline, pinExpired]);
 
   const closeAttendeeOverlay = useCallback(() => {
     setAttendeeOverlayOpen(false);
   }, []);
 
   const openReplyComposer = useCallback(() => {
+    if (!pinId) {
+      return;
+    }
+    if (isOffline) {
+      setSubmitReplyError('Replies are unavailable while offline.');
+      return;
+    }
     if (pinExpired) {
       setSubmitReplyError('Replies are closed because this pin has expired.');
       return;
     }
-    if (!pinId) {
+    if (distanceLockActive) {
+      setSubmitReplyError('Replies are disabled because you are outside this pin\'s interaction radius.');
       return;
     }
     setSubmitReplyError(null);
     setReplyComposerOpen(true);
-  }, [pinId, pinExpired]);
+  }, [distanceLockActive, isOffline, pinExpired, pinId]);
 
   const closeReplyComposer = useCallback(() => {
     if (isSubmittingReply) {
@@ -579,9 +793,15 @@ const pinExpired = useMemo(() => {
   }, [isSubmittingReply]);
 
   const handleToggleBookmark = useCallback(async () => {
-    if (!pin || isUpdatingBookmark || pinExpired) {
+    if (isOffline) {
+      setBookmarkError('Bookmarks are unavailable while offline.');
+      return;
+    }
+    if (!pin || isUpdatingBookmark || isInteractionLocked) {
       if (pinExpired) {
         setBookmarkError('Expired pins cannot be bookmarked.');
+      } else if (distanceLockActive) {
+        setBookmarkError('Pins outside your interaction radius cannot be bookmarked.');
       }
       return;
     }
@@ -650,6 +870,10 @@ const pinExpired = useMemo(() => {
             ? response.viewerHasBookmarked
             : true
         );
+        if (response?.badgeEarnedId) {
+          playBadgeSound();
+          announceBadgeEarned(response.badgeEarnedId);
+        }
       }
     } catch (toggleError) {
       console.error('Failed to toggle bookmark:', toggleError);
@@ -657,17 +881,24 @@ const pinExpired = useMemo(() => {
     } finally {
       setIsUpdatingBookmark(false);
     }
-  }, [pin, bookmarked, isUpdatingBookmark, pinExpired]);
+  }, [announceBadgeEarned, bookmarked, distanceLockActive, isInteractionLocked, isOffline, isUpdatingBookmark, pin, pinExpired]);
 
   const handleToggleAttendance = useCallback(async () => {
-    if (!pin || !isEventPin || isUpdatingAttendance || pinExpired) {
+    if (isOffline) {
+      setAttendanceError('Attendance cannot be updated while offline.');
+      return;
+    }
+    if (!pin || !isEventPin || isUpdatingAttendance || isInteractionLocked) {
       if (pinExpired) {
         setAttendanceError('This event has ended.');
+      } else if (distanceLockActive) {
+        setAttendanceError('You are outside this pin\'s interaction radius.');
       }
       return;
     }
 
     const nextAttending = !attending;
+    const previousBookmarked = bookmarked;
 
     if (
       nextAttending &&
@@ -682,6 +913,9 @@ const pinExpired = useMemo(() => {
     setAttendanceError(null);
     setIsUpdatingAttendance(true);
     setAttending(nextAttending);
+    if (nextAttending) {
+      setBookmarked(true);
+    }
 
     setPin((prev) => {
       if (
@@ -697,7 +931,8 @@ const pinExpired = useMemo(() => {
       return {
         ...prev,
         participantCount: nextCount,
-        viewerIsAttending: nextAttending
+        viewerIsAttending: nextAttending,
+        viewerHasBookmarked: nextAttending ? true : prev.viewerHasBookmarked
       };
     });
 
@@ -705,6 +940,11 @@ const pinExpired = useMemo(() => {
       const updatedPin = await updatePinAttendance(pin._id, nextAttending);
       setPin(updatedPin);
       setAttending(Boolean(updatedPin.viewerIsAttending));
+      setBookmarked(Boolean(updatedPin.viewerHasBookmarked));
+      if (updatedPin?._badgeEarnedId) {
+        playBadgeSound();
+        announceBadgeEarned(updatedPin._badgeEarnedId);
+      }
     } catch (updateError) {
       console.error('Failed to update attendance:', updateError);
       setAttendanceError(updateError?.message || 'Failed to update attendance.');
@@ -726,15 +966,22 @@ const pinExpired = useMemo(() => {
         };
       });
       setAttending(!nextAttending);
+      setBookmarked(previousBookmarked);
     } finally {
       setIsUpdatingAttendance(false);
     }
-  }, [pin, attending, isEventPin, isUpdatingAttendance, pinExpired]);
+  }, [announceBadgeEarned, attending, bookmarked, distanceLockActive, isEventPin, isInteractionLocked, isOffline, isUpdatingAttendance, pin, pinExpired]);
 
   const handleSubmitReply = useCallback(async () => {
-    if (!pinId || isSubmittingReply || pinExpired) {
+    if (isOffline) {
+      setSubmitReplyError('Replies are unavailable while offline.');
+      return;
+    }
+    if (!pinId || isSubmittingReply || isInteractionLocked) {
       if (pinExpired) {
         setSubmitReplyError('Replies are closed because this pin has expired.');
+      } else if (distanceLockActive) {
+        setSubmitReplyError('Replies are disabled because you are outside this pin\'s interaction radius.');
       }
       return;
     }
@@ -772,7 +1019,7 @@ const pinExpired = useMemo(() => {
     } finally {
       setIsSubmittingReply(false);
     }
-  }, [pinId, replyMessage, isSubmittingReply, pinExpired]);
+  }, [distanceLockActive, isInteractionLocked, isOffline, isSubmittingReply, pinExpired, pinId, replyMessage]);
 
   const expirationLabel = useMemo(() => formatDateTime(pin?.expiresAt ?? pin?.endDate), [pin]);
   const createdAtLabel = useMemo(() => formatDateTime(pin?.createdAt), [pin]);
@@ -780,13 +1027,13 @@ const pinExpired = useMemo(() => {
 
   return (
     <div className='pin-details'>
-      {pinExpired ? (
+      {interactionOverlay ? (
         <div className='pin-expired-overlay' role='dialog' aria-modal='true'>
           <div className='pin-expired-modal'>
-            <h3>This pin has expired</h3>
-            <p>This activity is no longer available. Please head back to the home feed to explore current happenings.</p>
+            <h3>{interactionOverlay.title}</h3>
+            <p>{interactionOverlay.message}</p>
             <div className='expired-actions'>
-              <Link to="/list" className='expired-return-button'>
+              <Link to={routes.list.base} className='expired-return-button'>
                 Return to List
               </Link>
             </div>
@@ -795,23 +1042,24 @@ const pinExpired = useMemo(() => {
       ) : null}
       {/* Header */}
       <header className='header'>
-        <Link to="/list" className="back-button">
+        <Link to={routes.list.base} className="back-button">
           <img
             src='https://www.svgrepo.com/show/326886/arrow-back-sharp.svg'
             className='back-arrow'
           />
         </Link>
 
-        <h2>{pin ? pin.type.charAt(0).toUpperCase() + pin.type.slice(1) : 'Loading...'}</h2>
+        <h2>{pinTypeHeading}</h2>
 
         <div className='bookmark-button-wrapper'>
           <button
             className='bookmark-button'
             onClick={handleToggleBookmark}
-            disabled={isUpdatingBookmark || !pin || pinExpired}
+            disabled={isOffline || isUpdatingBookmark || !pin || isInteractionLocked}
             aria-pressed={bookmarked ? 'true' : 'false'}
             aria-label={bookmarked ? 'Remove bookmark' : 'Save bookmark'}
             aria-busy={isUpdatingBookmark ? 'true' : 'false'}
+            title={isOffline ? 'Reconnect to manage bookmarks' : undefined}
           >
             <img
               src={
@@ -835,6 +1083,9 @@ const pinExpired = useMemo(() => {
         {pin?._id ? <span className="pin-id">ID: {pin._id}</span> : null}
         {proximityRadius ? (
           <span className="pin-radius">Proximity radius: {proximityRadius}</span>
+        ) : null}
+        {viewerDistanceLabel ? (
+          <span className="pin-radius">Approximate distance: {viewerDistanceLabel}</span>
         ) : null}
         {createdAtLabel || updatedAtLabel ? (
           <span className="pin-timestamps">
@@ -861,8 +1112,8 @@ const pinExpired = useMemo(() => {
               <div className="map-wrapper">
                 <LeafletMap
                   userLocation={coordinates}
-                  pins={[pin]}
-                  selectedPinId={pin._id}
+                  pins={mapPins}
+                  selectedPinId={mapPins[0]?._id ?? pin._id}
                   centerOverride={coordinates}
                 />
               </div>
@@ -1001,7 +1252,8 @@ const pinExpired = useMemo(() => {
                   type="button"
                   className='view-attendees-button'
                   onClick={openAttendeeOverlay}
-                  disabled={pinExpired || (isLoadingAttendees && attendeeOverlayOpen)}
+                  disabled={isOffline || isInteractionLocked || (isLoadingAttendees && attendeeOverlayOpen)}
+                  title={isOffline ? 'Reconnect to view attendees' : undefined}
                 >
                   {isLoadingAttendees && attendeeOverlayOpen ? 'Loading attendees...' : 'View Attendees'}
                 </button>
@@ -1015,8 +1267,9 @@ const pinExpired = useMemo(() => {
               <button
                 className={`attend-button ${attending ? 'attending' : ''}`}
                 onClick={handleToggleAttendance}
-                disabled={isUpdatingAttendance || !pin || pinExpired}
+                disabled={isOffline || isUpdatingAttendance || !pin || isInteractionLocked}
                 aria-busy={isUpdatingAttendance ? 'true' : 'false'}
+                title={isOffline ? 'Reconnect to update attendance' : undefined}
               >
                 {isUpdatingAttendance ? 'Updating...' : attending ? 'Attending!' : 'Attend'}
               </button>
@@ -1105,7 +1358,13 @@ const pinExpired = useMemo(() => {
           </div>
 
           {/* Create comment button */}
-          <button className='create-comment' disabled={pinExpired} onClick={openReplyComposer} aria-label='Create reply'>
+          <button
+            className='create-comment'
+            disabled={isOffline || isInteractionLocked}
+            onClick={openReplyComposer}
+            aria-label='Create reply'
+            title={isOffline ? 'Reconnect to add a reply' : undefined}
+          >
             <img
               src='https://www.svgrepo.com/show/489238/add-comment.svg'
               className='create-comment-button'
@@ -1134,7 +1393,7 @@ const pinExpired = useMemo(() => {
                 type='button'
                 className='reply-overlay-close'
                 onClick={closeReplyComposer}
-                disabled={isSubmittingReply || pinExpired}
+                disabled={isSubmittingReply || isInteractionLocked}
               >
                 Cancel
               </button>
@@ -1150,7 +1409,7 @@ const pinExpired = useMemo(() => {
                 onChange={(event) => setReplyMessage(event.target.value)}
                 placeholder='Type your reply here...'
                 maxLength={4000}
-                disabled={isSubmittingReply || pinExpired}
+                disabled={isOffline || isSubmittingReply || isInteractionLocked}
               />
               <div className='reply-overlay-footer'>
                 <span className='reply-overlay-count'>{replyMessage.length}/4000</span>
@@ -1158,7 +1417,8 @@ const pinExpired = useMemo(() => {
                   type='button'
                   className='reply-overlay-submit'
                   onClick={handleSubmitReply}
-                  disabled={isSubmittingReply || pinExpired}
+                  disabled={isOffline || isSubmittingReply || isInteractionLocked}
+                  title={isOffline ? 'Reconnect to post a reply' : undefined}
                 >
                   {isSubmittingReply ? 'Posting...' : 'Post Reply'}
                 </button>
@@ -1254,5 +1514,3 @@ const pinExpired = useMemo(() => {
 }
 
 export default PinDetails;
-
-
