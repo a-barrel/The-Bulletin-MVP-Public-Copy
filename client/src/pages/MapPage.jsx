@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
@@ -15,6 +16,7 @@ import Switch from '@mui/material/Switch';
 import MapIcon from '@mui/icons-material/Map';
 import Map from '../components/Map';
 import LocationShare from '../components/LocationShare';
+import { routes } from '../routes';
 import {
   insertLocationUpdate,
   fetchNearbyUsers,
@@ -104,6 +106,7 @@ const formatDistanceMiles = (meters) => {
 };
 
 function MapPage() {
+  const navigate = useNavigate();
   const [authUser] = useAuthState(auth);
   const { isOffline } = useNetworkStatusContext();
   const { location: sharedLocation, setLocation: setSharedLocation } = useLocationContext();
@@ -751,6 +754,28 @@ function MapPage() {
     [showChatRooms]
   );
 
+  const handleViewPinDetails = useCallback(
+    (pin) => {
+      if (!pin) {
+        return;
+      }
+      const pinId = pin._id ?? pin.id ?? null;
+      if (!pinId) {
+        return;
+      }
+      navigate(routes.pin.byId(pinId));
+    },
+    [navigate]
+  );
+
+  const handleViewChatRoom = useCallback(() => {
+    navigate(routes.chat.base);
+  }, [navigate]);
+
+  const handleViewProfile = useCallback(() => {
+    navigate(routes.profile.me);
+  }, [navigate]);
+
   return (
     <Box
       sx={{
@@ -794,6 +819,9 @@ function MapPage() {
           userRadiusMeters={DEFAULT_MAX_DISTANCE_METERS}
           selectedPinId={showChatRooms ? selectedChatRoomId : undefined}
           onPinSelect={showChatRooms ? handleMapPinSelect : undefined}
+          onPinView={handleViewPinDetails}
+          onChatRoomView={handleViewChatRoom}
+          onCurrentUserView={handleViewProfile}
           isOffline={isOffline}
         />
       </Box>

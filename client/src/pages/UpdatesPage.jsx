@@ -108,7 +108,7 @@ function UpdatesPage() {
 
   const [pendingUpdateIds, setPendingUpdateIds] = useState([]);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
-  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+  const [showUnreadOnly, setShowUnreadOnly] = useState(true);
   const pendingRefreshRef = useRef(false);
 
   const { setUnreadCount } = useUpdates();
@@ -468,7 +468,6 @@ function UpdatesPage() {
 }
 
 export default UpdatesPage;
-
 
 
 

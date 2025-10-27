@@ -154,6 +154,9 @@ const Map = ({
   nearbyUsers = [],
   pins = [],
   onPinSelect,
+  onPinView,
+  onChatRoomView,
+  onCurrentUserView,
   selectedPinId,
   centerOverride,
   userRadiusMeters,
@@ -243,12 +246,34 @@ const Map = ({
         />
       
       {userMarkerPosition && (
-        <Marker
-          position={userMarkerPosition}
-          icon={userIcon}
-        >
+        <Marker position={userMarkerPosition} icon={userIcon}>
           <Popup>
-            <h3>You are here</h3>
+            <div>
+              <h3 style={{ margin: 0 }}>You are here</h3>
+              {typeof onCurrentUserView === 'function' ? (
+                <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onCurrentUserView();
+                    }}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      borderRadius: '999px',
+                      border: 'none',
+                      backgroundColor: '#3EB8F0',
+                      color: '#fff',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    View
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </Popup>
         </Marker>
       )}
@@ -294,6 +319,24 @@ const Map = ({
         const distanceLabel = formatDistanceMiles(computedDistance);
         const expirationLabel = formatExpiration(pin);
         const key = pin._id ?? `pin-${index}-${latitude}-${longitude}`;
+        const isChatRoom = pin.type === 'chat-room' || pin.type === 'global-chat-room';
+        const isRegularPin = pin.type === 'event' || pin.type === 'discussion';
+        const canViewPin =
+          typeof onPinView === 'function' && !isChatRoom && isRegularPin;
+        const canViewChatRoom =
+          typeof onChatRoomView === 'function' && isChatRoom;
+
+        const handleViewPin = (canViewPin || canViewChatRoom)
+          ? (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              if (canViewPin) {
+                onPinView(pin);
+              } else if (canViewChatRoom) {
+                onChatRoomView(pin);
+              }
+            }
+          : null;
         const popupContent = (
           <div>
             <strong>{pin.title ?? 'Untitled pin'}</strong>
@@ -301,10 +344,28 @@ const Map = ({
             {pin._id ? <div>ID: {pin._id}</div> : null}
             {distanceLabel ? <div>Distance: {distanceLabel} mi</div> : null}
             {expirationLabel ? <div>{expirationLabel}</div> : null}
+            {canViewPin || canViewChatRoom ? (
+              <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
+                <button
+                  type="button"
+                  onClick={handleViewPin}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    borderRadius: '999px',
+                    border: 'none',
+                    backgroundColor: '#3EB8F0',
+                    color: '#fff',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  View
+                </button>
+              </div>
+            ) : null}
           </div>
         );
 
-        const isChatRoom = pin.type === 'chat-room' || pin.type === 'global-chat-room';
         if (isChatRoom) {
           const color = pin.type === 'global-chat-room' ? '#ffb300' : '#ff7043';
           const isSelected = pin._id && pin._id === selectedPinId;
@@ -329,9 +390,16 @@ const Map = ({
                   fillOpacity: 0.85
                 }}
                 eventHandlers={
-                  onPinSelect
+                  onPinSelect || canViewChatRoom
                     ? {
-                        click: () => onPinSelect(pin)
+                        click: () => {
+                          if (onPinSelect) {
+                            onPinSelect(pin);
+                          }
+                          if (canViewChatRoom && !onPinSelect) {
+                            onChatRoomView(pin);
+                          }
+                        }
                       }
                     : undefined
                 }

@@ -40,6 +40,12 @@ export const pageConfig = {
 };
 
 const METERS_PER_MILE = 1609.34;
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+const EVENT_MAX_LEAD_TIME_DAYS = 14;
+const DISCUSSION_MAX_DURATION_DAYS = 3;
+const EVENT_MAX_LEAD_TIME_MS = EVENT_MAX_LEAD_TIME_DAYS * MILLISECONDS_PER_DAY;
+const DISCUSSION_MAX_DURATION_MS = DISCUSSION_MAX_DURATION_DAYS * MILLISECONDS_PER_DAY;
+const FUTURE_TOLERANCE_MS = 60 * 1000;
 
 const INITIAL_FORM_STATE = {
   title: '',
@@ -200,7 +206,33 @@ function sanitizeNumberField(value) {
   return parsed;
 }
 
-function sanitizeDateField(value, label) {
+function formatDateTimeLocalInput(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return '';
+  }
+  const pad = (input) => String(input).padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function formatDateForMessage(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return 'the specified date';
+  }
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
+function sanitizeDateField(value, label, options = {}) {
   const trimmed = `${value ?? ''}`.trim();
   if (!trimmed) {
     throw new Error(`${label} is required.`);
@@ -209,7 +241,44 @@ function sanitizeDateField(value, label) {
   if (Number.isNaN(date.getTime())) {
     throw new Error(`${label} must be a valid date/time.`);
   }
-  return date.toISOString();
+
+  const {
+    allowPast = false,
+    min,
+    max,
+    minMessage,
+    maxMessage,
+    toleranceMs = FUTURE_TOLERANCE_MS
+  } = options;
+
+  if (!allowPast) {
+    const now = Date.now();
+    if (date.getTime() < now - toleranceMs) {
+      throw new Error(`${label} cannot be in the past.`);
+    }
+  }
+
+  if (min) {
+    const minDate = min instanceof Date ? min : new Date(min);
+    if (Number.isNaN(minDate.getTime())) {
+      throw new Error(`${label} has an invalid minimum date.`);
+    }
+    if (date.getTime() < minDate.getTime()) {
+      throw new Error(minMessage ?? `${label} must be on or after ${formatDateForMessage(minDate)}.`);
+    }
+  }
+
+  if (max) {
+    const maxDate = max instanceof Date ? max : new Date(max);
+    if (Number.isNaN(maxDate.getTime())) {
+      throw new Error(`${label} has an invalid maximum date.`);
+    }
+    if (date.getTime() > maxDate.getTime()) {
+      throw new Error(maxMessage ?? `${label} must be on or before ${formatDateForMessage(maxDate)}.`);
+    }
+  }
+
+  return date;
 }
 
 function CreatePinPage() {
@@ -426,6 +495,42 @@ function CreatePinPage() {
     }
     return null;
   }, [formState.latitude, formState.longitude]);
+  const nowReference = useMemo(() => new Date(), []);
+  const eventMaxDateRef = useMemo(
+    () => new Date(nowReference.getTime() + EVENT_MAX_LEAD_TIME_MS),
+    [nowReference]
+  );
+  const discussionMaxDateRef = useMemo(
+    () => new Date(nowReference.getTime() + DISCUSSION_MAX_DURATION_MS),
+    [nowReference]
+  );
+  const eventStartMinInput = useMemo(
+    () => formatDateTimeLocalInput(nowReference),
+    [nowReference]
+  );
+  const eventStartMaxInput = useMemo(
+    () => formatDateTimeLocalInput(eventMaxDateRef),
+    [eventMaxDateRef]
+  );
+  const eventEndMinDate = useMemo(() => {
+    if (!formState.startDate) {
+      return nowReference;
+    }
+    const parsed = new Date(formState.startDate);
+    if (Number.isNaN(parsed.getTime())) {
+      return nowReference;
+    }
+    return parsed;
+  }, [formState.startDate, nowReference]);
+  const eventEndMinInput = useMemo(
+    () => formatDateTimeLocalInput(eventEndMinDate),
+    [eventEndMinDate]
+  );
+  const discussionMinInput = eventStartMinInput;
+  const discussionMaxInput = useMemo(
+    () => formatDateTimeLocalInput(discussionMaxDateRef),
+    [discussionMaxDateRef]
+  );
 
   const handleTypeChange = useCallback((event, nextType) => {
     if (nextType) {
@@ -712,6 +817,10 @@ function CreatePinPage() {
           throw new Error('Proximity radius must be greater than zero.');
         }
 
+        const submissionNow = new Date();
+        const eventMaxDate = new Date(submissionNow.getTime() + EVENT_MAX_LEAD_TIME_MS);
+        const discussionMaxDate = new Date(submissionNow.getTime() + DISCUSSION_MAX_DURATION_MS);
+
         const payload = {
           type: pinType,
           title,
@@ -725,8 +834,19 @@ function CreatePinPage() {
         };
 
         if (pinType === 'event') {
-          payload.startDate = sanitizeDateField(formState.startDate, 'Start date');
-          payload.endDate = sanitizeDateField(formState.endDate, 'End date');
+          const startDate = sanitizeDateField(formState.startDate, 'Start date', {
+            max: eventMaxDate,
+            maxMessage: 'Events can only be scheduled up to 14 days in advance.'
+          });
+          const endDate = sanitizeDateField(formState.endDate, 'End date', {
+            min: startDate,
+            minMessage: 'End date must be on or after the start date.',
+            max: eventMaxDate,
+            maxMessage: 'Events can only be scheduled up to 14 days in advance.'
+          });
+
+          payload.startDate = startDate.toISOString();
+          payload.endDate = endDate.toISOString();
 
           const precise = formState.addressPrecise.trim();
           const city = formState.addressCity.trim();
@@ -748,7 +868,11 @@ function CreatePinPage() {
             };
           }
         } else {
-          payload.expiresAt = sanitizeDateField(formState.expiresAt, 'Expiration date');
+          const expiresAt = sanitizeDateField(formState.expiresAt, 'Expiration date', {
+            max: discussionMaxDate,
+            maxMessage: 'Discussions can only stay active for up to 3 days.'
+          });
+          payload.expiresAt = expiresAt.toISOString();
           payload.autoDelete = autoDelete;
 
           const approximateAddress = {
@@ -1122,7 +1246,12 @@ function CreatePinPage() {
                           onChange={handleFieldChange('startDate')}
                           required
                           fullWidth
+                          helperText="Must be within the next 14 days."
                           InputLabelProps={{ shrink: true }}
+                          inputProps={{
+                            min: eventStartMinInput,
+                            max: eventStartMaxInput
+                          }}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6}>
@@ -1133,7 +1262,12 @@ function CreatePinPage() {
                           onChange={handleFieldChange('endDate')}
                           required
                           fullWidth
+                          helperText="Must be on or after the start and within 14 days."
                           InputLabelProps={{ shrink: true }}
+                          inputProps={{
+                            min: eventEndMinInput,
+                            max: eventStartMaxInput
+                          }}
                         />
                       </Grid>
                     </Grid>
@@ -1206,7 +1340,12 @@ function CreatePinPage() {
                           onChange={handleFieldChange('expiresAt')}
                           required
                           fullWidth
+                          helperText="Must be within the next 3 days."
                           InputLabelProps={{ shrink: true }}
+                          inputProps={{
+                            min: discussionMinInput,
+                            max: discussionMaxInput
+                          }}
                         />
                       </Grid>
                       <Grid item xs={12} sm={5}>
