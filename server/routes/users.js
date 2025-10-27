@@ -6,6 +6,7 @@ const Pin = require('../models/Pin');
 const { PublicUserSchema, UserProfileSchema } = require('../schemas/user');
 const { PinListItemSchema } = require('../schemas/pin');
 const verifyToken = require('../middleware/verifyToken');
+const { grantBadge } = require('../services/badgeService');
 
 const router = express.Router();
 
@@ -17,6 +18,105 @@ const UsersQuerySchema = z.object({
 const PinQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(50).default(20)
 });
+
+const MediaAssetUpdateSchema = z.object({
+  url: z.string().trim().min(1, 'Media url is required'),
+  thumbnailUrl: z.string().trim().min(1).optional(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  mimeType: z.string().trim().optional(),
+  description: z.string().optional(),
+  uploadedAt: z.string().datetime().optional(),
+  uploadedBy: z
+    .string()
+    .trim()
+    .refine((value) => mongoose.Types.ObjectId.isValid(value), { message: 'Invalid uploadedBy id' })
+    .optional()
+});
+
+const UserPreferencesUpdateSchema = z
+  .object({
+    theme: z.enum(['system', 'light', 'dark']).optional(),
+    radiusPreferenceMeters: z.number().int().positive().max(160934, 'Radius must be under 100 miles').optional(),
+    statsPublic: z.boolean().optional(),
+    filterCussWords: z.boolean().optional(),
+    notifications: z
+      .object({
+        proximity: z.boolean().optional(),
+        updates: z.boolean().optional(),
+        marketing: z.boolean().optional()
+      })
+      .optional()
+  })
+  .refine(
+    (value) => Object.values(value).some((field) => field !== undefined),
+    'Provide at least one preference field to update.'
+  )
+  .optional();
+
+const UserSelfUpdateSchema = z
+  .object({
+    displayName: z
+      .string()
+      .trim()
+      .min(1, 'Display name cannot be empty')
+      .max(80, 'Display name must be 80 characters or fewer')
+      .optional(),
+    bio: z
+      .union([z.string().trim().max(500, 'Bio must be 500 characters or fewer'), z.literal(null)])
+      .optional(),
+    locationSharingEnabled: z.boolean().optional(),
+    avatar: z.union([MediaAssetUpdateSchema, z.literal(null)]).optional(),
+    banner: z.union([MediaAssetUpdateSchema, z.literal(null)]).optional(),
+    preferences: UserPreferencesUpdateSchema
+  })
+  .refine(
+    (value) => Object.values(value).some((field) => field !== undefined),
+    'Provide at least one field to update.'
+  );
+
+const ModifyBlockedUserSchema = z.object({
+  userId: z
+    .string()
+    .trim()
+    .min(1, 'User id is required')
+    .refine((value) => mongoose.Types.ObjectId.isValid(value), { message: 'Invalid user id' })
+});
+
+const parseDateOrNull = (value) => {
+  if (!value) {
+    return undefined;
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error('Invalid uploadedAt timestamp');
+  }
+  return parsed;
+};
+
+const normalizeMediaAssetInput = (asset) => {
+  if (!asset) {
+    return undefined;
+  }
+
+  const payload = {
+    url: asset.url.trim(),
+    thumbnailUrl: asset.thumbnailUrl ? asset.thumbnailUrl.trim() : undefined,
+    width: asset.width,
+    height: asset.height,
+    mimeType: asset.mimeType ? asset.mimeType.trim() : undefined,
+    description: asset.description,
+    uploadedAt: parseDateOrNull(asset.uploadedAt),
+    uploadedBy:
+      asset.uploadedBy && mongoose.Types.ObjectId.isValid(asset.uploadedBy)
+        ? new mongoose.Types.ObjectId(asset.uploadedBy)
+        : undefined
+  };
+
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined && value !== null && value !== '')
+  );
+};
 
 const toIdString = (value) => {
   if (!value) return undefined;
@@ -33,6 +133,20 @@ const toIsoDateString = (value) => {
   if (typeof value.toISOString === 'function') return value.toISOString();
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+};
+
+const resolveViewerUser = async (req) => {
+  if (!req?.user?.uid) {
+    return null;
+  }
+
+  try {
+    const viewer = await User.findOne({ firebaseUid: req.user.uid });
+    return viewer;
+  } catch (error) {
+    console.error('Failed to resolve viewer user for users route:', error);
+    return null;
+  }
 };
 
 const mapMediaAssetResponse = (asset) => {
@@ -65,6 +179,57 @@ const mapRelationships = (relationships) => {
     mutedUserIds: (relationships.mutedUserIds || []).map(toIdString),
     blockedUserIds: (relationships.blockedUserIds || []).map(toIdString)
   };
+};
+
+const ensureArray = (value) => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (value === undefined || value === null) {
+    return [];
+  }
+  return [];
+};
+
+const ensureUserRelationships = (userDoc) => {
+  if (!userDoc) {
+    return null;
+  }
+
+  if (!userDoc.relationships) {
+    userDoc.relationships = {
+      followerIds: [],
+      followingIds: [],
+      friendIds: [],
+      mutedUserIds: [],
+      blockedUserIds: []
+    };
+    return userDoc.relationships;
+  }
+
+  const relationships = userDoc.relationships;
+  relationships.followerIds = ensureArray(relationships.followerIds);
+  relationships.followingIds = ensureArray(relationships.followingIds);
+  relationships.friendIds = ensureArray(relationships.friendIds);
+  relationships.mutedUserIds = ensureArray(relationships.mutedUserIds);
+  relationships.blockedUserIds = ensureArray(relationships.blockedUserIds);
+
+  return relationships;
+};
+
+const blockRelationshipFieldsToClear = ['followerIds', 'followingIds', 'friendIds', 'mutedUserIds'];
+
+const toObjectIdOrNull = (value) => {
+  if (!value) {
+    return null;
+  }
+  if (value instanceof mongoose.Types.ObjectId) {
+    return value;
+  }
+  if (typeof value === 'string' && mongoose.Types.ObjectId.isValid(value)) {
+    return new mongoose.Types.ObjectId(value);
+  }
+  return null;
 };
 
 const mapUserToPublic = (userDoc) => {
@@ -125,6 +290,58 @@ const mapUserToProfile = (userDoc) => {
   }
 
   return result.data;
+};
+
+const loadBlockedUsers = async (userDoc) => {
+  const relationships = ensureUserRelationships(userDoc);
+  if (!relationships) {
+    return [];
+  }
+
+  const blockedIdStrings = relationships.blockedUserIds.map(toIdString).filter(Boolean);
+  if (blockedIdStrings.length === 0) {
+    return [];
+  }
+
+  const uniqueIds = Array.from(
+    new Set(
+      blockedIdStrings.filter((id) => mongoose.Types.ObjectId.isValid(id))
+    )
+  );
+
+  if (uniqueIds.length === 0) {
+    return [];
+  }
+
+  const objectIds = uniqueIds
+    .map((id) => toObjectIdOrNull(id))
+    .filter(Boolean);
+
+  if (!objectIds.length) {
+    return [];
+  }
+
+  const users = await User.find({ _id: { $in: objectIds } });
+  const usersById = new Map(users.map((user) => [toIdString(user._id), user]));
+
+  const blockedUsers = [];
+  for (const id of blockedIdStrings) {
+    const doc = usersById.get(id);
+    if (!doc) {
+      continue;
+    }
+
+    try {
+      blockedUsers.push(mapUserToPublic(doc));
+    } catch (error) {
+      console.warn('Failed to map blocked user while building payload', {
+        userId: id,
+        error
+      });
+    }
+  }
+
+  return blockedUsers;
 };
 
 const mapPinToListItem = (pinDoc, creator) => {
@@ -192,6 +409,294 @@ router.get('/', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Invalid user query', issues: error.errors });
     }
     res.status(500).json({ message: 'Failed to load users' });
+  }
+});
+
+router.get('/me', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    try {
+      const payload = mapUserToProfile(viewer);
+      return res.json(payload);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(500).json({
+          message: 'User profile data is malformed',
+          issues: error.errors,
+          userId: toIdString(viewer._id)
+        });
+      }
+      throw error;
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to load user profile' });
+  }
+});
+
+router.patch('/me', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const input = UserSelfUpdateSchema.parse(req.body);
+    const setDoc = {};
+    const unsetDoc = {};
+
+    if (input.displayName !== undefined) {
+      const trimmedDisplayName = input.displayName.trim();
+      if (!trimmedDisplayName) {
+        return res.status(400).json({ message: 'Display name cannot be empty' });
+      }
+      setDoc.displayName = trimmedDisplayName;
+    }
+
+    if (input.bio !== undefined) {
+      if (input.bio === null || input.bio === '') {
+        unsetDoc.bio = '';
+      } else {
+        setDoc.bio = input.bio;
+      }
+    }
+
+    if (input.locationSharingEnabled !== undefined) {
+      setDoc.locationSharingEnabled = input.locationSharingEnabled;
+    }
+
+    if (input.avatar !== undefined) {
+      if (input.avatar === null) {
+        unsetDoc.avatar = '';
+      } else {
+        try {
+          setDoc.avatar = normalizeMediaAssetInput(input.avatar);
+        } catch (error) {
+          return res.status(400).json({ message: error.message || 'Invalid avatar payload' });
+        }
+      }
+    }
+
+    if (input.banner !== undefined) {
+      if (input.banner === null) {
+        unsetDoc.banner = '';
+      } else {
+        try {
+          setDoc.banner = normalizeMediaAssetInput(input.banner);
+        } catch (error) {
+          return res.status(400).json({ message: error.message || 'Invalid banner payload' });
+        }
+      }
+    }
+
+    if (input.preferences && typeof input.preferences === 'object') {
+      if (input.preferences.theme !== undefined) {
+        setDoc['preferences.theme'] = input.preferences.theme;
+      }
+      if (input.preferences.radiusPreferenceMeters !== undefined) {
+        setDoc['preferences.radiusPreferenceMeters'] = input.preferences.radiusPreferenceMeters;
+      }
+      if (input.preferences.statsPublic !== undefined) {
+        setDoc['preferences.statsPublic'] = input.preferences.statsPublic;
+      }
+      if (input.preferences.filterCussWords !== undefined) {
+        setDoc['preferences.filterCussWords'] = input.preferences.filterCussWords;
+      }
+      if (input.preferences.notifications && typeof input.preferences.notifications === 'object') {
+        const notifications = input.preferences.notifications;
+        if (notifications.proximity !== undefined) {
+          setDoc['preferences.notifications.proximity'] = notifications.proximity;
+        }
+        if (notifications.updates !== undefined) {
+          setDoc['preferences.notifications.updates'] = notifications.updates;
+        }
+        if (notifications.marketing !== undefined) {
+          setDoc['preferences.notifications.marketing'] = notifications.marketing;
+        }
+      }
+    }
+
+    const updateOps = {};
+    if (Object.keys(setDoc).length > 0) {
+      updateOps.$set = setDoc;
+    }
+    if (Object.keys(unsetDoc).length > 0) {
+      updateOps.$unset = unsetDoc;
+    }
+
+    if (Object.keys(updateOps).length === 0) {
+      return res.status(400).json({ message: 'No updates to apply.' });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(viewer._id, updateOps, {
+      new: true,
+      runValidators: true
+    });
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    try {
+      const payload = mapUserToProfile(updatedUser);
+      res.json(payload);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(500).json({
+          message: 'User profile data is malformed after update',
+          issues: error.errors,
+          userId: toIdString(updatedUser._id)
+        });
+      }
+      throw error;
+    }
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid update payload', issues: error.errors });
+    }
+    console.error('Failed to update user profile:', error);
+    res.status(500).json({ message: 'Failed to update user profile' });
+  }
+});
+
+router.post('/me/badges/:badgeId', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { badgeId } = req.params;
+    const result = await grantBadge({
+      userId: viewer._id,
+      badgeId: badgeId.trim().toLowerCase(),
+      sourceUserId: viewer._id
+    });
+
+    res.json({
+      granted: result.granted,
+      badgeId: result.badge.id,
+      badges: result.badges
+    });
+  } catch (error) {
+    if (error.message && error.message.startsWith('Unknown badge')) {
+      return res.status(400).json({ message: error.message });
+    }
+    console.error('Failed to grant badge to current user:', error);
+    res.status(500).json({ message: 'Failed to grant badge' });
+  }
+});
+
+router.get('/me/blocked', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    ensureUserRelationships(viewer);
+    const blockedUsers = await loadBlockedUsers(viewer);
+    res.json({
+      blockedUsers,
+      relationships: mapRelationships(viewer.relationships)
+    });
+  } catch (error) {
+    console.error('Failed to load blocked users:', error);
+    res.status(500).json({ message: 'Failed to load blocked users' });
+  }
+});
+
+router.post('/me/blocked', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { userId } = ModifyBlockedUserSchema.parse(req.body ?? {});
+    const viewerId = toIdString(viewer._id);
+    if (viewerId === userId) {
+      return res.status(400).json({ message: 'You cannot block yourself' });
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({ message: 'Target user not found' });
+    }
+
+    const relationships = ensureUserRelationships(viewer);
+    const targetIdString = toIdString(targetUser._id);
+    let changed = false;
+
+    if (!relationships.blockedUserIds.some((entry) => toIdString(entry) === targetIdString)) {
+      relationships.blockedUserIds.push(targetUser._id);
+      changed = true;
+    }
+
+    for (const field of blockRelationshipFieldsToClear) {
+      const currentList = ensureArray(relationships[field]);
+      const filtered = currentList.filter((entry) => toIdString(entry) !== targetIdString);
+      if (filtered.length !== currentList.length) {
+        relationships[field] = filtered;
+        changed = true;
+      } else {
+        relationships[field] = currentList;
+      }
+    }
+
+    if (changed) {
+      viewer.markModified('relationships');
+      await viewer.save();
+    }
+
+    const blockedUsers = await loadBlockedUsers(viewer);
+    res.json({
+      blockedUsers,
+      updatedRelationships: mapRelationships(viewer.relationships)
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid block request', issues: error.errors });
+    }
+    console.error('Failed to block user:', error);
+    res.status(500).json({ message: 'Failed to block user' });
+  }
+});
+
+router.delete('/me/blocked/:userId', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { userId } = ModifyBlockedUserSchema.parse({ userId: req.params.userId });
+    const relationships = ensureUserRelationships(viewer);
+
+    const previousCount = relationships.blockedUserIds.length;
+    relationships.blockedUserIds = relationships.blockedUserIds.filter(
+      (entry) => toIdString(entry) !== userId
+    );
+
+    if (relationships.blockedUserIds.length !== previousCount) {
+      viewer.markModified('relationships');
+      await viewer.save();
+    }
+
+    const blockedUsers = await loadBlockedUsers(viewer);
+    res.json({
+      blockedUsers,
+      updatedRelationships: mapRelationships(viewer.relationships)
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid unblock request', issues: error.errors });
+    }
+    console.error('Failed to unblock user:', error);
+    res.status(500).json({ message: 'Failed to unblock user' });
   }
 });
 

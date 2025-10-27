@@ -1,0 +1,277 @@
+/* Same as LoginPage.css */
+/* Outer background */
+.login-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #111;
+  width: 100vw;
+  height: 100vh;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+/* Phone-like frame */
+.login-frame {
+  width: 100%;
+  max-width: 400px;
+  height: 90vh;
+  background: white;
+  border-radius: 40px;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+}
+
+/* Title */
+.login-title {
+  color: black;
+  font-weight: 300;
+  font-size: 2rem;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Image placeholder */
+.bulletin-image {
+  width: 85%;
+  height: 50%;
+  max-width: 260px;
+  max-height: 150px;
+  border: 3px solid black;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #aaa;
+}
+
+/* Form layout */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+/* For the textbox inputs*/
+.login-form input {
+  width: 100%;
+  max-width: 350px;
+  padding: 10px 12px;
+  border: 1.5px solid #888;
+  border-radius: 6px;
+  background-color: white;
+  color: black;
+  font-size: 1.2rem;
+  transition: 0.2s;
+}
+
+.login-form input:focus {
+  border-color: #75d2fd;
+  outline: none;
+}
+
+/* The 'Enter Email' and 'Enter Password' */
+.login-form input::placeholder {
+  color: #c0c0c0;
+}
+
+.email-input-container,
+.password-input-container {
+  width: 100%;
+  position: relative;
+  display: flex;
+}
+
+.email-input-container input,
+.password-input-container input {
+  width: 100%;
+  padding-right: 2.5rem;
+}
+
+.toggle-password-btn {
+  position: absolute;
+  right: 10px;
+  top: 55%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #555;
+  transition: color 0.2s;
+  padding: 0.1rem;
+}
+
+.toggle-password-btn:hover {
+  color: #000;
+}
+
+/* CSS for 'Remember me' and 'Forgot password' */
+.additional-options {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 0.1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.additional-options .remember-me-checkbox {
+  display: flex;
+  gap: 0.2rem;
+  color: #111;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.additional-options .forgot-password-link {
+  cursor: pointer;
+  margin-left: 0.9rem;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.additional-options .forgot-password-clickable {
+  color: #2b8eff;
+  text-decoration: none;
+}
+
+.additional-options .forgot-password-clickable:hover {
+  text-decoration: underline;
+}
+
+/* File-wide Button Styles */
+.login-btn,
+.google-btn,
+.register-btn {
+  width: 100%;
+  max-width: 300px;
+  min-height: 45px;
+  border-radius: 25px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: black;
+  cursor: pointer;
+  border: 0.1rem solid black;
+  border-radius: 25px;
+  transition: background 0.2s;
+}
+
+/* Login button */
+.login-btn {
+  background-color: #F15BB5;
+}
+
+.login-btn:hover {
+  background-color: #f3b8d7;
+}
+
+/* Google sign-in */
+.google-btn {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 0.25rem;
+  background-color: #c5ecff;
+}
+
+.google-btn:hover {
+  background-color: #357ae8;
+}
+
+.google-icon{
+  width: 20px;
+  height: 20px;
+}
+
+/* "Getting Started" & Register Button*/
+.getting-started-text {
+  margin-top: 3rem;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.register-btn {
+  background-color: #CDAEF2;
+}
+
+.register-btn:hover {
+  background-color: #9a7fff;
+}
+
+/* Error message */
+.error-msg {
+  color: #d32f2f; 
+  background-color: #ffeaea;
+  border: 1px solid #f5c2c2;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  width: 80%;
+  text-align: center;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-5px); }
+  40%, 80% { transform: translateX(5px); }
+}
+
+.shake {
+  animation: shake 0.3s;
+}
+
+
+* Error overlay */
+.error-overlay {
+  position: fixed; /* stays on top of everything */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4); /* dim background */
+  z-index: 1000; /* make sure it overlays above the rest */
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+/* The actual popup box */
+.error-box {
+  background: white;
+  border: 2px solid #f44336;
+  border-radius: 12px;
+  padding: 20px 25px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  max-width: 80%;
+  animation: popIn 0.25s ease-in-out;
+}
+
+.error-box p {
+  color: #d32f2f;
+  font-size: 1rem;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Subtle entry animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}

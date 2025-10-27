@@ -25,7 +25,7 @@
         "linkedChatRoomId": { "$oid": "68e061721329566a22d474b3" },
         "startDate": null,
         "endDate": null,
-        "expiresAt": { "$date": "2025-10-06T05:51:14.276Z" }
+        "expiresAt": { "$date": "2026-10-06T05:51:14.276Z" }
       },
       "metadata": {
         "cta": "open-pin",
@@ -45,10 +45,10 @@
         }
       ]
     },
-    "deliveredAt": { "$date": "2025-10-03T23:51:16.544Z" },
+    "deliveredAt": { "$date": "2026-10-03T23:51:16.544Z" },
     "readAt": null,
-    "createdAt": { "$date": "2025-10-03T23:51:16.544Z" },
-    "updatedAt": { "$date": "2025-10-03T23:51:16.544Z" }
+    "createdAt": { "$date": "2026-10-03T23:51:16.544Z" },
+    "updatedAt": { "$date": "2026-10-03T23:51:16.544Z" }
   },
   {
     "_id": { "$oid": "68e061721329566a22d474b9" },
@@ -74,8 +74,8 @@
         "proximityRadiusMeters": 1500,
         "linkedLocationId": null,
         "linkedChatRoomId": null,
-        "startDate": { "$date": "2025-10-12T01:00:00.000Z" },
-        "endDate": { "$date": "2025-10-12T06:00:00.000Z" },
+        "startDate": { "$date": "2026-10-12T01:00:00.000Z" },
+        "endDate": { "$date": "2026-10-12T06:00:00.000Z" },
         "expiresAt": null
       },
       "metadata": {
@@ -91,10 +91,10 @@
         }
       ]
     },
-    "deliveredAt": { "$date": "2025-10-11T00:30:00.000Z" },
+    "deliveredAt": { "$date": "2026-10-11T00:30:00.000Z" },
     "readAt": null,
-    "createdAt": { "$date": "2025-10-11T00:30:00.000Z" },
-    "updatedAt": { "$date": "2025-10-11T00:30:00.000Z" }
+    "createdAt": { "$date": "2026-10-11T00:30:00.000Z" },
+    "updatedAt": { "$date": "2026-10-11T00:30:00.000Z" }
   },
   {
     "_id": { "$oid": "68e061721329566a22d47550" },
@@ -121,8 +121,8 @@
         "proximityRadiusMeters": 800,
         "linkedLocationId": { "$oid": "68e061721329566a22d47520" },
         "linkedChatRoomId": { "$oid": "68e061721329566a22d47570" },
-        "startDate": { "$date": "2025-10-17T18:00:00.000Z" },
-        "endDate": { "$date": "2025-10-17T23:00:00.000Z" },
+        "startDate": { "$date": "2026-10-17T18:00:00.000Z" },
+        "endDate": { "$date": "2026-10-17T23:00:00.000Z" },
         "expiresAt": null
       },
       "metadata": {
@@ -143,10 +143,10 @@
         }
       ]
     },
-    "deliveredAt": { "$date": "2025-10-09T19:05:00.000Z" },
+    "deliveredAt": { "$date": "2026-10-09T19:05:00.000Z" },
     "readAt": null,
-    "createdAt": { "$date": "2025-10-09T19:05:00.000Z" },
-    "updatedAt": { "$date": "2025-10-09T19:05:00.000Z" }
+    "createdAt": { "$date": "2026-10-09T19:05:00.000Z" },
+    "updatedAt": { "$date": "2026-10-09T19:05:00.000Z" }
   },
   {
     "_id": { "$oid": "68e061721329566a22d47551" },
@@ -173,8 +173,8 @@
         "proximityRadiusMeters": 1000,
         "linkedLocationId": { "$oid": "68e061721329566a22d47521" },
         "linkedChatRoomId": null,
-        "startDate": { "$date": "2025-10-19T16:30:00.000Z" },
-        "endDate": { "$date": "2025-10-19T18:30:00.000Z" },
+        "startDate": { "$date": "2026-10-19T16:30:00.000Z" },
+        "endDate": { "$date": "2026-10-19T18:30:00.000Z" },
         "expiresAt": null
       },
       "metadata": {
@@ -195,9 +195,9 @@
         }
       ]
     },
-    "deliveredAt": { "$date": "2025-10-08T02:15:00.000Z" },
+    "deliveredAt": { "$date": "2026-10-08T02:15:00.000Z" },
     "readAt": null,
-    "createdAt": { "$date": "2025-10-08T02:15:00.000Z" },
-    "updatedAt": { "$date": "2025-10-08T02:15:00.000Z" }
+    "createdAt": { "$date": "2026-10-08T02:15:00.000Z" },
+    "updatedAt": { "$date": "2026-10-08T02:15:00.000Z" }
   }
 ]

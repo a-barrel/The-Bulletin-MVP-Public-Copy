@@ -15,10 +15,12 @@ const ProximityChatRoomSchema = z.object({
   description: z.string().max(500).optional(),
   coordinates: GeoPointSchema,
   radiusMeters: z.number().int().positive(),
+  isGlobal: z.boolean().default(false),
   participantCount: z.number().int().nonnegative().default(0),
   participantIds: z.array(ObjectIdSchema).default([]),
   moderatorIds: z.array(ObjectIdSchema).default([]),
   pinId: ObjectIdSchema.optional(),
+  presetKey: z.string().trim().optional(),
   createdAt: IsoDateStringSchema,
   updatedAt: IsoDateStringSchema,
   audit: AuditMetadataSchema.optional()
