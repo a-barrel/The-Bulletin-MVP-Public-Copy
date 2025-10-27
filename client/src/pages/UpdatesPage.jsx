@@ -22,6 +22,7 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import UpdateIcon from '@mui/icons-material/Update';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { auth } from '../firebase';
+import "./UpdatesPage.css";
 import {
   fetchCurrentUserProfile,
   fetchUpdates,
@@ -96,6 +97,8 @@ const formatAbsoluteDate = (value) => {
 
 function UpdatesPage() {
   const navigate = useNavigate();
+  const [debugMode, setDebugMode] = useState(false);
+  const [selectedTab, setSelectedTab] = useState("All");
   const [firebaseUser, firebaseLoading] = useAuthState(auth);
   const [profile, setProfile] = useState(null);
   const [profileError, setProfileError] = useState(null);
@@ -239,11 +242,20 @@ function UpdatesPage() {
   }, [unreadCount, updates.length]);
 
   const filteredUpdates = useMemo(() => {
-    if (!showUnreadOnly) {
-      return updates;
-    }
-    return updates.filter((update) => !update.readAt);
-  }, [showUnreadOnly, updates]);
+  let result = updates;
+
+  if (showUnreadOnly) {
+    result = result.filter((update) => !update.readAt);
+  }
+
+  if (selectedTab === "Discussions") {
+    result = result.filter((update) => update.payload?.category === "Discussion");
+  } else if (selectedTab === "Events") {
+    result = result.filter((update) => update.payload?.category === "Event");
+  }
+
+  return result;
+}, [updates, showUnreadOnly, selectedTab]);
 
   const isLoading = isProfileLoading || isLoadingUpdates;
 
@@ -258,7 +270,16 @@ function UpdatesPage() {
         px: { xs: 2, md: 4 }
       }}
     >
+
+    <Button
+        className="updates-debug-toggle"
+        onClick={() => setDebugMode((prev) => !prev)}
+      >
+        {debugMode ? 'Hide Updates Debug' : 'Show Updates Debug'}
+      </Button>
+
       <Stack spacing={3}>
+        {debugMode && (
         <Button
           variant="text"
           color="inherit"
@@ -268,6 +289,9 @@ function UpdatesPage() {
         >
           Back
         </Button>
+        )}
+
+        {debugMode && (
         <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
           <Stack direction="row" spacing={1.5} alignItems="center">
             <UpdateIcon color="primary" />
@@ -303,6 +327,7 @@ function UpdatesPage() {
             </Tooltip>
           </Stack>
         </Stack>
+        )}
 
         {profileError ? (
           <Alert severity="warning" variant="outlined">
@@ -316,6 +341,7 @@ function UpdatesPage() {
           </Alert>
         ) : null}
 
+        {debugMode && (
         <FormControlLabel
           control={
             <Switch
@@ -326,6 +352,7 @@ function UpdatesPage() {
           }
           label="Show unread only"
         />
+        )}
 
         {isLoading ? (
           <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ py: 6 }}>
@@ -335,6 +362,7 @@ function UpdatesPage() {
             </Typography>
           </Stack>
         ) : filteredUpdates.length === 0 ? (
+          debugMode && (
           <Paper
             elevation={0}
             sx={{
@@ -353,6 +381,7 @@ function UpdatesPage() {
               Stay tuned — new activity on your pins and chats will show up here.
             </Typography>
           </Paper>
+          )  
         ) : (
           <Stack spacing={2}>
             {filteredUpdates.map((update) => {
@@ -422,6 +451,7 @@ function UpdatesPage() {
 
                     <Divider />
 
+                    {debugMode && (  
                     <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
                       <Stack direction="row" spacing={1}>
                         {pinId ? (
@@ -455,6 +485,7 @@ function UpdatesPage() {
                         </Button>
                       )}
                     </Stack>
+                    )}
                   </Stack>
                 </Paper>
               );
@@ -462,9 +493,58 @@ function UpdatesPage() {
           </Stack>
         )}
       </Stack>
-    </Box>
-  );
-}
+      
+      {!debugMode && (
+        <Box className="updates-page">
+          <Box className="updates-header-bar">
+            <IconButton onClick={() => navigate(-1)} className="back-button">
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography variant="h6" className="updates-header-title">
+              Updates
+            </Typography>
+            <Button className="clear-button" onClick={handleMarkAllRead}>
+              Clear
+            </Button>
+          </Box>
+
+            <Box className="updates-tabs">
+              {["All", "Discussions", "Events"].map((tab) => (
+                <Button
+                  key={tab}
+                  className={`tab ${selectedTab === tab ? "active" : ""}`}
+                  onClick={() => setSelectedTab(tab)}
+                >
+                  {tab}
+                </Button>
+              ))}
+            </Box>
+
+            <Box className="updates-list">
+              {filteredUpdates.map((update) => (
+                <Paper key={update._id} className="update-card">
+                  <Typography className="update-title">
+                    <span className="update-highlight">{update.payload?.category || 'Event'}:</span>{' '}
+                    {update.payload?.title}
+                  </Typography>
+                  <Button variant="contained" className="view-button">
+                    View
+                  </Button>
+                  {update.payload?.avatars?.length > 0 && (
+                    <Box className="avatar-row">
+                      {update.payload.avatars.map((src, idx) => (
+                        <img key={idx} src={src} alt="participant" className="avatar" />
+                      ))}
+                    </Box>
+                  )}
+                  <Typography className="update-time">{formatRelativeTime(update.createdAt)}</Typography>
+                </Paper>
+              ))}
+            </Box>
+          </Box>
+      )}
+</Box>
+)}
 
 export default UpdatesPage;
 

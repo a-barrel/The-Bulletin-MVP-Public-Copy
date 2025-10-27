@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, NavLink } from "react-router-dom";
 import Navbar from '../components/Navbar';
-import "./ChatPage.css";
 import GlobalNavMenu from '../components/GlobalNavMenu';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
@@ -35,6 +34,7 @@ import SendIcon from '@mui/icons-material/Send';
 import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
 import updatesIcon from "../assets/UpdateIcon.svg";
+import AvatarIcon from "../assets/AvatarIcon.svg";
 import { auth } from '../firebase';
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
@@ -47,6 +47,7 @@ import {
   upsertChatPresence
 } from '../api/mongoDataApi';
 import { useLocationContext } from '../contexts/LocationContext';
+import "./ChatPage.css";
 
 export const pageConfig = {
   id: 'chat',
@@ -646,6 +647,12 @@ function ChatPage() {
 
   return (
     <>
+      <Button
+            className="chat-debug-toggle"
+            onClick={() => setDebugMode((prev) => !prev)}
+          >
+            {debugMode ? 'Hide Chat Debug' : 'Show Chat Debug'}
+          </Button>
       <Box
       sx={{
         width: '100%',
@@ -778,21 +785,15 @@ function ChatPage() {
       </Dialog>
       </Box>
 
-    <Button
-      variant="text"
-      size="small"
-      onClick={() => setDebugMode((prev) => !prev)}
-      sx={{ position: 'absolute', top: 8, right: 8 }}
-    >
-      {debugMode ? 'Hide Debug' : 'Show Debug'}
-    </Button>
-
+    {!debugMode && (
     <div className="chat-page">
       <div className="chat-frame">
-
         <header className="chat-header-bar">
           <GlobalNavMenu />
-          <h1 className="chat-header-title">Chat</h1>
+
+          <h1 className="chat-header-title">
+            Chat
+          </h1>
 
           <button
             className="header-icon-btn"
@@ -812,10 +813,16 @@ function ChatPage() {
                 key={msg._id}
                 className={`chat-message ${isSelf ? 'self' : ''}`}
               >
-                <Box className="chat-avatar" />
+                <Box className="chat-avatar">
+                  <NavLink to="/profile/" className="nav-item">
+                    <img src={AvatarIcon} alt="Chat" className="profile-icon" />
+                  </NavLink>  
+                </Box>
                 <Box className="chat-text-area">
                   <div className="chat-text-area-header">
-                    <Typography className="chat-author">{msg.author?.displayName || 'User'}</Typography>
+                    <Typography 
+                      className="chat-author">{msg.author?.displayName || 'User'}
+                    </Typography>
                     <Typography className="chat-time">
                       {new Date(msg.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                     </Typography>
@@ -837,8 +844,13 @@ function ChatPage() {
             variant="outlined"
             className="chat-input"
           />
-          <IconButton color="primary" onClick={handleSendMessage}>
-            <SendIcon />
+          <IconButton 
+            className="send-message-btn" 
+            color="white"
+            onClick={handleSendMessage}
+          >
+            <SendIcon/>
+            Send
           </IconButton>
         </Box>
 
@@ -846,6 +858,7 @@ function ChatPage() {
 
       </div>
     </div>
+    )}
     </>
   );
 }

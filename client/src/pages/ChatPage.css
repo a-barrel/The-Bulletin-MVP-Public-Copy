@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap');
 
 * {
   font-family: "Urbanist", sans-serif;
@@ -17,7 +17,6 @@
 .chat-frame {
   --header-h: 72px;
   width: 100vw;
-  max-width: none;
   height: 100vh;
   background: #fff;
   border-radius: 0;
@@ -68,11 +67,6 @@
 }
 .header-icon-btn:hover { transform: scale(1.1); }
 
-@media (max-width: 480px) {
-  .header-bar { border-radius: 0; width: calc(100% + 3rem);}
-  .header-title { font-size: 25px; }
-}
-
 .chat-messages-field {
   background-color: #F5EFFD;
   flex: 1;
@@ -80,6 +74,7 @@
   display: flex;
   flex-direction: column;
   width: 100vw;
+  min-height: 100vh;
 }
 
 .chat-message {
@@ -102,7 +97,12 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background-color: #CDAEF2;
+}
+
+.chat-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;   /* Ensures the image fills the box without distortion */
 }
 
 .chat-text-area {
@@ -120,22 +120,23 @@
 }
 
 .chat-message.self .chat-text-area {
+  font-family:'Urbanist', sans-serif;
   background-color: #d1b2f5;
   text-align: right;
 }
 
 .chat-author {
-  font-family: 'Urbanist';
-  font-weight: 600;
+  font-family:'Urbanist', sans-serif !important;
+  font-weight: 600 !important;
   font-size: 0.85rem;
   color: #F15BB5;
 }
 
 .chat-text {
-  font-family: 'Urbanist';
+  font-family:'Urbanist', sans-serif !important;
   margin-top: 2px;
   font-size: 0.9rem;
-  color: #222;
+  color: black;
 }
 
 .chat-image {
@@ -146,14 +147,17 @@
 }
 
 .chat-time {
-  font-family: 'Urbanist';
+  font-family:'Urbanist', sans-serif !important;
   font-size: 0.7rem;
   color: #b6b6b6;
   margin-top: 3px;
 }
 
 .chat-input-container {
-  position: sticky;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 5.6rem;
   display: flex;
   align-items: center;
   padding: 8px 12px;
@@ -163,55 +167,20 @@
 }
 
 .chat-input input {
-  font-family: 'Urbanist';
+  font-family:'Urbanist', sans-serif;
   font-weight: 600;
-  color: #CDAEF2;
+  color: #a861ff;
 }
 
 .chat-input .MuiOutlinedInput-root {
   border-radius: 120px;
-  background: #9B5DE5;
+  background: white;
 }
 
-/* ===== Responsive for topbar spacing ===== */
-@media (max-width: 480px) {
-  .topbar {
-    width: calc(100% + 2rem);
-    margin-left: -1rem;
-    margin-right: -1rem;
-    padding: 0.5rem 1rem;
-    gap: 0.5rem;
-  }
-
-  .top-left { gap: 0.35rem; }
-
-  .sort-row .sort-label {
-    display: inline;
-    font-size: 1rem;
-  }
-  .sort-row {
-    margin-left: 0.25rem;
-    gap: 0.25rem;
-  }
-
-  .icon-btn img { width: 28px; height: 28px; }
-  .toggle-container { width: 44px; height: 24px; }
-  .toggle-circle { width: 20px; height: 20px; top: 2px; left: 2px; }
-  .toggle-container.active .toggle-circle { left: 22px; }
-
-  .add-btn {
-    width: 52px; height: 52px;
-    margin-left: auto;
-    margin-right: 0.25rem;
-    margin-top: -7px;
-  }
-  .add-btn img { width: 64px; height: 54px; }
-}
-
-/* Tablet tweaks */
-@media (max-width: 768px) {
-  .list-frame {
-    width: 100vw;
-    height: 100vh;
-  }
+.send-message-btn {
+  display: flex;
+  padding: 1rem;
+  gap: 4px;
+  color: white;
+  font-size: 1.3rem;
 }

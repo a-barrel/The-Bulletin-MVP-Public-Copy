@@ -57,7 +57,7 @@ function ForgotPasswordPage() {
         <button
           className="page-back-btn"
           aria-label="Go back"
-          onClick={() => navigate("./login")}
+          onClick={() => navigate(-1)}
         >
         &#8592;
         </button>
