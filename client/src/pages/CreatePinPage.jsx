@@ -1,3 +1,4 @@
+// Added for feature merge: badge toasts + offline/network helpers.
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -26,6 +27,7 @@ export const pageConfig = {
 };
 
 const METERS_PER_MILE = 1609.34;
+// New validation constraints carried over from main.
 const MAX_PIN_DISTANCE_MILES = 50;
 const MAX_PIN_DISTANCE_METERS = MAX_PIN_DISTANCE_MILES * METERS_PER_MILE;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -308,12 +310,14 @@ function CreatePinPage() {
   const [uploadStatus, setUploadStatus] = useState(null);
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [locationStatus, setLocationStatus] = useState(null);
+  // Draft + autosave state (from main branch).
   const [draftStatus, setDraftStatus] = useState(null);
   const autosaveTimeoutRef = useRef(null);
   const draftInitializedRef = useRef(false);
   const skipNextAutosaveRef = useRef(false);
   const lastReverseGeocodeRef = useRef(null);
 
+  // Persist draft locally so unfinished posts survive refreshes.
   const writeDraft = useCallback(() => {
     if (typeof window === 'undefined') {
       return false;
@@ -510,6 +514,7 @@ function CreatePinPage() {
     return null;
   }, [formState.latitude, formState.longitude]);
 
+  // Viewer location is now required to keep pins close to the user.
   const viewerCoordinates = useMemo(() => {
     const latitude = Number.parseFloat(viewerLocation?.latitude);
     const longitude = Number.parseFloat(viewerLocation?.longitude);
@@ -658,6 +663,7 @@ function CreatePinPage() {
     [pinType]
   );
 
+  // Map selection enforces 50-mile radius pulled from main.
   const handleMapLocationSelect = useCallback(
     ({ lat, lng }) => {
       if (!viewerCoordinates) {
@@ -750,6 +756,7 @@ function CreatePinPage() {
     }
   }, [photoAssets, coverPhotoId]);
 
+  // Image uploader now respects offline state + slots limit.
   const handleImageSelection = useCallback(
     async (event) => {
       const files = Array.from(event.target.files ?? []);
@@ -840,6 +847,7 @@ function CreatePinPage() {
     setUploadStatus({ type: 'success', message: 'Cover photo updated.' });
   }, []);
 
+  // Submit pipeline now includes stricter validation, distance check, and badge handling.
   const handleSubmit = useCallback(
     async (event) => {
       event.preventDefault();
