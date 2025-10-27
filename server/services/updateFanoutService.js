@@ -79,7 +79,8 @@ const createRelatedEntity = (id, type, label, summary) => {
   };
 };
 
-const filterRecipientsByPreference = async (recipientIds) => {
+const filterRecipientsByPreference = async (recipientIds, options = {}) => {
+  const { requireUpdates = true, requireChatTransitions = false } = options;
   const unique = Array.from(
     new Set(recipientIds.map((id) => toIdString(id)).filter(Boolean))
   );
@@ -95,9 +96,16 @@ const filterRecipientsByPreference = async (recipientIds) => {
 
   const allowed = new Set(
     users
-      .filter(
-        (user) => user?.preferences?.notifications?.updates !== false
-      )
+      .filter((user) => {
+        const preferences = user?.preferences?.notifications || {};
+        if (requireUpdates && preferences.updates === false) {
+          return false;
+        }
+        if (requireChatTransitions && preferences.chatTransitions === false) {
+          return false;
+        }
+        return true;
+      })
       .map((user) => user._id.toString())
   );
 
@@ -430,12 +438,122 @@ const broadcastChatMessage = async ({ room, message, author }) => {
   }
 };
 
+const broadcastChatRoomTransition = async ({
+  userId,
+  fromRoom,
+  toRoom,
+  distanceMeters,
+  coordinates
+}) => {
+  try {
+    const recipientId = toIdString(userId);
+    if (!recipientId) {
+      return;
+    }
+
+    const fromRoomId = toIdString(fromRoom?._id);
+    const toRoomId = toIdString(toRoom?._id);
+
+    if (!fromRoomId && !toRoomId) {
+      return;
+    }
+
+    const recipients = await filterRecipientsByPreference([recipientId], {
+      requireChatTransitions: true
+    });
+    if (!recipients.length) {
+      return;
+    }
+
+    const fromLabel = fromRoom?.name || 'Previous chat room';
+    const toLabel = toRoom?.name || 'Chat room';
+
+    let title;
+    if (fromRoomId && toRoomId && fromRoomId !== toRoomId) {
+      title = `You moved from ${fromLabel} to ${toLabel}`;
+    } else if (toRoomId && (!fromRoomId || fromRoomId === toRoomId)) {
+      title = `You entered ${toLabel}`;
+    } else if (fromRoomId && !toRoomId) {
+      title = `You left ${fromLabel}`;
+    } else {
+      return;
+    }
+
+    const metadata = {
+      fromRoomId,
+      toRoomId,
+      distanceMeters: Number.isFinite(distanceMeters) ? distanceMeters : undefined
+    };
+
+    if (coordinates && Number.isFinite(coordinates.latitude) && Number.isFinite(coordinates.longitude)) {
+      metadata.latitude = coordinates.latitude;
+      metadata.longitude = coordinates.longitude;
+    }
+
+    const relatedEntities = [
+      fromRoomId ? createRelatedEntity(fromRoomId, 'chat-room', fromLabel) : null,
+      toRoomId ? createRelatedEntity(toRoomId, 'chat-room', toLabel) : null
+    ].filter(Boolean);
+
+    const updates = recipients.map((id) => ({
+      userId: toObjectId(id),
+      sourceUserId: toObjectId(userId),
+      payload: {
+        type: 'chat-room-transition',
+        title,
+        body: undefined,
+        metadata,
+        relatedEntities
+      }
+    }));
+
+    await insertUpdates(updates, 'chat-room-transition');
+  } catch (error) {
+    console.error('Failed to fan out chat room transition update', error);
+  }
+};
+
+const broadcastBadgeEarned = async ({ userId, badge, sourceUserId }) => {
+  try {
+    const recipientId = toIdString(userId);
+    if (!recipientId) {
+      return;
+    }
+
+    const filteredRecipients = await filterRecipientsByPreference([recipientId]);
+    if (!filteredRecipients.length) {
+      return;
+    }
+
+    const updates = filteredRecipients.map((id) => ({
+      userId: toObjectId(id),
+      sourceUserId: toObjectId(sourceUserId ?? userId),
+      payload: {
+        type: 'badge-earned',
+        title: `You earned the "${badge.label}" badge`,
+        body: badge.description,
+        metadata: {
+          badgeId: badge.id,
+          badgeImage: badge.image
+        },
+        relatedEntities: [
+          createRelatedEntity(userId, 'user', 'You')
+        ].filter(Boolean)
+      }
+    }));
+
+    await insertUpdates(updates, 'badge-earned');
+  } catch (error) {
+    console.error('Failed to fan out badge earned update', error);
+  }
+};
+
 module.exports = {
   broadcastPinCreated,
   broadcastPinReply,
   broadcastAttendanceChange,
   broadcastBookmarkCreated,
-  broadcastChatMessage
+  broadcastChatMessage,
+  broadcastChatRoomTransition,
+  broadcastBadgeEarned
 };
-
-

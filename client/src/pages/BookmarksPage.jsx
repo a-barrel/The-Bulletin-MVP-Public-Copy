@@ -19,12 +19,16 @@ import {
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import LaunchIcon from '@mui/icons-material/Launch';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { auth } from '../firebase';
 import {
+  exportBookmarks,
   fetchBookmarks,
   fetchBookmarkCollections,
   removeBookmark
 } from '../api/mongoDataApi';
+import { routes } from '../routes';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 
 export const pageConfig = {
   id: 'bookmarks',
@@ -68,6 +72,7 @@ function groupBookmarks(bookmarks, collectionsById) {
 
 function BookmarksPage() {
   const navigate = useNavigate();
+  const { isOffline } = useNetworkStatusContext();
   const [authUser, authLoading] = useAuthState(auth);
 
   const [bookmarks, setBookmarks] = useState([]);
@@ -76,6 +81,8 @@ function BookmarksPage() {
   const [error, setError] = useState(null);
   const [removalStatus, setRemovalStatus] = useState(null);
   const [removingPinId, setRemovingPinId] = useState(null);
+  const [exportStatus, setExportStatus] = useState(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const collectionsById = useMemo(() => {
     const map = new Map();
@@ -100,6 +107,12 @@ function BookmarksPage() {
       return;
     }
 
+    if (isOffline) {
+      setIsLoading(false);
+      setError('You are offline. Connect to refresh your bookmarks.');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -117,7 +130,7 @@ function BookmarksPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [authUser]);
+  }, [authUser, isOffline]);
 
   useEffect(() => {
     if (authLoading) {
@@ -131,12 +144,12 @@ function BookmarksPage() {
       return;
     }
     loadData();
-  }, [authLoading, authUser, loadData]);
+  }, [authLoading, authUser, isOffline, loadData]);
 
   const handleViewPin = useCallback(
     (pinId) => {
       if (pinId) {
-        navigate(`/pin/${pinId}`);
+        navigate(routes.pin.byId(pinId));
       }
     },
     [navigate]
@@ -147,6 +160,11 @@ function BookmarksPage() {
       const pinId = bookmark?.pinId || bookmark?.pin?._id;
       if (!pinId) {
         setRemovalStatus({ type: 'error', message: 'Bookmark does not include a pin id.' });
+        return;
+      }
+
+      if (isOffline) {
+        setRemovalStatus({ type: 'warning', message: 'Reconnect to remove bookmarks.' });
         return;
       }
 
@@ -170,8 +188,49 @@ function BookmarksPage() {
         setRemovingPinId(null);
       }
     },
-    []
+    [isOffline]
   );
+
+  const handleExport = useCallback(async () => {
+    if (!authUser) {
+      setExportStatus({ type: 'error', message: 'Sign in to export your bookmarks.' });
+      return;
+    }
+
+    if (isOffline) {
+      setExportStatus({ type: 'warning', message: 'Reconnect to export your bookmarks.' });
+      return;
+    }
+
+    setExportStatus(null);
+    setIsExporting(true);
+    try {
+      const { blob, filename } = await exportBookmarks();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = downloadUrl;
+      anchor.download = filename || 'bookmarks.csv';
+      document.body.appendChild(anchor);
+      anchor.click();
+      window.setTimeout(() => {
+        document.body.removeChild(anchor);
+        window.URL.revokeObjectURL(downloadUrl);
+      }, 0);
+
+      setExportStatus({
+        type: 'success',
+        message:
+          totalCount > 0
+            ? `Exported ${totalCount} bookmark${totalCount === 1 ? '' : 's'} to ${filename || 'bookmarks.csv'}.`
+            : `Export ready. ${filename || 'bookmarks.csv'} downloaded.`
+      });
+    } catch (err) {
+      console.error('Failed to export bookmarks:', err);
+      setExportStatus({ type: 'error', message: err?.message || 'Failed to export bookmarks.' });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [authUser, isOffline, totalCount]);
 
   return (
     <Box
@@ -184,6 +243,16 @@ function BookmarksPage() {
       }}
     >
       <Stack spacing={3}>
+        <Button
+          variant="text"
+          color="inherit"
+          startIcon={<ArrowBackIcon fontSize="small" />}
+          onClick={() => navigate(-1)}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          Back
+        </Button>
+
         <Stack direction="row" spacing={1.5} alignItems="center">
           <BookmarkIcon color="primary" />
           <Typography variant="h4" component="h1">
@@ -201,21 +270,51 @@ function BookmarksPage() {
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1.5}
           alignItems={{ xs: 'flex-start', sm: 'center' }}
+          justifyContent="space-between"
         >
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
             Quickly revisit saved pins. Bookmarks are grouped by collection and can be removed at any time.
           </Typography>
-          <Button
-            type="button"
-            variant="outlined"
-            size="small"
-            onClick={loadData}
-            disabled={isLoading || authLoading || !authUser}
+          <Stack
+            direction="row"
+            spacing={1}
             sx={{ alignSelf: { xs: 'flex-start', sm: 'flex-end' } }}
           >
-            {isLoading ? 'Loading...' : 'Refresh'}
-          </Button>
+            <Button
+              type="button"
+              variant="outlined"
+              size="small"
+              onClick={loadData}
+              disabled={isOffline || isLoading || authLoading || !authUser}
+              title={isOffline ? 'Reconnect to refresh bookmarks' : undefined}
+            >
+              {isLoading ? 'Loading...' : 'Refresh'}
+            </Button>
+            <Button
+              type="button"
+              variant="contained"
+              size="small"
+              onClick={handleExport}
+              disabled={isOffline || isExporting || authLoading || !authUser}
+              title={isOffline ? 'Reconnect to export bookmarks' : undefined}
+            >
+              {isExporting ? 'Exporting...' : 'Export CSV'}
+            </Button>
+          </Stack>
         </Stack>
+
+        {isOffline ? (
+          <Alert severity="warning">
+            You are offline. You can browse existing bookmarks, but refresh, removal, and export actions
+            require a connection.
+          </Alert>
+        ) : null}
+
+        {exportStatus ? (
+          <Alert severity={exportStatus.type} onClose={() => setExportStatus(null)}>
+            {exportStatus.message}
+          </Alert>
+        ) : null}
 
         {removalStatus ? (
           <Alert severity={removalStatus.type} onClose={() => setRemovalStatus(null)}>
@@ -320,11 +419,12 @@ function BookmarksPage() {
                           variant="text"
                           color="error"
                           startIcon={<DeleteOutlineIcon fontSize="small" />}
-                          disabled={isRemoving}
+                          disabled={isOffline || isRemoving}
                           onClick={(event) => {
                             event.stopPropagation();
                             handleRemoveBookmark(bookmark);
                           }}
+                          title={isOffline ? 'Reconnect to remove bookmarks' : undefined}
                         >
                           {isRemoving ? 'Removing...' : 'Remove'}
                         </Button>
@@ -343,4 +443,3 @@ function BookmarksPage() {
 }
 
 export default BookmarksPage;
-

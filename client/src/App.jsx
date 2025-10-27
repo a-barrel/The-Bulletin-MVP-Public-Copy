@@ -26,6 +26,18 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { NavOverlayProvider } from './contexts/NavOverlayContext';
 import RegistrationPage from './pages/Registration';
 import { UpdatesProvider } from './contexts/UpdatesContext';
+import { BadgeSoundProvider } from './contexts/BadgeSoundContext';
+import { preloadBadgeSound, setBadgeSoundEnabled } from './utils/badgeSound';
+import { LocationProvider } from './contexts/LocationContext';
+import {
+  BadgeCelebrationToast,
+  useBadgeCelebrationToast
+} from './components/BadgeCelebrationToast';
+import { routes } from './routes';
+import NotFoundPage from './pages/NotFoundPage';
+import { fetchCurrentUserProfile, fetchUpdates } from './api/mongoDataApi';
+import { useNetworkStatusContext } from './contexts/NetworkStatusContext.jsx';
+import OfflineBanner from './components/OfflineBanner.jsx';
 
 const theme = createTheme({
   palette: {
@@ -125,13 +137,51 @@ const wrapWithProtection = (page, element) =>
   page.isProtected ? <ProtectedRoute>{element}</ProtectedRoute> : element;
 
 const MAX_HISTORY_ENTRIES = 20;
+const BADGE_SOUND_STORAGE_KEY = 'pinpoint:badgeSoundEnabled';
+
+const readStoredBadgeSoundPreference = () => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  try {
+    return window.localStorage.getItem(BADGE_SOUND_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+};
 
 function App() {
   const pages = useMemo(loadPages, []);
   const location = useLocation();
   const navigate = useNavigate();
+  const { isOffline } = useNetworkStatusContext();
   const [navOverlayOpen, setNavOverlayOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [badgeSoundEnabled, setBadgeSoundEnabledState] = useState(
+    () => readStoredBadgeSoundPreference()
+  );
+  const {
+    toastState: badgeToast,
+    announceBadgeEarned,
+    handleClose: handleBadgeToastClose
+  } = useBadgeCelebrationToast();
+
+  useEffect(() => {
+    setBadgeSoundEnabled(badgeSoundEnabled);
+    if (badgeSoundEnabled) {
+      preloadBadgeSound();
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(
+          BADGE_SOUND_STORAGE_KEY,
+          badgeSoundEnabled ? 'true' : 'false'
+        );
+      } catch {
+        // ignore storage errors (e.g., private browsing)
+      }
+    }
+  }, [badgeSoundEnabled]);
 
   const navPages = useMemo(
     () => pages.filter((page) => page.showInNav),
@@ -159,6 +209,7 @@ function App() {
     navPathSet.has(location.pathname) ? [location.pathname] : []
   );
   const backTargetRef = useRef(null);
+  const unreadRefreshPendingRef = useRef(false);
 
   const defaultNavPage = useMemo(() => {
     return (
@@ -281,12 +332,91 @@ function App() {
     [handleBack, previousNavPage, previousNavPath]
   );
 
+  const refreshUnreadCount = useCallback(
+    async ({ silent } = {}) => {
+      if (unreadRefreshPendingRef.current) {
+        return;
+      }
+
+      unreadRefreshPendingRef.current = true;
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (!profile?._id) {
+          setUnreadCount(0);
+          return;
+        }
+
+        const updates = await fetchUpdates({ userId: profile._id, limit: 100 });
+        const unread = updates.filter((update) => !update?.readAt).length;
+        setUnreadCount(unread);
+      } catch (error) {
+        if (!silent) {
+          console.warn('Failed to refresh unread update count', error);
+        }
+        setUnreadCount(0);
+      } finally {
+        unreadRefreshPendingRef.current = false;
+      }
+    },
+    [setUnreadCount]
+  );
+
+  const badgeSoundContextValue = useMemo(
+    () => ({
+      enabled: badgeSoundEnabled,
+      setEnabled: setBadgeSoundEnabledState,
+      announceBadgeEarned
+    }),
+    [announceBadgeEarned, badgeSoundEnabled]
+  );
+
+  useEffect(() => {
+    if (AUTH_ROUTES.has(location.pathname)) {
+      setUnreadCount(0);
+      return;
+    }
+    refreshUnreadCount({ silent: true });
+  }, [location.pathname, refreshUnreadCount, setUnreadCount]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const shouldRefresh = () => !AUTH_ROUTES.has(location.pathname);
+
+    const handleFocus = () => {
+      if (shouldRefresh()) {
+        refreshUnreadCount({ silent: true });
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && !document.hidden && shouldRefresh()) {
+        refreshUnreadCount({ silent: true });
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    };
+  }, [location.pathname, refreshUnreadCount]);
+
   const updatesContextValue = useMemo(
     () => ({
       unreadCount,
-      setUnreadCount
+      setUnreadCount,
+      refreshUnreadCount
     }),
-    [unreadCount]
+    [refreshUnreadCount, setUnreadCount, unreadCount]
   );
 
   const handleNavigate = useCallback(
@@ -355,131 +485,163 @@ function App() {
   }, [location.pathname, navPages.length, navigate]);
 
   return (
-    <UpdatesProvider value={updatesContextValue}>
-      <NavOverlayProvider value={navOverlayContextValue}>
-        <ThemeProvider theme={theme}>
-        <CssBaseline />
+    <LocationProvider>
+      <BadgeSoundProvider value={badgeSoundContextValue}>
+        <UpdatesProvider value={updatesContextValue}>
+          <NavOverlayProvider value={navOverlayContextValue}>
+            <ThemeProvider theme={theme}>
+            <CssBaseline />
 
-          <Modal open={navOverlayOpen} onClose={closeOverlay} closeAfterTransition keepMounted>
-            <Fade in={navOverlayOpen}>
-              <Box
-                sx={{
-                  position: 'fixed',
-                  inset: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  p: 2,
-                  pointerEvents: 'none'
-                }}
-              >
-                <Paper
-                  elevation={16}
-                  sx={(muiTheme) => ({
-                    width: 'min(420px, 90vw)',
-                    maxHeight: '80vh',
-                    overflow: 'hidden',
-                    pointerEvents: 'auto',
-                    outline: 'none',
+            <Modal open={navOverlayOpen} onClose={closeOverlay} closeAfterTransition keepMounted>
+              <Fade in={navOverlayOpen}>
+                <Box
+                  sx={{
+                    position: 'fixed',
+                    inset: 0,
                     display: 'flex',
-                    flexDirection: 'column',
-                    gap: 2,
-                    p: 3,
-                    borderRadius: 3,
-                    backgroundColor: muiTheme.palette.background.paper
-                  })}
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    p: 2,
+                    pointerEvents: 'none'
+                  }}
                 >
-                  <Stack spacing={1.5}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="h6" component="h2">
-                        Navigation Console
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Press ` or Esc to close
-                      </Typography>
-                    </Box>
-                    <Divider />
-                    {navPages.length > 0 ? (
-                      <Stack spacing={1}>
-                        {previousNavPath && (
-                          <Button
-                            onClick={handleBack}
-                            variant="contained"
-                            color="secondary"
-                            startIcon={<ArrowBackIcon fontSize="small" />}
-                            sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-                          >
-                            {previousNavPage ? `Back to ${previousNavPage.label}` : 'Back'}
-                          </Button>
-                        )}
-                        {navPages.map((page) => {
-                          const IconComponent = page.icon ?? ArticleIcon;
-                          const isActive = page.path === currentNavPath;
-                          return (
+                  <Paper
+                    elevation={16}
+                    sx={(muiTheme) => ({
+                      width: 'min(420px, 90vw)',
+                      maxHeight: '80vh',
+                      overflow: 'hidden',
+                      pointerEvents: 'auto',
+                      outline: 'none',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                      p: 3,
+                      borderRadius: 3,
+                      backgroundColor: muiTheme.palette.background.paper
+                    })}
+                  >
+                    <Stack spacing={1.5} sx={{ flex: 1, minHeight: 0 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="h6" component="h2">
+                          Navigation Console
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Press ` or Esc to close
+                        </Typography>
+                      </Box>
+                      <Divider />
+                      {navPages.length > 0 ? (
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 1,
+                            flex: 1,
+                            minHeight: 0
+                          }}
+                        >
+                          {previousNavPath && (
                             <Button
-                              key={page.id}
-                              onClick={() => handleNavigate(page)}
-                              variant={isActive ? 'contained' : 'outlined'}
-                              color={isActive ? 'primary' : 'inherit'}
-                              startIcon={<IconComponent fontSize="small" />}
+                              onClick={handleBack}
+                              variant="contained"
+                              color="secondary"
+                              startIcon={<ArrowBackIcon fontSize="small" />}
                               sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
                             >
-                              {page.label}
+                              {previousNavPage ? `Back to ${previousNavPage.label}` : 'Back'}
                             </Button>
-                          );
-                        })}
-                      </Stack>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        Add a new page under `src/pages` with `showInNav: true` to populate this console.
-                      </Typography>
-                    )}
-                  </Stack>
-                </Paper>
-              </Box>
-            </Fade>
-          </Modal>
+                          )}
+                          <Box
+                            sx={{
+                              flex: 1,
+                              minHeight: 0,
+                              overflowY: 'auto',
+                              pr: 0.5,
+                              scrollbarGutter: 'stable'
+                            }}
+                          >
+                            <Stack spacing={1}>
+                              {navPages.map((page) => {
+                                const IconComponent = page.icon ?? ArticleIcon;
+                                const isActive = page.path === currentNavPath;
+                                return (
+                                  <Button
+                                    key={page.id}
+                                    onClick={() => handleNavigate(page)}
+                                    variant={isActive ? 'contained' : 'outlined'}
+                                    color={isActive ? 'primary' : 'inherit'}
+                                    startIcon={<IconComponent fontSize="small" />}
+                                    sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+                                  >
+                                    {page.label}
+                                  </Button>
+                                );
+                              })}
+                            </Stack>
+                          </Box>
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          Add a new page under `src/pages` with `showInNav: true` to populate this console.
+                        </Typography>
+                      )}
+                    </Stack>
+                  </Paper>
+                </Box>
+              </Fade>
+            </Modal>
 
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegistrationPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            {isOffline && !AUTH_ROUTES.has(location.pathname) ? (
+              <OfflineBanner message="You are offline. Data may be stale and actions are temporarily disabled." />
+            ) : null}
+            <Routes>
+              <Route path={routes.auth.login} element={<LoginPage />} />
+              <Route path={routes.auth.register} element={<RegistrationPage />} />
+              <Route path={routes.auth.forgotPassword} element={<ForgotPasswordPage />} />
+              <Route path={routes.auth.resetPassword} element={<ResetPasswordPage />} />
 
-            {pages.map((page) => (
-              <Route
-                key={page.id}
-                path={page.path}
-                element={wrapWithProtection(page, <page.Component />)}
-              />
-            ))}
-
-            {pages.map((page) =>
-              page.aliases.map((alias) => (
+              {pages.map((page) => (
                 <Route
-                  key={`${page.id}-alias-${alias}`}
-                  path={alias}
+                  key={page.id}
+                  path={page.path}
                   element={wrapWithProtection(page, <page.Component />)}
                 />
-              ))
-            )}
+              ))}
 
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route
-              path="*"
-              element={
-                defaultNavPage ? (
-                  <Navigate to={defaultNavPage.path} replace />
-                ) : (
-                  <Navigate to="/login" replace />
-                )
-              }
-            />
-          </Routes>
-        </ThemeProvider>
-      </NavOverlayProvider>
-    </UpdatesProvider>
+              {pages.map((page) =>
+                page.aliases.map((alias) => (
+                  <Route
+                    key={`${page.id}-alias-${alias}`}
+                    path={alias}
+                    element={wrapWithProtection(page, <page.Component />)}
+                  />
+                ))
+              )}
+
+              <Route path={routes.root} element={<Navigate to={routes.auth.login} replace />} />
+              <Route
+                path="*"
+                element={
+                  <NotFoundPage
+                    defaultPath={defaultNavPage?.path ?? routes.auth.login}
+                    defaultLabel={
+                      defaultNavPage?.label
+                        ? `Go to ${defaultNavPage.label}`
+                        : 'Go to login'
+                    }
+                  />
+                }
+              />
+            </Routes>
+            <BadgeCelebrationToast toastState={badgeToast} onClose={handleBadgeToastClose} />
+          </ThemeProvider>
+        </NavOverlayProvider>
+      </UpdatesProvider>
+    </BadgeSoundProvider>
+  </LocationProvider>
   );
 }
+
 
 export default App;

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { auth } from "../firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import "./Registration.css";
+import { routes } from "../routes";
 
 function RegistrationPage() {
   const navigate = useNavigate();
@@ -71,14 +72,14 @@ function RegistrationPage() {
       //await createUserWithEmailAndPassword(auth, form.email, form.password);
       // optionally save username/phone to your DB here
       setMessage("Your account has been created successfully! \nRedirecting to login...");
-      const timer = setTimeout(() => navigate("/login"), 2000);
+      const timer = setTimeout(() => navigate(routes.auth.login), 2000);
     } catch (err) {
       // map Firebase errors if desired
       alert(err.message);
     }
 
     // For now just go back to login to match your ask:
-    //navigate("/login");
+    //navigate(routes.auth.login);
   };
 
   return (
@@ -97,7 +98,7 @@ function RegistrationPage() {
         <button
           className="page-back-btn"
           aria-label="Go back"
-          onClick={() => navigate("/login")}
+          onClick={() => navigate(routes.auth.login)}
         >
           &#8592;
         </button>

@@ -95,6 +95,7 @@ const mapRoom = (roomDoc) => {
     participantIds: (doc.participantIds || []).map(toIdString),
     moderatorIds: (doc.moderatorIds || []).map(toIdString),
     pinId: toIdString(doc.pinId),
+    presetKey: typeof doc.presetKey === 'string' && doc.presetKey.trim().length > 0 ? doc.presetKey.trim() : undefined,
     createdAt: roomDoc.createdAt.toISOString(),
     updatedAt: roomDoc.updatedAt.toISOString(),
     audit: doc.audit ? buildAudit(doc.audit, roomDoc.createdAt, roomDoc.updatedAt) : undefined
@@ -167,6 +168,7 @@ async function createRoom(input) {
     participantCount: participantIds.length,
     moderatorIds: (input.moderatorIds || []).map(toObjectId).filter(Boolean),
     pinId: toObjectId(input.pinId),
+    presetKey: input.presetKey && input.presetKey.trim ? input.presetKey.trim() : undefined,
     isGlobal: Boolean(input.isGlobal)
   });
 

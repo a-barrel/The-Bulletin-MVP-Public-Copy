@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App.jsx';
+import AppErrorBoundary from './components/AppErrorBoundary.jsx';
+import { NetworkStatusProvider } from './contexts/NetworkStatusContext.jsx';
 
 if (import.meta.hot && typeof window !== 'undefined') {
   const SUPPRESS_KEY = '__pinpoint_suppressed_fast_refresh__';
@@ -26,7 +28,11 @@ if (import.meta.hot && typeof window !== 'undefined') {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <AppErrorBoundary>
+        <NetworkStatusProvider>
+          <App />
+        </NetworkStatusProvider>
+      </AppErrorBoundary>
     </BrowserRouter>
   </StrictMode>
 );

@@ -19,6 +19,15 @@
   gap: 0.6rem;
 }
 
+.card.clickable {
+  cursor: pointer;
+}
+
+.card.clickable:focus-visible {
+  outline: 2px solid #6a25d7;
+  outline-offset: 3px;
+}
+
 /* Header row */
 .card-header {
   display: flex;
@@ -51,6 +60,8 @@
   line-height: 1.35rem;
   text-align: left;
   margin: 0.25rem 0 0.2rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Images */
@@ -68,6 +79,38 @@
   object-fit: cover;
   border: none;
   border-radius: 4px;
+}
+
+.media-scroll {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  padding-bottom: 0.25rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.media-scroll .media {
+  flex: 0 0 calc(40% - 0.3rem);
+  width: calc(40% - 0.3rem);
+  min-width: calc(40% - 0.3rem);
+  scroll-snap-align: start;
+}
+
+.media-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.media-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+}
+
+.media-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* Footer layout (author | interested | counts) */
@@ -88,6 +131,33 @@
   min-width: 0;                               /* allow truncation */
 }
 
+.author-button {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.author-button:not(:disabled) {
+  cursor: pointer;
+}
+
+.author-button:disabled {
+  opacity: 0.85;
+  cursor: default;
+}
+
+.author-button:focus-visible {
+  outline: 2px solid #6a25d7;
+  outline-offset: 3px;
+}
+
 /* truncate long names so counts never get pushed */
 .author .name {
   max-width: 180px;                 /* tune per breakpoint */
@@ -98,13 +168,23 @@
 }
 
 .avatar {
-  width: 40px;
-  height: 30px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   border: 1.5px solid #111;
   background: linear-gradient(135deg, #e9d9ff, #d9c7ff);
+  object-fit: cover;
 }
 .name { font-weight: 600; color: black; }
+
+.author-button:not(:disabled) .name {
+  color: #6a25d7;
+  text-decoration: underline;
+}
+
+.author-button:not(:disabled):hover .name {
+  color: #4a1a9e;
+}
 
 .counts {
   flex: 0 0 auto;
@@ -141,12 +221,52 @@
   min-height: 28px;
 }
 
+.interested-row.scrollable {
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.interested-row.scrollable::-webkit-scrollbar {
+  height: 6px;
+}
+
+.interested-row.scrollable::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+}
+
+.interested-row.scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .interest-bubble {
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;                   /* <-- prevents squishing */
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;                   /* <-- prevents squishing */
   border-radius: 50%;
   border: 1.5px solid black;
+  background: #f4f4f7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+}
+
+.interest-bubble:focus-visible {
+  outline: 2px solid #6a25d7;
+  outline-offset: 3px;
+}
+
+.interest-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 
 .interest-more {
@@ -155,10 +275,11 @@
 
 /* Tag icon beside title */
 .tag-icon {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   object-fit: contain;
   vertical-align: middle;
+  flex-shrink: 0;
 }
 
 /* Themed cards */
@@ -181,11 +302,12 @@
 
 /* ---------- Responsive tweaks ---------- */
 @media (max-width: 768px) {
-  .card { width: 94%; }
+  .card {
+    width: 94%;
+  }
 }
 
 @media (max-width: 480px) {
-  .card { width: 94%; }
   .media { height: 140px; }
 
   /* Footer: 2 rows
@@ -214,9 +336,8 @@
   }
 
   .avatar{
-    width: 40px;
+    width: 38px;
     height: 38px;
-    
   }
 
   .counts {
@@ -243,6 +364,7 @@
     height: 22px;
     flex: 0 0 22px;               /* fixed width/height in flex row */
     border-radius: 50%;
+    overflow: hidden;
   }
 
   .interest-more {
@@ -264,3 +386,9 @@
 }
 .bookmark-emoji { font-size: 18px; line-height: 1; }
 .bookmark-btn:hover { transform: translateY(-1px); }
+
+
+
+
+
+

@@ -10,6 +10,7 @@ const { PinPreviewSchema } = require('../schemas/pin');
 const { PublicUserSchema } = require('../schemas/user');
 const verifyToken = require('../middleware/verifyToken');
 const { broadcastBookmarkCreated } = require('../services/updateFanoutService');
+const { grantBadge } = require('../services/badgeService');
 
 const router = express.Router();
 
@@ -22,6 +23,16 @@ const BookmarkQuerySchema = z.object({
       message: 'Invalid user id'
     }),
   limit: z.coerce.number().int().positive().max(100).default(50)
+});
+
+const ExportQuerySchema = z.object({
+  userId: z
+    .string()
+    .trim()
+    .optional()
+    .refine((value) => !value || mongoose.Types.ObjectId.isValid(value), {
+      message: 'Invalid user id'
+    })
 });
 
 const CollectionQuerySchema = z.object({
@@ -49,6 +60,48 @@ const toIsoDateString = (value) => {
   if (typeof value.toISOString === 'function') return value.toISOString();
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+};
+
+const escapeCsvValue = (value) => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const stringValue = String(value);
+  if (stringValue === '') {
+    return '';
+  }
+
+  if (/[",\r\n]/.test(stringValue)) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+
+  return stringValue;
+};
+
+const ensureUserStatsShape = (user) => {
+  if (!user) {
+    return;
+  }
+
+  if (!user.stats) {
+    user.stats = {
+      eventsHosted: 0,
+      eventsAttended: 0,
+      posts: 0,
+      bookmarks: 0,
+      followers: 0,
+      following: 0
+    };
+    return;
+  }
+
+  user.stats.eventsHosted = user.stats.eventsHosted ?? 0;
+  user.stats.eventsAttended = user.stats.eventsAttended ?? 0;
+  user.stats.posts = user.stats.posts ?? 0;
+  user.stats.bookmarks = user.stats.bookmarks ?? 0;
+  user.stats.followers = user.stats.followers ?? 0;
+  user.stats.following = user.stats.following ?? 0;
 };
 
 const mapMediaAsset = (asset) => {
@@ -209,6 +262,76 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
+router.get('/export', verifyToken, async (req, res) => {
+  try {
+    const query = ExportQuerySchema.parse(req.query);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer && !query.userId) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const targetUserId = query.userId
+      ? new mongoose.Types.ObjectId(query.userId)
+      : viewer._id;
+
+    const bookmarks = await Bookmark.find({ userId: targetUserId })
+      .sort({ createdAt: -1 })
+      .populate({ path: 'pinId', populate: { path: 'creatorId' } });
+
+    const header = [
+      'Bookmark ID',
+      'Saved At',
+      'Pin ID',
+      'Pin Title',
+      'Pin Type',
+      'Pin Creator',
+      'Pin Creator ID',
+      'Notes',
+      'Reminder At',
+      'Collection ID'
+    ];
+
+    const rows = bookmarks.map((bookmark) => {
+      const pinPreview = mapPinToPreview(bookmark.pinId);
+      const creator = pinPreview?.creator;
+      const creatorName =
+        creator?.displayName || creator?.username || '';
+
+      return [
+        toIdString(bookmark._id),
+        bookmark.createdAt.toISOString(),
+        pinPreview?._id ?? '',
+        pinPreview?.title ?? '',
+        pinPreview?.type ?? '',
+        creatorName ?? '',
+        creator?._id ?? '',
+        bookmark.notes ?? '',
+        bookmark.reminderAt ? bookmark.reminderAt.toISOString() : '',
+        toIdString(bookmark.collectionId) ?? ''
+      ];
+    });
+
+    const csvLines = [
+      header.map(escapeCsvValue).join(','),
+      ...rows.map((row) => row.map(escapeCsvValue).join(','))
+    ].join('\r\n');
+
+    const safeTimestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const ownerId = query.userId || toIdString(viewer?._id) || 'bookmarks';
+    const filename = `bookmarks-${ownerId}-${safeTimestamp}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.status(200).send(`\ufeff${csvLines}`);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid bookmark export query', issues: error.errors });
+    }
+    console.error('Failed to export bookmarks:', error);
+    res.status(500).json({ message: 'Failed to export bookmarks' });
+  }
+});
+
 router.get('/collections', verifyToken, async (req, res) => {
   try {
     const query = CollectionQuerySchema.parse(req.query);
@@ -275,6 +398,7 @@ router.post('/', verifyToken, async (req, res) => {
 
     let createdBookmark = existingBookmark;
     let bookmarkCountIncrement = 0;
+    let bookmarkBadgeResult = null;
 
     if (!existingBookmark) {
       createdBookmark = await Bookmark.create({
@@ -283,6 +407,13 @@ router.post('/', verifyToken, async (req, res) => {
         tagIds: []
       });
 
+      ensureUserStatsShape(viewer);
+      viewer.stats.bookmarks = (viewer.stats.bookmarks ?? 0) + 1;
+      try {
+        await viewer.save();
+      } catch (error) {
+        console.error('Failed to update user bookmark stats:', error);
+      }
       pin.bookmarkCount = (pin.bookmarkCount ?? 0) + 1;
       if (pin.stats) {
         pin.stats.bookmarkCount = (pin.stats.bookmarkCount ?? 0) + 1;
@@ -307,13 +438,26 @@ router.post('/', verifyToken, async (req, res) => {
 
     const bookmarkCount = pin.bookmarkCount ?? 0;
 
+    if (bookmarkCountIncrement === 1) {
+      try {
+        bookmarkBadgeResult = await grantBadge({
+          userId: viewer._id,
+          badgeId: 'bookmark-first-pin',
+          sourceUserId: viewer._id
+        });
+      } catch (error) {
+        console.error('Failed to grant bookmark badge:', error);
+      }
+    }
+
     res.status(existingBookmark ? 200 : 201).json({
       bookmarkId: toIdString(createdBookmark?._id),
       pinId: toIdString(pinObjectId),
       bookmarkCount,
       viewerHasBookmarked: true,
       alreadyBookmarked: Boolean(existingBookmark),
-      bookmarkWasCreated: bookmarkCountIncrement === 1
+      bookmarkWasCreated: bookmarkCountIncrement === 1,
+      badgeEarnedId: bookmarkBadgeResult?.granted ? bookmarkBadgeResult.badge.id : null
     });
   } catch (error) {
     if (error instanceof ZodError) {
@@ -359,6 +503,13 @@ router.delete('/:pinId', verifyToken, async (req, res) => {
       bookmarkCount = pin.bookmarkCount ?? 0;
     }
 
+    ensureUserStatsShape(viewer);
+    viewer.stats.bookmarks = Math.max(0, (viewer.stats.bookmarks ?? 0) - 1);
+    try {
+      await viewer.save();
+    } catch (error) {
+      console.error('Failed to update user bookmark stats:', error);
+    }
     res.json({
       removed: true,
       pinId: toIdString(pinObjectId),
@@ -375,3 +526,6 @@ router.delete('/:pinId', verifyToken, async (req, res) => {
 });
 
 module.exports = router;
+
+
+
