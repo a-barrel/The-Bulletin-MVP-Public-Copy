@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, Fragment } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import './Map.css';
 
 // Fix for default marker icons in Leaflet with React
 delete L.Icon.Default.prototype._getIconUrl;
@@ -12,14 +13,18 @@ L.Icon.Default.mergeOptions({
 });
 
 // Custom marker icons
-const userIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+const createMarkerIcon = (color, extraClassName) =>
+  new L.Icon({
+    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+    className: ['leaflet-marker-icon', extraClassName].filter(Boolean).join(' ')
+  });
+
+const userIcon = createMarkerIcon('orange', 'user-location-icon');
 
 const nearbyIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
@@ -30,23 +35,10 @@ const nearbyIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-const pinIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
-
-const selectedPinIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+const defaultPinIcon = createMarkerIcon('green');
+const discussionPinIcon = createMarkerIcon('blue');
+const eventPinIcon = createMarkerIcon('violet');
+const selfPinIcon = createMarkerIcon('orange', 'self-pin-icon');
 
 // Component to handle map center updates
 function MapUpdater({ center }) {
@@ -147,6 +139,21 @@ const toLatLng = (location) => {
     return null;
   }
   return [latitude, longitude];
+};
+
+const resolvePinIcon = (pin) => {
+  const normalizedType = typeof pin?.type === 'string' ? pin.type.toLowerCase() : '';
+
+  if (pin?.isSelf || pin?.viewerIsCreator) {
+    return selfPinIcon;
+  }
+  if (normalizedType === 'discussion') {
+    return discussionPinIcon;
+  }
+  if (normalizedType === 'event') {
+    return eventPinIcon;
+  }
+  return defaultPinIcon;
 };
 
 const Map = ({
@@ -410,12 +417,14 @@ const Map = ({
           );
         }
 
-        const markerIcon = pin._id && pin._id === selectedPinId ? selectedPinIcon : pinIcon;
+        const markerIcon = resolvePinIcon(pin);
+        const markerZIndex = pin?.isSelf ? 1200 : pin._id && pin._id === selectedPinId ? 1100 : 1000;
         return (
           <Marker
             key={key}
             position={[latitude, longitude]}
             icon={markerIcon}
+            zIndexOffset={markerZIndex}
             eventHandlers={
               onPinSelect
                 ? {

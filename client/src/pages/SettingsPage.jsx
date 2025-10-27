@@ -72,7 +72,8 @@ const DEFAULT_SETTINGS = {
   notifications: {
     proximity: true,
     updates: true,
-    marketing: false
+    marketing: false,
+    chatTransitions: true
   }
 };
 
@@ -145,7 +146,10 @@ function SettingsPage() {
             updates:
               result?.preferences?.notifications?.updates ?? DEFAULT_SETTINGS.notifications.updates,
             marketing:
-              result?.preferences?.notifications?.marketing ?? DEFAULT_SETTINGS.notifications.marketing
+              result?.preferences?.notifications?.marketing ?? DEFAULT_SETTINGS.notifications.marketing,
+            chatTransitions:
+              result?.preferences?.notifications?.chatTransitions ??
+              DEFAULT_SETTINGS.notifications.chatTransitions
           }
         });
       } catch (error) {
@@ -257,7 +261,10 @@ function SettingsPage() {
           profile?.preferences?.notifications?.proximity ?? DEFAULT_SETTINGS.notifications.proximity,
         updates: profile?.preferences?.notifications?.updates ?? DEFAULT_SETTINGS.notifications.updates,
         marketing:
-          profile?.preferences?.notifications?.marketing ?? DEFAULT_SETTINGS.notifications.marketing
+          profile?.preferences?.notifications?.marketing ?? DEFAULT_SETTINGS.notifications.marketing,
+        chatTransitions:
+          profile?.preferences?.notifications?.chatTransitions ??
+          DEFAULT_SETTINGS.notifications.chatTransitions
       }
     };
   }, [profile]);
@@ -271,7 +278,8 @@ function SettingsPage() {
       settings.statsPublic !== baselineSettings.statsPublic ||
       settings.notifications.proximity !== baselineSettings.notifications.proximity ||
       settings.notifications.updates !== baselineSettings.notifications.updates ||
-      settings.notifications.marketing !== baselineSettings.notifications.marketing
+      settings.notifications.marketing !== baselineSettings.notifications.marketing ||
+      settings.notifications.chatTransitions !== baselineSettings.notifications.chatTransitions
     );
   }, [baselineSettings, settings]);
 
@@ -415,7 +423,8 @@ function SettingsPage() {
           notifications: {
             proximity: settings.notifications.proximity,
             updates: settings.notifications.updates,
-            marketing: settings.notifications.marketing
+            marketing: settings.notifications.marketing,
+            chatTransitions: settings.notifications.chatTransitions
           }
         },
         locationSharingEnabled: settings.locationSharingEnabled
@@ -683,6 +692,15 @@ function SettingsPage() {
                 />
               }
               label="Send alerts for pin and chat updates"
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={notifications.chatTransitions}
+                  onChange={() => handleNotificationToggle('chatTransitions')}
+                />
+              }
+              label="Notify me when I enter or leave chat rooms"
             />
             <FormControlLabel
               control={

@@ -79,7 +79,8 @@ const createRelatedEntity = (id, type, label, summary) => {
   };
 };
 
-const filterRecipientsByPreference = async (recipientIds) => {
+const filterRecipientsByPreference = async (recipientIds, options = {}) => {
+  const { requireUpdates = true, requireChatTransitions = false } = options;
   const unique = Array.from(
     new Set(recipientIds.map((id) => toIdString(id)).filter(Boolean))
   );
@@ -95,9 +96,16 @@ const filterRecipientsByPreference = async (recipientIds) => {
 
   const allowed = new Set(
     users
-      .filter(
-        (user) => user?.preferences?.notifications?.updates !== false
-      )
+      .filter((user) => {
+        const preferences = user?.preferences?.notifications || {};
+        if (requireUpdates && preferences.updates === false) {
+          return false;
+        }
+        if (requireChatTransitions && preferences.chatTransitions === false) {
+          return false;
+        }
+        return true;
+      })
       .map((user) => user._id.toString())
   );
 
@@ -450,7 +458,9 @@ const broadcastChatRoomTransition = async ({
       return;
     }
 
-    const recipients = await filterRecipientsByPreference([recipientId]);
+    const recipients = await filterRecipientsByPreference([recipientId], {
+      requireChatTransitions: true
+    });
     if (!recipients.length) {
       return;
     }
@@ -547,4 +557,3 @@ module.exports = {
   broadcastChatRoomTransition,
   broadcastBadgeEarned
 };
-

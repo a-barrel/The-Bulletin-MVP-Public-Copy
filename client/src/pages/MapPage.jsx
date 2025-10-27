@@ -51,6 +51,34 @@ const SPOOF_MIN_MILES = 0.25;
 const SPOOF_MAX_MILES = 5;
 const SPOOF_STEP_INCREMENT = 0.25;
 
+const normalizeId = (value) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : null;
+  }
+  if (typeof value === 'object') {
+    if (typeof value._id === 'string') {
+      const trimmed = value._id.trim();
+      return trimmed.length ? trimmed : null;
+    }
+    if (typeof value.id === 'string') {
+      const trimmed = value.id.trim();
+      return trimmed.length ? trimmed : null;
+    }
+    if (typeof value.$oid === 'string') {
+      const trimmed = value.$oid.trim();
+      return trimmed.length ? trimmed : null;
+    }
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  return null;
+};
+
 const toRadians = (value) => (value * Math.PI) / 180;
 const metersToLatitudeDegrees = (meters) => (meters / EARTH_RADIUS_METERS) * (180 / Math.PI);
 const metersToLongitudeDegrees = (meters, latitude) => {
@@ -311,7 +339,23 @@ function MapPage() {
           distanceMiles: DEFAULT_RADIUS_MILES,
           limit: PIN_FETCH_LIMIT
         });
-        setPins(results);
+
+        const viewerId = normalizeId(currentProfileId);
+        const normalizedResults = Array.isArray(results)
+          ? results.map((pin) => {
+              const creatorId =
+                normalizeId(pin?.creatorId) ??
+                normalizeId(pin?.creator?._id) ??
+                normalizeId(pin?.creator?.id);
+              const isSelf = Boolean(viewerId && creatorId && viewerId === creatorId);
+              if (pin && typeof pin === 'object') {
+                return { ...pin, isSelf };
+              }
+              return pin;
+            })
+          : [];
+
+        setPins(normalizedResults);
         setError((prev) =>
           prev && prev.toLowerCase().includes('failed to load nearby pins') ? null : prev
         );
@@ -322,7 +366,7 @@ function MapPage() {
         setIsLoadingPins(false);
       }
     },
-    [fetchPinsNearby, isOffline, userLocation]
+    [currentProfileId, fetchPinsNearby, isOffline, userLocation]
   );
 
   const refreshNearby = useCallback(async (location = userLocation) => {

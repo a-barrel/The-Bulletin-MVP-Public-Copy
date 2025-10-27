@@ -666,6 +666,11 @@ const detailEntries = useMemo(() => {
         enabled: notifications.updates !== false
       },
       {
+        key: 'chatTransitions',
+        label: 'Chat room movement alerts',
+        enabled: notifications.chatTransitions !== false
+      },
+      {
         key: 'marketing',
         label: 'Tips & marketing',
         enabled: notifications.marketing === true

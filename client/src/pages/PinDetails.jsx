@@ -469,6 +469,16 @@ function PinDetails() {
     return capitalized || 'Pin';
   }, [pin, isOwnPin]);
 
+  const mapPins = useMemo(() => {
+    if (!pin) {
+      return [];
+    }
+    if (pin.isSelf === isOwnPin) {
+      return [pin];
+    }
+    return [{ ...pin, isSelf: isOwnPin }];
+  }, [pin, isOwnPin]);
+
   useEffect(() => {
     setBookmarked(false);
     setIsUpdatingBookmark(false);
@@ -1102,8 +1112,8 @@ function PinDetails() {
               <div className="map-wrapper">
                 <LeafletMap
                   userLocation={coordinates}
-                  pins={[pin]}
-                  selectedPinId={pin._id}
+                  pins={mapPins}
+                  selectedPinId={mapPins[0]?._id ?? pin._id}
                   centerOverride={coordinates}
                 />
               </div>
