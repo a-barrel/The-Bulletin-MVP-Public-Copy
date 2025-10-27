@@ -21,7 +21,7 @@ Use this as the running list for the “lock it down” sprint before next week�
 ## Maps & Location
 
 - [x] Expose a real map toggle for the chat-room visualizer layer (lift logic from Debug Console).
-- [ ] Rework GPS spoofer to use ±1 mile hops (configurable), and ensure it respects interaction radius rules.
+- [x] Rework GPS spoofer to use ±1 mile hops (configurable), and ensure it respects interaction radius rules.
 - [x] Add guard rail when spoofed position exits valid map bounds (auto reset or confirm dialog).
 - [x] Pre-cache common map tiles or provide offline fallback messaging when tiles fail to load.
 
