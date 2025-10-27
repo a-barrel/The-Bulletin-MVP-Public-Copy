@@ -103,6 +103,28 @@
   border-radius: 8px;
   padding: 0.5rem;
   box-sizing: border-box;
+  color: #0b0c10;
+  background-color: WHITE;
+}
+
+.two-col input, textarea, select {
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 0.5rem;
+  box-sizing: border-box;
+  color: #0b0c10;
+  background-color: WHITE;
+}
+
+.map-coords input, textarea, select {
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 0.5rem;
+  box-sizing: border-box;
+  color: #0b0c10;
+  background-color: WHITE;
 }
 
 textarea { 
