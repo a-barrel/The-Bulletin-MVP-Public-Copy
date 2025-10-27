@@ -9,6 +9,7 @@ import {
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "./LoginPage.css";
 import { applyAuthPersistence, AUTH_PERSISTENCE } from "../utils/authPersistence";
+import { routes } from "../routes";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -71,7 +72,7 @@ function LoginPage() {
       const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
       await applyAuthPersistence(auth, persistenceMode);
       await signInWithEmailAndPassword(auth, email, password);
-      navigate("/map");
+      navigate(routes.map.base);
     } catch (error) {
       switch (error.code) {
         // Only big errors (e.g. no account with email or login failure) will get a popup.
@@ -104,7 +105,7 @@ function LoginPage() {
         const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
         await applyAuthPersistence(auth, persistenceMode);
         await signInWithPopup(auth, provider);
-        navigate("/map");
+        navigate(routes.map.base);
       } catch (error) {
         setError(error.message);
       }
@@ -179,7 +180,7 @@ function LoginPage() {
           <div className="forgot-password-link">
             <span
               className="forgot-password-clickable"
-              onClick={() => navigate("/forgot-password")}
+              onClick={() => navigate(routes.auth.forgotPassword)}
             > 
               Forgot Password?
             </span>
@@ -206,7 +207,7 @@ function LoginPage() {
         <button 
           type="button"
           className="login-page-register-btn" 
-          onClick={() => navigate("/register")}
+          onClick={() => navigate(routes.auth.register)}
         > 
           Register Here
         </button>    

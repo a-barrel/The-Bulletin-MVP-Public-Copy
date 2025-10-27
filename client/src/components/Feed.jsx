@@ -45,17 +45,6 @@ const resolveTagBadge = (type) => {
 
 const attendeeCache = new Map();
 const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? "").replace(/\/$/, "");
-const AVATAR_LIBRARY = [
-  "/uploads/images/emulation/avatars/Demomanava.jpg",
-  "/uploads/images/emulation/avatars/Engineerava.jpg",
-  "/uploads/images/emulation/avatars/Heavyava.jpg",
-  "/uploads/images/emulation/avatars/Medicava.jpg",
-  "/uploads/images/emulation/avatars/Pyroava.jpg",
-  "/uploads/images/emulation/avatars/Scoutava.jpg",
-  "/uploads/images/emulation/avatars/Sniperava.jpg",
-  "/uploads/images/emulation/avatars/Soldierava.jpg",
-  "/uploads/images/emulation/avatars/Spyava.jpg",
-];
 const FALLBACK_NAMES = [
   "Scout",
   "Soldier",
@@ -95,13 +84,8 @@ const resolveAssetUrl = (asset, fallback = null) => {
 };
 
 const resolveLibraryAvatar = (seed = 0) => {
-  if (!AVATAR_LIBRARY.length) {
-    return DEFAULT_AVATAR;
-  }
-  const index = Math.abs(seed) % AVATAR_LIBRARY.length;
-  const relative = AVATAR_LIBRARY[index];
-  const resolved = resolveAssetUrl(relative, DEFAULT_AVATAR);
-  return resolved ?? DEFAULT_AVATAR;
+  const normalizedSeed = Number.isFinite(seed) ? Math.abs(Math.floor(seed)) : 0;
+  return `https://i.pravatar.cc/100?u=pinpoint-fallback-${normalizedSeed}`;
 };
 
 const toIdString = (value) => {

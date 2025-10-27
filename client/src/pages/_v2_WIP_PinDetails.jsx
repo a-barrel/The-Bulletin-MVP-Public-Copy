@@ -5,6 +5,7 @@ import PlaceIcon from '@mui/icons-material/Place';
 import LeafletMap from '../components/Map';
 import runtimeConfig from '../config/runtime';
 import { fetchPinById, fetchReplies } from '../api/mongoDataApi';
+import { routes } from '../routes';
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
@@ -30,18 +31,18 @@ export const pageConfig = {
     }
     const trimmed = input.trim();
     if (trimmed.toLowerCase() === 'expired') {
-      return `/pin-v2/${EXPIRED_PIN_ID}`;
+      return routes.pinV2.byId(EXPIRED_PIN_ID);
     }
     if (trimmed.toLowerCase() === 'far') {
       const farId = FAR_PIN_ID;
-      return `/pin-v2/${farId}?preview=far`;
+      return `${routes.pinV2.byId(farId)}?preview=far`;
     }
     if (!trimmed) {
       const randomId =
         SAMPLE_PIN_IDS[Math.floor(Math.random() * SAMPLE_PIN_IDS.length)] ?? '68e061721329566a22d474aa';
-      return `/pin-v2/${randomId}`;
+      return routes.pinV2.byId(randomId);
     }
-    return `/pin-v2/${trimmed}`;
+    return routes.pinV2.byId(trimmed);
   }
 };
 
@@ -410,7 +411,7 @@ function PinDetailsV2WIP() {
             <h3>{interactionOverlay.title}</h3>
             <p>{interactionOverlay.message}</p>
             <div className='expired-actions'>
-              <Link to="/list" className='expired-return-button'>
+              <Link to={routes.list.base} className='expired-return-button'>
                 Return to List
               </Link>
             </div>
@@ -419,7 +420,7 @@ function PinDetailsV2WIP() {
       ) : null}
 
       <div className='pin-actions'>
-        <Link to='/list' className='back-button'>
+        <Link to={routes.list.base} className='back-button'>
           &larr; Back to List
         </Link>
         <button type='button' className='primary-action' disabled={isInteractionLocked}>
@@ -599,4 +600,3 @@ function PinDetailsV2WIP() {
 }
 
 export default PinDetailsV2WIP;
-

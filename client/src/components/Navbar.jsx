@@ -9,12 +9,13 @@ import ListIcon from "../assets/ListPage.svg";
 import ChatFilled from "../assets/chat-filled.svg";
 import MapFilled from "../assets/map-filled.svg";
 import ListFilled from "../assets/list-filled.svg";
+import { routes } from "../routes";
 
 export default function Navbar() {
   return (
     <nav className="bottom-nav">
       <NavLink
-        to="/chat"
+        to={routes.chat.base}
         className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
       >
         {({ isActive }) => (
@@ -29,7 +30,7 @@ export default function Navbar() {
         )}
       </NavLink>
       <NavLink
-        to="/map"
+        to={routes.map.base}
         className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
       >
         {({ isActive }) => (
@@ -44,7 +45,7 @@ export default function Navbar() {
         )}
       </NavLink>
       <NavLink
-        to="/list"
+        to={routes.list.base}
         end
         className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
       >

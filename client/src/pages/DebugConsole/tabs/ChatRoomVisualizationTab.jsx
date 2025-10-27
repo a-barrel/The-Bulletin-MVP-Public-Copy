@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -6,25 +7,32 @@ import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Paper from '@mui/material/Paper';
+import Slider from '@mui/material/Slider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import Divider from '@mui/material/Divider';
 
 import {
+  createProximityChatPresence,
   createProximityChatRoom,
+  createUpdate,
   fetchChatRooms,
   fetchCurrentUserProfile,
   insertLocationUpdate
 } from '../../../api/mongoDataApi';
 import LeafletMap from '../../../components/Map';
 import { auth } from '../../../firebase';
+import { routes } from '../../../routes';
 import {
   DEFAULT_LOCATION_COORDINATES,
   DEFAULT_LOCATION_TELEPORT_KEY,
-  DIRECTION_SUCCESS_MESSAGES,
+  DEFAULT_SPOOF_STEP_MILES,
   LIVE_CHAT_ROOM_PRESETS,
-  SPOOF_STEP_METERS,
+  METERS_PER_MILE,
+  SPOOF_MAX_MILES,
+  SPOOF_MIN_MILES,
+  SPOOF_STEP_INCREMENT,
   TELEPORT_PRESETS
 } from '../constants';
 import useViewerLocation from '../hooks/useViewerLocation';
@@ -33,6 +41,7 @@ import {
   extractPinLocation,
   formatDistanceMetersLabel,
   haversineDistanceMeters,
+  isGlobalChatRoom,
   mongooseObjectIdLike,
   normalizeRoomName,
   resolveActiveRoomForLocation,
@@ -40,7 +49,20 @@ import {
   toIdString
 } from '../utils';
 
+const formatMilesLabel = (value) => {
+  if (!Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+  const trimmed = value
+    .toFixed(2)
+    .replace(/\.00$/, '')
+    .replace(/(\.\d)0$/, '$1');
+  const suffix = Math.abs(value - 1) < 1e-9 ? 'mile' : 'miles';
+  return `${trimmed} ${suffix}`;
+};
+
 function ChatRoomVisualizationTab() {
+  const navigate = useNavigate();
   const [currentUser] = useAuthState(auth);
   const [currentProfile, setCurrentProfile] = useState(null);
   const [profileStatus, setProfileStatus] = useState(null);
@@ -120,6 +142,7 @@ function ChatRoomVisualizationTab() {
   }, [currentProfileId, refreshViewerLocation]);
   const [teleportStatus, setTeleportStatus] = useState(null);
   const [isTeleporting, setIsTeleporting] = useState(false);
+  const [spoofStepMiles, setSpoofStepMiles] = useState(DEFAULT_SPOOF_STEP_MILES);
 
   const [rooms, setRooms] = useState([]);
   const [roomsStatus, setRoomsStatus] = useState(null);
@@ -336,7 +359,8 @@ function ChatRoomVisualizationTab() {
           lastSpoofedLocation) ||
         initialSpoofLocation;
 
-      const nextLocation = shiftLocationByDirection(sourceLocation, direction, SPOOF_STEP_METERS);
+      const stepMeters = spoofStepMiles * METERS_PER_MILE;
+      const nextLocation = shiftLocationByDirection(sourceLocation, direction, stepMeters);
       if (!nextLocation) {
         setTeleportStatus({
           type: 'error',
@@ -369,9 +393,11 @@ function ChatRoomVisualizationTab() {
         setLastSpoofedLocation(nextLocation);
         setViewerLocation(nextLocation);
         setMapCenterOverride({ latitude: nextLocation.latitude, longitude: nextLocation.longitude });
+        const stepLabel = formatMilesLabel(spoofStepMiles);
         setTeleportStatus({
           type: 'success',
-          message: DIRECTION_SUCCESS_MESSAGES[direction] ?? 'Spoofed location updated.'
+          message:
+            stepLabel ? `Moved ${direction} by roughly ${stepLabel}.` : 'Spoofed location updated.'
         });
         hasUserMovedRef.current = true;
       } catch (error) {
@@ -381,7 +407,14 @@ function ChatRoomVisualizationTab() {
         setIsTeleporting(false);
       }
     },
-    [currentUser, currentProfileId, lastSpoofedLocation, initialSpoofLocation, setViewerLocation]
+    [
+      currentUser,
+      currentProfileId,
+      lastSpoofedLocation,
+      initialSpoofLocation,
+      setViewerLocation,
+      spoofStepMiles
+    ]
   );
 
   useEffect(() => {
@@ -594,6 +627,14 @@ function ChatRoomVisualizationTab() {
     }
   }, []);
 
+  const handleViewChatRoom = useCallback(() => {
+    navigate(routes.chat.base);
+  }, [navigate]);
+
+  const handleViewProfile = useCallback(() => {
+    navigate(routes.profile.me);
+  }, [navigate]);
+
   const handleFocusRoom = useCallback((room) => {
     const id = toIdString(room?._id);
     setSelectedRoomId(id || null);
@@ -612,6 +653,7 @@ function ChatRoomVisualizationTab() {
   const userRadiusMeters = Number.isFinite(activeRadiusSource?.radiusMeters)
     ? activeRadiusSource.radiusMeters
     : undefined;
+  const stepSummaryLabel = formatMilesLabel(spoofStepMiles) ?? 'the selected distance';
 
   return (
     <Stack spacing={2}>
@@ -673,6 +715,26 @@ function ChatRoomVisualizationTab() {
           <Divider />
           <Stack spacing={1}>
             <Typography variant="subtitle2">Directional nudge</Typography>
+            <Stack spacing={1}>
+              <Typography variant="body2" color="text.secondary">
+                Step size: {spoofStepMiles.toFixed(2)} mile{spoofStepMiles === 1 ? '' : 's'}
+              </Typography>
+              <Slider
+                aria-label="Spoof step size"
+                min={SPOOF_MIN_MILES}
+                max={SPOOF_MAX_MILES}
+                step={SPOOF_STEP_INCREMENT}
+                value={spoofStepMiles}
+                onChange={(_, value) => {
+                  if (typeof value === 'number') {
+                    setSpoofStepMiles(value);
+                  }
+                }}
+                disabled={isTeleporting}
+                valueLabelDisplay="auto"
+                valueLabelFormat={(value) => `${value.toFixed(2)} mi`}
+              />
+            </Stack>
             <Stack direction="row" spacing={1} justifyContent="center">
               <Button
                 variant="contained"
@@ -716,7 +778,7 @@ function ChatRoomVisualizationTab() {
               </Button>
             </Stack>
             <Typography variant="caption" color="text.secondary" align="center">
-              Each press moves the spoofed location by roughly 2 miles.
+              Each press moves the spoofed location by roughly {stepSummaryLabel}.
             </Typography>
           </Stack>
           {activePreset && (
@@ -763,6 +825,8 @@ function ChatRoomVisualizationTab() {
             pins={mapPins}
             selectedPinId={selectedRoomId ?? undefined}
             onPinSelect={handlePinSelect}
+            onChatRoomView={handleViewChatRoom}
+            onCurrentUserView={handleViewProfile}
           />
         </Box>
         {selectedRoom ? (
