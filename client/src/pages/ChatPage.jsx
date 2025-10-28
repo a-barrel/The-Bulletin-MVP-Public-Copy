@@ -34,6 +34,7 @@ import SendIcon from '@mui/icons-material/Send';
 import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
 import updatesIcon from "../assets/UpdateIcon.svg";
+import addIcon from "../assets/AddIcon.svg";
 import AvatarIcon from "../assets/AvatarIcon.svg";
 import { auth } from '../firebase';
 import { playBadgeSound } from '../utils/badgeSound';
@@ -785,26 +786,24 @@ function ChatPage() {
       </Dialog>
       </Box>
 
+    {/* Figma-based frontend design */}
     {!debugMode && (
     <div className="chat-page">
       <div className="chat-frame">
         <header className="chat-header-bar">
           <GlobalNavMenu />
-
           <h1 className="chat-header-title">
             Chat
           </h1>
-
           <button
-            className="header-icon-btn"
+            className="updates-icon-btn"
             type="button"
             aria-label="Notifications"
             onClick={handleNotifications}
           >
-            <img src={updatesIcon} alt="Notifications" className="header-icon" />
+            <img src={updatesIcon} alt="Notifications" className="updates-icon" />
           </button>
         </header>
-
         <Box className="chat-messages-field">
           {messages.map((msg) => {
             const isSelf = authUser && msg.authorId === authUser.uid;
@@ -814,7 +813,8 @@ function ChatPage() {
                 className={`chat-message ${isSelf ? 'self' : ''}`}
               >
                 <Box className="chat-avatar">
-                  <NavLink to="/profile/" className="nav-item">
+                  {/* PLACEHOLDER AVATAR -> PROFILE NAVIGATION \\ TO BE FIXED */}
+                  <NavLink to="/profile/me" className="nav-item">
                     <img src={AvatarIcon} alt="Chat" className="profile-icon" />
                   </NavLink>  
                 </Box>
@@ -835,7 +835,18 @@ function ChatPage() {
           })}
         </Box>
 
+        {/* Chat Message input
+        TO DO: Make it modernly resize when selected and have additional buttons pop up (just add img planned) 
+        */}
         <Box className="chat-input-container">
+          <button
+            className="chat-add-img-btn"
+            type="button"
+            aria-label="Add img"
+            onClick={''}
+          >
+            <img src={addIcon} alt="Add" />
+          </button>
           <TextField
             value={messageDraft}
             onChange={(e) => setMessageDraft(e.target.value)}
@@ -850,12 +861,9 @@ function ChatPage() {
             onClick={handleSendMessage}
           >
             <SendIcon/>
-            Send
           </IconButton>
         </Box>
-
         <Navbar />
-
       </div>
     </div>
     )}

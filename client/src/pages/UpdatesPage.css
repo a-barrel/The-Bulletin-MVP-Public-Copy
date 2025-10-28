@@ -4,33 +4,53 @@
   font-family: "Urbanist", sans-serif;
 }
 
+/* ===== Outer Shell ===== */
 .updates-page {
-  background: #ffffff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   width: 100vw;
-  min-height: 100vh;
-  font-family: 'SF Pro Rounded', 'Inter', sans-serif;
-  color: #333;
+  height: 100vh;
+}
+
+.updates-frame {
+  --header-h: 72px;
+  width: 100vw;
+  height: 100vh;
+  background: #F5EFFD;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-bottom: calc(90px + env(safe-area-inset-bottom, 0)); 
 }
 
 /* ===== Header (purple) ===== */
 .updates-header-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: #d1b4f5;
   width: 100vw;
+  box-sizing: border-box;
+  min-height: var(--header-h);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #d5b6f4;
-  padding: 12px 16px;
-  border-bottom: 1px solid #b89ce8;
+  border-bottom: 2px solid #000;
 }
 
 .updates-header-title {
-  font-weight: 600;
-  color: #4c2670;
-  font-size: 1.1rem;
+  font-family: 'Urbanist', sans-serif !important;
+  color: #5D3889;
+  font-size: 2rem;
+  font-weight: 500;
+  text-align: center;
+  flex: 1;
 }
 
-.back-button,
-.clear-button {
+.updates-header-back-btn,
+.updates-header-clear-btn {
   font-family: 'Urbanist', sans-serif !important;
   color: #4c2670 !important;
   text-transform: none;
@@ -63,6 +83,7 @@
   font-family: 'Urbanist', sans-serif !important;
   color: #4c2670;
   border-bottom: 2px solid #b38cf2;
+  margin-bottom: -0.7rem;
 }
 
 /* Updates List */

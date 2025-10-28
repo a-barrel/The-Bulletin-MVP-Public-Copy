@@ -263,11 +263,7 @@ function UpdatesPage() {
     <Box
       component="section"
       sx={{
-        width: '100%',
-        maxWidth: 840,
-        mx: 'auto',
-        py: { xs: 3, md: 4 },
-        px: { xs: 2, md: 4 }
+        width: '100vw',
       }}
     >
 
@@ -276,7 +272,7 @@ function UpdatesPage() {
         onClick={() => setDebugMode((prev) => !prev)}
       >
         {debugMode ? 'Hide Updates Debug' : 'Show Updates Debug'}
-      </Button>
+    </Button>
 
       <Stack spacing={3}>
         {debugMode && (
@@ -493,20 +489,29 @@ function UpdatesPage() {
           </Stack>
         )}
       </Stack>
-      
+    {/* Figma-based frontend design */}
       {!debugMode && (
-        <Box className="updates-page">
-          <Box className="updates-header-bar">
-            <IconButton onClick={() => navigate(-1)} className="back-button">
-              <ArrowBackIcon />
-            </IconButton>
-            <Typography variant="h6" className="updates-header-title">
-              Updates
-            </Typography>
-            <Button className="clear-button" onClick={handleMarkAllRead}>
-              Clear
-            </Button>
-          </Box>
+        <div className="updates-page">
+          <div className="updates-frame">
+            <header className="updates-header-bar">
+              <IconButton 
+                onClick={() => navigate(-1)} 
+                className="updates-header-back-btn"
+              >
+                <ArrowBackIcon />
+              </IconButton>
+
+              <h1 className="updates-header-title">
+                Updates
+              </h1>
+
+              <Button 
+                className="updates-header-clear-btn" 
+                onClick={handleMarkAllRead}
+              >
+                Clear
+              </Button>
+            </header>
 
             <Box className="updates-tabs">
               {["All", "Discussions", "Events"].map((tab) => (
@@ -520,6 +525,7 @@ function UpdatesPage() {
               ))}
             </Box>
 
+            {/* TODO: Have loading and placeholder here from original page */}
             <Box className="updates-list">
               {filteredUpdates.map((update) => (
                 <Paper key={update._id} className="update-card">
@@ -541,10 +547,12 @@ function UpdatesPage() {
                 </Paper>
               ))}
             </Box>
-          </Box>
+          </div>
+        </div>
       )}
-</Box>
-)}
+    </Box>      
+  );
+}
 
 export default UpdatesPage;
 

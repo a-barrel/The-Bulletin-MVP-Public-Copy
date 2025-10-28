@@ -32,11 +32,7 @@
   top: 0;
   z-index: 30;
   background: #d1b4f5;
-
-  /* stretch edge-to-edge inside .list-frame (which has 0 1rem padding) */
-  margin-left: -1rem;
-  margin-right: -1rem;
-  width: calc(100% + 2rem);     /* ✅ prevents off-by-1 overflow */
+  width: 100vw;
   box-sizing: border-box;
 
   min-height: var(--header-h);
@@ -56,7 +52,7 @@
   flex: 1;
 }
 
-.header-icon-btn {
+.updates-icon-btn {
   background: none;
   border: none;
   font-size: 1.5rem;
@@ -65,7 +61,7 @@
   padding: 2rem;
   transition: transform .2s ease;
 }
-.header-icon-btn:hover { transform: scale(1.1); }
+.updates-icon-btn:hover { transform: scale(1.1); }
 
 .chat-messages-field {
   background-color: #F5EFFD;
@@ -83,14 +79,16 @@
   align-items: flex-start;
   gap: 8px;
   background-color: #F5EFFD;
-  border: 0.1rem solid black;
+  border-bottom: 0.1rem solid black;
   padding-bottom: 1rem;
 }
 
+/* This don't work */
 .chat-message.self {
   flex-direction: row-reverse;
 }
 
+/* Container for the user picture */
 .chat-avatar {
   margin-top: 0.5rem;
   margin-left: 0.5rem;
@@ -99,12 +97,14 @@
   border-radius: 50%;
 }
 
+/* The actual image */
 .chat-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;   /* Ensures the image fills the box without distortion */
 }
 
+/* Area to the right of avatar icon; where all the text is */
 .chat-text-area {
   background-color: #F5EFFD;
   padding: 10px 14px;
@@ -113,6 +113,7 @@
   position: relative;
 }
 
+/* Message author and message time */
 .chat-text-area-header {
   display: flex;
   gap: 12px;
@@ -175,6 +176,25 @@
 .chat-input .MuiOutlinedInput-root {
   border-radius: 120px;
   background: white;
+}
+
+.chat-add-img-btn {
+  height: 56px;
+  width: 56px;
+  position: relative;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Doesn't work properly */
+.chat-add-img-btn img {
+  /*width: 100%;
+  height: 100%; */
+  object-fit: cover;
 }
 
 .send-message-btn {
