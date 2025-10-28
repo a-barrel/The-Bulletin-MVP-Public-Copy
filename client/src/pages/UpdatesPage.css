@@ -27,7 +27,7 @@
 
 /* ===== Header (purple) ===== */
 .updates-header-bar {
-  position: sticky;
+  position: fixed;
   top: 0;
   z-index: 30;
   background: #d1b4f5;
@@ -60,10 +60,14 @@
 
 /* Tabs */
 .updates-tabs {
+  position: fixed;
+  width: 100vw;
+  top: 5rem;
   font-family: 'Urbanist', sans-serif !important;
   display: flex;
   justify-content: space-around;
-  border-bottom: 2px solid #e0d1f9;
+  background-color: white;
+  border-bottom: 2px solid rgb(194, 194, 194);
   padding: 8px 0;
 }
 
@@ -81,9 +85,9 @@
 
 .tab.active {
   font-family: 'Urbanist', sans-serif !important;
-  color: #4c2670;
-  border-bottom: 2px solid #b38cf2;
-  margin-bottom: -0.7rem;
+  color: black;
+  border-bottom: 4px solid #3EB8F0;
+  margin-bottom: -0.65rem;
 }
 
 /* Updates List */

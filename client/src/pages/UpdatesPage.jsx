@@ -30,6 +30,7 @@ import {
   markAllUpdatesRead
 } from '../api/mongoDataApi';
 import { useUpdates } from '../contexts/UpdatesContext';
+import { routes } from '../routes';
 
 export const pageConfig = {
   id: 'updates',
@@ -110,7 +111,7 @@ function UpdatesPage() {
 
   const [pendingUpdateIds, setPendingUpdateIds] = useState([]);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
-  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+  const [showUnreadOnly, setShowUnreadOnly] = useState(true);
   const pendingRefreshRef = useRef(false);
 
   const { setUnreadCount } = useUpdates();
@@ -242,20 +243,11 @@ function UpdatesPage() {
   }, [unreadCount, updates.length]);
 
   const filteredUpdates = useMemo(() => {
-  let result = updates;
-
-  if (showUnreadOnly) {
-    result = result.filter((update) => !update.readAt);
-  }
-
-  if (selectedTab === "Discussions") {
-    result = result.filter((update) => update.payload?.category === "Discussion");
-  } else if (selectedTab === "Events") {
-    result = result.filter((update) => update.payload?.category === "Event");
-  }
-
-  return result;
-}, [updates, showUnreadOnly, selectedTab]);
+    if (!showUnreadOnly) {
+      return updates;
+    }
+    return updates.filter((update) => !update.readAt);
+  }, [showUnreadOnly, updates]);
 
   const isLoading = isProfileLoading || isLoadingUpdates;
 
@@ -288,41 +280,41 @@ function UpdatesPage() {
         )}
 
         {debugMode && (
-        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <UpdateIcon color="primary" />
-            <Typography variant="h4" component="h1">
-              Updates
-            </Typography>
-            {unreadCount > 0 ? (
-              <Chip label={`${unreadCount} unread`} color="secondary" size="small" />
-            ) : (
-              <Chip label="All caught up" color="success" size="small" />
-            )}
+          <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <UpdateIcon color="primary" />
+              <Typography variant="h4" component="h1">
+                Updates
+              </Typography>
+              {unreadCount > 0 ? (
+                <Chip label={`${unreadCount} unread`} color="secondary" size="small" />
+              ) : (
+                <Chip label="All caught up" color="success" size="small" />
+              )}
+            </Stack>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Tooltip title="Refresh">
+                <span>
+                  <IconButton onClick={handleRefresh} disabled={isLoading}>
+                    {isLoading ? <CircularProgress size={20} /> : <RefreshIcon />}
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Mark all as read">
+                <span>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<DoneAllIcon fontSize="small" />}
+                    onClick={handleMarkAllRead}
+                    disabled={isMarkingAllRead || unreadCount === 0}
+                  >
+                    {isMarkingAllRead ? 'Marking...' : 'Mark all read'}
+                  </Button>
+                </span>
+              </Tooltip>
+            </Stack>
           </Stack>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Tooltip title="Refresh">
-              <span>
-                <IconButton onClick={handleRefresh} disabled={isLoading}>
-                  {isLoading ? <CircularProgress size={20} /> : <RefreshIcon />}
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="Mark all as read">
-              <span>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<DoneAllIcon fontSize="small" />}
-                  onClick={handleMarkAllRead}
-                  disabled={isMarkingAllRead || unreadCount === 0}
-                >
-                  {isMarkingAllRead ? 'Marking...' : 'Mark all read'}
-                </Button>
-              </span>
-            </Tooltip>
-          </Stack>
-        </Stack>
         )}
 
         {profileError ? (
@@ -377,7 +369,7 @@ function UpdatesPage() {
               Stay tuned — new activity on your pins and chats will show up here.
             </Typography>
           </Paper>
-          )  
+          )
         ) : (
           <Stack spacing={2}>
             {filteredUpdates.map((update) => {
@@ -453,7 +445,7 @@ function UpdatesPage() {
                         {pinId ? (
                           <Button
                             component={Link}
-                            to={`/pin/${pinId}`}
+                            to={routes.pin.byId(pinId)}
                             size="small"
                             variant="outlined"
                           >

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, NavLink } from "react-router-dom";
+import { useNavigate, NavLink, useLocation  } from "react-router-dom";
 import Navbar from '../components/Navbar';
 import GlobalNavMenu from '../components/GlobalNavMenu';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -24,7 +24,8 @@ import {
   DialogActions,
   Switch,
   FormControlLabel,
-  CircularProgress
+  CircularProgress,
+  Fab
 } from '@mui/material';
 import SmsIcon from '@mui/icons-material/Sms';
 import AddCommentIcon from '@mui/icons-material/AddComment';
@@ -35,7 +36,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
 import updatesIcon from "../assets/UpdateIcon.svg";
 import addIcon from "../assets/AddIcon.svg";
-import AvatarIcon from "../assets/AvatarIcon.svg";
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { auth } from '../firebase';
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
@@ -48,7 +49,10 @@ import {
   upsertChatPresence
 } from '../api/mongoDataApi';
 import { useLocationContext } from '../contexts/LocationContext';
+import { useUpdates } from "../contexts/UpdatesContext";
+import { useNetworkStatusContext } from "../contexts/NetworkStatusContext";
 import "./ChatPage.css";
+import MessageBubble from '../components/MessageBubble';
 
 export const pageConfig = {
   id: 'chat',
@@ -71,6 +75,8 @@ const MESSAGES_REFRESH_MS = 7_000;
 
 function ChatPage() {
   const navigate = useNavigate();
+  const { unreadCount, refreshUnreadCount } = useUpdates();
+  const { isOffline } = useNetworkStatusContext();
   const [debugMode, setDebugMode] = useState(false);
   const { announceBadgeEarned } = useBadgeSound();
   const [authUser, authLoading] = useAuthState(auth);
@@ -112,16 +118,27 @@ function ChatPage() {
   const messagesEndRef = useRef(null);
   const presenceIntervalRef = useRef(null);
   const messageIntervalRef = useRef(null);
+  const containerRef = useRef(null);
+  const location = useLocation();
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const hasScrolledToBottomRef = useRef(false);
 
   const scrollMessagesToBottom = useCallback(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    const container = containerRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight; // instant scroll
   }, []);
 
   useEffect(() => {
+      if (typeof refreshUnreadCount === 'function' && !isOffline) {
+        refreshUnreadCount({ silent: true });
+      }
+    }, [isOffline, refreshUnreadCount]);
+
+  // Makes it so that i
+  useEffect(() => {
     scrollMessagesToBottom();
-  }, [messages, scrollMessagesToBottom]);
+  }, [messages, selectedRoomId, location.pathname, scrollMessagesToBottom]);
 
   useEffect(() => {
     if (!authLoading && !authUser) {
@@ -131,6 +148,26 @@ function ChatPage() {
       setPresence([]);
     }
   }, [authLoading, authUser]);
+
+  // Detect user scroll to show/hide "scroll to bottom" button
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      // calculate distance from bottom
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+
+      // show button if more than 20px from bottom
+      setShowScrollButton(distanceFromBottom > 20);
+    };
+
+    container.addEventListener('scroll', handleScroll);    
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const loadRooms = useCallback(async () => {
     if (!authUser) {
@@ -646,6 +683,10 @@ function ChatPage() {
       navigate("/updates");
     }, [navigate]);
 
+  const notificationsLabel =
+    unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
+  const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;  
+
   return (
     <>
       <Button
@@ -656,6 +697,7 @@ function ChatPage() {
           </Button>
       <Box
       sx={{
+        display: debugMode ? 'block' : 'none',
         width: '100%',
         maxWidth: 1200,
         mx: 'auto',
@@ -663,7 +705,6 @@ function ChatPage() {
         py: { xs: 2, md: 4 }
       }}
     >
-      {debugMode && (
         <Stack spacing={2}>
           {debugMode && (
           <Stack direction="row" spacing={1.5} alignItems="center">
@@ -690,7 +731,6 @@ function ChatPage() {
           )}
 
 
-        {debugMode && (
           <Stack
             direction={{ xs: 'column', md: 'row' }}
             spacing={2}
@@ -699,7 +739,6 @@ function ChatPage() {
             {renderRoomList()}
             {renderConversation()}
           </Stack>
-        )}
 
         {presenceError ? (
           <Typography variant="body2" color="error">
@@ -707,7 +746,6 @@ function ChatPage() {
           </Typography>
         ) : null}
         </Stack>
-      )}
 
       <Dialog open={isCreateDialogOpen} onClose={handleCloseCreateDialog} fullWidth maxWidth="sm">
         <DialogTitle>Create chat room</DialogTitle>
@@ -784,11 +822,21 @@ function ChatPage() {
           </DialogActions>
         </Box>
       </Dialog>
-      </Box>
+    </Box>
 
     {/* Figma-based frontend design */}
-    {!debugMode && (
-    <div className="chat-page">
+    <Box 
+      className="chat-page"
+      sx={{ display: debugMode ? 'none' : 'block' }}
+    >
+      {showScrollButton && (
+        <Fab
+          className="chat-scroll-to-bottom-btn"
+          onClick={scrollMessagesToBottom}
+        >
+          <ArrowDownwardIcon className="scroll-to-bottom-icon"/>
+        </Fab>
+      )}
       <div className="chat-frame">
         <header className="chat-header-bar">
           <GlobalNavMenu />
@@ -798,45 +846,36 @@ function ChatPage() {
           <button
             className="updates-icon-btn"
             type="button"
-            aria-label="Notifications"
+            aria-label={notificationsLabel}
             onClick={handleNotifications}
+            disabled={isOffline}
+            title={isOffline ? 'Reconnect to view updates' : undefined}
           >
-            <img src={updatesIcon} alt="Notifications" className="updates-icon" />
+            <img src={updatesIcon} alt="" className="updates-icon" aria-hidden="true" />
+            {displayBadge ? (
+              <span className="updates-icon-badge" aria-hidden="true">
+                {displayBadge}
+              </span>
+            ) : null}
           </button>
         </header>
-        <Box className="chat-messages-field">
-          {messages.map((msg) => {
-            const isSelf = authUser && msg.authorId === authUser.uid;
-            return (
-              <Box
-                key={msg._id}
-                className={`chat-message ${isSelf ? 'self' : ''}`}
-              >
-                <Box className="chat-avatar">
-                  {/* PLACEHOLDER AVATAR -> PROFILE NAVIGATION \\ TO BE FIXED */}
-                  <NavLink to="/profile/me" className="nav-item">
-                    <img src={AvatarIcon} alt="Chat" className="profile-icon" />
-                  </NavLink>  
-                </Box>
-                <Box className="chat-text-area">
-                  <div className="chat-text-area-header">
-                    <Typography 
-                      className="chat-author">{msg.author?.displayName || 'User'}
-                    </Typography>
-                    <Typography className="chat-time">
-                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                    </Typography>
-                  </div>
-                  <Typography className="chat-text">{msg.message}</Typography>
-                  {msg.imageUrl && <img src={msg.imageUrl} alt="attachment" className="chat-image" />}
-                </Box>
-              </Box>
-            );
-          })}
+        <Box 
+          ref={containerRef}
+          className="chat-messages-field"
+        >
+          {messages.map((msg) => (
+            <MessageBubble
+              key={msg._id}
+              msg={msg}
+              isSelf={authUser && msg.authorId === authUser.uid}
+              authUser={authUser}
+            />
+          ))}
+          <div ref={messagesEndRef} />
         </Box>
 
         {/* Chat Message input
-        TO DO: Make it modernly resize when selected and have additional buttons pop up (just add img planned) 
+        TO DO: Make it modernly resize when selected and have additional buttons pop up (just add img planned) as well as making the input box bigger for bigger messages + character limit
         */}
         <Box className="chat-input-container">
           <button
@@ -865,11 +904,11 @@ function ChatPage() {
         </Box>
         <Navbar />
       </div>
-    </div>
-    )}
+    </Box>
     </>
-  );
-}
+)}
+
+
 
 export default ChatPage;
 
