@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, NavLink } from "react-router-dom";
 import Navbar from '../components/Navbar';
+import GlobalNavMenu from '../components/GlobalNavMenu';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
-  Alert,
   Box,
   Stack,
   Typography,
@@ -32,9 +33,11 @@ import RoomIcon from '@mui/icons-material/Room';
 import SendIcon from '@mui/icons-material/Send';
 import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
+import updatesIcon from "../assets/UpdateIcon.svg";
+import addIcon from "../assets/AddIcon.svg";
+import AvatarIcon from "../assets/AvatarIcon.svg";
 import { auth } from '../firebase';
 import { playBadgeSound } from '../utils/badgeSound';
-import { replaceProfanityWithFruit } from '../utils/profanityFilter';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import {
   fetchChatRooms,
@@ -42,11 +45,10 @@ import {
   fetchChatMessages,
   createChatMessage,
   fetchChatPresence,
-  upsertChatPresence,
-  fetchCurrentUserProfile
+  upsertChatPresence
 } from '../api/mongoDataApi';
 import { useLocationContext } from '../contexts/LocationContext';
-import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
+import "./ChatPage.css";
 
 export const pageConfig = {
   id: 'chat',
@@ -68,25 +70,13 @@ const PRESENCE_HEARTBEAT_MS = 30_000;
 const MESSAGES_REFRESH_MS = 7_000;
 
 function ChatPage() {
+  const navigate = useNavigate();
+  const [debugMode, setDebugMode] = useState(false);
   const { announceBadgeEarned } = useBadgeSound();
   const [authUser, authLoading] = useAuthState(auth);
   const { location: viewerLocation } = useLocationContext();
-  const { isOffline } = useNetworkStatusContext();
   const viewerLatitude = viewerLocation?.latitude ?? null;
   const viewerLongitude = viewerLocation?.longitude ?? null;
-  const viewerAccuracy = Number.isFinite(viewerLocation?.accuracy)
-    ? viewerLocation.accuracy
-    : undefined;
-  const viewerCoordinates = useMemo(() => {
-    if (!Number.isFinite(viewerLatitude) || !Number.isFinite(viewerLongitude)) {
-      return null;
-    }
-    return {
-      latitude: viewerLatitude,
-      longitude: viewerLongitude,
-      ...(viewerAccuracy !== undefined ? { accuracy: viewerAccuracy } : {})
-    };
-  }, [viewerLatitude, viewerLongitude, viewerAccuracy]);
   const [rooms, setRooms] = useState([]);
   const [roomsError, setRoomsError] = useState(null);
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
@@ -118,8 +108,6 @@ function ChatPage() {
     radiusMeters: 500,
     isGlobal: false
   });
-  const [viewerProfile, setViewerProfile] = useState(null);
-  const filterCussWordsEnabled = Boolean(viewerProfile?.preferences?.filterCussWords);
 
   const messagesEndRef = useRef(null);
   const presenceIntervalRef = useRef(null);
@@ -141,46 +129,11 @@ function ChatPage() {
       setSelectedRoomId(null);
       setMessages([]);
       setPresence([]);
-      setViewerProfile(null);
     }
   }, [authLoading, authUser]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    if (!authUser) {
-      setViewerProfile(null);
-      return;
-    }
-
-    const loadProfile = async () => {
-      try {
-        const profile = await fetchCurrentUserProfile();
-        if (!cancelled) {
-          setViewerProfile(profile);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          console.warn('Failed to load viewer profile for chat preferences', error);
-          setViewerProfile(null);
-        }
-      }
-    };
-
-    loadProfile();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [authUser]);
-
   const loadRooms = useCallback(async () => {
     if (!authUser) {
-      return;
-    }
-    if (isOffline) {
-      setRooms([]);
-      setRoomsError('You are offline. Connect to load nearby chat rooms.');
       return;
     }
     setIsLoadingRooms(true);
@@ -200,22 +153,17 @@ function ChatPage() {
     } finally {
       setIsLoadingRooms(false);
     }
-  }, [authUser, isOffline, selectedRoomId, viewerLatitude, viewerLongitude]);
+  }, [authUser, selectedRoomId, viewerLatitude, viewerLongitude]);
 
   useEffect(() => {
-    if (!authLoading && authUser && !isOffline) {
+    if (!authLoading && authUser) {
       loadRooms();
     }
-  }, [authLoading, authUser, isOffline, loadRooms]);
+  }, [authLoading, authUser, loadRooms]);
 
   const loadMessages = useCallback(
     async (roomId, { silent } = {}) => {
       if (!roomId) {
-        return;
-      }
-      if (isOffline) {
-        setMessages([]);
-        setMessagesError('You are offline. Connect to view messages.');
         return;
       }
       if (!silent) {
@@ -223,10 +171,7 @@ function ChatPage() {
       }
       setMessagesError(null);
       try {
-        const data = await fetchChatMessages(roomId, {
-          latitude: viewerCoordinates?.latitude,
-          longitude: viewerCoordinates?.longitude
-        });
+        const data = await fetchChatMessages(roomId);
         setMessages(data);
       } catch (error) {
         setMessages([]);
@@ -237,33 +182,25 @@ function ChatPage() {
         }
       }
     },
-    [isOffline, viewerCoordinates]
+    []
   );
 
   const loadPresence = useCallback(async (roomId) => {
     if (!roomId) {
       return;
     }
-    if (isOffline) {
-      setPresence([]);
-      setPresenceError('You are offline. Presence data is unavailable.');
-      return;
-    }
     try {
-      const data = await fetchChatPresence(roomId, {
-        latitude: viewerCoordinates?.latitude,
-        longitude: viewerCoordinates?.longitude
-      });
+      const data = await fetchChatPresence(roomId);
       setPresence(data);
       setPresenceError(null);
     } catch (error) {
       setPresence([]);
       setPresenceError(error?.message || 'Failed to load room presence.');
     }
-  }, [isOffline, viewerCoordinates]);
+  }, []);
 
   useEffect(() => {
-    if (!selectedRoomId || isOffline) {
+    if (!selectedRoomId) {
       setMessages([]);
       setPresence([]);
       return;
@@ -296,27 +233,16 @@ function ChatPage() {
         presenceIntervalRef.current = null;
       }
     };
-  }, [isOffline, loadMessages, loadPresence, selectedRoomId]);
+  }, [loadMessages, loadPresence, selectedRoomId]);
 
   useEffect(() => {
-    if (!authUser || !selectedRoomId || isOffline) {
+    if (!authUser || !selectedRoomId) {
       return;
     }
 
     const sendPresence = async () => {
       try {
-        await upsertChatPresence(
-          selectedRoomId,
-          viewerCoordinates
-            ? {
-                latitude: viewerCoordinates.latitude,
-                longitude: viewerCoordinates.longitude,
-                ...(viewerCoordinates.accuracy !== undefined
-                  ? { accuracy: viewerCoordinates.accuracy }
-                  : {})
-              }
-            : {}
-        );
+        await upsertChatPresence(selectedRoomId, {});
       } catch (error) {
         console.warn('Failed to update chat presence', error);
       }
@@ -325,7 +251,7 @@ function ChatPage() {
     sendPresence();
     const interval = setInterval(sendPresence, PRESENCE_HEARTBEAT_MS);
     return () => clearInterval(interval);
-  }, [authUser, isOffline, selectedRoomId, viewerCoordinates]);
+  }, [authUser, selectedRoomId]);
 
   const handleSelectRoom = useCallback((roomId) => {
     setSelectedRoomId(roomId);
@@ -356,11 +282,6 @@ function ChatPage() {
         return;
       }
 
-      if (isOffline) {
-        setCreateError('You are offline. Connect to create a chat room.');
-        return;
-      }
-
       if (!createForm.name.trim()) {
         setCreateError('Room name is required.');
         return;
@@ -388,14 +309,12 @@ function ChatPage() {
         setIsCreatingRoom(false);
       }
     },
-    [authUser, createForm, isOffline]
+    [authUser, createForm]
   );
 
   const handleSendMessage = useCallback(
     async (event) => {
-      if (event && typeof event.preventDefault === 'function') {
-        event.preventDefault();
-      }
+      event.preventDefault();
       if (!selectedRoomId || !authUser) {
         return;
       }
@@ -404,22 +323,9 @@ function ChatPage() {
         return;
       }
 
-      if (isOffline) {
-        setMessagesError('You are offline. Connect to send messages.');
-        return;
-      }
-
       setIsSendingMessage(true);
       try {
-        const payload = { message: trimmed };
-        if (viewerCoordinates) {
-          payload.latitude = viewerCoordinates.latitude;
-          payload.longitude = viewerCoordinates.longitude;
-          if (viewerCoordinates.accuracy !== undefined) {
-            payload.accuracy = viewerCoordinates.accuracy;
-          }
-        }
-        const message = await createChatMessage(selectedRoomId, payload);
+        const message = await createChatMessage(selectedRoomId, { message: trimmed });
         setMessages((prev) => [...prev, message]);
         if (message?.badgeEarnedId) {
           playBadgeSound();
@@ -433,26 +339,7 @@ function ChatPage() {
         setIsSendingMessage(false);
       }
     },
-    [
-      announceBadgeEarned,
-      authUser,
-      isOffline,
-      messageDraft,
-      scrollMessagesToBottom,
-      selectedRoomId,
-      viewerCoordinates
-    ]
-  );
-
-  const handleDraftKeyDown = useCallback(
-    (event) => {
-      if (event.key !== 'Enter' || event.shiftKey) {
-        return;
-      }
-      event.preventDefault();
-      handleSendMessage();
-    },
-    [handleSendMessage]
+    [announceBadgeEarned, authUser, messageDraft, scrollMessagesToBottom, selectedRoomId]
   );
 
   const filteredPresence = useMemo(() => {
@@ -464,15 +351,6 @@ function ChatPage() {
   }, [presence]);
 
   const activeUserCount = filteredPresence.length;
-  const locationWarning = useMemo(() => {
-    if (isOffline) {
-      return null;
-    }
-    if (!viewerCoordinates) {
-      return 'Precise location is unavailable. Showing global rooms and limited nearby data.';
-    }
-    return null;
-  }, [isOffline, viewerCoordinates]);
 
   const renderRoomList = () => (
     <Paper
@@ -510,23 +388,17 @@ function ChatPage() {
           />
         </Stack>
         <Stack direction="row" spacing={1}>
-          <Tooltip title={isOffline ? 'Reconnect to refresh rooms' : 'Refresh rooms'}>
+          <Tooltip title="Refresh rooms">
             <span>
-              <IconButton onClick={loadRooms} disabled={isOffline || isLoadingRooms}>
+              <IconButton onClick={loadRooms} disabled={isLoadingRooms}>
                 {isLoadingRooms ? <CircularProgress size={20} /> : <RefreshIcon fontSize="small" />}
               </IconButton>
             </span>
           </Tooltip>
-          <Tooltip title={isOffline ? 'Reconnect to create a room' : 'Create room'}>
-            <span>
-              <IconButton
-                color="primary"
-                onClick={handleOpenCreateDialog}
-                disabled={isOffline}
-              >
-                <AddCommentIcon fontSize="small" />
-              </IconButton>
-            </span>
+          <Tooltip title="Create room">
+            <IconButton color="primary" onClick={handleOpenCreateDialog}>
+              <AddCommentIcon fontSize="small" />
+            </IconButton>
           </Tooltip>
         </Stack>
       </Box>
@@ -680,10 +552,6 @@ function ChatPage() {
             ) : (
               messages.map((message) => {
                 const isSelf = authUser && message.authorId === authUser.uid;
-                const rawMessage = message.message ?? '';
-                const messageText = filterCussWordsEnabled
-                  ? replaceProfanityWithFruit(rawMessage)
-                  : rawMessage;
                 return (
                   <Stack
                     key={message._id}
@@ -708,7 +576,7 @@ function ChatPage() {
                           </Typography>
                         </Stack>
                         <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                          {messageText}
+                          {message.message}
                         </Typography>
                       </Stack>
                     </Paper>
@@ -736,20 +604,19 @@ function ChatPage() {
             <TextField
               value={messageDraft}
               onChange={(event) => setMessageDraft(event.target.value)}
-              onKeyDown={handleDraftKeyDown}
               placeholder={authUser ? 'Type your message…' : 'Sign in to chat'}
               multiline
               minRows={1}
               maxRows={4}
               fullWidth
-              disabled={!authUser || isSendingMessage || isOffline}
+              disabled={!authUser || isSendingMessage}
             />
             <Button
               type="submit"
               variant="contained"
               color="primary"
               startIcon={<SendIcon />}
-              disabled={!authUser || !messageDraft.trim() || isSendingMessage || isOffline}
+              disabled={!authUser || !messageDraft.trim() || isSendingMessage}
             >
               {isSendingMessage ? 'Sending…' : 'Send'}
             </Button>
@@ -767,12 +634,7 @@ function ChatPage() {
           <Typography variant="body2" color="text.secondary">
             Choose a chat from the list or create a new space for your team.
           </Typography>
-          <Button
-            variant="outlined"
-            onClick={handleOpenCreateDialog}
-            disabled={isOffline}
-            title={isOffline ? 'Reconnect to create a room' : undefined}
-          >
+          <Button variant="outlined" onClick={handleOpenCreateDialog}>
             Create room
           </Button>
         </Stack>
@@ -780,8 +642,18 @@ function ChatPage() {
     </Paper>
   );
 
+  const handleNotifications = useCallback(() => {
+      navigate("/updates");
+    }, [navigate]);
+
   return (
     <>
+      <Button
+            className="chat-debug-toggle"
+            onClick={() => setDebugMode((prev) => !prev)}
+          >
+            {debugMode ? 'Hide Chat Debug' : 'Show Chat Debug'}
+          </Button>
       <Box
       sx={{
         width: '100%',
@@ -791,50 +663,51 @@ function ChatPage() {
         py: { xs: 2, md: 4 }
       }}
     >
-      <Stack spacing={2}>
-        {isOffline ? (
-          <Alert severity="warning">
-            You are offline. Chat lists and messages will refresh once you reconnect.
-          </Alert>
-        ) : null}
-        {locationWarning ? <Alert severity="info">{locationWarning}</Alert> : null}
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <SmsIcon color="primary" />
-          <Typography variant="h4" component="h1">
-            Chat
-          </Typography>
-          {authUser ? (
-            <Chip
-              label={`Signed in as ${authUser.displayName || authUser.email || 'You'}`}
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
-          ) : (
-            <Chip
-              label="Sign in to participate"
-              size="small"
-              color="warning"
-              variant="outlined"
-            />
+      {debugMode && (
+        <Stack spacing={2}>
+          {debugMode && (
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <SmsIcon color="primary" />
+            <Typography variant="h4" component="h1">
+              Chat
+            </Typography>
+            {authUser ? (
+              <Chip
+                label={`Signed in as ${authUser.displayName || authUser.email || 'You'}`}
+                size="small"
+                color="primary"
+                variant="outlined"
+              />
+            ) : (
+              <Chip
+                label="Sign in to participate"
+                size="small"
+                color="warning"
+                variant="outlined"
+              />
+            )}
+          </Stack>
           )}
-        </Stack>
 
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={2}
-          sx={{ minHeight: { md: 560 } }}
-        >
-          {renderRoomList()}
-          {renderConversation()}
-        </Stack>
+
+        {debugMode && (
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            sx={{ minHeight: { md: 560 } }}
+          >
+            {renderRoomList()}
+            {renderConversation()}
+          </Stack>
+        )}
 
         {presenceError ? (
           <Typography variant="body2" color="error">
             {presenceError}
           </Typography>
         ) : null}
-      </Stack>
+        </Stack>
+      )}
 
       <Dialog open={isCreateDialogOpen} onClose={handleCloseCreateDialog} fullWidth maxWidth="sm">
         <DialogTitle>Create chat room</DialogTitle>
@@ -912,7 +785,88 @@ function ChatPage() {
         </Box>
       </Dialog>
       </Box>
-      <Navbar />
+
+    {/* Figma-based frontend design */}
+    {!debugMode && (
+    <div className="chat-page">
+      <div className="chat-frame">
+        <header className="chat-header-bar">
+          <GlobalNavMenu />
+          <h1 className="chat-header-title">
+            Chat
+          </h1>
+          <button
+            className="updates-icon-btn"
+            type="button"
+            aria-label="Notifications"
+            onClick={handleNotifications}
+          >
+            <img src={updatesIcon} alt="Notifications" className="updates-icon" />
+          </button>
+        </header>
+        <Box className="chat-messages-field">
+          {messages.map((msg) => {
+            const isSelf = authUser && msg.authorId === authUser.uid;
+            return (
+              <Box
+                key={msg._id}
+                className={`chat-message ${isSelf ? 'self' : ''}`}
+              >
+                <Box className="chat-avatar">
+                  {/* PLACEHOLDER AVATAR -> PROFILE NAVIGATION \\ TO BE FIXED */}
+                  <NavLink to="/profile/me" className="nav-item">
+                    <img src={AvatarIcon} alt="Chat" className="profile-icon" />
+                  </NavLink>  
+                </Box>
+                <Box className="chat-text-area">
+                  <div className="chat-text-area-header">
+                    <Typography 
+                      className="chat-author">{msg.author?.displayName || 'User'}
+                    </Typography>
+                    <Typography className="chat-time">
+                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                    </Typography>
+                  </div>
+                  <Typography className="chat-text">{msg.message}</Typography>
+                  {msg.imageUrl && <img src={msg.imageUrl} alt="attachment" className="chat-image" />}
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
+
+        {/* Chat Message input
+        TO DO: Make it modernly resize when selected and have additional buttons pop up (just add img planned) 
+        */}
+        <Box className="chat-input-container">
+          <button
+            className="chat-add-img-btn"
+            type="button"
+            aria-label="Add img"
+            onClick={''}
+          >
+            <img src={addIcon} alt="Add" />
+          </button>
+          <TextField
+            value={messageDraft}
+            onChange={(e) => setMessageDraft(e.target.value)}
+            placeholder="Send a message"
+            fullWidth
+            variant="outlined"
+            className="chat-input"
+          />
+          <IconButton 
+            className="send-message-btn" 
+            color="white"
+            onClick={handleSendMessage}
+          >
+            <SendIcon/>
+          </IconButton>
+        </Box>
+        <Navbar />
+      </div>
+    </div>
+    )}
     </>
   );
 }

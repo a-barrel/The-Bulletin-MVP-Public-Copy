@@ -1,0 +1,206 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap');
+
+* {
+  font-family: "Urbanist", sans-serif;
+}
+
+/* ===== Outer Shell ===== */
+.chat-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: black;
+  width: 100vw;
+  height: 100vh;
+}
+
+.chat-frame {
+  --header-h: 72px;
+  width: 100vw;
+  height: 100vh;
+  background: #fff;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-bottom: calc(90px + env(safe-area-inset-bottom, 0)); 
+}
+
+/* ===== Header (purple) ===== */
+.chat-header-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: #d1b4f5;
+  width: 100vw;
+  box-sizing: border-box;
+
+  min-height: var(--header-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  border-bottom: 2px solid #000;
+  /* transform: translateY(-1px); <-- remove this if you see a 1px jump */
+}
+
+.chat-header-title {
+  color: #5D3889;
+  font-size: 2rem;
+  font-weight: 500;
+  text-align: center;
+  flex: 1;
+}
+
+.updates-icon-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2rem;
+  transition: transform .2s ease;
+}
+.updates-icon-btn:hover { transform: scale(1.1); }
+
+.chat-messages-field {
+  background-color: #F5EFFD;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  min-height: 100vh;
+}
+
+.chat-message {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background-color: #F5EFFD;
+  border-bottom: 0.1rem solid black;
+  padding-bottom: 1rem;
+}
+
+/* This don't work */
+.chat-message.self {
+  flex-direction: row-reverse;
+}
+
+/* Container for the user picture */
+.chat-avatar {
+  margin-top: 0.5rem;
+  margin-left: 0.5rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+}
+
+/* The actual image */
+.chat-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;   /* Ensures the image fills the box without distortion */
+}
+
+/* Area to the right of avatar icon; where all the text is */
+.chat-text-area {
+  background-color: #F5EFFD;
+  padding: 10px 14px;
+  max-width: 80%;
+  word-wrap: break-word;
+  position: relative;
+}
+
+/* Message author and message time */
+.chat-text-area-header {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.chat-message.self .chat-text-area {
+  font-family:'Urbanist', sans-serif;
+  background-color: #d1b2f5;
+  text-align: right;
+}
+
+.chat-author {
+  font-family:'Urbanist', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem;
+  color: #F15BB5;
+}
+
+.chat-text {
+  font-family:'Urbanist', sans-serif !important;
+  margin-top: 2px;
+  font-size: 0.9rem;
+  color: black;
+}
+
+.chat-image {
+  margin-top: 8px;
+  border-radius: 10px;
+  max-width: 100%;
+  height: auto;
+}
+
+.chat-time {
+  font-family:'Urbanist', sans-serif !important;
+  font-size: 0.7rem;
+  color: #b6b6b6;
+  margin-top: 3px;
+}
+
+.chat-input-container {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 5.6rem;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: #CDAEF2;
+  border-top: 1px solid #ddd;
+  margin-bottom: -0.6rem;
+}
+
+.chat-input input {
+  font-family:'Urbanist', sans-serif;
+  font-weight: 600;
+  color: #a861ff;
+}
+
+.chat-input .MuiOutlinedInput-root {
+  border-radius: 120px;
+  background: white;
+}
+
+.chat-add-img-btn {
+  height: 56px;
+  width: 56px;
+  position: relative;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Doesn't work properly */
+.chat-add-img-btn img {
+  /*width: 100%;
+  height: 100%; */
+  object-fit: cover;
+}
+
+.send-message-btn {
+  display: flex;
+  padding: 1rem;
+  gap: 4px;
+  color: white;
+  font-size: 1.3rem;
+}

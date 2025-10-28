@@ -1,0 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap');
+
+* {
+  font-family: "Urbanist", sans-serif;
+}
+
+/* ===== Outer Shell ===== */
+.updates-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100vw;
+  height: 100vh;
+}
+
+.updates-frame {
+  --header-h: 72px;
+  width: 100vw;
+  height: 100vh;
+  background: #F5EFFD;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-bottom: calc(90px + env(safe-area-inset-bottom, 0)); 
+}
+
+/* ===== Header (purple) ===== */
+.updates-header-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: #d1b4f5;
+  width: 100vw;
+  box-sizing: border-box;
+  min-height: var(--header-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid #000;
+}
+
+.updates-header-title {
+  font-family: 'Urbanist', sans-serif !important;
+  color: #5D3889;
+  font-size: 2rem;
+  font-weight: 500;
+  text-align: center;
+  flex: 1;
+}
+
+.updates-header-back-btn,
+.updates-header-clear-btn {
+  font-family: 'Urbanist', sans-serif !important;
+  color: #4c2670 !important;
+  text-transform: none;
+  font-weight: 600 !important;
+  font-size: 0.95rem;
+}
+
+/* Tabs */
+.updates-tabs {
+  font-family: 'Urbanist', sans-serif !important;
+  display: flex;
+  justify-content: space-around;
+  border-bottom: 2px solid #e0d1f9;
+  padding: 8px 0;
+}
+
+.tab {
+  font-family: 'Urbanist', sans-serif !important;
+  flex: 1;
+  background: none;
+  border: none;
+  color: #6b5aa0;
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 6px 0;
+  transition: color 0.2s ease;
+}
+
+.tab.active {
+  font-family: 'Urbanist', sans-serif !important;
+  color: #4c2670;
+  border-bottom: 2px solid #b38cf2;
+  margin-bottom: -0.7rem;
+}
+
+/* Updates List */
+.updates-list {
+  padding: 10px 12px;
+}
+
+.update-card {
+  border: 1px solid #cdb8f2;
+  border-radius: 16px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  background-color: #fefcff;
+  box-shadow: 0 2px 4px rgba(180, 140, 240, 0.1);
+  position: relative;
+}
+
+.update-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.update-highlight {
+  font-weight: 600;
+  color: #a44bd8;
+}
+
+.view-button {
+  background: #d1b4f4 !important;
+  color: #3d1e60 !important;
+  border-radius: 12px !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  width: 100%;
+  margin-top: 8px;
+  box-shadow: 0 1px 2px rgba(100, 50, 150, 0.2);
+}
+
+.avatar-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 8px;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid white;
+  margin-right: -6px;
+  background-color: #e0d0f8;
+}
+
+.update-time {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 0.75rem;
+  color: #a0a0a0;
+}
