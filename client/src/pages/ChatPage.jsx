@@ -690,11 +690,12 @@ function ChatPage() {
   return (
     <>
       <Button
-            className="chat-debug-toggle"
-            onClick={() => setDebugMode((prev) => !prev)}
-          >
-            {debugMode ? 'Hide Chat Debug' : 'Show Chat Debug'}
-          </Button>
+        className="chat-debug-toggle"
+        onClick={() => setDebugMode((prev) => !prev)}
+      >
+        {debugMode ? 'Hide Chat Debug' : 'Show Chat Debug'}
+      </Button>
+
       <Box
       sx={{
         display: debugMode ? 'block' : 'none',
@@ -704,9 +705,8 @@ function ChatPage() {
         px: { xs: 1.5, md: 3 },
         py: { xs: 2, md: 4 }
       }}
-    >
+      >
         <Stack spacing={2}>
-          {debugMode && (
           <Stack direction="row" spacing={1.5} alignItems="center">
             <SmsIcon color="primary" />
             <Typography variant="h4" component="h1">
@@ -728,8 +728,6 @@ function ChatPage() {
               />
             )}
           </Stack>
-          )}
-
 
           <Stack
             direction={{ xs: 'column', md: 'row' }}
@@ -740,11 +738,11 @@ function ChatPage() {
             {renderConversation()}
           </Stack>
 
-        {presenceError ? (
-          <Typography variant="body2" color="error">
-            {presenceError}
-          </Typography>
-        ) : null}
+          {presenceError ? (
+            <Typography variant="body2" color="error">
+              {presenceError}
+            </Typography>
+          ) : null}
         </Stack>
 
       <Dialog open={isCreateDialogOpen} onClose={handleCloseCreateDialog} fullWidth maxWidth="sm">
@@ -878,21 +876,16 @@ function ChatPage() {
         TO DO: Make it modernly resize when selected and have additional buttons pop up (just add img planned) as well as making the input box bigger for bigger messages + character limit
         */}
         <Box className="chat-input-container">
-          <button
-            className="chat-add-img-btn"
-            type="button"
-            aria-label="Add img"
-            onClick={''}
-          >
-            <img src={addIcon} alt="Add" />
-          </button>
+          <Box className="chat-add-img-btn" onClick={''}>
+            <img src={addIcon} alt="Add" className="add-img-icon"/>
+          </Box>
           <TextField
+            className="chat-input"
             value={messageDraft}
             onChange={(e) => setMessageDraft(e.target.value)}
             placeholder="Send a message"
             fullWidth
             variant="outlined"
-            className="chat-input"
           />
           <IconButton 
             className="send-message-btn" 

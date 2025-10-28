@@ -1,6 +1,7 @@
 import { Box, Typography } from '@mui/material';
 import { NavLink } from 'react-router-dom';
 import AvatarIcon from '../assets/AvatarIcon.svg';
+import "./MessageBubble.css";
 
 function MessageBubble({ msg, isSelf, authUser }) {
   return (

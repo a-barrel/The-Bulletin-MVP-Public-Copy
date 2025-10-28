@@ -66,8 +66,8 @@
 
 .updates-icon-badge {
   position: absolute;
-  top: 1.1rem;
-  right: 1.25rem;
+  top: 1.4rem;
+  right: 1.6rem;
   min-width: 22px;
   height: 22px;
   padding: 0 6px;
@@ -107,22 +107,6 @@
 /* This don't work */
 .chat-message.self {
   flex-direction: row-reverse;
-}
-
-/* Container for the user picture */
-.chat-avatar {
-  margin-top: 0.5rem;
-  margin-left: 0.5rem;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-}
-
-/* The actual image */
-.chat-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;   /* Ensures the image fills the box without distortion */
 }
 
 /* Area to the right of avatar icon; where all the text is */
@@ -178,11 +162,12 @@
 
 .chat-input-container {
   position: fixed;
-  left: 0;
-  right: 0;
+  width: 100vw;
   bottom: 5.6rem;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 4px;
   padding: 8px 12px;
   background: #CDAEF2;
   border-top: 1px solid #ddd;
@@ -192,7 +177,7 @@
 .chat-input input {
   font-family:'Urbanist', sans-serif;
   font-weight: 600;
-  color: #a861ff;
+  color: #000000;
 }
 
 .chat-input .MuiOutlinedInput-root {
@@ -201,8 +186,10 @@
 }
 
 .chat-add-img-btn {
-  height: 56px;
-  width: 56px;
+  margin-right: 0.3rem;
+  margin-left: -0.3rem;
+  height: 48px;
+  width: 48px;
   position: relative;
   background: transparent;
   display: flex;
@@ -212,10 +199,9 @@
   transition: all 0.2s ease;
 }
 
-/* Doesn't work properly */
-.chat-add-img-btn img {
-  /*width: 100%;
-  height: 100%; */
+.add-img-icon {
+  width: 100vw;
+  height: 100%; 
   object-fit: cover;
 }
 
