@@ -6,34 +6,35 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import UpdateIcon from '@mui/icons-material/Update';
 import './GlobalNavMenu.css';
+import { routes } from '../routes';
 
 const DEFAULT_ITEMS = [
   {
     key: 'profile',
     label: 'Profile',
     description: 'View your profile',
-    to: '/profile/me',
+    to: routes.profile.me,
     Icon: AccountCircleIcon
   },
   {
     key: 'settings',
     label: 'Settings',
     description: 'Adjust preferences',
-    to: '/settings',
+    to: routes.settings.base,
     Icon: SettingsIcon
   },
   {
     key: 'bookmarks',
     label: 'Bookmarks',
     description: 'See saved pins',
-    to: '/bookmarks',
+    to: routes.bookmarks.base,
     Icon: BookmarkIcon
   },
   {
     key: 'updates',
     label: 'Updates',
     description: 'Check notifications',
-    to: '/updates',
+    to: routes.updates.base,
     Icon: UpdateIcon
   }
 ];

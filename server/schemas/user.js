@@ -10,13 +10,17 @@ const UserStatusSchema = z.enum(['active', 'inactive', 'suspended', 'deleted']);
 
 const UserPreferencesSchema = z.object({
   theme: z.enum(['system', 'light', 'dark']).default('system'),
-  notifications: z.object({
-    proximity: z.boolean().default(true),
-    updates: z.boolean().default(true),
-    marketing: z.boolean().default(false)
-  }).partial(),
+  notifications: z
+    .object({
+      proximity: z.boolean().default(true),
+      updates: z.boolean().default(true),
+      marketing: z.boolean().default(false),
+      chatTransitions: z.boolean().default(true)
+    })
+    .partial(),
   radiusPreferenceMeters: z.number().int().positive().default(16093).optional(),
-  statsPublic: z.boolean().default(true).optional()
+  statsPublic: z.boolean().default(true).optional(),
+  filterCussWords: z.boolean().default(false).optional()
 });
 
 const UserStatsSchema = z.object({
@@ -25,7 +29,8 @@ const UserStatsSchema = z.object({
   posts: z.number().int().nonnegative().default(0),
   bookmarks: z.number().int().nonnegative().default(0),
   followers: z.number().int().nonnegative().default(0),
-  following: z.number().int().nonnegative().default(0)
+  following: z.number().int().nonnegative().default(0),
+  cussCount: z.number().int().nonnegative().default(0)
 });
 
 const UserRelationshipSchema = z.object({

@@ -48,9 +48,6 @@ Thumbs.db
 # Render
 .render
 
-# Debug uploads
-server/uploads/images/
-
 # Firebase emulator exports
 # Keep emulator-data committed so the team shares a consistent Auth seed.
 
@@ -59,3 +56,5 @@ TODO AND IDEAS/backlog-ideas.md
 TODO AND IDEAS/sprint-2-backlog.md
 
 
+/.vscode/bulletin-app-6548a-firebase-adminsdk-*.json
+TODO AND IDEAS/demo-readiness-checklist.md

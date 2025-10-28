@@ -1,6 +1,9 @@
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { routes } from '../routes';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -25,6 +28,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { createPin, uploadPinImage } from '../api/mongoDataApi';
 import { useNavOverlay } from '../contexts/NavOverlayContext';
+import { useLocationContext } from '../contexts/LocationContext';
 
 export const pageConfig = {
   id: 'create-pin',
@@ -37,6 +41,14 @@ export const pageConfig = {
 };
 
 const METERS_PER_MILE = 1609.34;
+const MAX_PIN_DISTANCE_MILES = 50;
+const MAX_PIN_DISTANCE_METERS = MAX_PIN_DISTANCE_MILES * METERS_PER_MILE;
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+const EVENT_MAX_LEAD_TIME_DAYS = 14;
+const DISCUSSION_MAX_DURATION_DAYS = 3;
+const EVENT_MAX_LEAD_TIME_MS = EVENT_MAX_LEAD_TIME_DAYS * MILLISECONDS_PER_DAY;
+const DISCUSSION_MAX_DURATION_MS = DISCUSSION_MAX_DURATION_DAYS * MILLISECONDS_PER_DAY;
+const FUTURE_TOLERANCE_MS = 60 * 1000;
 
 const INITIAL_FORM_STATE = {
   title: '',
@@ -70,6 +82,28 @@ const DEFAULT_MAP_CENTER = {
   lng: -118.1136
 };
 
+const haversineDistanceMeters = (pointA, pointB) => {
+  if (!pointA || !pointB) {
+    return Number.NaN;
+  }
+  const { latitude: lat1, longitude: lon1 } = pointA;
+  const { latitude: lat2, longitude: lon2 } = pointB;
+  if (!Number.isFinite(lat1) || !Number.isFinite(lon1) || !Number.isFinite(lat2) || !Number.isFinite(lon2)) {
+    return Number.NaN;
+  }
+
+  const toRadians = (degrees) => (degrees * Math.PI) / 180;
+  const earthRadiusMeters = 6371000;
+
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusMeters * c;
+};
+
 const PIN_TYPE_THEMES = {
   event: {
     headerBackground: 'linear-gradient(135deg, #CDAEF2 0%, #9B5DE5 100%)',
@@ -88,6 +122,9 @@ const PIN_TYPE_THEMES = {
     ctaTextColor: '#FFFFFF'
   }
 };
+
+const DRAFT_STORAGE_KEY = 'pinpoint:createPinDraft';
+const AUTOSAVE_DELAY_MS = 1500;
 
 const FIGMA_TEMPLATE = {
   header: {
@@ -126,13 +163,14 @@ function MapCenterUpdater({ position }) {
   return null;
 }
 
-function SelectableLocationMap({ value, onChange }) {
-  const center = value ?? DEFAULT_MAP_CENTER;
+function SelectableLocationMap({ value, onChange, anchor }) {
+  const center = value ?? anchor ?? DEFAULT_MAP_CENTER;
+  const trackingPosition = value ?? anchor ?? null;
 
   return (
     <MapContainer
       center={[center.lat, center.lng]}
-      zoom={14}
+      zoom={12}
       style={{ width: '100%', height: '100%' }}
       scrollWheelZoom
     >
@@ -141,7 +179,7 @@ function SelectableLocationMap({ value, onChange }) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <MapClickHandler onSelect={onChange} />
-      <MapCenterUpdater position={value} />
+      <MapCenterUpdater position={trackingPosition} />
       {value ? <Marker position={[value.lat, value.lng]} /> : null}
     </MapContainer>
   );
@@ -194,7 +232,33 @@ function sanitizeNumberField(value) {
   return parsed;
 }
 
-function sanitizeDateField(value, label) {
+function formatDateTimeLocalInput(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return '';
+  }
+  const pad = (input) => String(input).padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function formatDateForMessage(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return 'the specified date';
+  }
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
+function sanitizeDateField(value, label, options = {}) {
   const trimmed = `${value ?? ''}`.trim();
   if (!trimmed) {
     throw new Error(`${label} is required.`);
@@ -203,10 +267,51 @@ function sanitizeDateField(value, label) {
   if (Number.isNaN(date.getTime())) {
     throw new Error(`${label} must be a valid date/time.`);
   }
-  return date.toISOString();
+
+  const {
+    allowPast = false,
+    min,
+    max,
+    minMessage,
+    maxMessage,
+    toleranceMs = FUTURE_TOLERANCE_MS
+  } = options;
+
+  if (!allowPast) {
+    const now = Date.now();
+    if (date.getTime() < now - toleranceMs) {
+      throw new Error(`${label} cannot be in the past.`);
+    }
+  }
+
+  if (min) {
+    const minDate = min instanceof Date ? min : new Date(min);
+    if (Number.isNaN(minDate.getTime())) {
+      throw new Error(`${label} has an invalid minimum date.`);
+    }
+    if (date.getTime() < minDate.getTime()) {
+      throw new Error(minMessage ?? `${label} must be on or after ${formatDateForMessage(minDate)}.`);
+    }
+  }
+
+  if (max) {
+    const maxDate = max instanceof Date ? max : new Date(max);
+    if (Number.isNaN(maxDate.getTime())) {
+      throw new Error(`${label} has an invalid maximum date.`);
+    }
+    if (date.getTime() > maxDate.getTime()) {
+      throw new Error(maxMessage ?? `${label} must be on or before ${formatDateForMessage(maxDate)}.`);
+    }
+  }
+
+  return date;
 }
 
 function CreatePinPage() {
+  const navigate = useNavigate();
+  const { isOffline } = useNetworkStatusContext();
+  const { location: viewerLocation } = useLocationContext();
+  const { announceBadgeEarned } = useBadgeSound();
   const [pinType, setPinType] = useState('discussion');
   const [formState, setFormState] = useState(INITIAL_FORM_STATE);
   const [autoDelete, setAutoDelete] = useState(true);
@@ -219,14 +324,154 @@ function CreatePinPage() {
   const [uploadStatus, setUploadStatus] = useState(null);
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [locationStatus, setLocationStatus] = useState(null);
+  const [draftStatus, setDraftStatus] = useState(null);
+  const autosaveTimeoutRef = useRef(null);
+  const draftInitializedRef = useRef(false);
+  const skipNextAutosaveRef = useRef(false);
   const lastReverseGeocodeRef = useRef(null);
+
+  const writeDraft = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    const draftPayload = {
+      version: 1,
+      pinType,
+      autoDelete,
+      formState,
+      photoAssets,
+      coverPhotoId,
+      timestamp: Date.now()
+    };
+
+    try {
+      window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftPayload));
+      return true;
+    } catch (error) {
+      console.error('Failed to save pin draft', error);
+      return false;
+    }
+  }, [autoDelete, coverPhotoId, formState, photoAssets, pinType]);
+
+  const clearDraft = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    try {
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch (error) {
+      console.warn('Failed to clear saved pin draft', error);
+    }
+    skipNextAutosaveRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      draftInitializedRef.current = true;
+      skipNextAutosaveRef.current = true;
+      return;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+
+      const data = JSON.parse(raw);
+      if (data && typeof data === 'object') {
+        if (data.pinType === 'event' || data.pinType === 'discussion') {
+          setPinType(data.pinType);
+        }
+        if (typeof data.autoDelete === 'boolean') {
+          setAutoDelete(data.autoDelete);
+        }
+        if (data.formState && typeof data.formState === 'object') {
+          setFormState((prev) => ({
+            ...prev,
+            ...data.formState
+          }));
+        }
+        if (Array.isArray(data.photoAssets)) {
+          setPhotoAssets(data.photoAssets);
+        }
+        if (typeof data.coverPhotoId === 'string' && data.coverPhotoId.trim()) {
+          setCoverPhotoId(data.coverPhotoId);
+        }
+
+        setDraftStatus({
+          type: 'info',
+          message: 'Draft restored from your last session.'
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to load saved pin draft', error);
+    } finally {
+      draftInitializedRef.current = true;
+      skipNextAutosaveRef.current = true;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!draftInitializedRef.current) {
+      return;
+    }
+
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false;
+      return;
+    }
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (autosaveTimeoutRef.current) {
+      window.clearTimeout(autosaveTimeoutRef.current);
+    }
+
+    autosaveTimeoutRef.current = window.setTimeout(() => {
+      const success = writeDraft();
+      if (success) {
+        setDraftStatus({
+          type: 'info',
+          message: `Draft saved at ${new Date().toLocaleTimeString([], {
+            hour: 'numeric',
+            minute: '2-digit'
+          })}.`
+        });
+      }
+    }, AUTOSAVE_DELAY_MS);
+
+    return () => {
+      if (autosaveTimeoutRef.current) {
+        window.clearTimeout(autosaveTimeoutRef.current);
+      }
+    };
+  }, [autoDelete, coverPhotoId, formState, photoAssets, pinType, writeDraft]);
+
+  useEffect(() => {
+    if (!draftStatus) {
+      return;
+    }
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const timeoutId = window.setTimeout(
+      () => setDraftStatus(null),
+      draftStatus.type === 'error' ? 8000 : 4000
+    );
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [draftStatus]);
   const activeTheme = useMemo(() => PIN_TYPE_THEMES[pinType], [pinType]);
   const { handleBack: overlayBack, previousNavPath, previousNavPage } = useNavOverlay();
   const canNavigateBack = Boolean(previousNavPath);
   const backButtonLabel = previousNavPage?.label ? `Back to ${previousNavPage.label}` : 'Back';
   const startDateValue = formState.startDate;
   const endDateValue = formState.endDate;
-  const { announceBadgeEarned } = useBadgeSound();
   const eventHeaderSubtitle = useMemo(() => {
     if (pinType !== 'event') {
       return '';
@@ -277,6 +522,56 @@ function CreatePinPage() {
     }
     return null;
   }, [formState.latitude, formState.longitude]);
+  const viewerCoordinates = useMemo(() => {
+    const latitude = Number.parseFloat(viewerLocation?.latitude);
+    const longitude = Number.parseFloat(viewerLocation?.longitude);
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      return { latitude, longitude };
+    }
+    return null;
+  }, [viewerLocation]);
+  const viewerMapAnchor = useMemo(() => {
+    if (!viewerCoordinates) {
+      return null;
+    }
+    return { lat: viewerCoordinates.latitude, lng: viewerCoordinates.longitude };
+  }, [viewerCoordinates]);
+  const nowReference = useMemo(() => new Date(), []);
+  const eventMaxDateRef = useMemo(
+    () => new Date(nowReference.getTime() + EVENT_MAX_LEAD_TIME_MS),
+    [nowReference]
+  );
+  const discussionMaxDateRef = useMemo(
+    () => new Date(nowReference.getTime() + DISCUSSION_MAX_DURATION_MS),
+    [nowReference]
+  );
+  const eventStartMinInput = useMemo(
+    () => formatDateTimeLocalInput(nowReference),
+    [nowReference]
+  );
+  const eventStartMaxInput = useMemo(
+    () => formatDateTimeLocalInput(eventMaxDateRef),
+    [eventMaxDateRef]
+  );
+  const eventEndMinDate = useMemo(() => {
+    if (!formState.startDate) {
+      return nowReference;
+    }
+    const parsed = new Date(formState.startDate);
+    if (Number.isNaN(parsed.getTime())) {
+      return nowReference;
+    }
+    return parsed;
+  }, [formState.startDate, nowReference]);
+  const eventEndMinInput = useMemo(
+    () => formatDateTimeLocalInput(eventEndMinDate),
+    [eventEndMinDate]
+  );
+  const discussionMinInput = eventStartMinInput;
+  const discussionMaxInput = useMemo(
+    () => formatDateTimeLocalInput(discussionMaxDateRef),
+    [discussionMaxDateRef]
+  );
 
   const handleTypeChange = useCallback((event, nextType) => {
     if (nextType) {
@@ -375,6 +670,33 @@ function CreatePinPage() {
 
   const handleMapLocationSelect = useCallback(
     ({ lat, lng }) => {
+      if (!viewerCoordinates) {
+        setLocationStatus({
+          type: 'warning',
+          message: 'We need your current location to place an event. Enable location sharing and try again.'
+        });
+        return;
+      }
+      const distanceMeters = haversineDistanceMeters(viewerCoordinates, {
+        latitude: lat,
+        longitude: lng
+      });
+      if (!Number.isFinite(distanceMeters)) {
+        setLocationStatus({
+          type: 'error',
+          message: 'Unable to validate the selected spot. Please try a different location.'
+        });
+        return;
+      }
+      if (distanceMeters > MAX_PIN_DISTANCE_METERS) {
+        const miles = distanceMeters / METERS_PER_MILE;
+        setLocationStatus({
+          type: 'error',
+          message: `Pins must be within ${MAX_PIN_DISTANCE_MILES} miles of you. This spot is about ${miles.toFixed(1)} miles away.`
+        });
+        return;
+      }
+
       const formattedLat = lat.toFixed(6);
       const formattedLng = lng.toFixed(6);
       setFormState((prev) => ({
@@ -388,7 +710,7 @@ function CreatePinPage() {
       });
       void reverseGeocodeCoordinates(lat, lng, { force: true });
     },
-    [reverseGeocodeCoordinates]
+    [reverseGeocodeCoordinates, viewerCoordinates]
   );
 
   useEffect(() => {
@@ -402,10 +724,12 @@ function CreatePinPage() {
   }, [isReverseGeocoding, reverseGeocodeCoordinates, selectedCoordinates]);
 
   const resetForm = useCallback(() => {
+    clearDraft();
     setPinType('discussion');
     setFormState(INITIAL_FORM_STATE);
     setAutoDelete(true);
     setStatus(null);
+    setDraftStatus(null);
     setCreatedPin(null);
     setPhotoAssets([]);
     setCoverPhotoId(null);
@@ -413,7 +737,15 @@ function CreatePinPage() {
     setLocationStatus(null);
     setIsReverseGeocoding(false);
     setIsUploading(false);
-  }, []);
+  }, [clearDraft]);
+
+  const handleSaveDraft = useCallback(() => {
+    const success = writeDraft();
+    setDraftStatus({
+      type: success ? 'success' : 'error',
+      message: success ? 'Draft saved.' : 'Unable to save draft locally.'
+    });
+  }, [writeDraft]);
 
   useEffect(() => {
     if (!photoAssets.length) {
@@ -432,6 +764,12 @@ function CreatePinPage() {
     async (event) => {
       const files = Array.from(event.target.files ?? []);
       if (!files.length) {
+        return;
+      }
+
+      if (isOffline) {
+        setUploadStatus({ type: 'warning', message: 'You are offline. Connect to upload images.' });
+        event.target.value = '';
         return;
       }
 
@@ -499,7 +837,7 @@ function CreatePinPage() {
       setIsUploading(false);
       event.target.value = '';
     },
-    [photoAssets.length, uploadPinImage]
+    [isOffline, photoAssets.length, uploadPinImage]
   );
 
   const handleRemovePhoto = useCallback((photoId) => {
@@ -517,16 +855,12 @@ function CreatePinPage() {
       event.preventDefault();
       setStatus(null);
 
-      try {
-        const title = formState.title.trim();
-        const description = formState.description.trim();
-        if (!title) {
-          throw new Error('Title is required.');
-        }
-        if (!description) {
-          throw new Error('Description is required.');
-        }
+      if (isOffline) {
+        setStatus({ type: 'warning', message: 'You are offline. Connect to publish a pin.' });
+        return;
+      }
 
+      try {
         const latitude = sanitizeNumberField(formState.latitude);
         const longitude = sanitizeNumberField(formState.longitude);
 
@@ -537,10 +871,40 @@ function CreatePinPage() {
           throw new Error('Longitude must be between -180 and 180.');
         }
 
+        if (!viewerCoordinates) {
+          throw new Error('We need your current location to confirm this pin. Enable location sharing and try again.');
+        }
+        const distanceMeters = haversineDistanceMeters(viewerCoordinates, {
+          latitude,
+          longitude
+        });
+        if (!Number.isFinite(distanceMeters)) {
+          throw new Error('Unable to validate the selected location. Please try again.');
+        }
+        if (distanceMeters > MAX_PIN_DISTANCE_METERS) {
+          const miles = distanceMeters / METERS_PER_MILE;
+          throw new Error(
+            `Pins must be within ${MAX_PIN_DISTANCE_MILES} miles of you. This spot is about ${miles.toFixed(1)} miles away.`
+          );
+        }
+
+        const title = formState.title.trim();
+        const description = formState.description.trim();
+        if (!title) {
+          throw new Error('Title is required.');
+        }
+        if (!description) {
+          throw new Error('Description is required.');
+        }
+
         const proximityMiles = sanitizeNumberField(formState.proximityRadiusMiles);
         if (proximityMiles !== null && proximityMiles <= 0) {
           throw new Error('Proximity radius must be greater than zero.');
         }
+
+        const submissionNow = new Date();
+        const eventMaxDate = new Date(submissionNow.getTime() + EVENT_MAX_LEAD_TIME_MS);
+        const discussionMaxDate = new Date(submissionNow.getTime() + DISCUSSION_MAX_DURATION_MS);
 
         const payload = {
           type: pinType,
@@ -555,8 +919,19 @@ function CreatePinPage() {
         };
 
         if (pinType === 'event') {
-          payload.startDate = sanitizeDateField(formState.startDate, 'Start date');
-          payload.endDate = sanitizeDateField(formState.endDate, 'End date');
+          const startDate = sanitizeDateField(formState.startDate, 'Start date', {
+            max: eventMaxDate,
+            maxMessage: 'Events can only be scheduled up to 14 days in advance.'
+          });
+          const endDate = sanitizeDateField(formState.endDate, 'End date', {
+            min: startDate,
+            minMessage: 'End date must be on or after the start date.',
+            max: eventMaxDate,
+            maxMessage: 'Events can only be scheduled up to 14 days in advance.'
+          });
+
+          payload.startDate = startDate.toISOString();
+          payload.endDate = endDate.toISOString();
 
           const precise = formState.addressPrecise.trim();
           const city = formState.addressCity.trim();
@@ -578,7 +953,11 @@ function CreatePinPage() {
             };
           }
         } else {
-          payload.expiresAt = sanitizeDateField(formState.expiresAt, 'Expiration date');
+          const expiresAt = sanitizeDateField(formState.expiresAt, 'Expiration date', {
+            max: discussionMaxDate,
+            maxMessage: 'Discussions can only stay active for up to 3 days.'
+          });
+          payload.expiresAt = expiresAt.toISOString();
           payload.autoDelete = autoDelete;
 
           const approximateAddress = {
@@ -628,6 +1007,11 @@ function CreatePinPage() {
             ? `Pin created successfully (ID: ${result._id}).`
             : 'Pin created successfully.'
         });
+        clearDraft();
+        setDraftStatus(null);
+        if (result?._id) {
+          navigate(routes.pin.byId(result._id));
+        }
       } catch (error) {
         setStatus({
           type: 'error',
@@ -638,7 +1022,18 @@ function CreatePinPage() {
         setIsSubmitting(false);
       }
     },
-    [announceBadgeEarned, autoDelete, coverPhotoId, formState, photoAssets, pinType]
+    [
+      announceBadgeEarned,
+      autoDelete,
+      clearDraft,
+      coverPhotoId,
+      formState,
+      isOffline,
+      navigate,
+      photoAssets,
+      pinType,
+      viewerCoordinates
+    ]
   );
 
   const resultJson = useMemo(() => {
@@ -719,7 +1114,7 @@ function CreatePinPage() {
             <Button
               type="submit"
               variant="contained"
-              disabled={isSubmitting}
+              disabled={isOffline || isSubmitting}
               sx={{
                 minWidth: 96,
                 fontWeight: 600,
@@ -729,11 +1124,18 @@ function CreatePinPage() {
                   backgroundColor: activeTheme.ctaHoverBackground
                 }
               }}
+              title={isOffline ? 'Reconnect to publish a pin' : undefined}
             >
               {isSubmitting ? 'Posting...' : FIGMA_TEMPLATE.header.cta}
             </Button>
           </Box>
         </Box>
+
+        {isOffline ? (
+          <Alert severity="warning">
+            You are offline. Drafts will save locally, but publishing and uploads require a connection.
+          </Alert>
+        ) : null}
 
         <Box sx={{ px: { xs: 2, sm: 4 }, py: { xs: 3, sm: 4 }, display: 'flex', flexDirection: 'column', gap: 3 }}>
           <Stack spacing={1}>
@@ -766,18 +1168,24 @@ function CreatePinPage() {
                 <MapIcon fontSize="small" sx={{ mr: 1 }} />
                 Discussion
               </ToggleButton>
-              <ToggleButton value="event">
-                <EventNoteIcon fontSize="small" sx={{ mr: 1 }} />
-                Event
-              </ToggleButton>
-            </ToggleButtonGroup>
-          </Stack>
+          <ToggleButton value="event">
+            <EventNoteIcon fontSize="small" sx={{ mr: 1 }} />
+            Event
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Stack>
 
-          {status && (
-            <Alert severity={status.type} onClose={() => setStatus(null)}>
-              {status.message}
-            </Alert>
-          )}
+      {status && (
+        <Alert severity={status.type} onClose={() => setStatus(null)}>
+          {status.message}
+        </Alert>
+      )}
+
+      {draftStatus && (
+        <Alert severity={draftStatus.type} onClose={() => setDraftStatus(null)}>
+          {draftStatus.message}
+        </Alert>
+      )}
 
           <Paper
             variant="outlined"
@@ -853,6 +1261,7 @@ function CreatePinPage() {
                   <SelectableLocationMap
                     value={selectedCoordinates}
                     onChange={handleMapLocationSelect}
+                    anchor={viewerMapAnchor}
                   />
                 </Box>
                 {isReverseGeocoding && (
@@ -924,7 +1333,12 @@ function CreatePinPage() {
                           onChange={handleFieldChange('startDate')}
                           required
                           fullWidth
+                          helperText="Must be within the next 14 days."
                           InputLabelProps={{ shrink: true }}
+                          inputProps={{
+                            min: eventStartMinInput,
+                            max: eventStartMaxInput
+                          }}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6}>
@@ -935,7 +1349,12 @@ function CreatePinPage() {
                           onChange={handleFieldChange('endDate')}
                           required
                           fullWidth
+                          helperText="Must be on or after the start and within 14 days."
                           InputLabelProps={{ shrink: true }}
+                          inputProps={{
+                            min: eventEndMinInput,
+                            max: eventStartMaxInput
+                          }}
                         />
                       </Grid>
                     </Grid>
@@ -1008,7 +1427,12 @@ function CreatePinPage() {
                           onChange={handleFieldChange('expiresAt')}
                           required
                           fullWidth
+                          helperText="Must be within the next 3 days."
                           InputLabelProps={{ shrink: true }}
+                          inputProps={{
+                            min: discussionMinInput,
+                            max: discussionMaxInput
+                          }}
                         />
                       </Grid>
                       <Grid item xs={12} sm={5}>
@@ -1098,8 +1522,9 @@ function CreatePinPage() {
                 <Button
                   component="label"
                   variant="outlined"
-                  disabled={isUploading || photoAssets.length >= 10}
+                  disabled={isOffline || isUploading || photoAssets.length >= 10}
                   sx={{ minWidth: 180 }}
+                  title={isOffline ? 'Reconnect to upload images' : undefined}
                 >
                   {isUploading ? (
                     <Stack direction="row" alignItems="center" spacing={1}>
@@ -1191,11 +1616,26 @@ function CreatePinPage() {
             </Stack>
           </Paper>
 
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between">
-            <Button type="button" variant="outlined" onClick={resetForm}>
-              Reset form
-            </Button>
-            <Button type="submit" variant="contained" disabled={isSubmitting}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={2}
+            justifyContent="space-between"
+            alignItems={{ xs: 'stretch', sm: 'center' }}
+          >
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
+              <Button type="button" variant="outlined" onClick={resetForm}>
+                Reset form
+              </Button>
+              <Button type="button" variant="outlined" onClick={handleSaveDraft} disabled={isSubmitting}>
+                Save draft
+              </Button>
+            </Stack>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={isOffline || isSubmitting}
+              title={isOffline ? 'Reconnect to publish a pin' : undefined}
+            >
               {isSubmitting ? 'Creating...' : 'Create Pin'}
             </Button>
           </Stack>

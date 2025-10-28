@@ -9,7 +9,6 @@ import {
 } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import Snackbar from '@mui/material/Snackbar';
 import Modal from '@mui/material/Modal';
 import Fade from '@mui/material/Fade';
 import Paper from '@mui/material/Paper';
@@ -29,8 +28,16 @@ import RegistrationPage from './pages/Registration';
 import { UpdatesProvider } from './contexts/UpdatesContext';
 import { BadgeSoundProvider } from './contexts/BadgeSoundContext';
 import { preloadBadgeSound, setBadgeSoundEnabled } from './utils/badgeSound';
-import { getBadgeLabel } from './utils/badges';
 import { LocationProvider } from './contexts/LocationContext';
+import {
+  BadgeCelebrationToast,
+  useBadgeCelebrationToast
+} from './components/BadgeCelebrationToast';
+import { routes } from './routes';
+import NotFoundPage from './pages/NotFoundPage';
+import { fetchCurrentUserProfile, fetchUpdates } from './api/mongoDataApi';
+import { useNetworkStatusContext } from './contexts/NetworkStatusContext.jsx';
+import OfflineBanner from './components/OfflineBanner.jsx';
 
 const theme = createTheme({
   palette: {
@@ -147,12 +154,17 @@ function App() {
   const pages = useMemo(loadPages, []);
   const location = useLocation();
   const navigate = useNavigate();
+  const { isOffline } = useNetworkStatusContext();
   const [navOverlayOpen, setNavOverlayOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [badgeSoundEnabled, setBadgeSoundEnabledState] = useState(
     () => readStoredBadgeSoundPreference()
   );
-  const [badgeToast, setBadgeToast] = useState({ open: false, message: '', key: 0 });
+  const {
+    toastState: badgeToast,
+    announceBadgeEarned,
+    handleClose: handleBadgeToastClose
+  } = useBadgeCelebrationToast();
 
   useEffect(() => {
     setBadgeSoundEnabled(badgeSoundEnabled);
@@ -170,29 +182,6 @@ function App() {
       }
     }
   }, [badgeSoundEnabled]);
-
-  const announceBadgeEarned = useCallback(
-    (badgeId) => {
-      if (!badgeId) {
-        return;
-      }
-      const label = getBadgeLabel(badgeId);
-      const message = `you earned ${label} badge!!`;
-      setBadgeToast({
-        open: true,
-        message,
-        key: Date.now()
-      });
-    },
-    []
-  );
-
-  const handleBadgeToastClose = useCallback((event, reason) => {
-    if (reason === 'clickaway') {
-      return;
-    }
-    setBadgeToast((prev) => (prev.open ? { ...prev, open: false } : prev));
-  }, []);
 
   const navPages = useMemo(
     () => pages.filter((page) => page.showInNav),
@@ -220,6 +209,7 @@ function App() {
     navPathSet.has(location.pathname) ? [location.pathname] : []
   );
   const backTargetRef = useRef(null);
+  const unreadRefreshPendingRef = useRef(false);
 
   const defaultNavPage = useMemo(() => {
     return (
@@ -342,6 +332,35 @@ function App() {
     [handleBack, previousNavPage, previousNavPath]
   );
 
+  const refreshUnreadCount = useCallback(
+    async ({ silent } = {}) => {
+      if (unreadRefreshPendingRef.current) {
+        return;
+      }
+
+      unreadRefreshPendingRef.current = true;
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (!profile?._id) {
+          setUnreadCount(0);
+          return;
+        }
+
+        const updates = await fetchUpdates({ userId: profile._id, limit: 100 });
+        const unread = updates.filter((update) => !update?.readAt).length;
+        setUnreadCount(unread);
+      } catch (error) {
+        if (!silent) {
+          console.warn('Failed to refresh unread update count', error);
+        }
+        setUnreadCount(0);
+      } finally {
+        unreadRefreshPendingRef.current = false;
+      }
+    },
+    [setUnreadCount]
+  );
+
   const badgeSoundContextValue = useMemo(
     () => ({
       enabled: badgeSoundEnabled,
@@ -351,12 +370,53 @@ function App() {
     [announceBadgeEarned, badgeSoundEnabled]
   );
 
+  useEffect(() => {
+    if (AUTH_ROUTES.has(location.pathname)) {
+      setUnreadCount(0);
+      return;
+    }
+    refreshUnreadCount({ silent: true });
+  }, [location.pathname, refreshUnreadCount, setUnreadCount]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const shouldRefresh = () => !AUTH_ROUTES.has(location.pathname);
+
+    const handleFocus = () => {
+      if (shouldRefresh()) {
+        refreshUnreadCount({ silent: true });
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && !document.hidden && shouldRefresh()) {
+        refreshUnreadCount({ silent: true });
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    };
+  }, [location.pathname, refreshUnreadCount]);
+
   const updatesContextValue = useMemo(
     () => ({
       unreadCount,
-      setUnreadCount
+      setUnreadCount,
+      refreshUnreadCount
     }),
-    [unreadCount]
+    [refreshUnreadCount, setUnreadCount, unreadCount]
   );
 
   const handleNavigate = useCallback(
@@ -461,7 +521,7 @@ function App() {
                       backgroundColor: muiTheme.palette.background.paper
                     })}
                   >
-                    <Stack spacing={1.5}>
+                    <Stack spacing={1.5} sx={{ flex: 1, minHeight: 0 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Typography variant="h6" component="h2">
                           Navigation Console
@@ -472,7 +532,15 @@ function App() {
                       </Box>
                       <Divider />
                       {navPages.length > 0 ? (
-                        <Stack spacing={1}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 1,
+                            flex: 1,
+                            minHeight: 0
+                          }}
+                        >
                           {previousNavPath && (
                             <Button
                               onClick={handleBack}
@@ -484,23 +552,35 @@ function App() {
                               {previousNavPage ? `Back to ${previousNavPage.label}` : 'Back'}
                             </Button>
                           )}
-                          {navPages.map((page) => {
-                            const IconComponent = page.icon ?? ArticleIcon;
-                            const isActive = page.path === currentNavPath;
-                            return (
-                              <Button
-                                key={page.id}
-                                onClick={() => handleNavigate(page)}
-                                variant={isActive ? 'contained' : 'outlined'}
-                                color={isActive ? 'primary' : 'inherit'}
-                                startIcon={<IconComponent fontSize="small" />}
-                                sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-                              >
-                                {page.label}
-                              </Button>
-                            );
-                          })}
-                        </Stack>
+                          <Box
+                            sx={{
+                              flex: 1,
+                              minHeight: 0,
+                              overflowY: 'auto',
+                              pr: 0.5,
+                              scrollbarGutter: 'stable'
+                            }}
+                          >
+                            <Stack spacing={1}>
+                              {navPages.map((page) => {
+                                const IconComponent = page.icon ?? ArticleIcon;
+                                const isActive = page.path === currentNavPath;
+                                return (
+                                  <Button
+                                    key={page.id}
+                                    onClick={() => handleNavigate(page)}
+                                    variant={isActive ? 'contained' : 'outlined'}
+                                    color={isActive ? 'primary' : 'inherit'}
+                                    startIcon={<IconComponent fontSize="small" />}
+                                    sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+                                  >
+                                    {page.label}
+                                  </Button>
+                                );
+                              })}
+                            </Stack>
+                          </Box>
+                        </Box>
                       ) : (
                         <Typography variant="body2" color="text.secondary">
                           Add a new page under `src/pages` with `showInNav: true` to populate this console.
@@ -512,11 +592,14 @@ function App() {
               </Fade>
             </Modal>
 
+            {isOffline && !AUTH_ROUTES.has(location.pathname) ? (
+              <OfflineBanner message="You are offline. Data may be stale and actions are temporarily disabled." />
+            ) : null}
             <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegistrationPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path={routes.auth.login} element={<LoginPage />} />
+              <Route path={routes.auth.register} element={<RegistrationPage />} />
+              <Route path={routes.auth.forgotPassword} element={<ForgotPasswordPage />} />
+              <Route path={routes.auth.resetPassword} element={<ResetPasswordPage />} />
 
               {pages.map((page) => (
                 <Route
@@ -536,27 +619,22 @@ function App() {
                 ))
               )}
 
-              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path={routes.root} element={<Navigate to={routes.auth.login} replace />} />
               <Route
                 path="*"
                 element={
-                  defaultNavPage ? (
-                    <Navigate to={defaultNavPage.path} replace />
-                  ) : (
-                    <Navigate to="/login" replace />
-                  )
+                  <NotFoundPage
+                    defaultPath={defaultNavPage?.path ?? routes.auth.login}
+                    defaultLabel={
+                      defaultNavPage?.label
+                        ? `Go to ${defaultNavPage.label}`
+                        : 'Go to login'
+                    }
+                  />
                 }
               />
             </Routes>
-            <Snackbar
-              key={badgeToast.key}
-              open={badgeToast.open}
-              message={badgeToast.message}
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-              autoHideDuration={4000}
-              onClose={handleBadgeToastClose}
-              sx={{ '& .MuiSnackbarContent-root': { fontSize: '0.9rem' } }}
-            />
+            <BadgeCelebrationToast toastState={badgeToast} onClose={handleBadgeToastClose} />
           </ThemeProvider>
         </NavOverlayProvider>
       </UpdatesProvider>

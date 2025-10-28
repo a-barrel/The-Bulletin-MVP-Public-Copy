@@ -21,19 +21,27 @@ async function initializeFirebaseAdmin() {
       process.env.FIREBASE_AUTH_EMULATOR_HOST = runtime.firebase.emulatorHost;
     }
 
-    const projectId = process.env.FIREBASE_PROJECT_ID || 'pinpoint-offline';
-    admin.initializeApp({ projectId });
+    const projectId = process.env.FIREBASE_PROJECT_ID || 'bulletin-app-6548a';
+    const appOptions = { projectId };
+    if (runtime.firebase.storageBucket) {
+      appOptions.storageBucket = runtime.firebase.storageBucket;
+    }
+    admin.initializeApp(appOptions);
     console.log(`Firebase Auth emulator enabled at ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
   } else {
     const serviceAccount = runtime.firebase.serviceAccountJson
       ? JSON.parse(runtime.firebase.serviceAccountJson)
       : undefined;
 
-    admin.initializeApp({
+    const appOptions = {
       credential: serviceAccount
         ? admin.credential.cert(serviceAccount)
         : admin.credential.applicationDefault()
-    });
+    };
+    if (runtime.firebase.storageBucket) {
+      appOptions.storageBucket = runtime.firebase.storageBucket;
+    }
+    admin.initializeApp(appOptions);
     console.log('Firebase Admin initialized for production environment');
   }
 }
