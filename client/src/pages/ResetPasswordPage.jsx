@@ -4,6 +4,7 @@ import { auth } from "../firebase";
 import "./ResetPasswordPage.css";
 import { confirmPasswordReset } from "firebase/auth";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { routes } from "../routes";
 
 function getPasswordStrength(password) {
   let score = 0;
@@ -118,7 +119,7 @@ function ResetPasswordPage() {
     // Simulates the password reset
     //await confirmPasswordReset(auth, oobCode, newPassword);
     setMessage("Your password has been reset successfully! \nRedirecting to login...");
-    const timer = setTimeout(() => navigate("/login"), 2000);
+    const timer = setTimeout(() => navigate(routes.auth.login), 2000);
   } catch (error) {
     switch (error.code) {
       case "auth/expired-action-code":

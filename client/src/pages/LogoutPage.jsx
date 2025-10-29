@@ -4,6 +4,7 @@ import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 import './LogoutPage.css'; // Same as LoginPage.css
 import { revokeCurrentSession } from '../api/mongoDataApi';
+import { routes } from '../routes';
 
 export const pageConfig = {
   id: 'logout',
@@ -27,10 +28,10 @@ function LogoutPage() {
         }
 
         await signOut(auth);
-        navigate('/login');
+        navigate(routes.auth.login);
       } catch (error) {
         console.error("Error signing out: ", error);
-        navigate('/login');
+        navigate(routes.auth.login);
       }
     };
 

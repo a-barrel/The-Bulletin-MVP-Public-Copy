@@ -19,6 +19,12 @@
   transform: none;
 }
 
+.bottom-nav-spacer {
+  height: calc(98px + env(safe-area-inset-bottom, 0));
+  width: 100%;
+  flex-shrink: 0;
+}
+
 .nav-item {
   display: flex;
   flex-direction: column;
@@ -62,5 +68,9 @@
     bottom: 0;
     transform: none;
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0));
+  }
+
+  .bottom-nav-spacer {
+    height: calc(100px + env(safe-area-inset-bottom, 0));
   }
 }
