@@ -38,6 +38,8 @@ import BlockIcon from '@mui/icons-material/Block';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { auth } from '../firebase';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
+import { routes } from '../routes';
 import {
   fetchBlockedUsers,
   fetchCurrentUserProfile,
@@ -70,7 +72,8 @@ const DEFAULT_SETTINGS = {
   notifications: {
     proximity: true,
     updates: true,
-    marketing: false
+    marketing: false,
+    chatTransitions: true
   }
 };
 
@@ -98,6 +101,7 @@ function SettingsPage() {
   const [isLoadingBlockedUsers, setIsLoadingBlockedUsers] = useState(false);
   const [isManagingBlockedUsers, setIsManagingBlockedUsers] = useState(false);
   const [blockedOverlayStatus, setBlockedOverlayStatus] = useState(null);
+  const { isOffline } = useNetworkStatusContext();
 
   const theme = settings.theme;
   const notifications = settings.notifications;
@@ -110,6 +114,12 @@ function SettingsPage() {
     if (!authUser) {
       setProfile(null);
       setProfileError('Sign in to manage your settings.');
+      return;
+    }
+
+    if (isOffline) {
+      setIsFetchingProfile(false);
+      setProfileError((prev) => prev ?? 'You are offline. Connect to update your settings.');
       return;
     }
 
@@ -136,7 +146,10 @@ function SettingsPage() {
             updates:
               result?.preferences?.notifications?.updates ?? DEFAULT_SETTINGS.notifications.updates,
             marketing:
-              result?.preferences?.notifications?.marketing ?? DEFAULT_SETTINGS.notifications.marketing
+              result?.preferences?.notifications?.marketing ?? DEFAULT_SETTINGS.notifications.marketing,
+            chatTransitions:
+              result?.preferences?.notifications?.chatTransitions ??
+              DEFAULT_SETTINGS.notifications.chatTransitions
           }
         });
       } catch (error) {
@@ -156,10 +169,23 @@ function SettingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, authUser]);
+  }, [authLoading, authUser, isOffline]);
 
   useEffect(() => {
     if (!blockedOverlayOpen) {
+      return;
+    }
+
+    if (isOffline) {
+      setIsLoadingBlockedUsers(false);
+      setBlockedOverlayStatus((prev) =>
+        prev?.type === 'warning'
+          ? prev
+          : {
+              type: 'warning',
+              message: 'Blocked users cannot be managed while offline.'
+            }
+      );
       return;
     }
 
@@ -204,7 +230,7 @@ function SettingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [blockedOverlayOpen, setProfile]);
+  }, [blockedOverlayOpen, isOffline, setProfile]);
 
   useEffect(() => {
     if (!blockedOverlayStatus || blockedOverlayStatus.type !== 'success') {
@@ -235,7 +261,10 @@ function SettingsPage() {
           profile?.preferences?.notifications?.proximity ?? DEFAULT_SETTINGS.notifications.proximity,
         updates: profile?.preferences?.notifications?.updates ?? DEFAULT_SETTINGS.notifications.updates,
         marketing:
-          profile?.preferences?.notifications?.marketing ?? DEFAULT_SETTINGS.notifications.marketing
+          profile?.preferences?.notifications?.marketing ?? DEFAULT_SETTINGS.notifications.marketing,
+        chatTransitions:
+          profile?.preferences?.notifications?.chatTransitions ??
+          DEFAULT_SETTINGS.notifications.chatTransitions
       }
     };
   }, [profile]);
@@ -249,7 +278,8 @@ function SettingsPage() {
       settings.statsPublic !== baselineSettings.statsPublic ||
       settings.notifications.proximity !== baselineSettings.notifications.proximity ||
       settings.notifications.updates !== baselineSettings.notifications.updates ||
-      settings.notifications.marketing !== baselineSettings.notifications.marketing
+      settings.notifications.marketing !== baselineSettings.notifications.marketing ||
+      settings.notifications.chatTransitions !== baselineSettings.notifications.chatTransitions
     );
   }, [baselineSettings, settings]);
 
@@ -300,9 +330,16 @@ function SettingsPage() {
   }, []);
 
   const handleOpenBlockedOverlay = useCallback(() => {
+    if (isOffline) {
+      setBlockedOverlayStatus({
+        type: 'warning',
+        message: 'Reconnect to manage blocked users.'
+      });
+      return;
+    }
     setBlockedOverlayStatus(null);
     setBlockedOverlayOpen(true);
-  }, []);
+  }, [isOffline]);
 
   const handleCloseBlockedOverlay = useCallback(() => {
     if (isManagingBlockedUsers) {
@@ -314,6 +351,14 @@ function SettingsPage() {
   const handleUnblockUser = useCallback(
     async (userId) => {
       if (!userId) {
+        return;
+      }
+
+      if (isOffline) {
+        setBlockedOverlayStatus({
+          type: 'warning',
+          message: 'Reconnect to unblock users.'
+        });
         return;
       }
 
@@ -348,7 +393,7 @@ function SettingsPage() {
         setIsManagingBlockedUsers(false);
       }
     },
-    [blockedUsers, setProfile]
+    [blockedUsers, isOffline, setProfile]
   );
 
   const handleReset = useCallback(() => {
@@ -358,6 +403,11 @@ function SettingsPage() {
 
   const handleSave = useCallback(async () => {
     if (!authUser || !hasChanges) {
+      return;
+    }
+
+    if (isOffline) {
+      setSaveStatus({ type: 'warning', message: 'You are offline. Connect to save your changes.' });
       return;
     }
 
@@ -373,7 +423,8 @@ function SettingsPage() {
           notifications: {
             proximity: settings.notifications.proximity,
             updates: settings.notifications.updates,
-            marketing: settings.notifications.marketing
+            marketing: settings.notifications.marketing,
+            chatTransitions: settings.notifications.chatTransitions
           }
         },
         locationSharingEnabled: settings.locationSharingEnabled
@@ -390,7 +441,7 @@ function SettingsPage() {
     } finally {
       setIsSaving(false);
     }
-  }, [authUser, hasChanges, settings]);
+  }, [authUser, hasChanges, isOffline, settings]);
 
   const handleSignOut = useCallback(async () => {
     let revokeError = null;
@@ -489,6 +540,11 @@ function SettingsPage() {
             gap: 3
           }}
         >
+          {isOffline ? (
+            <Alert severity="warning" sx={{ mb: 1 }}>
+              You are currently offline. Changes will be saved once you reconnect.
+            </Alert>
+          ) : null}
           <Stack spacing={0.5}>
             <Typography variant="h6">Appearance</Typography>
             <Typography variant="body2" color="text.secondary">
@@ -640,6 +696,15 @@ function SettingsPage() {
             <FormControlLabel
               control={
                 <Switch
+                  checked={notifications.chatTransitions}
+                  onChange={() => handleNotificationToggle('chatTransitions')}
+                />
+              }
+              label="Notify me when I enter or leave chat rooms"
+            />
+            <FormControlLabel
+              control={
+                <Switch
                   checked={notifications.marketing}
                   onChange={() => handleNotificationToggle('marketing')}
                 />
@@ -662,12 +727,14 @@ function SettingsPage() {
               variant="outlined"
               color="warning"
               startIcon={<BlockIcon />}
+              disabled={isOffline || isManagingBlockedUsers}
+              title={isOffline ? 'Reconnect to manage blocked users' : undefined}
             >
               Manage blocked users
             </Button>
             <Button
               component={Link}
-              to="/profile/me"
+              to={routes.profile.me}
               variant="outlined"
               startIcon={<ManageAccountsIcon />}
             >
@@ -697,8 +764,9 @@ function SettingsPage() {
           <Button
             variant="contained"
             startIcon={<SaveIcon />}
-            disabled={!profile || !hasChanges || isSaving || isFetchingProfile}
+            disabled={isOffline || !profile || !hasChanges || isSaving || isFetchingProfile}
             onClick={handleSave}
+            title={isOffline ? 'Reconnect to save changes' : undefined}
           >
             {isSaving ? <CircularProgress size={18} color="inherit" sx={{ mr: 1 }} /> : null}
             {isSaving ? 'Saving...' : 'Save changes'}
@@ -748,7 +816,8 @@ function SettingsPage() {
                         variant="outlined"
                         startIcon={<HowToRegIcon />}
                         onClick={() => handleUnblockUser(user._id)}
-                        disabled={isManagingBlockedUsers}
+                        disabled={isOffline || isManagingBlockedUsers}
+                        title={isOffline ? 'Reconnect to unblock users' : undefined}
                       >
                         Unblock
                       </Button>

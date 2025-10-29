@@ -14,7 +14,8 @@ const UserPreferencesSchema = z.object({
     .object({
       proximity: z.boolean().default(true),
       updates: z.boolean().default(true),
-      marketing: z.boolean().default(false)
+      marketing: z.boolean().default(false),
+      chatTransitions: z.boolean().default(true)
     })
     .partial(),
   radiusPreferenceMeters: z.number().int().positive().default(16093).optional(),

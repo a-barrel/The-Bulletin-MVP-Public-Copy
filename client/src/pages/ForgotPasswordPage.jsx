@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import './ForgotPasswordPage.css';
 import { sendPasswordResetEmail } from 'firebase/auth';
+import { routes } from '../routes';
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -57,7 +58,7 @@ function ForgotPasswordPage() {
         <button
           className="page-back-btn"
           aria-label="Go back"
-          onClick={() => navigate("./login")}
+          onClick={() => navigate(routes.auth.login)}
         >
         &#8592;
         </button>

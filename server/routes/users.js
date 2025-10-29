@@ -516,6 +516,9 @@ router.patch('/me', verifyToken, async (req, res) => {
         if (notifications.marketing !== undefined) {
           setDoc['preferences.notifications.marketing'] = notifications.marketing;
         }
+        if (notifications.chatTransitions !== undefined) {
+          setDoc['preferences.notifications.chatTransitions'] = notifications.chatTransitions;
+        }
       }
     }
 

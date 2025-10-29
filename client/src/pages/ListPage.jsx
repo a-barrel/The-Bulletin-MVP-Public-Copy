@@ -12,6 +12,9 @@ import { fetchPinsNearby, fetchPinById } from "../api/mongoDataApi";
 import PlaceIcon from '@mui/icons-material/Place'; // TODO: used only for Icon on pageConfig, maybe change with a list icon?
 import { useUpdates } from "../contexts/UpdatesContext";
 import runtimeConfig from "../config/runtime";
+import { routes } from "../routes";
+import { useNetworkStatusContext } from "../contexts/NetworkStatusContext";
+import { useLocationContext } from "../contexts/LocationContext";
 
 export const pageConfig = {
   id: "list",
@@ -292,73 +295,63 @@ const mapPinToFeedItem = (pin) => {
 
 export default function ListPage() {
   const navigate = useNavigate();
+  const { isOffline } = useNetworkStatusContext();
+  const { location: sharedLocation } = useLocationContext();
+  const sharedLatitude = sharedLocation?.latitude ?? null;
+  const sharedLongitude = sharedLocation?.longitude ?? null;
+  const hasSharedLocation = hasValidCoordinates(sharedLocation);
+  const initialLocation = hasSharedLocation
+    ? { latitude: sharedLatitude, longitude: sharedLongitude }
+    : FALLBACK_LOCATION;
+
   const [sortByExpiration, setSortByExpiration] = useState(false);
   const [pins, setPins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [userLocation, setUserLocation] = useState(null);
-  const [isUsingFallbackLocation, setIsUsingFallbackLocation] = useState(false);
-  const [locationNotice, setLocationNotice] = useState(null);
+  const [userLocation, setUserLocation] = useState(initialLocation);
+  const [isUsingFallbackLocation, setIsUsingFallbackLocation] = useState(!hasSharedLocation);
+  const [locationNotice, setLocationNotice] = useState(
+    hasSharedLocation ? null : "Showing popular pins near Long Beach until you share your location."
+  );
 
   useEffect(() => {
-    let cancelled = false;
-
-    const useFallbackLocation = (message) => {
-      if (cancelled) return;
-      setIsUsingFallbackLocation(true);
-      setLocationNotice(message);
-      setUserLocation(FALLBACK_LOCATION);
-    };
-
-    if (!("geolocation" in navigator)) {
-      useFallbackLocation("Using Long Beach area as location!!!");
-      setLoading(false);
-      return () => {
-        cancelled = true;
-      };
+    if (hasValidCoordinates(sharedLocation)) {
+      setUserLocation((previous) => {
+        if (
+          previous &&
+          Math.abs(previous.latitude - sharedLocation.latitude) < 1e-9 &&
+          Math.abs(previous.longitude - sharedLocation.longitude) < 1e-9
+        ) {
+          return previous;
+        }
+        return {
+          latitude: sharedLocation.latitude,
+          longitude: sharedLocation.longitude
+        };
+      });
+      setIsUsingFallbackLocation(false);
+      setLocationNotice(null);
+      return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        if (cancelled) return;
-        const { latitude, longitude } = position.coords;
-        setIsUsingFallbackLocation(false);
-        setLocationNotice(null);
-        setUserLocation({ latitude, longitude });
-      },
-      (geolocationError) => {
-        let message = "We could not access your location. Showing default Long Beach area.";
-        if (geolocationError) {
-          switch (geolocationError.code) {
-            case 1:
-              message = "Location permission denied. Showing default Long Beach area.";
-              break;
-            case 2:
-              message = "Device location unavailable. Showing default Long Beach area.";
-              break;
-            case 3:
-              message = "Timed out retrieving location. Showing default Long Beach area.";
-              break;
-            default:
-              break;
-          }
-        }
-        useFallbackLocation(message);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
+    setIsUsingFallbackLocation(true);
+    setLocationNotice("Showing popular pins near Long Beach until you share your location.");
+    setUserLocation((previous) => {
+      if (hasValidCoordinates(previous)) {
+        return previous;
       }
-    );
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      return FALLBACK_LOCATION;
+    });
+  }, [sharedLocation]);
 
   useEffect(() => {
     if (!hasValidCoordinates(userLocation)) {
+      return;
+    }
+
+    if (isOffline) {
+      setLoading(false);
+      setError((prev) => prev ?? "Offline mode: showing previously loaded pins.");
       return;
     }
 
@@ -426,29 +419,44 @@ export default function ListPage() {
     return () => {
       cancelled = true;
     };
-  }, [userLocation]);
+  }, [isOffline, userLocation]);
 
-  const { unreadCount } = useUpdates();
+  const { unreadCount, refreshUnreadCount } = useUpdates();
+
+  useEffect(() => {
+    if (typeof refreshUnreadCount === 'function' && !isOffline) {
+      refreshUnreadCount({ silent: true });
+    }
+  }, [isOffline, refreshUnreadCount]);
   //const [sortByExpiration, setSortByExpiration] = useState(false); // false = distance, true = expiration
   const handleSortToggle = useCallback(() => {
     setSortByExpiration((prev) => !prev);
   }, []);
   const handleNotifications = useCallback(() => {
-    navigate("/updates");
-  }, [navigate]);
+    if (isOffline) {
+      return;
+    }
+    navigate(routes.updates.base);
+  }, [isOffline, navigate]);
   const handleCreatePin = useCallback(() => {
-    navigate("/create-pin");
-  }, [navigate]);
+    if (isOffline) {
+      return;
+    }
+    navigate(routes.createPin.base);
+  }, [isOffline, navigate]);
   const handleSettings = useCallback(() => {
-    navigate("/settings");
-  }, [navigate]);
+    if (isOffline) {
+      return;
+    }
+    navigate(routes.settings.base);
+  }, [isOffline, navigate]);
   const handleFeedItemSelect = useCallback(
     (pinId) => {
       const normalized = toIdString(pinId);
       if (!normalized) {
         return;
       }
-      navigate(`/pin/${normalized}`);
+      navigate(routes.pin.byId(normalized));
     },
     [navigate]
   );
@@ -458,7 +466,7 @@ export default function ListPage() {
       if (!normalized) {
         return;
       }
-      navigate(`/profile/${normalized}`);
+      navigate(routes.profile.byId(normalized));
     },
     [navigate]
   );
@@ -512,6 +520,8 @@ export default function ListPage() {
             type="button"
             aria-label={notificationsLabel}
             onClick={handleNotifications}
+            disabled={isOffline}
+            title={isOffline ? 'Reconnect to view updates' : undefined}
           >
             <img src={updatesIcon} alt="" className="header-icon" aria-hidden="true" />
             {displayBadge ? (
@@ -525,7 +535,14 @@ export default function ListPage() {
         {/* Topbar */}
         <div className="topbar">
           <div className="top-left">
-            <button className="icon-btn" type="button" aria-label="Settings" onClick={handleSettings}>
+            <button
+              className="icon-btn"
+              type="button"
+              aria-label="Settings"
+              onClick={handleSettings}
+              disabled={isOffline}
+              title={isOffline ? 'Settings unavailable offline' : undefined}
+            >
               <img src={settingsIcon} alt="Settings" />
             </button>
 
@@ -538,6 +555,8 @@ export default function ListPage() {
             type="button"
             aria-label="Create pin"
             onClick={handleCreatePin}
+            disabled={isOffline}
+            title={isOffline ? 'Reconnect to create a pin' : undefined}
           >
             <img src={addIcon} alt="Add" />
           </button>

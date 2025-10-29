@@ -18,7 +18,10 @@ const {
   createMessage,
   upsertPresence
 } = require('../services/proximityChatService');
-const { broadcastChatMessage } = require('../services/updateFanoutService');
+const {
+  broadcastChatMessage,
+  broadcastChatRoomTransition
+} = require('../services/updateFanoutService');
 const { grantBadge } = require('../services/badgeService');
 
 const router = express.Router();
@@ -548,6 +551,14 @@ router.post('/rooms/:roomId/presence', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Chat room not found' });
     }
 
+    const existingPresences = await ProximityChatPresence.find({ userId: viewer._id });
+    const currentPresence = existingPresences.find((presence) =>
+      presence.roomId && presence.roomId.equals(room._id)
+    );
+    const otherPresences = existingPresences.filter(
+      (presence) => !presence.roomId || !presence.roomId.equals(room._id)
+    );
+
     const accessContext = await buildViewerAccessContext({
       viewer,
       latitude: input.latitude,
@@ -561,6 +572,11 @@ router.post('/rooms/:roomId/presence', verifyToken, async (req, res) => {
         .json({ message: buildAccessDeniedMessage(access.reason) });
     }
 
+    const coordinates =
+      input.latitude !== undefined && input.longitude !== undefined
+        ? { latitude: input.latitude, longitude: input.longitude }
+        : null;
+
     const payload = await upsertPresence({
       roomId,
       userId: viewer._id.toString(),
@@ -568,6 +584,41 @@ router.post('/rooms/:roomId/presence', verifyToken, async (req, res) => {
       joinedAt: input.joinedAt,
       lastActiveAt: input.lastActiveAt
     });
+
+    let removedRooms = [];
+    if (otherPresences.length) {
+      const otherRoomIds = otherPresences
+        .map((presence) => presence.roomId)
+        .filter(Boolean);
+      if (otherRoomIds.length) {
+        removedRooms = await ProximityChatRoom.find({ _id: { $in: otherRoomIds } });
+      }
+      await ProximityChatPresence.deleteMany({
+        _id: { $in: otherPresences.map((presence) => presence._id) }
+      });
+      await Promise.all(
+        removedRooms.map((roomDoc) =>
+          broadcastChatRoomTransition({
+            userId: viewer._id,
+            fromRoom: roomDoc,
+            toRoom: null,
+            coordinates
+          })
+        )
+      );
+    }
+
+    if (!currentPresence) {
+      const fromRoomDoc =
+        removedRooms.length === 1 ? removedRooms[0] : null;
+      await broadcastChatRoomTransition({
+        userId: viewer._id,
+        fromRoom: fromRoomDoc,
+        toRoom: room,
+        distanceMeters: access.distanceMeters,
+        coordinates
+      });
+    }
 
     res.status(201).json(payload);
   } catch (error) {

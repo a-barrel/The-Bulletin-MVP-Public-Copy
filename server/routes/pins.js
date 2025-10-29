@@ -63,6 +63,10 @@ const toIdString = (value) => {
 };
 
 const METERS_PER_MILE = 1609.34;
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+const EVENT_MAX_LEAD_TIME_MS = 14 * MILLISECONDS_PER_DAY;
+const DISCUSSION_MAX_DURATION_MS = 3 * MILLISECONDS_PER_DAY;
+const PAST_TOLERANCE_MS = 60 * 1000;
 
 const mapUserToPublic = (user) => {
   if (!user) return undefined;
@@ -470,8 +474,35 @@ router.post('/', verifyToken, async (req, res) => {
   try {
     const input = CreatePinSchema.parse(req.body);
 
+    const now = Date.now();
+    const maxEventTimestamp = now + EVENT_MAX_LEAD_TIME_MS;
+    const maxDiscussionTimestamp = now + DISCUSSION_MAX_DURATION_MS;
+
     if (input.type === 'event' && input.endDate < input.startDate) {
       return res.status(400).json({ message: 'endDate must be after startDate' });
+    }
+
+    if (input.type === 'event') {
+      if (input.startDate.getTime() < now - PAST_TOLERANCE_MS) {
+        return res.status(400).json({ message: 'Start date cannot be in the past.' });
+      }
+      if (input.endDate.getTime() < now - PAST_TOLERANCE_MS) {
+        return res.status(400).json({ message: 'End date cannot be in the past.' });
+      }
+      if (input.startDate.getTime() > maxEventTimestamp || input.endDate.getTime() > maxEventTimestamp) {
+        return res
+          .status(400)
+          .json({ message: 'Events can only be scheduled up to 14 days in advance.' });
+      }
+    } else if (input.type === 'discussion') {
+      if (input.expiresAt.getTime() < now - PAST_TOLERANCE_MS) {
+        return res.status(400).json({ message: 'Expiration date cannot be in the past.' });
+      }
+      if (input.expiresAt.getTime() > maxDiscussionTimestamp) {
+        return res
+          .status(400)
+          .json({ message: 'Discussions can only stay active for up to 3 days.' });
+      }
     }
 
     const viewer = await resolveViewerUser(req);
@@ -637,19 +668,42 @@ router.get('/nearby', verifyToken, async (req, res) => {
   try {
     const { latitude, longitude, distanceMiles, limit, type } = NearbyPinsQuerySchema.parse(req.query);
     const maxDistanceMeters = distanceMiles * METERS_PER_MILE;
-
-    const geoQuery = {
-      coordinates: {
-        $near: {
-          $geometry: { type: 'Point', coordinates: [longitude, latitude] },
-          $maxDistance: maxDistanceMeters
+    const now = new Date();
+    const queryFilters = [
+      {
+        coordinates: {
+          $near: {
+            $geometry: { type: 'Point', coordinates: [longitude, latitude] },
+            $maxDistance: maxDistanceMeters
+          }
         }
+      },
+      { $or: [{ isActive: { $exists: false } }, { isActive: true }] },
+      {
+        $or: [
+          { expiresAt: { $exists: false } },
+          { expiresAt: null },
+          { expiresAt: { $gt: now } }
+        ]
+      },
+      {
+        $or: [
+          { type: 'discussion' },
+          { type: 'event', endDate: { $exists: false } },
+          { type: 'event', endDate: null },
+          { type: 'event', endDate: { $gt: now } }
+        ]
       }
-    };
+    ];
 
     if (type) {
-      geoQuery.type = type;
+      queryFilters.push({ type });
     }
+
+    const geoQuery =
+      queryFilters.length === 1
+        ? queryFilters[0]
+        : { $and: queryFilters };
 
     const pins = await Pin.find(geoQuery)
       .limit(limit)
@@ -1103,6 +1157,10 @@ router.put('/:pinId', verifyToken, async (req, res) => {
     const { pinId } = PinIdSchema.parse(req.params);
     const input = CreatePinSchema.parse(req.body);
 
+    const now = Date.now();
+    const maxEventTimestamp = now + EVENT_MAX_LEAD_TIME_MS;
+    const maxDiscussionTimestamp = now + DISCUSSION_MAX_DURATION_MS;
+
     const pin = await Pin.findById(pinId).populate('creatorId');
     if (!pin) {
       return res.status(404).json({ message: 'Pin not found' });
@@ -1110,6 +1168,29 @@ router.put('/:pinId', verifyToken, async (req, res) => {
 
     if (input.type === 'event' && input.endDate < input.startDate) {
       return res.status(400).json({ message: 'endDate must be after startDate' });
+    }
+
+    if (input.type === 'event') {
+      if (input.startDate.getTime() < now - PAST_TOLERANCE_MS) {
+        return res.status(400).json({ message: 'Start date cannot be in the past.' });
+      }
+      if (input.endDate.getTime() < now - PAST_TOLERANCE_MS) {
+        return res.status(400).json({ message: 'End date cannot be in the past.' });
+      }
+      if (input.startDate.getTime() > maxEventTimestamp || input.endDate.getTime() > maxEventTimestamp) {
+        return res
+          .status(400)
+          .json({ message: 'Events can only be scheduled up to 14 days in advance.' });
+      }
+    } else if (input.type === 'discussion') {
+      if (input.expiresAt.getTime() < now - PAST_TOLERANCE_MS) {
+        return res.status(400).json({ message: 'Expiration date cannot be in the past.' });
+      }
+      if (input.expiresAt.getTime() > maxDiscussionTimestamp) {
+        return res
+          .status(400)
+          .json({ message: 'Discussions can only stay active for up to 3 days.' });
+      }
     }
 
     if (input.type === 'discussion' && input.proximityRadiusMeters && input.proximityRadiusMeters <= 0) {

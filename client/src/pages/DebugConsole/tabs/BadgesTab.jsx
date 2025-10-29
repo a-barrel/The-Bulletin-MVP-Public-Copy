@@ -20,6 +20,7 @@ import {
   fetchCurrentUserProfile
 } from '../../../api/mongoDataApi';
 import { useBadgeSound } from '../../../contexts/BadgeSoundContext';
+import { playBadgeSound } from '../../../utils/badgeSound';
 
 function BadgesTab() {
   const { announceBadgeEarned } = useBadgeSound();

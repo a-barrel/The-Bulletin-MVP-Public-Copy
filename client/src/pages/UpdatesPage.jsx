@@ -29,6 +29,7 @@ import {
   markAllUpdatesRead
 } from '../api/mongoDataApi';
 import { useUpdates } from '../contexts/UpdatesContext';
+import { routes } from '../routes';
 
 export const pageConfig = {
   id: 'updates',
@@ -107,7 +108,7 @@ function UpdatesPage() {
 
   const [pendingUpdateIds, setPendingUpdateIds] = useState([]);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
-  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+  const [showUnreadOnly, setShowUnreadOnly] = useState(true);
   const pendingRefreshRef = useRef(false);
 
   const { setUnreadCount } = useUpdates();
@@ -427,7 +428,7 @@ function UpdatesPage() {
                         {pinId ? (
                           <Button
                             component={Link}
-                            to={`/pin/${pinId}`}
+                            to={routes.pin.byId(pinId)}
                             size="small"
                             variant="outlined"
                           >
@@ -467,9 +468,6 @@ function UpdatesPage() {
 }
 
 export default UpdatesPage;
-
-
-
 
 
 

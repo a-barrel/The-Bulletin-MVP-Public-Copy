@@ -51,6 +51,10 @@ export const UPDATE_TYPE_OPTIONS = [
 ];
 
 export const METERS_PER_MILE = 1609.34;
+export const DEFAULT_SPOOF_STEP_MILES = 2;
+export const SPOOF_MIN_MILES = 0.25;
+export const SPOOF_MAX_MILES = 5;
+export const SPOOF_STEP_INCREMENT = 0.25;
 
 export const LIVE_CHAT_ROOM_PRESETS = [
   {
@@ -185,12 +189,12 @@ export const TELEPORT_PRESETS = [
   }
 ];
 
-export const SPOOF_STEP_METERS = 3218; // ~2 miles
+export const SPOOF_STEP_METERS = DEFAULT_SPOOF_STEP_MILES * METERS_PER_MILE;
 export const DIRECTION_SUCCESS_MESSAGES = {
-  north: 'Moved north by roughly 2 miles.',
-  south: 'Moved south by roughly 2 miles.',
-  east: 'Moved east by roughly 2 miles.',
-  west: 'Moved west by roughly 2 miles.'
+  north: `Moved north by roughly ${DEFAULT_SPOOF_STEP_MILES} mile${DEFAULT_SPOOF_STEP_MILES === 1 ? '' : 's'}.`,
+  south: `Moved south by roughly ${DEFAULT_SPOOF_STEP_MILES} mile${DEFAULT_SPOOF_STEP_MILES === 1 ? '' : 's'}.`,
+  east: `Moved east by roughly ${DEFAULT_SPOOF_STEP_MILES} mile${DEFAULT_SPOOF_STEP_MILES === 1 ? '' : 's'}.`,
+  west: `Moved west by roughly ${DEFAULT_SPOOF_STEP_MILES} mile${DEFAULT_SPOOF_STEP_MILES === 1 ? '' : 's'}.`
 };
 
 export const JSON_PREVIEW_SX = {

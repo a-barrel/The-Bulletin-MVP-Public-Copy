@@ -35,6 +35,8 @@ import {
 } from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
 import { BADGE_METADATA } from '../utils/badges';
+import { routes } from '../routes';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 
 export const pageConfig = {
   id: 'profile',
@@ -46,11 +48,11 @@ export const pageConfig = {
   protected: true,
   resolveNavTarget: ({ currentPath } = {}) => {
     if (!runtimeConfig.isOffline) {
-      return '/profile/me';
+      return routes.profile.me;
     }
 
     if (typeof window === 'undefined') {
-      return '/profile/me';
+      return routes.profile.me;
     }
 
     const input = window.prompt(
@@ -61,7 +63,7 @@ export const pageConfig = {
     }
     const trimmed = input.trim();
     if (!trimmed || trimmed.toLowerCase() === 'me') {
-      return '/profile/me';
+      return routes.profile.me;
     }
     const sanitized = trimmed.replace(/^\/+/, '');
     if (/^profile\/.+/i.test(sanitized)) {
@@ -70,7 +72,7 @@ export const pageConfig = {
     if (/^\/profile\/.+/i.test(trimmed)) {
       return trimmed;
     }
-    return `/profile/${sanitized}`;
+    return routes.profile.byId(sanitized);
   }
 };
 
@@ -190,6 +192,7 @@ function ProfilePage() {
   const targetUserId = shouldLoadCurrentUser ? null : normalizedUserId;
   const userFromState = location.state?.user;
   const originPath = typeof location.state?.from === 'string' ? location.state.from : null;
+  const { isOffline } = useNetworkStatusContext();
   const [fetchedUser, setFetchedUser] = useState(null);
   const [isFetchingProfile, setIsFetchingProfile] = useState(false);
   const [fetchError, setFetchError] = useState(null);
@@ -222,6 +225,12 @@ function ProfilePage() {
   useEffect(() => {
     let ignore = false;
 
+    if (isOffline) {
+      return () => {
+        ignore = true;
+      };
+    }
+
     async function loadViewerProfile() {
       try {
         const profile = await fetchCurrentUserProfile();
@@ -241,7 +250,7 @@ function ProfilePage() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [isOffline]);
 
   const initializeFormState = useCallback(
     (profile) => ({
@@ -278,6 +287,12 @@ function ProfilePage() {
       return;
     }
 
+    if (isOffline) {
+      setIsFetchingProfile(false);
+      setFetchError((prev) => prev ?? 'You are offline. Connect to refresh this profile.');
+      return;
+    }
+
     let ignore = false;
 
     async function loadProfile() {
@@ -309,7 +324,7 @@ function ProfilePage() {
     return () => {
       ignore = true;
     };
-  }, [targetUserId, shouldLoadCurrentUser, userFromState]);
+  }, [isOffline, shouldLoadCurrentUser, targetUserId, userFromState]);
 
   const effectiveUser = userFromState ?? fetchedUser ?? null;
 
@@ -363,6 +378,10 @@ function ProfilePage() {
   }, [effectiveUser, initializeFormState, isEditing]);
 
   const handleBeginEditing = useCallback(() => {
+    if (isOffline) {
+      setUpdateStatus({ type: 'warning', message: 'Reconnect to edit your profile.' });
+      return;
+    }
     if (!effectiveUser) {
       return;
     }
@@ -370,7 +389,7 @@ function ProfilePage() {
     setFormState(initializeFormState(effectiveUser));
     setUpdateStatus(null);
     setIsEditing(true);
-  }, [clearAvatarPreviewUrl, effectiveUser, initializeFormState]);
+  }, [clearAvatarPreviewUrl, effectiveUser, initializeFormState, isOffline]);
 
   const handleCancelEditing = useCallback(() => {
     clearAvatarPreviewUrl();
@@ -438,6 +457,10 @@ function ProfilePage() {
   const handleSaveProfile = useCallback(
     async (event) => {
       event.preventDefault();
+      if (isOffline) {
+        setUpdateStatus({ type: 'warning', message: 'You are offline. Connect to save your profile.' });
+        return;
+      }
       if (!effectiveUser) {
         setUpdateStatus({
           type: 'error',
@@ -534,6 +557,7 @@ function ProfilePage() {
       formState.locationSharingEnabled,
       formState.theme,
       initializeFormState,
+      isOffline,
       updateCurrentUserProfile,
       uploadImage
     ]
@@ -642,6 +666,11 @@ const detailEntries = useMemo(() => {
         enabled: notifications.updates !== false
       },
       {
+        key: 'chatTransitions',
+        label: 'Chat room movement alerts',
+        enabled: notifications.chatTransitions !== false
+      },
+      {
         key: 'marketing',
         label: 'Tips & marketing',
         enabled: notifications.marketing === true
@@ -676,17 +705,25 @@ const detailEntries = useMemo(() => {
     if (!canManageBlock) {
       return;
     }
+    if (isOffline) {
+      setRelationshipStatus({ type: 'warning', message: 'Reconnect to block users.' });
+      return;
+    }
     setRelationshipStatus(null);
     setBlockDialogMode('block');
-  }, [canManageBlock]);
+  }, [canManageBlock, isOffline]);
 
   const handleRequestUnblock = useCallback(() => {
     if (!canManageBlock) {
       return;
     }
+    if (isOffline) {
+      setRelationshipStatus({ type: 'warning', message: 'Reconnect to unblock users.' });
+      return;
+    }
     setRelationshipStatus(null);
     setBlockDialogMode('unblock');
-  }, [canManageBlock]);
+  }, [canManageBlock, isOffline]);
 
   const handleCloseBlockDialog = useCallback(() => {
     if (isProcessingBlockAction) {
@@ -702,6 +739,15 @@ const detailEntries = useMemo(() => {
 
     const targetId = effectiveUser?._id ? String(effectiveUser._id) : normalizedTargetId;
     if (!targetId) {
+      return;
+    }
+
+    if (isOffline) {
+      setRelationshipStatus({
+        type: 'warning',
+        message: 'Reconnect to change block status.'
+      });
+      setBlockDialogMode(null);
       return;
     }
 
@@ -758,7 +804,7 @@ const detailEntries = useMemo(() => {
     } finally {
       setIsProcessingBlockAction(false);
     }
-  }, [blockDialogMode, displayName, effectiveUser, normalizedTargetId]);
+  }, [blockDialogMode, displayName, effectiveUser, isOffline, normalizedTargetId]);
 
   useEffect(() => {
     if (!relationshipStatus) {
@@ -821,6 +867,12 @@ const detailEntries = useMemo(() => {
             </Alert>
           ) : null}
 
+          {isOffline ? (
+            <Alert severity="warning" variant="outlined">
+              You are offline. Profile changes and relationship actions are disabled until you reconnect.
+            </Alert>
+          ) : null}
+
           {relationshipStatus ? (
             <Alert severity={relationshipStatus.type} onClose={() => setRelationshipStatus(null)}>
               {relationshipStatus.message}
@@ -858,7 +910,8 @@ const detailEntries = useMemo(() => {
                 color={isBlocked ? 'primary' : 'error'}
                 startIcon={isBlocked ? <HowToRegIcon /> : <BlockIcon />}
                 onClick={isBlocked ? handleRequestUnblock : handleRequestBlock}
-                disabled={isProcessingBlockAction || isFetchingProfile}
+                disabled={isOffline || isProcessingBlockAction || isFetchingProfile}
+                title={isOffline ? 'Reconnect to manage block settings' : undefined}
               >
                 {isBlocked ? 'Unblock user' : 'Block user'}
               </Button>
@@ -895,7 +948,13 @@ const detailEntries = useMemo(() => {
                       {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
                     </Avatar>
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                      <Button component="label" variant="outlined" size="small" disabled={isSavingProfile}>
+                      <Button
+                        component="label"
+                        variant="outlined"
+                        size="small"
+                        disabled={isOffline || isSavingProfile}
+                        title={isOffline ? 'Reconnect to upload a new avatar' : undefined}
+                      >
                         Upload avatar
                         <input type="file" hidden accept="image/*" onChange={handleAvatarFileChange} />
                       </Button>
@@ -906,9 +965,11 @@ const detailEntries = useMemo(() => {
                         size="small"
                         onClick={handleClearAvatar}
                         disabled={
+                          isOffline ||
                           isSavingProfile ||
                           (formState.avatarCleared && !formState.avatarFile && !effectiveUser?.avatar)
                         }
+                        title={isOffline ? 'Reconnect to remove your avatar' : undefined}
                       >
                         Remove avatar
                       </Button>
@@ -920,7 +981,7 @@ const detailEntries = useMemo(() => {
                     value={formState.displayName}
                     onChange={handleFieldChange('displayName')}
                     required
-                    disabled={isSavingProfile}
+                    disabled={isOffline || isSavingProfile}
                     fullWidth
                   />
 
@@ -931,7 +992,7 @@ const detailEntries = useMemo(() => {
                     multiline
                     minRows={3}
                     helperText="Share something about yourself (500 characters max)."
-                    disabled={isSavingProfile}
+                    disabled={isOffline || isSavingProfile}
                     inputProps={{ maxLength: 500 }}
                     fullWidth
                   />
@@ -941,7 +1002,7 @@ const detailEntries = useMemo(() => {
                     value={formState.theme}
                     onChange={handleThemeChange}
                     select
-                    disabled={isSavingProfile}
+                    disabled={isOffline || isSavingProfile}
                     fullWidth
                   >
                     <MenuItem value="system">System default</MenuItem>
@@ -955,7 +1016,7 @@ const detailEntries = useMemo(() => {
                         checked={formState.locationSharingEnabled}
                         onChange={handleToggleLocationSharing}
                         color="primary"
-                        disabled={isSavingProfile}
+                        disabled={isOffline || isSavingProfile}
                       />
                     }
                     label="Share location with nearby features"
@@ -971,7 +1032,12 @@ const detailEntries = useMemo(() => {
                     >
                       Cancel
                     </Button>
-                    <Button type="submit" variant="contained" disabled={isSavingProfile}>
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      disabled={isOffline || isSavingProfile}
+                      title={isOffline ? 'Reconnect to save changes' : undefined}
+                    >
                       {isSavingProfile ? 'Saving...' : 'Save changes'}
                     </Button>
                   </Stack>
@@ -981,7 +1047,8 @@ const detailEntries = useMemo(() => {
                   <Button
                     variant="contained"
                     onClick={handleBeginEditing}
-                    disabled={!effectiveUser || isFetchingProfile}
+                    disabled={isOffline || !effectiveUser || isFetchingProfile}
+                    title={isOffline ? 'Reconnect to edit your profile' : undefined}
                   >
                     Edit profile
                   </Button>
