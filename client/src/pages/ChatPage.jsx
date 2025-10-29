@@ -25,18 +25,19 @@ import {
   Switch,
   FormControlLabel,
   CircularProgress,
-  Fab
+  Fab,
+  Icon
 } from '@mui/material';
 import SmsIcon from '@mui/icons-material/Sms';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import RoomIcon from '@mui/icons-material/Room';
-import SendIcon from '@mui/icons-material/Send';
+import SendIcon from '@mui/icons-material/SendRounded';
 import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
 import updatesIcon from "../assets/UpdateIcon.svg";
-import addIcon from "../assets/AddIcon.svg";
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import AddIcon from '@mui/icons-material/AddCircleOutlineRounded';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
 import { auth } from '../firebase';
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
@@ -135,10 +136,11 @@ function ChatPage() {
       }
     }, [isOffline, refreshUnreadCount]);
 
-  // Makes it so that i
+  // Makes the screen automatically display the bottom-most (latest) chat message whenever a new room is joined, this page is navigated to, and/or when a message is updated
+  // Currently only the on message update part works
   useEffect(() => {
     scrollMessagesToBottom();
-  }, [messages, selectedRoomId, location.pathname, scrollMessagesToBottom]);
+  }, [selectedRoomId, location.pathname, scrollMessagesToBottom]);
 
   useEffect(() => {
     if (!authLoading && !authUser) {
@@ -828,12 +830,12 @@ function ChatPage() {
       sx={{ display: debugMode ? 'none' : 'block' }}
     >
       {showScrollButton && (
-        <Fab
+        <IconButton
           className="chat-scroll-to-bottom-btn"
           onClick={scrollMessagesToBottom}
         >
-          <ArrowDownwardIcon className="scroll-to-bottom-icon"/>
-        </Fab>
+          <ArrowDownwardIcon className="scroll-to-bottom-icon" />
+        </IconButton>
       )}
       <div className="chat-frame">
         <header className="chat-header-bar">
@@ -876,9 +878,13 @@ function ChatPage() {
         TO DO: Make it modernly resize when selected and have additional buttons pop up (just add img planned) as well as making the input box bigger for bigger messages + character limit
         */}
         <Box className="chat-input-container">
-          <Box className="chat-add-img-btn" onClick={''}>
-            <img src={addIcon} alt="Add" className="add-img-icon"/>
-          </Box>
+          <IconButton 
+            className="add-img-btn" 
+            onClick={""}
+          >
+            <AddIcon className="add-img-icon"/>
+          </IconButton>
+
           <TextField
             className="chat-input"
             value={messageDraft}
@@ -886,14 +892,16 @@ function ChatPage() {
             placeholder="Send a message"
             fullWidth
             variant="outlined"
+            multiline
+            minRows={1}
+            maxRows={5}
           />
-          <IconButton 
+          <button 
             className="send-message-btn" 
-            color="white"
             onClick={handleSendMessage}
           >
-            <SendIcon/>
-          </IconButton>
+            <SendIcon className="send-message-icon"/>
+          </button>
         </Box>
         <Navbar />
       </div>
