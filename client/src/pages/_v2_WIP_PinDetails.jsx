@@ -1,11 +1,24 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import './PinDetails.css';
-import PlaceIcon from '@mui/icons-material/Place';
+import PlaceIcon from '@mui/icons-material/Place'; // used only for pageConfig
 import LeafletMap from '../components/Map';
 import runtimeConfig from '../config/runtime';
-import { fetchPinById, fetchReplies } from '../api/mongoDataApi';
+import {
+  fetchPinById,
+  fetchReplies,
+  fetchPinAttendees,
+  updatePinAttendance,
+  createPinBookmark,
+  deletePinBookmark,
+  createPinReply,
+  fetchCurrentUserProfile
+} from '../api/mongoDataApi';
+import { playBadgeSound } from '../utils/badgeSound';
+import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { routes } from '../routes';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
+import './_V2_WIP_PinDetails.css'
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
@@ -31,18 +44,18 @@ export const pageConfig = {
     }
     const trimmed = input.trim();
     if (trimmed.toLowerCase() === 'expired') {
-      return routes.pinV2.byId(EXPIRED_PIN_ID);
+      return `/pin-v2/${EXPIRED_PIN_ID}`;
     }
     if (trimmed.toLowerCase() === 'far') {
       const farId = FAR_PIN_ID;
-      return `${routes.pinV2.byId(farId)}?preview=far`;
+      return `/pin-v2/${farId}?preview=far`;
     }
     if (!trimmed) {
       const randomId =
         SAMPLE_PIN_IDS[Math.floor(Math.random() * SAMPLE_PIN_IDS.length)] ?? '68e061721329566a22d474aa';
-      return routes.pinV2.byId(randomId);
+      return `/pin-v2/${randomId}`;
     }
-    return routes.pinV2.byId(trimmed);
+    return `/pin-v2/${trimmed}`;
   }
 };
 
@@ -134,39 +147,6 @@ const formatApproximateAddress = (approximateAddress) => {
   return parts.length > 0 ? parts.join(', ') : null;
 };
 
-const parseCoordinates = (coordinates) => {
-  if (!Array.isArray(coordinates) || coordinates.length < 2) {
-    return null;
-  }
-  const [longitude, latitude] = coordinates;
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-    return null;
-  }
-  return { latitude, longitude };
-};
-
-const formatCoordinateLabel = (coordinates) => {
-  const parsed = parseCoordinates(coordinates);
-  if (!parsed) {
-    return null;
-  }
-  return `${parsed.latitude.toFixed(5)}, ${parsed.longitude.toFixed(5)}`;
-};
-
-const combineTagArray = (tags) => {
-  if (!Array.isArray(tags) || tags.length === 0) {
-    return null;
-  }
-  return tags.filter(Boolean).join(', ');
-};
-
-const combineStringList = (value) => {
-  if (!Array.isArray(value) || value.length === 0) {
-    return null;
-  }
-  return value.filter(Boolean).join(', ');
-};
-
 const normaliseTimestamp = (value) => {
   if (!value) {
     return 0;
@@ -213,36 +193,199 @@ const resolveReplySortValue = (reply) => {
 const sortRepliesByDateDesc = (list) =>
   [...list].sort((a, b) => resolveReplySortValue(b) - resolveReplySortValue(a));
 
-function PinDetailsV2WIP() {
+const parseCoordinates = (coordinates) => {
+  if (!Array.isArray(coordinates) || coordinates.length < 2) {
+    return null;
+  }
+  const [longitude, latitude] = coordinates;
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+  return { latitude, longitude };
+};
+
+const formatCoordinateLabel = (coordinates) => {
+  const parsed = parseCoordinates(coordinates);
+  if (!parsed) {
+    return null;
+  }
+  return `${parsed.latitude.toFixed(6)}, ${parsed.longitude.toFixed(6)}`;
+};
+
+const formatMetersToMiles = (meters) => {
+  if (!Number.isFinite(meters)) {
+    return null;
+  }
+  const miles = meters / 1609.34;
+  const formatted = miles >= 10 ? miles.toFixed(0) : miles.toFixed(1);
+  return `${formatted} mi`;
+};
+
+const resolveUserIdentifier = (user) => {
+  if (!user || typeof user !== 'object') {
+    return null;
+  }
+
+  const rawIdentifier =
+    user._id ??
+    user.id ??
+    user.uid ??
+    user.userId ??
+    user.username ??
+    user.email ??
+    user.displayName;
+
+  if (rawIdentifier === undefined || rawIdentifier === null) {
+    return null;
+  }
+
+  const identifierString =
+    typeof rawIdentifier === 'string' ? rawIdentifier.trim() : String(rawIdentifier).trim();
+
+  if (!identifierString) {
+    return null;
+  }
+
+  return identifierString;
+};
+
+const buildUserProfileLink = (user, originPath) => {
+  const identifier = resolveUserIdentifier(user);
+  if (!identifier) {
+    return null;
+  }
+
+  const linkState = user
+    ? {
+        user,
+        ...(originPath ? { from: originPath } : {})
+      }
+    : originPath
+      ? { from: originPath }
+      : undefined;
+
+  return {
+    pathname: routes.profile.byId(identifier),
+    state: linkState
+  };
+};
+
+const extractViewerProfileIdFromState = (state) => {
+  if (!state || typeof state !== 'object') {
+    return null;
+  }
+
+  const candidates = [
+    state.viewerProfile?._id,
+    state.currentProfile?._id,
+    state.user?._id,
+    state.profile?._id,
+    state.creator?._id,
+    state.viewerId,
+    state.userId,
+    state.currentProfileId
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+  }
+
+  return null;
+};
+
+function PinDetails() {
   const { pinId } = useParams();
   const location = useLocation();
+  const locationState = location?.state;
+  const { isOffline } = useNetworkStatusContext();
+  const [viewerProfileId, setViewerProfileId] = useState(() =>
+    extractViewerProfileIdFromState(locationState)
+  );
   const [pin, setPin] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [bookmarked, setBookmarked] = useState(false);
+  const [isUpdatingBookmark, setIsUpdatingBookmark] = useState(false);
+  const [bookmarkError, setBookmarkError] = useState(null);
+  const [attending, setAttending] = useState(false);
+  const [isUpdatingAttendance, setIsUpdatingAttendance] = useState(false);
+  const [attendanceError, setAttendanceError] = useState(null);
   const [replies, setReplies] = useState([]);
   const [isLoadingReplies, setIsLoadingReplies] = useState(false);
   const [repliesError, setRepliesError] = useState(null);
-  const [attending, setAttending] = useState(false);
+  const [attendeeOverlayOpen, setAttendeeOverlayOpen] = useState(false);
+  const [attendees, setAttendees] = useState([]);
+  const [isLoadingAttendees, setIsLoadingAttendees] = useState(false);
+  const [attendeesError, setAttendeesError] = useState(null);
+  const [replyComposerOpen, setReplyComposerOpen] = useState(false);
+  const [replyMessage, setReplyMessage] = useState('');
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+  const [submitReplyError, setSubmitReplyError] = useState(null);
+  const { announceBadgeEarned } = useBadgeSound();
+  const isEventPin = useMemo(
+    () => (typeof pin?.type === 'string' ? pin.type.toLowerCase() === 'event' : false),
+    [pin?.type]
+  );
+
+  useEffect(() => {
+    if (viewerProfileId) {
+      return;
+    }
+    const candidate = extractViewerProfileIdFromState(locationState);
+    if (candidate) {
+      setViewerProfileId(candidate);
+    }
+  }, [locationState, viewerProfileId]);
+
+  useEffect(() => {
+    if (viewerProfileId || isOffline) {
+      return;
+    }
+
+    let ignore = false;
+
+    (async () => {
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (ignore) {
+          return;
+        }
+        const normalized = profile?._id ? String(profile._id) : null;
+        setViewerProfileId(normalized);
+      } catch (error) {
+        if (!ignore) {
+          console.warn('Failed to load viewer profile for pin details:', error);
+          setViewerProfileId(null);
+        }
+      }
+    })();
+
+    return () => {
+      ignore = true;
+    };
+  }, [viewerProfileId, isOffline]);
+
+  const pinExpired = useMemo(() => {
+  if (!pin) {
+    return false;
+  }
+  const expiresSource = pin.expiresAt ?? pin.endDate;
+  if (!expiresSource) {
+    return false;
+  }
+  const expiry = new Date(expiresSource);
+  if (Number.isNaN(expiry.getTime())) {
+    return false;
+  }
+  return expiry.getTime() < Date.now();
+}, [pin]);
 
   const previewMode = useMemo(() => {
     const params = new URLSearchParams(location.search ?? '');
     return (params.get('preview') || '').toLowerCase();
   }, [location.search]);
-
-  const pinExpired = useMemo(() => {
-    if (!pin) {
-      return false;
-    }
-    const expiresSource = pin.expiresAt ?? pin.endDate;
-    if (!expiresSource) {
-      return false;
-    }
-    const expiry = new Date(expiresSource);
-    if (Number.isNaN(expiry.getTime())) {
-      return false;
-    }
-    return expiry.getTime() < Date.now();
-  }, [pin]);
 
   const simulatedFarPreview = previewMode === 'far';
   const viewerWithinInteractionRadius =
@@ -292,32 +435,128 @@ function PinDetailsV2WIP() {
     return null;
   }, [pinExpired, distanceLockActive, viewerInteractionLockMessage, viewerDistanceLabel]);
 
+  const pinCreatorId = useMemo(() => {
+    if (!pin) {
+      return null;
+    }
+    if (typeof pin.creatorId === 'string' && pin.creatorId.trim().length > 0) {
+      return pin.creatorId.trim();
+    }
+    const nestedId = pin.creator?._id;
+    if (typeof nestedId === 'string' && nestedId.trim().length > 0) {
+      return nestedId.trim();
+    }
+    return null;
+  }, [pin]);
+
+  const isOwnPin = useMemo(() => {
+    if (!pinCreatorId || !viewerProfileId) {
+      return false;
+    }
+    return pinCreatorId === viewerProfileId;
+  }, [pinCreatorId, viewerProfileId]);
+
+  const pinTypeHeading = useMemo(() => {
+    if (!pin) {
+      return 'Loading...';
+    }
+    const rawType = typeof pin.type === 'string' ? pin.type : '';
+    const capitalized =
+      rawType && rawType.length > 0 ? rawType.charAt(0).toUpperCase() + rawType.slice(1) : 'Pin';
+    const normalizedType = rawType.toLowerCase();
+    if (isOwnPin && (normalizedType === 'event' || normalizedType === 'discussion')) {
+      return `(Your) ${capitalized}`;
+    }
+    return capitalized || 'Pin';
+  }, [pin, isOwnPin]);
+
+  const mapPins = useMemo(() => {
+    if (!pin) {
+      return [];
+    }
+    if (pin.isSelf === isOwnPin) {
+      return [pin];
+    }
+    return [{ ...pin, isSelf: isOwnPin }];
+  }, [pin, isOwnPin]);
+
   useEffect(() => {
-    if (!pinId) {
+    setBookmarked(false);
+    setIsUpdatingBookmark(false);
+    setBookmarkError(null);
+    setAttending(false);
+    setIsUpdatingAttendance(false);
+    setAttendanceError(null);
+    setAttendeeOverlayOpen(false);
+    setAttendees([]);
+    setIsLoadingAttendees(false);
+    setAttendeesError(null);
+    setReplyComposerOpen(false);
+    setReplyMessage('');
+    setIsSubmittingReply(false);
+    setSubmitReplyError(null);
+  }, [pinId, isInteractionLocked]);
+
+  useEffect(() => {
+    if (!pin) {
       return;
     }
+    setBookmarked(Boolean(pin.viewerHasBookmarked));
+  }, [pin?.viewerHasBookmarked]);
+  useEffect(() => {
+    if (!isEventPin) {
+      setAttending(false);
+      setAttendanceError(null);
+      setAttendeeOverlayOpen(false);
+      setAttendees([]);
+      setIsLoadingAttendees(false);
+      setAttendeesError(null);
+      setReplyComposerOpen(false);
+      setReplyMessage('');
+      setSubmitReplyError(null);
+      return;
+    }
+    setAttending(Boolean(pin.viewerIsAttending));
+  }, [pin?.viewerIsAttending, isEventPin]);
 
-    let isMounted = true;
-    const controller = new AbortController();
-    const signal = controller.signal;
+  useEffect(() => {
+    let ignore = false;
 
     async function loadPin() {
+      if (!pinId) {
+        setPin(null);
+        setError('Missing pin id in URL.');
+        setIsLoading(false);
+        return;
+      }
+
+      if (isOffline) {
+        setIsLoading(false);
+        setError((prev) => prev ?? 'You are offline. Connect to load the latest pin details.');
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
+
       try {
-        const result = await fetchPinById(pinId, { signal, previewMode });
-        if (!isMounted) {
+        const payload = await fetchPinById(pinId, { previewMode });
+        if (ignore) {
           return;
         }
-        setPin(result);
-      } catch (err) {
-        if (!isMounted || signal.aborted) {
+        setPin(payload);
+        setBookmarked(Boolean(payload.viewerHasBookmarked));
+        setBookmarkError(null);
+        setIsUpdatingBookmark(false);
+      } catch (error) {
+        if (ignore) {
           return;
         }
-        console.error('Failed to load pin:', err);
-        setError(err.message || 'Unable to load pin details.');
+        console.error('Failed to fetch pin:', error);
+        setError(error?.message || 'Failed to load pin details.');
+        setPin(null);
       } finally {
-        if (isMounted) {
+        if (!ignore) {
           setIsLoading(false);
         }
       }
@@ -326,37 +565,42 @@ function PinDetailsV2WIP() {
     loadPin();
 
     return () => {
-      isMounted = false;
-      controller.abort();
+      ignore = true;
     };
-  }, [pinId, previewMode]);
+  }, [isOffline, pinId, previewMode]);
 
   useEffect(() => {
     if (!pinId) {
+      setReplies([]);
       return;
     }
 
-    let isMounted = true;
-    const controller = new AbortController();
-    const signal = controller.signal;
+    if (isOffline) {
+      setIsLoadingReplies(false);
+      setRepliesError((prev) => prev ?? 'Replies unavailable while offline.');
+      return;
+    }
 
+    let ignore = false;
     async function loadReplies() {
       setIsLoadingReplies(true);
       setRepliesError(null);
+
       try {
-        const list = await fetchReplies(pinId, { signal });
-        if (!isMounted) {
+        const payload = await fetchReplies(pinId);
+        if (ignore) {
           return;
         }
-        setReplies(Array.isArray(list) ? sortRepliesByDateDesc(list) : []);
-      } catch (err) {
-        if (!isMounted || signal.aborted) {
+        setReplies(Array.isArray(payload) ? sortRepliesByDateDesc(payload) : []);
+      } catch (error) {
+        if (ignore) {
           return;
         }
-        console.error('Failed to load replies:', err);
-        setRepliesError(err.message || 'Unable to load replies.');
+        console.error('Failed to load replies:', error);
+        setRepliesError(error?.message || 'Failed to load replies.');
+        setReplies([]);
       } finally {
-        if (isMounted) {
+        if (!ignore) {
           setIsLoadingReplies(false);
         }
       }
@@ -365,46 +609,425 @@ function PinDetailsV2WIP() {
     loadReplies();
 
     return () => {
-      isMounted = false;
-      controller.abort();
+      ignore = true;
     };
-  }, [pinId]);
+  }, [isOffline, pinId]);
 
-  const coordinateLabel = useMemo(() => formatCoordinateLabel(pin?.coordinates?.coordinates), [pin]);
-  const eventDateRange = useMemo(() => formatEventRange(pin?.startDate, pin?.endDate), [pin?.startDate, pin?.endDate]);
-  const expirationLabel = useMemo(() => formatDateTime(pin?.expiresAt), [pin?.expiresAt]);
-  const formattedAddress = useMemo(() => formatAddress(pin?.address), [pin?.address]);
-  const formattedApproximate = useMemo(() => formatApproximateAddress(pin?.approximateAddress), [pin?.approximateAddress]);
-  const combinedTags = useMemo(() => combineTagArray(pin?.tags), [pin?.tags]);
-  const combinedRelatedPins = useMemo(() => combineStringList(pin?.relatedPinIds), [pin?.relatedPinIds]);
+  useEffect(() => {
+    if (!attendeeOverlayOpen) {
+      return;
+    }
+    if (!pinId || !isEventPin) {
+      setAttendees([]);
+      setIsLoadingAttendees(false);
+      setAttendeesError(null);
+      return;
+    }
 
-  const coverPhotoUrl = useMemo(
+    if (isOffline) {
+      setIsLoadingAttendees(false);
+      setAttendeesError((prev) => prev ?? 'Attendee list unavailable while offline.');
+      return;
+    }
+
+    let ignore = false;
+
+    async function loadAttendees() {
+      setIsLoadingAttendees(true);
+      setAttendeesError(null);
+
+      try {
+        const payload = await fetchPinAttendees(pinId);
+        if (ignore) {
+          return;
+        }
+        setAttendees(Array.isArray(payload) ? payload : []);
+      } catch (error) {
+        if (ignore) {
+          return;
+        }
+        console.error('Failed to load attendees:', error);
+        setAttendeesError(error?.message || 'Failed to load attendees.');
+        setAttendees([]);
+      } finally {
+        if (!ignore) {
+          setIsLoadingAttendees(false);
+        }
+      }
+    }
+
+    loadAttendees();
+
+    return () => {
+      ignore = true;
+    };
+  }, [attendeeOverlayOpen, isEventPin, isOffline, pinId]);
+
+  const coverImageUrl = useMemo(
     () => resolveMediaAssetUrl(pin?.coverPhoto, DEFAULT_COVER_PATH),
-    [pin?.coverPhoto]
+    [pin]
   );
+
+  const photoItems = useMemo(() => {
+    if (!pin) {
+      return [];
+    }
+
+    const items = [];
+    const seen = new Set();
+
+    const pushPhoto = (asset, { fallbackLabel } = {}) => {
+      const url = resolveMediaAssetUrl(asset);
+      if (!url || seen.has(url)) {
+        return;
+      }
+      seen.add(url);
+      const label =
+        (asset && typeof asset === 'object' && (asset.description || asset.label)) || fallbackLabel;
+      items.push({
+        url,
+        label: label || null
+      });
+    };
+
+    if (pin.coverPhoto) {
+      pushPhoto(pin.coverPhoto);
+    } else if (coverImageUrl) {
+      pushPhoto(coverImageUrl);
+    }
+
+    if (Array.isArray(pin.photos)) {
+      pin.photos.forEach((photo, index) => pushPhoto(photo, { fallbackLabel: `Photo ${index + 1}` }));
+    }
+
+    return items;
+  }, [pin, coverImageUrl]);
+
   const creatorAvatarUrl = useMemo(
     () => resolveMediaAssetUrl(pin?.creator?.avatar, DEFAULT_AVATAR_PATH),
-    [pin?.creator]
+    [pin]
+  );
+  const profileReturnPath = useMemo(
+    () => `${location.pathname}${location.search || ''}${location.hash || ''}`,
+    [location.pathname, location.search, location.hash]
+  );
+  const creatorProfileLink = useMemo(
+    () => buildUserProfileLink(pin?.creator, profileReturnPath),
+    [pin, profileReturnPath]
   );
 
-  const mapCenter = useMemo(() => {
-    const parsed = parseCoordinates(pin?.coordinates?.coordinates);
-    if (!parsed) {
-      return null;
+  const coordinates = useMemo(
+    () => parseCoordinates(pin?.coordinates?.coordinates),
+    [pin]
+  );
+
+  const coordinateLabel = useMemo(
+    () => formatCoordinateLabel(pin?.coordinates?.coordinates),
+    [pin]
+  );
+
+  const proximityRadius = useMemo(
+    () => formatMetersToMiles(pin?.proximityRadiusMeters),
+    [pin]
+  );
+
+  const addressLabel = useMemo(() => formatAddress(pin?.address), [pin]);
+  const approximateAddressLabel = useMemo(
+    () => formatApproximateAddress(pin?.approximateAddress),
+    [pin]
+  );
+
+  const eventDateRange = useMemo(
+    () => formatEventRange(pin?.startDate, pin?.endDate),
+    [pin]
+  );
+
+  const openAttendeeOverlay = useCallback(() => {
+    if (!isEventPin) {
+      return;
     }
-    return {
-      latitude: parsed.latitude,
-      longitude: parsed.longitude
-    };
-  }, [pin?.coordinates?.coordinates]);
+    if (isOffline) {
+      setAttendeesError('You are offline. Connect to view attendees.');
+      return;
+    }
+    if (pinExpired) {
+      return;
+    }
+    if (distanceLockActive) {
+      setAttendeesError('You are outside this pin\'s interaction radius.');
+      return;
+    }
+    setAttendeesError(null);
+    setAttendeeOverlayOpen(true);
+  }, [distanceLockActive, isEventPin, isOffline, pinExpired]);
+
+  const closeAttendeeOverlay = useCallback(() => {
+    setAttendeeOverlayOpen(false);
+  }, []);
+
+  const openReplyComposer = useCallback(() => {
+    if (!pinId) {
+      return;
+    }
+    if (isOffline) {
+      setSubmitReplyError('Replies are unavailable while offline.');
+      return;
+    }
+    if (pinExpired) {
+      setSubmitReplyError('Replies are closed because this pin has expired.');
+      return;
+    }
+    if (distanceLockActive) {
+      setSubmitReplyError('Replies are disabled because you are outside this pin\'s interaction radius.');
+      return;
+    }
+    setSubmitReplyError(null);
+    setReplyComposerOpen(true);
+  }, [distanceLockActive, isOffline, pinExpired, pinId]);
+
+  const closeReplyComposer = useCallback(() => {
+    if (isSubmittingReply) {
+      return;
+    }
+    setReplyComposerOpen(false);
+    setSubmitReplyError(null);
+  }, [isSubmittingReply]);
+
+  const handleToggleBookmark = useCallback(async () => {
+    if (isOffline) {
+      setBookmarkError('Bookmarks are unavailable while offline.');
+      return;
+    }
+    if (!pin || isUpdatingBookmark || isInteractionLocked) {
+      if (pinExpired) {
+        setBookmarkError('Expired pins cannot be bookmarked.');
+      } else if (distanceLockActive) {
+        setBookmarkError('Pins outside your interaction radius cannot be bookmarked.');
+      }
+      return;
+    }
+
+    setIsUpdatingBookmark(true);
+    setBookmarkError(null);
+
+    try {
+      if (bookmarked) {
+        const response = await deletePinBookmark(pin._id);
+        setPin((prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentCount = prev.bookmarkCount ?? 0;
+          const nextBookmarkCount =
+            typeof response?.bookmarkCount === 'number'
+              ? response.bookmarkCount
+              : Math.max(0, currentCount - 1);
+          const nextViewerHasBookmarked =
+            typeof response?.viewerHasBookmarked === 'boolean'
+              ? response.viewerHasBookmarked
+              : false;
+          const nextStats = prev.stats
+            ? { ...prev.stats, bookmarkCount: nextBookmarkCount }
+            : prev.stats;
+          return {
+            ...prev,
+            bookmarkCount: nextBookmarkCount,
+            stats: nextStats,
+            viewerHasBookmarked: nextViewerHasBookmarked
+          };
+        });
+        setBookmarked(
+          typeof response?.viewerHasBookmarked === 'boolean'
+            ? response.viewerHasBookmarked
+            : false
+        );
+      } else {
+        const response = await createPinBookmark(pin._id);
+        setPin((prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentCount = prev.bookmarkCount ?? 0;
+          const nextBookmarkCount =
+            typeof response?.bookmarkCount === 'number'
+              ? response.bookmarkCount
+              : currentCount + 1;
+          const nextViewerHasBookmarked =
+            typeof response?.viewerHasBookmarked === 'boolean'
+              ? response.viewerHasBookmarked
+              : true;
+          const nextStats = prev.stats
+            ? { ...prev.stats, bookmarkCount: nextBookmarkCount }
+            : prev.stats;
+          return {
+            ...prev,
+            bookmarkCount: nextBookmarkCount,
+            stats: nextStats,
+            viewerHasBookmarked: nextViewerHasBookmarked
+          };
+        });
+        setBookmarked(
+          typeof response?.viewerHasBookmarked === 'boolean'
+            ? response.viewerHasBookmarked
+            : true
+        );
+        if (response?.badgeEarnedId) {
+          playBadgeSound();
+          announceBadgeEarned(response.badgeEarnedId);
+        }
+      }
+    } catch (toggleError) {
+      console.error('Failed to toggle bookmark:', toggleError);
+      setBookmarkError(toggleError?.message || 'Failed to update bookmark.');
+    } finally {
+      setIsUpdatingBookmark(false);
+    }
+  }, [announceBadgeEarned, bookmarked, distanceLockActive, isInteractionLocked, isOffline, isUpdatingBookmark, pin, pinExpired]);
+
+  const handleToggleAttendance = useCallback(async () => {
+    if (isOffline) {
+      setAttendanceError('Attendance cannot be updated while offline.');
+      return;
+    }
+    if (!pin || !isEventPin || isUpdatingAttendance || isInteractionLocked) {
+      if (pinExpired) {
+        setAttendanceError('This event has ended.');
+      } else if (distanceLockActive) {
+        setAttendanceError('You are outside this pin\'s interaction radius.');
+      }
+      return;
+    }
+
+    const nextAttending = !attending;
+    const previousBookmarked = bookmarked;
+
+    if (
+      nextAttending &&
+      pin.participantLimit &&
+      (pin.participantCount ?? 0) >= pin.participantLimit &&
+      !pin.viewerIsAttending
+    ) {
+      setAttendanceError('Participant limit reached.');
+      return;
+    }
+
+    setAttendanceError(null);
+    setIsUpdatingAttendance(true);
+    setAttending(nextAttending);
+    if (nextAttending) {
+      setBookmarked(true);
+    }
+
+    setPin((prev) => {
+      if (
+        !prev ||
+        typeof prev.type !== 'string' ||
+        prev.type.toLowerCase() !== 'event'
+      ) {
+        return prev;
+      }
+      const currentCount = prev.participantCount ?? 0;
+      const delta = nextAttending ? 1 : -1;
+      const nextCount = Math.max(0, currentCount + delta);
+      return {
+        ...prev,
+        participantCount: nextCount,
+        viewerIsAttending: nextAttending,
+        viewerHasBookmarked: nextAttending ? true : prev.viewerHasBookmarked
+      };
+    });
+
+    try {
+      const updatedPin = await updatePinAttendance(pin._id, nextAttending);
+      setPin(updatedPin);
+      setAttending(Boolean(updatedPin.viewerIsAttending));
+      setBookmarked(Boolean(updatedPin.viewerHasBookmarked));
+      if (updatedPin?._badgeEarnedId) {
+        playBadgeSound();
+        announceBadgeEarned(updatedPin._badgeEarnedId);
+      }
+    } catch (updateError) {
+      console.error('Failed to update attendance:', updateError);
+      setAttendanceError(updateError?.message || 'Failed to update attendance.');
+      setPin((prev) => {
+        if (
+          !prev ||
+          typeof prev.type !== 'string' ||
+          prev.type.toLowerCase() !== 'event'
+        ) {
+          return prev;
+        }
+        const currentCount = prev.participantCount ?? 0;
+        const delta = nextAttending ? -1 : 1;
+        const nextCount = Math.max(0, currentCount + delta);
+        return {
+          ...prev,
+          participantCount: nextCount,
+          viewerIsAttending: !nextAttending
+        };
+      });
+      setAttending(!nextAttending);
+      setBookmarked(previousBookmarked);
+    } finally {
+      setIsUpdatingAttendance(false);
+    }
+  }, [announceBadgeEarned, attending, bookmarked, distanceLockActive, isEventPin, isInteractionLocked, isOffline, isUpdatingAttendance, pin, pinExpired]);
+
+  const handleSubmitReply = useCallback(async () => {
+    if (isOffline) {
+      setSubmitReplyError('Replies are unavailable while offline.');
+      return;
+    }
+    if (!pinId || isSubmittingReply || isInteractionLocked) {
+      if (pinExpired) {
+        setSubmitReplyError('Replies are closed because this pin has expired.');
+      } else if (distanceLockActive) {
+        setSubmitReplyError('Replies are disabled because you are outside this pin\'s interaction radius.');
+      }
+      return;
+    }
+    const trimmedMessage = replyMessage.trim();
+    if (!trimmedMessage) {
+      setSubmitReplyError('Please enter a message before submitting.');
+      return;
+    }
+
+    setIsSubmittingReply(true);
+    setSubmitReplyError(null);
+
+    try {
+      const newReply = await createPinReply(pinId, { message: trimmedMessage });
+
+      setReplies((prev) => sortRepliesByDateDesc([...prev, newReply]));
+      setReplyMessage('');
+      setReplyComposerOpen(false);
+      setPin((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const nextStats = prev.stats
+          ? { ...prev.stats, replyCount: (prev.stats.replyCount ?? 0) + 1 }
+          : prev.stats;
+        return {
+          ...prev,
+          replyCount: (prev.replyCount ?? 0) + 1,
+          stats: nextStats
+        };
+      });
+    } catch (error) {
+      console.error('Failed to create reply:', error);
+      setSubmitReplyError(error?.message || 'Failed to create reply.');
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  }, [distanceLockActive, isInteractionLocked, isOffline, isSubmittingReply, pinExpired, pinId, replyMessage]);
+
+  const expirationLabel = useMemo(() => formatDateTime(pin?.expiresAt ?? pin?.endDate), [pin]);
+  const createdAtLabel = useMemo(() => formatDateTime(pin?.createdAt), [pin]);
+  const updatedAtLabel = useMemo(() => formatDateTime(pin?.updatedAt), [pin]);
 
   return (
-    <div className='pin-details-page'>
-      <header className='pin-details-header'>
-        <h1>Pin Details (v2 WIP)</h1>
-        <p className='muted'>Previewing Wai's in-progress design.</p>
-      </header>
-
+    <div className='pin-details'>
       {interactionOverlay ? (
         <div className='pin-expired-overlay' role='dialog' aria-modal='true'>
           <div className='pin-expired-modal'>
@@ -418,138 +1041,269 @@ function PinDetailsV2WIP() {
           </div>
         </div>
       ) : null}
-
-      <div className='pin-actions'>
-        <Link to={routes.list.base} className='back-button'>
-          &larr; Back to List
+      {/* Header */}
+      <header className='header'>
+        <Link to={routes.list.base} className="back-button">
+          <img
+            src='https://www.svgrepo.com/show/326886/arrow-back-sharp.svg'
+            className='back-arrow'
+          />
         </Link>
-        <button type='button' className='primary-action' disabled={isInteractionLocked}>
-          Share
-        </button>
+
+        <h2>{pinTypeHeading}</h2>
+
+        <div className='bookmark-button-wrapper'>
+          <button
+            className='bookmark-button'
+            onClick={handleToggleBookmark}
+            disabled={isOffline || isUpdatingBookmark || !pin || isInteractionLocked}
+            aria-pressed={bookmarked ? 'true' : 'false'}
+            aria-label={bookmarked ? 'Remove bookmark' : 'Save bookmark'}
+            aria-busy={isUpdatingBookmark ? 'true' : 'false'}
+            title={isOffline ? 'Reconnect to manage bookmarks' : undefined}
+          >
+            <img
+              src={
+                bookmarked
+                  ? 'https://www.svgrepo.com/show/347684/bookmark-fill.svg'
+                  : 'https://www.svgrepo.com/show/357397/bookmark-full.svg'
+              }
+              className='bookmark'
+              alt={bookmarked ? 'Bookmarked' : 'Bookmark icon'}
+            />
+          </button>
+          {bookmarkError ? (
+            <span className='error-text bookmark-error'>{bookmarkError}</span>
+          ) : null}
+        </div>
+      </header>
+
+      {/* Event/Discussion Name */}
+      <div className='name'>
+        <h2>{pin ? pin.title || 'Untitled pin' : 'Loading pin...'}</h2>
+        {pin?._id ? <span className="pin-id">ID: {pin._id}</span> : null}
+        {proximityRadius ? (
+          <span className="pin-radius">Proximity radius: {proximityRadius}</span>
+        ) : null}
+        {viewerDistanceLabel ? (
+          <span className="pin-radius">Approximate distance: {viewerDistanceLabel}</span>
+        ) : null}
+        {createdAtLabel || updatedAtLabel ? (
+          <span className="pin-timestamps">
+            {createdAtLabel ? `Created ${createdAtLabel}` : null}
+            {createdAtLabel && updatedAtLabel ? ' | ' : null}
+            {updatedAtLabel ? `Updated ${updatedAtLabel}` : null}
+          </span>
+        ) : null}
       </div>
 
-      {isLoading ? <div className='muted'>Loading pin...</div> : null}
-      {error ? <div className='error-text'>{error}</div> : null}
-
-      {!isLoading && !error && pin ? (
+      {(isLoading || error) && (
+        <div className="status-container">
+          {isLoading ? <div className="status-message">Loading pin details...</div> : null}
+          {error ? <div className="status-message error">{error}</div> : null}
+          {!pin && !isLoading && !error && pinId ? (
+            <div className="status-message">No pin found for ID &ldquo;{pinId}&rdquo;.</div>
+          ) : null}
+        </div>
+      )}
+      
+      {pin ? (
         <>
-          <section className='pin-hero'>
-            <div className='hero-media'>
+          {/* Map section */}
+          <div className='map-section'>
+            {coordinates ? (
+              <div className="map-wrapper">
+                <LeafletMap
+                  userLocation={coordinates}
+                  pins={mapPins}
+                  selectedPinId={mapPins[0]?._id ?? pin._id}
+                  centerOverride={coordinates}
+                />
+              </div>
+            ) : coverImageUrl ? (
+              <img src={coverImageUrl} alt={`${pin.title ?? 'Pin'} cover`} className="cover-photo" />
+            ) : (
+              <div className="map-placeholder muted">No location data available for this pin.</div>
+            )}
+          </div>
+
+          {/* Post creator */}
+          {creatorProfileLink ? (
+            <Link
+              to={creatorProfileLink.pathname}
+              state={creatorProfileLink.state}
+              className='post-creator user-link'
+            >
               <img
-                src={coverPhotoUrl ?? DEFAULT_COVER_PATH}
-                alt={pin.title || 'Pin cover'}
-                className='pin-cover'
+                src={creatorAvatarUrl}
+                className='profile-icon'
+                alt={`${pin.creator?.displayName ?? 'Creator'} avatar`}
               />
-              <div className='hero-overlay'>
-                <div className='pin-type-label'>{pin.type?.toUpperCase() || 'PIN'}</div>
-                <h2>{pin.title ?? 'Untitled Pin'}</h2>
-                <p>{pin.description ?? 'No description provided for this pin.'}</p>
+              <div className="post-creator-details">
+                <span className="creator-name">
+                  {pin.creator?.displayName || pin.creator?.username || 'Unknown creator'}
+                </span>
+                {pin.creator?.username ? (
+                  <span className="creator-username">@{pin.creator.username}</span>
+                ) : null}
+              </div>
+            </Link>
+          ) : (
+            <div className='post-creator'>
+              <img
+                src={creatorAvatarUrl}
+                className='profile-icon'
+                alt={`${pin.creator?.displayName ?? 'Creator'} avatar`}
+              />
+              <div className="post-creator-details">
+                <span className="creator-name">
+                  {pin.creator?.displayName || pin.creator?.username || 'Unknown creator'}
+                </span>
+                {pin.creator?.username ? (
+                  <span className="creator-username">@{pin.creator.username}</span>
+                ) : null}
               </div>
             </div>
-            <aside className='pin-metadata'>
-              <div className='meta-block'>
-                <h3>Location</h3>
-                <p>
-                  {formattedAddress || formattedApproximate || 'No address provided.'}
-                  {coordinateLabel ? <><br />Coordinates: {coordinateLabel}</> : null}
-                </p>
+          )}
+
+          {/* Post description */}
+          <div className='post-description'>
+            {pin.description ? pin.description : <span className="muted">No description provided.</span>}
+          </div>
+
+          {/* Post images */}
+          <div className='post-images'>
+            {photoItems.length > 0 ? (
+              <div className="photo-grid">
+                {photoItems.map((photo, index) => (
+                  <figure className="pin-photo-item" key={`${photo.url}-${index}`}>
+                    <img
+                      src={photo.url}
+                      alt={photo.label ? `${photo.label}` : `Pin photo ${index + 1}`}
+                      className="pin-photo"
+                      loading="lazy"
+                    />
+                    {photo.label ? <figcaption>{photo.label}</figcaption> : null}
+                  </figure>
+                ))}
               </div>
-              <div className='meta-block'>
-                <h3>Schedule</h3>
-                <p>
-                  {pin.type === 'event'
-                    ? eventDateRange || 'No schedule provided.'
-                    : expirationLabel || 'No expiration set.'}
-                </p>
-              </div>
-              <div className='meta-block'>
-                  <h3>Stats</h3>
-                  <p>
-                    Bookmarks: {pin.bookmarkCount ?? 0}
-                    {pin.type === 'event' ? (
+            ) : (
+              <div className="muted">No photos uploaded for this pin.</div>
+            )}
+          </div>
+
+          {/* Post info */}
+          <div className='post-info'>
+            <div className='post-location'>
+              <svg
+                className='pin-icon'
+                viewBox='0 0 24 24'
+                aria-hidden='true'
+              >
+                <path
+                  fill='currentColor'
+                  d='M12 2a7 7 0 0 0-7 7c0 4.63 5.48 11.05 6.27 11.93a1 1 0 0 0 1.46 0C13.52 20.05 19 13.63 19 9a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z'
+                />
+              </svg>
+              <span className='location-text'>
+                Location:<br />
+                {addressLabel ||
+                  approximateAddressLabel ||
+                  'No address information available.'}
+                {coordinateLabel ? (
+                  <>
+                    <br />
+                    Coordinates: {coordinateLabel}
+                  </>
+                ) : null}
+              </span>
+            </div>
+
+            <div className='post-occurance'>
+              <img
+                src='https://www.svgrepo.com/show/533378/calendar.svg'
+                className='calendar-icon'
+                alt='Calendar icon'
+              />
+              <span className='occurance-text'>
+                {pin.type === 'event' ? 'Occurs:' : 'Expires:'}
+                <br />
+                {pin.type === 'event'
+                  ? eventDateRange || 'No schedule provided.'
+                  : expirationLabel || 'No expiration set.'}
+              </span>
+            </div>
+
+            <div className='post-attendance'>
+              <img
+                src='https://www.svgrepo.com/show/511192/user-check.svg'
+                className='attendance-icon'
+                alt='Attendance icon'
+              />
+              <span className='attendance-text'>
+                Bookmarks: {pin.bookmarkCount ?? 0}
+                {isEventPin ? (
                   <>
                     <br />
                     Attending: {pin.participantCount ?? 0}
                     {pin.participantLimit ? ` / ${pin.participantLimit}` : ''}
                   </>
                 ) : null}
-                {viewerDistanceLabel ? (
-                  <>
-                    <br />
-                    Distance: {viewerDistanceLabel}
-                  </>
-                ) : null}
-              </p>
+              </span>
+              {isEventPin ? (
+                <button
+                  type="button"
+                  className='view-attendees-button'
+                  onClick={openAttendeeOverlay}
+                  disabled={isOffline || isInteractionLocked || (isLoadingAttendees && attendeeOverlayOpen)}
+                  title={isOffline ? 'Reconnect to view attendees' : undefined}
+                >
+                  {isLoadingAttendees && attendeeOverlayOpen ? 'Loading attendees...' : 'View Attendees'}
+                </button>
+              ) : null}
             </div>
-            </aside>
-          </section>
+          </div>
 
-          <section className='pin-main-content'>
-            <div className='creator-card'>
-              <img
-                src={creatorAvatarUrl ?? DEFAULT_AVATAR_PATH}
-                alt={pin.creator?.displayName || 'Creator avatar'}
-                className='creator-avatar'
-              />
-              <div>
-                <h3>{pin.creator?.displayName || pin.creator?.username || 'Unknown creator'}</h3>
-                <p className='muted'>@{pin.creator?.username || 'unknown'}</p>
-              </div>
-              <button type='button' className='secondary-action' disabled={isInteractionLocked}>
-                Message
-              </button>
-            </div>
-
-            <div className='pin-details-grid'>
-              <div className='detail-card'>
-                <h4>Tags</h4>
-                <p>{combinedTags || 'No tags provided.'}</p>
-              </div>
-              <div className='detail-card'>
-                <h4>Related Pins</h4>
-                <p>{combinedRelatedPins || 'No related pins set.'}</p>
-              </div>
-              <div className='detail-card'>
-                <h4>Radius</h4>
-                <p>
-                  {pin.proximityRadiusMeters
-                    ? `${pin.proximityRadiusMeters} meters`
-                    : 'No radius specified.'}
-                </p>
-              </div>
-            </div>
-
-            <div className='map-wrapper'>
-              {mapCenter ? (
-                <LeafletMap userLocation={mapCenter} pins={[pin]} />
-              ) : (
-                <div className='muted'>No map coordinates available for this pin.</div>
-              )}
-            </div>
-          </section>
-
-          <section className='pin-replies'>
-            <header className='replies-header'>
-              <h3>Comments</h3>
+          {/* Attend button */}
+          {isEventPin ? (
+            <div className='attendance'>
               <button
-                type='button'
                 className={`attend-button ${attending ? 'attending' : ''}`}
-                disabled={isInteractionLocked}
-                onClick={() => {
-                  if (isInteractionLocked) {
-                    return;
-                  }
-                  setAttending((prev) => !prev);
-                }}
+                onClick={handleToggleAttendance}
+                disabled={isOffline || isUpdatingAttendance || !pin || isInteractionLocked}
+                aria-busy={isUpdatingAttendance ? 'true' : 'false'}
+                title={isOffline ? 'Reconnect to update attendance' : undefined}
               >
-                {attending ? 'Attending!' : 'Attend'}
+                {isUpdatingAttendance ? 'Updating...' : attending ? 'Attending!' : 'Attend'}
               </button>
-            </header>
+              {attendanceError ? (
+                <div className="error-text attendance-error">{attendanceError}</div>
+              ) : null}
+            </div>
+          ) : null}
 
-            {isLoadingReplies ? <div className='muted'>Loading replies...</div> : null}
-            {repliesError ? <div className='error-text'>{repliesError}</div> : null}
+          {/* Comments header */}
+          <div className='comments-header'>
+            <img
+              src='https://www.svgrepo.com/show/361088/comment-discussion.svg'
+              className='comment-icon'
+              alt='Comments icon'
+            />
+            <p>
+              Comments (
+              {isLoadingReplies
+                ? '...'
+                : replies.length ?? pin.replyCount ?? pin.stats?.replyCount ?? 0}
+              )
+            </p>
+          </div>
+
+          {/* Comments section */}
+          <div className='comments-section'>
+            {isLoadingReplies ? <div className="muted">Loading replies...</div> : null}
+            {repliesError ? <div className="error-text">{repliesError}</div> : null}
             {!isLoadingReplies && !repliesError && replies.length === 0 ? (
-              <div className='muted'>No replies yet.</div>
+              <div className="muted">No replies yet.</div>
             ) : null}
 
             {replies.map((reply) => {
@@ -560,22 +1314,43 @@ function PinDetailsV2WIP() {
                 DEFAULT_AVATAR_PATH
               );
               const createdLabel = formatDateTime(reply.createdAt);
+              const authorProfileLink = buildUserProfileLink(reply.author, profileReturnPath);
 
               return (
                 <div className='comment' key={reply._id}>
-                  <div className='comment-header'>
-                    <img
-                      src={replyAvatar}
-                      className='commenter-pfp'
-                      alt={`${authorName} avatar`}
-                    />
-                    <span className='commenter-info'>
-                      <strong>{authorName}</strong>
-                      {createdLabel ? (
-                        <span className='comment-timestamp'>{createdLabel}</span>
-                      ) : null}
-                    </span>
-                  </div>
+                  {authorProfileLink ? (
+                    <Link
+                      to={authorProfileLink.pathname}
+                      state={authorProfileLink.state}
+                      className='comment-header user-link'
+                    >
+                      <img
+                        src={replyAvatar}
+                        className='commenter-pfp'
+                        alt={`${authorName} avatar`}
+                      />
+                      <span className='commenter-info'>
+                        <strong>{authorName}</strong>
+                        {createdLabel ? (
+                          <span className="comment-timestamp">{createdLabel}</span>
+                        ) : null}
+                      </span>
+                    </Link>
+                  ) : (
+                    <div className='comment-header'>
+                      <img
+                        src={replyAvatar}
+                        className='commenter-pfp'
+                        alt={`${authorName} avatar`}
+                      />
+                      <span className='commenter-info'>
+                        <strong>{authorName}</strong>
+                        {createdLabel ? (
+                          <span className="comment-timestamp">{createdLabel}</span>
+                        ) : null}
+                      </span>
+                    </div>
+                  )}
 
                   <div className='comment-body'>
                     <p>{reply.message}</p>
@@ -583,20 +1358,162 @@ function PinDetailsV2WIP() {
                 </div>
               );
             })}
-          </section>
+          </div>
 
-          <section className='pin-actions-footer'>
-            <button type='button' className='primary-action' disabled={isInteractionLocked}>
-              Create Comment
-            </button>
-            <button type='button' className='secondary-action' disabled={isInteractionLocked}>
-              Bookmark
-            </button>
-          </section>
+          {/* Create comment button */}
+          <button
+            className='create-comment'
+            disabled={isOffline || isInteractionLocked}
+            onClick={openReplyComposer}
+            aria-label='Create reply'
+            title={isOffline ? 'Reconnect to add a reply' : undefined}
+          >
+            <img
+              src='https://www.svgrepo.com/show/489238/add-comment.svg'
+              className='create-comment-button'
+              alt='Create comment button'
+            />
+          </button>
+
         </>
+      ) : null}
+      {replyComposerOpen ? (
+        <div className='reply-overlay'>
+          <div
+            className='reply-overlay-backdrop'
+            onClick={closeReplyComposer}
+            aria-hidden='true'
+          />
+          <div
+            className='reply-overlay-content'
+            role='dialog'
+            aria-modal='true'
+            aria-label='Create reply'
+          >
+            <div className='reply-overlay-header'>
+              <h3>Add a Reply</h3>
+              <button
+                type='button'
+                className='reply-overlay-close'
+                onClick={closeReplyComposer}
+                disabled={isSubmittingReply || isInteractionLocked}
+              >
+                Cancel
+              </button>
+            </div>
+            <div className='reply-overlay-body'>
+              <label htmlFor='reply-message' className='reply-overlay-label'>
+                Share your thoughts
+              </label>
+              <textarea
+                id='reply-message'
+                className='reply-overlay-textarea'
+                value={replyMessage}
+                onChange={(event) => setReplyMessage(event.target.value)}
+                placeholder='Type your reply here...'
+                maxLength={4000}
+                disabled={isOffline || isSubmittingReply || isInteractionLocked}
+              />
+              <div className='reply-overlay-footer'>
+                <span className='reply-overlay-count'>{replyMessage.length}/4000</span>
+                <button
+                  type='button'
+                  className='reply-overlay-submit'
+                  onClick={handleSubmitReply}
+                  disabled={isOffline || isSubmittingReply || isInteractionLocked}
+                  title={isOffline ? 'Reconnect to post a reply' : undefined}
+                >
+                  {isSubmittingReply ? 'Posting...' : 'Post Reply'}
+                </button>
+              </div>
+              {submitReplyError ? <div className='error-text'>{submitReplyError}</div> : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {attendeeOverlayOpen ? (
+        <div className='attendee-overlay'>
+          <div
+            className='attendee-overlay-backdrop'
+            onClick={closeAttendeeOverlay}
+            aria-hidden='true'
+          />
+          <div
+            className='attendee-overlay-content'
+            role='dialog'
+            aria-modal='true'
+            aria-label='Event attendees'
+          >
+            <div className='attendee-overlay-header'>
+              <h3>Event Attendees</h3>
+              <button
+                type='button'
+                className='attendee-overlay-close'
+                onClick={closeAttendeeOverlay}
+              >
+                Close
+              </button>
+            </div>
+            <div className='attendee-overlay-body'>
+              {isLoadingAttendees ? (
+                <div className='muted'>Loading attendees...</div>
+              ) : attendeesError ? (
+                <div className='error-text'>{attendeesError}</div>
+              ) : attendees.length === 0 ? (
+                <div className='muted'>No attendees yet.</div>
+              ) : (
+                <ul className='attendee-list'>
+                  {attendees.map((attendee) => {
+                    const attendeeLink = buildUserProfileLink(attendee, profileReturnPath);
+                    const attendeeAvatar = resolveMediaAssetUrl(
+                      attendee?.avatar,
+                      DEFAULT_AVATAR_PATH
+                    );
+                    const attendeeName =
+                      attendee?.displayName || attendee?.username || 'Unknown attendee';
+                    const attendeeKey =
+                      attendee?._id ||
+                      attendee?.id ||
+                      attendee?.uid ||
+                      attendee?.username ||
+                      attendeeName;
+
+                    const content = (
+                      <>
+                        <img
+                          src={attendeeAvatar}
+                          alt={`${attendeeName} avatar`}
+                          className='attendee-avatar'
+                        />
+                        <span className='attendee-name'>{attendeeName}</span>
+                      </>
+                    );
+
+                    return (
+                      <li key={attendeeKey}>
+                        {attendeeLink ? (
+                          <Link
+                            to={attendeeLink.pathname}
+                            state={attendeeLink.state}
+                            className='attendee-list-item user-link'
+                            onClick={closeAttendeeOverlay}
+                          >
+                            {content}
+                          </Link>
+                        ) : (
+                          <div className='attendee-list-item'>{content}</div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );
 }
 
-export default PinDetailsV2WIP;
+export default PinDetails;
