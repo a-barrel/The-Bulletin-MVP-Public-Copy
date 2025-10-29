@@ -1,34 +1,20 @@
+// Added for feature merge: badge toasts + offline/network helpers.
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
-import Container from '@mui/material/Container';
-import Paper from '@mui/material/Paper';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import ToggleButton from '@mui/material/ToggleButton';
-import TextField from '@mui/material/TextField';
-import Divider from '@mui/material/Divider';
-import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
-import Alert from '@mui/material/Alert';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Switch from '@mui/material/Switch';
-import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid';
+import { useLocationContext } from '../contexts/LocationContext';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import MapIcon from '@mui/icons-material/Map';
 import EventNoteIcon from '@mui/icons-material/EventNote';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { createPin, uploadPinImage } from '../api/mongoDataApi';
 import { useNavOverlay } from '../contexts/NavOverlayContext';
-import { useLocationContext } from '../contexts/LocationContext';
+import './CreatePinPage.css';
 
 export const pageConfig = {
   id: 'create-pin',
@@ -41,6 +27,7 @@ export const pageConfig = {
 };
 
 const METERS_PER_MILE = 1609.34;
+// New validation constraints carried over from main.
 const MAX_PIN_DISTANCE_MILES = 50;
 const MAX_PIN_DISTANCE_METERS = MAX_PIN_DISTANCE_MILES * METERS_PER_MILE;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -49,6 +36,8 @@ const DISCUSSION_MAX_DURATION_DAYS = 3;
 const EVENT_MAX_LEAD_TIME_MS = EVENT_MAX_LEAD_TIME_DAYS * MILLISECONDS_PER_DAY;
 const DISCUSSION_MAX_DURATION_MS = DISCUSSION_MAX_DURATION_DAYS * MILLISECONDS_PER_DAY;
 const FUTURE_TOLERANCE_MS = 60 * 1000;
+const DRAFT_STORAGE_KEY = 'pinpoint:createPinDraft';
+const AUTOSAVE_DELAY_MS = 1500;
 
 const INITIAL_FORM_STATE = {
   title: '',
@@ -123,9 +112,6 @@ const PIN_TYPE_THEMES = {
   }
 };
 
-const DRAFT_STORAGE_KEY = 'pinpoint:createPinDraft';
-const AUTOSAVE_DELAY_MS = 1500;
-
 const FIGMA_TEMPLATE = {
   header: {
     title: 'Event',
@@ -136,7 +122,7 @@ const FIGMA_TEMPLATE = {
     titlePlaceholder: '[Empty] Event Title',
     descriptionPlaceholder: "[Empty] Event dets - what's cooking?",
     modeLabel: 'Event',
-    locationPrompt: 'Tap where the event will take place'
+    locationPrompt: 'Tap where the event will take place.'
   }
 };
 
@@ -170,7 +156,7 @@ function SelectableLocationMap({ value, onChange, anchor }) {
   return (
     <MapContainer
       center={[center.lat, center.lng]}
-      zoom={12}
+      zoom={14}
       style={{ width: '100%', height: '100%' }}
       scrollWheelZoom
     >
@@ -324,12 +310,14 @@ function CreatePinPage() {
   const [uploadStatus, setUploadStatus] = useState(null);
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [locationStatus, setLocationStatus] = useState(null);
+  // Draft + autosave state (from main branch).
   const [draftStatus, setDraftStatus] = useState(null);
   const autosaveTimeoutRef = useRef(null);
   const draftInitializedRef = useRef(false);
   const skipNextAutosaveRef = useRef(false);
   const lastReverseGeocodeRef = useRef(null);
 
+  // Persist draft locally so unfinished posts survive refreshes.
   const writeDraft = useCallback(() => {
     if (typeof window === 'undefined') {
       return false;
@@ -466,15 +454,17 @@ function CreatePinPage() {
       window.clearTimeout(timeoutId);
     };
   }, [draftStatus]);
+
   const activeTheme = useMemo(() => PIN_TYPE_THEMES[pinType], [pinType]);
   const { handleBack: overlayBack, previousNavPath, previousNavPage } = useNavOverlay();
   const canNavigateBack = Boolean(previousNavPath);
   const backButtonLabel = previousNavPage?.label ? `Back to ${previousNavPage.label}` : 'Back';
   const startDateValue = formState.startDate;
   const endDateValue = formState.endDate;
+
   const eventHeaderSubtitle = useMemo(() => {
     if (pinType !== 'event') {
-      return '';
+      return 'Share what is happening and invite others to join.';
     }
 
     const fallback = 'Set your event schedule so attendees know when to show up.';
@@ -508,12 +498,13 @@ function CreatePinPage() {
     const sameDay = start.toDateString() === end.toDateString();
     if (sameDay) {
       const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
-      return `${startLabel} – ${timeFormatter.format(end)}`;
+      return `${startLabel} - ${timeFormatter.format(end)}`;
     }
 
     const endLabel = dateFormatter.format(end);
-    return `${startLabel} → ${endLabel}`;
+    return `${startLabel} - ${endLabel}`;
   }, [pinType, startDateValue, endDateValue]);
+
   const selectedCoordinates = useMemo(() => {
     const latitude = Number.parseFloat(formState.latitude);
     const longitude = Number.parseFloat(formState.longitude);
@@ -522,6 +513,8 @@ function CreatePinPage() {
     }
     return null;
   }, [formState.latitude, formState.longitude]);
+
+  // Viewer location is now required to keep pins close to the user.
   const viewerCoordinates = useMemo(() => {
     const latitude = Number.parseFloat(viewerLocation?.latitude);
     const longitude = Number.parseFloat(viewerLocation?.longitude);
@@ -530,12 +523,14 @@ function CreatePinPage() {
     }
     return null;
   }, [viewerLocation]);
+
   const viewerMapAnchor = useMemo(() => {
     if (!viewerCoordinates) {
       return null;
     }
     return { lat: viewerCoordinates.latitude, lng: viewerCoordinates.longitude };
   }, [viewerCoordinates]);
+
   const nowReference = useMemo(() => new Date(), []);
   const eventMaxDateRef = useMemo(
     () => new Date(nowReference.getTime() + EVENT_MAX_LEAD_TIME_MS),
@@ -668,6 +663,7 @@ function CreatePinPage() {
     [pinType]
   );
 
+  // Map selection enforces 50-mile radius pulled from main.
   const handleMapLocationSelect = useCallback(
     ({ lat, lng }) => {
       if (!viewerCoordinates) {
@@ -760,6 +756,7 @@ function CreatePinPage() {
     }
   }, [photoAssets, coverPhotoId]);
 
+  // Image uploader now respects offline state + slots limit.
   const handleImageSelection = useCallback(
     async (event) => {
       const files = Array.from(event.target.files ?? []);
@@ -801,8 +798,8 @@ function CreatePinPage() {
               url: uploaded.url,
               width: uploaded.width,
               height: uploaded.height,
-            mimeType: uploaded.mimeType ?? (file.type || 'image/jpeg'),
-            description: uploaded.fileName || file.name || 'Pin image'
+              mimeType: uploaded.mimeType ?? (file.type || 'image/jpeg'),
+              description: uploaded.fileName || file.name || 'Pin image'
             }
           });
         } catch (error) {
@@ -850,6 +847,7 @@ function CreatePinPage() {
     setUploadStatus({ type: 'success', message: 'Cover photo updated.' });
   }, []);
 
+  // Submit pipeline now includes stricter validation, distance check, and badge handling.
   const handleSubmit = useCallback(
     async (event) => {
       event.preventDefault();
@@ -1044,621 +1042,418 @@ function CreatePinPage() {
   }, [createdPin]);
 
   return (
-    <Container
-      component="main"
-      maxWidth="md"
-      sx={{
-        py: { xs: 3, md: 6 },
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 3
-      }}
-    >
-      <Paper
-        component="form"
-        onSubmit={handleSubmit}
-        elevation={6}
-        sx={{
-          p: 0,
-          overflow: 'hidden',
-          borderRadius: 4,
-          background: (theme) =>
-            `linear-gradient(180deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`
-        }}
+    <div className={`create-pin ${pinType === 'event' ? 'bg-event' : 'bg-discussion'}`}>
+      <div
+        className="header"
+        style={{ background: activeTheme.headerBackground, color: activeTheme.headerTextColor }}
       >
-        <Box
-          sx={{
-            px: { xs: 2, sm: 4 },
-            py: { xs: 2, sm: 3 },
-            background: activeTheme.headerBackground,
-            color: activeTheme.headerTextColor,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2
-          }}
-        >
-          {canNavigateBack && (
-            <Button
-              onClick={overlayBack}
-              startIcon={<ArrowBackIcon fontSize="small" />}
-              sx={{
-                alignSelf: 'flex-start',
-                color: activeTheme.headerTextColor,
-                fontWeight: 600,
-                px: 1,
-                '&:hover': {
-                  backgroundColor: 'rgba(0,0,0,0.08)'
-                }
-              }}
-            >
-              {backButtonLabel}
-            </Button>
-          )}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-            <Box>
-              <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-                {pinType === 'event' ? 'Event' : 'Discussion'}
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  color: activeTheme.headerSubtitleColor,
-                  fontWeight: 500
-                }}
-              >
-                {pinType === 'event'
-                  ? eventHeaderSubtitle
-                  : "Share what's happening around campus"}
-              </Typography>
-            </Box>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={isOffline || isSubmitting}
-              sx={{
-                minWidth: 96,
-                fontWeight: 600,
-                backgroundColor: activeTheme.ctaBackground,
-                color: activeTheme.ctaTextColor,
-                '&:hover': {
-                  backgroundColor: activeTheme.ctaHoverBackground
-                }
-              }}
-              title={isOffline ? 'Reconnect to publish a pin' : undefined}
-            >
-              {isSubmitting ? 'Posting...' : FIGMA_TEMPLATE.header.cta}
-            </Button>
-          </Box>
-        </Box>
+        {canNavigateBack && (
+          <button
+            type="button"
+            className="btn-back"
+            onClick={overlayBack}
+            title={backButtonLabel}
+          >
+            <img
+              src="https://www.svgrepo.com/show/326886/arrow-back-sharp.svg"
+              className="back-arrow"
+              alt={backButtonLabel}
+            />
+          </button>
+        )}
 
-        {isOffline ? (
-          <Alert severity="warning">
-            You are offline. Drafts will save locally, but publishing and uploads require a connection.
-          </Alert>
-        ) : null}
+        <div className="header-info">
+          <h1 className="form-title">{pinType === 'event' ? 'Event' : 'Discussion'}</h1>
+          <p
+            className="form-subtitle"
+            style={{ color: activeTheme.headerSubtitleColor }}
+          >
+            {pinType === 'event'
+              ? eventHeaderSubtitle
+              : "Share what's happening around campus."}
+          </p>
+        </div>
 
-        <Box sx={{ px: { xs: 2, sm: 4 }, py: { xs: 3, sm: 4 }, display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <Stack spacing={1}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Pin type
-            </Typography>
-            <ToggleButtonGroup
-              value={pinType}
-              exclusive
-              onChange={handleTypeChange}
-              fullWidth
-              size="small"
-              sx={{
-                '& .MuiToggleButton-root': {
-                  textTransform: 'none',
-                  py: 1.25,
-                  fontWeight: 600,
-                  borderRadius: 3,
-                  border: 'none',
-                  '&.Mui-selected': {
-                    boxShadow: (theme) => `0 10px 30px ${theme.palette.primary.main}44`
-                  }
-                },
-                '& .MuiToggleButtonGroup-grouped': {
-                  mx: 1
-                }
-              }}
-            >
-              <ToggleButton value="discussion">
-                <MapIcon fontSize="small" sx={{ mr: 1 }} />
-                Discussion
-              </ToggleButton>
-          <ToggleButton value="event">
-            <EventNoteIcon fontSize="small" sx={{ mr: 1 }} />
-            Event
-          </ToggleButton>
-        </ToggleButtonGroup>
-      </Stack>
-
-      {status && (
-        <Alert severity={status.type} onClose={() => setStatus(null)}>
-          {status.message}
-        </Alert>
-      )}
-
-      {draftStatus && (
-        <Alert severity={draftStatus.type} onClose={() => setDraftStatus(null)}>
-          {draftStatus.message}
-        </Alert>
-      )}
-
-          <Paper
-            variant="outlined"
-            sx={{
-              p: { xs: 2, sm: 3 },
-              borderRadius: 3,
-              backgroundColor: 'rgba(255, 255, 255, 0.02)'
+        <form onSubmit={handleSubmit}>
+          <button
+            type="submit"
+            className="btn-submit"
+            disabled={isOffline || isSubmitting}
+            title={isOffline ? 'Reconnect to publish a pin' : undefined}
+            style={{
+              backgroundColor: activeTheme.ctaBackground,
+              color: activeTheme.ctaTextColor
             }}
           >
-            <Stack spacing={2}>
-              <TextField
-                label="Title"
-                placeholder={
-                  pinType === 'event'
-                    ? FIGMA_TEMPLATE.fields.titlePlaceholder
-                    : "What's the discussion about?"
-                }
-                value={formState.title}
-                onChange={handleFieldChange('title')}
-                required
-                fullWidth
-              />
-              <TextField
-                label="Description"
-                placeholder={
-                  pinType === 'event'
-                    ? FIGMA_TEMPLATE.fields.descriptionPlaceholder
-                    : 'Give everyone the context and what to expect.'
-                }
-                value={formState.description}
-                onChange={handleFieldChange('description')}
-                required
-                multiline
-                minRows={3}
-                fullWidth
-              />
-            </Stack>
-          </Paper>
+            {isSubmitting ? 'Posting...' : FIGMA_TEMPLATE.header.cta}
+          </button>
+        </form>
+      </div>
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={4}>
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: { xs: 2, sm: 3 },
-                  borderRadius: 3,
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 2,
-                  backgroundColor: 'rgba(255,255,255,0.02)'
-                }}
-              >
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  Location
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {FIGMA_TEMPLATE.fields.locationPrompt}
-                </Typography>
-                {locationStatus && (
-                  <Alert severity={locationStatus.type} onClose={() => setLocationStatus(null)}>
-                    {locationStatus.message}
-                  </Alert>
-                )}
-                <Box
-                  sx={{
-                    borderRadius: 2,
-                    overflow: 'hidden',
-                    height: { xs: 220, sm: 260 },
-                    backgroundColor: 'rgba(255,255,255,0.04)'
-                  }}
-                >
-                  <SelectableLocationMap
-                    value={selectedCoordinates}
-                    onChange={handleMapLocationSelect}
-                    anchor={viewerMapAnchor}
-                  />
-                </Box>
-                {isReverseGeocoding && (
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <CircularProgress size={16} />
-                    <Typography variant="caption" color="text.secondary">
-                      Looking up address details...
-                    </Typography>
-                  </Stack>
-                )}
-                <Typography variant="caption" color="text.secondary">
-                  Click or tap the map to set coordinates. We will auto-fill the address when possible.
-                </Typography>
-                <TextField
-                  label="Latitude"
-                  value={formState.latitude}
-                  onChange={handleFieldChange('latitude')}
-                  required
-                  fullWidth
-                  placeholder="33.7838"
-                />
-                <TextField
-                  label="Longitude"
-                  value={formState.longitude}
-                  onChange={handleFieldChange('longitude')}
-                  required
-                  fullWidth
-                  placeholder="-118.1136"
-                />
-                <TextField
-                  label="Proximity radius (miles)"
-                  value={formState.proximityRadiusMiles}
-                  onChange={handleFieldChange('proximityRadiusMiles')}
-                  fullWidth
-                  helperText="Optional. Defaults to 1 mile."
-                />
-              </Paper>
-            </Grid>
+      <div className="body">
+        {isOffline && (
+          <div className="alert alert-warning static-alert">
+            You are offline. Drafts save locally, but publishing and uploads need a connection.
+          </div>
+        )}
 
-            <Grid item xs={12} md={8}>
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: { xs: 2, sm: 3 },
-                  borderRadius: 3,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 3,
-                  backgroundColor: 'rgba(255,255,255,0.02)'
-                }}
-              >
-                {pinType === 'event' ? (
-                  <Stack spacing={3}>
-                    <Box>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                        Event details
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Let everyone know when and where to show up.
-                      </Typography>
-                    </Box>
+        {status && (
+          <div className={`alert alert-${status.type}`}>
+            <span>{status.message}</span>
+            <button type="button" onClick={() => setStatus(null)} className="alert-close">
+              x
+            </button>
+          </div>
+        )}
 
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          label="Start date"
-                          type="datetime-local"
-                          value={formState.startDate}
-                          onChange={handleFieldChange('startDate')}
-                          required
-                          fullWidth
-                          helperText="Must be within the next 14 days."
-                          InputLabelProps={{ shrink: true }}
-                          inputProps={{
-                            min: eventStartMinInput,
-                            max: eventStartMaxInput
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          label="End date"
-                          type="datetime-local"
-                          value={formState.endDate}
-                          onChange={handleFieldChange('endDate')}
-                          required
-                          fullWidth
-                          helperText="Must be on or after the start and within 14 days."
-                          InputLabelProps={{ shrink: true }}
-                          inputProps={{
-                            min: eventEndMinInput,
-                            max: eventStartMaxInput
-                          }}
-                        />
-                      </Grid>
-                    </Grid>
+        {draftStatus && (
+          <div className={`alert alert-${draftStatus.type}`}>
+            <span>{draftStatus.message}</span>
+            <button type="button" onClick={() => setDraftStatus(null)} className="alert-close">
+              x
+            </button>
+          </div>
+        )}
 
-                    <Divider />
+        {/* Pin type toggle */}
+        <div className="field-group">
+          <div className="toggle-group">
+            <button
+              type="button"
+              className={`toggle-btn ${pinType === 'discussion' ? 'selected' : ''}`}
+              onClick={() => handleTypeChange(null, 'discussion')}
+            >
+              <MapIcon fontSize="small" /> Discussion
+            </button>
+            <button
+              type="button"
+              className={`toggle-btn ${pinType === 'event' ? 'selected' : ''}`}
+              onClick={() => handleTypeChange(null, 'event')}
+            >
+              <EventNoteIcon fontSize="small" /> Event
+            </button>
+          </div>
+        </div>
 
-                    <Stack spacing={2}>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Venue
-                      </Typography>
-                      <TextField
-                        label="Precise address"
-                        value={formState.addressPrecise}
-                        onChange={handleFieldChange('addressPrecise')}
-                        placeholder="University Student Union, Long Beach, CA"
-                        fullWidth
-                      />
-                      <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            label="City"
-                            value={formState.addressCity}
-                            onChange={handleFieldChange('addressCity')}
-                            fullWidth
-                          />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            label="State"
-                            value={formState.addressState}
-                            onChange={handleFieldChange('addressState')}
-                            fullWidth
-                          />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            label="Postal code"
-                            value={formState.addressPostalCode}
-                            onChange={handleFieldChange('addressPostalCode')}
-                            fullWidth
-                          />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            label="Country"
-                            value={formState.addressCountry}
-                            onChange={handleFieldChange('addressCountry')}
-                            fullWidth
-                          />
-                        </Grid>
-                      </Grid>
-                    </Stack>
-                  </Stack>
-                ) : (
-                  <Stack spacing={3}>
-                    <Box>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                        Discussion details
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Set how long this discussion should stay active.
-                      </Typography>
-                    </Box>
-                    <Grid container spacing={2} alignItems="center">
-                      <Grid item xs={12} sm={7}>
-                        <TextField
-                          label="Expires at"
-                          type="datetime-local"
-                          value={formState.expiresAt}
-                          onChange={handleFieldChange('expiresAt')}
-                          required
-                          fullWidth
-                          helperText="Must be within the next 3 days."
-                          InputLabelProps={{ shrink: true }}
-                          inputProps={{
-                            min: discussionMinInput,
-                            max: discussionMaxInput
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={5}>
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              checked={autoDelete}
-                              onChange={(event) => setAutoDelete(event.target.checked)}
-                            />
-                          }
-                          label="Auto delete"
-                        />
-                      </Grid>
-                    </Grid>
+        {/* Title + Description */}
+        <div className="form-section">
+          <div className="input-group">
+            <label>Title</label>
+            <input
+              type="text"
+              value={formState.title}
+              onChange={handleFieldChange('title')}
+              placeholder={
+                pinType === 'event'
+                  ? FIGMA_TEMPLATE.fields.titlePlaceholder
+                  : "What's the discussion about?"
+              }
+              required
+            />
+          </div>
+          <div className="input-group">
+            <label>Description</label>
+            <textarea
+              value={formState.description}
+              onChange={handleFieldChange('description')}
+              placeholder={
+                pinType === 'event'
+                  ? FIGMA_TEMPLATE.fields.descriptionPlaceholder
+                  : "[Empty] Discussion dets - what's being talked about?"
+              }
+              required
+            ></textarea>
+          </div>
+        </div>
 
-                    <Divider />
+        {/* Event or Discussion Details */}
+        <div className="grid-item">
+          <div className="form-section">
+            {pinType === 'event' ? (
+              <>
+                <div className="details-info">
+                  <h2>Event Details</h2>
+                  <p>Let everyone know when and where to show up.</p>
+                </div>
 
-                    <Stack spacing={2}>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Approximate address
-                      </Typography>
-                      <TextField
-                        label="Formatted"
-                        value={formState.approxFormatted}
-                        onChange={handleFieldChange('approxFormatted')}
-                        placeholder="Long Beach, CA"
-                        fullWidth
-                      />
-                      <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            label="City"
-                            value={formState.approxCity}
-                            onChange={handleFieldChange('approxCity')}
-                            fullWidth
-                          />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            label="State"
-                            value={formState.approxState}
-                            onChange={handleFieldChange('approxState')}
-                            fullWidth
-                          />
-                        </Grid>
-                        <Grid item xs={12}>
-                          <TextField
-                            label="Country"
-                            value={formState.approxCountry}
-                            onChange={handleFieldChange('approxCountry')}
-                            fullWidth
-                          />
-                        </Grid>
-                      </Grid>
-                    </Stack>
-                  </Stack>
-                )}
-              </Paper>
-            </Grid>
-          </Grid>
+                <div className="two-col">
+                  <div>
+                    <label>Start date</label>
+                    <input
+                      type="datetime-local"
+                      value={formState.startDate}
+                      onChange={handleFieldChange('startDate')}
+                      required
+                      min={eventStartMinInput}
+                      max={eventStartMaxInput}
+                    />
+                    <small className="field-hint">Must be within the next 14 days.</small>
+                  </div>
+                  <div>
+                    <label>End date</label>
+                    <input
+                      type="datetime-local"
+                      value={formState.endDate}
+                      onChange={handleFieldChange('endDate')}
+                      required
+                      min={eventEndMinInput}
+                      max={eventStartMaxInput}
+                    />
+                    <small className="field-hint">Must be on or after the start date.</small>
+                  </div>
+                </div>
 
-          <Paper
-            variant="outlined"
-            sx={{
-              p: { xs: 2, sm: 3 },
-              borderRadius: 3,
-              backgroundColor: 'rgba(255,255,255,0.02)'
-            }}
-          >
-            <Stack spacing={2}>
-              <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  Images
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Upload up to 10 square images. The highlighted one becomes the cover photo.
-                </Typography>
-              </Box>
-
-              {uploadStatus && (
-                <Alert severity={uploadStatus.type} onClose={() => setUploadStatus(null)}>
-                  {uploadStatus.message}
-                </Alert>
-              )}
-
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-                <Button
-                  component="label"
-                  variant="outlined"
-                  disabled={isOffline || isUploading || photoAssets.length >= 10}
-                  sx={{ minWidth: 180 }}
-                  title={isOffline ? 'Reconnect to upload images' : undefined}
-                >
-                  {isUploading ? (
-                    <Stack direction="row" alignItems="center" spacing={1}>
-                      <CircularProgress size={18} />
-                      <span>Uploading...</span>
-                    </Stack>
-                  ) : (
-                    'Upload images'
-                  )}
+                <h3>Venue</h3>
+                <div className="two-col">
                   <input
-                    type="file"
-                    hidden
-                    multiple
-                    accept="image/*"
-                    onChange={handleImageSelection}
+                    type="text"
+                    placeholder="Precise address"
+                    value={formState.addressPrecise}
+                    onChange={handleFieldChange('addressPrecise')}
                   />
-                </Button>
-                <Typography variant="body2" color="text.secondary">
-                  {photoAssets.length}/10 images attached.
-                </Typography>
-              </Stack>
+                  <input
+                    type="text"
+                    placeholder="City"
+                    value={formState.addressCity}
+                    onChange={handleFieldChange('addressCity')}
+                  />
+                  <input
+                    type="text"
+                    placeholder="State"
+                    value={formState.addressState}
+                    onChange={handleFieldChange('addressState')}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Postal code"
+                    value={formState.addressPostalCode}
+                    onChange={handleFieldChange('addressPostalCode')}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Country"
+                    value={formState.addressCountry}
+                    onChange={handleFieldChange('addressCountry')}
+                  />
+                </div>
 
-              {photoAssets.length > 0 && (
-                <Grid container spacing={2}>
-                  {photoAssets.map((photo) => {
-                    const isCover = coverPhotoId === photo.id;
-                    return (
-                      <Grid item xs={12} sm={6} md={4} key={photo.id}>
-                        <Stack spacing={1.5}>
-                          <Box
-                            sx={{
-                              position: 'relative',
-                              borderRadius: 2,
-                              overflow: 'hidden',
-                              border: isCover
-                                ? '2px solid #F15BB5'
-                                : '1px solid rgba(255,255,255,0.08)',
-                              aspectRatio: '1 / 1',
-                              backgroundColor: 'rgba(255,255,255,0.04)'
-                            }}
-                          >
-                            <img
-                              src={photo.asset.url}
-                              alt={photo.asset.description || 'Pin image'}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
-                            {isCover && (
-                              <Box
-                                sx={{
-                                  position: 'absolute',
-                                  top: 8,
-                                  left: 8,
-                                  px: 1,
-                                  py: 0.25,
-                                  borderRadius: 999,
-                                  backgroundColor: 'rgba(0,0,0,0.65)',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600
-                                }}
+                <div className="form-section">
+                  <h2>Images</h2>
+                  <p>Upload up to 10 square images. Select the cover photo.</p>
+
+                  {uploadStatus && (
+                    <div className={`alert alert-${uploadStatus.type}`}>
+                      {uploadStatus.message}
+                      <button
+                        type="button"
+                        onClick={() => setUploadStatus(null)}
+                        className="alert-close"
+                      >
+                        x
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="upload-row">
+                    <label
+                      className={`btn-outline upload-btn${
+                        isOffline || isUploading || photoAssets.length >= 10 ? ' disabled' : ''
+                      }`}
+                      title={isOffline ? 'Reconnect to upload images' : undefined}
+                    >
+                      {isUploading ? 'Uploading...' : 'Upload images'}
+                      <input
+                        type="file"
+                        hidden
+                        multiple
+                        accept="image/*"
+                        onChange={handleImageSelection}
+                        disabled={isOffline || isUploading || photoAssets.length >= 10}
+                      />
+                    </label>
+                    <span>{photoAssets.length}/10 Images attached</span>
+                  </div>
+
+                  {photoAssets.length > 0 && (
+                    <div className="photo-grid">
+                      {photoAssets.map((photo) => {
+                        const isCover = coverPhotoId === photo.id;
+                        return (
+                          <div className="photo-card" key={photo.id}>
+                            <img src={photo.asset.url} alt={photo.asset.description || 'Pin image'} />
+                            {isCover && <div className="cover-label">Cover photo</div>}
+                            <div className="photo-actions">
+                              <button
+                                type="button"
+                                className={isCover ? 'btn-selected' : 'btn-outline'}
+                                onClick={() => handleSetCoverPhoto(photo.id)}
+                                disabled={isCover}
                               >
-                                Cover photo
-                              </Box>
-                            )}
-                          </Box>
-                          <Stack direction="row" spacing={1}>
-                            <Button
-                              size="small"
-                              variant={isCover ? 'contained' : 'outlined'}
-                              onClick={() => handleSetCoverPhoto(photo.id)}
-                              disabled={isCover}
-                            >
-                              {isCover ? 'Selected' : 'Set as cover'}
-                            </Button>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              color="error"
-                              onClick={() => handleRemovePhoto(photo.id)}
-                            >
-                              Remove
-                            </Button>
-                          </Stack>
-                        </Stack>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
-              )}
-            </Stack>
-          </Paper>
+                                {isCover ? 'Selected' : 'Set as cover'}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-danger"
+                                onClick={() => handleRemovePhoto(photo.id)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="details-info">
+                  <h2>Discussion Details</h2>
+                  <p>Set how long this discussion should stay active.</p>
+                </div>
 
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
-            justifyContent="space-between"
-            alignItems={{ xs: 'stretch', sm: 'center' }}
-          >
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
-              <Button type="button" variant="outlined" onClick={resetForm}>
-                Reset form
-              </Button>
-              <Button type="button" variant="outlined" onClick={handleSaveDraft} disabled={isSubmitting}>
-                Save draft
-              </Button>
-            </Stack>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={isOffline || isSubmitting}
-              title={isOffline ? 'Reconnect to publish a pin' : undefined}
-            >
-              {isSubmitting ? 'Creating...' : 'Create Pin'}
-            </Button>
-          </Stack>
+                <div className="two-col">
+                  <div>
+                    <label>Expires at</label>
+                    <input
+                      type="datetime-local"
+                      value={formState.expiresAt}
+                      onChange={handleFieldChange('expiresAt')}
+                      required
+                      min={discussionMinInput}
+                      max={discussionMaxInput}
+                    />
+                    <small className="field-hint">Must be within the next 3 days.</small>
+                  </div>
+                  <div className="switch-group">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={autoDelete}
+                        onChange={(event) => setAutoDelete(event.target.checked)}
+                      /> Auto delete
+                    </label>
+                  </div>
+                </div>
 
-          {resultJson && (
-            <Paper
-              variant="outlined"
-              sx={{
-                borderRadius: 3,
-                backgroundColor: 'rgba(15,18,28,0.9)',
-                p: 2,
-                maxHeight: 280,
-                overflow: 'auto',
-                fontFamily: 'monospace',
-                fontSize: '0.85rem'
-              }}
-            >
-              <pre style={{ margin: 0 }}>{resultJson}</pre>
-            </Paper>
+                <h3>Approximate Address</h3>
+                <div className="two-col">
+                  <input
+                    type="text"
+                    placeholder="Formatted"
+                    value={formState.approxFormatted}
+                    onChange={handleFieldChange('approxFormatted')}
+                  />
+                  <input
+                    type="text"
+                    placeholder="City"
+                    value={formState.approxCity}
+                    onChange={handleFieldChange('approxCity')}
+                  />
+                  <input
+                    type="text"
+                    placeholder="State"
+                    value={formState.approxState}
+                    onChange={handleFieldChange('approxState')}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Country"
+                    value={formState.approxCountry}
+                    onChange={handleFieldChange('approxCountry')}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* LOCATION SECTION */}
+        <div className="form-section">
+          <h2>Location</h2>
+          <p>
+            {pinType === 'event'
+              ? FIGMA_TEMPLATE.fields.locationPrompt
+              : 'Tap where the approximate location of the discussion is at.'}
+          </p>
+
+          {locationStatus && (
+            <div className={`alert alert-${locationStatus.type}`}>
+              {locationStatus.message}
+              <button
+                type="button"
+                onClick={() => setLocationStatus(null)}
+                className="alert-close"
+              >
+                x
+              </button>
+            </div>
           )}
-        </Box>
-      </Paper>
-    </Container>
+
+          <div className="map-container">
+            <SelectableLocationMap
+              value={selectedCoordinates}
+              onChange={handleMapLocationSelect}
+              anchor={viewerMapAnchor}
+            />
+          </div>
+
+          {isReverseGeocoding && (
+            <p className="loading-text">Looking up address details...</p>
+          )}
+
+          <p className="note-text">
+            Click or tap the map to set coordinates. We will auto-fill the address when possible.
+          </p>
+
+          <div className="map-coords">
+            <label>Latitude</label>
+            <input
+              type="text"
+              value={formState.latitude}
+              onChange={handleFieldChange('latitude')}
+              required
+              placeholder="33.783800"
+            />
+
+            <label>Longitude</label>
+            <input
+              type="text"
+              value={formState.longitude}
+              onChange={handleFieldChange('longitude')}
+              required
+              placeholder="-118.113600"
+            />
+
+            <label>Proximity Radius (miles)</label>
+            <input
+              type="text"
+              value={formState.proximityRadiusMiles}
+              onChange={handleFieldChange('proximityRadiusMiles')}
+              placeholder="Optional. Defaults to 1 mile."
+            />
+          </div>
+        </div>
+
+        {/* Footer Buttons */}
+        <div className="footer-actions">
+          <button type="button" className="btn-outline btn-reset" onClick={resetForm}>
+            Reset form
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={handleSaveDraft}
+            disabled={isSubmitting}
+          >
+            Save draft
+          </button>
+        </div>
+
+        {resultJson && <pre className="result-json">{resultJson}</pre>}
+      </div>
+    </div>
   );
 }
 
