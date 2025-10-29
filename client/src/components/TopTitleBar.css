@@ -59,6 +59,8 @@
 .top-bar__action-icon {
   width: 28px;
   height: 28px;
+  transform: scale(1.35);
+  transform-origin: center;
 }
 
 .top-bar__badge {
@@ -92,6 +94,10 @@
 
   .top-bar__action {
     padding: 1.5rem;
+  }
+
+  .top-bar__action-icon {
+    transform: scale(1.2);
   }
 
   .top-bar__badge {
