@@ -30,8 +30,13 @@
   flex-direction: column;
   overflow-y: auto;
   padding-bottom: 1.5rem;
+  scrollbar-width: none; /* hide Firefox scrollbar */
+  -ms-overflow-style: none; /* hide IE/Edge scrollbar */
 }
 
+.list-frame::-webkit-scrollbar {
+  display: none; /* hide WebKit scrollbar */
+}
 .list-page .feed {
   display: flex;
   flex-direction: column;
