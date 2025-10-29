@@ -122,7 +122,8 @@ function ChatPage() {
   const containerRef = useRef(null);
   const location = useLocation();
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const hasScrolledToBottomRef = useRef(false);
+  const inputContainerRef = useRef(null);
+  const [scrollBtnBottom, setScrollBtnBottom] = useState(0);
 
   const scrollMessagesToBottom = useCallback(() => {
     const container = containerRef.current;
@@ -169,6 +170,38 @@ function ChatPage() {
 
     container.addEventListener('scroll', handleScroll);    
     return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Automatically reposition "scroll down button" if there is a large mesage input
+  // CAUTION: VERY LAGGY
+  useEffect(() => {
+    const inputContainer = inputContainerRef.current;
+    if (!inputContainer) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        setScrollBtnBottom(entry.contentRect.height + 8); // 8px gap
+      }
+    });
+
+    resizeObserver.observe(inputContainer);
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const container = inputContainerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        setScrollBtnBottom(entry.contentRect.height + 8); // 8px gap above input
+      }
+    });
+
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
   }, []);
 
   const loadRooms = useCallback(async () => {
@@ -833,6 +866,11 @@ function ChatPage() {
         <IconButton
           className="chat-scroll-to-bottom-btn"
           onClick={scrollMessagesToBottom}
+          style={{
+            bottom: `${scrollBtnBottom + 90}px`,
+            position: 'fixed',
+            transition: 'bottom 0.1s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
         >
           <ArrowDownwardIcon className="scroll-to-bottom-icon" />
         </IconButton>
@@ -877,7 +915,7 @@ function ChatPage() {
         {/* Chat Message input
         TO DO: Make it modernly resize when selected and have additional buttons pop up (just add img planned) as well as making the input box bigger for bigger messages + character limit
         */}
-        <Box className="chat-input-container">
+        <Box className="chat-input-container" ref={inputContainerRef}>
           <IconButton 
             className="add-img-btn" 
             onClick={""}
