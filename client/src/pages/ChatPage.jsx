@@ -731,13 +731,6 @@ function ChatPage() {
 
   return (
     <>
-      <Button
-        className="chat-debug-toggle"
-        onClick={() => setDebugMode((prev) => !prev)}
-      >
-        {debugMode ? 'Hide Chat Debug' : 'Show Chat Debug'}
-      </Button>
-
       <Box
       sx={{
         display: debugMode ? 'block' : 'none',
@@ -748,6 +741,12 @@ function ChatPage() {
         py: { xs: 2, md: 4 }
       }}
       >
+        <Button
+          className="chat-debug-toggle"
+          onClick={() => setDebugMode((prev) => !prev)}
+        >
+          {debugMode ? 'Hide Chat Debug' : 'Show Chat Debug'}
+        </Button>
         <Stack spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="center">
             <SmsIcon color="primary" />
@@ -885,9 +884,14 @@ function ChatPage() {
       <div className="chat-frame">
         <header className="chat-header-bar">
           <GlobalNavMenu />
-          <h1 className="chat-header-title">
-            Chat
+
+          <h1 
+            className="chat-header-title"
+            onClick={() => setDebugMode((prev) => !prev)}
+            >
+              Chat
           </h1>
+
           <button
             className="updates-icon-btn"
             type="button"

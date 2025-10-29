@@ -34,15 +34,13 @@
   z-index: 30;
   background: #d1b4f5;
   width: 100vw;
+  height: 8vh;
   box-sizing: border-box;
-
-  min-height: var(--header-h);
   display: flex;
   align-items: center;
   justify-content: space-between;
 
   border-bottom: 2px solid #000;
-  /* transform: translateY(-1px); <-- remove this if you see a 1px jump */
 }
 
 .chat-header-title {
@@ -62,11 +60,10 @@
   padding: 2rem;
   transition: transform .2s ease;
 }
-.updates-icon-btn:hover { transform: scale(1.1); }
 
 .updates-icon-badge {
   position: absolute;
-  top: 1.4rem;
+  top: 0.4rem;
   right: 1.6rem;
   min-width: 22px;
   height: 22px;
@@ -97,7 +94,7 @@
 .chat-scroll-to-bottom-btn {
   width: 64px !important;
   height: 64px !important;
-  left: 28.7rem;
+  right: 0.4rem;
   z-index: 2;
 }
 
@@ -141,6 +138,7 @@
   padding-left: 1.5rem;
   padding-right: 1.5rem;
   font-family:'Urbanist', sans-serif;
+  font-weight: 500;
   border-radius: 45px;
   background: white;
   color: black;
