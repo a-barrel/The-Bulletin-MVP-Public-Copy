@@ -157,6 +157,12 @@
   resize: none;
 }
 
+.create-pin input[type="date"],
+.create-pin input[type="time"],
+.create-pin input[type="datetime-local"] {
+  color-scheme: light;
+}
+
 /* for pin type toggle */
 .field-group { 
   display: flex; 
