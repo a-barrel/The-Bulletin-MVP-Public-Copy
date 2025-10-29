@@ -142,7 +142,7 @@ function ChatPage() {
     });
   }, []);
 
-  // Makes the screen automatically display the bottom-most (latest) chat message whenever a new room is joined, this page is navigated to, and/or when a message is updated
+  // Makes the screen automatically display the bottom-most (latest) chat message whenever a new room is joined, this page is navigated to, or a new message is sent
   useLayoutEffect(() => {
     const timer = setTimeout(scrollMessagesToBottom, 100);
     return () => clearTimeout(timer);
