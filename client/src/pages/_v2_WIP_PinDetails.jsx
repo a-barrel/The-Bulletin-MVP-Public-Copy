@@ -1042,7 +1042,7 @@ function PinDetails() {
         </div>
       ) : null}
       {/* Header */}
-      <header className='header'>
+      <header className={`header ${isEventPin ? 'event-header' : 'discussion-header'}`}>
         <Link to={routes.list.base} className="back-button">
           <img
             src='https://www.svgrepo.com/show/326886/arrow-back-sharp.svg'
@@ -1079,7 +1079,7 @@ function PinDetails() {
       </header>
 
       {/* Event/Discussion Name */}
-      <div className='name'>
+      <div className={`name ${isEventPin ? 'event-name' : 'discussion-name'}`}>
         <h2>{pin ? pin.title || 'Untitled pin' : 'Loading pin...'}</h2>
         {pin?._id ? <span className="pin-id">ID: {pin._id}</span> : null}
         {proximityRadius ? (
@@ -1110,7 +1110,7 @@ function PinDetails() {
       {pin ? (
         <>
           {/* Map section */}
-          <div className='map-section'>
+          <div className={`map-section ${isEventPin ? 'event-map' : 'discussion-map'}`}>
             {coordinates ? (
               <div className="map-wrapper">
                 <LeafletMap
@@ -1132,7 +1132,7 @@ function PinDetails() {
             <Link
               to={creatorProfileLink.pathname}
               state={creatorProfileLink.state}
-              className='post-creator user-link'
+              className={`post-creator user-link ${isEventPin ? 'event-creator' : 'discussion-creator'}`}
             >
               <img
                 src={creatorAvatarUrl}
@@ -1149,7 +1149,7 @@ function PinDetails() {
               </div>
             </Link>
           ) : (
-            <div className='post-creator'>
+            <div className={`post-creator ${isEventPin ? 'event-creator' : 'discussion-creator'}`}>
               <img
                 src={creatorAvatarUrl}
                 className='profile-icon'
@@ -1167,12 +1167,12 @@ function PinDetails() {
           )}
 
           {/* Post description */}
-          <div className='post-description'>
+          <div className={`post-description ${isEventPin ? 'event-description' : 'discussion-description'}`}>
             {pin.description ? pin.description : <span className="muted">No description provided.</span>}
           </div>
 
           {/* Post images */}
-          <div className='post-images'>
+          <div className={`post-images ${isEventPin ? 'event-images' : 'discussion-images'}`}>
             {photoItems.length > 0 ? (
               <div className="photo-grid">
                 {photoItems.map((photo, index) => (
@@ -1193,10 +1193,10 @@ function PinDetails() {
           </div>
 
           {/* Post info */}
-          <div className='post-info'>
-            <div className='post-location'>
+          <div className={`post-info ${isEventPin ? 'event-info' : 'discussion-info'}`}>
+            <div className={`post-location ${isEventPin ? 'event-location' : 'discussion-location'}`}>
               <svg
-                className='pin-icon'
+                className={`pin-icon ${isEventPin ? 'event-icon' : 'discussion-icon'}`}
                 viewBox='0 0 24 24'
                 aria-hidden='true'
               >
@@ -1219,10 +1219,10 @@ function PinDetails() {
               </span>
             </div>
 
-            <div className='post-occurance'>
+            <div className={`post-occurance ${isEventPin ? 'event-occurance' : 'discussion-occurance'}`}>
               <img
                 src='https://www.svgrepo.com/show/533378/calendar.svg'
-                className='calendar-icon'
+                className={`calendar-icon ${isEventPin ? 'event-icon' : 'discussion-icon'}`}
                 alt='Calendar icon'
               />
               <span className='occurance-text'>
@@ -1234,10 +1234,10 @@ function PinDetails() {
               </span>
             </div>
 
-            <div className='post-attendance'>
+            <div className={`post-attendance ${isEventPin ? 'event-attendance' : 'discussion-attendance'}`}>
               <img
                 src='https://www.svgrepo.com/show/511192/user-check.svg'
-                className='attendance-icon'
+                className={`attendance-icon ${isEventPin ? 'event-icon' : 'discussion-icon'}`}
                 alt='Attendance icon'
               />
               <span className='attendance-text'>
@@ -1317,12 +1317,15 @@ function PinDetails() {
               const authorProfileLink = buildUserProfileLink(reply.author, profileReturnPath);
 
               return (
-                <div className='comment' key={reply._id}>
+                <div 
+                  className={`comment ${isEventPin ? 'event-comment' : 'discussion-comment'}`}
+                  key={reply._id}
+                >
                   {authorProfileLink ? (
                     <Link
                       to={authorProfileLink.pathname}
                       state={authorProfileLink.state}
-                      className='comment-header user-link'
+                      className={`comment-header user-link ${isEventPin ? 'event-comment-header' : 'discussion-comment-header'}`}
                     >
                       <img
                         src={replyAvatar}
@@ -1337,7 +1340,7 @@ function PinDetails() {
                       </span>
                     </Link>
                   ) : (
-                    <div className='comment-header'>
+                    <div className={`comment-header ${isEventPin ? 'event-comment-header' : 'discussion-comment-header'}`}>
                       <img
                         src={replyAvatar}
                         className='commenter-pfp'
