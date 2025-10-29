@@ -11,6 +11,12 @@
   background-color: black;
   width: 100vw;
   height: 100vh;
+  color: #000; /* Ensure text defaults to black inside container */
+}
+
+/* Force common text elements to render black if components set their own color */
+.profile-page-container :is(p, h1, h2, h3, h4, h5, h6, span, label, div, .MuiTypography-root) {
+  color: #000;
 }
 
 .profile-page-frame {

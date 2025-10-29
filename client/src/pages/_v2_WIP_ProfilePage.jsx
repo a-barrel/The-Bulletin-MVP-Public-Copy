@@ -820,7 +820,7 @@ const detailEntries = useMemo(() => {
             </Alert>
           ) : null}
 
-          <Stack spacing={2} alignItems="center" textAlign="center">
+          <Stack spacing={2} alignItems="left" textAlign="left">
             <Avatar
               src={avatarUrl}
               alt={`${displayName} avatar`}
