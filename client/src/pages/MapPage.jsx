@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import "../pages/MapPage.css"
 import { useAuthState } from 'react-firebase-hooks/auth';
+import menuIcon from "../assets/MenuIcon.svg";
+import updatesIcon from "../assets/UpdateIcon.svg";
+import addIcon from "../assets/AddIcon.svg";
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -501,53 +504,60 @@ function MapPage() {
   );
 
   return (
+  <div className="map-page">
+  <div className="map-frame">
+    {/* Header (purple) */}
+    <header className="map-header">
+      <button className="map-icon-btn" aria-label="Menu">
+        <img src={menuIcon} alt="Menu" className="map-icon" />
+      </button>
+
+      <h1 className="map-title">Map</h1>
+
+      <button className="map-icon-btn" aria-label="Notifications">
+        <img src={updatesIcon} alt="Notifications" className="map-icon" />
+      </button>
+    </header>
+
+    {/* Map area */}
     <Box
       sx={{
         width: '100%',
-        maxWidth: 960,
-        mx: 'auto',
-        mt: 2,
-        mb: 4,
-        borderRadius: 3,
+        height: '100%',
+        position: 'relative',
+        flex: 1,
         overflow: 'hidden',
-        boxShadow: (theme) => theme.shadows[4],
-        display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: 'background.paper'
       }}
     >
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Pinpoint
-          </Typography>
-          <Typography variant="body2" sx={{ mr: 2 }}>
-            {isSharing ? 'Location sharing is active' : 'Location sharing is paused'}
-          </Typography>
-        </Toolbar>
-      </AppBar>
+      <Map
+        userLocation={userLocation}
+        nearbyUsers={nearbyUsers}
+        pins={pins}
+        userRadiusMeters={DEFAULT_MAX_DISTANCE_METERS}
+      />
+    </Box>
 
-      <Box
+    {/* ✅ Floating Add Button (always visible) */}
+    <button className="map-add-btn" aria-label="Add">
+      <img src={addIcon} alt="Add" />
+    </button>
+
+
+      {/* GPS SPOOFING AND NOTIFICATION THAT LOCATION IS ON */}
+      {/*
+      <Stack
+        spacing={2}
         sx={{
-          width: '100%',
-          position: 'relative',
-          overflow: 'hidden',
-          aspectRatio: { xs: '3 / 4', md: '4 / 3' },
-          minHeight: 320
+          p: { xs: 2, md: 3 },
+          borderTop: (theme) => `1px solid ${theme.palette.divider}`,
         }}
       >
-        <Map
-          userLocation={userLocation}
-          nearbyUsers={nearbyUsers}
-          pins={pins}
-          userRadiusMeters={DEFAULT_MAX_DISTANCE_METERS}
-        />
-      </Box>
-
-      <Stack spacing={2} sx={{ p: { xs: 2, md: 3 }, borderTop: (theme) => `1px solid ${theme.palette.divider}` }}>
+    
         <LocationShare
           isSharing={isSharing}
-          onToggle={() => (isSharing ? handleStopSharing() : handleStartSharing())}
+          onToggle={() =>
+            isSharing ? handleStopSharing() : handleStartSharing()
+          }
           disabled={shareDisabled}
           helperText={shareHelperText}
         />
@@ -559,45 +569,75 @@ function MapPage() {
         )}
 
         <Stack direction="row" spacing={2} alignItems="center">
-          {(isLoadingNearby || isLoadingPins) && <CircularProgress color="primary" size={28} />}
+          {(isLoadingNearby || isLoadingPins) && (
+            <CircularProgress color="primary" size={28} />
+          )}
           <Typography variant="body2" color="text.secondary">
             {isLoadingNearby || isLoadingPins
               ? 'Loading nearby data…'
               : `Showing pins within a ${DEFAULT_RADIUS_MILES}-mile radius`}
           </Typography>
         </Stack>
+        */}
 
+        {/*
         <Paper elevation={1} sx={{ p: 2 }}>
           <Stack spacing={1.5}>
             <Typography variant="subtitle2">GPS Spoofing</Typography>
             <Stack direction="row" spacing={1} justifyContent="center">
-              <Button variant="contained" size="small" onClick={() => handleSpoofMove('north')} sx={{ minWidth: 96 }}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleSpoofMove('north')}
+                sx={{ minWidth: 96 }}
+              >
                 North
               </Button>
             </Stack>
             <Stack direction="row" spacing={1} justifyContent="center">
-              <Button variant="contained" size="small" onClick={() => handleSpoofMove('west')} sx={{ minWidth: 96 }}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleSpoofMove('west')}
+                sx={{ minWidth: 96 }}
+              >
                 West
               </Button>
-              <Button variant="contained" size="small" onClick={() => handleSpoofMove('east')} sx={{ minWidth: 96 }}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleSpoofMove('east')}
+                sx={{ minWidth: 96 }}
+              >
                 East
               </Button>
             </Stack>
             <Stack direction="row" spacing={1} justifyContent="center">
-              <Button variant="contained" size="small" onClick={() => handleSpoofMove('south')} sx={{ minWidth: 96 }}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleSpoofMove('south')}
+                sx={{ minWidth: 96 }}
+              >
                 South
               </Button>
             </Stack>
-            <Typography variant="caption" color="text.secondary" align="center">
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              align="center"
+            >
               Each press moves the simulated location ~2 miles.
             </Typography>
           </Stack>
         </Paper>
       </Stack>
+      */}
 
       <Navbar />
-    </Box>
-  );
+    </div>
+  </div>
+);
 }
 
 export default MapPage;
