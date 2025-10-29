@@ -140,7 +140,7 @@ function ChatPage() {
   // Currently only the on message update part works
   useEffect(() => {
     scrollMessagesToBottom();
-  }, [selectedRoomId, location.pathname, scrollMessagesToBottom]);
+  }, [messages, selectedRoomId, location.pathname, scrollMessagesToBottom]);
 
   useEffect(() => {
     if (!authLoading && !authUser) {
