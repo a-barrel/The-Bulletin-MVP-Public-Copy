@@ -29,6 +29,18 @@
   padding-bottom: calc(90px + env(safe-area-inset-bottom, 0)); 
 }
 
+/* Full-bleed utility for media inside padded frame */
+.profile-page-frame .full-bleed-wrapper {
+  width: 100vw;
+  margin-left: calc(-1rem - (100vw - 100%) / 2);
+  margin-right: calc(-1rem - (100vw - 100%) / 2);
+}
+
+.profile-page-frame .full-bleed-wrapper img {
+  width: 100%;
+  display: block;
+}
+
 /* ===== Description Box Styling ===== */
 .description-box {
   background-color: #CDAEF2;
@@ -48,6 +60,12 @@
     width: 100vw;
     flex: 1;
     padding: 56px 0.5rem 1rem; /* Added 56px top padding for mobile BackButton height */
+  }
+
+  /* Adjust full-bleed compensation for mobile padding (0.5rem each side) */
+  .profile-page-frame .full-bleed-wrapper {
+    margin-left: calc(-0.5rem - (100vw - 100%) / 2);
+    margin-right: calc(-0.5rem - (100vw - 100%) / 2);
   }
   
   .description-box {

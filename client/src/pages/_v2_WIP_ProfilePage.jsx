@@ -769,6 +769,12 @@ const detailEntries = useMemo(() => {
     };
   }, [relationshipStatus]);
 
+  const headerImageUrl = (() => {
+    const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+    const path = '/images/background/background-01.jpg';
+    return base ? `${base}${path}` : path;
+  })();
+
   return (
     <div className="profile-page-container">
       <BackButton 
@@ -778,6 +784,20 @@ const detailEntries = useMemo(() => {
         centerText="Profile"
       />
       <div className="profile-page-frame">
+        <Box
+          component="img"
+          src={headerImageUrl}
+          alt="Profile header"
+          sx={{
+            width: { xs: 'calc(100% + 1rem)', sm: 'calc(100% + 2rem)' },
+            height: '100px',
+            objectFit: 'fill',
+            display: 'block',
+            marginTop: { xs: '-56px', sm: '-60px' },
+            marginLeft: { xs: '-0.5rem', sm: '-1rem' },
+            marginRight: { xs: '-0.5rem', sm: '-1rem' }
+          }}
+        />
         <Stack spacing={3}>
           {isFetchingProfile ? (
             <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
