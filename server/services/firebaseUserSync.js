@@ -236,29 +236,64 @@ async function upsertUserFromAuthProfile(profile, { dryRun = false } = {}) {
     return { operation: 'unchanged', user, avatarSet: false };
   }
 
-  const username = await generateUniqueUsername(usernameSource);
-  const avatar =
-    targetRelativeAvatarPath && !dryRun
-      ? {
-          url: targetRelativeAvatarPath,
-          thumbnailUrl: targetRelativeAvatarPath
-        }
-      : undefined;
-
   if (dryRun) {
     return { operation: 'would-create', user: null, avatarSet: Boolean(targetRelativeAvatarPath) };
   }
 
-  const createdUser = await User.create({
-    firebaseUid,
-    email,
-    username,
-    displayName: displayName || username,
-    accountStatus: 'active',
-    ...(avatar ? { avatar } : {})
-  });
+  const MAX_CREATE_ATTEMPTS = 5;
+  let lastDuplicateError = null;
 
-  return { operation: 'created', user: createdUser, avatarSet: Boolean(avatar) };
+  for (let attempt = 0; attempt < MAX_CREATE_ATTEMPTS; attempt += 1) {
+    const username = await generateUniqueUsername(usernameSource);
+    const avatar =
+      targetRelativeAvatarPath
+        ? {
+            url: targetRelativeAvatarPath,
+            thumbnailUrl: targetRelativeAvatarPath
+          }
+        : undefined;
+
+    try {
+      const createdUser = await User.create({
+        firebaseUid,
+        email,
+        username,
+        displayName: displayName || username,
+        accountStatus: 'active',
+        ...(avatar ? { avatar } : {})
+      });
+
+      return { operation: 'created', user: createdUser, avatarSet: Boolean(avatar) };
+    } catch (error) {
+      if (error?.code === 11000) {
+        const duplicatedFields = Object.keys(error?.keyPattern || {});
+        const duplicateFirebaseUid =
+          duplicatedFields.includes('firebaseUid') ||
+          /firebaseUid/i.test(error?.message || '') ||
+          /firebaseuid/i.test(JSON.stringify(error?.keyValue || {}));
+
+        if (duplicateFirebaseUid) {
+          const existingUser = await User.findOne({ firebaseUid });
+          if (existingUser) {
+            return { operation: 'linked', user: existingUser, avatarSet: false };
+          }
+        }
+
+        lastDuplicateError = error;
+        // Retry with a new username candidate if we collided on username or another unique field.
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  if (lastDuplicateError) {
+    throw lastDuplicateError;
+  }
+
+  throw new Error('Failed to create user after repeated duplicate key errors');
 }
 
 async function ensureUserForFirebaseAccount(decodedToken) {
