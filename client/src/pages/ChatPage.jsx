@@ -875,7 +875,6 @@ function ChatPage() {
           style={{
             bottom: `${scrollBtnBottom + 90}px`,
             position: 'fixed',
-            transition: 'bottom 0.1s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
           <ArrowDownwardIcon className="scroll-to-bottom-icon" />

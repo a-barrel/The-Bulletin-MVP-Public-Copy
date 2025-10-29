@@ -94,13 +94,13 @@
 .chat-scroll-to-bottom-btn {
   width: 64px !important;
   height: 64px !important;
-  right: 0.4rem;
-  z-index: 2;
+  right: 0.2rem;
+  z-index: 10;
 }
 
 .scroll-to-bottom-icon {
-  width: 100% !important;
-  height: 100% !important;
+  width: 48px !important;
+  height: 48px !important;
   background-color: #9B5DE5;
   color: white;
   border-radius: 60px;
@@ -137,6 +137,7 @@
 .chat-input .MuiOutlinedInput-root {
   padding-left: 1.5rem;
   padding-right: 1.5rem;
+  margin-left: -0.25rem;
   font-family:'Urbanist', sans-serif;
   font-weight: 500;
   border-radius: 45px;
@@ -147,17 +148,17 @@
 /* Button to add an img (no visual) */
 .add-img-btn {
   position: relative;
-  margin-left: -0.5rem;
   display: flex;
+  width: 48px;
+  height: 48px;
   padding: 1rem;
-  margin-left: 5rem;
 }
 
 /* Actual visual for add img button */
 .add-img-icon {
-  margin-left: -0.5rem;
-  height: 48px !important;
-  width: 48px !important;
+  margin-left: -1rem;
+  height: 52px !important;
+  width: 52px !important;
   color: #5D3889;
 }
 
