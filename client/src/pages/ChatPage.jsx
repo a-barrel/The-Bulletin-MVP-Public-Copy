@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, NavLink, useLocation  } from "react-router-dom";
 import Navbar from '../components/Navbar';
 import GlobalNavMenu from '../components/GlobalNavMenu';
@@ -125,23 +125,28 @@ function ChatPage() {
   const inputContainerRef = useRef(null);
   const [scrollBtnBottom, setScrollBtnBottom] = useState(0);
 
-  const scrollMessagesToBottom = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    container.scrollTop = container.scrollHeight; // instant scroll
-  }, []);
-
   useEffect(() => {
       if (typeof refreshUnreadCount === 'function' && !isOffline) {
         refreshUnreadCount({ silent: true });
       }
     }, [isOffline, refreshUnreadCount]);
 
+
+  const scrollMessagesToBottom = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth'
+    });
+  }, []);
+
   // Makes the screen automatically display the bottom-most (latest) chat message whenever a new room is joined, this page is navigated to, and/or when a message is updated
-  // Currently only the on message update part works
-  useEffect(() => {
-    scrollMessagesToBottom();
-  }, [messages, selectedRoomId, location.pathname, scrollMessagesToBottom]);
+  useLayoutEffect(() => {
+    const timer = setTimeout(scrollMessagesToBottom, 100);
+    return () => clearTimeout(timer);
+  }, [selectedRoomId, location.pathname, scrollMessagesToBottom]);
 
   useEffect(() => {
     if (!authLoading && !authUser) {
@@ -404,7 +409,9 @@ function ChatPage() {
           announceBadgeEarned(message.badgeEarnedId);
         }
         setMessageDraft('');
-        scrollMessagesToBottom();
+
+        // Allows time for DOM to update, then scrolls to bottom
+        setTimeout(scrollMessagesToBottom, 50);
       } catch (error) {
         setMessagesError(error?.message || 'Failed to send message.');
       } finally {
