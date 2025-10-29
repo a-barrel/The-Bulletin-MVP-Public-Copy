@@ -5,10 +5,9 @@ import Navbar from "../components/Navbar";
 import SortToggle from "../components/SortToggle";
 import settingsIcon from "../assets/GearIcon.svg";
 import addIcon from "../assets/AddIcon.svg";
+import updatesIcon from "../assets/UpdateIcon.svg";
 import Feed from "../components/Feed";
-import TopTitleBar from "../components/TopTitleBar";
-import TopTitleBarBurgerIcon from "../components/TopTitleBarBurgerIcon";
-import TopTitleBarUpdateIcon from "../components/TopTitleBarUpdateIcon";
+import GlobalNavMenu from "../components/GlobalNavMenu";
 import { fetchPinsNearby, fetchPinById } from "../api/mongoDataApi";
 import PlaceIcon from '@mui/icons-material/Place'; // TODO: used only for Icon on pageConfig, maybe change with a list icon?
 import { useUpdates } from "../contexts/UpdatesContext";
@@ -422,7 +421,7 @@ export default function ListPage() {
     };
   }, [isOffline, userLocation]);
 
-  const { refreshUnreadCount } = useUpdates();
+  const { unreadCount, refreshUnreadCount } = useUpdates();
 
   useEffect(() => {
     if (typeof refreshUnreadCount === 'function' && !isOffline) {
@@ -433,6 +432,12 @@ export default function ListPage() {
   const handleSortToggle = useCallback(() => {
     setSortByExpiration((prev) => !prev);
   }, []);
+  const handleNotifications = useCallback(() => {
+    if (isOffline) {
+      return;
+    }
+    navigate(routes.updates.base);
+  }, [isOffline, navigate]);
   const handleCreatePin = useCallback(() => {
     if (isOffline) {
       return;
@@ -499,16 +504,35 @@ export default function ListPage() {
     return sortedItems;
   }, [feedItems, sortByExpiration]);
 
+  const notificationsLabel =
+    unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
+  const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
+
   return (
     <div className="list-page">
       <div className="list-frame">
-        <TopTitleBar
-          title="List"
-          leading={<TopTitleBarBurgerIcon />}
-          trailing={<TopTitleBarUpdateIcon />}
-        />
+        {/* Header */}
+        <header className="header-bar">
+          <GlobalNavMenu />
+          <h1 className="header-title">List</h1>
+          <button
+            className="header-icon-btn"
+            type="button"
+            aria-label={notificationsLabel}
+            onClick={handleNotifications}
+            disabled={isOffline}
+            title={isOffline ? 'Reconnect to view updates' : undefined}
+          >
+            <img src={updatesIcon} alt="" className="header-icon" aria-hidden="true" />
+            {displayBadge ? (
+              <span className="header-icon-badge" aria-hidden="true">
+                {displayBadge}
+              </span>
+            ) : null}
+          </button>
+        </header>
 
-        {/* Topbar Additions */}
+        {/* Topbar */}
         <div className="topbar">
           <div className="top-left">
             <button
