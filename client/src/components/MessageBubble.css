@@ -1,0 +1,83 @@
+.chat-message {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background-color: #F5EFFD;
+  border-bottom: 0.1rem solid black;
+  padding-bottom: 1rem;
+}
+
+/* This don't work */
+.chat-message.self {
+  flex-direction: row-reverse;
+}
+
+/* Container for the user picture */
+.chat-avatar {
+  margin-top: 0.5rem;
+  margin-left: 0.5rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  z-index: 1;
+}
+
+/* The actual image */
+.chat-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; 
+}
+
+/* Area to the right of avatar icon; where all the text is */
+.chat-text-area {
+  background-color: #F5EFFD;
+  padding: 10px 14px;
+  max-width: 80%;
+  word-wrap: break-word;
+  position: relative;
+  margin-left: -0.8rem;
+}
+
+/* Message author and message time */
+.chat-text-area-header {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.chat-message.self .chat-text-area {
+  font-family:'Urbanist', sans-serif;
+  background-color: #d1b2f5;
+  text-align: right;
+}
+
+.chat-author {
+  font-family:'Urbanist', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem;
+  color: #F15BB5;
+}
+
+.chat-time {
+  font-family:'Urbanist', sans-serif !important;
+  font-size: 0.8rem !important;
+  color: #b6b6b6;
+  margin-top: 3px !important;
+}
+
+
+.chat-text {
+  font-family:'Urbanist', sans-serif !important;
+  margin-top: 2px;
+  font-size: 0.9rem;
+  color: black;
+}
+
+.chat-image {
+  margin-top: 8px;
+  border-radius: 10px;
+  max-width: 100%;
+  height: auto;
+}

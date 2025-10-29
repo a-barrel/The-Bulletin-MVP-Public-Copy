@@ -22,6 +22,7 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import UpdateIcon from '@mui/icons-material/Update';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { auth } from '../firebase';
+import "./UpdatesPage.css";
 import {
   fetchCurrentUserProfile,
   fetchUpdates,
@@ -97,6 +98,8 @@ const formatAbsoluteDate = (value) => {
 
 function UpdatesPage() {
   const navigate = useNavigate();
+  const [debugMode, setDebugMode] = useState(false);
+  const [selectedTab, setSelectedTab] = useState("All");
   const [firebaseUser, firebaseLoading] = useAuthState(auth);
   const [profile, setProfile] = useState(null);
   const [profileError, setProfileError] = useState(null);
@@ -252,14 +255,19 @@ function UpdatesPage() {
     <Box
       component="section"
       sx={{
-        width: '100%',
-        maxWidth: 840,
-        mx: 'auto',
-        py: { xs: 3, md: 4 },
-        px: { xs: 2, md: 4 }
+        width: '100vw',
       }}
     >
+
+    <Button
+        className="updates-debug-toggle"
+        onClick={() => setDebugMode((prev) => !prev)}
+      >
+        {debugMode ? 'Hide Updates Debug' : 'Show Updates Debug'}
+    </Button>
+
       <Stack spacing={3}>
+        {debugMode && (
         <Button
           variant="text"
           color="inherit"
@@ -269,41 +277,45 @@ function UpdatesPage() {
         >
           Back
         </Button>
-        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <UpdateIcon color="primary" />
-            <Typography variant="h4" component="h1">
-              Updates
-            </Typography>
-            {unreadCount > 0 ? (
-              <Chip label={`${unreadCount} unread`} color="secondary" size="small" />
-            ) : (
-              <Chip label="All caught up" color="success" size="small" />
-            )}
+        )}
+
+        {debugMode && (
+          <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <UpdateIcon color="primary" />
+              <Typography variant="h4" component="h1">
+                Updates
+              </Typography>
+              {unreadCount > 0 ? (
+                <Chip label={`${unreadCount} unread`} color="secondary" size="small" />
+              ) : (
+                <Chip label="All caught up" color="success" size="small" />
+              )}
+            </Stack>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Tooltip title="Refresh">
+                <span>
+                  <IconButton onClick={handleRefresh} disabled={isLoading}>
+                    {isLoading ? <CircularProgress size={20} /> : <RefreshIcon />}
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Mark all as read">
+                <span>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<DoneAllIcon fontSize="small" />}
+                    onClick={handleMarkAllRead}
+                    disabled={isMarkingAllRead || unreadCount === 0}
+                  >
+                    {isMarkingAllRead ? 'Marking...' : 'Mark all read'}
+                  </Button>
+                </span>
+              </Tooltip>
+            </Stack>
           </Stack>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Tooltip title="Refresh">
-              <span>
-                <IconButton onClick={handleRefresh} disabled={isLoading}>
-                  {isLoading ? <CircularProgress size={20} /> : <RefreshIcon />}
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="Mark all as read">
-              <span>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<DoneAllIcon fontSize="small" />}
-                  onClick={handleMarkAllRead}
-                  disabled={isMarkingAllRead || unreadCount === 0}
-                >
-                  {isMarkingAllRead ? 'Marking...' : 'Mark all read'}
-                </Button>
-              </span>
-            </Tooltip>
-          </Stack>
-        </Stack>
+        )}
 
         {profileError ? (
           <Alert severity="warning" variant="outlined">
@@ -317,6 +329,7 @@ function UpdatesPage() {
           </Alert>
         ) : null}
 
+        {debugMode && (
         <FormControlLabel
           control={
             <Switch
@@ -327,6 +340,7 @@ function UpdatesPage() {
           }
           label="Show unread only"
         />
+        )}
 
         {isLoading ? (
           <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ py: 6 }}>
@@ -336,6 +350,7 @@ function UpdatesPage() {
             </Typography>
           </Stack>
         ) : filteredUpdates.length === 0 ? (
+          debugMode && (
           <Paper
             elevation={0}
             sx={{
@@ -354,6 +369,7 @@ function UpdatesPage() {
               Stay tuned — new activity on your pins and chats will show up here.
             </Typography>
           </Paper>
+          )
         ) : (
           <Stack spacing={2}>
             {filteredUpdates.map((update) => {
@@ -423,6 +439,7 @@ function UpdatesPage() {
 
                     <Divider />
 
+                    {debugMode && (  
                     <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
                       <Stack direction="row" spacing={1}>
                         {pinId ? (
@@ -456,6 +473,7 @@ function UpdatesPage() {
                         </Button>
                       )}
                     </Stack>
+                    )}
                   </Stack>
                 </Paper>
               );
@@ -463,11 +481,75 @@ function UpdatesPage() {
           </Stack>
         )}
       </Stack>
-    </Box>
+    {/* Figma-based frontend design */}
+      {!debugMode && (
+        <div className="updates-page">
+          <div className="updates-frame">
+            <header className="updates-header-bar">
+              <IconButton 
+                onClick={() => navigate(-1)} 
+                className="updates-header-back-btn"
+              >
+                <ArrowBackIcon />
+              </IconButton>
+
+              <h1 className="updates-header-title">
+                Updates
+              </h1>
+
+              <Button 
+                className="updates-header-clear-btn" 
+                onClick={handleMarkAllRead}
+              >
+                Clear
+              </Button>
+            </header>
+
+            <Box className="updates-tabs">
+              {["All", "Discussions", "Events"].map((tab) => (
+                <Button
+                  key={tab}
+                  className={`tab ${selectedTab === tab ? "active" : ""}`}
+                  onClick={() => setSelectedTab(tab)}
+                >
+                  {tab}
+                </Button>
+              ))}
+            </Box>
+
+            {/* TODO: Have loading and placeholder here from original page */}
+            <Box className="updates-list">
+              {filteredUpdates.map((update) => (
+                <Paper key={update._id} className="update-card">
+                  <Typography className="update-title">
+                    <span className="update-highlight">{update.payload?.category || 'Event'}:</span>{' '}
+                    {update.payload?.title}
+                  </Typography>
+                  <Button variant="contained" className="view-button">
+                    View
+                  </Button>
+                  {update.payload?.avatars?.length > 0 && (
+                    <Box className="avatar-row">
+                      {update.payload.avatars.map((src, idx) => (
+                        <img key={idx} src={src} alt="participant" className="avatar" />
+                      ))}
+                    </Box>
+                  )}
+                  <Typography className="update-time">{formatRelativeTime(update.createdAt)}</Typography>
+                </Paper>
+              ))}
+            </Box>
+          </div>
+        </div>
+      )}
+    </Box>      
   );
 }
 
 export default UpdatesPage;
+
+
+
 
 
 
