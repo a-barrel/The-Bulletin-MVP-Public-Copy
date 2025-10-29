@@ -22,6 +22,7 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import UpdateIcon from '@mui/icons-material/Update';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { auth } from '../firebase';
+import "./UpdatesPage.css";
 import {
   fetchCurrentUserProfile,
   fetchUpdates,
@@ -97,6 +98,7 @@ const formatAbsoluteDate = (value) => {
 
 function UpdatesPage() {
   const navigate = useNavigate();
+  const [selectedTab, setSelectedTab] = useState("All");
   const [firebaseUser, firebaseLoading] = useAuthState(auth);
   const [profile, setProfile] = useState(null);
   const [profileError, setProfileError] = useState(null);
@@ -249,61 +251,67 @@ function UpdatesPage() {
   const isLoading = isProfileLoading || isLoadingUpdates;
 
   return (
-    <Box
-      component="section"
-      sx={{
-        width: '100%',
-        maxWidth: 840,
-        mx: 'auto',
-        py: { xs: 3, md: 4 },
-        px: { xs: 2, md: 4 }
-      }}
-    >
-      <Stack spacing={3}>
-        <Button
-          variant="text"
-          color="inherit"
-          startIcon={<ArrowBackIcon fontSize="small" />}
-          onClick={() => navigate(-1)}
-          sx={{ alignSelf: 'flex-start' }}
-        >
-          Back
-        </Button>
-        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <UpdateIcon color="primary" />
-            <Typography variant="h4" component="h1">
-              Updates
-            </Typography>
+    <Box className="updates-page">
+      <div className="updates-frame">
+        <header className="updates-header-bar">
+          <IconButton 
+            onClick={() => navigate(-1)} 
+            className="updates-header-back-btn"
+          >
+            <ArrowBackIcon />
+          </IconButton>
+
+          <h1 className="updates-header-title">
+            Updates
+          </h1>
+
+          <UpdateIcon color="primary" />
             {unreadCount > 0 ? (
               <Chip label={`${unreadCount} unread`} color="secondary" size="small" />
             ) : (
               <Chip label="All caught up" color="success" size="small" />
             )}
-          </Stack>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Tooltip title="Refresh">
+
+          <Tooltip title="Refresh">
               <span>
                 <IconButton onClick={handleRefresh} disabled={isLoading}>
                   {isLoading ? <CircularProgress size={20} /> : <RefreshIcon />}
                 </IconButton>
               </span>
             </Tooltip>
-            <Tooltip title="Mark all as read">
-              <span>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<DoneAllIcon fontSize="small" />}
-                  onClick={handleMarkAllRead}
-                  disabled={isMarkingAllRead || unreadCount === 0}
-                >
-                  {isMarkingAllRead ? 'Marking...' : 'Mark all read'}
-                </Button>
-              </span>
-            </Tooltip>
-          </Stack>
-        </Stack>
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={showUnreadOnly}
+                onChange={handleToggleUnreadOnly}
+                color="primary"
+              />
+            }
+            label="Show unread only"
+          />
+          
+          <Button 
+            className="updates-header-clear-btn" 
+            onClick={handleMarkAllRead}
+            disabled={isMarkingAllRead || unreadCount === 0}
+          >
+            Clear
+          </Button>
+        </header>
+
+        {/* 3 tab categories that filters updates based on type */}
+        <Box className="updates-tabs">
+          {["All", "Discussions", "Events"].map((tab) => (
+            <Button
+              key={tab}
+              className={`tab ${selectedTab === tab ? "active" : ""}`}
+              onClick={() => setSelectedTab(tab)}
+            >
+              {tab}
+            </Button>
+          ))}
+        </Box>
 
         {profileError ? (
           <Alert severity="warning" variant="outlined">
@@ -317,26 +325,24 @@ function UpdatesPage() {
           </Alert>
         ) : null}
 
-        <FormControlLabel
-          control={
-            <Switch
-              checked={showUnreadOnly}
-              onChange={handleToggleUnreadOnly}
-              color="primary"
-            />
-          }
-          label="Show unread only"
-        />
-
+        {/* Only renders once updates list has loaded */} 
         {isLoading ? (
-          <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ py: 6 }}>
+          <Stack 
+            className="loading-bar-container"
+            spacing={2} 
+            alignItems="center" 
+            justifyContent="center" 
+            sx={{ py: 30 }}
+          >
             <CircularProgress />
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="black">
               Loading updates...
             </Typography>
           </Stack>
         ) : filteredUpdates.length === 0 ? (
+          
           <Paper
+            className="empty-updates-msg"
             elevation={0}
             sx={{
               p: 4,
@@ -346,16 +352,31 @@ function UpdatesPage() {
               textAlign: 'center'
             }}
           >
-            <NotificationsActiveIcon color="disabled" fontSize="large" />
-            <Typography variant="h6" sx={{ mt: 2 }}>
+            <NotificationsActiveIcon 
+              className="notification-icon"
+              color="disabled" 
+              fontSize="large" 
+            />
+
+            <Typography 
+              className="empty-updates-msg-title"
+              variant="h6" 
+              sx={{ mt: 2 }}
+            >
               Nothing new yet
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+
+            <Typography 
+              className="empty-updates-msg-body"
+              variant="body2" 
+              color="text.secondary"
+            >
               Stay tuned — new activity on your pins and chats will show up here.
             </Typography>
           </Paper>
+        
         ) : (
-          <Stack spacing={2}>
+          <Box className="updates-list">
             {filteredUpdates.map((update) => {
               const createdAtLabel = formatRelativeTime(update.createdAt);
               const createdAtExact = formatAbsoluteDate(update.createdAt);
@@ -375,6 +396,7 @@ function UpdatesPage() {
                 <Paper
                   key={update._id}
                   variant="outlined"
+                  className="update-card"
                   sx={{
                     borderRadius: 3,
                     overflow: 'hidden',
@@ -390,9 +412,9 @@ function UpdatesPage() {
                           size="small"
                           color={read ? 'default' : 'secondary'}
                         />
-                        {pinTitle ? <Chip label={pinTitle} size="small" variant="outlined" /> : null}
+                        {pinTitle ? <Chip label={pinTitle} size="small" color="black" variant="outlined" /> : null}
                       </Stack>
-                      <Typography variant="caption" color="text.secondary" title={createdAtExact}>
+                      <Typography variant="caption" color="black" title={createdAtExact}>
                         {createdAtLabel}
                       </Typography>
                     </Stack>
@@ -400,7 +422,7 @@ function UpdatesPage() {
                     <Typography variant="h6">{update.payload?.title}</Typography>
 
                     {message ? (
-                      <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+                      <Typography variant="body2" color="black" sx={{ whiteSpace: 'pre-wrap' }}>
                         {message}
                       </Typography>
                     ) : null}
@@ -460,14 +482,41 @@ function UpdatesPage() {
                 </Paper>
               );
             })}
-          </Stack>
+          </Box>
         )}
-      </Stack>
-    </Box>
+
+ {/* TODO: Have loading and placeholder here from original page */}
+        <Box className="updates-list">
+          {filteredUpdates.map((update) => (
+            <Paper key={update._id} className="update-card">
+              <Typography className="update-title">
+                <span className="update-highlight">{update.payload?.category || 'Event'}:</span>{' '}
+                {update.payload?.title}
+              </Typography>
+              <Button variant="contained" className="view-button">
+                View
+              </Button>
+              {update.payload?.avatars?.length > 0 && (
+                <Box className="avatar-row">
+                  {update.payload.avatars.map((src, idx) => (
+                    <img key={idx} src={src} alt="participant" className="avatar" />
+                  ))}
+                </Box>
+              )}
+              <Typography className="update-time">{formatRelativeTime(update.createdAt)}</Typography>
+            </Paper>
+          ))}
+        </Box>
+        
+      </div>
+    </Box>      
   );
 }
 
 export default UpdatesPage;
+
+
+
 
 
 
