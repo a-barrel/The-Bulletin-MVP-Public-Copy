@@ -272,13 +272,13 @@ function UpdatesPage() {
               <Chip label="All caught up" color="success" size="small" />
             )}
 
-          <Tooltip title="Refresh">
-              <span>
-                <IconButton onClick={handleRefresh} disabled={isLoading}>
-                  {isLoading ? <CircularProgress size={20} /> : <RefreshIcon />}
-                </IconButton>
-              </span>
-            </Tooltip>
+          <IconButton 
+            className="refresh-btn"
+            onClick={handleRefresh} 
+            disabled={isLoading}
+          >
+            {isLoading ? <CircularProgress size={20} /> : <RefreshIcon />}
+          </IconButton>
 
           <FormControlLabel
             control={
@@ -327,18 +327,12 @@ function UpdatesPage() {
 
         {/* Only renders once updates list has loaded */} 
         {isLoading ? (
-          <Stack 
-            className="loading-bar-container"
-            spacing={2} 
-            alignItems="center" 
-            justifyContent="center" 
-            sx={{ py: 30 }}
-          >
+          <Box className="loading-bar-container">
             <CircularProgress />
-            <Typography variant="body2" color="black">
+            <Typography className="loading-bar-label">
               Loading updates...
             </Typography>
-          </Stack>
+          </Box>
         ) : filteredUpdates.length === 0 ? (
           
           <Paper
@@ -404,7 +398,6 @@ function UpdatesPage() {
                     backgroundColor: read ? 'background.paper' : 'rgba(144, 202, 249, 0.04)'
                   }}
                 >
-                  <Stack spacing={1.5} sx={{ p: { xs: 2, md: 3 } }}>
                     <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
                       <Stack direction="row" spacing={1} alignItems="center">
                         <Chip
@@ -414,8 +407,10 @@ function UpdatesPage() {
                         />
                         {pinTitle ? <Chip label={pinTitle} size="small" color="black" variant="outlined" /> : null}
                       </Stack>
-                      <Typography variant="caption" color="black" title={createdAtExact}>
-                        {createdAtLabel}
+
+                      {/* Time Label */}
+                      <Typography className="update-time">
+                        {formatRelativeTime(update.createdAt)}
                       </Typography>
                     </Stack>
 
@@ -426,6 +421,14 @@ function UpdatesPage() {
                         {message}
                       </Typography>
                     ) : null}
+
+                    {update.payload?.avatars?.length > 0 && (
+                      <Box className="avatar-row">
+                        {update.payload.avatars.map((src, idx) => (
+                          <img key={idx} src={src} alt="participant" className="avatar" />
+                        ))}
+                      </Box>
+                    )}
 
                     {isBadgeUpdate && badgeImageUrl ? (
                       <Box
@@ -445,40 +448,37 @@ function UpdatesPage() {
 
                     <Divider />
 
-                    <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-                      <Stack direction="row" spacing={1}>
-                        {pinId ? (
-                          <Button
-                            component={Link}
-                            to={routes.pin.byId(pinId)}
-                            size="small"
-                            variant="outlined"
-                          >
-                            View pin
-                          </Button>
-                        ) : null}
-                      </Stack>
-                      {read ? (
-                        <Chip
-                          label="Read"
-                          size="small"
-                          icon={<CheckCircleOutlineIcon fontSize="small" />}
-                          variant="outlined"
-                        />
-                      ) : (
-                        <Button
-                          size="small"
-                          variant="contained"
-                          color="secondary"
-                          startIcon={<CheckCircleOutlineIcon fontSize="small" />}
-                          onClick={() => handleMarkRead(update._id)}
-                          disabled={pending}
-                        >
-                          {pending ? 'Marking...' : 'Mark as read'}
-                        </Button>
-                      )}
-                    </Stack>
+                  <Stack direction="row" spacing={1}>
+                    {pinId ? (
+                      <Button
+                        component={Link}
+                        to={routes.pin.byId(pinId)}
+                        size="small"
+                        variant="outlined"
+                      >
+                        View pin
+                      </Button>
+                    ) : null}
                   </Stack>
+                  {read ? (
+                    <Chip
+                      label="Read"
+                      size="small"
+                      icon={<CheckCircleOutlineIcon fontSize="small" />}
+                      variant="outlined"
+                    />
+                  ) : (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="secondary"
+                      startIcon={<CheckCircleOutlineIcon fontSize="small" />}
+                      onClick={() => handleMarkRead(update._id)}
+                      disabled={pending}
+                    >
+                      {pending ? 'Marking...' : 'Mark as read'}
+                    </Button>
+                  )}
                 </Paper>
               );
             })}
@@ -496,14 +496,6 @@ function UpdatesPage() {
               <Button variant="contained" className="view-button">
                 View
               </Button>
-              {update.payload?.avatars?.length > 0 && (
-                <Box className="avatar-row">
-                  {update.payload.avatars.map((src, idx) => (
-                    <img key={idx} src={src} alt="participant" className="avatar" />
-                  ))}
-                </Box>
-              )}
-              <Typography className="update-time">{formatRelativeTime(update.createdAt)}</Typography>
             </Paper>
           ))}
         </Box>

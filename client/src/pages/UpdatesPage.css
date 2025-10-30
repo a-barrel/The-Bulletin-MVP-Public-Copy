@@ -27,7 +27,7 @@
 
 /* ===== Header (purple) ===== */
 .updates-header-bar {
-  position: sticky;
+  position: fixed;
   top: 0;
   z-index: 30;
   background: #d1b4f5;
@@ -91,6 +91,16 @@
   margin-bottom: -0.65rem;
 }
 
+.loading-bar-container {
+  align-items: center;
+  justify-content: center;
+  top: 30rem;
+}
+
+.loading-bar-label {
+  font-family: 'Urbanist', sans-serif !important;
+}
+
 .empty-updates-msg {
   margin-top: 3rem;
   color: white;
@@ -111,7 +121,7 @@
 /* Updates List */
 .updates-list {
   padding: 10px 12px;
-  margin-top: 3rem;
+  margin-top: 9rem;
 }
 
 .update-card {
@@ -162,9 +172,10 @@
 }
 
 .update-time {
+  font-family: 'Urbanist', sans-serif !important;
   position: absolute;
   top: 8px;
   right: 12px;
   font-size: 0.75rem;
-  color: #a0a0a0;
+  color: black;
 }
