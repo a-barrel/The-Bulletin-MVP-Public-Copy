@@ -32,11 +32,9 @@ import SmsIcon from '@mui/icons-material/Sms';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import RoomIcon from '@mui/icons-material/Room';
-import SendIcon from '@mui/icons-material/SendRounded';
 import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
 import updatesIcon from "../assets/UpdateIcon.svg";
-import AddIcon from '@mui/icons-material/AddCircleOutlineRounded';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
 import { auth } from '../firebase';
 import { playBadgeSound } from '../utils/badgeSound';
@@ -54,6 +52,7 @@ import { useUpdates } from "../contexts/UpdatesContext";
 import { useNetworkStatusContext } from "../contexts/NetworkStatusContext";
 import "./ChatPage.css";
 import MessageBubble from '../components/MessageBubble';
+import ChatComposer from '../components/ChatComposer';
 
 export const pageConfig = {
   id: 'chat',
@@ -177,36 +176,36 @@ function ChatPage() {
     return () => container.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Automatically reposition "scroll down button" if there is a large mesage input
-  // CAUTION: VERY LAGGY
+  // Automatically repositions the scroll button whenever the input height changes.
+  // We throttle updates with requestAnimationFrame and skip redundant state writes.
   useEffect(() => {
     const inputContainer = inputContainerRef.current;
     if (!inputContainer) return;
 
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (let entry of entries) {
-        setScrollBtnBottom(entry.contentRect.height + 8); // 8px gap
+    let frameId = null;
+    const resizeObserver = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      const targetBottom = Math.round(entry.contentRect.height) + 8; // 8px gap
+
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
       }
+
+      frameId = requestAnimationFrame(() => {
+        setScrollBtnBottom((prev) =>
+          Math.abs(prev - targetBottom) > 0.5 ? targetBottom : prev
+        );
+      });
     });
 
     resizeObserver.observe(inputContainer);
 
-    return () => resizeObserver.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const container = inputContainerRef.current;
-    if (!container) return;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (let entry of entries) {
-        setScrollBtnBottom(entry.contentRect.height + 8); // 8px gap above input
+    return () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
       }
-    });
-
-    resizeObserver.observe(container);
-
-    return () => resizeObserver.disconnect();
+      resizeObserver.disconnect();
+    };
   }, []);
 
   const loadRooms = useCallback(async () => {
@@ -687,39 +686,17 @@ function ChatPage() {
 
           <Divider />
 
-          <Box
-            component="form"
-            onSubmit={handleSendMessage}
-            sx={{
-              display: 'flex',
-              gap: 1,
-              px: { xs: 2, md: 3 },
-              py: 2,
-              borderTop: '1px solid',
-              borderColor: 'divider'
-            }}
-          >
-            <TextField
-              value={messageDraft}
-              onChange={(event) => setMessageDraft(event.target.value)}
-              placeholder={authUser ? 'Type your message…' : 'Sign in to chat'}
-              onKeyDown={handleMessageInputKeyDown}
-              multiline
-              minRows={1}
-              maxRows={4}
-              fullWidth
-              disabled={!authUser || isSendingMessage}
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              startIcon={<SendIcon />}
-              disabled={!authUser || !messageDraft.trim() || isSendingMessage}
-            >
-              {isSendingMessage ? 'Sending…' : 'Send'}
-            </Button>
-          </Box>
+          <ChatComposer
+            variant="legacy"
+            message={messageDraft}
+            placeholder={authUser ? 'Type your message…' : 'Sign in to chat'}
+            onMessageChange={(event) => setMessageDraft(event.target.value)}
+            onKeyDown={handleMessageInputKeyDown}
+            onSend={handleSendMessage}
+            disabled={!authUser || isSendingMessage}
+            sendDisabled={!authUser || !messageDraft.trim() || isSendingMessage}
+            isSending={isSendingMessage}
+          />
         </>
       ) : (
         <Stack
@@ -966,33 +943,19 @@ function ChatPage() {
         {/* Chat Message input
         TO DO: Make it modernly resize when selected and have additional buttons pop up (just add img planned) as well as making the input box bigger for bigger messages + character limit
         */}
-        <Box className="chat-input-container" ref={inputContainerRef}>
-          <IconButton 
-            className="add-img-btn" 
-            onClick={""}
-          >
-            <AddIcon className="add-img-icon"/>
-          </IconButton>
-
-          <TextField
-            className="chat-input"
-            value={messageDraft}
-            onChange={(e) => setMessageDraft(e.target.value)}
-            placeholder="Send a message"
-            onKeyDown={handleMessageInputKeyDown}
-            fullWidth
-            variant="outlined"
-            multiline
-            minRows={1}
-            maxRows={5}
-          />
-          <button 
-            className="send-message-btn" 
-            onClick={handleSendMessage}
-          >
-            <SendIcon className="send-message-icon"/>
-          </button>
-        </Box>
+        <ChatComposer
+          variant="modern"
+          message={messageDraft}
+          placeholder="Send a message"
+          onMessageChange={(event) => setMessageDraft(event.target.value)}
+          onKeyDown={handleMessageInputKeyDown}
+          onSend={handleSendMessage}
+          disabled={!authUser || isSendingMessage}
+          sendDisabled={!authUser || !messageDraft.trim() || isSendingMessage}
+          isSending={isSendingMessage}
+          containerRef={inputContainerRef}
+          containerClassName="chat-input-container"
+        />
         <Navbar />
       </div>
     </Box>
