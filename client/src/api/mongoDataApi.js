@@ -1020,6 +1020,32 @@ export async function createChatMessage(roomId, input) {
   return payload;
 }
 
+export async function previewChatGif(query, { limit = 12 } = {}) {
+  const searchTerm = typeof query === 'string' ? query.trim() : '';
+  if (!searchTerm) {
+    throw new Error('Enter a search term to preview a GIF.');
+  }
+
+  const params = new URLSearchParams();
+  params.set('q', searchTerm);
+  if (Number.isFinite(limit)) {
+    params.set('limit', String(Math.max(1, Math.min(Math.trunc(limit), 20))));
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/chats/gif-search?${params.toString()}`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to preview GIFs.');
+  }
+
+  return payload;
+}
+
 export async function fetchChatMessages(roomId, { latitude, longitude } = {}) {
   if (!roomId) {
     throw new Error('Room id is required to load messages');

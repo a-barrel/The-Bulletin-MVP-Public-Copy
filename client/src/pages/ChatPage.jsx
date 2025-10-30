@@ -45,7 +45,8 @@ import {
   fetchChatMessages,
   createChatMessage,
   fetchChatPresence,
-  upsertChatPresence
+  upsertChatPresence,
+  previewChatGif
 } from '../api/mongoDataApi';
 import { useLocationContext } from '../contexts/LocationContext';
 import { useUpdates } from "../contexts/UpdatesContext";
@@ -102,6 +103,9 @@ function ChatPage() {
 
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [messageDraft, setMessageDraft] = useState('');
+  const [gifPreview, setGifPreview] = useState(null);
+  const [isGifPreviewLoading, setIsGifPreviewLoading] = useState(false);
+  const [gifPreviewError, setGifPreviewError] = useState(null);
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [createError, setCreateError] = useState(null);
@@ -123,12 +127,25 @@ function ChatPage() {
   const [showScrollButton, setShowScrollButton] = useState(false);
   const inputContainerRef = useRef(null);
   const [scrollBtnBottom, setScrollBtnBottom] = useState(0);
+  const gifPreviewRequestRef = useRef(null);
 
   useEffect(() => {
       if (typeof refreshUnreadCount === 'function' && !isOffline) {
         refreshUnreadCount({ silent: true });
       }
     }, [isOffline, refreshUnreadCount]);
+
+  const getGifCommandQuery = useCallback((value) => {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const trimmed = value.trim();
+    if (!trimmed.toLowerCase().startsWith('/gif')) {
+      return null;
+    }
+    const query = trimmed.slice(4).trim();
+    return query.length ? query : null;
+  }, []);
 
 
   const scrollMessagesToBottom = useCallback(() => {
@@ -208,6 +225,31 @@ function ChatPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const gifQuery = getGifCommandQuery(messageDraft);
+    if (!gifQuery) {
+      if (gifPreview || gifPreviewError || isGifPreviewLoading) {
+        gifPreviewRequestRef.current = null;
+        setGifPreview(null);
+        setGifPreviewError(null);
+        setIsGifPreviewLoading(false);
+      }
+      return;
+    }
+
+    if (gifPreview && gifPreview.query !== gifQuery && !isGifPreviewLoading) {
+      gifPreviewRequestRef.current = null;
+      setGifPreview(null);
+      setGifPreviewError(null);
+    }
+  }, [
+    messageDraft,
+    gifPreview,
+    gifPreviewError,
+    isGifPreviewLoading,
+    getGifCommandQuery
+  ]);
+
   const loadRooms = useCallback(async () => {
     if (!authUser) {
       return;
@@ -274,6 +316,48 @@ function ChatPage() {
       setPresenceError(error?.message || 'Failed to load room presence.');
     }
   }, []);
+
+  const requestGifPreview = useCallback(
+    async (query) => {
+      if (!authUser) {
+        return;
+      }
+      const trimmedQuery = typeof query === 'string' ? query.trim() : '';
+      if (!trimmedQuery) {
+        return;
+      }
+
+      const requestId = Symbol('gif-preview');
+      gifPreviewRequestRef.current = requestId;
+      setGifPreview({ query: trimmedQuery, options: [], selectedIndex: null });
+      setIsGifPreviewLoading(true);
+      setGifPreviewError(null);
+
+      try {
+        const payload = await previewChatGif(trimmedQuery, { limit: 12 });
+        if (gifPreviewRequestRef.current !== requestId) {
+          return;
+        }
+        const options = Array.isArray(payload?.results) ? payload.results : [];
+        if (!options.length) {
+          setGifPreview({ query: trimmedQuery, options: [], selectedIndex: null });
+          setGifPreviewError(`No GIFs found for "${trimmedQuery}". Try another search.`);
+          return;
+        }
+        setGifPreview({ query: trimmedQuery, options, selectedIndex: 0 });
+      } catch (error) {
+        if (gifPreviewRequestRef.current !== requestId) {
+          return;
+        }
+        setGifPreviewError(error?.message || 'Failed to load GIF preview.');
+      } finally {
+        if (gifPreviewRequestRef.current === requestId) {
+          setIsGifPreviewLoading(false);
+        }
+      }
+    },
+    [authUser, previewChatGif]
+  );
 
   useEffect(() => {
     if (!selectedRoomId) {
@@ -388,6 +472,53 @@ function ChatPage() {
     [authUser, createForm]
   );
 
+  const handleMessageSent = useCallback(
+    (message) => {
+      if (!message) {
+        return;
+      }
+      setMessages((prev) => [...prev, message]);
+      if (message?.badgeEarnedId) {
+        playBadgeSound();
+        announceBadgeEarned(message.badgeEarnedId);
+      }
+      setMessageDraft('');
+      gifPreviewRequestRef.current = null;
+      setGifPreview(null);
+      setGifPreviewError(null);
+      setIsGifPreviewLoading(false);
+
+      // Allows time for DOM to update, then scrolls to bottom
+      setTimeout(scrollMessagesToBottom, 50);
+    },
+    [announceBadgeEarned, playBadgeSound, scrollMessagesToBottom]
+  );
+
+  const sendGifMessage = useCallback(
+    async ({ query, attachment }) => {
+      if (!selectedRoomId || !authUser || !attachment || !query) {
+        return;
+      }
+      if (isSendingMessage) {
+        return;
+      }
+      setIsSendingMessage(true);
+      setMessagesError(null);
+      try {
+        const payload = await createChatMessage(selectedRoomId, {
+          message: `GIF: ${query}`,
+          attachments: [attachment]
+        });
+        handleMessageSent(payload);
+      } catch (error) {
+        setMessagesError(error?.message || 'Failed to send message.');
+      } finally {
+        setIsSendingMessage(false);
+      }
+    },
+    [authUser, createChatMessage, handleMessageSent, isSendingMessage, selectedRoomId]
+  );
+
   const handleSendMessage = useCallback(
     async (event) => {
       event.preventDefault();
@@ -399,26 +530,112 @@ function ChatPage() {
         return;
       }
 
+      const gifQuery = getGifCommandQuery(trimmed);
+      if (gifQuery) {
+        const hasSelection =
+          gifPreview &&
+          gifPreview.query === gifQuery &&
+          Array.isArray(gifPreview.options) &&
+          typeof gifPreview.selectedIndex === 'number' &&
+          gifPreview.options[gifPreview.selectedIndex]?.attachment;
+
+        if (hasSelection) {
+          await sendGifMessage({
+            query: gifQuery,
+            attachment: gifPreview.options[gifPreview.selectedIndex].attachment
+          });
+        } else if (!isGifPreviewLoading) {
+          await requestGifPreview(gifQuery);
+        }
+        return;
+      }
+
       setIsSendingMessage(true);
+      setMessagesError(null);
       try {
         const message = await createChatMessage(selectedRoomId, { message: trimmed });
-        setMessages((prev) => [...prev, message]);
-        if (message?.badgeEarnedId) {
-          playBadgeSound();
-          announceBadgeEarned(message.badgeEarnedId);
-        }
-        setMessageDraft('');
-
-        // Allows time for DOM to update, then scrolls to bottom
-        setTimeout(scrollMessagesToBottom, 50);
+        handleMessageSent(message);
       } catch (error) {
         setMessagesError(error?.message || 'Failed to send message.');
       } finally {
         setIsSendingMessage(false);
       }
     },
-    [announceBadgeEarned, authUser, isSendingMessage, messageDraft, scrollMessagesToBottom, selectedRoomId]
+    [
+      authUser,
+      createChatMessage,
+      getGifCommandQuery,
+      gifPreview,
+      handleMessageSent,
+      isGifPreviewLoading,
+      isSendingMessage,
+      messageDraft,
+      requestGifPreview,
+      selectedRoomId,
+      sendGifMessage
+    ]
   );
+
+  const handleGifPreviewConfirm = useCallback(() => {
+    if (
+      isGifPreviewLoading ||
+      isSendingMessage ||
+      !gifPreview ||
+      typeof gifPreview.selectedIndex !== 'number'
+    ) {
+      return;
+    }
+    const options = Array.isArray(gifPreview.options) ? gifPreview.options : [];
+    const selected = options[gifPreview.selectedIndex];
+    if (!selected?.attachment) {
+      return;
+    }
+    return sendGifMessage({
+      query: gifPreview.query,
+      attachment: selected.attachment
+    });
+  }, [gifPreview, isGifPreviewLoading, isSendingMessage, sendGifMessage]);
+
+  const handleGifPreviewCancel = useCallback(() => {
+    gifPreviewRequestRef.current = null;
+    setGifPreview(null);
+    setGifPreviewError(null);
+    setIsGifPreviewLoading(false);
+  }, []);
+
+  const handleGifPreviewShuffle = useCallback(() => {
+    if (isGifPreviewLoading) {
+      return;
+    }
+    if (!gifPreview) {
+      const query = getGifCommandQuery(messageDraft);
+      if (query) {
+        setGifPreviewError(null);
+        requestGifPreview(query);
+      }
+      return;
+    }
+    setGifPreviewError(null);
+    const options = Array.isArray(gifPreview.options) ? gifPreview.options : [];
+    if (options.length > 1) {
+      setGifPreview((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const opts = Array.isArray(prev.options) ? prev.options : [];
+        if (opts.length < 2) {
+          return prev;
+        }
+        const nextIndex =
+          typeof prev.selectedIndex === 'number'
+            ? (prev.selectedIndex + 1) % opts.length
+            : 0;
+        return { ...prev, selectedIndex: nextIndex };
+      });
+    } else if (gifPreview.query) {
+      requestGifPreview(gifPreview.query);
+    }
+  }, [gifPreview, getGifCommandQuery, isGifPreviewLoading, messageDraft, requestGifPreview]);
 
   const handleMessageInputKeyDown = useCallback(
     (event) => {
@@ -434,9 +651,32 @@ function ChatPage() {
       }
 
       event.preventDefault();
+      if (gifPreviewError) {
+        handleGifPreviewShuffle();
+        return;
+      }
+      if (isGifPreviewLoading) {
+        return;
+      }
+      if (
+        gifPreview &&
+        Array.isArray(gifPreview.options) &&
+        typeof gifPreview.selectedIndex === 'number' &&
+        gifPreview.options[gifPreview.selectedIndex]?.attachment
+      ) {
+        handleGifPreviewConfirm();
+        return;
+      }
       handleSendMessage(event);
     },
-    [handleSendMessage]
+    [
+      gifPreview,
+      gifPreviewError,
+      handleGifPreviewConfirm,
+      handleGifPreviewShuffle,
+      handleSendMessage,
+      isGifPreviewLoading
+    ]
   );
 
   const filteredPresence = useMemo(() => {
@@ -642,16 +882,18 @@ function ChatPage() {
               <Typography variant="body2" color="error">
                 {messagesError}
               </Typography>
-            ) : messages.length === 0 ? (
+            ) : uniqueMessages.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
                 No messages yet. Start the conversation!
               </Typography>
             ) : (
-              messages.map((message) => {
+              uniqueMessages.map((message, index) => {
                 const isSelf = authUser && message.authorId === authUser.uid;
+                const key = getMessageKey(message, index);
+                const bodyText = getDisplayMessageText(message);
                 return (
                   <Stack
-                    key={message._id}
+                    key={key}
                     alignItems={isSelf ? 'flex-end' : 'flex-start'}
                   >
                     <Paper
@@ -672,9 +914,28 @@ function ChatPage() {
                             {new Date(message.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                           </Typography>
                         </Stack>
-                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                          {message.message}
-                        </Typography>
+                        {bodyText ? (
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                            {bodyText}
+                          </Typography>
+                        ) : null}
+                        {Array.isArray(message.attachments) && message.attachments.length > 0
+                          ? message.attachments.map((attachment, index) =>
+                              attachment?.url ? (
+                                <Box
+                                  component="img"
+                                  key={attachment._id || `${attachment.url}-${index}`}
+                                  src={attachment.url}
+                                  alt={
+                                    attachment.description ||
+                                    (bodyText ? `Attachment for message "${bodyText}"` : 'Chat attachment')
+                                  }
+                                  sx={{ mt: 1, maxWidth: '100%', borderRadius: 1 }}
+                                  loading="lazy"
+                                />
+                              ) : null
+                            )
+                          : null}
                       </Stack>
                     </Paper>
                   </Stack>
@@ -696,6 +957,12 @@ function ChatPage() {
             disabled={!authUser || isSendingMessage}
             sendDisabled={!authUser || !messageDraft.trim() || isSendingMessage}
             isSending={isSendingMessage}
+            gifPreview={composerGifPreview}
+            gifPreviewError={gifPreviewError}
+            isGifPreviewLoading={isGifPreviewLoading}
+            onGifPreviewConfirm={handleGifPreviewConfirm}
+            onGifPreviewCancel={handleGifPreviewCancel}
+            onGifPreviewShuffle={handleGifPreviewShuffle}
           />
         </>
       ) : (
@@ -722,9 +989,70 @@ function ChatPage() {
       navigate("/updates");
     }, [navigate]);
 
+  const selectedGifOption = useMemo(() => {
+    if (
+      !gifPreview ||
+      !Array.isArray(gifPreview.options) ||
+      typeof gifPreview.selectedIndex !== 'number'
+    ) {
+      return null;
+    }
+    return gifPreview.options[gifPreview.selectedIndex] ?? null;
+  }, [gifPreview]);
+
+  const composerGifPreview = useMemo(
+    () =>
+      gifPreview
+        ? {
+            query: gifPreview.query,
+            attachment: selectedGifOption?.attachment || null,
+            sourceUrl: selectedGifOption?.sourceUrl,
+            optionsCount: Array.isArray(gifPreview.options) ? gifPreview.options.length : 0
+          }
+        : null,
+    [gifPreview, selectedGifOption]
+  );
+
   const notificationsLabel =
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
   const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;  
+
+  const uniqueMessages = useMemo(() => {
+    const seen = new Set();
+    return messages.filter((message) => {
+      const rawId = message?._id || message?.id;
+      const id =
+        typeof rawId === 'object' && rawId !== null && '$oid' in rawId ? rawId.$oid : rawId;
+      if (!id) {
+        return true;
+      }
+      if (seen.has(id)) {
+        return false;
+      }
+      seen.add(id);
+      return true;
+    });
+  }, [messages]);
+
+  const getMessageKey = useCallback((message, fallbackIndex) => {
+    const rawId = message?._id || message?.id;
+    if (!rawId) {
+      return `message-${fallbackIndex}`;
+    }
+    return typeof rawId === 'object' && rawId !== null && '$oid' in rawId ? rawId.$oid : rawId;
+  }, []);
+
+  const getDisplayMessageText = useCallback((msg) => {
+    if (!msg || typeof msg.message !== 'string') {
+      return '';
+    }
+    const hasAttachments = Array.isArray(msg.attachments) && msg.attachments.length > 0;
+    if (!hasAttachments) {
+      return msg.message;
+    }
+    const stripped = msg.message.replace(/^GIF:\s*/i, '').trim();
+    return stripped;
+  }, []);
 
   return (
     <>
@@ -929,9 +1257,9 @@ function ChatPage() {
           ref={containerRef}
           className="chat-messages-field"
         >
-          {messages.map((msg) => (
+          {uniqueMessages.map((msg, index) => (
             <MessageBubble
-              key={msg._id}
+              key={getMessageKey(msg, index)}
               msg={msg}
               isSelf={authUser && msg.authorId === authUser.uid}
               authUser={authUser}
@@ -955,6 +1283,12 @@ function ChatPage() {
           isSending={isSendingMessage}
           containerRef={inputContainerRef}
           containerClassName="chat-input-container"
+          gifPreview={composerGifPreview}
+          gifPreviewError={gifPreviewError}
+          isGifPreviewLoading={isGifPreviewLoading}
+          onGifPreviewConfirm={handleGifPreviewConfirm}
+          onGifPreviewCancel={handleGifPreviewCancel}
+          onGifPreviewShuffle={handleGifPreviewShuffle}
         />
         <Navbar />
       </div>

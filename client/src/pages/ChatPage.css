@@ -24,7 +24,7 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  padding-bottom: calc(90px + env(safe-area-inset-bottom, 0)); 
+  padding-bottom: 0;
 }
 
 /* ===== Header (purple) ===== */
@@ -88,7 +88,8 @@
   overflow-y: auto;
   width: 100vw;
   height: 100%;
-  margin-bottom: -2.3rem;
+  margin-bottom: 0;
+  padding-bottom: calc(220px + env(safe-area-inset-bottom, 0));
 }
 
 .chat-scroll-to-bottom-btn {
@@ -108,8 +109,10 @@
 
 .chat-input-container {
   position: fixed;
-  width: 100vw;
-  bottom: 5.6rem;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0) + 82px);
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -117,8 +120,12 @@
   padding: 8px 12px;
   background: #CDAEF2;
   border-top: 1px solid #ddd;
-  margin-bottom: -0.6rem;
-  z-index: 1;
+  z-index: 5;
+}
+
+.chat-page .bottom-nav-spacer {
+  display: none;
+  height: 0;
 }
 
 /* ====== Text Field Styling ====== */
