@@ -115,16 +115,32 @@ function UpdatesPage() {
   const pendingRefreshRef = useRef(false);
 
   const { setUnreadCount } = useUpdates();
+  const { setUnreadDiscussionsCount } = useUpdates();
+  const { setUnreadEventsCount } = useUpdates();
 
   const unreadCount = useMemo(
     () => updates.filter((update) => !update.readAt).length,
     [updates]
   );
 
+  const unreadDiscussionsCount = useMemo(
+    () => updates.filter((update) => !update.readAt).length,
+    [updates]
+  );
+
+  const unreadEventsCount = useMemo(
+    () => updates.filter((update) => !update.readAt).length,
+    [updates]
+  );
+
   useEffect(() => {
     setUnreadCount(unreadCount);
-  }, [unreadCount, setUnreadCount]);
+    setUnreadDiscussionsCount(unreadDiscussionsCount);
+    setUnreadEventsCount(unreadEventsCount);
+  }, [unreadCount, unreadDiscussionsCount, unreadEventsCount,
+    setUnreadCount, setUnreadDiscussionsCount, setUnreadEventsCount]);
 
+  // Account/Loading Error Handling 
   useEffect(() => {
     if (firebaseLoading) {
       return;
@@ -242,6 +258,10 @@ function UpdatesPage() {
     }
   }, [unreadCount, updates.length]);
 
+  const handleViewPost = useCallback(async () => {
+    return;
+  });
+
   const filteredUpdates = useMemo(() => {
     if (!showUnreadOnly) {
       return updates;
@@ -310,8 +330,8 @@ function UpdatesPage() {
         <Box className="updates-tabs-container">
           {[
             { label: "All", count: unreadCount },
-            { label: "Discussions", count: unreadCount },
-            { label: "Events", count: unreadCount }
+            { label: "Discussions", count: unreadDiscussionsCount },
+            { label: "Events", count: unreadEventsCount }
           ].map((tab) => (
             <Button
               key={tab.label}
@@ -354,9 +374,7 @@ function UpdatesPage() {
             sx={{
               p: 4,
               borderRadius: 3,
-              border: '1px dashed',
               borderColor: 'divider',
-              textAlign: 'center'
             }}
           >
             <NotificationsActiveIcon 
@@ -406,7 +424,7 @@ function UpdatesPage() {
                     backgroundColor: read ? 'background.paper' : 'rgba(144, 202, 249, 0.04)'
                   }}
                 >
-                  
+                  {/* Header of the update card, consisting of a pinTitle and time of update */}
                   <Box className="update-header">
                     <Chip
                         label={displayTypeLabel}
@@ -435,6 +453,14 @@ function UpdatesPage() {
                     {update.payload?.title}
                   </Typography>
 
+                  {/* TODO: Make a little circle indicator for unread messages */}
+                  <Box className="unread-update-indicator"> 
+                    !unread ? (
+                      o
+                    )
+                  </Box>
+
+                  {/* Text body of the update card */}
                   <Box>
                     {message ? (
                       <Typography className="update-message">
@@ -451,6 +477,7 @@ function UpdatesPage() {
                     </Box>
                   )}
 
+                  {/* Badge handling */}
                   {isBadgeUpdate && badgeImageUrl ? (
                     <Box
                       component="img"

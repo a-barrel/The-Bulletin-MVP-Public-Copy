@@ -113,7 +113,9 @@
 }
 
 .empty-updates-msg {
+  text-align: center;
   margin-top: 3rem;
+  border: 1px dashed black;
   color: white;
 }
 
@@ -144,6 +146,7 @@
 }
 
 .update-header {
+  color: black;
 }
 
 .update-time {
