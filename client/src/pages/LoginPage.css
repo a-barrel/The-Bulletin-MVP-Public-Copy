@@ -68,16 +68,24 @@ body, input, button, textarea, p, h1, small, span, label, select, input::placeho
 
 /* Image placeholder */
 .bulletin-image {
-  width: 50vw;
-  height: 20vh;
+  display: flex;
+  width: min(85vw, 375px);
+  padding: 0.75rem;
   border: 3px solid black;
   border-radius: 10px;
   margin-top: -1rem;
   margin-bottom: 1.5rem;
-  display: flex;
   align-items: center;
   justify-content: center;
-  color: #aaa;
+  background-color: #fff;
+}
+
+.bulletin-image img {
+  display: block;
+  width: 70%;
+  max-width: 70%;
+  max-height: 60vh;
+  height: auto;
 }
 
 /* Form layout */
