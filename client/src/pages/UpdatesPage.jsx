@@ -29,6 +29,7 @@ import {
   markUpdateRead,
   markAllUpdatesRead
 } from '../api/mongoDataApi';
+import formatDate from '../utils/formatDate';
 import { useUpdates } from '../contexts/UpdatesContext';
 import { routes } from '../routes';
 
@@ -252,7 +253,7 @@ function UpdatesPage() {
 
   return (
     <Box className="updates-page">
-      <div className="updates-frame">
+      <Box className="updates-frame">
         <header className="updates-header-bar">
           <IconButton 
             onClick={() => navigate(-1)} 
@@ -265,12 +266,15 @@ function UpdatesPage() {
             Updates
           </h1>
 
-          <UpdateIcon color="primary" />
+          {/* Legacy Code
+          <Box className="unread-notifs-label">
             {unreadCount > 0 ? (
-              <Chip label={`${unreadCount} unread`} color="secondary" size="small" />
+              <Chip label={`${unreadCount}`} color="secondary" size="small" />
             ) : (
-              <Chip label="All caught up" color="success" size="small" />
+              <Chip label="" />
             )}
+          </Box>
+          */}
 
           <IconButton 
             className="refresh-btn"
@@ -281,6 +285,7 @@ function UpdatesPage() {
           </IconButton>
 
           <FormControlLabel
+            className="show-unread-toggle"
             control={
               <Switch
                 checked={showUnreadOnly}
@@ -300,15 +305,23 @@ function UpdatesPage() {
           </Button>
         </header>
 
-        {/* 3 tab categories that filters updates based on type */}
-        <Box className="updates-tabs">
-          {["All", "Discussions", "Events"].map((tab) => (
+        {/* 3 tab categories that filters updates based on type 
+        TODO: Create 2 more unreadCounts for each category */}
+        <Box className="updates-tabs-container">
+          {[
+            { label: "All", count: unreadCount },
+            { label: "Discussions", count: unreadCount },
+            { label: "Events", count: unreadCount }
+          ].map((tab) => (
             <Button
-              key={tab}
-              className={`tab ${selectedTab === tab ? "active" : ""}`}
-              onClick={() => setSelectedTab(tab)}
+              key={tab.label}
+              className={`update-tab ${selectedTab === tab.label ? "active" : ""}`}
+              onClick={() => setSelectedTab(tab.label)}
             >
-              {tab}
+              {tab.label}
+              {tab.count > 0 && (
+                <span className="unread-badge">{tab.count}</span>
+              )}
             </Button>
           ))}
         </Box>
@@ -372,8 +385,6 @@ function UpdatesPage() {
         ) : (
           <Box className="updates-list">
             {filteredUpdates.map((update) => {
-              const createdAtLabel = formatRelativeTime(update.createdAt);
-              const createdAtExact = formatAbsoluteDate(update.createdAt);
               const read = Boolean(update.readAt);
               const pending = pendingUpdateIds.includes(update._id);
               const message = update.payload?.body;
@@ -388,104 +399,114 @@ function UpdatesPage() {
 
               return (
                 <Paper
-                  key={update._id}
-                  variant="outlined"
                   className="update-card"
+                  key={update._id}
                   sx={{
-                    borderRadius: 3,
-                    overflow: 'hidden',
                     borderColor: read ? 'divider' : 'secondary.main',
                     backgroundColor: read ? 'background.paper' : 'rgba(144, 202, 249, 0.04)'
                   }}
                 >
-                    <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Chip
-                          label={displayTypeLabel}
-                          size="small"
-                          color={read ? 'default' : 'secondary'}
-                        />
-                        {pinTitle ? <Chip label={pinTitle} size="small" color="black" variant="outlined" /> : null}
-                      </Stack>
+                  
+                  <Box className="update-header">
+                    <Chip
+                        label={displayTypeLabel}
+                        size="small"
+                        color={read ? 'default' : 'secondary'}
+                      />
 
-                      {/* Time Label */}
-                      <Typography className="update-time">
-                        {formatRelativeTime(update.createdAt)}
-                      </Typography>
-                    </Stack>
+                    {pinTitle ? 
+                      <Chip label={pinTitle} 
+                      size="small" 
+                      color="black" 
+                      variant="outlined" 
+                      /> 
+                    : null}
 
-                    <Typography variant="h6">{update.payload?.title}</Typography>
+                    {/* Time Label */}
+                    <Typography className="update-time">
+                      {formatDate(update.createdAt)}
+                    </Typography>
+                  </Box>
 
+                  <Typography 
+                    className="update-title"
+                    variant="h6"
+                  >
+                    {update.payload?.title}
+                  </Typography>
+
+                  <Box>
                     {message ? (
-                      <Typography variant="body2" color="black" sx={{ whiteSpace: 'pre-wrap' }}>
+                      <Typography className="update-message">
                         {message}
                       </Typography>
                     ) : null}
-
-                    {update.payload?.avatars?.length > 0 && (
-                      <Box className="avatar-row">
-                        {update.payload.avatars.map((src, idx) => (
-                          <img key={idx} src={src} alt="participant" className="avatar" />
-                        ))}
-                      </Box>
-                    )}
-
-                    {isBadgeUpdate && badgeImageUrl ? (
-                      <Box
-                        component="img"
-                        src={badgeImageUrl || undefined}
-                        alt={badgeId ? `${badgeId} badge` : 'Badge earned'}
-                        sx={{
-                          width: { xs: 96, sm: 128 },
-                          height: { xs: 96, sm: 128 },
-                          borderRadius: 3,
-                          alignSelf: 'flex-start',
-                          border: (theme) => `1px solid ${theme.palette.divider}`,
-                          objectFit: 'cover'
-                        }}
-                      />
-                    ) : null}
-
-                    <Divider />
-
-                  <Stack direction="row" spacing={1}>
-                    {pinId ? (
-                      <Button
-                        component={Link}
-                        to={routes.pin.byId(pinId)}
-                        size="small"
-                        variant="outlined"
-                      >
-                        View pin
-                      </Button>
-                    ) : null}
-                  </Stack>
-                  {read ? (
-                    <Chip
-                      label="Read"
-                      size="small"
-                      icon={<CheckCircleOutlineIcon fontSize="small" />}
-                      variant="outlined"
-                    />
-                  ) : (
-                    <Button
-                      size="small"
-                      variant="contained"
-                      color="secondary"
-                      startIcon={<CheckCircleOutlineIcon fontSize="small" />}
-                      onClick={() => handleMarkRead(update._id)}
-                      disabled={pending}
-                    >
-                      {pending ? 'Marking...' : 'Mark as read'}
-                    </Button>
+                  </Box>
+                  
+                  {update.payload?.avatars?.length > 0 && (
+                    <Box className="avatar-row">
+                      {update.payload.avatars.map((src, idx) => (
+                        <img key={idx} src={src} alt="participant" className="avatar" />
+                      ))}
+                    </Box>
                   )}
+
+                  {isBadgeUpdate && badgeImageUrl ? (
+                    <Box
+                      component="img"
+                      src={badgeImageUrl || undefined}
+                      alt={badgeId ? `${badgeId} badge` : 'Badge earned'}
+                      sx={{
+                        width: { xs: 96, sm: 128 },
+                        height: { xs: 96, sm: 128 },
+                        borderRadius: 3,
+                        alignSelf: 'flex-start',
+                        border: (theme) => `1px solid ${theme.palette.divider}`,
+                        objectFit: 'cover'
+                      }}
+                    />
+                  ) : null}
+
+                  <Divider />
+
+                <Stack direction="row" spacing={1}>
+                  {pinId ? (
+                    <Button
+                      component={Link}
+                      to={routes.pin.byId(pinId)}
+                      size="small"
+                      variant="outlined"
+                    >
+                      View pin
+                    </Button>
+                  ) : null}
+                </Stack>
+
+                {read ? (
+                  <Chip
+                    label="Read"
+                    size="small"
+                    icon={<CheckCircleOutlineIcon fontSize="small" />}
+                    variant="outlined"
+                  />
+                ) : (
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="secondary"
+                    startIcon={<CheckCircleOutlineIcon fontSize="small" />}
+                    onClick={() => handleMarkRead(update._id)}
+                    disabled={pending}
+                  >
+                    {pending ? 'Marking...' : 'Mark as read'}
+                  </Button>
+                )}
+
                 </Paper>
               );
             })}
           </Box>
         )}
-
- {/* TODO: Have loading and placeholder here from original page */}
         <Box className="updates-list">
           {filteredUpdates.map((update) => (
             <Paper key={update._id} className="update-card">
@@ -499,8 +520,7 @@ function UpdatesPage() {
             </Paper>
           ))}
         </Box>
-        
-      </div>
+      </Box>
     </Box>      
   );
 }
