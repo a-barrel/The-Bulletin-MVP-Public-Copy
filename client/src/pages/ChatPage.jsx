@@ -392,7 +392,7 @@ function ChatPage() {
   const handleSendMessage = useCallback(
     async (event) => {
       event.preventDefault();
-      if (!selectedRoomId || !authUser) {
+      if (!selectedRoomId || !authUser || isSendingMessage) {
         return;
       }
       const trimmed = messageDraft.trim();
@@ -418,7 +418,26 @@ function ChatPage() {
         setIsSendingMessage(false);
       }
     },
-    [announceBadgeEarned, authUser, messageDraft, scrollMessagesToBottom, selectedRoomId]
+    [announceBadgeEarned, authUser, isSendingMessage, messageDraft, scrollMessagesToBottom, selectedRoomId]
+  );
+
+  const handleMessageInputKeyDown = useCallback(
+    (event) => {
+      if (
+        event.key !== 'Enter' ||
+        event.shiftKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey ||
+        event.nativeEvent?.isComposing
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      handleSendMessage(event);
+    },
+    [handleSendMessage]
   );
 
   const filteredPresence = useMemo(() => {
@@ -684,6 +703,7 @@ function ChatPage() {
               value={messageDraft}
               onChange={(event) => setMessageDraft(event.target.value)}
               placeholder={authUser ? 'Type your message…' : 'Sign in to chat'}
+              onKeyDown={handleMessageInputKeyDown}
               multiline
               minRows={1}
               maxRows={4}
@@ -731,6 +751,13 @@ function ChatPage() {
 
   return (
     <>
+      {/*
+        ======================================================================
+        LEGACY VERSION HERE
+        Debug layout that mirrors the original chat debug UI. Keep this block
+        intact until the legacy view is fully componentized or removed.
+        ======================================================================
+      */}
       <Box
       sx={{
         display: debugMode ? 'block' : 'none',
@@ -864,6 +891,12 @@ function ChatPage() {
     </Box>
 
     {/* Figma-based frontend design */}
+    {/*
+      ======================================================================
+      NEWER VERSION HERE
+      Production-facing chat experience modeled after the Figma designs.
+      ======================================================================
+    */}
     <Box 
       className="chat-page"
       sx={{ display: debugMode ? 'none' : 'block' }}
@@ -884,6 +917,14 @@ function ChatPage() {
         <header className="chat-header-bar">
           <GlobalNavMenu />
 
+          {/*
+            ======================================================================
+            BIG NOTE FOR FUTURE TROY (AND CODEx ME):
+            Clicking this header toggles `debugMode`, which swaps between the new
+            Figma layout and the legacy chat page. Remember: there are two chat
+            variations bundled in here until the old one is retired.
+            ======================================================================
+          */}
           <h1 
             className="chat-header-title"
             onClick={() => setDebugMode((prev) => !prev)}
@@ -938,6 +979,7 @@ function ChatPage() {
             value={messageDraft}
             onChange={(e) => setMessageDraft(e.target.value)}
             placeholder="Send a message"
+            onKeyDown={handleMessageInputKeyDown}
             fullWidth
             variant="outlined"
             multiline
