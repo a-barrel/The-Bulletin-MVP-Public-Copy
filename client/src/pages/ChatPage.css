@@ -1,0 +1,191 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap');
+
+* {
+  font-family: "Urbanist", sans-serif;
+}
+
+/* ===== Outer Shell ===== */
+.chat-page {
+  overflow-y: 'auto';
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: black;
+  width: 100vw;
+  height: 100vh;
+}
+
+.chat-frame {
+  --header-h: 72px;
+  width: 100vw;
+  height: 100vh;
+  background: #fff;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-bottom: 0;
+}
+
+/* ===== Header (purple) ===== */
+.chat-header-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: #d1b4f5;
+  width: 100vw;
+  height: 8vh;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  border-bottom: 2px solid #000;
+}
+
+.chat-header-title {
+  color: #5D3889;
+  font-size: 2rem;
+  font-weight: 500;
+  text-align: center;
+  flex: 1;
+}
+
+.updates-icon-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2rem;
+  transition: transform .2s ease;
+}
+
+.updates-icon-badge {
+  position: absolute;
+  top: 0.4rem;
+  right: 1.6rem;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #9B5DE5;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+.chat-messages-field {
+  background-color: #F5EFFD;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  width: 100vw;
+  height: 100%;
+  margin-bottom: 0;
+  padding-bottom: calc(220px + env(safe-area-inset-bottom, 0));
+}
+
+.chat-scroll-to-bottom-btn {
+  width: 64px !important;
+  height: 64px !important;
+  right: 0.2rem;
+  z-index: 10;
+}
+
+.scroll-to-bottom-icon {
+  width: 48px !important;
+  height: 48px !important;
+  background-color: #9B5DE5;
+  color: white;
+  border-radius: 60px;
+}
+
+.chat-input-container {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0) + 82px);
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 8px 12px;
+  background: #CDAEF2;
+  border-top: 1px solid #ddd;
+  z-index: 5;
+}
+
+.chat-page .bottom-nav-spacer {
+  display: none;
+  height: 0;
+}
+
+/* ====== Text Field Styling ====== */
+.chat-input {
+  flex: 1;
+}
+
+/* Target the inner textarea within the MUI TextField */
+.chat-input textarea {
+  resize: none;
+  overflow-y: auto;  
+  max-height: 10rem;     
+  transition: all 0.15s ease-in-out;
+}
+
+.chat-input .MuiOutlinedInput-root {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  margin-left: -0.25rem;
+  font-family:'Urbanist', sans-serif;
+  font-weight: 500;
+  border-radius: 45px;
+  background: white;
+  color: black;
+}
+
+/* Button to add an img (no visual) */
+.add-img-btn {
+  position: relative;
+  display: flex;
+  width: 48px;
+  height: 48px;
+  padding: 1rem;
+}
+
+/* Actual visual for add img button */
+.add-img-icon {
+  margin-left: -1rem;
+  height: 52px !important;
+  width: 52px !important;
+  color: #5D3889;
+}
+
+/* Button to send a message (no visual) */
+.send-message-btn {
+  position: relative;
+  bottom: 2px;
+  background-color: #9B5DE5;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-left: 0.25rem;
+}
+
+.send-message-icon {
+  width: 32px !important;
+  height: 32px !important;
+  color: white;
+}

@@ -70,6 +70,15 @@ const firebase = {
   storageBucket: normalizeStorageBucket(process.env.FIREBASE_STORAGE_BUCKET)
 };
 
+const integrations = {
+  tenor: {
+    apiKey: process.env.TENOR_API_KEY ? process.env.TENOR_API_KEY.trim() : undefined,
+    clientKey: process.env.TENOR_CLIENT_KEY
+      ? process.env.TENOR_CLIENT_KEY.trim()
+      : 'pinpoint-app'
+  }
+};
+
 const allowAccountSwapOnline = parseBoolean(process.env.PINPOINT_ENABLE_ACCOUNT_SWAP_ONLINE, false);
 const accountSwapAllowlist = new Set(
   parseCsv(process.env.PINPOINT_ACCOUNT_SWAP_ALLOWLIST).map((entry) => entry.toLowerCase())
@@ -81,6 +90,7 @@ module.exports = {
   isOnline: !isOffline,
   mongoUri,
   firebase,
+  integrations,
   offlineAuthToken,
   debugAuth: {
     allowAccountSwapOnline,

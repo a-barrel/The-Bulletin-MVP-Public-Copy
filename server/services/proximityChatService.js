@@ -28,20 +28,46 @@ const toIsoDateString = (value) => {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 };
 
+const normalizeMediaUrl = (value) => {
+  if (!value || typeof value !== 'string') {
+    return value;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return value;
+  }
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+};
+
+const TF2_AVATAR_MAP = {
+  tf2_scout: '/images/emulation/avatars/Scoutava.jpg',
+  tf2_soldier: '/images/emulation/avatars/Soldierava.jpg',
+  tf2_pyro: '/images/emulation/avatars/Pyroava.jpg',
+  tf2_demoman: '/images/emulation/avatars/Demomanava.jpg',
+  tf2_heavy: '/images/emulation/avatars/Heavyava.jpg',
+  tf2_engineer: '/images/emulation/avatars/Engineerava.jpg',
+  tf2_medic: '/images/emulation/avatars/Medicava.jpg',
+  tf2_sniper: '/images/emulation/avatars/Sniperava.jpg',
+  tf2_spy: '/images/emulation/avatars/Spyava.jpg'
+};
+
 const mapMediaAsset = (asset) => {
   if (!asset) {
     return undefined;
   }
 
   const doc = asset.toObject ? asset.toObject() : asset;
-  const url = doc.url || doc.thumbnailUrl;
+  const url = normalizeMediaUrl(doc.url || doc.thumbnailUrl);
   if (!url || typeof url !== 'string' || !url.trim()) {
     return undefined;
   }
 
   const payload = {
-    url: url.trim(),
-    thumbnailUrl: doc.thumbnailUrl || undefined,
+    url,
+    thumbnailUrl: normalizeMediaUrl(doc.thumbnailUrl),
     width: doc.width ?? undefined,
     height: doc.height ?? undefined,
     mimeType: doc.mimeType || undefined,
@@ -55,6 +81,32 @@ const mapMediaAsset = (asset) => {
   );
 };
 
+const buildAvatarMedia = (userDoc) => {
+  if (!userDoc) {
+    return undefined;
+  }
+
+  const doc = userDoc.toObject ? userDoc.toObject() : userDoc;
+  const avatar = mapMediaAsset(doc.avatar);
+  const fallbackUrl = TF2_AVATAR_MAP[doc.username];
+  const shouldUseFallback =
+    fallbackUrl &&
+    (!avatar?.url || /\/images\/profile\/profile-\d+\.jpg$/i.test(avatar.url));
+
+  if (!shouldUseFallback) {
+    return avatar;
+  }
+
+  const normalized = normalizeMediaUrl(fallbackUrl);
+  return {
+    url: normalized,
+    thumbnailUrl: normalized,
+    width: avatar?.width ?? 184,
+    height: avatar?.height ?? 184,
+    mimeType: 'image/jpeg'
+  };
+};
+
 const mapUserToPublic = (user) => {
   if (!user) return undefined;
   const doc = user.toObject ? user.toObject() : user;
@@ -62,7 +114,7 @@ const mapUserToPublic = (user) => {
     _id: toIdString(doc._id),
     username: doc.username,
     displayName: doc.displayName,
-    avatar: mapMediaAsset(doc.avatar),
+    avatar: buildAvatarMedia(doc),
     stats: doc.stats || undefined,
     badges: doc.badges || [],
     primaryLocationId: toIdString(doc.primaryLocationId),
@@ -115,6 +167,10 @@ const mapMessage = (messageDoc) => {
         }
       : undefined;
 
+  const attachments = Array.isArray(doc.attachments)
+    ? doc.attachments.map(mapMediaAsset).filter(Boolean)
+    : [];
+
   return ProximityChatMessageSchema.parse({
     _id: toIdString(doc._id),
     roomId: toIdString(doc.roomId),
@@ -124,7 +180,7 @@ const mapMessage = (messageDoc) => {
     replyToMessageId: toIdString(doc.replyToMessageId),
     message: doc.message,
     coordinates,
-    attachments: doc.attachments || [],
+    attachments,
     createdAt: messageDoc.createdAt.toISOString(),
     updatedAt: messageDoc.updatedAt.toISOString(),
     audit: doc.audit ? buildAudit(doc.audit, messageDoc.createdAt, messageDoc.updatedAt) : undefined
@@ -185,13 +241,18 @@ async function createMessage(input) {
     };
   }
 
+  const attachments = Array.isArray(input.attachments)
+    ? input.attachments.map(mapMediaAsset).filter(Boolean)
+    : [];
+
   const message = await ProximityChatMessage.create({
     roomId: toObjectId(input.roomId),
     pinId: toObjectId(input.pinId),
     authorId: toObjectId(input.authorId),
     replyToMessageId: toObjectId(input.replyToMessageId),
     message: input.message,
-    coordinates
+    coordinates,
+    attachments
   });
 
   const populated = await message.populate('authorId');
