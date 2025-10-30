@@ -819,7 +819,7 @@ const detailEntries = useMemo(() => {
               {relationshipStatus.message}
             </Alert>
           ) : null}
-
+          {/*
           <Stack spacing={2} alignItems="left" textAlign="left">
             <Avatar
               src={avatarUrl}
@@ -843,7 +843,74 @@ const detailEntries = useMemo(() => {
               </Typography>
             ) : null}
           </Stack>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar
+                src={avatarUrl}
+                alt={`${displayName} avatar`}
+                sx={{ width: 96, height: 96, bgcolor: 'secondary.main' }}
+              >
+                {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
+              </Avatar>
+                <Box>
+                  <Typography variant="h4" component="h1">
+                    {displayName}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    User ID: {effectiveUser?._id || targetUserId || 'N/A'}
+                  </Typography>
+                </Box>
+          </Stack>
 
+          <Stack className="user-card">
+            <Avatar
+              src={avatarUrl}
+              alt={`${displayName} avatar`}
+              className="user-avatar"
+            >
+              {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
+            </Avatar>
+            <Box className="user-info">
+              <Typography variant="h4" component="h1">
+                {displayName}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                User ID: {effectiveUser?._id || targetUserId || 'N/A'}
+              </Typography>
+            </Box>
+          </Stack>
+
+*/}
+          <Stack
+            direction="row"     // horizontal layout
+            spacing={2}
+            alignItems="center" // vertically centers the items
+            sx={{ py: 4 }}
+          >
+            <Avatar
+              src={avatarUrl}
+              alt={`${displayName} avatar`}
+              sx={{ width: 96, height: 96, bgcolor: 'secondary.main' }}
+            >
+              {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
+            </Avatar>
+            <Box>
+              {/*
+              <Typography variant="h4" component="h1">
+                {displayName}
+              </Typography>
+*/}
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{ fontWeight: 'bold', fontSize: '2rem' }}
+              >
+                {displayName}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Joined: {formatDateTime(effectiveUser.createdAt) || targetUserId || 'N/A'}
+              </Typography>
+            </Box>
+          </Stack>
           {canManageBlock ? (
             <Box sx={{ display: 'flex', justifyContent: 'center' }}>
               <Button

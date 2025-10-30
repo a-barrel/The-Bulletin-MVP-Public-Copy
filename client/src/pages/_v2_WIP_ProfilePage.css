@@ -87,3 +87,23 @@
     flex: 1;
   }
 }
+.user-card {
+  padding-top: 16px;
+  display: flex;
+  align-items: left;
+  gap: 16px;
+}
+
+.user-avatar {
+  width: 96px;
+  height: 96px;
+  align-items: left;
+  background-color: var(--mui-palette-secondary-main);
+}
+
+.user-info h1 {
+  margin: 0;
+  align-items: right;
+  font-size: 1.5rem;
+}
+
