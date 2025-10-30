@@ -116,7 +116,9 @@
   gap: 1.5rem;
 }
 
-.input-group input, textarea, select {
+.create-pin .input-group input,
+.create-pin .input-group textarea,
+.create-pin .input-group select {
   width: 100%;
   border: 1px solid #ccc;
   border-radius: 8px;
@@ -126,7 +128,9 @@
   background-color: WHITE;
 }
 
-.two-col input, textarea, select {
+.create-pin .two-col input,
+.create-pin .two-col textarea,
+.create-pin .two-col select {
   width: 100%;
   border: 1px solid #ccc;
   border-radius: 8px;
@@ -136,7 +140,9 @@
   background-color: WHITE;
 }
 
-.map-coords input, textarea, select {
+.create-pin .map-coords input,
+.create-pin .map-coords textarea,
+.create-pin .map-coords select {
   width: 100%;
   border: 1px solid #ccc;
   border-radius: 8px;
@@ -146,9 +152,15 @@
   background-color: WHITE;
 }
 
-textarea { 
+.create-pin textarea { 
   min-height: 80px; 
   resize: none;
+}
+
+.create-pin input[type="date"],
+.create-pin input[type="time"],
+.create-pin input[type="datetime-local"] {
+  color-scheme: light;
 }
 
 /* for pin type toggle */
@@ -249,9 +261,9 @@ textarea {
   width: 100%;
 }
 
-.two-col input,
-.two-col select,
-.two-col textarea {
+.create-pin .two-col input,
+.create-pin .two-col select,
+.create-pin .two-col textarea {
   width: 100%;
 }
 
