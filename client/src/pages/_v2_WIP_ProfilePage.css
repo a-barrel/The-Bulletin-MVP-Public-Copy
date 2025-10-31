@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap');
+
+* {
+  font-family: "Urbanist", sans-serif;
+}
+
+/* ===== Outer Shell (modified for BackButton layout) ===== */
+.profile-page-container {
+  display: flex;
+  flex-direction: column;
+  background-color: black;
+  width: 100vw;
+  height: 100vh;
+  color: #000; /* Ensure text defaults to black inside container */
+}
+
+/* Force common text elements to render black if components set their own color */
+.profile-page-container :is(p, h1, h2, h3, h4, h5, h6, span, label, div, .MuiTypography-root) {
+  color: #000;
+}
+
+.profile-page-frame {
+  width: 100vw;
+  max-width: none;
+  flex: 1;  /* Take remaining space after BackButton */
+  background: #fff;
+  border-radius: 0;
+
+  /* ⬇ Remove top padding */
+  padding: 60px 1rem 1.5rem; /* Added 60px top padding for fixed BackButton */
+
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-bottom: calc(90px + env(safe-area-inset-bottom, 0)); 
+}
+
+/* Full-bleed utility for media inside padded frame */
+.profile-page-frame .full-bleed-wrapper {
+  width: 100vw;
+  margin-left: calc(-1rem - (100vw - 100%) / 2);
+  margin-right: calc(-1rem - (100vw - 100%) / 2);
+}
+
+.profile-page-frame .full-bleed-wrapper img {
+  width: 100%;
+  display: block;
+}
+
+/* ===== Description Box Styling ===== */
+.description-box {
+  background-color: #CDAEF2;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 8px 0;
+}
+
+/* ===== Responsive Width Adjustments (matches ListPage) ===== */
+@media (max-width: 480px) {
+  .profile-page-container {
+    width: 100vw;
+    height: 100vh;
+  }
+  
+  .profile-page-frame {
+    width: 100vw;
+    flex: 1;
+    padding: 56px 0.5rem 1rem; /* Added 56px top padding for mobile BackButton height */
+  }
+
+  /* Adjust full-bleed compensation for mobile padding (0.5rem each side) */
+  .profile-page-frame .full-bleed-wrapper {
+    margin-left: calc(-0.5rem - (100vw - 100%) / 2);
+    margin-right: calc(-0.5rem - (100vw - 100%) / 2);
+  }
+  
+  .description-box {
+    padding: 10px 12px;
+    margin: 6px 0;
+  }
+}
+
+/* Tablet tweaks (matches ListPage) */
+@media (max-width: 768px) {
+  .profile-page-frame {
+    width: 100vw;
+    flex: 1;
+  }
+}
+.user-card {
+  padding-top: 16px;
+  display: flex;
+  align-items: left;
+  gap: 16px;
+}
+
+.user-avatar {
+  width: 96px;
+  height: 96px;
+  align-items: left;
+  background-color: var(--mui-palette-secondary-main);
+}
+
+.user-info h1 {
+  margin: 0;
+  align-items: right;
+  font-size: 1.5rem;
+}
+
