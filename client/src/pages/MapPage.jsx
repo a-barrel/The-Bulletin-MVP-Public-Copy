@@ -864,16 +864,6 @@ function MapPage() {
           </Typography>
         </Toolbar>
       </AppBar>
-
-      <Box
-        sx={{
-          width: '100%',
-          position: 'relative',
-          overflow: 'hidden',
-          aspectRatio: { xs: '3 / 4', md: '4 / 3' },
-          minHeight: 320
-        }}
-      >
         <Map
           userLocation={userLocation}
           nearbyUsers={nearbyUsers}
@@ -888,7 +878,7 @@ function MapPage() {
         />
       </Box>
 
-    {/* ✅ Floating Add Button (always visible) */}
+    {/* Floating Add Button (always visible) */}
     <button className="map-add-btn" aria-label="Add">
       <img src={addIcon} alt="Add" />
     </button>
