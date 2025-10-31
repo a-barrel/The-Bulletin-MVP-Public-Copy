@@ -13,7 +13,6 @@
 
 /* header */
 .header {
-    background-color: #CDAEF2;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -22,6 +21,16 @@
     box-sizing: border-box;
     border-bottom: 1px solid black;
     color: #5d3889
+}
+
+.pin-details.event-mode .header {
+    background-color: #CDAEF2;
+    color: #5d3889;
+}
+
+.pin-details.discussion-mode .header {
+    background-color: #3EB8F0;
+    color: #043c63;
 }
 
 .header h2 {
@@ -101,6 +110,14 @@
     margin: 0;
 }
 
+.pin-details.event-mode .name {
+    background-color: #F4F0FC;
+}
+
+.pin-details.discussion-mode .name {
+    background-color: #EFF8FC;
+}
+
 .name.event-name {
     background-color: #F4F0FC;
 }
@@ -149,6 +166,12 @@
     text-align: center;
 }
 
+.pin-details.discussion-mode .status-message {
+    border-color: #3EB8F0;
+    background-color: #EFF8FC;
+    color: #0b4a6e;
+}
+
 .status-message.error {
     border-color: #f15bb5;
     background-color: #ffe4f0;
@@ -161,6 +184,14 @@
     border-bottom: 1px solid black;
     padding: 1rem;
     box-sizing: border-box;
+}
+
+.pin-details.event-mode .map-section {
+    background-color: #F4F0FC;
+}
+
+.pin-details.discussion-mode .map-section {
+    background-color: #EFF8FC;
 }
 
 .map-section.event-map {
@@ -207,6 +238,16 @@
     color: #F15BB5;
     gap: 0.5rem;
     font-weight: bold;
+}
+
+.pin-details.event-mode .post-creator {
+    background-color: #F4F0FC;
+    color: #F15BB5;
+}
+
+.pin-details.discussion-mode .post-creator {
+    background-color: #EFF8FC;
+    color: #0569a5;
 }
 
 .post-creator.event-creator {
@@ -275,13 +316,10 @@
     padding-left: 1rem;
     padding-right: 1rem;
     padding-bottom: 1rem;
+    background-color: #F4F0FC;
 }
 
-.post-description.event-description {
-  background-color: #F4F0FC; 
-}
-
-.post-description.discussion-description {
+.pin-details.discussion-mode .post-description {
   background-color: #EFF8FC;
 }
 
@@ -292,11 +330,11 @@
     box-sizing: border-box;
 }
 
-.post-images.event-images {
-  background-color: #F4F0FC; 
+.post-images {
+  background-color: #F4F0FC;
 }
 
-.post-images.discussion-images {
+.pin-details.discussion-mode .post-images {
   background-color: #EFF8FC;
 }
 
@@ -336,13 +374,10 @@
     width: 100%;
     margin: 0;
     padding: 1rem;
+    background-color: #F4F0FC;
 }
 
-.post-info.event-info {
-  background-color: #F4F0FC; 
-}
-
-.post-info.discussion-info {
+.pin-details.discussion-mode .post-info {
   background-color: #EFF8FC; 
 }
 
@@ -794,9 +829,17 @@
     gap: 0.5rem;
 }
 
+.pin-details.discussion-mode .comments-header {
+    color: #0b4a6e;
+}
+
 .comment-icon {
     width: 25px;
     height: 25px;
+}
+
+.pin-details.discussion-mode .comment-icon {
+    filter: invert(28%) sepia(52%) saturate(1249%) hue-rotate(176deg) brightness(94%) contrast(92%);
 }
 
 /* comments-section */
@@ -822,12 +865,9 @@
   background-color: #CDAEF2;
 }
 
-.comment.event-comment {
-  background-color: #F4F0FC;
-}
-
-.comment.discussion-comment {
-  background-color: #EFF8FC;
+.pin-details.discussion-mode .comment {
+  background-color: #D4EEFF;
+  border-color: #0b4a6e;
 }
 
 .comment-header {
@@ -838,12 +878,13 @@
     padding: 0.5rem;
 }
 
-.comment-header.event-comment-header {
+.pin-details.event-mode .comment-header {
   background-color: #F4F0FC;
 }
 
-.comment-header.discussion-comment-header {
+.pin-details.discussion-mode .comment-header {
   background-color: #EFF8FC;
+  border-color: #0b4a6e;
 }
 
 .commenter-pfp {
@@ -862,6 +903,10 @@
 .comment-timestamp {
     font-size: 0.75rem;
     color: #5d3889;
+}
+
+.pin-details.discussion-mode .comment-timestamp {
+    color: #0b4a6e;
 }
 
 .comment-body {

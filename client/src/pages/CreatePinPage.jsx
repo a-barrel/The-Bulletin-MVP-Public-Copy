@@ -465,8 +465,15 @@ function CreatePinPage() {
 
   const activeTheme = useMemo(() => PIN_TYPE_THEMES[pinType], [pinType]);
   const { handleBack: overlayBack, previousNavPath, previousNavPage } = useNavOverlay();
-  const canNavigateBack = Boolean(previousNavPath);
   const backButtonLabel = previousNavPage?.label ? `Back to ${previousNavPage.label}` : 'Back';
+
+  const handleHeaderBack = useCallback(() => {
+    if (previousNavPath) {
+      overlayBack();
+      return;
+    }
+    navigate(-1);
+  }, [navigate, overlayBack, previousNavPath]);
   const startDateValue = formState.startDate;
   const endDateValue = formState.endDate;
 
@@ -1055,20 +1062,18 @@ function CreatePinPage() {
         className="header"
         style={{ background: activeTheme.headerBackground, color: activeTheme.headerTextColor }}
       >
-        {canNavigateBack && (
-          <button
-            type="button"
-            className="btn-back"
-            onClick={overlayBack}
-            title={backButtonLabel}
-          >
-            <img
-              src="https://www.svgrepo.com/show/326886/arrow-back-sharp.svg"
-              className="back-arrow"
-              alt={backButtonLabel}
-            />
-          </button>
-        )}
+        <button
+          type="button"
+          className="btn-back"
+          onClick={handleHeaderBack}
+          title={backButtonLabel}
+        >
+          <img
+            src="https://www.svgrepo.com/show/326886/arrow-back-sharp.svg"
+            className="back-arrow"
+            alt={backButtonLabel}
+          />
+        </button>
 
         <div className="header-info">
           <h1 className="form-title">{pinType === 'event' ? 'Event' : 'Discussion'}</h1>
@@ -1376,6 +1381,75 @@ function CreatePinPage() {
                     value={formState.approxCountry}
                     onChange={handleFieldChange('approxCountry')}
                   />
+                </div>
+
+                <div className="form-section">
+                  <h2>Images</h2>
+                  <p>Upload up to 10 square images. Select the cover photo.</p>
+
+                  {uploadStatus && (
+                    <div className={`alert alert-${uploadStatus.type}`}>
+                      {uploadStatus.message}
+                      <button
+                        type="button"
+                        onClick={() => setUploadStatus(null)}
+                        className="alert-close"
+                      >
+                        x
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="upload-row">
+                    <label
+                      className={`btn-outline upload-btn${
+                        isOffline || isUploading || photoAssets.length >= 10 ? ' disabled' : ''
+                      }`}
+                      title={isOffline ? 'Reconnect to upload images' : undefined}
+                    >
+                      {isUploading ? 'Uploading...' : 'Upload images'}
+                      <input
+                        type="file"
+                        hidden
+                        multiple
+                        accept="image/*"
+                        onChange={handleImageSelection}
+                        disabled={isOffline || isUploading || photoAssets.length >= 10}
+                      />
+                    </label>
+                    <span>{photoAssets.length}/10 Images attached</span>
+                  </div>
+
+                  {photoAssets.length > 0 && (
+                    <div className="photo-grid">
+                      {photoAssets.map((photo) => {
+                        const isCover = coverPhotoId === photo.id;
+                        return (
+                          <div className="photo-card" key={photo.id}>
+                            <img src={photo.asset.url} alt={photo.asset.description || 'Pin image'} />
+                            {isCover && <div className="cover-label">Cover photo</div>}
+                            <div className="photo-actions">
+                              <button
+                                type="button"
+                                className={isCover ? 'btn-selected' : 'btn-outline'}
+                                onClick={() => handleSetCoverPhoto(photo.id)}
+                                disabled={isCover}
+                              >
+                                {isCover ? 'Selected' : 'Set as cover'}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-danger"
+                                onClick={() => handleRemovePhoto(photo.id)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </>
             )}

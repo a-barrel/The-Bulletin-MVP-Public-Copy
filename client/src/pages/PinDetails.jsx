@@ -1077,8 +1077,10 @@ function PinDetails() {
   const createdAtLabel = useMemo(() => formatDateTime(pin?.createdAt), [pin]);
   const updatedAtLabel = useMemo(() => formatDateTime(pin?.updatedAt), [pin]);
 
+  const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
+
   return (
-    <div className='pin-details'>
+    <div className={`pin-details ${themeClass}`}>
       {interactionOverlay ? (
         <div className='pin-expired-overlay' role='dialog' aria-modal='true'>
           <div className='pin-expired-modal'>
