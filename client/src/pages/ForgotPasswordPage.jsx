@@ -26,28 +26,42 @@ function ForgotPasswordPage() {
     }
   }, [error]);
  
+  const mapFirebaseError = (code) => {
+    switch (code) {
+      case 'auth/invalid-email':
+        return 'Please enter a valid email address.';
+      case 'auth/user-not-found':
+        return 'No account found with that email.';
+      case 'auth/missing-email':
+        return 'Please enter an email address.';
+      case 'auth/network-request-failed':
+        return 'Network error. Check your connection and try again.';
+      default:
+        return 'Something went wrong. Please try again.';
+    }
+  };
+
   const handleEmailSubmission = async (e) => {
     e.preventDefault();
     setError(null);
+    setMessage(null);
 
     const emailErr = validateEmail(email);
     setEmailError(emailErr);
 
-    // Check for empty fields before calling Firebase
-    if (!email) {
-      setEmailError('Please enter an email.');
+    if (emailErr) {
       setShake(true);
       setTimeout(() => setShake(false), 300);
       return;
     }
-  
-    // TODO: DARREL - Messy implementation, it does send a email, refactor later. 
-    // DARREL - Made errors the same to avoid email enumeration
+
     try {
-      //await sendPasswordResetEmail(auth, email);
-      setMessage('If this email is in use, a password reset email will be sent!');
-    } catch (error) {
-      setMessage('If this email is in use, a password reset email will be sent!');
+      await sendPasswordResetEmail(auth, email.trim());
+      setMessage('If this email is in use, a password reset email has been sent.');
+    } catch (err) {
+      setError(mapFirebaseError(err?.code));
+      setShake(true);
+      setTimeout(() => setShake(false), 300);
     }
   };
 
@@ -68,6 +82,14 @@ function ForgotPasswordPage() {
       <p className="instruction-text">
         Enter the email of the account you are trying to access.
       </p>
+
+      {error && (
+        <div className="message-overlay" onClick={() => setError(null)}>
+          <div className="message-box">
+            <p>{error}</p>
+          </div>
+        </div>
+      )}
 
       {message && (
         <div className="message-overlay" onClick={() => setMessage(null)}>

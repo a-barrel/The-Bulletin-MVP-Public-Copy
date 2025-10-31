@@ -1,4 +1,4 @@
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { auth } from "../firebase";
 import "./ResetPasswordPage.css";
@@ -42,6 +42,7 @@ function getPasswordStrengthColor(score) {
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [strength, setStrength] = useState({ label: "", score: 0});
@@ -49,6 +50,8 @@ function ResetPasswordPage() {
   const [error, setError] = useState(null);
   const [passwordError, setPasswordError] = useState(null);
   const [message, setMessage] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [oobCodeError, setOobCodeError] = useState(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
   const passwordRequirements = [
@@ -85,13 +88,44 @@ function ResetPasswordPage() {
     }
   }, [message]);
   
+  const oobCode = useMemo(() => {
+    if (!location?.search) {
+      return null;
+    }
+    try {
+      const params = new URLSearchParams(location.search);
+      const code = params.get("oobCode");
+      return code && code.trim().length > 0 ? code.trim() : null;
+    } catch (err) {
+      console.error("Failed to parse oobCode from reset password URL", err);
+      return null;
+    }
+  }, [location?.search]);
+
+  useEffect(() => {
+    if (!oobCode) {
+      setOobCodeError("This reset link is invalid or has already been used.");
+    } else {
+      setOobCodeError(null);
+    }
+  }, [oobCode]);
+
   const handlePasswordReset = async (e) => {
   e.preventDefault();
   setError(null);
+  setMessage(null);
+  setOobCodeError(null);
 
   const passwordErr = validatePassword(newPassword);
 
   setPasswordError(passwordErr);
+
+  if (!oobCode) {
+    setOobCodeError("This reset link is invalid or has already been used.");
+    setShake(true);
+    setTimeout(() => setShake(false), 300);
+    return;
+  }
 
   // Call for simple errors before attempting to authenticate 
   if (!newPassword || !confirmNewPassword) {
@@ -116,10 +150,10 @@ function ResetPasswordPage() {
   }
 
   try {
-    // Simulates the password reset
-    //await confirmPasswordReset(auth, oobCode, newPassword);
+    setIsSubmitting(true);
+    await confirmPasswordReset(auth, oobCode, newPassword);
     setMessage("Your password has been reset successfully! \nRedirecting to login...");
-    const timer = setTimeout(() => navigate(routes.auth.login), 2000);
+    setTimeout(() => navigate(routes.auth.login), 2000);
   } catch (error) {
     switch (error.code) {
       case "auth/expired-action-code":
@@ -138,6 +172,9 @@ function ResetPasswordPage() {
     setShake(true);
     setTimeout(() => setShake(false), 300);
     }
+  finally {
+    setIsSubmitting(false);
+  }
   };
 
   const fillPercent = (strength.score / 6) * 100;
@@ -145,6 +182,22 @@ function ResetPasswordPage() {
 
   return (
     <div className={`page-background ${shake ? "shake" : ""}`}>
+      {oobCodeError && (
+        <div className="message-overlay" onClick={() => setOobCodeError(null)}>
+          <div className="message-box">
+            <p>{oobCodeError}</p>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="message-overlay" onClick={() => setError(null)}>
+          <div className="message-box">
+            <p>{error}</p>
+          </div>
+        </div>
+      )}
+
       {message && (
         <div className="message-overlay" onClick={() => setMessage(null)}>
           <div className="message-box">
@@ -165,7 +218,8 @@ function ResetPasswordPage() {
             value={newPassword}
             onChange={(e) => {
               setNewPassword(e.target.value)
-              setError("")
+              setError(null)
+              setOobCodeError(null)
             }}
             className={passwordError ? "input-error" : ""}
           />  
@@ -186,7 +240,8 @@ function ResetPasswordPage() {
             value={confirmNewPassword}
             onChange={(e) => {
               setConfirmNewPassword(e.target.value)
-              setError("")
+              setError(null)
+              setOobCodeError(null)
             }}
             className={passwordError ? "input-error" : ""}
           />  
@@ -243,7 +298,9 @@ function ResetPasswordPage() {
           </ul>
         </div>
         
-        <button type="submit" className="reset-password-page-submit-btn">Submit</button>
+        <button type="submit" className="reset-password-page-submit-btn" disabled={isSubmitting}>
+          {isSubmitting ? "Submitting..." : "Submit"}
+        </button>
       </form>
     </div>
   );

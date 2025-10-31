@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { fetchUserProfile } from '../api/mongoDataApi';
 import './UserProfile.css';
 
 function UserProfile() {
@@ -10,31 +11,36 @@ function UserProfile() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    let cancelled = false;
+
+    const loadUser = async () => {
+      if (!userId) {
+        return;
+      }
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
-          headers: {
-            'Authorization': 'Bearer demo-test-token'
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('User not found');
+        const userData = await fetchUserProfile(userId);
+        if (!cancelled) {
+          setUser(userData);
+          setError(null);
         }
-        
-        const userData = await response.json();
-        setUser(userData);
       } catch (err) {
-        setError(err.message);
+        if (!cancelled) {
+          setError(err?.message || 'Failed to load user profile.');
+          setUser(null);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
-    if (userId) {
-      fetchUser();
-    }
+    loadUser();
+
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   const handleBack = () => {

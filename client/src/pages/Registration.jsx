@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebase";
+import { routes } from "../routes";
 import "./Registration.css";
 
 function RegistrationPage() {
@@ -62,23 +63,41 @@ function RegistrationPage() {
     return Object.values(er).every((v) => v === "");
   };
 
+  const mapFirebaseError = (code) => {
+    switch (code) {
+      case "auth/email-already-in-use":
+        return "An account already exists with this email.";
+      case "auth/invalid-email":
+        return "Please enter a valid email address.";
+      case "auth/operation-not-allowed":
+        return "Email/password sign-up is currently disabled.";
+      case "auth/weak-password":
+        return "Password is too weak. Try adding more characters or symbols.";
+      default:
+        return "Failed to create your account. Please try again.";
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) return;
+    setMessage(null);
 
-    // If using Firebase later, uncomment:
-    try {
-      //await createUserWithEmailAndPassword(auth, form.email, form.password);
-      // optionally save username/phone to your DB here
-      setMessage("Your account has been created successfully! \nRedirecting to login...");
-      const timer = setTimeout(() => navigate("/login"), 2000);
-    } catch (err) {
-      // map Firebase errors if desired
-      alert(err.message);
+    if (!validate()) {
+      setShake(true);
+      setTimeout(() => setShake(false), 300);
+      return;
     }
 
-    // For now just go back to login to match your ask:
-    //navigate("/login");
+    try {
+      await createUserWithEmailAndPassword(auth, form.email.trim(), form.password);
+      setMessage("Your account has been created successfully! \nRedirecting to login...");
+      setTimeout(() => navigate(routes.auth.login), 2000);
+    } catch (err) {
+      console.error("Registration failed:", err);
+      setMessage(mapFirebaseError(err?.code));
+      setShake(true);
+      setTimeout(() => setShake(false), 300);
+    }
   };
 
   return (
