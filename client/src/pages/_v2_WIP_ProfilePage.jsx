@@ -907,7 +907,7 @@ const detailEntries = useMemo(() => {
                 {displayName}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Joined: {formatDateTime(effectiveUser.createdAt) || targetUserId || 'N/A'}
+                Joined: {formatDateTime(effectiveUser?.createdAt)}
               </Typography>
             </Box>
           </Stack>
