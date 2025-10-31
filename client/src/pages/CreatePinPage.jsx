@@ -1,7 +1,7 @@
 // Added for feature merge: badge toasts + offline/network helpers.
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
@@ -316,6 +316,14 @@ function CreatePinPage() {
   const draftInitializedRef = useRef(false);
   const skipNextAutosaveRef = useRef(false);
   const lastReverseGeocodeRef = useRef(null);
+  const titleInputId = useId();
+  const descriptionInputId = useId();
+  const startDateInputId = useId();
+  const endDateInputId = useId();
+  const expiresAtInputId = useId();
+  const latitudeInputId = useId();
+  const longitudeInputId = useId();
+  const radiusInputId = useId();
 
   // Persist draft locally so unfinished posts survive refreshes.
   const writeDraft = useCallback(() => {
@@ -457,8 +465,15 @@ function CreatePinPage() {
 
   const activeTheme = useMemo(() => PIN_TYPE_THEMES[pinType], [pinType]);
   const { handleBack: overlayBack, previousNavPath, previousNavPage } = useNavOverlay();
-  const canNavigateBack = Boolean(previousNavPath);
   const backButtonLabel = previousNavPage?.label ? `Back to ${previousNavPage.label}` : 'Back';
+
+  const handleHeaderBack = useCallback(() => {
+    if (previousNavPath) {
+      overlayBack();
+      return;
+    }
+    navigate(-1);
+  }, [navigate, overlayBack, previousNavPath]);
   const startDateValue = formState.startDate;
   const endDateValue = formState.endDate;
 
@@ -1047,20 +1062,18 @@ function CreatePinPage() {
         className="header"
         style={{ background: activeTheme.headerBackground, color: activeTheme.headerTextColor }}
       >
-        {canNavigateBack && (
-          <button
-            type="button"
-            className="btn-back"
-            onClick={overlayBack}
-            title={backButtonLabel}
-          >
-            <img
-              src="https://www.svgrepo.com/show/326886/arrow-back-sharp.svg"
-              className="back-arrow"
-              alt={backButtonLabel}
-            />
-          </button>
-        )}
+        <button
+          type="button"
+          className="btn-back"
+          onClick={handleHeaderBack}
+          title={backButtonLabel}
+        >
+          <img
+            src="https://www.svgrepo.com/show/326886/arrow-back-sharp.svg"
+            className="back-arrow"
+            alt={backButtonLabel}
+          />
+        </button>
 
         <div className="header-info">
           <h1 className="form-title">{pinType === 'event' ? 'Event' : 'Discussion'}</h1>
@@ -1138,9 +1151,10 @@ function CreatePinPage() {
         {/* Title + Description */}
         <div className="form-section">
           <div className="input-group">
-            <label>Title</label>
+            <label htmlFor={`create-pin-title-${titleInputId}`}>Title</label>
             <input
               type="text"
+              id={`create-pin-title-${titleInputId}`}
               value={formState.title}
               onChange={handleFieldChange('title')}
               placeholder={
@@ -1152,8 +1166,9 @@ function CreatePinPage() {
             />
           </div>
           <div className="input-group">
-            <label>Description</label>
+            <label htmlFor={`create-pin-description-${descriptionInputId}`}>Description</label>
             <textarea
+              id={`create-pin-description-${descriptionInputId}`}
               value={formState.description}
               onChange={handleFieldChange('description')}
               placeholder={
@@ -1178,9 +1193,10 @@ function CreatePinPage() {
 
                 <div className="two-col">
                   <div>
-                    <label>Start date</label>
+                    <label htmlFor={`create-pin-start-date-${startDateInputId}`}>Start date</label>
                     <input
                       type="datetime-local"
+                      id={`create-pin-start-date-${startDateInputId}`}
                       value={formState.startDate}
                       onChange={handleFieldChange('startDate')}
                       required
@@ -1190,9 +1206,10 @@ function CreatePinPage() {
                     <small className="field-hint">Must be within the next 14 days.</small>
                   </div>
                   <div>
-                    <label>End date</label>
+                    <label htmlFor={`create-pin-end-date-${endDateInputId}`}>End date</label>
                     <input
                       type="datetime-local"
+                      id={`create-pin-end-date-${endDateInputId}`}
                       value={formState.endDate}
                       onChange={handleFieldChange('endDate')}
                       required
@@ -1315,9 +1332,10 @@ function CreatePinPage() {
 
                 <div className="two-col">
                   <div>
-                    <label>Expires at</label>
+                    <label htmlFor={`create-pin-expires-at-${expiresAtInputId}`}>Expires at</label>
                     <input
                       type="datetime-local"
+                      id={`create-pin-expires-at-${expiresAtInputId}`}
                       value={formState.expiresAt}
                       onChange={handleFieldChange('expiresAt')}
                       required
@@ -1364,6 +1382,75 @@ function CreatePinPage() {
                     onChange={handleFieldChange('approxCountry')}
                   />
                 </div>
+
+                <div className="form-section">
+                  <h2>Images</h2>
+                  <p>Upload up to 10 square images. Select the cover photo.</p>
+
+                  {uploadStatus && (
+                    <div className={`alert alert-${uploadStatus.type}`}>
+                      {uploadStatus.message}
+                      <button
+                        type="button"
+                        onClick={() => setUploadStatus(null)}
+                        className="alert-close"
+                      >
+                        x
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="upload-row">
+                    <label
+                      className={`btn-outline upload-btn${
+                        isOffline || isUploading || photoAssets.length >= 10 ? ' disabled' : ''
+                      }`}
+                      title={isOffline ? 'Reconnect to upload images' : undefined}
+                    >
+                      {isUploading ? 'Uploading...' : 'Upload images'}
+                      <input
+                        type="file"
+                        hidden
+                        multiple
+                        accept="image/*"
+                        onChange={handleImageSelection}
+                        disabled={isOffline || isUploading || photoAssets.length >= 10}
+                      />
+                    </label>
+                    <span>{photoAssets.length}/10 Images attached</span>
+                  </div>
+
+                  {photoAssets.length > 0 && (
+                    <div className="photo-grid">
+                      {photoAssets.map((photo) => {
+                        const isCover = coverPhotoId === photo.id;
+                        return (
+                          <div className="photo-card" key={photo.id}>
+                            <img src={photo.asset.url} alt={photo.asset.description || 'Pin image'} />
+                            {isCover && <div className="cover-label">Cover photo</div>}
+                            <div className="photo-actions">
+                              <button
+                                type="button"
+                                className={isCover ? 'btn-selected' : 'btn-outline'}
+                                onClick={() => handleSetCoverPhoto(photo.id)}
+                                disabled={isCover}
+                              >
+                                {isCover ? 'Selected' : 'Set as cover'}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-danger"
+                                onClick={() => handleRemovePhoto(photo.id)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -1408,27 +1495,30 @@ function CreatePinPage() {
           </p>
 
           <div className="map-coords">
-            <label>Latitude</label>
+            <label htmlFor={`create-pin-latitude-${latitudeInputId}`}>Latitude</label>
             <input
               type="text"
+              id={`create-pin-latitude-${latitudeInputId}`}
               value={formState.latitude}
               onChange={handleFieldChange('latitude')}
               required
               placeholder="33.783800"
             />
 
-            <label>Longitude</label>
+            <label htmlFor={`create-pin-longitude-${longitudeInputId}`}>Longitude</label>
             <input
               type="text"
+              id={`create-pin-longitude-${longitudeInputId}`}
               value={formState.longitude}
               onChange={handleFieldChange('longitude')}
               required
               placeholder="-118.113600"
             />
 
-            <label>Proximity Radius (miles)</label>
+            <label htmlFor={`create-pin-radius-${radiusInputId}`}>Proximity Radius (miles)</label>
             <input
               type="text"
+              id={`create-pin-radius-${radiusInputId}`}
               value={formState.proximityRadiusMiles}
               onChange={handleFieldChange('proximityRadiusMiles')}
               placeholder="Optional. Defaults to 1 mile."

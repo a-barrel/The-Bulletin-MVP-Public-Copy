@@ -181,9 +181,14 @@ const mapMediaAssetResponse = (asset) => {
   }
 
   const doc = asset.toObject ? asset.toObject() : asset;
+  const normalizedUrl = normalizeMediaUrl(doc.url);
+  const normalizedThumb = normalizeMediaUrl(doc.thumbnailUrl);
+  const normalizedPath = normalizeMediaUrl(doc.path);
+  const primaryUrl = normalizedUrl ?? normalizedThumb ?? normalizedPath;
+  const thumbnailUrl = normalizedThumb ?? (primaryUrl && primaryUrl !== normalizedThumb ? primaryUrl : undefined);
   return {
-    url: normalizeMediaUrl(doc.url),
-    thumbnailUrl: normalizeMediaUrl(doc.thumbnailUrl),
+    url: primaryUrl,
+    thumbnailUrl,
     width: doc.width ?? undefined,
     height: doc.height ?? undefined,
     mimeType: doc.mimeType || undefined,

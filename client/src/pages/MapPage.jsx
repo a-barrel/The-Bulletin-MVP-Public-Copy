@@ -824,13 +824,13 @@ function MapPage() {
     <Box
       sx={{
         width: '100%',
-        maxWidth: 960,
-        mx: 'auto',
-        mt: 2,
-        mb: 4,
-        borderRadius: 3,
+        maxWidth: '100%',
+        mx: 0,
+        mt: { xs: 1, md: 2 },
+        mb: { xs: 2, md: 4 },
+        borderRadius: 0,
         overflow: 'hidden',
-        boxShadow: (theme) => theme.shadows[4],
+        boxShadow: 'none',
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: 'background.paper'
@@ -849,11 +849,15 @@ function MapPage() {
 
       <Box
         sx={{
-          width: '100%',
           position: 'relative',
-          overflow: 'hidden',
-          aspectRatio: { xs: '3 / 4', md: '4 / 3' },
-          minHeight: 320
+          width: '100vw',
+          left: '50%',
+          right: '50%',
+          marginLeft: '-50vw',
+          marginRight: '-50vw',
+          overflow: 'visible',
+          height: { xs: '65vh', md: '80vh' },
+          minHeight: { xs: 420, md: 720 }
         }}
       >
         <Map
