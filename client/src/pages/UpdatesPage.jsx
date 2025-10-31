@@ -29,7 +29,10 @@ import {
   markUpdateRead,
   markAllUpdatesRead
 } from '../api/mongoDataApi';
-import formatDate from '../utils/formatDate';
+import {
+  formatFriendlyTimestamp,
+  formatAbsoluteDateTime
+} from '../utils/dates';
 import { useUpdates } from '../contexts/UpdatesContext';
 import { routes } from '../routes';
 
@@ -57,46 +60,6 @@ const resolveBadgeImageUrl = (value) => {
   }
   const normalized = value.startsWith('/') ? value : `/${value}`;
   return API_BASE_URL ? `${API_BASE_URL}${normalized}` : normalized;
-};
-
-const formatRelativeTime = (value) => {
-  if (!value) {
-    return '';
-  }
-
-  const date = value instanceof Date ? value : new Date(value);
-  const now = Date.now();
-  const diffMs = date.getTime() - now;
-  const absDiff = Math.abs(diffMs);
-
-  const units = [
-    ['year', 1000 * 60 * 60 * 24 * 365],
-    ['month', 1000 * 60 * 60 * 24 * 30],
-    ['week', 1000 * 60 * 60 * 24 * 7],
-    ['day', 1000 * 60 * 60 * 24],
-    ['hour', 1000 * 60 * 60],
-    ['minute', 1000 * 60],
-    ['second', 1000]
-  ];
-
-  for (const [unit, ms] of units) {
-    if (absDiff >= ms || unit === 'second') {
-      const valueRounded = Math.round(diffMs / ms);
-      const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
-      return formatter.format(valueRounded, unit);
-    }
-  }
-
-  return '';
-};
-
-const formatAbsoluteDate = (value) => {
-  if (!value) return '';
-  const date = value instanceof Date ? value : new Date(value);
-  return date.toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  });
 };
 
 function UpdatesPage() {
@@ -445,8 +408,11 @@ function UpdatesPage() {
                     : null}
 
                     {/* Time Label */}
-                    <Typography className="update-time">
-                      {formatDate(update.createdAt)}
+                    <Typography
+                      className="update-time"
+                      title={formatAbsoluteDateTime(update.createdAt) || undefined}
+                    >
+                      {formatFriendlyTimestamp(update.createdAt) || ''}
                     </Typography>
                   </Box>
 

@@ -10,102 +10,11 @@ const {
   ProximityChatPresenceSchema
 } = require('../schemas/proximityChat');
 const { PublicUserSchema } = require('../schemas/user');
+const { mapMediaAsset: mapMediaAssetResponse, mapUserAvatar } = require('../utils/media');
+const { toIdString, mapIdList } = require('../utils/ids');
+const { toIsoDateString } = require('../utils/dates');
 
-const toIdString = (value) => {
-  if (!value) return undefined;
-  if (typeof value === 'string') return value;
-  if (value instanceof mongoose.Types.ObjectId) return value.toString();
-  if (value._id) return value._id.toString();
-  return String(value);
-};
-
-const toIsoDateString = (value) => {
-  if (!value) return undefined;
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'string') return value;
-  if (typeof value.toISOString === 'function') return value.toISOString();
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
-};
-
-const normalizeMediaUrl = (value) => {
-  if (!value || typeof value !== 'string') {
-    return value;
-  }
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return value;
-  }
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
-    return trimmed;
-  }
-  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-};
-
-const TF2_AVATAR_MAP = {
-  tf2_scout: '/images/emulation/avatars/Scoutava.jpg',
-  tf2_soldier: '/images/emulation/avatars/Soldierava.jpg',
-  tf2_pyro: '/images/emulation/avatars/Pyroava.jpg',
-  tf2_demoman: '/images/emulation/avatars/Demomanava.jpg',
-  tf2_heavy: '/images/emulation/avatars/Heavyava.jpg',
-  tf2_engineer: '/images/emulation/avatars/Engineerava.jpg',
-  tf2_medic: '/images/emulation/avatars/Medicava.jpg',
-  tf2_sniper: '/images/emulation/avatars/Sniperava.jpg',
-  tf2_spy: '/images/emulation/avatars/Spyava.jpg'
-};
-
-const mapMediaAsset = (asset) => {
-  if (!asset) {
-    return undefined;
-  }
-
-  const doc = asset.toObject ? asset.toObject() : asset;
-  const url = normalizeMediaUrl(doc.url || doc.thumbnailUrl);
-  if (!url || typeof url !== 'string' || !url.trim()) {
-    return undefined;
-  }
-
-  const payload = {
-    url,
-    thumbnailUrl: normalizeMediaUrl(doc.thumbnailUrl),
-    width: doc.width ?? undefined,
-    height: doc.height ?? undefined,
-    mimeType: doc.mimeType || undefined,
-    description: doc.description || undefined,
-    uploadedAt: toIsoDateString(doc.uploadedAt),
-    uploadedBy: toIdString(doc.uploadedBy)
-  };
-
-  return Object.fromEntries(
-    Object.entries(payload).filter(([, value]) => value !== undefined && value !== null)
-  );
-};
-
-const buildAvatarMedia = (userDoc) => {
-  if (!userDoc) {
-    return undefined;
-  }
-
-  const doc = userDoc.toObject ? userDoc.toObject() : userDoc;
-  const avatar = mapMediaAsset(doc.avatar);
-  const fallbackUrl = TF2_AVATAR_MAP[doc.username];
-  const shouldUseFallback =
-    fallbackUrl &&
-    (!avatar?.url || /\/images\/profile\/profile-\d+\.jpg$/i.test(avatar.url));
-
-  if (!shouldUseFallback) {
-    return avatar;
-  }
-
-  const normalized = normalizeMediaUrl(fallbackUrl);
-  return {
-    url: normalized,
-    thumbnailUrl: normalized,
-    width: avatar?.width ?? 184,
-    height: avatar?.height ?? 184,
-    mimeType: 'image/jpeg'
-  };
-};
+const buildAvatarMedia = (userDoc) => mapUserAvatar(userDoc, { toIdString });
 
 const mapUserToPublic = (user) => {
   if (!user) return undefined;
@@ -144,8 +53,8 @@ const mapRoom = (roomDoc) => {
     radiusMeters: doc.radiusMeters,
     isGlobal: Boolean(doc.isGlobal),
     participantCount: doc.participantCount ?? 0,
-    participantIds: (doc.participantIds || []).map(toIdString),
-    moderatorIds: (doc.moderatorIds || []).map(toIdString),
+    participantIds: mapIdList(doc.participantIds),
+    moderatorIds: mapIdList(doc.moderatorIds),
     pinId: toIdString(doc.pinId),
     presetKey: typeof doc.presetKey === 'string' && doc.presetKey.trim().length > 0 ? doc.presetKey.trim() : undefined,
     createdAt: roomDoc.createdAt.toISOString(),
@@ -168,7 +77,7 @@ const mapMessage = (messageDoc) => {
       : undefined;
 
   const attachments = Array.isArray(doc.attachments)
-    ? doc.attachments.map(mapMediaAsset).filter(Boolean)
+    ? doc.attachments.map((attachment) => mapMediaAssetResponse(attachment, { toIdString })).filter(Boolean)
     : [];
 
   return ProximityChatMessageSchema.parse({
@@ -242,7 +151,7 @@ async function createMessage(input) {
   }
 
   const attachments = Array.isArray(input.attachments)
-    ? input.attachments.map(mapMediaAsset).filter(Boolean)
+    ? input.attachments.map((attachment) => mapMediaAssetResponse(attachment, { toIdString })).filter(Boolean)
     : [];
 
   const message = await ProximityChatMessage.create({

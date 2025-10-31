@@ -6,11 +6,12 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "./LoginPage.css";
 import bulletinLogo from "../../uploads/images/PinPoint_Logo.png";
 import { applyAuthPersistence, AUTH_PERSISTENCE } from "../utils/authPersistence";
 import { routes } from "../routes";
+import AuthPageLayout from "../components/AuthPageLayout.jsx";
+import PasswordField from "../components/PasswordField.jsx";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -112,20 +113,33 @@ function LoginPage() {
       }
     };
 
+  const alerts = [];
+  if (error) {
+    alerts.push({
+      id: "error",
+      type: "error",
+      content: error,
+      overlayClassName: "error-overlay",
+      boxClassName: "error-box",
+      onClose: () => setError(null)
+    });
+  }
+  if (message) {
+    alerts.push({
+      id: "message",
+      type: "info",
+      content: message,
+      onClose: () => setMessage(null)
+    });
+  }
+
   return (
-    <div className={`page-background ${shake ? "shake" : ""}`}>  
-      {error && (
-        <div className="error-overlay" onClick={() => setError(null)}>
-          <div className="error-box">
-            <p>{error}</p>
-          </div>
-        </div>
-      )}
-
-      <div className="page-header">
-        <h1 className="page-title">The Bulletin</h1>
-      </div>
-
+    <AuthPageLayout
+      shake={shake}
+      title="The Bulletin"
+      titleClassName="page-title"
+      alerts={alerts}
+    >
       <div className="bulletin-image">
         <img src={bulletinLogo} alt="PinPoint logo" />
       </div>
@@ -145,27 +159,18 @@ function LoginPage() {
           {emailError && <span className="input-error-text">{emailError}</span>}
         </div>
 
-        <div className="input-container">
-          <input
-            type={showPassword ? "text" : "password"}
+        <PasswordField
+          value={password}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setPasswordError("");
+          }}
             placeholder="Enter Password"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value)
-              setPasswordError("")
-            }}
-            className={passwordError ? "input-error" : ""}
-          />  
-          {passwordError && <span className="input-error-text">{passwordError}</span>}
-
-          <button
-            type="button"
-            className="show-password-btn"
-            onClick={() => setShowPassword(!showPassword)}
-          >
-          {showPassword ? <FaEyeSlash /> : <FaEye />}
-          </button>
-        </div>
+          error={passwordError}
+          showPassword={showPassword}
+          onToggleVisibility={() => setShowPassword((prev) => !prev)}
+          autoComplete="current-password"
+        />
 
         <div className="additional-options">
           <label className="remember-me-checkbox"> {/*Controls session persistence*/}
@@ -194,12 +199,12 @@ function LoginPage() {
           className="login-page-google-sign-in-btn" 
           onClick={handleGoogleSignIn}
         >
-        <img
-          src="https://www.svgrepo.com/show/475656/google-color.svg"
-          alt="Google logo"
-          className="google-icon"
-        />
-        Sign in with Google
+          <img
+            src="https://www.svgrepo.com/show/475656/google-color.svg"
+            alt="Google logo"
+            className="google-icon"
+          />
+          Sign in with Google
         </button>
 
         <p className="getting-started-text">Getting started?</p>
@@ -212,7 +217,7 @@ function LoginPage() {
           Register Here
         </button>    
       </form>
-    </div>
+    </AuthPageLayout>
   );
 }
 

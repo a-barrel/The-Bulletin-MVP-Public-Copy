@@ -18,6 +18,7 @@ import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
+import formatDateTime from '../utils/dates';
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
@@ -134,26 +135,21 @@ const resolveUserAvatarUrl = (user, fallback = DEFAULT_AVATAR_PATH) => {
   return resolveMediaAssetUrl(null, fallback);
 };
 
-const formatDateTime = (value) => {
-  if (!value) {
-    return null;
-  }
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-  return date.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric'
+const formatPinDateTime = (value) =>
+  formatDateTime(value, {
+    fallback: null,
+    options: {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric'
+    }
   });
-};
 
 const formatEventRange = (start, end) => {
-  const startLabel = formatDateTime(start);
-  const endLabel = formatDateTime(end);
+  const startLabel = formatPinDateTime(start);
+  const endLabel = formatPinDateTime(end);
   if (startLabel && endLabel) {
     return `${startLabel} -> ${endLabel}`;
   }
@@ -1073,9 +1069,9 @@ function PinDetails() {
     }
   }, [distanceLockActive, isInteractionLocked, isOffline, isSubmittingReply, pinExpired, pinId, replyMessage]);
 
-  const expirationLabel = useMemo(() => formatDateTime(pin?.expiresAt ?? pin?.endDate), [pin]);
-  const createdAtLabel = useMemo(() => formatDateTime(pin?.createdAt), [pin]);
-  const updatedAtLabel = useMemo(() => formatDateTime(pin?.updatedAt), [pin]);
+  const expirationLabel = useMemo(() => formatPinDateTime(pin?.expiresAt ?? pin?.endDate), [pin]);
+  const createdAtLabel = useMemo(() => formatPinDateTime(pin?.createdAt), [pin]);
+  const updatedAtLabel = useMemo(() => formatPinDateTime(pin?.updatedAt), [pin]);
 
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
 
@@ -1361,7 +1357,7 @@ function PinDetails() {
               const authorName =
                 reply.author?.displayName || reply.author?.username || 'Anonymous user';
               const replyAvatar = resolveUserAvatarUrl(reply.author);
-              const createdLabel = formatDateTime(reply.createdAt);
+              const createdLabel = formatPinDateTime(reply.createdAt);
               const authorProfileLink = buildUserProfileLink(reply.author, profileReturnPath);
 
               return (

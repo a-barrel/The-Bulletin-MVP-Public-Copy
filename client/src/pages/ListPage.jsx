@@ -11,10 +11,11 @@ import GlobalNavMenu from "../components/GlobalNavMenu";
 import { fetchPinsNearby, fetchPinById } from "../api/mongoDataApi";
 import PlaceIcon from '@mui/icons-material/Place'; // TODO: used only for Icon on pageConfig, maybe change with a list icon?
 import { useUpdates } from "../contexts/UpdatesContext";
-import runtimeConfig from "../config/runtime";
 import { routes } from "../routes";
 import { useNetworkStatusContext } from "../contexts/NetworkStatusContext";
 import { useLocationContext } from "../contexts/LocationContext";
+import resolveAssetUrl from "../utils/media";
+import toIdString from "../utils/ids";
 
 export const pageConfig = {
   id: "list",
@@ -31,42 +32,6 @@ const DEFAULT_RADIUS_MILES = 10;
 const PIN_FETCH_LIMIT = 50;
 const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
 const DESCRIPTION_PREVIEW_LIMIT = 250;
-const API_BASE_URL = (runtimeConfig?.apiBaseUrl ?? "").replace(/\/$/, "");
-
-const toIdString = (value) => {
-  if (!value && value !== 0) {
-    return null;
-  }
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return String(value);
-  }
-  if (typeof value === "object") {
-    if (typeof value.$oid === "string") {
-      const trimmed = value.$oid.trim();
-      return trimmed.length > 0 ? trimmed : null;
-    }
-    if (typeof value._id === "string") {
-      const trimmed = value._id.trim();
-      return trimmed.length > 0 ? trimmed : null;
-    }
-    if (typeof value.id === "string") {
-      const trimmed = value.id.trim();
-      return trimmed.length > 0 ? trimmed : null;
-    }
-    if (typeof value.toString === "function") {
-      const stringValue = value.toString();
-      if (stringValue && stringValue !== "[object Object]") {
-        return stringValue;
-      }
-    }
-  }
-  return null;
-};
-
 const hasValidCoordinates = (coords) =>
   coords &&
   typeof coords === "object" &&
@@ -158,33 +123,6 @@ const truncateText = (value, limit = DESCRIPTION_PREVIEW_LIMIT) => {
   }
   const truncated = trimmed.slice(0, limit - 1).trimEnd();
   return `${truncated}…`;
-};
-
-const resolveAssetUrl = (asset, fallback = null) => {
-  if (!asset) {
-    return fallback;
-  }
-  if (typeof asset === "object") {
-    return (
-      resolveAssetUrl(asset.thumbnailUrl, fallback) ||
-      resolveAssetUrl(asset.url, fallback) ||
-      resolveAssetUrl(asset.previewUrl, fallback) ||
-      resolveAssetUrl(asset.path, fallback) ||
-      fallback
-    );
-  }
-  if (typeof asset === "string") {
-    const trimmed = asset.trim();
-    if (!trimmed) {
-      return fallback;
-    }
-    if (/^(?:[a-z]+:)?\/\//i.test(trimmed) || trimmed.startsWith("data:")) {
-      return trimmed;
-    }
-    const normalized = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
-    return API_BASE_URL ? `${API_BASE_URL}${normalized}` : normalized;
-  }
-  return fallback;
 };
 
 const normalizeMediaEntry = (asset) => {

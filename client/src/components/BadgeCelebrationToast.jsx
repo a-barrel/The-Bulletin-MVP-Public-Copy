@@ -3,8 +3,8 @@ import PropTypes from 'prop-types';
 import Snackbar from '@mui/material/Snackbar';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
-import runtimeConfig from '../config/runtime';
 import { getBadgeLabel } from '../utils/badges';
+import resolveAssetUrl from '../utils/media';
 
 const BADGE_CELEBRATION_GIFS = [
   '/images/badges/badge_obtained_1.gif',
@@ -13,19 +13,6 @@ const BADGE_CELEBRATION_GIFS = [
   '/images/badges/badge_obtained_4.gif',
   '/images/badges/badge_obtained_5.gif'
 ];
-
-const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
-
-const resolveAssetUrl = (value) => {
-  if (!value) {
-    return null;
-  }
-  if (/^(?:https?:)?\/\//i.test(value) || value.startsWith('data:')) {
-    return value;
-  }
-  const normalized = value.startsWith('/') ? value : `/${value}`;
-  return API_BASE_URL ? `${API_BASE_URL}${normalized}` : normalized;
-};
 
 export function useBadgeCelebrationToast() {
   const badgeGifUrls = useMemo(

@@ -5,6 +5,7 @@ import { signOut } from 'firebase/auth';
 import './LogoutPage.css'; // Same as LoginPage.css
 import { revokeCurrentSession } from '../api/mongoDataApi';
 import { routes } from '../routes';
+import AuthPageLayout from '../components/AuthPageLayout.jsx';
 
 export const pageConfig = {
   id: 'logout',
@@ -39,11 +40,11 @@ function LogoutPage() {
   }, [navigate]);
 
   return (
-    <div className="login-page">
+    <AuthPageLayout baseClassName="" className="login-page">
       <div className="login-frame">
         <h1 className="login-title">Logging you out...</h1>
       </div>
-    </div>
+    </AuthPageLayout>
   );
 }
 

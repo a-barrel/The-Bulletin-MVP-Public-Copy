@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import './ForgotPasswordPage.css';
 import { sendPasswordResetEmail } from 'firebase/auth';
+import AuthPageLayout from '../components/AuthPageLayout.jsx';
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -65,39 +66,36 @@ function ForgotPasswordPage() {
     }
   };
 
+  const alerts = [];
+  if (error) {
+    alerts.push({
+      id: 'error',
+      type: 'error',
+      content: error,
+      overlayClassName: 'message-overlay',
+      boxClassName: 'message-box',
+      onClose: () => setError(null)
+    });
+  }
+  if (message) {
+    alerts.push({
+      id: 'message',
+      type: 'info',
+      content: message,
+      onClose: () => setMessage(null)
+    });
+  }
+
   return (
-    <div className={`page-background ${shake ? 'shake' : ''}`}>
-      <div className="page-header">
-        <button
-          className="page-back-btn"
-          aria-label="Go back"
-          onClick={() => navigate(-1)}
-        >
-        &#8592;
-        </button>
-
-        <h1 className="page-sub-title">Forgot Password?</h1>
-      </div>
-
+    <AuthPageLayout
+      shake={shake}
+      onBack={() => navigate(-1)}
+      title="Forgot Password?"
+      alerts={alerts}
+    >
       <p className="instruction-text">
         Enter the email of the account you are trying to access.
       </p>
-
-      {error && (
-        <div className="message-overlay" onClick={() => setError(null)}>
-          <div className="message-box">
-            <p>{error}</p>
-          </div>
-        </div>
-      )}
-
-      {message && (
-        <div className="message-overlay" onClick={() => setMessage(null)}>
-          <div className="message-box">
-            <p>{message}</p>
-          </div>
-        </div>
-      )}
 
       <form onSubmit={handleEmailSubmission} className={"page-form"}>
         <div className="input-container">
@@ -121,7 +119,7 @@ function ForgotPasswordPage() {
           Submit
         </button>
       </form>
-    </div>
+    </AuthPageLayout>
   );
 }
 

@@ -30,6 +30,9 @@ const {
   resetBadges,
   getBadgeStatusForUser
 } = require('../services/badgeService');
+const { mapMediaAsset, mapUserAvatar } = require('../utils/media');
+const { toIdString, mapIdList } = require('../utils/ids');
+const { toIsoDateString } = require('../utils/dates');
 
 const router = express.Router();
 
@@ -47,23 +50,6 @@ const BadgeMutationSchema = z.object({
 });
 
 const toObjectId = (value) => (value ? new mongoose.Types.ObjectId(value) : undefined);
-
-const toIdString = (value) => {
-  if (!value) return undefined;
-  if (typeof value === 'string') return value;
-  if (value instanceof mongoose.Types.ObjectId) return value.toString();
-  if (value._id) return value._id.toString();
-  return String(value);
-};
-
-const toIsoDateString = (value) => {
-  if (!value) return undefined;
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'string') return value;
-  if (typeof value.toISOString === 'function') return value.toISOString();
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
-};
 
 const resolveViewerUser = async (req) => {
   if (!req?.user?.uid) {
@@ -156,33 +142,6 @@ const getAccountSwapGateFailureMessage = (req, viewer) => {
 
   return 'Account swapping is restricted to approved testers.';
 };
-const mapMediaAsset = (asset) => {
-  if (!asset) {
-    return undefined;
-  }
-
-  const doc = asset.toObject ? asset.toObject() : asset;
-  const url = doc.url || doc.thumbnailUrl;
-  if (!url || typeof url !== 'string' || !url.trim()) {
-    return undefined;
-  }
-
-  const payload = {
-    url: url.trim(),
-    thumbnailUrl: doc.thumbnailUrl || undefined,
-    width: doc.width ?? undefined,
-    height: doc.height ?? undefined,
-    mimeType: doc.mimeType || undefined,
-    description: doc.description || undefined,
-    uploadedAt: toIsoDateString(doc.uploadedAt),
-    uploadedBy: toIdString(doc.uploadedBy)
-  };
-
-  return Object.fromEntries(
-    Object.entries(payload).filter(([, value]) => value !== undefined && value !== null)
-  );
-};
-
 const buildAudit = (audit, createdAt, updatedAt) => ({
   createdAt: createdAt.toISOString(),
   updatedAt: updatedAt.toISOString(),
@@ -196,22 +155,22 @@ const mapUserToProfile = (userDoc) => {
     _id: toIdString(doc._id),
     username: doc.username,
     displayName: doc.displayName,
-    avatar: mapMediaAsset(doc.avatar),
+    avatar: mapUserAvatar(doc, { toIdString }),
     stats: doc.stats || undefined,
     badges: doc.badges || [],
     primaryLocationId: toIdString(doc.primaryLocationId),
     accountStatus: doc.accountStatus || 'active',
     email: doc.email || undefined,
     bio: doc.bio || undefined,
-    banner: mapMediaAsset(doc.banner),
+    banner: mapMediaAsset(doc.banner, { toIdString }),
     preferences: doc.preferences || undefined,
     relationships: doc.relationships || undefined,
     locationSharingEnabled: Boolean(doc.locationSharingEnabled),
-    pinnedPinIds: (doc.pinnedPinIds || []).map(toIdString),
-    ownedPinIds: (doc.ownedPinIds || []).map(toIdString),
-    bookmarkCollectionIds: (doc.bookmarkCollectionIds || []).map(toIdString),
-    proximityChatRoomIds: (doc.proximityChatRoomIds || []).map(toIdString),
-    recentLocationIds: (doc.recentLocationIds || []).map(toIdString),
+    pinnedPinIds: mapIdList(doc.pinnedPinIds),
+    ownedPinIds: mapIdList(doc.ownedPinIds),
+    bookmarkCollectionIds: mapIdList(doc.bookmarkCollectionIds),
+    proximityChatRoomIds: mapIdList(doc.proximityChatRoomIds),
+    recentLocationIds: mapIdList(doc.recentLocationIds),
     createdAt: userDoc.createdAt.toISOString(),
     updatedAt: userDoc.updatedAt.toISOString(),
     audit: undefined
@@ -228,7 +187,7 @@ const mapBookmark = (bookmarkDoc, pinPreview) => {
     createdAt: bookmarkDoc.createdAt.toISOString(),
     notes: doc.notes || undefined,
     reminderAt: doc.reminderAt ? doc.reminderAt.toISOString() : undefined,
-    tagIds: (doc.tagIds || []).map(toIdString),
+    tagIds: mapIdList(doc.tagIds),
     pin: pinPreview,
     audit: buildAudit(doc.audit, bookmarkDoc.createdAt, bookmarkDoc.updatedAt)
   });
@@ -241,8 +200,8 @@ const mapCollection = (collectionDoc, bookmarks) => {
     name: doc.name,
     description: doc.description || undefined,
     userId: toIdString(doc.userId),
-    bookmarkIds: (doc.bookmarkIds || []).map(toIdString),
-    followerIds: (doc.followerIds || []).map(toIdString),
+    bookmarkIds: mapIdList(doc.bookmarkIds),
+    followerIds: mapIdList(doc.followerIds),
     createdAt: collectionDoc.createdAt.toISOString(),
     updatedAt: collectionDoc.updatedAt.toISOString(),
     bookmarks
@@ -255,7 +214,7 @@ const mapUpdate = (updateDoc) => {
     _id: toIdString(doc._id),
     userId: toIdString(doc.userId),
     sourceUserId: toIdString(doc.sourceUserId),
-    targetUserIds: (doc.targetUserIds || []).map(toIdString),
+    targetUserIds: mapIdList(doc.targetUserIds),
     payload: doc.payload,
     createdAt: updateDoc.createdAt.toISOString(),
     deliveredAt: doc.deliveredAt ? doc.deliveredAt.toISOString() : undefined,
@@ -291,7 +250,7 @@ const mapReply = (replyDoc) => {
       type: reaction.type,
       reactedAt: reaction.reactedAt ? reaction.reactedAt.toISOString() : undefined
     })),
-    mentionedUserIds: (doc.mentionedUserIds || []).map(toIdString),
+    mentionedUserIds: mapIdList(doc.mentionedUserIds),
     createdAt: replyDoc.createdAt.toISOString(),
     updatedAt: replyDoc.updatedAt.toISOString(),
     audit: doc.audit ? buildAudit(doc.audit, replyDoc.createdAt, replyDoc.updatedAt) : undefined
@@ -1009,20 +968,18 @@ router.get('/bad-users', async (req, res) => {
       .sort({ 'stats.cussCount': -1, createdAt: 1 })
       .lean();
 
-    const payload = users.map((user) => ({
-      id: toIdString(user._id),
-      username: user.username || null,
-      displayName: user.displayName || null,
-      avatar: user.avatar
-        ? {
-            url: user.avatar.url || null,
-            thumbnailUrl: user.avatar.thumbnailUrl || null
-          }
-        : null,
-      cussCount: user?.stats?.cussCount ?? 0,
-      accountStatus: user.accountStatus || 'active',
-      createdAt: user.createdAt ? user.createdAt.toISOString() : null
-    }));
+    const payload = users.map((user) => {
+      const avatar = mapUserAvatar(user, { toIdString });
+      return {
+        id: toIdString(user._id),
+        username: user.username || null,
+        displayName: user.displayName || null,
+        avatar,
+        cussCount: user?.stats?.cussCount ?? 0,
+        accountStatus: user.accountStatus || 'active',
+        createdAt: user.createdAt ? user.createdAt.toISOString() : null
+      };
+    });
 
     res.json(payload);
   } catch (error) {
@@ -1119,4 +1076,3 @@ router.post('/replies', async (req, res) => {
 });
 
 module.exports = router;
-

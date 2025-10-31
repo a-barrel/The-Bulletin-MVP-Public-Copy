@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
 import { routes } from "../routes";
+import AuthPageLayout from "../components/AuthPageLayout.jsx";
 import "./Registration.css";
 
 function RegistrationPage() {
@@ -100,31 +101,24 @@ function RegistrationPage() {
     }
   };
 
+  const alerts = [];
+  if (message) {
+    alerts.push({
+      id: "message",
+      type: "info",
+      content: message,
+      onClose: () => setMessage(null)
+    });
+  }
+
   return (
-    <div className={`page-background ${shake ? "shake" : ""}`}>
-
-      {message && (
-        <div className="message-overlay" onClick={() => setMessage(null)}>
-          <div className="message-box">
-            <p>{message}</p>
-          </div>
-        </div>
-      )}
-      
-      <div className="page-header">
-        {/* back chevron */}
-        <button
-          className="page-back-btn"
-          aria-label="Go back"
-          onClick={() => navigate(-1)}
-        >
-          &#8592;
-        </button>
-
-        <h1 className="page-sub-title">Registration</h1>
-      </div>  
-
-        <form className="register-form" onSubmit={handleSubmit} noValidate>
+    <AuthPageLayout
+      shake={shake}
+      title="Registration"
+      onBack={() => navigate(-1)}
+      alerts={alerts}
+    >
+      <form className="register-form" onSubmit={handleSubmit} noValidate>
           {/* Username */}
           <div className="register-input-container">
             <input
@@ -181,8 +175,8 @@ function RegistrationPage() {
           <button type="submit" className="register-submit">
             Register
           </button>
-        </form>
-    </div>
+      </form>
+    </AuthPageLayout>
   );
 }
 

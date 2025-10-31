@@ -1,6 +1,7 @@
 import runtimeConfig from '../../config/runtime';
 
 import { METERS_PER_MILE } from './constants';
+import sharedToIdString from '../../utils/ids';
 
 export const resolveMediaUrl = (value, fallback = '/images/profile/profile-01.jpg') => {
   const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
@@ -76,24 +77,8 @@ export const parseJsonField = (value, label) => {
 export const normalizeRoomName = (value) => `${value ?? ''}`.trim().toLowerCase();
 
 export const toIdString = (value) => {
-  if (!value) {
-    return '';
-  }
-  if (typeof value === 'string') {
-    return value;
-  }
-  if (typeof value === 'object') {
-    if (value._id) {
-      return toIdString(value._id);
-    }
-    if (typeof value.toString === 'function') {
-      const stringValue = value.toString();
-      if (stringValue && stringValue !== '[object Object]') {
-        return stringValue;
-      }
-    }
-  }
-  return `${value}`;
+  const normalized = sharedToIdString(value);
+  return normalized ?? '';
 };
 
 export const mongooseObjectIdLike = (value) =>

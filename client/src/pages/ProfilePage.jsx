@@ -33,6 +33,7 @@ import {
   updateCurrentUserProfile,
   uploadImage
 } from '../api/mongoDataApi';
+import formatDateTime from '../utils/dates';
 import runtimeConfig from '../config/runtime';
 import { BADGE_METADATA } from '../utils/badges';
 import { routes } from '../routes';
@@ -153,19 +154,10 @@ const formatEntryValue = (value) => {
 };
 
 const METERS_PER_MILE = 1609.34;
-const formatDateTime = (value) => {
-  if (!value) {
-    return 'N/A';
-  }
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 'N/A';
-  }
-  return date.toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short'
+const formatDisplayDateTime = (value) =>
+  formatDateTime(value, {
+    fallback: 'N/A'
   });
-};
 
 
 const Section = ({ title, description, children }) => (
@@ -718,8 +710,8 @@ const detailEntries = useMemo(() => {
       return null;
     }
     return {
-      createdAt: formatDateTime(effectiveUser.createdAt),
-      updatedAt: formatDateTime(effectiveUser.updatedAt),
+      createdAt: formatDisplayDateTime(effectiveUser.createdAt),
+      updatedAt: formatDisplayDateTime(effectiveUser.updatedAt),
       status: effectiveUser.accountStatus ?? 'unknown',
       email: effectiveUser.email ?? 'â€”',
       userId: effectiveUser._id ?? targetUserId ?? 'â€”'

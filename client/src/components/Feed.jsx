@@ -5,7 +5,8 @@ import DiscussionTagIcon from "../assets/chat-filled.svg";
 import CommentsIcon from "../assets/Comments.png";
 import InterestedIcon from "../assets/AttendanceIcon.png";
 import { fetchPinAttendees } from "../api/mongoDataApi";
-import runtimeConfig from "../config/runtime";
+import resolveAssetUrl from "../utils/media";
+import toIdString from "../utils/ids";
 
 const DEFAULT_AVATAR = "https://i.pravatar.cc/100?img=64";
 
@@ -44,7 +45,6 @@ const resolveTagBadge = (type) => {
 };
 
 const attendeeCache = new Map();
-const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? "").replace(/\/$/, "");
 const FALLBACK_NAMES = [
   "Scout",
   "Soldier",
@@ -57,69 +57,9 @@ const FALLBACK_NAMES = [
   "Spy",
 ];
 
-const resolveAssetUrl = (asset, fallback = null) => {
-  if (!asset) {
-    return fallback;
-  }
-  if (typeof asset === "object") {
-    return (
-      resolveAssetUrl(asset.thumbnailUrl, fallback) ||
-      resolveAssetUrl(asset.url, fallback) ||
-      resolveAssetUrl(asset.path, fallback) ||
-      fallback
-    );
-  }
-  if (typeof asset === "string") {
-    const trimmed = asset.trim();
-    if (!trimmed) {
-      return fallback;
-    }
-    if (/^(?:[a-z]+:)?\/\//i.test(trimmed) || trimmed.startsWith("data:")) {
-      return trimmed;
-    }
-    const normalized = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
-    return API_BASE_URL ? `${API_BASE_URL}${normalized}` : normalized;
-  }
-  return fallback;
-};
-
 const resolveLibraryAvatar = (seed = 0) => {
   const normalizedSeed = Number.isFinite(seed) ? Math.abs(Math.floor(seed)) : 0;
   return `https://i.pravatar.cc/100?u=pinpoint-fallback-${normalizedSeed}`;
-};
-
-const toIdString = (value) => {
-  if (!value && value !== 0) {
-    return null;
-  }
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return String(value);
-  }
-  if (typeof value === "object") {
-    if (typeof value.$oid === "string") {
-      const trimmed = value.$oid.trim();
-      return trimmed.length > 0 ? trimmed : null;
-    }
-    if (typeof value._id === "string") {
-      const trimmed = value._id.trim();
-      return trimmed.length > 0 ? trimmed : null;
-    }
-    if (typeof value.id === "string") {
-      const trimmed = value.id.trim();
-      return trimmed.length > 0 ? trimmed : null;
-    }
-    if (typeof value.toString === "function") {
-      const stringValue = value.toString();
-      if (stringValue && stringValue !== "[object Object]") {
-        return stringValue;
-      }
-    }
-  }
-  return null;
 };
 
 function FeedCard({ item, onSelectItem, onSelectAuthor }) {
@@ -305,7 +245,7 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
     if (!shouldShowAttendees) {
       return [];
     }
-    const creatorAvatarUrl = resolveAssetUrl(item?.creator?.avatar, DEFAULT_AVATAR);
+    const creatorAvatarUrl = resolveAssetUrl(item?.creator?.avatar, { fallback: DEFAULT_AVATAR });
     return resolvedAttendees.map((attendee, idx) => {
       if (!attendee) {
         return null;

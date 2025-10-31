@@ -2,7 +2,7 @@ import { Box, Typography } from '@mui/material';
 import { NavLink } from 'react-router-dom';
 import AvatarIcon from '../assets/AvatarIcon.svg';
 import "./MessageBubble.css";
-import formatDate from '../utils/formatDate';
+import { formatFriendlyTimestamp } from '../utils/dates';
 
 
 
@@ -94,7 +94,7 @@ function MessageBubble({ msg, isSelf, authUser }) {
             {msg.author?.displayName || 'User'}
           </Typography>
           <Typography className="chat-time">
-            {formatDate(msg.createdAt)}
+            {formatFriendlyTimestamp(msg.createdAt)}
           </Typography>
         </div>
         {displayMessage ? (
