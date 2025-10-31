@@ -87,6 +87,13 @@
     flex: 1;
   }
 }
+
+/* Summary stat boxes under header */
+.summary-box {
+  background-color: #CDAEF2;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
 .user-card {
   padding-top: 16px;
   display: flex;

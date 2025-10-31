@@ -1053,6 +1053,30 @@ const detailEntries = useMemo(() => {
           {hasProfile ? (
             <>
               <Divider />
+
+              {/* Summary rows: stats */}
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 0.5 }}>
+                <Box className="summary-box" sx={{ flex: '0 0 auto' }}>
+                  <Typography variant="body2">
+                    Post count: {effectiveUser?.stats?.posts ?? 0}
+                  </Typography>
+                </Box>
+                <Box className="summary-box" sx={{ flex: '0 0 auto', textAlign: 'right' }}>
+                  <Typography variant="body2">
+                    Events hosted: {effectiveUser?.stats?.eventsHosted ?? 0}
+                  </Typography>
+                </Box>
+              </Stack>
+
+              {/* Row below: left-aligned events attended */}
+              <Stack direction="row" sx={{ px: 0.5 }}>
+                <Box className="summary-box" sx={{ flex: '0 0 auto' }}>
+                  <Typography variant="body2">
+                    Events attended: {effectiveUser?.stats?.eventsAttended ?? 0}
+                  </Typography>
+                </Box>
+              </Stack>
+
               <Stack spacing={3}>
                 <Section
                   title="Bio"
