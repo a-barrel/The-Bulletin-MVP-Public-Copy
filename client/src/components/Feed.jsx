@@ -430,6 +430,7 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
       onClick={pinId ? handleCardClick : undefined}
       onKeyDown={pinId ? handleCardKeyDown : undefined}
       tabIndex={pinId ? 0 : undefined}
+      role={pinId ? "button" : undefined}
       data-pin-id={pinId ?? undefined}
     >
       <header className={`card-header ${visualType}`}>

@@ -1,7 +1,7 @@
 // Added for feature merge: badge toasts + offline/network helpers.
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
@@ -316,6 +316,14 @@ function CreatePinPage() {
   const draftInitializedRef = useRef(false);
   const skipNextAutosaveRef = useRef(false);
   const lastReverseGeocodeRef = useRef(null);
+  const titleInputId = useId();
+  const descriptionInputId = useId();
+  const startDateInputId = useId();
+  const endDateInputId = useId();
+  const expiresAtInputId = useId();
+  const latitudeInputId = useId();
+  const longitudeInputId = useId();
+  const radiusInputId = useId();
 
   // Persist draft locally so unfinished posts survive refreshes.
   const writeDraft = useCallback(() => {
@@ -1138,9 +1146,10 @@ function CreatePinPage() {
         {/* Title + Description */}
         <div className="form-section">
           <div className="input-group">
-            <label>Title</label>
+            <label htmlFor={`create-pin-title-${titleInputId}`}>Title</label>
             <input
               type="text"
+              id={`create-pin-title-${titleInputId}`}
               value={formState.title}
               onChange={handleFieldChange('title')}
               placeholder={
@@ -1152,8 +1161,9 @@ function CreatePinPage() {
             />
           </div>
           <div className="input-group">
-            <label>Description</label>
+            <label htmlFor={`create-pin-description-${descriptionInputId}`}>Description</label>
             <textarea
+              id={`create-pin-description-${descriptionInputId}`}
               value={formState.description}
               onChange={handleFieldChange('description')}
               placeholder={
@@ -1178,9 +1188,10 @@ function CreatePinPage() {
 
                 <div className="two-col">
                   <div>
-                    <label>Start date</label>
+                    <label htmlFor={`create-pin-start-date-${startDateInputId}`}>Start date</label>
                     <input
                       type="datetime-local"
+                      id={`create-pin-start-date-${startDateInputId}`}
                       value={formState.startDate}
                       onChange={handleFieldChange('startDate')}
                       required
@@ -1190,9 +1201,10 @@ function CreatePinPage() {
                     <small className="field-hint">Must be within the next 14 days.</small>
                   </div>
                   <div>
-                    <label>End date</label>
+                    <label htmlFor={`create-pin-end-date-${endDateInputId}`}>End date</label>
                     <input
                       type="datetime-local"
+                      id={`create-pin-end-date-${endDateInputId}`}
                       value={formState.endDate}
                       onChange={handleFieldChange('endDate')}
                       required
@@ -1315,9 +1327,10 @@ function CreatePinPage() {
 
                 <div className="two-col">
                   <div>
-                    <label>Expires at</label>
+                    <label htmlFor={`create-pin-expires-at-${expiresAtInputId}`}>Expires at</label>
                     <input
                       type="datetime-local"
+                      id={`create-pin-expires-at-${expiresAtInputId}`}
                       value={formState.expiresAt}
                       onChange={handleFieldChange('expiresAt')}
                       required
@@ -1408,27 +1421,30 @@ function CreatePinPage() {
           </p>
 
           <div className="map-coords">
-            <label>Latitude</label>
+            <label htmlFor={`create-pin-latitude-${latitudeInputId}`}>Latitude</label>
             <input
               type="text"
+              id={`create-pin-latitude-${latitudeInputId}`}
               value={formState.latitude}
               onChange={handleFieldChange('latitude')}
               required
               placeholder="33.783800"
             />
 
-            <label>Longitude</label>
+            <label htmlFor={`create-pin-longitude-${longitudeInputId}`}>Longitude</label>
             <input
               type="text"
+              id={`create-pin-longitude-${longitudeInputId}`}
               value={formState.longitude}
               onChange={handleFieldChange('longitude')}
               required
               placeholder="-118.113600"
             />
 
-            <label>Proximity Radius (miles)</label>
+            <label htmlFor={`create-pin-radius-${radiusInputId}`}>Proximity Radius (miles)</label>
             <input
               type="text"
+              id={`create-pin-radius-${radiusInputId}`}
               value={formState.proximityRadiusMiles}
               onChange={handleFieldChange('proximityRadiusMiles')}
               placeholder="Optional. Defaults to 1 mile."

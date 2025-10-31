@@ -207,7 +207,11 @@ async function upsertUserFromAuthProfile(profile, { dryRun = false } = {}) {
       changed = true;
     }
 
-    if (targetRelativeAvatarPath && (!user.avatar || !user.avatar.url)) {
+    const hasExistingAvatar = Boolean(
+      user.avatar && (user.avatar.url || user.avatar.thumbnailUrl || user.avatar.path)
+    );
+
+    if (targetRelativeAvatarPath && !hasExistingAvatar) {
       user.avatar = {
         url: targetRelativeAvatarPath,
         thumbnailUrl: targetRelativeAvatarPath

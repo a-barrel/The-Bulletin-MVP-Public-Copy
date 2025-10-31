@@ -78,6 +78,18 @@ export const pageConfig = {
 
 const FALLBACK_AVATAR = '/images/profile/profile-01.jpg';
 
+const TF2_AVATAR_MAP = {
+  'tf2_scout': '/images/emulation/avatars/Scoutava.jpg',
+  'tf2_soldier': '/images/emulation/avatars/Soldierava.jpg',
+  'tf2_pyro': '/images/emulation/avatars/Pyroava.jpg',
+  'tf2_demoman': '/images/emulation/avatars/Demomanava.jpg',
+  'tf2_heavy': '/images/emulation/avatars/Heavyava.jpg',
+  'tf2_engineer': '/images/emulation/avatars/Engineerava.jpg',
+  'tf2_medic': '/images/emulation/avatars/Medicava.jpg',
+  'tf2_sniper': '/images/emulation/avatars/Sniperava.jpg',
+  'tf2_spy': '/images/emulation/avatars/Spyava.jpg'
+};
+
 const resolveBadgeImageUrl = (value) => {
   if (!value) {
     return '—';
@@ -273,34 +285,36 @@ function ProfilePage() {
   );
 
   useEffect(() => {
+    let ignore = false;
+
     if (userFromState) {
       setFetchedUser(userFromState);
       setFetchError(null);
-      setIsFetchingProfile(false);
-      return;
     }
 
-    if (!targetUserId && !shouldLoadCurrentUser) {
-      setFetchedUser(null);
-      setFetchError(null);
+    const shouldFetchProfile = (shouldLoadCurrentUser || Boolean(targetUserId)) && !isOffline;
+
+    if (!shouldFetchProfile) {
+      if (!userFromState && !shouldLoadCurrentUser && !targetUserId) {
+        setFetchedUser(null);
+      }
+      if (isOffline) {
+        setFetchError((prev) => prev ?? 'You are offline. Connect to refresh this profile.');
+      }
       setIsFetchingProfile(false);
-      return;
+      return () => {
+        ignore = true;
+      };
     }
 
-    if (isOffline) {
-      setIsFetchingProfile(false);
-      setFetchError((prev) => prev ?? 'You are offline. Connect to refresh this profile.');
-      return;
-    }
-
-    let ignore = false;
+    setIsFetchingProfile(true);
+    setFetchError(null);
 
     async function loadProfile() {
-      setIsFetchingProfile(true);
-      setFetchError(null);
-
       try {
-        const profile = targetUserId ? await fetchUserProfile(targetUserId) : await fetchCurrentUserProfile();
+        const profile = shouldLoadCurrentUser
+          ? await fetchCurrentUserProfile()
+          : await fetchUserProfile(targetUserId);
         if (ignore) {
           return;
         }
@@ -311,7 +325,9 @@ function ProfilePage() {
         }
         console.error('Failed to load user profile:', error);
         setFetchError(error?.message || 'Failed to load user profile.');
-        setFetchedUser(null);
+        if (!userFromState) {
+          setFetchedUser(null);
+        }
       } finally {
         if (!ignore) {
           setIsFetchingProfile(false);
@@ -348,7 +364,26 @@ function ProfilePage() {
     return userId || 'Unknown User';
   }, [effectiveUser, userId]);
 
-  const avatarUrl = resolveAvatarUrl(effectiveUser?.avatar);
+  const avatarUrl = useMemo(() => {
+    const primary = resolveAvatarUrl(effectiveUser?.avatar);
+    const usernameKey =
+      typeof effectiveUser?.username === 'string'
+        ? effectiveUser.username.trim().toLowerCase()
+        : null;
+    if (primary && /\/images\/profile\/profile-\d+\.jpg$/i.test(primary) && usernameKey) {
+      const fallbackPath = TF2_AVATAR_MAP[usernameKey];
+      if (fallbackPath) {
+        return resolveAvatarUrl(fallbackPath);
+      }
+    }
+    if ((!primary || /\/images\/profile\/profile-\d+\.jpg$/i.test(primary)) && usernameKey) {
+      const fallbackPath = TF2_AVATAR_MAP[usernameKey];
+      if (fallbackPath) {
+        return resolveAvatarUrl(fallbackPath);
+      }
+    }
+    return primary;
+  }, [effectiveUser]);
   const canEditProfile =
     !userFromState &&
     (shouldLoadCurrentUser ||
