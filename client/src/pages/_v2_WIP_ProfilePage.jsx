@@ -38,6 +38,8 @@ import { BADGE_METADATA } from '../utils/badges';
 import BackButton from '../components/BackButton';
 import './_v2_WIP_ProfilePage.css';
 
+const SECTION_BG_COLOR = '#d6e6ff';
+
 export const pageConfig = {
   // EDIT THIS ONCE READY TO REPLACE ProfilePage.jsx
   id: 'profile-v2-wip',
@@ -176,7 +178,7 @@ const Section = ({ title, description, children }) => (
         borderRadius: 2,
         border: '1px solid',
         borderColor: 'divider',
-        backgroundColor: 'background.default',
+        backgroundColor: SECTION_BG_COLOR,
         p: { xs: 2, md: 3 }
       }}
     >
@@ -659,8 +661,8 @@ const detailEntries = useMemo(() => {
       return null;
     }
     return {
-      createdAt: formatDateTime(effectiveUser.createdAt),
-      updatedAt: formatDateTime(effectiveUser.updatedAt),
+      createdAt: formatDateTime(effectiveUser?.createdAt),
+      updatedAt: formatDateTime(effectiveUser?.updatedAt),
       status: effectiveUser.accountStatus ?? 'unknown',
       email: effectiveUser.email ?? 'â€”',
       userId: effectiveUser._id ?? targetUserId ?? 'â€”'
@@ -907,7 +909,7 @@ const detailEntries = useMemo(() => {
                 {displayName}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Joined: {formatDateTime(effectiveUser.createdAt) || targetUserId || 'N/A'}
+                Joined: {formatDateTime(effectiveUser?.createdAt) || targetUserId || 'N/A'}
               </Typography>
             </Box>
           </Stack>
@@ -938,14 +940,14 @@ const detailEntries = useMemo(() => {
                   component="form"
                   spacing={2}
                   onSubmit={handleSaveProfile}
-                  sx={{
-                    p: 2,
-                    borderRadius: 2,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    backgroundColor: 'background.default'
-                  }}
-                >
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  backgroundColor: SECTION_BG_COLOR
+                }}
+              >
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
                     <Avatar
                       src={editingAvatarSrc}
@@ -1111,7 +1113,7 @@ const detailEntries = useMemo(() => {
                     </Stack>
                   ) : (
                     <Typography variant="body2" color="text.secondary">
-                      No badges yet â€” theyâ€™ll appear here once this user starts collecting achievements.
+                      No badges yet — they’ll appear here once this user starts collecting achievements.
                     </Typography>
                   )}
                 </Section>
@@ -1287,7 +1289,7 @@ const detailEntries = useMemo(() => {
                               borderRadius: 2,
                               border: '1px dashed',
                               borderColor: 'divider',
-                              backgroundColor: 'background.default',
+                              backgroundColor: SECTION_BG_COLOR,
                               p: 2
                             }}
                           >

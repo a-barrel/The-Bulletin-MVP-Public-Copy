@@ -33,6 +33,8 @@ import formatDate from '../utils/formatDate';
 import { useUpdates } from '../contexts/UpdatesContext';
 import { routes } from '../routes';
 
+const noop = () => {};
+
 export const pageConfig = {
   id: 'updates',
   label: 'Updates',
@@ -114,9 +116,11 @@ function UpdatesPage() {
   const [showUnreadOnly, setShowUnreadOnly] = useState(true);
   const pendingRefreshRef = useRef(false);
 
-  const { setUnreadCount } = useUpdates();
-  const { setUnreadDiscussionsCount } = useUpdates();
-  const { setUnreadEventsCount } = useUpdates();
+  const {
+    setUnreadCount = noop,
+    setUnreadDiscussionsCount = noop,
+    setUnreadEventsCount = noop
+  } = useUpdates();
 
   const unreadCount = useMemo(
     () => updates.filter((update) => !update.readAt).length,
