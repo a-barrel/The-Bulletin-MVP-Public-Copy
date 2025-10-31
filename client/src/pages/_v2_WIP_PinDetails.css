@@ -1,6 +1,5 @@
-/* EVENTS STYLING */
 /* pin-details */
-.event-container .pin-details {
+.pin-details {
     display: flex;
     align-items: center;
     flex-direction: column;
@@ -13,7 +12,7 @@
 }
 
 /* header */
-.event-container .header {
+.header {
     background-color: #CDAEF2;
     display: flex;
     justify-content: space-between;
@@ -25,12 +24,21 @@
     color: #5d3889
 }
 
-.event-container .header h2 {
+.header h2 {
     margin: 0;
 }
 
+.header.event-header {
+    background-color: #CDAEF2;
+}
+
+.header.discussion-header {
+    background-color: #3EB8F0;
+}
+
+
 /* back-button */
-.event-container .back-button {
+.back-button {
     background: none;
     border: none;
     padding: 0;
@@ -41,15 +49,12 @@
     justify-content: center;
 }
 
-.event-container .back-arrow {
+.back-arrow {
     width: 30px;
     height: 30px;
 }
 
 /* bookmark-button */
-<<<<<<< HEAD
-.event-container .bookmark-button {
-=======
 .back-button {
     transition: transform 150ms ease, filter 150ms ease;
 }
@@ -65,7 +70,6 @@
 
 
 .bookmark-button {
->>>>>>> origin/main
     background: none;
     border: none;
     padding: 0;
@@ -76,14 +80,13 @@
     justify-content: center;
 }
 
-.event-container .bookmark {
+.bookmark {
     width: 30px;
     height: 30px;
 }
 
-/* event name */
-.event-container .name {
-    background-color: #F4F0FC;
+/* pin name */
+.name {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -94,29 +97,37 @@
     flex-direction: column;
 }
 
-.event-container .name h2 {
+.name h2 {
     margin: 0;
 }
 
-.event-container .pin-id {
+.name.event-name {
+    background-color: #F4F0FC;
+}
+
+.name.discussion-name {
+    background-color: #EFF8FC;
+}
+
+.pin-id {
     font-size: 0.9rem;
     color: #5d3889;
     margin-top: 0.25rem;
 }
 
-.event-container .pin-radius {
+.pin-radius {
     font-size: 0.9rem;
     color: #5d3889;
     margin-top: 0.15rem;
 }
 
-.event-container .pin-timestamps {
+.pin-timestamps {
     font-size: 0.85rem;
     color: #7b68b5;
     margin-top: 0.25rem;
 }
 
-.event-container .status-container {
+.status-container {
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -124,10 +135,10 @@
     gap: 0.5rem;
     padding: 0.75rem 1rem;
     box-sizing: border-box;
-    background-color: #F4F0FC;
+    background-color: #FFFFFF;
 }
 
-.event-container .status-message {
+.status-message {
     width: 100%;
     max-width: 720px;
     padding: 0.75rem 1rem;
@@ -138,22 +149,30 @@
     text-align: center;
 }
 
-.event-container .status-message.error {
+.status-message.error {
     border-color: #f15bb5;
     background-color: #ffe4f0;
     color: #9b2960;
 }
 
 /* map */
-.event-container .map-section {
-    background-color: #F4F0FC;
+.map-section {
     width: 100%;
     border-bottom: 1px solid black;
     padding: 1rem;
     box-sizing: border-box;
 }
 
-.event-container .map-wrapper {
+.map-section.event-map {
+  background-color: #F4F0FC; 
+}
+
+.map-section.discussion-map {
+  background-color: #EFF8FC; 
+}
+
+
+.map-wrapper {
     width: 100%;
     height: 320px;
     border: 1px solid #CDAEF2;
@@ -162,7 +181,7 @@
     background-color: #FFFFFF;
 }
 
-.event-container .cover-photo {
+.cover-photo {
     width: 100%;
     max-height: 320px;
     object-fit: cover;
@@ -171,7 +190,7 @@
     background-color: #FFFFFF;
 }
 
-.event-container .map-placeholder {
+.map-placeholder {
     padding: 1.5rem;
     border: 1px dashed #CDAEF2;
     border-radius: 8px;
@@ -179,8 +198,7 @@
 }
 
 /* post-creator */
-.event-container .post-creator {
-    background-color: #F4F0FC;
+.post-creator {
     display: flex;
     align-items: center;
     width: 100%;
@@ -191,12 +209,18 @@
     font-weight: bold;
 }
 
-<<<<<<< HEAD
-.event-container .profile-icon {
-=======
+.post-creator.event-creator {
+  background-color: #F4F0FC; 
+}
+
+.post-creator.discussion-creator {
+  background-color: #EFF8FC; 
+}
+
 .user-link {
     text-decoration: none;
     color: inherit;
+    padding-top: 1rem;
 }
 
 .user-link:focus-visible {
@@ -211,7 +235,6 @@
 }
 
 .profile-icon {
->>>>>>> origin/main
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -219,33 +242,32 @@
     background-color: #FFFFFF;
 }
 
-.event-container .post-creator-details {
+.post-creator-details {
     display: flex;
     flex-direction: column;
 }
 
-.event-container .creator-name {
+.creator-name {
     color: #5d3889;
     font-weight: 600;
 }
 
-.event-container .creator-username {
+.creator-username {
     color: #7b68b5;
-    font-size: 0.event-container .85rem;
+    font-size: 0.85rem;
 }
 
-.event-container .muted {
+.muted {
     color: #7f7f7f;
     font-style: italic;
 }
 
-.event-container .error-text {
+.error-text {
     color: #b00020;
 }
 
 /* post-description */
-.event-container .post-description {
-    background-color: #F4F0FC;
+.post-description {
     display: block; 
     text-align: left; 
     width: 100%; 
@@ -255,28 +277,43 @@
     padding-bottom: 1rem;
 }
 
+.post-description.event-description {
+  background-color: #F4F0FC; 
+}
+
+.post-description.discussion-description {
+  background-color: #EFF8FC;
+}
+
 /* post-images */
-.event-container .post-images {
-    background-color: #F4F0FC;
+.post-images {
     width: 100%;
-    padding: 1rem;
+    padding: 0;
     box-sizing: border-box;
 }
 
-.event-container .photo-grid {
+.post-images.event-images {
+  background-color: #F4F0FC; 
+}
+
+.post-images.discussion-images {
+  background-color: #EFF8FC;
+}
+
+.photo-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 0.75rem;
 }
 
-.event-container .pin-photo-item {
+.pin-photo-item {
     display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 0.35rem;
 }
 
-.event-container .pin-photo {
+.pin-photo {
     width: 100%;
     height: 160px;
     object-fit: cover;
@@ -285,14 +322,13 @@
     background-color: #FFFFFF;
 }
 
-.event-container .pin-photo-item figcaption {
+.pin-photo-item figcaption {
     font-size: 0.8rem;
     color: #5d3889;
 }
 
 /* post-info */
-.event-container .post-info {
-    background-color: #F4F0FC;
+.post-info {
     display: flex;
     flex-direction: column; 
     gap: 1rem;
@@ -302,25 +338,50 @@
     padding: 1rem;
 }
 
+.post-info.event-info {
+  background-color: #F4F0FC; 
+}
+
+.post-info.discussion-info {
+  background-color: #EFF8FC; 
+}
+
 /* post-location */
-.event-container .post-location {
+.post-location {
     display: flex;
     align-items: center;
-    color: #5d3889;
+    color: #000000;
     font-weight: bold;
     width: 100%;
 }
 
-.event-container .pin-icon {
-    width: 32px;
-    height: 32px;
+.post-location.event-location .location-text {
+  background-color: #CDAEF2;
+  color: #5d3889; 
+}
+
+.post-location.discussion-location .location-text {
+  background-color: #3EB8F0;
+  color: #003f5c; 
+}
+
+.pin-icon {
+    width: 40px;
+    height: 40px;
     color: #5d3889;
     margin-right: 0.5rem;
     flex-shrink: 0;
-    flex-shrink: 0;
 }
 
-.event-container .location-text {
+.pin-icon.event-icon {
+  filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
+}
+
+.pin-icon.discussion-icon {
+  filter: brightness(0) saturate(100%) invert(45%) sepia(55%) saturate(2100%) hue-rotate(160deg) brightness(95%) contrast(85%);
+}
+
+.location-text {
     background-color: #CDAEF2;
     padding: 0.2rem 0.5rem;
     border: 1px solid black;
@@ -329,22 +390,40 @@
 }
 
 /* post-occurance */
-.event-container .post-occurance {
+.post-occurance {
     display: flex;
     align-items: center;
-    color: #5d3889;
+    color: #000000;
     font-weight: bold;
     width: 100%;
 }
 
-.event-container .calendar-icon {
+.post-occurance.event-occurance .occurance-text {
+  background-color: #CDAEF2;
+  color: #5d3889;
+}
+
+.post-occurance.discussion-occurance .occurance-text {
+  background-color: #3EB8F0;
+  color: #003f5c;
+}
+
+.calendar-icon {
     width: 40px;
     height: 40px;
     filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
     margin-right: 0.5rem;
 }
 
-.event-container .occurance-text {
+.calendar-icon.event-icon {
+  filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
+}
+
+.calendar-icon.discussion-icon {
+  filter: brightness(0) saturate(100%) invert(45%) sepia(55%) saturate(2100%) hue-rotate(160deg) brightness(95%) contrast(85%);
+}
+
+.occurance-text {
     background-color: #CDAEF2;
     padding: 0.2rem 0.5rem;
     border: 1px solid black;
@@ -353,24 +432,42 @@
 }
 
 /* post-attendance */
-.event-container .post-attendance {
+.post-attendance {
     display: flex;
     align-items: center;
     color: #5d3889;
     font-weight: bold;
     width: 100%;
-    gap: 0.75rem;
+    gap: 0;
     flex-wrap: wrap;
 }
 
-.event-container .attendance-icon {
+.post-attendance.event-attendance .attendance-text {
+  background-color: #CDAEF2;
+  color: #5d3889;
+}
+
+.post-attendance.discussion-attendance .attendance-text {
+  background-color: #3EB8F0;
+  color: #003f5c;
+}
+
+.attendance-icon {
     width: 40px;
     height: 40px;
     filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
     margin-right: 0.5rem;
 }
 
-.event-container .attendance-text {
+.attendance-icon.event-icon {
+  filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
+}
+
+.attendance-icon.discussion-icon {
+  filter: brightness(0) saturate(100%) invert(45%) sepia(55%) saturate(2100%) hue-rotate(160deg) brightness(95%) contrast(85%);
+}
+
+.attendance-text {
     background-color: #CDAEF2;
     padding: 0.2rem 0.5rem;
     border: 1px solid black;
@@ -378,7 +475,7 @@
     flex: 1;
 }
 
-.event-container .attending-icons {
+.attending-icons {
     width: 25px;
     height: 25px;
     filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
@@ -390,11 +487,12 @@
     border: 1px solid black;
     border-radius: 8px;
     padding: 0.35rem 0.85rem;
-    color: #FFFFFF;
+    color: #000000;
     font-size: 0.9rem;
     cursor: pointer;
     transition: background-color 0.2s ease, transform 0.2s ease;
     flex-shrink: 0;
+    margin-left: 1rem;
 }
 
 .view-attendees-button:hover:not(:disabled) {
@@ -409,7 +507,7 @@
 }
 
 /* attendance button */
-.event-container .attendance {
+.attendance {
     background-color: #F4F0FC;
     display: flex;
     justify-content: center;
@@ -417,7 +515,7 @@
     width: 100%;
 }
 
-.event-container .attend-button {
+.attend-button {
     background-color: #9B5DE5;
     border: none;
     padding: 0.5rem 1.5rem;
@@ -429,7 +527,7 @@
     border: 1px solid black;
 }
 
-.event-container .attend-button.attending {
+.attend-button.attending {
     background-color: #F15BB5;
 }
 
@@ -682,7 +780,7 @@
 }
 
 /* comments-header */
-.event-container .comments-header {
+.comments-header {
     background-color: #FFFFFF;
     display: flex;
     justify-content: center;
@@ -696,13 +794,13 @@
     gap: 0.5rem;
 }
 
-.event-container .comment-icon {
+.comment-icon {
     width: 25px;
     height: 25px;
 }
 
 /* comments-section */
-.event-container .comments-section {
+.comments-section {
     display: flex;
     flex-direction: column; 
     gap: 1rem;
@@ -711,9 +809,10 @@
     padding: 0 1rem;
     box-sizing: border-box;
     background-color: #FFFFFF;
+    padding-bottom: 1rem;
 }
 
-.event-container .comment {
+.comment {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -723,16 +822,31 @@
   background-color: #CDAEF2;
 }
 
-.event-container .comment-header {
+.comment.event-comment {
+  background-color: #F4F0FC;
+}
+
+.comment.discussion-comment {
+  background-color: #EFF8FC;
+}
+
+.comment-header {
     display: flex;
     align-items: center; 
     gap: 0.5rem;            
     border-bottom: 1px solid black;
     padding: 0.5rem;
-    background-color: #CDAEF2;
 }
 
-.event-container .commenter-pfp {
+.comment-header.event-comment-header {
+  background-color: #F4F0FC;
+}
+
+.comment-header.discussion-comment-header {
+  background-color: #EFF8FC;
+}
+
+.commenter-pfp {
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -740,22 +854,22 @@
     background-color: #FFFFFF;
 }
 
-.event-container .commenter-info {
+.commenter-info {
     display: flex;
     flex-direction: column;
 }
 
-.event-container .comment-timestamp {
+.comment-timestamp {
     font-size: 0.75rem;
     color: #5d3889;
 }
 
-.event-container .comment-body {
+.comment-body {
     padding: 0rem 0.75rem;
 }
 
 /* create-comment */
-.event-container .create-comment {
+.create-comment {
     position: fixed;
     bottom: 25px;
     right: 25px;
@@ -775,402 +889,12 @@
     transition: transform 160ms ease, box-shadow 200ms ease, filter 200ms ease;
 }
 
-<<<<<<< HEAD
-.event-container .create-comment-button {
-    width: 75px;
-    height: 75px;
-    filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
-}
-
-
-/* DISCUSSIONS STYLING */
-/* pin-details */
-.discussion-container .pin-details {
-    display: flex;
-    align-items: center;
-    flex-direction: column;
-    background-color: #FFFFFF;
-    color: black;
-    width: 100vw;
-    height: 100vh;
-    max-width: 100%;
-    overflow-x: hidden;
-}
-
-/* header */
-.discussion-container .header {
-    background-color: #3EB8F0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    padding: 0.25rem 1rem;
-    box-sizing: border-box;
-    border-bottom: 1px solid black;
-    color: #5d3889
-}
-
-.discussion-container .header h2 {
-    margin: 0;
-}
-
-/* back-button */
-.discussion-container .back-button {
-    background: none;
-    border: none;
-    padding: 0;
-    margin: 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.discussion-container .back-arrow {
-    width: 30px;
-    height: 30px;
-}
-
-/* bookmark-button */
-.discussion-container .bookmark-button {
-    background: none;
-    border: none;
-    padding: 0;
-    margin: 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.discussion-container .bookmark {
-    width: 30px;
-    height: 30px;
-}
-
-/* discussion name */
-.discussion-container .name {
-    background-color: #EFF8FC;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    padding: 0.25rem 1rem;
-    box-sizing: border-box;
-    border-bottom: 1px solid black;
-    flex-direction: column;
-}
-
-.discussion-container .name h2 {
-    margin: 0;
-}
-
-.discussion-container .pin-id {
-    font-size: 0.9rem;
-    color: #5d3889;
-    margin-top: 0.25rem;
-}
-
-.discussion-container .pin-radius {
-    font-size: 0.9rem;
-    color: #5d3889;
-    margin-top: 0.15rem;
-}
-
-.discussion-container .pin-timestamps {
-    font-size: 0.85rem;
-    color: #7b68b5;
-    margin-top: 0.25rem;
-}
-
-/* map */
-.discussion-container .map-section {
-    background-color: #EFF8FC;
-    width: 100%;
-    border-bottom: 1px solid black;
-    padding: 1rem;
-    box-sizing: border-box;
-}
-
-.discussion-container .map-wrapper {
-    width: 100%;
-    height: 320px;
-    border: 1px solid #CDAEF2;
-    border-radius: 8px;
-    overflow: hidden;
-    background-color: #FFFFFF;
-}
-
-.discussion-container .cover-photo {
-    width: 100%;
-    max-height: 320px;
-    object-fit: cover;
-    border: 1px solid #CDAEF2;
-    border-radius: 8px;
-    background-color: #FFFFFF;
-}
-
-.discussion-container .map-placeholder {
-    padding: 1.5rem;
-    border: 1px dashed #CDAEF2;
-    border-radius: 8px;
-    text-align: center;
-}
-
-/* post-creator */
-.discussion-container .post-creator {
-    background-color: #EFF8FC;
-    display: flex;
-    align-items: center;
-    width: 100%;
-    padding: 0 1rem;
-    box-sizing: border-box;
-    color: #F15BB5;
-    gap: 0.5rem;
-    font-weight: bold;
-}
-
-.discussion-container .profile-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    object-fit: cover;
-    background-color: #FFFFFF;
-}
-
-.discussion-container .post-creator-details {
-    display: flex;
-    flex-direction: column;
-}
-
-.discussion-container .creator-name {
-    color: #5d3889;
-    font-weight: 600;
-}
-
-.discussion-container .creator-username {
-    color: #7b68b5;
-    font-size: 0.discussion-container .85rem;
-}
-
-.discussion-container .muted {
-    color: #7f7f7f;
-    font-style: italic;
-}
-
-.discussion-container .error-text {
-    color: #b00020;
-}
-
-/* post-description */
-.discussion-container .post-description {
-    background-color: #EFF8FC;
-    display: block; 
-    text-align: left; 
-    width: 100%; 
-    margin: 0;
-    padding-left: 1rem;
-    padding-right: 1rem;
-    padding-bottom: 1rem;
-}
-
-/* post-images */
-.discussion-container .post-images {
-    background-color: #EFF8FC;
-    width: 100%;
-    padding: 1rem;
-    box-sizing: border-box;
-}
-
-.discussion-container .photo-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 0.75rem;
-}
-
-.discussion-container .pin-photo-item {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.35rem;
-}
-
-.discussion-container .pin-photo {
-    width: 100%;
-    height: 160px;
-    object-fit: cover;
-    border-radius: 8px;
-    border: 1px solid #CDAEF2;
-    background-color: #FFFFFF;
-}
-
-.discussion-container .pin-photo-item figcaption {
-    font-size: 0.8rem;
-    color: #5d3889;
-}
-
-/* post-info */
-.discussion-container .post-info {
-    background-color: #F4F0FC;
-    display: flex;
-    flex-direction: column; 
-    gap: 1rem;
-    align-items: flex-start;
-    width: 100%;
-    margin: 0;
-    padding: 1rem;
-}
-
-/* post-location */
-.discussion-container .post-location {
-    display: flex;
-    align-items: center;
-    color: #5d3889;
-    font-weight: bold;
-    width: 100%;
-}
-
-.discussion-container .pin-icon {
-    width: 32px;
-    height: 32px;
-    color: #5d3889;
-    margin-right: 0.5rem;
-    flex-shrink: 0;
-}
-
-.discussion-container .location-text {
-    background-color: #CDAEF2;
-    padding: 0.2rem 0.5rem;
-    border: 1px solid black;
-    border-radius: 8px;
-    flex: 1;
-}
-
-/* post-expiration */
-.discussion-container .post-expiration {
-    display: flex;
-    align-items: center;
-    color: #5d3889;
-    font-weight: bold;
-    width: 100%;
-}
-
-.discussion-container .calendar-icon {
-    width: 40px;
-    height: 40px;
-    filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
-    margin-right: 0.5rem;
-}
-
-.discussion-container .expiration-text {
-    background-color: #CDAEF2;
-    padding: 0.2rem 0.5rem;
-    border: 1px solid black;
-    border-radius: 8px;
-    flex: 1;
-}
-
-/* comments-header */
-.discussion-container .comments-header {
-    background-color: #FFFFFF;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    box-sizing: border-box;
-    border-top: 1px solid black;
-    color: #5d3889;
-    font-weight: bold;
-    line-height: 0.80;
-    gap: 0.5rem;
-}
-
-.discussion-container .comment-icon {
-    width: 25px;
-    height: 25px;
-}
-
-/* comments-section */
-.discussion-container .comments-section {
-    display: flex;
-    flex-direction: column; 
-    gap: 1rem;
-    align-items: flex-start;
-    width: 100%;
-    padding: 0 1rem;
-    box-sizing: border-box;
-    background-color: #FFFFFF;
-}
-
-.discussion-container .comment {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  border: 1px solid black;
-  border-radius: 8px;
-  overflow: hidden; 
-  background-color: #EFF8FC;
-}
-
-.discussion-container .comment-header {
-    display: flex;
-    align-items: center; 
-    gap: 0.5rem;            
-    border-bottom: 1px solid black;
-    padding: 0.5rem;
-    background-color: #EFF8FC;
-}
-
-.discussion-container .commenter-pfp {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    object-fit: cover;
-    background-color: #FFFFFF;
-}
-
-.discussion-container .commenter-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.discussion-container .comment-timestamp {
-    font-size: 0.75rem;
-    color: #5d3889;
-}
-
-.discussion-container .comment-body {
-    padding: 0rem 0.75rem;
-}
-
-/* create-comment */
-.discussion-container .create-comment {
-    position: fixed;
-    bottom: 25px;
-    right: 25px;
-    z-index: 1000;
-    background: none;
-    border: none;
-    padding: 0;
-    margin: 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.discussion-container .create-comment-button {
-    width: 75px;
-    height: 75px;
-    filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
-=======
 .create-comment-button {
     width: 42px;
     height: 42px;
     pointer-events: none;
     filter: invert(100%);
     transition: transform 160ms ease;
->>>>>>> origin/main
 }
 
 .create-comment:hover {
@@ -1298,4 +1022,3 @@
     opacity: 0.5;
     cursor: not-allowed;
 }
-

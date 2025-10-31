@@ -1026,6 +1026,22 @@ function PinDetails() {
   const updatedAtLabel = useMemo(() => formatDateTime(pin?.updatedAt), [pin]);
 
   return (
+<<<<<<< HEAD
+    <div>
+      {!pin ? (
+        // ERROR HANDLING IF PIN DOES NOT EXIST (wip)
+        <p>Loading...</p>
+      ) : pin.type === 'event' ? (
+        // EVENT PIN DETAILS
+        <div className='event-container'>
+          <div className='pin-details'>
+            {/* Header */}
+            <header className='header'>
+              <Link to="/list" className="back-button">
+                <img
+                  src='https://www.svgrepo.com/show/326886/arrow-back-sharp.svg'
+                  className='back-arrow'
+=======
     <div className='pin-details'>
       {interactionOverlay ? (
         <div className='pin-expired-overlay' role='dialog' aria-modal='true'>
@@ -1115,15 +1131,44 @@ function PinDetails() {
                   pins={mapPins}
                   selectedPinId={mapPins[0]?._id ?? pin._id}
                   centerOverride={coordinates}
+>>>>>>> origin/main
                 />
-              </div>
-            ) : coverImageUrl ? (
-              <img src={coverImageUrl} alt={`${pin.title ?? 'Pin'} cover`} className="cover-photo" />
-            ) : (
-              <div className="map-placeholder muted">No location data available for this pin.</div>
-            )}
-          </div>
+              </Link>
 
+<<<<<<< HEAD
+              <h2>{pin ? pin.type.charAt(0).toUpperCase() + pin.type.slice(1) : 'Loading...'}</h2>
+
+              <button
+                className='bookmark-button'
+                onClick={() => setBookmarked(!bookmarked)}
+              >
+                <img
+                  src={
+                    bookmarked
+                      ? 'https://www.svgrepo.com/show/347684/bookmark-fill.svg' // bookmarked
+                      : 'https://www.svgrepo.com/show/357397/bookmark-full.svg' // not bookmarked
+                  }
+                  className='bookmark'
+                />
+              </button>
+            </header>
+
+            {/* Event/Discussion Name */}
+            <div className='name'>
+              <h2>{pin ? pin.title || 'Untitled pin' : 'Loading pin...'}</h2>
+              {pin?._id ? <span className="pin-id">ID: {pin._id}</span> : null}
+              {proximityRadius ? (
+                <span className="pin-radius">Proximity radius: {proximityRadius}</span>
+              ) : null}
+              {createdAtLabel || updatedAtLabel ? (
+                <span className="pin-timestamps">
+                  {createdAtLabel ? `Created ${createdAtLabel}` : null}
+                  {createdAtLabel && updatedAtLabel ? ' | ' : null}
+                  {updatedAtLabel ? `Updated ${updatedAtLabel}` : null}
+                </span>
+              ) : null}
+            </div>
+=======
           {/* Post creator */}
           {creatorProfileLink ? (
             <Link
@@ -1162,75 +1207,59 @@ function PinDetails() {
               </div>
             </div>
           )}
+>>>>>>> origin/main
 
-          {/* Post description */}
-          <div className='post-description'>
-            {pin.description ? pin.description : <span className="muted">No description provided.</span>}
-          </div>
-
-          {/* Post images */}
-          <div className='post-images'>
-            {photoItems.length > 0 ? (
-              <div className="photo-grid">
-                {photoItems.map((photo, index) => (
-                  <figure className="pin-photo-item" key={`${photo.url}-${index}`}>
-                    <img
-                      src={photo.url}
-                      alt={photo.label ? `${photo.label}` : `Pin photo ${index + 1}`}
-                      className="pin-photo"
-                      loading="lazy"
-                    />
-                    {photo.label ? <figcaption>{photo.label}</figcaption> : null}
-                  </figure>
-                ))}
-              </div>
-            ) : (
-              <div className="muted">No photos uploaded for this pin.</div>
-            )}
-          </div>
-
-          {/* Post info */}
-          <div className='post-info'>
-            <div className='post-location'>
-              <svg
-                className='pin-icon'
-                viewBox='0 0 24 24'
-                aria-hidden='true'
-              >
-                <path
-                  fill='currentColor'
-                  d='M12 2a7 7 0 0 0-7 7c0 4.63 5.48 11.05 6.27 11.93a1 1 0 0 0 1.46 0C13.52 20.05 19 13.63 19 9a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z'
-                />
-              </svg>
-              <span className='location-text'>
-                Location:<br />
-                {addressLabel ||
-                  approximateAddressLabel ||
-                  'No address information available.'}
-                {coordinateLabel ? (
-                  <>
-                    <br />
-                    Coordinates: {coordinateLabel}
-                  </>
-                ) : null}
-              </span>
+            <div className="status-container">
+              {isLoading ? <div className="status-message">Loading pin details...</div> : null}
+              {error ? <div className="status-message error">{error}</div> : null}
+              {!pin && !isLoading && !error && pinId ? (
+                <div className="status-message">No pin found for ID &ldquo;{pinId}&rdquo;.</div>
+              ) : null}
             </div>
 
-            <div className='post-occurance'>
-              <img
-                src='https://www.svgrepo.com/show/533378/calendar.svg'
-                className='calendar-icon'
-                alt='Calendar icon'
-              />
-              <span className='occurance-text'>
-                {pin.type === 'event' ? 'Occurs:' : 'Expires:'}
-                <br />
-                {pin.type === 'event'
-                  ? eventDateRange || 'No schedule provided.'
-                  : expirationLabel || 'No expiration set.'}
-              </span>
-            </div>
+            {pin ? (
+              <>
+                {/* Map section */}
+                <div className='map-section'>
+                  {coordinates ? (
+                    <div className="map-wrapper">
+                      <LeafletMap
+                        userLocation={coordinates}
+                        pins={[pin]}
+                        selectedPinId={pin._id}
+                        centerOverride={coordinates}
+                      />
+                    </div>
+                  ) : coverImageUrl ? (
+                    <img src={coverImageUrl} alt={`${pin.title ?? 'Pin'} cover`} className="cover-photo" />
+                  ) : (
+                    <div className="map-placeholder muted">No location data available for this pin.</div>
+                  )}
+                </div>
 
+<<<<<<< HEAD
+                {/* Post creator */}
+                <div className='post-creator'>
+                  <img
+                    src={creatorAvatarUrl}
+                    className='profile-icon'
+                    alt={`${pin.creator?.displayName ?? 'Creator'} avatar`}
+                  />
+                  <div className="post-creator-details">
+                    <span className="creator-name">
+                      {pin.creator?.displayName || pin.creator?.username || 'Unknown creator'}
+                    </span>
+                    {pin.creator?.username ? (
+                      <span className="creator-username">@{pin.creator.username}</span>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Post description */}
+                <div className='post-description'>
+                  {pin.description ? pin.description : <span className="muted">No description provided.</span>}
+                </div>
+=======
             <div className='post-attendance'>
               <img
                 src='https://www.svgrepo.com/show/511192/user-check.svg'
@@ -1278,23 +1307,57 @@ function PinDetails() {
               ) : null}
             </div>
           ) : null}
+>>>>>>> origin/main
 
-          {/* Comments header */}
-          <div className='comments-header'>
-            <img
-              src='https://www.svgrepo.com/show/361088/comment-discussion.svg'
-              className='comment-icon'
-              alt='Comments icon'
-            />
-            <p>
-              Comments (
-              {isLoadingReplies
-                ? '...'
-                : replies.length || pin.replyCount || pin.stats?.replyCount || 0}
-              )
-            </p>
-          </div>
+                {/* Post images */}
+                <div className='post-images'>
+                  {photoItems.length > 0 ? (
+                    <div className="photo-grid">
+                      {photoItems.map((photo, index) => (
+                        <figure className="pin-photo-item" key={`${photo.url}-${index}`}>
+                          <img
+                            src={photo.url}
+                            alt={photo.label ? `${photo.label}` : `Pin photo ${index + 1}`}
+                            className="pin-photo"
+                            loading="lazy"
+                          />
+                          {photo.label ? <figcaption>{photo.label}</figcaption> : null}
+                        </figure>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="muted">No photos uploaded for this pin.</div>
+                  )}
+                </div>
 
+<<<<<<< HEAD
+                {/* Post info */}
+                <div className='post-info'>
+                  <div className='post-location'>
+                    <svg
+                      className='pin-icon'
+                      viewBox='0 0 24 24'
+                      aria-hidden='true'
+                    >
+                      <path
+                        fill='currentColor'
+                        d='M12 2a7 7 0 0 0-7 7c0 4.63 5.48 11.05 6.27 11.93a1 1 0 0 0 1.46 0C13.52 20.05 19 13.63 19 9a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z'
+                      />
+                    </svg>
+                    <span className='location-text'>
+                      Location:<br />
+                      {addressLabel ||
+                        approximateAddressLabel ||
+                        'No address information available.'}
+                      {coordinateLabel ? (
+                        <>
+                          <br />
+                          Coordinates: {coordinateLabel}
+                        </>
+                      ) : null}
+                    </span>
+                  </div>
+=======
           {/* Comments section */}
           <div className='comments-section'>
             {isLoadingReplies ? <div className="muted">Loading replies...</div> : null}
@@ -1348,15 +1411,343 @@ function PinDetails() {
                       </span>
                     </div>
                   )}
+>>>>>>> origin/main
 
-                  <div className='comment-body'>
-                    <p>{reply.message}</p>
+                  <div className='post-occurance'>
+                    <img
+                      src='https://www.svgrepo.com/show/533378/calendar.svg'
+                      className='calendar-icon'
+                      alt='Calendar icon'
+                    />
+                    <span className='occurance-text'>
+                      {pin.type === 'event' ? 'Occurs:' : 'Expires:'}
+                      <br />
+                      {pin.type === 'event'
+                        ? eventDateRange || 'No schedule provided.'
+                        : expirationLabel || 'No expiration set.'}
+                    </span>
+                  </div>
+
+                  <div className='post-attendance'>
+                    <img
+                      src='https://www.svgrepo.com/show/511192/user-check.svg'
+                      className='attendance-icon'
+                      alt='Attendance icon'
+                    />
+                    <span className='attendance-text'>
+                      Bookmarks: {pin.bookmarkCount ?? 0}
+                      <br />
+                      Replies: {pin.replyCount ?? pin.stats?.replyCount ?? 0}
+                      {pin.type === 'event' ? (
+                        <>
+                          <br />
+                          Attending: {pin.participantCount ?? 0}
+                          {pin.participantLimit ? ` / ${pin.participantLimit}` : ''}
+                        </>
+                      ) : null}
+                    </span>
                   </div>
                 </div>
-              );
-            })}
-          </div>
 
+                {/* Attend button */}
+                <div className='attendance'>
+                  <button
+                    className={`attend-button ${attending ? 'attending' : ''}`}
+                    onClick={() => setAttending(!attending)}
+                  >
+                    {attending ? 'Attending!' : 'Attend'}
+                  </button>
+                </div>
+
+                {/* Comments header */}
+                <div className='comments-header'>
+                  <img
+                    src='https://www.svgrepo.com/show/361088/comment-discussion.svg'
+                    className='comment-icon'
+                    alt='Comments icon'
+                  />
+                  <p>
+                    Comments (
+                    {isLoadingReplies
+                      ? '...'
+                      : replies.length || pin.replyCount || pin.stats?.replyCount || 0}
+                    )
+                  </p>
+                </div>
+
+                {/* Comments section */}
+                <div className='comments-section'>
+                  {isLoadingReplies ? <div className="muted">Loading replies...</div> : null}
+                  {repliesError ? <div className="error-text">{repliesError}</div> : null}
+                  {!isLoadingReplies && !repliesError && replies.length === 0 ? (
+                    <div className="muted">No replies yet.</div>
+                  ) : null}
+
+                  {replies.map((reply) => {
+                    const authorName =
+                      reply.author?.displayName || reply.author?.username || 'Anonymous user';
+                    const replyAvatar = resolveMediaAssetUrl(
+                      reply.author?.avatar,
+                      DEFAULT_AVATAR_PATH
+                    );
+                    const createdLabel = formatDateTime(reply.createdAt);
+
+                    return (
+                      <div className='comment' key={reply._id}>
+                        <div className='comment-header'>
+                          <img
+                            src={replyAvatar}
+                            className='commenter-pfp'
+                            alt={`${authorName} avatar`}
+                          />
+                          <span className='commenter-info'>
+                            <strong>{authorName}</strong>
+                            {createdLabel ? (
+                              <span className="comment-timestamp">{createdLabel}</span>
+                            ) : null}
+                          </span>
+                        </div>
+
+                        <div className='comment-body'>
+                          <p>{reply.message}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Create comment button */}
+                <button className='create-comment'>
+                  <img
+                    src='https://www.svgrepo.com/show/489238/add-comment.svg'
+                    className='create-comment-button'
+                    alt='Create comment button'
+                  />
+                </button>
+
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        // DISCUSSION PIN DETAILS
+        <div className='discussion-container'>
+          <div className='pin-details'>
+            {/* Header */}
+            <header className='header'>
+              <Link to="/list" className="back-button">
+                <img
+                  src='https://www.svgrepo.com/show/326886/arrow-back-sharp.svg'
+                  className='back-arrow'
+                />
+              </Link>
+
+<<<<<<< HEAD
+              <h2>{pin ? pin.type.charAt(0).toUpperCase() + pin.type.slice(1) : 'Loading...'}</h2>
+
+              <button
+                className='bookmark-button'
+                onClick={() => setBookmarked(!bookmarked)}
+              >
+                <img
+                  src={
+                    bookmarked
+                      ? 'https://www.svgrepo.com/show/347684/bookmark-fill.svg' // bookmarked
+                      : 'https://www.svgrepo.com/show/357397/bookmark-full.svg' // not bookmarked
+                  }
+                  className='bookmark'
+                />
+              </button>
+            </header>
+
+            {/* Event/Discussion Name */}
+            <div className='name'>
+              <h2>{pin ? pin.title || 'Untitled pin' : 'Loading pin...'}</h2>
+              {pin?._id ? <span className="pin-id">ID: {pin._id}</span> : null}
+              {proximityRadius ? (
+                <span className="pin-radius">Proximity radius: {proximityRadius}</span>
+              ) : null}
+              {createdAtLabel || updatedAtLabel ? (
+                <span className="pin-timestamps">
+                  {createdAtLabel ? `Created ${createdAtLabel}` : null}
+                  {createdAtLabel && updatedAtLabel ? ' | ' : null}
+                  {updatedAtLabel ? `Updated ${updatedAtLabel}` : null}
+                </span>
+              ) : null}
+            </div>
+
+            {pin ? (
+              <>
+                {/* Map section */}
+                <div className='map-section'>
+                  {coordinates ? (
+                    <div className="map-wrapper">
+                      <LeafletMap
+                        userLocation={coordinates}
+                        pins={[pin]}
+                        selectedPinId={pin._id}
+                        centerOverride={coordinates}
+                      />
+                    </div>
+                  ) : coverImageUrl ? (
+                    <img src={coverImageUrl} alt={`${pin.title ?? 'Pin'} cover`} className="cover-photo" />
+                  ) : (
+                    <div className="map-placeholder muted">No location data available for this pin.</div>
+                  )}
+                </div>
+
+                {/* Post creator */}
+                <div className='post-creator'>
+                  <img
+                    src={creatorAvatarUrl}
+                    className='profile-icon'
+                    alt={`${pin.creator?.displayName ?? 'Creator'} avatar`}
+                  />
+                  <div className="post-creator-details">
+                    <span className="creator-name">
+                      {pin.creator?.displayName || pin.creator?.username || 'Unknown creator'}
+                    </span>
+                    {pin.creator?.username ? (
+                      <span className="creator-username">@{pin.creator.username}</span>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Post description */}
+                <div className='post-description'>
+                  {pin.description ? pin.description : <span className="muted">No description provided.</span>}
+                </div>
+
+                {/* Post images */}
+                <div className='post-images'>
+                  {photoItems.length > 0 ? (
+                    <div className="photo-grid">
+                      {photoItems.map((photo, index) => (
+                        <figure className="pin-photo-item" key={`${photo.url}-${index}`}>
+                          <img
+                            src={photo.url}
+                            alt={photo.label ? `${photo.label}` : `Pin photo ${index + 1}`}
+                            className="pin-photo"
+                            loading="lazy"
+                          />
+                          {photo.label ? <figcaption>{photo.label}</figcaption> : null}
+                        </figure>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="muted">No photos uploaded for this pin.</div>
+                  )}
+                </div>
+
+                {/* Post info */}
+                <div className='post-info'>
+                  <div className='post-location'>
+                    <svg
+                      className='pin-icon'
+                      viewBox='0 0 24 24'
+                      aria-hidden='true'
+                    >
+                      <path
+                        fill='currentColor'
+                        d='M12 2a7 7 0 0 0-7 7c0 4.63 5.48 11.05 6.27 11.93a1 1 0 0 0 1.46 0C13.52 20.05 19 13.63 19 9a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z'
+                      />
+                    </svg>
+                    <span className='location-text'>
+                      Approximate Location:<br />
+                      {addressLabel ||
+                        approximateAddressLabel ||
+                        'No address information available.'}
+                    </span>
+                  </div>
+
+                  <div className='post-expiration'>
+                    <img
+                      src='https://www.svgrepo.com/show/533378/calendar.svg'
+                      className='calendar-icon'
+                      alt='Calendar icon'
+                    />
+                    <span className='expiration-text'>
+                      {pin.type === 'event' ? 'Occurs:' : 'Expires:'}
+                      <br />
+                      {pin.type === 'event'
+                        ? eventDateRange || 'No schedule provided.'
+                        : expirationLabel || 'No expiration set.'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Comments header */}
+                <div className='comments-header'>
+                  <img
+                    src='https://www.svgrepo.com/show/361088/comment-discussion.svg'
+                    className='comment-icon'
+                    alt='Comments icon'
+                  />
+                  <p>
+                    Comments (
+                    {isLoadingReplies
+                      ? '...'
+                      : replies.length || pin.replyCount || pin.stats?.replyCount || 0}
+                    )
+                  </p>
+                </div>
+
+                {/* Comments section */}
+                <div className='comments-section'>
+                  {isLoadingReplies ? <div className="muted">Loading replies...</div> : null}
+                  {repliesError ? <div className="error-text">{repliesError}</div> : null}
+                  {!isLoadingReplies && !repliesError && replies.length === 0 ? (
+                    <div className="muted">No replies yet.</div>
+                  ) : null}
+
+                  {replies.map((reply) => {
+                    const authorName =
+                      reply.author?.displayName || reply.author?.username || 'Anonymous user';
+                    const replyAvatar = resolveMediaAssetUrl(
+                      reply.author?.avatar,
+                      DEFAULT_AVATAR_PATH
+                    );
+                    const createdLabel = formatDateTime(reply.createdAt);
+
+                    return (
+                      <div className='comment' key={reply._id}>
+                        <div className='comment-header'>
+                          <img
+                            src={replyAvatar}
+                            className='commenter-pfp'
+                            alt={`${authorName} avatar`}
+                          />
+                          <span className='commenter-info'>
+                            <strong>{authorName}</strong>
+                            {createdLabel ? (
+                              <span className="comment-timestamp">{createdLabel}</span>
+                            ) : null}
+                          </span>
+                        </div>
+
+                        <div className='comment-body'>
+                          <p>{reply.message}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Create comment button */}
+                <button className='create-comment'>
+                  <img
+                    src='https://www.svgrepo.com/show/489238/add-comment.svg'
+                    className='create-comment-button'
+                    alt='Create comment button'
+                  />
+                </button>
+              </>
+            ) : null}        
+          </div>
+        </div>
+      )}
+    </div> 
+=======
           {/* Create comment button */}
           <button
             className='create-comment'
@@ -1510,6 +1901,7 @@ function PinDetails() {
         </div>
       ) : null}
     </div>
+>>>>>>> origin/main
   );
 }
 
