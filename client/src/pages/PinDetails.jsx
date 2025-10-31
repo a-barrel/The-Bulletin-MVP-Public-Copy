@@ -62,6 +62,18 @@ const DEFAULT_AVATAR_PATH = '/images/profile/profile-01.jpg';
 const DEFAULT_COVER_PATH = '/images/background/background-01.jpg';
 const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
 
+const TF2_AVATAR_MAP = {
+  'tf2_scout': '/images/emulation/avatars/Scoutava.jpg',
+  'tf2_soldier': '/images/emulation/avatars/Soldierava.jpg',
+  'tf2_pyro': '/images/emulation/avatars/Pyroava.jpg',
+  'tf2_demoman': '/images/emulation/avatars/Demomanava.jpg',
+  'tf2_heavy': '/images/emulation/avatars/Heavyava.jpg',
+  'tf2_engineer': '/images/emulation/avatars/Engineerava.jpg',
+  'tf2_medic': '/images/emulation/avatars/Medicava.jpg',
+  'tf2_sniper': '/images/emulation/avatars/Sniperava.jpg',
+  'tf2_spy': '/images/emulation/avatars/Spyava.jpg'
+};
+
 const resolveMediaAssetUrl = (asset, fallback) => {
   if (asset && typeof asset === 'object') {
     const source = asset.url ?? asset.thumbnailUrl ?? asset.path;
@@ -80,6 +92,46 @@ const resolveMediaAssetUrl = (asset, fallback) => {
   }
 
   return fallback ?? null;
+};
+
+const resolveUserAvatarUrl = (user, fallback = DEFAULT_AVATAR_PATH) => {
+  const candidates = [
+    user?.avatar,
+    user?.avatar?.url,
+    user?.avatarUrl,
+    user?.profile?.avatar,
+    user?.profile?.avatar?.url
+  ];
+
+  for (const candidate of candidates) {
+    const resolved = resolveMediaAssetUrl(candidate);
+    if (resolved) {
+      if (/\/images\/profile\/profile-\d+\.jpg$/i.test(resolved ?? '') && user?.username) {
+        const mapKey = String(user.username).trim().toLowerCase();
+        const fallbackPath = TF2_AVATAR_MAP[mapKey];
+        if (fallbackPath) {
+          const mapped = resolveMediaAssetUrl(fallbackPath, fallback);
+          if (mapped) {
+            return mapped;
+          }
+        }
+      }
+      return resolved;
+    }
+  }
+
+  if (user?.username) {
+    const mapKey = String(user.username).trim().toLowerCase();
+    const fallbackPath = TF2_AVATAR_MAP[mapKey];
+    if (fallbackPath) {
+      const mapped = resolveMediaAssetUrl(fallbackPath, fallback);
+      if (mapped) {
+        return mapped;
+      }
+    }
+  }
+
+  return resolveMediaAssetUrl(null, fallback);
 };
 
 const formatDateTime = (value) => {
@@ -703,7 +755,7 @@ function PinDetails() {
   }, [pin, coverImageUrl]);
 
   const creatorAvatarUrl = useMemo(
-    () => resolveMediaAssetUrl(pin?.creator?.avatar, DEFAULT_AVATAR_PATH),
+    () => resolveUserAvatarUrl(pin?.creator),
     [pin]
   );
   const profileReturnPath = useMemo(
@@ -1025,8 +1077,10 @@ function PinDetails() {
   const createdAtLabel = useMemo(() => formatDateTime(pin?.createdAt), [pin]);
   const updatedAtLabel = useMemo(() => formatDateTime(pin?.updatedAt), [pin]);
 
+  const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
+
   return (
-    <div className='pin-details'>
+    <div className={`pin-details ${themeClass}`}>
       {interactionOverlay ? (
         <div className='pin-expired-overlay' role='dialog' aria-modal='true'>
           <div className='pin-expired-modal'>
@@ -1306,10 +1360,7 @@ function PinDetails() {
             {replies.map((reply) => {
               const authorName =
                 reply.author?.displayName || reply.author?.username || 'Anonymous user';
-              const replyAvatar = resolveMediaAssetUrl(
-                reply.author?.avatar,
-                DEFAULT_AVATAR_PATH
-              );
+              const replyAvatar = resolveUserAvatarUrl(reply.author);
               const createdLabel = formatDateTime(reply.createdAt);
               const authorProfileLink = buildUserProfileLink(reply.author, profileReturnPath);
 
@@ -1462,10 +1513,7 @@ function PinDetails() {
                 <ul className='attendee-list'>
                   {attendees.map((attendee) => {
                     const attendeeLink = buildUserProfileLink(attendee, profileReturnPath);
-                    const attendeeAvatar = resolveMediaAssetUrl(
-                      attendee?.avatar,
-                      DEFAULT_AVATAR_PATH
-                    );
+                    const attendeeAvatar = resolveUserAvatarUrl(attendee);
                     const attendeeName =
                       attendee?.displayName || attendee?.username || 'Unknown attendee';
                     const attendeeKey =

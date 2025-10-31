@@ -118,7 +118,8 @@
     },
     "updatedAt": {
       "$date": "2026-10-03T23:20:00.000Z"
-    }
+    },
+    "firebaseUid": "8tnF8rdd49yTy2i3W1fQQhMOtN6v"
   },
   {
     "_id": {
@@ -245,7 +246,8 @@
     },
     "updatedAt": {
       "$date": "2026-10-03T23:40:00.000Z"
-    }
+    },
+    "firebaseUid": "dPXPNzqwnlI3R97EtB9yMRP6M1UP"
   },
   {
     "_id": {
@@ -308,7 +310,7 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": false,
+    "locationSharingEnabled": true,
     "primaryLocationId": {
       "$oid": "68e061721329566a22d474c3"
     },
@@ -344,7 +346,8 @@
     },
     "updatedAt": {
       "$date": "2026-10-03T23:45:00.000Z"
-    }
+    },
+    "firebaseUid": "kC3vOEDKL4091gYlbper1DcMX4EY"
   },
   {
     "_id": {
@@ -463,7 +466,8 @@
     },
     "updatedAt": {
       "$date": "2026-10-09T19:10:00.000Z"
-    }
+    },
+    "firebaseUid": "pinpointUserC"
   },
   {
     "_id": {
@@ -575,7 +579,8 @@
     },
     "updatedAt": {
       "$date": "2026-10-09T18:05:00.000Z"
-    }
+    },
+    "firebaseUid": "pinpointUserD"
   },
   {
     "_id": {
@@ -586,8 +591,8 @@
     "email": "tf2_demoman@pinpoint.dev",
     "bio": "Team Fortress 2 member: Demoman.",
     "avatar": {
-      "url": "/images/profile/Demomanava.jpg",
-      "thumbnailUrl": "/images/profile/Demomanava.jpg",
+      "url": "/images/emulation/avatars/Demomanava.jpg",
+      "thumbnailUrl": "/images/emulation/avatars/Demomanava.jpg",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
@@ -620,7 +625,7 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": false,
+    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -644,8 +649,8 @@
     "email": "tf2_spy@pinpoint.dev",
     "bio": "Team Fortress 2 member: Spy.",
     "avatar": {
-      "url": "/images/profile/Spyava.jpg",
-      "thumbnailUrl": "/images/profile/Spyava.jpg",
+      "url": "/images/emulation/avatars/Spyava.jpg",
+      "thumbnailUrl": "/images/emulation/avatars/Spyava.jpg",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
@@ -678,7 +683,7 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": false,
+    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -702,8 +707,8 @@
     "email": "tf2_engineer@pinpoint.dev",
     "bio": "Team Fortress 2 member: Engineer.",
     "avatar": {
-      "url": "/images/profile/Engineerava.jpg",
-      "thumbnailUrl": "/images/profile/Engineerava.jpg",
+      "url": "/images/emulation/avatars/Engineerava.jpg",
+      "thumbnailUrl": "/images/emulation/avatars/Engineerava.jpg",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
@@ -736,7 +741,7 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": false,
+    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -760,8 +765,8 @@
     "email": "tf2_heavy@pinpoint.dev",
     "bio": "Team Fortress 2 member: Heavy.",
     "avatar": {
-      "url": "/images/profile/Heavyava.jpg",
-      "thumbnailUrl": "/images/profile/Heavyava.jpg",
+      "url": "/images/emulation/avatars/Heavyava.jpg",
+      "thumbnailUrl": "/images/emulation/avatars/Heavyava.jpg",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
@@ -794,7 +799,7 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": false,
+    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -818,8 +823,8 @@
     "email": "tf2_medic@pinpoint.dev",
     "bio": "Team Fortress 2 member: Medic.",
     "avatar": {
-      "url": "/images/profile/Medicava.jpg",
-      "thumbnailUrl": "/images/profile/Medicava.jpg",
+      "url": "/images/emulation/avatars/Medicava.jpg",
+      "thumbnailUrl": "/images/emulation/avatars/Medicava.jpg",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
@@ -852,7 +857,7 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": false,
+    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -876,8 +881,8 @@
     "email": "tf2_pyro@pinpoint.dev",
     "bio": "Team Fortress 2 member: Pyro.",
     "avatar": {
-      "url": "/images/profile/Pyroava.jpg",
-      "thumbnailUrl": "/images/profile/Pyroava.jpg",
+      "url": "/images/emulation/avatars/Pyroava.jpg",
+      "thumbnailUrl": "/images/emulation/avatars/Pyroava.jpg",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
@@ -910,7 +915,7 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": false,
+    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -934,8 +939,8 @@
     "email": "tf2_scout@pinpoint.dev",
     "bio": "Team Fortress 2 member: Scout.",
     "avatar": {
-      "url": "/images/profile/Scoutava.jpg",
-      "thumbnailUrl": "/images/profile/Scoutava.jpg",
+      "url": "/images/emulation/avatars/Scoutava.jpg",
+      "thumbnailUrl": "/images/emulation/avatars/Scoutava.jpg",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
@@ -968,7 +973,7 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": false,
+    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -992,8 +997,8 @@
     "email": "tf2_sniper@pinpoint.dev",
     "bio": "Team Fortress 2 member: Sniper.",
     "avatar": {
-      "url": "/images/profile/Sniperava.jpg",
-      "thumbnailUrl": "/images/profile/Sniperava.jpg",
+      "url": "/images/emulation/avatars/Sniperava.jpg",
+      "thumbnailUrl": "/images/emulation/avatars/Sniperava.jpg",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
@@ -1026,7 +1031,7 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": false,
+    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -1050,8 +1055,8 @@
     "email": "tf2_soldier@pinpoint.dev",
     "bio": "Team Fortress 2 member: Soldier.",
     "avatar": {
-      "url": "/images/profile/Soldierava.jpg",
-      "thumbnailUrl": "/images/profile/Soldierava.jpg",
+      "url": "/images/emulation/avatars/Soldierava.jpg",
+      "thumbnailUrl": "/images/emulation/avatars/Soldierava.jpg",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
@@ -1084,7 +1089,7 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": false,
+    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],

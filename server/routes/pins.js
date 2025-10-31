@@ -375,15 +375,34 @@ const normaliseMediaAsset = (asset, uploadedBy) => ({
   uploadedBy
 });
 
+const normalizeMediaUrl = (value) => {
+  if (!value || typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  if (/^(?:https?:|data:)/i.test(trimmed)) {
+    return trimmed;
+  }
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+};
+
 const mapMediaAssetResponse = (asset) => {
   if (!asset) {
     return undefined;
   }
 
   const doc = asset.toObject ? asset.toObject() : asset;
+  const normalizedUrl = normalizeMediaUrl(doc.url);
+  const normalizedThumb = normalizeMediaUrl(doc.thumbnailUrl);
+  const normalizedPath = normalizeMediaUrl(doc.path);
+  const primaryUrl = normalizedUrl ?? normalizedThumb ?? normalizedPath;
+  const thumbnailUrl = normalizedThumb ?? (primaryUrl && primaryUrl !== normalizedThumb ? primaryUrl : undefined);
   return {
-    url: doc.url,
-    thumbnailUrl: doc.thumbnailUrl || undefined,
+    url: primaryUrl,
+    thumbnailUrl,
     width: doc.width ?? undefined,
     height: doc.height ?? undefined,
     mimeType: doc.mimeType || undefined,

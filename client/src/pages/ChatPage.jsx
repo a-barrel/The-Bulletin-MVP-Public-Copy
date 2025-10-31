@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, NavLink, useLocation  } from "react-router-dom";
 import Navbar from '../components/Navbar';
+import GlobalNavMenu from '../components/GlobalNavMenu';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
-  Alert,
   Box,
   Stack,
   Typography,
@@ -23,18 +24,20 @@ import {
   DialogActions,
   Switch,
   FormControlLabel,
-  CircularProgress
+  CircularProgress,
+  Fab,
+  Icon
 } from '@mui/material';
 import SmsIcon from '@mui/icons-material/Sms';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import RoomIcon from '@mui/icons-material/Room';
-import SendIcon from '@mui/icons-material/Send';
 import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
+import updatesIcon from "../assets/UpdateIcon.svg";
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
 import { auth } from '../firebase';
 import { playBadgeSound } from '../utils/badgeSound';
-import { replaceProfanityWithFruit } from '../utils/profanityFilter';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import {
   fetchChatRooms,
@@ -43,10 +46,14 @@ import {
   createChatMessage,
   fetchChatPresence,
   upsertChatPresence,
-  fetchCurrentUserProfile
+  previewChatGif
 } from '../api/mongoDataApi';
 import { useLocationContext } from '../contexts/LocationContext';
-import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
+import { useUpdates } from "../contexts/UpdatesContext";
+import { useNetworkStatusContext } from "../contexts/NetworkStatusContext";
+import "./ChatPage.css";
+import MessageBubble from '../components/MessageBubble';
+import ChatComposer from '../components/ChatComposer';
 
 export const pageConfig = {
   id: 'chat',
@@ -68,25 +75,15 @@ const PRESENCE_HEARTBEAT_MS = 30_000;
 const MESSAGES_REFRESH_MS = 7_000;
 
 function ChatPage() {
+  const navigate = useNavigate();
+  const { unreadCount, refreshUnreadCount } = useUpdates();
+  const { isOffline } = useNetworkStatusContext();
+  const [debugMode, setDebugMode] = useState(false);
   const { announceBadgeEarned } = useBadgeSound();
   const [authUser, authLoading] = useAuthState(auth);
   const { location: viewerLocation } = useLocationContext();
-  const { isOffline } = useNetworkStatusContext();
   const viewerLatitude = viewerLocation?.latitude ?? null;
   const viewerLongitude = viewerLocation?.longitude ?? null;
-  const viewerAccuracy = Number.isFinite(viewerLocation?.accuracy)
-    ? viewerLocation.accuracy
-    : undefined;
-  const viewerCoordinates = useMemo(() => {
-    if (!Number.isFinite(viewerLatitude) || !Number.isFinite(viewerLongitude)) {
-      return null;
-    }
-    return {
-      latitude: viewerLatitude,
-      longitude: viewerLongitude,
-      ...(viewerAccuracy !== undefined ? { accuracy: viewerAccuracy } : {})
-    };
-  }, [viewerLatitude, viewerLongitude, viewerAccuracy]);
   const [rooms, setRooms] = useState([]);
   const [roomsError, setRoomsError] = useState(null);
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
@@ -106,6 +103,9 @@ function ChatPage() {
 
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [messageDraft, setMessageDraft] = useState('');
+  const [gifPreview, setGifPreview] = useState(null);
+  const [isGifPreviewLoading, setIsGifPreviewLoading] = useState(false);
+  const [gifPreviewError, setGifPreviewError] = useState(null);
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [createError, setCreateError] = useState(null);
@@ -118,22 +118,51 @@ function ChatPage() {
     radiusMeters: 500,
     isGlobal: false
   });
-  const [viewerProfile, setViewerProfile] = useState(null);
-  const filterCussWordsEnabled = Boolean(viewerProfile?.preferences?.filterCussWords);
 
   const messagesEndRef = useRef(null);
   const presenceIntervalRef = useRef(null);
   const messageIntervalRef = useRef(null);
-
-  const scrollMessagesToBottom = useCallback(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, []);
+  const containerRef = useRef(null);
+  const location = useLocation();
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const inputContainerRef = useRef(null);
+  const [scrollBtnBottom, setScrollBtnBottom] = useState(0);
+  const gifPreviewRequestRef = useRef(null);
 
   useEffect(() => {
-    scrollMessagesToBottom();
-  }, [messages, scrollMessagesToBottom]);
+      if (typeof refreshUnreadCount === 'function' && !isOffline) {
+        refreshUnreadCount({ silent: true });
+      }
+    }, [isOffline, refreshUnreadCount]);
+
+  const getGifCommandQuery = useCallback((value) => {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const trimmed = value.trim();
+    if (!trimmed.toLowerCase().startsWith('/gif')) {
+      return null;
+    }
+    const query = trimmed.slice(4).trim();
+    return query.length ? query : null;
+  }, []);
+
+
+  const scrollMessagesToBottom = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth'
+    });
+  }, []);
+
+  // Makes the screen automatically display the bottom-most (latest) chat message whenever a new room is joined, this page is navigated to, or a new message is sent
+  useLayoutEffect(() => {
+    const timer = setTimeout(scrollMessagesToBottom, 100);
+    return () => clearTimeout(timer);
+  }, [selectedRoomId, location.pathname, scrollMessagesToBottom]);
 
   useEffect(() => {
     if (!authLoading && !authUser) {
@@ -141,46 +170,88 @@ function ChatPage() {
       setSelectedRoomId(null);
       setMessages([]);
       setPresence([]);
-      setViewerProfile(null);
     }
   }, [authLoading, authUser]);
 
+  // Detect user scroll to show/hide "scroll to bottom" button
   useEffect(() => {
-    let cancelled = false;
+    const container = containerRef.current;
+    if (!container) return;
 
-    if (!authUser) {
-      setViewerProfile(null);
+    const handleScroll = () => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      // calculate distance from bottom
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+
+      // show button if more than 20px from bottom
+      setShowScrollButton(distanceFromBottom > 20);
+    };
+
+    container.addEventListener('scroll', handleScroll);    
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Automatically repositions the scroll button whenever the input height changes.
+  // We throttle updates with requestAnimationFrame and skip redundant state writes.
+  useEffect(() => {
+    const inputContainer = inputContainerRef.current;
+    if (!inputContainer) return;
+
+    let frameId = null;
+    const resizeObserver = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      const targetBottom = Math.round(entry.contentRect.height) + 8; // 8px gap
+
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+      }
+
+      frameId = requestAnimationFrame(() => {
+        setScrollBtnBottom((prev) =>
+          Math.abs(prev - targetBottom) > 0.5 ? targetBottom : prev
+        );
+      });
+    });
+
+    resizeObserver.observe(inputContainer);
+
+    return () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+      }
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const gifQuery = getGifCommandQuery(messageDraft);
+    if (!gifQuery) {
+      if (gifPreview || gifPreviewError || isGifPreviewLoading) {
+        gifPreviewRequestRef.current = null;
+        setGifPreview(null);
+        setGifPreviewError(null);
+        setIsGifPreviewLoading(false);
+      }
       return;
     }
 
-    const loadProfile = async () => {
-      try {
-        const profile = await fetchCurrentUserProfile();
-        if (!cancelled) {
-          setViewerProfile(profile);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          console.warn('Failed to load viewer profile for chat preferences', error);
-          setViewerProfile(null);
-        }
-      }
-    };
-
-    loadProfile();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [authUser]);
+    if (gifPreview && gifPreview.query !== gifQuery && !isGifPreviewLoading) {
+      gifPreviewRequestRef.current = null;
+      setGifPreview(null);
+      setGifPreviewError(null);
+    }
+  }, [
+    messageDraft,
+    gifPreview,
+    gifPreviewError,
+    isGifPreviewLoading,
+    getGifCommandQuery
+  ]);
 
   const loadRooms = useCallback(async () => {
     if (!authUser) {
-      return;
-    }
-    if (isOffline) {
-      setRooms([]);
-      setRoomsError('You are offline. Connect to load nearby chat rooms.');
       return;
     }
     setIsLoadingRooms(true);
@@ -200,22 +271,17 @@ function ChatPage() {
     } finally {
       setIsLoadingRooms(false);
     }
-  }, [authUser, isOffline, selectedRoomId, viewerLatitude, viewerLongitude]);
+  }, [authUser, selectedRoomId, viewerLatitude, viewerLongitude]);
 
   useEffect(() => {
-    if (!authLoading && authUser && !isOffline) {
+    if (!authLoading && authUser) {
       loadRooms();
     }
-  }, [authLoading, authUser, isOffline, loadRooms]);
+  }, [authLoading, authUser, loadRooms]);
 
   const loadMessages = useCallback(
     async (roomId, { silent } = {}) => {
       if (!roomId) {
-        return;
-      }
-      if (isOffline) {
-        setMessages([]);
-        setMessagesError('You are offline. Connect to view messages.');
         return;
       }
       if (!silent) {
@@ -223,10 +289,7 @@ function ChatPage() {
       }
       setMessagesError(null);
       try {
-        const data = await fetchChatMessages(roomId, {
-          latitude: viewerCoordinates?.latitude,
-          longitude: viewerCoordinates?.longitude
-        });
+        const data = await fetchChatMessages(roomId);
         setMessages(data);
       } catch (error) {
         setMessages([]);
@@ -237,33 +300,67 @@ function ChatPage() {
         }
       }
     },
-    [isOffline, viewerCoordinates]
+    []
   );
 
   const loadPresence = useCallback(async (roomId) => {
     if (!roomId) {
       return;
     }
-    if (isOffline) {
-      setPresence([]);
-      setPresenceError('You are offline. Presence data is unavailable.');
-      return;
-    }
     try {
-      const data = await fetchChatPresence(roomId, {
-        latitude: viewerCoordinates?.latitude,
-        longitude: viewerCoordinates?.longitude
-      });
+      const data = await fetchChatPresence(roomId);
       setPresence(data);
       setPresenceError(null);
     } catch (error) {
       setPresence([]);
       setPresenceError(error?.message || 'Failed to load room presence.');
     }
-  }, [isOffline, viewerCoordinates]);
+  }, []);
+
+  const requestGifPreview = useCallback(
+    async (query) => {
+      if (!authUser) {
+        return;
+      }
+      const trimmedQuery = typeof query === 'string' ? query.trim() : '';
+      if (!trimmedQuery) {
+        return;
+      }
+
+      const requestId = Symbol('gif-preview');
+      gifPreviewRequestRef.current = requestId;
+      setGifPreview({ query: trimmedQuery, options: [], selectedIndex: null });
+      setIsGifPreviewLoading(true);
+      setGifPreviewError(null);
+
+      try {
+        const payload = await previewChatGif(trimmedQuery, { limit: 12 });
+        if (gifPreviewRequestRef.current !== requestId) {
+          return;
+        }
+        const options = Array.isArray(payload?.results) ? payload.results : [];
+        if (!options.length) {
+          setGifPreview({ query: trimmedQuery, options: [], selectedIndex: null });
+          setGifPreviewError(`No GIFs found for "${trimmedQuery}". Try another search.`);
+          return;
+        }
+        setGifPreview({ query: trimmedQuery, options, selectedIndex: 0 });
+      } catch (error) {
+        if (gifPreviewRequestRef.current !== requestId) {
+          return;
+        }
+        setGifPreviewError(error?.message || 'Failed to load GIF preview.');
+      } finally {
+        if (gifPreviewRequestRef.current === requestId) {
+          setIsGifPreviewLoading(false);
+        }
+      }
+    },
+    [authUser, previewChatGif]
+  );
 
   useEffect(() => {
-    if (!selectedRoomId || isOffline) {
+    if (!selectedRoomId) {
       setMessages([]);
       setPresence([]);
       return;
@@ -296,27 +393,16 @@ function ChatPage() {
         presenceIntervalRef.current = null;
       }
     };
-  }, [isOffline, loadMessages, loadPresence, selectedRoomId]);
+  }, [loadMessages, loadPresence, selectedRoomId]);
 
   useEffect(() => {
-    if (!authUser || !selectedRoomId || isOffline) {
+    if (!authUser || !selectedRoomId) {
       return;
     }
 
     const sendPresence = async () => {
       try {
-        await upsertChatPresence(
-          selectedRoomId,
-          viewerCoordinates
-            ? {
-                latitude: viewerCoordinates.latitude,
-                longitude: viewerCoordinates.longitude,
-                ...(viewerCoordinates.accuracy !== undefined
-                  ? { accuracy: viewerCoordinates.accuracy }
-                  : {})
-              }
-            : {}
-        );
+        await upsertChatPresence(selectedRoomId, {});
       } catch (error) {
         console.warn('Failed to update chat presence', error);
       }
@@ -325,7 +411,7 @@ function ChatPage() {
     sendPresence();
     const interval = setInterval(sendPresence, PRESENCE_HEARTBEAT_MS);
     return () => clearInterval(interval);
-  }, [authUser, isOffline, selectedRoomId, viewerCoordinates]);
+  }, [authUser, selectedRoomId]);
 
   const handleSelectRoom = useCallback((roomId) => {
     setSelectedRoomId(roomId);
@@ -356,11 +442,6 @@ function ChatPage() {
         return;
       }
 
-      if (isOffline) {
-        setCreateError('You are offline. Connect to create a chat room.');
-        return;
-      }
-
       if (!createForm.name.trim()) {
         setCreateError('Room name is required.');
         return;
@@ -388,15 +469,60 @@ function ChatPage() {
         setIsCreatingRoom(false);
       }
     },
-    [authUser, createForm, isOffline]
+    [authUser, createForm]
+  );
+
+  const handleMessageSent = useCallback(
+    (message) => {
+      if (!message) {
+        return;
+      }
+      setMessages((prev) => [...prev, message]);
+      if (message?.badgeEarnedId) {
+        playBadgeSound();
+        announceBadgeEarned(message.badgeEarnedId);
+      }
+      setMessageDraft('');
+      gifPreviewRequestRef.current = null;
+      setGifPreview(null);
+      setGifPreviewError(null);
+      setIsGifPreviewLoading(false);
+
+      // Allows time for DOM to update, then scrolls to bottom
+      setTimeout(scrollMessagesToBottom, 50);
+    },
+    [announceBadgeEarned, playBadgeSound, scrollMessagesToBottom]
+  );
+
+  const sendGifMessage = useCallback(
+    async ({ query, attachment }) => {
+      if (!selectedRoomId || !authUser || !attachment || !query) {
+        return;
+      }
+      if (isSendingMessage) {
+        return;
+      }
+      setIsSendingMessage(true);
+      setMessagesError(null);
+      try {
+        const payload = await createChatMessage(selectedRoomId, {
+          message: `GIF: ${query}`,
+          attachments: [attachment]
+        });
+        handleMessageSent(payload);
+      } catch (error) {
+        setMessagesError(error?.message || 'Failed to send message.');
+      } finally {
+        setIsSendingMessage(false);
+      }
+    },
+    [authUser, createChatMessage, handleMessageSent, isSendingMessage, selectedRoomId]
   );
 
   const handleSendMessage = useCallback(
     async (event) => {
-      if (event && typeof event.preventDefault === 'function') {
-        event.preventDefault();
-      }
-      if (!selectedRoomId || !authUser) {
+      event.preventDefault();
+      if (!selectedRoomId || !authUser || isSendingMessage) {
         return;
       }
       const trimmed = messageDraft.trim();
@@ -404,29 +530,31 @@ function ChatPage() {
         return;
       }
 
-      if (isOffline) {
-        setMessagesError('You are offline. Connect to send messages.');
+      const gifQuery = getGifCommandQuery(trimmed);
+      if (gifQuery) {
+        const hasSelection =
+          gifPreview &&
+          gifPreview.query === gifQuery &&
+          Array.isArray(gifPreview.options) &&
+          typeof gifPreview.selectedIndex === 'number' &&
+          gifPreview.options[gifPreview.selectedIndex]?.attachment;
+
+        if (hasSelection) {
+          await sendGifMessage({
+            query: gifQuery,
+            attachment: gifPreview.options[gifPreview.selectedIndex].attachment
+          });
+        } else if (!isGifPreviewLoading) {
+          await requestGifPreview(gifQuery);
+        }
         return;
       }
 
       setIsSendingMessage(true);
+      setMessagesError(null);
       try {
-        const payload = { message: trimmed };
-        if (viewerCoordinates) {
-          payload.latitude = viewerCoordinates.latitude;
-          payload.longitude = viewerCoordinates.longitude;
-          if (viewerCoordinates.accuracy !== undefined) {
-            payload.accuracy = viewerCoordinates.accuracy;
-          }
-        }
-        const message = await createChatMessage(selectedRoomId, payload);
-        setMessages((prev) => [...prev, message]);
-        if (message?.badgeEarnedId) {
-          playBadgeSound();
-          announceBadgeEarned(message.badgeEarnedId);
-        }
-        setMessageDraft('');
-        scrollMessagesToBottom();
+        const message = await createChatMessage(selectedRoomId, { message: trimmed });
+        handleMessageSent(message);
       } catch (error) {
         setMessagesError(error?.message || 'Failed to send message.');
       } finally {
@@ -434,25 +562,121 @@ function ChatPage() {
       }
     },
     [
-      announceBadgeEarned,
       authUser,
-      isOffline,
+      createChatMessage,
+      getGifCommandQuery,
+      gifPreview,
+      handleMessageSent,
+      isGifPreviewLoading,
+      isSendingMessage,
       messageDraft,
-      scrollMessagesToBottom,
+      requestGifPreview,
       selectedRoomId,
-      viewerCoordinates
+      sendGifMessage
     ]
   );
 
-  const handleDraftKeyDown = useCallback(
+  const handleGifPreviewConfirm = useCallback(() => {
+    if (
+      isGifPreviewLoading ||
+      isSendingMessage ||
+      !gifPreview ||
+      typeof gifPreview.selectedIndex !== 'number'
+    ) {
+      return;
+    }
+    const options = Array.isArray(gifPreview.options) ? gifPreview.options : [];
+    const selected = options[gifPreview.selectedIndex];
+    if (!selected?.attachment) {
+      return;
+    }
+    return sendGifMessage({
+      query: gifPreview.query,
+      attachment: selected.attachment
+    });
+  }, [gifPreview, isGifPreviewLoading, isSendingMessage, sendGifMessage]);
+
+  const handleGifPreviewCancel = useCallback(() => {
+    gifPreviewRequestRef.current = null;
+    setGifPreview(null);
+    setGifPreviewError(null);
+    setIsGifPreviewLoading(false);
+  }, []);
+
+  const handleGifPreviewShuffle = useCallback(() => {
+    if (isGifPreviewLoading) {
+      return;
+    }
+    if (!gifPreview) {
+      const query = getGifCommandQuery(messageDraft);
+      if (query) {
+        setGifPreviewError(null);
+        requestGifPreview(query);
+      }
+      return;
+    }
+    setGifPreviewError(null);
+    const options = Array.isArray(gifPreview.options) ? gifPreview.options : [];
+    if (options.length > 1) {
+      setGifPreview((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const opts = Array.isArray(prev.options) ? prev.options : [];
+        if (opts.length < 2) {
+          return prev;
+        }
+        const nextIndex =
+          typeof prev.selectedIndex === 'number'
+            ? (prev.selectedIndex + 1) % opts.length
+            : 0;
+        return { ...prev, selectedIndex: nextIndex };
+      });
+    } else if (gifPreview.query) {
+      requestGifPreview(gifPreview.query);
+    }
+  }, [gifPreview, getGifCommandQuery, isGifPreviewLoading, messageDraft, requestGifPreview]);
+
+  const handleMessageInputKeyDown = useCallback(
     (event) => {
-      if (event.key !== 'Enter' || event.shiftKey) {
+      if (
+        event.key !== 'Enter' ||
+        event.shiftKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey ||
+        event.nativeEvent?.isComposing
+      ) {
         return;
       }
+
       event.preventDefault();
-      handleSendMessage();
+      if (gifPreviewError) {
+        handleGifPreviewShuffle();
+        return;
+      }
+      if (isGifPreviewLoading) {
+        return;
+      }
+      if (
+        gifPreview &&
+        Array.isArray(gifPreview.options) &&
+        typeof gifPreview.selectedIndex === 'number' &&
+        gifPreview.options[gifPreview.selectedIndex]?.attachment
+      ) {
+        handleGifPreviewConfirm();
+        return;
+      }
+      handleSendMessage(event);
     },
-    [handleSendMessage]
+    [
+      gifPreview,
+      gifPreviewError,
+      handleGifPreviewConfirm,
+      handleGifPreviewShuffle,
+      handleSendMessage,
+      isGifPreviewLoading
+    ]
   );
 
   const filteredPresence = useMemo(() => {
@@ -464,15 +688,6 @@ function ChatPage() {
   }, [presence]);
 
   const activeUserCount = filteredPresence.length;
-  const locationWarning = useMemo(() => {
-    if (isOffline) {
-      return null;
-    }
-    if (!viewerCoordinates) {
-      return 'Precise location is unavailable. Showing global rooms and limited nearby data.';
-    }
-    return null;
-  }, [isOffline, viewerCoordinates]);
 
   const renderRoomList = () => (
     <Paper
@@ -510,23 +725,17 @@ function ChatPage() {
           />
         </Stack>
         <Stack direction="row" spacing={1}>
-          <Tooltip title={isOffline ? 'Reconnect to refresh rooms' : 'Refresh rooms'}>
+          <Tooltip title="Refresh rooms">
             <span>
-              <IconButton onClick={loadRooms} disabled={isOffline || isLoadingRooms}>
+              <IconButton onClick={loadRooms} disabled={isLoadingRooms}>
                 {isLoadingRooms ? <CircularProgress size={20} /> : <RefreshIcon fontSize="small" />}
               </IconButton>
             </span>
           </Tooltip>
-          <Tooltip title={isOffline ? 'Reconnect to create a room' : 'Create room'}>
-            <span>
-              <IconButton
-                color="primary"
-                onClick={handleOpenCreateDialog}
-                disabled={isOffline}
-              >
-                <AddCommentIcon fontSize="small" />
-              </IconButton>
-            </span>
+          <Tooltip title="Create room">
+            <IconButton color="primary" onClick={handleOpenCreateDialog}>
+              <AddCommentIcon fontSize="small" />
+            </IconButton>
           </Tooltip>
         </Stack>
       </Box>
@@ -673,20 +882,18 @@ function ChatPage() {
               <Typography variant="body2" color="error">
                 {messagesError}
               </Typography>
-            ) : messages.length === 0 ? (
+            ) : uniqueMessages.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
                 No messages yet. Start the conversation!
               </Typography>
             ) : (
-              messages.map((message) => {
+              uniqueMessages.map((message, index) => {
                 const isSelf = authUser && message.authorId === authUser.uid;
-                const rawMessage = message.message ?? '';
-                const messageText = filterCussWordsEnabled
-                  ? replaceProfanityWithFruit(rawMessage)
-                  : rawMessage;
+                const key = getMessageKey(message, index);
+                const bodyText = getDisplayMessageText(message);
                 return (
                   <Stack
-                    key={message._id}
+                    key={key}
                     alignItems={isSelf ? 'flex-end' : 'flex-start'}
                   >
                     <Paper
@@ -707,9 +914,28 @@ function ChatPage() {
                             {new Date(message.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                           </Typography>
                         </Stack>
-                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                          {messageText}
-                        </Typography>
+                        {bodyText ? (
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                            {bodyText}
+                          </Typography>
+                        ) : null}
+                        {Array.isArray(message.attachments) && message.attachments.length > 0
+                          ? message.attachments.map((attachment, index) =>
+                              attachment?.url ? (
+                                <Box
+                                  component="img"
+                                  key={attachment._id || `${attachment.url}-${index}`}
+                                  src={attachment.url}
+                                  alt={
+                                    attachment.description ||
+                                    (bodyText ? `Attachment for message "${bodyText}"` : 'Chat attachment')
+                                  }
+                                  sx={{ mt: 1, maxWidth: '100%', borderRadius: 1 }}
+                                  loading="lazy"
+                                />
+                              ) : null
+                            )
+                          : null}
                       </Stack>
                     </Paper>
                   </Stack>
@@ -721,39 +947,23 @@ function ChatPage() {
 
           <Divider />
 
-          <Box
-            component="form"
-            onSubmit={handleSendMessage}
-            sx={{
-              display: 'flex',
-              gap: 1,
-              px: { xs: 2, md: 3 },
-              py: 2,
-              borderTop: '1px solid',
-              borderColor: 'divider'
-            }}
-          >
-            <TextField
-              value={messageDraft}
-              onChange={(event) => setMessageDraft(event.target.value)}
-              onKeyDown={handleDraftKeyDown}
-              placeholder={authUser ? 'Type your message…' : 'Sign in to chat'}
-              multiline
-              minRows={1}
-              maxRows={4}
-              fullWidth
-              disabled={!authUser || isSendingMessage || isOffline}
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              startIcon={<SendIcon />}
-              disabled={!authUser || !messageDraft.trim() || isSendingMessage || isOffline}
-            >
-              {isSendingMessage ? 'Sending…' : 'Send'}
-            </Button>
-          </Box>
+          <ChatComposer
+            variant="legacy"
+            message={messageDraft}
+            placeholder={authUser ? 'Type your message…' : 'Sign in to chat'}
+            onMessageChange={(event) => setMessageDraft(event.target.value)}
+            onKeyDown={handleMessageInputKeyDown}
+            onSend={handleSendMessage}
+            disabled={!authUser || isSendingMessage}
+            sendDisabled={!authUser || !messageDraft.trim() || isSendingMessage}
+            isSending={isSendingMessage}
+            gifPreview={composerGifPreview}
+            gifPreviewError={gifPreviewError}
+            isGifPreviewLoading={isGifPreviewLoading}
+            onGifPreviewConfirm={handleGifPreviewConfirm}
+            onGifPreviewCancel={handleGifPreviewCancel}
+            onGifPreviewShuffle={handleGifPreviewShuffle}
+          />
         </>
       ) : (
         <Stack
@@ -767,12 +977,7 @@ function ChatPage() {
           <Typography variant="body2" color="text.secondary">
             Choose a chat from the list or create a new space for your team.
           </Typography>
-          <Button
-            variant="outlined"
-            onClick={handleOpenCreateDialog}
-            disabled={isOffline}
-            title={isOffline ? 'Reconnect to create a room' : undefined}
-          >
+          <Button variant="outlined" onClick={handleOpenCreateDialog}>
             Create room
           </Button>
         </Stack>
@@ -780,61 +985,138 @@ function ChatPage() {
     </Paper>
   );
 
+  const handleNotifications = useCallback(() => {
+      navigate("/updates");
+    }, [navigate]);
+
+  const selectedGifOption = useMemo(() => {
+    if (
+      !gifPreview ||
+      !Array.isArray(gifPreview.options) ||
+      typeof gifPreview.selectedIndex !== 'number'
+    ) {
+      return null;
+    }
+    return gifPreview.options[gifPreview.selectedIndex] ?? null;
+  }, [gifPreview]);
+
+  const composerGifPreview = useMemo(
+    () =>
+      gifPreview
+        ? {
+            query: gifPreview.query,
+            attachment: selectedGifOption?.attachment || null,
+            sourceUrl: selectedGifOption?.sourceUrl,
+            optionsCount: Array.isArray(gifPreview.options) ? gifPreview.options.length : 0
+          }
+        : null,
+    [gifPreview, selectedGifOption]
+  );
+
+  const notificationsLabel =
+    unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
+  const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;  
+
+  const uniqueMessages = useMemo(() => {
+    const seen = new Set();
+    return messages.filter((message) => {
+      const rawId = message?._id || message?.id;
+      const id =
+        typeof rawId === 'object' && rawId !== null && '$oid' in rawId ? rawId.$oid : rawId;
+      if (!id) {
+        return true;
+      }
+      if (seen.has(id)) {
+        return false;
+      }
+      seen.add(id);
+      return true;
+    });
+  }, [messages]);
+
+  const getMessageKey = useCallback((message, fallbackIndex) => {
+    const rawId = message?._id || message?.id;
+    if (!rawId) {
+      return `message-${fallbackIndex}`;
+    }
+    return typeof rawId === 'object' && rawId !== null && '$oid' in rawId ? rawId.$oid : rawId;
+  }, []);
+
+  const getDisplayMessageText = useCallback((msg) => {
+    if (!msg || typeof msg.message !== 'string') {
+      return '';
+    }
+    const hasAttachments = Array.isArray(msg.attachments) && msg.attachments.length > 0;
+    if (!hasAttachments) {
+      return msg.message;
+    }
+    const stripped = msg.message.replace(/^GIF:\s*/i, '').trim();
+    return stripped;
+  }, []);
+
   return (
     <>
+      {/*
+        ======================================================================
+        LEGACY VERSION HERE
+        Debug layout that mirrors the original chat debug UI. Keep this block
+        intact until the legacy view is fully componentized or removed.
+        ======================================================================
+      */}
       <Box
       sx={{
+        display: debugMode ? 'block' : 'none',
         width: '100%',
         maxWidth: 1200,
         mx: 'auto',
         px: { xs: 1.5, md: 3 },
         py: { xs: 2, md: 4 }
       }}
-    >
-      <Stack spacing={2}>
-        {isOffline ? (
-          <Alert severity="warning">
-            You are offline. Chat lists and messages will refresh once you reconnect.
-          </Alert>
-        ) : null}
-        {locationWarning ? <Alert severity="info">{locationWarning}</Alert> : null}
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <SmsIcon color="primary" />
-          <Typography variant="h4" component="h1">
-            Chat
-          </Typography>
-          {authUser ? (
-            <Chip
-              label={`Signed in as ${authUser.displayName || authUser.email || 'You'}`}
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
-          ) : (
-            <Chip
-              label="Sign in to participate"
-              size="small"
-              color="warning"
-              variant="outlined"
-            />
-          )}
-        </Stack>
-
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={2}
-          sx={{ minHeight: { md: 560 } }}
+      >
+        <Button
+          className="chat-debug-toggle"
+          onClick={() => setDebugMode((prev) => !prev)}
         >
-          {renderRoomList()}
-          {renderConversation()}
-        </Stack>
+          {debugMode ? 'Hide Chat Debug' : 'Show Chat Debug'}
+        </Button>
+        <Stack spacing={2}>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <SmsIcon color="primary" />
+            <Typography variant="h4" component="h1">
+              Chat
+            </Typography>
+            {authUser ? (
+              <Chip
+                label={`Signed in as ${authUser.displayName || authUser.email || 'You'}`}
+                size="small"
+                color="primary"
+                variant="outlined"
+              />
+            ) : (
+              <Chip
+                label="Sign in to participate"
+                size="small"
+                color="warning"
+                variant="outlined"
+              />
+            )}
+          </Stack>
 
-        {presenceError ? (
-          <Typography variant="body2" color="error">
-            {presenceError}
-          </Typography>
-        ) : null}
-      </Stack>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            sx={{ minHeight: { md: 560 } }}
+          >
+            {renderRoomList()}
+            {renderConversation()}
+          </Stack>
+
+          {presenceError ? (
+            <Typography variant="body2" color="error">
+              {presenceError}
+            </Typography>
+          ) : null}
+        </Stack>
 
       <Dialog open={isCreateDialogOpen} onClose={handleCloseCreateDialog} fullWidth maxWidth="sm">
         <DialogTitle>Create chat room</DialogTitle>
@@ -911,11 +1193,110 @@ function ChatPage() {
           </DialogActions>
         </Box>
       </Dialog>
-      </Box>
-      <Navbar />
+    </Box>
+
+    {/* Figma-based frontend design */}
+    {/*
+      ======================================================================
+      NEWER VERSION HERE
+      Production-facing chat experience modeled after the Figma designs.
+      ======================================================================
+    */}
+    <Box 
+      className="chat-page"
+      sx={{ display: debugMode ? 'none' : 'block' }}
+    >
+      {showScrollButton && (
+        <IconButton
+          className="chat-scroll-to-bottom-btn"
+          onClick={scrollMessagesToBottom}
+          style={{
+            bottom: `${scrollBtnBottom + 90}px`,
+            position: 'fixed',
+          }}
+        >
+          <ArrowDownwardIcon className="scroll-to-bottom-icon" />
+        </IconButton>
+      )}
+      <div className="chat-frame">
+        <header className="chat-header-bar">
+          <GlobalNavMenu />
+
+          {/*
+            ======================================================================
+            BIG NOTE FOR FUTURE TROY (AND CODEx ME):
+            Clicking this header toggles `debugMode`, which swaps between the new
+            Figma layout and the legacy chat page. Remember: there are two chat
+            variations bundled in here until the old one is retired.
+            ======================================================================
+          */}
+          <h1 
+            className="chat-header-title"
+            onClick={() => setDebugMode((prev) => !prev)}
+            >
+              Chat
+          </h1>
+
+          <button
+            className="updates-icon-btn"
+            type="button"
+            aria-label={notificationsLabel}
+            onClick={handleNotifications}
+            disabled={isOffline}
+            title={isOffline ? 'Reconnect to view updates' : undefined}
+          >
+            <img src={updatesIcon} alt="" className="updates-icon" aria-hidden="true" />
+            {displayBadge ? (
+              <span className="updates-icon-badge" aria-hidden="true">
+                {displayBadge}
+              </span>
+            ) : null}
+          </button>
+        </header>
+        <Box 
+          ref={containerRef}
+          className="chat-messages-field"
+        >
+          {uniqueMessages.map((msg, index) => (
+            <MessageBubble
+              key={getMessageKey(msg, index)}
+              msg={msg}
+              isSelf={authUser && msg.authorId === authUser.uid}
+              authUser={authUser}
+            />
+          ))}
+          <div ref={messagesEndRef} />
+        </Box>
+
+        {/* Chat Message input
+        TO DO: Make it modernly resize when selected and have additional buttons pop up (just add img planned) as well as making the input box bigger for bigger messages + character limit
+        */}
+        <ChatComposer
+          variant="modern"
+          message={messageDraft}
+          placeholder="Send a message"
+          onMessageChange={(event) => setMessageDraft(event.target.value)}
+          onKeyDown={handleMessageInputKeyDown}
+          onSend={handleSendMessage}
+          disabled={!authUser || isSendingMessage}
+          sendDisabled={!authUser || !messageDraft.trim() || isSendingMessage}
+          isSending={isSendingMessage}
+          containerRef={inputContainerRef}
+          containerClassName="chat-input-container"
+          gifPreview={composerGifPreview}
+          gifPreviewError={gifPreviewError}
+          isGifPreviewLoading={isGifPreviewLoading}
+          onGifPreviewConfirm={handleGifPreviewConfirm}
+          onGifPreviewCancel={handleGifPreviewCancel}
+          onGifPreviewShuffle={handleGifPreviewShuffle}
+        />
+        <Navbar />
+      </div>
+    </Box>
     </>
-  );
-}
+)}
+
+
 
 export default ChatPage;
 

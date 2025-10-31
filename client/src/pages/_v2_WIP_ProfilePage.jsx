@@ -35,24 +35,27 @@ import {
 } from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
 import { BADGE_METADATA } from '../utils/badges';
-import { routes } from '../routes';
-import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
+import BackButton from '../components/BackButton';
+import './_v2_WIP_ProfilePage.css';
+
+const SECTION_BG_COLOR = '#d6e6ff';
 
 export const pageConfig = {
-  id: 'profile',
-  label: 'Profile',
+  // EDIT THIS ONCE READY TO REPLACE ProfilePage.jsx
+  id: 'profile-v2-wip',
+  label: 'Profile v2 WIP',
   icon: AccountCircleIcon,
-  path: '/profile/:userId',
+  path: '/profile-v2/:userId',
   order: 91,
   showInNav: true,
   protected: true,
   resolveNavTarget: ({ currentPath } = {}) => {
     if (!runtimeConfig.isOffline) {
-      return routes.profile.me;
+      return '/profile-v2/me';
     }
 
     if (typeof window === 'undefined') {
-      return routes.profile.me;
+      return '/profile-v2/me';
     }
 
     const input = window.prompt(
@@ -63,21 +66,20 @@ export const pageConfig = {
     }
     const trimmed = input.trim();
     if (!trimmed || trimmed.toLowerCase() === 'me') {
-      return routes.profile.me;
+      return '/profile-v2/me';
     }
     const sanitized = trimmed.replace(/^\/+/, '');
-    if (/^profile\/.+/i.test(sanitized)) {
+    if (/^profile-v2\/.+/i.test(sanitized)) {
       return `/${sanitized}`;
     }
-    if (/^\/profile\/.+/i.test(trimmed)) {
+    if (/^\/profile-v2\/.+/i.test(trimmed)) {
       return trimmed;
     }
-    return routes.profile.byId(sanitized);
+    return `/profile-v2/${sanitized}`;
   }
 };
 
 const FALLBACK_AVATAR = '/images/profile/profile-01.jpg';
-
 const TF2_AVATAR_MAP = {
   'tf2_scout': '/images/emulation/avatars/Scoutava.jpg',
   'tf2_soldier': '/images/emulation/avatars/Soldierava.jpg',
@@ -175,9 +177,11 @@ const Section = ({ title, description, children }) => (
         {title}
       </Typography>
       {description ? (
-        <Typography variant="body2" color="text.secondary">
-          {description}
-        </Typography>
+        <div className="description-box">
+          <Typography variant="body2" color="text.secondary">
+            {description}
+          </Typography>
+        </div>
       ) : null}
     </Box>
     <Box
@@ -185,7 +189,7 @@ const Section = ({ title, description, children }) => (
         borderRadius: 2,
         border: '1px solid',
         borderColor: 'divider',
-        backgroundColor: 'background.default',
+        backgroundColor: SECTION_BG_COLOR,
         p: { xs: 2, md: 3 }
       }}
     >
@@ -204,7 +208,6 @@ function ProfilePage() {
   const targetUserId = shouldLoadCurrentUser ? null : normalizedUserId;
   const userFromState = location.state?.user;
   const originPath = typeof location.state?.from === 'string' ? location.state.from : null;
-  const { isOffline } = useNetworkStatusContext();
   const [fetchedUser, setFetchedUser] = useState(null);
   const [isFetchingProfile, setIsFetchingProfile] = useState(false);
   const [fetchError, setFetchError] = useState(null);
@@ -237,12 +240,6 @@ function ProfilePage() {
   useEffect(() => {
     let ignore = false;
 
-    if (isOffline) {
-      return () => {
-        ignore = true;
-      };
-    }
-
     async function loadViewerProfile() {
       try {
         const profile = await fetchCurrentUserProfile();
@@ -262,7 +259,7 @@ function ProfilePage() {
     return () => {
       ignore = true;
     };
-  }, [isOffline]);
+  }, []);
 
   const initializeFormState = useCallback(
     (profile) => ({
@@ -292,14 +289,11 @@ function ProfilePage() {
       setFetchError(null);
     }
 
-    const shouldFetchProfile = (shouldLoadCurrentUser || Boolean(targetUserId)) && !isOffline;
+    const shouldFetchProfile = shouldLoadCurrentUser || Boolean(targetUserId);
 
     if (!shouldFetchProfile) {
-      if (!userFromState && !shouldLoadCurrentUser && !targetUserId) {
+      if (!userFromState) {
         setFetchedUser(null);
-      }
-      if (isOffline) {
-        setFetchError((prev) => prev ?? 'You are offline. Connect to refresh this profile.');
       }
       setIsFetchingProfile(false);
       return () => {
@@ -340,7 +334,7 @@ function ProfilePage() {
     return () => {
       ignore = true;
     };
-  }, [isOffline, shouldLoadCurrentUser, targetUserId, userFromState]);
+  }, [targetUserId, shouldLoadCurrentUser, userFromState]);
 
   const effectiveUser = userFromState ?? fetchedUser ?? null;
 
@@ -413,10 +407,6 @@ function ProfilePage() {
   }, [effectiveUser, initializeFormState, isEditing]);
 
   const handleBeginEditing = useCallback(() => {
-    if (isOffline) {
-      setUpdateStatus({ type: 'warning', message: 'Reconnect to edit your profile.' });
-      return;
-    }
     if (!effectiveUser) {
       return;
     }
@@ -424,7 +414,7 @@ function ProfilePage() {
     setFormState(initializeFormState(effectiveUser));
     setUpdateStatus(null);
     setIsEditing(true);
-  }, [clearAvatarPreviewUrl, effectiveUser, initializeFormState, isOffline]);
+  }, [clearAvatarPreviewUrl, effectiveUser, initializeFormState]);
 
   const handleCancelEditing = useCallback(() => {
     clearAvatarPreviewUrl();
@@ -492,10 +482,6 @@ function ProfilePage() {
   const handleSaveProfile = useCallback(
     async (event) => {
       event.preventDefault();
-      if (isOffline) {
-        setUpdateStatus({ type: 'warning', message: 'You are offline. Connect to save your profile.' });
-        return;
-      }
       if (!effectiveUser) {
         setUpdateStatus({
           type: 'error',
@@ -592,7 +578,6 @@ function ProfilePage() {
       formState.locationSharingEnabled,
       formState.theme,
       initializeFormState,
-      isOffline,
       updateCurrentUserProfile,
       uploadImage
     ]
@@ -701,11 +686,6 @@ const detailEntries = useMemo(() => {
         enabled: notifications.updates !== false
       },
       {
-        key: 'chatTransitions',
-        label: 'Chat room movement alerts',
-        enabled: notifications.chatTransitions !== false
-      },
-      {
         key: 'marketing',
         label: 'Tips & marketing',
         enabled: notifications.marketing === true
@@ -718,8 +698,8 @@ const detailEntries = useMemo(() => {
       return null;
     }
     return {
-      createdAt: formatDateTime(effectiveUser.createdAt),
-      updatedAt: formatDateTime(effectiveUser.updatedAt),
+      createdAt: formatDateTime(effectiveUser?.createdAt),
+      updatedAt: formatDateTime(effectiveUser?.updatedAt),
       status: effectiveUser.accountStatus ?? 'unknown',
       email: effectiveUser.email ?? 'â€”',
       userId: effectiveUser._id ?? targetUserId ?? 'â€”'
@@ -728,37 +708,21 @@ const detailEntries = useMemo(() => {
 
   const rawDataAvailable = detailEntries.length > 0;
 
-  const handleBack = () => {
-    if (originPath) {
-      navigate(originPath);
-    } else {
-      navigate(-1);
-    }
-  };
-
   const handleRequestBlock = useCallback(() => {
     if (!canManageBlock) {
       return;
     }
-    if (isOffline) {
-      setRelationshipStatus({ type: 'warning', message: 'Reconnect to block users.' });
-      return;
-    }
     setRelationshipStatus(null);
     setBlockDialogMode('block');
-  }, [canManageBlock, isOffline]);
+  }, [canManageBlock]);
 
   const handleRequestUnblock = useCallback(() => {
     if (!canManageBlock) {
       return;
     }
-    if (isOffline) {
-      setRelationshipStatus({ type: 'warning', message: 'Reconnect to unblock users.' });
-      return;
-    }
     setRelationshipStatus(null);
     setBlockDialogMode('unblock');
-  }, [canManageBlock, isOffline]);
+  }, [canManageBlock]);
 
   const handleCloseBlockDialog = useCallback(() => {
     if (isProcessingBlockAction) {
@@ -774,15 +738,6 @@ const detailEntries = useMemo(() => {
 
     const targetId = effectiveUser?._id ? String(effectiveUser._id) : normalizedTargetId;
     if (!targetId) {
-      return;
-    }
-
-    if (isOffline) {
-      setRelationshipStatus({
-        type: 'warning',
-        message: 'Reconnect to change block status.'
-      });
-      setBlockDialogMode(null);
       return;
     }
 
@@ -839,7 +794,7 @@ const detailEntries = useMemo(() => {
     } finally {
       setIsProcessingBlockAction(false);
     }
-  }, [blockDialogMode, displayName, effectiveUser, isOffline, normalizedTargetId]);
+  }, [blockDialogMode, displayName, effectiveUser, normalizedTargetId]);
 
   useEffect(() => {
     if (!relationshipStatus) {
@@ -853,40 +808,36 @@ const detailEntries = useMemo(() => {
     };
   }, [relationshipStatus]);
 
-  return (
-    <Box
-      component="section"
-      sx={{
-        minHeight: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        p: { xs: 2, md: 4 }
-      }}
-    >
-      <Paper
-        elevation={6}
-        sx={{
-          width: '100%',
-          maxWidth: 680,
-          borderRadius: 4,
-          p: { xs: 3, md: 4 },
-          backgroundColor: 'background.paper'
-        }}
-      >
-        <Stack spacing={3}>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-            <Button
-              onClick={handleBack}
-              startIcon={<ArrowBackIcon />}
-              size="small"
-              color="primary"
-              sx={{ alignSelf: 'flex-start' }}
-            >
-              Back
-            </Button>
-          </Box>
+  const headerImageUrl = (() => {
+    const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+    const path = '/images/background/background-01.jpg';
+    return base ? `${base}${path}` : path;
+  })();
 
+  return (
+    <div className="profile-page-container">
+      <BackButton 
+        className="profile-back-nav"
+        buttonClassName="back-button"
+        ariaLabel="Go back to previous page"
+        centerText="Profile"
+      />
+      <div className="profile-page-frame">
+        <Box
+          component="img"
+          src={headerImageUrl}
+          alt="Profile header"
+          sx={{
+            width: { xs: 'calc(100% + 1rem)', sm: 'calc(100% + 2rem)' },
+            height: '100px',
+            objectFit: 'fill',
+            display: 'block',
+            marginTop: { xs: '-56px', sm: '-60px' },
+            marginLeft: { xs: '-0.5rem', sm: '-1rem' },
+            marginRight: { xs: '-0.5rem', sm: '-1rem' }
+          }}
+        />
+        <Stack spacing={3}>
           {isFetchingProfile ? (
             <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
               <CircularProgress size={18} thickness={5} />
@@ -902,19 +853,13 @@ const detailEntries = useMemo(() => {
             </Alert>
           ) : null}
 
-          {isOffline ? (
-            <Alert severity="warning" variant="outlined">
-              You are offline. Profile changes and relationship actions are disabled until you reconnect.
-            </Alert>
-          ) : null}
-
           {relationshipStatus ? (
             <Alert severity={relationshipStatus.type} onClose={() => setRelationshipStatus(null)}>
               {relationshipStatus.message}
             </Alert>
           ) : null}
-
-          <Stack spacing={2} alignItems="center" textAlign="center">
+          {/*
+          <Stack spacing={2} alignItems="left" textAlign="left">
             <Avatar
               src={avatarUrl}
               alt={`${displayName} avatar`}
@@ -937,7 +882,74 @@ const detailEntries = useMemo(() => {
               </Typography>
             ) : null}
           </Stack>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar
+                src={avatarUrl}
+                alt={`${displayName} avatar`}
+                sx={{ width: 96, height: 96, bgcolor: 'secondary.main' }}
+              >
+                {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
+              </Avatar>
+                <Box>
+                  <Typography variant="h4" component="h1">
+                    {displayName}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    User ID: {effectiveUser?._id || targetUserId || 'N/A'}
+                  </Typography>
+                </Box>
+          </Stack>
 
+          <Stack className="user-card">
+            <Avatar
+              src={avatarUrl}
+              alt={`${displayName} avatar`}
+              className="user-avatar"
+            >
+              {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
+            </Avatar>
+            <Box className="user-info">
+              <Typography variant="h4" component="h1">
+                {displayName}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                User ID: {effectiveUser?._id || targetUserId || 'N/A'}
+              </Typography>
+            </Box>
+          </Stack>
+
+*/}
+          <Stack
+            direction="row"     // horizontal layout
+            spacing={2}
+            alignItems="center" // vertically centers the items
+            sx={{ py: 4 }}
+          >
+            <Avatar
+              src={avatarUrl}
+              alt={`${displayName} avatar`}
+              sx={{ width: 96, height: 96, bgcolor: 'secondary.main' }}
+            >
+              {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
+            </Avatar>
+            <Box>
+              {/*
+              <Typography variant="h4" component="h1">
+                {displayName}
+              </Typography>
+*/}
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{ fontWeight: 'bold', fontSize: '2rem' }}
+              >
+                {displayName}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Joined: {formatDateTime(effectiveUser?.createdAt) || targetUserId || 'N/A'}
+              </Typography>
+            </Box>
+          </Stack>
           {canManageBlock ? (
             <Box sx={{ display: 'flex', justifyContent: 'center' }}>
               <Button
@@ -945,8 +957,7 @@ const detailEntries = useMemo(() => {
                 color={isBlocked ? 'primary' : 'error'}
                 startIcon={isBlocked ? <HowToRegIcon /> : <BlockIcon />}
                 onClick={isBlocked ? handleRequestUnblock : handleRequestBlock}
-                disabled={isOffline || isProcessingBlockAction || isFetchingProfile}
-                title={isOffline ? 'Reconnect to manage block settings' : undefined}
+                disabled={isProcessingBlockAction || isFetchingProfile}
               >
                 {isBlocked ? 'Unblock user' : 'Block user'}
               </Button>
@@ -966,14 +977,14 @@ const detailEntries = useMemo(() => {
                   component="form"
                   spacing={2}
                   onSubmit={handleSaveProfile}
-                  sx={{
-                    p: 2,
-                    borderRadius: 2,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    backgroundColor: 'background.default'
-                  }}
-                >
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  backgroundColor: SECTION_BG_COLOR
+                }}
+              >
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
                     <Avatar
                       src={editingAvatarSrc}
@@ -983,13 +994,7 @@ const detailEntries = useMemo(() => {
                       {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
                     </Avatar>
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                      <Button
-                        component="label"
-                        variant="outlined"
-                        size="small"
-                        disabled={isOffline || isSavingProfile}
-                        title={isOffline ? 'Reconnect to upload a new avatar' : undefined}
-                      >
+                      <Button component="label" variant="outlined" size="small" disabled={isSavingProfile}>
                         Upload avatar
                         <input type="file" hidden accept="image/*" onChange={handleAvatarFileChange} />
                       </Button>
@@ -1000,11 +1005,9 @@ const detailEntries = useMemo(() => {
                         size="small"
                         onClick={handleClearAvatar}
                         disabled={
-                          isOffline ||
                           isSavingProfile ||
                           (formState.avatarCleared && !formState.avatarFile && !effectiveUser?.avatar)
                         }
-                        title={isOffline ? 'Reconnect to remove your avatar' : undefined}
                       >
                         Remove avatar
                       </Button>
@@ -1016,7 +1019,7 @@ const detailEntries = useMemo(() => {
                     value={formState.displayName}
                     onChange={handleFieldChange('displayName')}
                     required
-                    disabled={isOffline || isSavingProfile}
+                    disabled={isSavingProfile}
                     fullWidth
                   />
 
@@ -1027,7 +1030,7 @@ const detailEntries = useMemo(() => {
                     multiline
                     minRows={3}
                     helperText="Share something about yourself (500 characters max)."
-                    disabled={isOffline || isSavingProfile}
+                    disabled={isSavingProfile}
                     inputProps={{ maxLength: 500 }}
                     fullWidth
                   />
@@ -1037,7 +1040,7 @@ const detailEntries = useMemo(() => {
                     value={formState.theme}
                     onChange={handleThemeChange}
                     select
-                    disabled={isOffline || isSavingProfile}
+                    disabled={isSavingProfile}
                     fullWidth
                   >
                     <MenuItem value="system">System default</MenuItem>
@@ -1051,7 +1054,7 @@ const detailEntries = useMemo(() => {
                         checked={formState.locationSharingEnabled}
                         onChange={handleToggleLocationSharing}
                         color="primary"
-                        disabled={isOffline || isSavingProfile}
+                        disabled={isSavingProfile}
                       />
                     }
                     label="Share location with nearby features"
@@ -1067,12 +1070,7 @@ const detailEntries = useMemo(() => {
                     >
                       Cancel
                     </Button>
-                    <Button
-                      type="submit"
-                      variant="contained"
-                      disabled={isOffline || isSavingProfile}
-                      title={isOffline ? 'Reconnect to save changes' : undefined}
-                    >
+                    <Button type="submit" variant="contained" disabled={isSavingProfile}>
                       {isSavingProfile ? 'Saving...' : 'Save changes'}
                     </Button>
                   </Stack>
@@ -1082,8 +1080,7 @@ const detailEntries = useMemo(() => {
                   <Button
                     variant="contained"
                     onClick={handleBeginEditing}
-                    disabled={isOffline || !effectiveUser || isFetchingProfile}
-                    title={isOffline ? 'Reconnect to edit your profile' : undefined}
+                    disabled={!effectiveUser || isFetchingProfile}
                   >
                     Edit profile
                   </Button>
@@ -1153,7 +1150,7 @@ const detailEntries = useMemo(() => {
                     </Stack>
                   ) : (
                     <Typography variant="body2" color="text.secondary">
-                      No badges yet â€” theyâ€™ll appear here once this user starts collecting achievements.
+                      No badges yet — they’ll appear here once this user starts collecting achievements.
                     </Typography>
                   )}
                 </Section>
@@ -1329,7 +1326,7 @@ const detailEntries = useMemo(() => {
                               borderRadius: 2,
                               border: '1px dashed',
                               borderColor: 'divider',
-                              backgroundColor: 'background.default',
+                              backgroundColor: SECTION_BG_COLOR,
                               p: 2
                             }}
                           >
@@ -1373,7 +1370,7 @@ const detailEntries = useMemo(() => {
             </>
           ) : null}
         </Stack>
-      </Paper>
+      </div>
       <Dialog
         open={Boolean(blockDialogMode)}
         onClose={handleCloseBlockDialog}
@@ -1406,7 +1403,7 @@ const detailEntries = useMemo(() => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </div>
   );
 }
 

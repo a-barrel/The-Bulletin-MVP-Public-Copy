@@ -1,131 +1,433 @@
 [
   {
-    "_id": { "$oid": "68e061721329566a22d474b4" },
-    "roomId": { "$oid": "68e061721329566a22d474b3" },
-    "pinId": { "$oid": "68e061721329566a22d474ab" },
-    "authorId": { "$oid": "68e061721329566a22d474a8" },
+    "_id": {
+      "$oid": "68e061721329566a22d474b4"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d474b3"
+    },
+    "pinId": {
+      "$oid": "68e061721329566a22d474ab"
+    },
+    "authorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
     "replyToMessageId": null,
     "message": "Welcome! Grab a seat near the back patio; we'll kick off at 6:05.",
     "coordinates": {
       "type": "Point",
-      "coordinates": [-118.1141, 33.7838],
+      "coordinates": [
+        -118.1141,
+        33.7838
+      ],
       "accuracy": 7
     },
     "attachments": [],
     "audit": {
-      "createdBy": { "$oid": "68e061721329566a22d474a8" }
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a8"
+      }
     },
-    "createdAt": { "$date": "2026-10-03T23:20:00.000Z" },
-    "updatedAt": { "$date": "2026-10-03T23:20:00.000Z" }
+    "createdAt": {
+      "$date": "2026-10-03T23:20:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-03T23:20:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      "displayName": "Priya Desai",
+      "username": "priyadesai",
+      "avatar": {
+        "url": "images/profile/profile-02.jpg",
+        "thumbnailUrl": "/images/profile/profile-02.jpg",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:30.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-02.jpg",
+      "thumbnailUrl": "/images/profile/profile-02.jpg",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:30.000Z"
+      }
+    }
   },
   {
-    "_id": { "$oid": "68e061721329566a22d47571" },
-    "roomId": { "$oid": "68e061721329566a22d47570" },
-    "pinId": { "$oid": "68e061721329566a22d47530" },
-    "authorId": { "$oid": "68e061721329566a22d47510" },
+    "_id": {
+      "$oid": "68e061721329566a22d47571"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d47570"
+    },
+    "pinId": {
+      "$oid": "68e061721329566a22d47530"
+    },
+    "authorId": {
+      "$oid": "68e061721329566a22d47510"
+    },
     "replyToMessageId": null,
     "message": "Reminder: vendor load-in starts at 4:00 PM near the union loading dock.",
     "coordinates": {
       "type": "Point",
-      "coordinates": [-118.1146, 33.7779],
+      "coordinates": [
+        -118.1146,
+        33.7779
+      ],
       "accuracy": 8
     },
     "attachments": [],
     "audit": {
-      "createdBy": { "$oid": "68e061721329566a22d47510" }
+      "createdBy": {
+        "$oid": "68e061721329566a22d47510"
+      }
     },
-    "createdAt": { "$date": "2026-10-09T18:50:00.000Z" },
-    "updatedAt": { "$date": "2026-10-09T18:50:00.000Z" }
+    "createdAt": {
+      "$date": "2026-10-09T18:50:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-09T18:50:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47510"
+      },
+      "displayName": "Sofia Nguyen",
+      "username": "sofianguyen",
+      "avatar": {
+        "url": "images/profile/profile-04.jpg",
+        "thumbnailUrl": "/images/profile/profile-04.jpg",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-04T16:18:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-04.jpg",
+      "thumbnailUrl": "/images/profile/profile-04.jpg",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-04T16:18:00.000Z"
+      }
+    }
   },
   {
-    "_id": { "$oid": "68e061721329566a22d47572" },
-    "roomId": { "$oid": "68e061721329566a22d47570" },
-    "pinId": { "$oid": "68e061721329566a22d47530" },
-    "authorId": { "$oid": "68e061721329566a22d474a7" },
-    "replyToMessageId": { "$oid": "68e061721329566a22d47571" },
+    "_id": {
+      "$oid": "68e061721329566a22d47572"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d47570"
+    },
+    "pinId": {
+      "$oid": "68e061721329566a22d47530"
+    },
+    "authorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "replyToMessageId": {
+      "$oid": "68e061721329566a22d47571"
+    },
     "message": "I'll bring surge protectors and extra gaffer tape for the booth row.",
     "coordinates": {
       "type": "Point",
-      "coordinates": [-118.1144, 33.7777],
+      "coordinates": [
+        -118.1144,
+        33.7777
+      ],
       "accuracy": 9
     },
     "attachments": [],
     "audit": {
-      "createdBy": { "$oid": "68e061721329566a22d474a7" }
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a7"
+      }
     },
-    "createdAt": { "$date": "2026-10-09T18:55:00.000Z" },
-    "updatedAt": { "$date": "2026-10-09T18:55:00.000Z" }
+    "createdAt": {
+      "$date": "2026-10-09T18:55:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-09T18:55:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      "displayName": "Alex Rivera",
+      "username": "alexrivera",
+      "avatar": {
+        "url": "images/profile/profile-01.jpg",
+        "thumbnailUrl": "/images/profile/profile-01.jpg",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-01.jpg",
+      "thumbnailUrl": "/images/profile/profile-01.jpg",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:00.000Z"
+      }
+    }
   },
   {
-    "_id": { "$oid": "68e061721329566a22d476a0" },
-    "roomId": { "$oid": "68e061721329566a22d47690" },
-    "authorId": { "$oid": "68e061721329566a22d474a7" },
+    "_id": {
+      "$oid": "68e061721329566a22d476a0"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d47690"
+    },
+    "authorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
     "replyToMessageId": null,
     "message": "Welcome to Global Debug Lounge A. Use this space for baseline swap + messaging checks.",
     "coordinates": {
       "type": "Point",
-      "coordinates": [0.0, 0.0],
+      "coordinates": [
+        0.0,
+        0.0
+      ],
       "accuracy": 0
     },
     "attachments": [],
     "audit": {
-      "createdBy": { "$oid": "68e061721329566a22d474a7" }
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a7"
+      }
     },
-    "createdAt": { "$date": "2026-10-20T19:16:00.000Z" },
-    "updatedAt": { "$date": "2026-10-20T19:16:00.000Z" }
+    "createdAt": {
+      "$date": "2026-10-20T19:16:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-20T19:16:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      "displayName": "Alex Rivera",
+      "username": "alexrivera",
+      "avatar": {
+        "url": "images/profile/profile-01.jpg",
+        "thumbnailUrl": "/images/profile/profile-01.jpg",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-01.jpg",
+      "thumbnailUrl": "/images/profile/profile-01.jpg",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:00.000Z"
+      }
+    }
   },
   {
-    "_id": { "$oid": "68e061721329566a22d476a1" },
-    "roomId": { "$oid": "68e061721329566a22d47691" },
-    "authorId": { "$oid": "68e061721329566a22d474a8" },
+    "_id": {
+      "$oid": "68e061721329566a22d476a1"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d47691"
+    },
+    "authorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
     "replyToMessageId": null,
     "message": "Global Lounge B online. Hop here when you just need a fast room swap without geo rules.",
     "coordinates": {
       "type": "Point",
-      "coordinates": [0.0, 0.0],
+      "coordinates": [
+        0.0,
+        0.0
+      ],
       "accuracy": 0
     },
     "attachments": [],
     "audit": {
-      "createdBy": { "$oid": "68e061721329566a22d474a8" }
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a8"
+      }
     },
-    "createdAt": { "$date": "2026-10-21T02:32:00.000Z" },
-    "updatedAt": { "$date": "2026-10-21T02:32:00.000Z" }
+    "createdAt": {
+      "$date": "2026-10-21T02:32:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T02:32:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      "displayName": "Priya Desai",
+      "username": "priyadesai",
+      "avatar": {
+        "url": "images/profile/profile-02.jpg",
+        "thumbnailUrl": "/images/profile/profile-02.jpg",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:30.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-02.jpg",
+      "thumbnailUrl": "/images/profile/profile-02.jpg",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:30.000Z"
+      }
+    }
   },
   {
-    "_id": { "$oid": "68e061721329566a22d476a2" },
-    "roomId": { "$oid": "68e061721329566a22d47692" },
-    "authorId": { "$oid": "68e061721329566a22d474a9" },
+    "_id": {
+      "$oid": "68e061721329566a22d476a2"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d47692"
+    },
+    "authorId": {
+      "$oid": "68e061721329566a22d474a9"
+    },
     "replyToMessageId": null,
     "message": "Checking in from the Long Beach waterfront. I can see the chat after spoofing to campus coords.",
     "coordinates": {
       "type": "Point",
-      "coordinates": [-118.193739, 33.77005],
+      "coordinates": [
+        -118.193739,
+        33.77005
+      ],
       "accuracy": 12
     },
     "attachments": [],
     "audit": {
-      "createdBy": { "$oid": "68e061721329566a22d474a9" }
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a9"
+      }
     },
-    "createdAt": { "$date": "2026-10-21T02:36:00.000Z" },
-    "updatedAt": { "$date": "2026-10-21T02:36:00.000Z" }
+    "createdAt": {
+      "$date": "2026-10-21T02:36:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T02:36:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      "displayName": "Marcus Soto",
+      "username": "marcussoto",
+      "avatar": {
+        "url": "images/profile/profile-03.jpg",
+        "thumbnailUrl": "/images/profile/profile-03.jpg",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:13:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-03.jpg",
+      "thumbnailUrl": "/images/profile/profile-03.jpg",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:13:00.000Z"
+      }
+    }
   },
   {
-    "_id": { "$oid": "68e061721329566a22d476a3" },
-    "roomId": { "$oid": "68e061721329566a22d47693" },
-    "authorId": { "$oid": "68e061721329566a22d474a8" },
+    "_id": {
+      "$oid": "68e061721329566a22d476a3"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d47693"
+    },
+    "authorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
     "replyToMessageId": null,
     "message": "North Pole check: messages here should stay invisible to anyone spoofed to Long Beach.",
     "coordinates": {
       "type": "Point",
-      "coordinates": [135.0, 89.95],
+      "coordinates": [
+        135.0,
+        89.95
+      ],
       "accuracy": 30
     },
     "attachments": [],
     "audit": {
-      "createdBy": { "$oid": "68e061721329566a22d474a8" }
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a8"
+      }
     },
-    "createdAt": { "$date": "2026-10-21T02:46:00.000Z" },
-    "updatedAt": { "$date": "2026-10-21T02:46:00.000Z" }
+    "createdAt": {
+      "$date": "2026-10-21T02:46:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T02:46:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      "displayName": "Priya Desai",
+      "username": "priyadesai",
+      "avatar": {
+        "url": "images/profile/profile-02.jpg",
+        "thumbnailUrl": "/images/profile/profile-02.jpg",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:30.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-02.jpg",
+      "thumbnailUrl": "/images/profile/profile-02.jpg",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:30.000Z"
+      }
+    }
   }
 ]

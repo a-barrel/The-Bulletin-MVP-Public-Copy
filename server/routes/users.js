@@ -149,21 +149,75 @@ const resolveViewerUser = async (req) => {
   }
 };
 
+const normalizeMediaUrl = (value) => {
+  if (!value || typeof value !== 'string') {
+    return value;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return value;
+  }
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+};
+
+const TF2_AVATAR_MAP = {
+  'tf2_scout': '/images/emulation/avatars/Scoutava.jpg',
+  'tf2_soldier': '/images/emulation/avatars/Soldierava.jpg',
+  'tf2_pyro': '/images/emulation/avatars/Pyroava.jpg',
+  'tf2_demoman': '/images/emulation/avatars/Demomanava.jpg',
+  'tf2_heavy': '/images/emulation/avatars/Heavyava.jpg',
+  'tf2_engineer': '/images/emulation/avatars/Engineerava.jpg',
+  'tf2_medic': '/images/emulation/avatars/Medicava.jpg',
+  'tf2_sniper': '/images/emulation/avatars/Sniperava.jpg',
+  'tf2_spy': '/images/emulation/avatars/Spyava.jpg'
+};
+
 const mapMediaAssetResponse = (asset) => {
   if (!asset) {
     return undefined;
   }
 
   const doc = asset.toObject ? asset.toObject() : asset;
+  const normalizedUrl = normalizeMediaUrl(doc.url);
+  const normalizedThumb = normalizeMediaUrl(doc.thumbnailUrl);
+  const normalizedPath = normalizeMediaUrl(doc.path);
+  const primaryUrl = normalizedUrl ?? normalizedThumb ?? normalizedPath;
+  const thumbnailUrl = normalizedThumb ?? (primaryUrl && primaryUrl !== normalizedThumb ? primaryUrl : undefined);
   return {
-    url: doc.url,
-    thumbnailUrl: doc.thumbnailUrl || undefined,
+    url: primaryUrl,
+    thumbnailUrl,
     width: doc.width ?? undefined,
     height: doc.height ?? undefined,
     mimeType: doc.mimeType || undefined,
     description: doc.description || undefined,
     uploadedAt: toIsoDateString(doc.uploadedAt),
     uploadedBy: toIdString(doc.uploadedBy)
+  };
+};
+
+const buildAvatarMedia = (userDoc) => {
+  const avatar = mapMediaAssetResponse(userDoc.avatar);
+  const fallbackUrl = TF2_AVATAR_MAP[userDoc.username];
+  const needsFallback =
+    fallbackUrl &&
+    (!avatar ||
+      !avatar.url ||
+      /\/images\/profile\/profile-\d+\.jpg$/i.test(avatar.url));
+
+  if (!needsFallback) {
+    return avatar;
+  }
+
+  const normalized = normalizeMediaUrl(fallbackUrl);
+  return {
+    url: normalized,
+    thumbnailUrl: normalized,
+    width: avatar?.width ?? 184,
+    height: avatar?.height ?? 184,
+    mimeType: 'image/jpeg'
   };
 };
 
@@ -238,7 +292,7 @@ const mapUserToPublic = (userDoc) => {
     _id: toIdString(doc._id),
     username: doc.username,
     displayName: doc.displayName,
-    avatar: mapMediaAssetResponse(doc.avatar),
+    avatar: buildAvatarMedia(doc),
     stats: doc.stats || undefined,
     badges: doc.badges || [],
     primaryLocationId: toIdString(doc.primaryLocationId),
@@ -262,7 +316,7 @@ const mapUserToProfile = (userDoc) => {
     _id: toIdString(doc._id),
     username: doc.username,
     displayName: doc.displayName,
-    avatar: mapMediaAssetResponse(doc.avatar),
+    avatar: buildAvatarMedia(doc),
     stats: doc.stats || undefined,
     badges: doc.badges || [],
     primaryLocationId: toIdString(doc.primaryLocationId),

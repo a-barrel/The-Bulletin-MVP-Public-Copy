@@ -844,16 +844,20 @@ function MapPage() {
     <Box
       sx={{
         width: '100%',
-        height: '100%',
+        height: 'calc(100vh - var(--header-h) - 90px)',
         position: 'relative',
-        flex: 1,
+        flex: '1 1 auto',
+        maxWidth: '100%',
+        p: 0,
+        m: 0,
         overflow: 'hidden',
-        boxShadow: (theme) => theme.shadows[4],
+        boxShadow: 'none',
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: 'background.paper'
       }}
     >
+    {/*
       <AppBar position="static">
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
@@ -864,6 +868,8 @@ function MapPage() {
           </Typography>
         </Toolbar>
       </AppBar>
+      */}
+
         <Map
           userLocation={userLocation}
           nearbyUsers={nearbyUsers}
@@ -878,190 +884,10 @@ function MapPage() {
         />
       </Box>
 
-    {/* Floating Add Button (always visible) */}
+    {/* Floating Add Button (always visible, under header) */}
     <button className="map-add-btn" aria-label="Add">
       <img src={addIcon} alt="Add" />
     </button>
-
-
-      {/* GPS SPOOFING AND NOTIFICATION THAT LOCATION IS ON */}
-      {/*
-      <Stack
-        spacing={2}
-        sx={{
-          p: { xs: 2, md: 3 },
-          borderTop: (theme) => `1px solid ${theme.palette.divider}`,
-        }}
-      >
-    
-        <LocationShare
-          isSharing={isSharing}
-          onToggle={() =>
-            isSharing ? handleStopSharing() : handleStartSharing()
-          }
-          disabled={shareDisabled}
-          helperText={shareHelperText}
-        />
-
-        <FormControlLabel
-          control={
-            <Switch
-              checked={showChatRooms}
-              onChange={(event) => setShowChatRooms(event.target.checked)}
-              disabled={isOffline}
-            />
-          }
-          label="Show chat room coverage"
-        />
-
-        {isLoadingChatRooms ? (
-          <Alert severity="info">Loading chat rooms…</Alert>
-        ) : null}
-
-        {chatRoomsError ? (
-          <Alert severity="warning" onClose={() => setChatRoomsError(null)}>
-            {chatRoomsError}
-          </Alert>
-        ) : null}
-
-        {isOffline ? (
-          <Alert severity="warning">
-            Offline mode: map data is read-only. Location sharing and live updates will resume when
-            you reconnect.
-          </Alert>
-        ) : null}
-
-        {error && (
-          <Alert severity="error" onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        )}
-
-        <Stack direction="row" spacing={2} alignItems="center">
-          {(isLoadingNearby || isLoadingPins) && (
-            <CircularProgress color="primary" size={28} />
-          )}
-          <Typography variant="body2" color="text.secondary">
-            {isLoadingNearby || isLoadingPins
-              ? 'Loading nearby data…'
-              : `Showing pins within a ${DEFAULT_RADIUS_MILES}-mile radius`}
-          </Typography>
-        </Stack>
-        */}
-
-        {/*
-        <Paper elevation={1} sx={{ p: 2 }}>
-          <Stack spacing={1.5}>
-            <Typography variant="subtitle2">GPS Spoofing</Typography>
-            <Stack spacing={1}>
-              <Typography variant="body2" color="text.secondary">
-                Step size: {spoofStepMiles.toFixed(2)} mile{spoofStepMiles === 1 ? '' : 's'}
-              </Typography>
-              <Slider
-                min={SPOOF_MIN_MILES}
-                max={SPOOF_MAX_MILES}
-                step={SPOOF_STEP_INCREMENT}
-                value={spoofStepMiles}
-                onChange={(_, value) => {
-                  if (typeof value === 'number') {
-                    setSpoofStepMiles(value);
-                  }
-                }}
-                valueLabelDisplay="auto"
-                valueLabelFormat={(value) => `${value.toFixed(2)} mi`}
-              />
-            </Stack>
-            <Stack direction="row" spacing={1} justifyContent="center">
-              <Button
-                variant="contained"
-                size="small"
-                onClick={() => handleSpoofMove('north')}
-                sx={{ minWidth: 96 }}
-              >
-                North
-              </Button>
-            </Stack>
-            <Stack direction="row" spacing={1} justifyContent="center">
-              <Button
-                variant="contained"
-                size="small"
-                onClick={() => handleSpoofMove('west')}
-                sx={{ minWidth: 96 }}
-              >
-                West
-              </Button>
-              <Button
-                variant="contained"
-                size="small"
-                onClick={() => handleSpoofMove('east')}
-                sx={{ minWidth: 96 }}
-              >
-                East
-              </Button>
-            </Stack>
-            <Stack direction="row" spacing={1} justifyContent="center">
-              <Button
-                variant="contained"
-                size="small"
-                onClick={() => handleSpoofMove('south')}
-                sx={{ minWidth: 96 }}
-              >
-                South
-              </Button>
-            </Stack>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              align="center"
-            >
-              Each press moves the simulated location ~2 miles.
-            </Typography>
-          </Stack>
-        </Paper>
-
-        {showChatRooms ? (
-          <Paper elevation={1} sx={{ p: 2 }}>
-            <Stack spacing={1.25}>
-              <Typography variant="subtitle2">Chat room coverage</Typography>
-              <Typography variant="body2" color="text.secondary">
-                {isLoadingChatRooms
-                  ? 'Loading chat rooms…'
-                  : chatRoomPins.length
-                  ? `Displaying ${chatRoomPins.length} chat room${chatRoomPins.length === 1 ? '' : 's'} near this area.`
-                  : 'No chat rooms found near this location.'}
-              </Typography>
-              {selectedChatRoom ? (
-                <Stack spacing={0.5}>
-                  <Typography variant="subtitle1">
-                    {selectedChatRoom.name ?? 'Untitled chat room'}
-                    {selectedChatRoom.isGlobal ? ' (global)' : ''}
-                  </Typography>
-                  {selectedChatRoom.description ? (
-                    <Typography variant="body2" color="text.secondary">
-                      {selectedChatRoom.description}
-                    </Typography>
-                  ) : null}
-                  {selectedChatRoomRadiusLabel ? (
-                    <Typography variant="body2" color="text.secondary">
-                      Radius: {selectedChatRoomRadiusLabel}
-                    </Typography>
-                  ) : null}
-                  {selectedChatRoomDistanceLabel ? (
-                    <Typography variant="body2" color="text.secondary">
-                      Distance from you: {selectedChatRoomDistanceLabel}
-                    </Typography>
-                  ) : null}
-                </Stack>
-              ) : chatRoomPins.length ? (
-                <Typography variant="body2" color="text.secondary">
-                  Select a chat room marker to view details.
-                </Typography>
-              ) : null}
-            </Stack>
-          </Paper>
-        ) : null}
-      </Stack>
-      */}
 
       <Navbar />
     </div>
