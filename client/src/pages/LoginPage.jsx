@@ -8,6 +8,7 @@ import {
 } from "firebase/auth";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "./LoginPage.css";
+import bulletinLogo from "../../uploads/images/PinPoint_Logo.png";
 import { applyAuthPersistence, AUTH_PERSISTENCE } from "../utils/authPersistence";
 import { routes } from "../routes";
 
@@ -125,9 +126,8 @@ function LoginPage() {
         <h1 className="page-title">The Bulletin</h1>
       </div>
 
-      {/*Put actual Bulletin logo here later*/}
       <div className="bulletin-image">
-        <span>[ Skibidi ]</span>
+        <img src={bulletinLogo} alt="PinPoint logo" />
       </div>
 
       <form onSubmit={handleLogin} className={"page-form"}>

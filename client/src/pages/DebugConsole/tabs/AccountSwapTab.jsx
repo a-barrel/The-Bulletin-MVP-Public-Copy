@@ -127,7 +127,9 @@ function AccountSwapTab() {
             <CircularProgress size={32} />
           </Stack>
         ) : accounts.length === 0 ? (
-          <Alert severity="warning">No Firebase accounts were found in the emulator export.</Alert>
+          fetchError ? null : (
+            <Alert severity="warning">No Firebase accounts were found in the emulator export.</Alert>
+          )
         ) : (
           <List disablePadding>
             {accounts.map((account, index) => {

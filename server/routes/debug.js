@@ -78,6 +78,84 @@ const resolveViewerUser = async (req) => {
     return null;
   }
 };
+
+const PRIVILEGED_ACCOUNT_SWAP_ROLES = new Set(['admin', 'super-admin', 'system-admin']);
+const accountSwapAllowlist =
+  runtime?.debugAuth?.accountSwapAllowlist instanceof Set
+    ? runtime.debugAuth.accountSwapAllowlist
+    : new Set();
+const allowAccountSwapOnline = Boolean(runtime?.debugAuth?.allowAccountSwapOnline);
+const toAllowlistKey = (value) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? trimmed.toLowerCase() : null;
+  }
+  if (typeof value.toString === 'function') {
+    const stringValue = value.toString();
+    if (typeof stringValue === 'string') {
+      const trimmed = stringValue.trim();
+      return trimmed ? trimmed.toLowerCase() : null;
+    }
+  }
+  return null;
+};
+
+const hasPrivilegedAccountSwapRole = (viewer) => {
+  const roles = Array.isArray(viewer?.roles) ? viewer.roles : [];
+  return roles
+    .map((role) => (typeof role === 'string' ? role.trim().toLowerCase() : ''))
+    .some((role) => role && PRIVILEGED_ACCOUNT_SWAP_ROLES.has(role));
+};
+
+const isAllowlistedForAccountSwap = (req, viewer) => {
+  if (!(accountSwapAllowlist instanceof Set) || accountSwapAllowlist.size === 0) {
+    return false;
+  }
+
+  if (accountSwapAllowlist.has('*')) {
+    return true;
+  }
+
+  const candidates = [
+    req?.user?.uid,
+    req?.user?.email,
+    viewer?.email,
+    viewer?._id,
+    viewer?.username
+  ];
+
+  return candidates.some((candidate) => {
+    const key = toAllowlistKey(candidate);
+    return key && accountSwapAllowlist.has(key);
+  });
+};
+
+const getAccountSwapGateFailureMessage = (req, viewer) => {
+  if (runtime.isOffline) {
+    return null;
+  }
+
+  if (hasPrivilegedAccountSwapRole(viewer)) {
+    return null;
+  }
+
+  if (!allowAccountSwapOnline) {
+    return 'Account swapping is disabled for this deployment.';
+  }
+
+  if (isAllowlistedForAccountSwap(req, viewer)) {
+    return null;
+  }
+
+  if (!(accountSwapAllowlist instanceof Set) || accountSwapAllowlist.size === 0) {
+    return 'Account swapping is disabled online because no tester allowlist is configured.';
+  }
+
+  return 'Account swapping is restricted to approved testers.';
+};
 const mapMediaAsset = (asset) => {
   if (!asset) {
     return undefined;
@@ -333,8 +411,16 @@ router.post('/badges/reset', async (req, res) => {
 });
 
 router.get('/auth/accounts', async (req, res) => {
-  if (!runtime.isOffline) {
-    return res.status(403).json({ message: 'Account swapping is only available in offline mode.' });
+  const viewer = await resolveViewerUser(req);
+  if (!viewer) {
+    return res.status(403).json({
+      message: 'Unable to resolve the authenticated user for account swapping.'
+    });
+  }
+
+  const gateFailure = getAccountSwapGateFailureMessage(req, viewer);
+  if (gateFailure) {
+    return res.status(403).json({ message: gateFailure });
   }
 
   try {
@@ -373,8 +459,16 @@ router.get('/auth/accounts', async (req, res) => {
 });
 
 router.post('/auth/swap', async (req, res) => {
-  if (!runtime.isOffline) {
-    return res.status(403).json({ message: 'Account swapping is only available in offline mode.' });
+  const viewer = await resolveViewerUser(req);
+  if (!viewer) {
+    return res.status(403).json({
+      message: 'Unable to resolve the authenticated user for account swapping.'
+    });
+  }
+
+  const gateFailure = getAccountSwapGateFailureMessage(req, viewer);
+  if (gateFailure) {
+    return res.status(403).json({ message: gateFailure });
   }
 
   const SwapSchema = z.object({
