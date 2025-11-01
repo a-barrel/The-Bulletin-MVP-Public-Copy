@@ -185,47 +185,53 @@ function CreatePinPage() {
   const autoDeleteInputId = useId();
 
   return (
-    <div className={`create-pin ${pinType === 'event' ? 'bg-event' : 'bg-discussion'}`}>
-      <div
-        className="header"
-        style={{
-          background: activeTheme.headerBackground,
-          color: activeTheme.headerTextColor
-        }}
-      >
-        <button
-          type="button"
-          className="btn-back"
-          onClick={handleHeaderBack}
-          aria-label={backButtonLabel}
+    <div className="create-pin-page">
+      <div className={`create-pin ${pinType === 'event' ? 'bg-event' : 'bg-discussion'}`}>
+        <div
+          className="header"
+          style={{
+            background: activeTheme.headerBackground,
+            color: activeTheme.headerTextColor
+          }}
         >
-          <span aria-hidden="true">←</span> {backButtonLabel}
-        </button>
+          <div className="header-row">
+            <button
+              type="button"
+              className="btn-back"
+              onClick={handleHeaderBack}
+              aria-label={backButtonLabel}
+            >
+              <img
+                src="https://www.svgrepo.com/show/326886/arrow-back-sharp.svg"
+                className="back-arrow"
+                alt=""
+                aria-hidden="true"
+              />
+            </button>
 
-        <div className="header-content">
-          <h1>{FIGMA_TEMPLATE.header.title}</h1>
-          <span className="header-time">{FIGMA_TEMPLATE.header.time}</span>
+            <div className="header-content">
+              <h1>{FIGMA_TEMPLATE.header.title}</h1>
+            </div>
+
+            <form className="cta-form" onSubmit={handleSubmit}>
+              <button
+                type="submit"
+                className="btn-submit"
+                disabled={isOffline || isSubmitting}
+                title={isOffline ? 'Reconnect to publish a pin' : undefined}
+                style={{
+                  backgroundColor: activeTheme.ctaBackground,
+                  color: activeTheme.ctaTextColor
+                }}
+              >
+                {isSubmitting ? 'Posting...' : FIGMA_TEMPLATE.header.cta}
+              </button>
+            </form>
+          </div>
+
+          <p className="header-subtitle">{eventHeaderSubtitle}</p>
         </div>
-
-        <p className="header-subtitle">{eventHeaderSubtitle}</p>
-
-        <form className="cta-form" onSubmit={handleSubmit}>
-          <button
-            type="submit"
-            className="btn-submit"
-            disabled={isOffline || isSubmitting}
-            title={isOffline ? 'Reconnect to publish a pin' : undefined}
-            style={{
-              backgroundColor: activeTheme.ctaBackground,
-              color: activeTheme.ctaTextColor
-            }}
-          >
-            {isSubmitting ? 'Posting...' : FIGMA_TEMPLATE.header.cta}
-          </button>
-        </form>
-      </div>
-
-      <div className="body">
+        <div className="body">
         {isOffline && (
           <div className="alert alert-warning static-alert">
             You are offline. Drafts save locally, but publishing and uploads need a connection.
@@ -620,6 +626,7 @@ function CreatePinPage() {
         </div>
 
         {resultJson && <pre className="result-json">{resultJson}</pre>}
+        </div>
       </div>
     </div>
   );

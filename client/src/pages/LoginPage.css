@@ -100,11 +100,17 @@ body, input, button, textarea, p, h1, small, span, label, select, input::placeho
 /* 'Remember me' checkbox and 'Forgot password' text */
 .additional-options {
   display: flex;
-  justify-content: space-between;
-  width: 85vw;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 420px;
+  gap: 1.25rem;
   font-size: 1rem;
-  margin-top: -0.1rem;
-  margin-bottom: 0.8rem;
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .checkbox-container {
@@ -128,7 +134,7 @@ input[type="checkbox"] {
 
 .forgot-password-link {
   cursor: pointer;
-  margin-left: 0.9rem;
+  margin-left: 0;
   font-size: 1rem;
   white-space: nowrap;
 }
