@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import "../pages/MapPage.css"
+import "../pages/MapPage.css";
 import { useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import menuIcon from "../assets/MenuIcon.svg";
 import updatesIcon from "../assets/UpdateIcon.svg";
 import addIcon from "../assets/AddIcon.svg";
 import AppBar from '@mui/material/AppBar';
@@ -20,6 +19,7 @@ import Switch from '@mui/material/Switch';
 import MapIcon from '@mui/icons-material/Map';
 import Map from '../components/Map';
 import LocationShare from '../components/LocationShare';
+import GlobalNavMenu from '../components/GlobalNavMenu';
 import { routes } from '../routes';
 import {
   insertLocationUpdate,
@@ -32,6 +32,7 @@ import { useLocationContext } from '../contexts/LocationContext';
 import { auth } from '../firebase';
 import Navbar from '../components/Navbar';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
+import { useUpdates } from '../contexts/UpdatesContext';
 
 export const pageConfig = {
   id: 'map',
@@ -141,6 +142,7 @@ function MapPage() {
   const navigate = useNavigate();
   const [authUser] = useAuthState(auth);
   const { isOffline } = useNetworkStatusContext();
+  const { unreadCount, refreshUnreadCount } = useUpdates();
   const { location: sharedLocation, setLocation: setSharedLocation } = useLocationContext();
   const sharedLatitude = sharedLocation?.latitude ?? null;
   const sharedLongitude = sharedLocation?.longitude ?? null;
@@ -171,6 +173,12 @@ function MapPage() {
   const [currentProfileId, setCurrentProfileId] = useState(null);
   const spoofAnchorRef = useRef(null);
   const [spoofStepMiles, setSpoofStepMiles] = useState(DEFAULT_SPOOF_STEP_MILES);
+
+  useEffect(() => {
+    if (typeof refreshUnreadCount === 'function' && !isOffline) {
+      refreshUnreadCount({ silent: true });
+    }
+  }, [isOffline, refreshUnreadCount]);
 
   useEffect(() => {
     if (!Number.isFinite(sharedLatitude) || !Number.isFinite(sharedLongitude)) {
@@ -824,21 +832,49 @@ function MapPage() {
     navigate(routes.profile.me);
   }, [navigate]);
 
+  const handleNotifications = useCallback(() => {
+    if (isOffline) {
+      return;
+    }
+    navigate(routes.updates.base);
+  }, [isOffline, navigate]);
+
+  const handleCreatePin = useCallback(() => {
+    if (isOffline) {
+      return;
+    }
+    navigate(routes.createPin.base);
+  }, [isOffline, navigate]);
+
+  const notificationsLabel =
+    unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
+  const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
+
   return (
-  <div className="map-page">
-  <div className="map-frame">
-    {/* Header (purple) */}
-    <header className="map-header">
-      <button className="map-icon-btn" aria-label="Menu">
-        <img src={menuIcon} alt="Menu" className="map-icon" />
-      </button>
+    <div className="map-page">
+      <div className="map-frame">
+        {/* Header (purple) */}
+        <header className="map-header">
+          <GlobalNavMenu triggerClassName="map-icon-btn" iconClassName="map-icon" />
 
-      <h1 className="map-title">Map</h1>
+          <h1 className="map-title">Map</h1>
 
-      <button className="map-icon-btn" aria-label="Notifications">
-        <img src={updatesIcon} alt="Notifications" className="map-icon" />
-      </button>
-    </header>
+          <button
+            className="map-icon-btn"
+            type="button"
+            aria-label={notificationsLabel}
+            onClick={handleNotifications}
+            disabled={isOffline}
+            title={isOffline ? 'Reconnect to view updates' : undefined}
+          >
+            <img src={updatesIcon} alt="" className="map-icon" aria-hidden="true" />
+            {displayBadge ? (
+              <span className="map-icon-badge" aria-hidden="true">
+                {displayBadge}
+              </span>
+            ) : null}
+          </button>
+        </header>
 
     {/* Map area */}
     <Box
@@ -884,15 +920,22 @@ function MapPage() {
         />
       </Box>
 
-    {/* Floating Add Button (always visible, under header) */}
-    <button className="map-add-btn" aria-label="Add">
-      <img src={addIcon} alt="Add" />
-    </button>
+        {/* Floating Add Button (always visible, under header) */}
+        <button
+          className="map-add-btn"
+          type="button"
+          aria-label="Create pin"
+          onClick={handleCreatePin}
+          disabled={isOffline}
+          title={isOffline ? 'Reconnect to create a pin' : undefined}
+        >
+          <img src={addIcon} alt="" aria-hidden="true" />
+        </button>
 
-      <Navbar />
+        <Navbar />
+      </div>
     </div>
-  </div>
-);
+  );
 }
 
 export default MapPage;
