@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import './PinDetails.css';
-import './_V2_WIP_PinDetails.css';
+import './_v2_WIP_PinDetails.css';
 import PlaceIcon from '@mui/icons-material/Place'; // used only for pageConfig
 import LeafletMap from '../components/Map';
 import { routes } from '../routes';
