@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, CircleMarker } 
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './Map.css';
+import { formatDistanceMiles, haversineDistanceMeters } from '../utils/geo';
 
 // Fix for default marker icons in Leaflet with React
 delete L.Icon.Default.prototype._getIconUrl;
@@ -56,39 +57,6 @@ function ResizeHandler({ signature }) {
   }, [signature, map]);
   return null;
 }
-
-const formatDistanceMiles = (meters) => {
-  if (typeof meters !== 'number' || Number.isNaN(meters)) {
-    return null;
-  }
-  return (meters / 1609.34).toFixed(1);
-};
-
-const calculateDistanceMeters = (pointA, pointB) => {
-  if (!Array.isArray(pointA) || !Array.isArray(pointB)) {
-    return null;
-  }
-
-  const [lat1, lon1] = pointA;
-  const [lat2, lon2] = pointB;
-
-  if (![lat1, lon1, lat2, lon2].every((value) => Number.isFinite(value))) {
-    return null;
-  }
-
-  const toRadians = (value) => (value * Math.PI) / 180;
-  const earthRadiusMeters = 6371000;
-
-  const dLat = toRadians(lat2 - lat1);
-  const dLon = toRadians(lon2 - lon1);
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return earthRadiusMeters * c;
-};
 
 const parseDate = (value) => {
   if (!value) return null;
@@ -322,8 +290,9 @@ const Map = ({
         }
 
         const providedDistance = typeof pin.distanceMeters === 'number' ? pin.distanceMeters : null;
-        const computedDistance = providedDistance ?? calculateDistanceMeters(userMarkerPosition, [latitude, longitude]);
-        const distanceLabel = formatDistanceMiles(computedDistance);
+        const computedDistance =
+          providedDistance ?? haversineDistanceMeters(userMarkerPosition, [latitude, longitude]);
+        const distanceLabel = formatDistanceMiles(computedDistance, { decimals: 1 });
         const expirationLabel = formatExpiration(pin);
         const key = pin._id ?? `pin-${index}-${latitude}-${longitude}`;
         const isChatRoom = pin.type === 'chat-room' || pin.type === 'global-chat-room';

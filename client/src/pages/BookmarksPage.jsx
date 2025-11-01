@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
@@ -21,14 +21,9 @@ import LaunchIcon from '@mui/icons-material/Launch';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { auth } from '../firebase';
-import {
-  exportBookmarks,
-  fetchBookmarks,
-  fetchBookmarkCollections,
-  removeBookmark
-} from '../api/mongoDataApi';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
+import useBookmarksManager from '../hooks/useBookmarksManager';
 
 export const pageConfig = {
   id: 'bookmarks',
@@ -41,110 +36,27 @@ export const pageConfig = {
   protected: true
 };
 
-const EMPTY_GROUP = 'Unsorted';
-
-function formatSavedDate(input) {
-  if (!input) {
-    return 'Unknown date';
-  }
-  const date = new Date(input);
-  return date.toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  });
-}
-
-function groupBookmarks(bookmarks, collectionsById) {
-  const groups = new Map();
-  bookmarks.forEach((bookmark) => {
-    const collectionId = bookmark.collectionId || null;
-    const collectionName = collectionsById.get(collectionId)?.name ?? EMPTY_GROUP;
-    if (!groups.has(collectionName)) {
-      groups.set(collectionName, []);
-    }
-    groups.get(collectionName).push(bookmark);
-  });
-  return Array.from(groups.entries()).map(([name, items]) => ({
-    name,
-    items
-  }));
-}
-
 function BookmarksPage() {
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
   const [authUser, authLoading] = useAuthState(auth);
-
-  const [bookmarks, setBookmarks] = useState([]);
-  const [collections, setCollections] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [removalStatus, setRemovalStatus] = useState(null);
-  const [removingPinId, setRemovingPinId] = useState(null);
-  const [exportStatus, setExportStatus] = useState(null);
-  const [isExporting, setIsExporting] = useState(false);
-
-  const collectionsById = useMemo(() => {
-    const map = new Map();
-    collections.forEach((collection) => {
-      map.set(collection._id, collection);
-    });
-    return map;
-  }, [collections]);
-
-  const groupedBookmarks = useMemo(
-    () => groupBookmarks(bookmarks, collectionsById),
-    [bookmarks, collectionsById]
-  );
-
-  const totalCount = bookmarks.length;
-
-  const loadData = useCallback(async () => {
-    if (!authUser) {
-      setError('Sign in to view your bookmarks.');
-      setBookmarks([]);
-      setCollections([]);
-      return;
-    }
-
-    if (isOffline) {
-      setIsLoading(false);
-      setError('You are offline. Connect to refresh your bookmarks.');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [bookmarkPayload, collectionPayload] = await Promise.all([
-        fetchBookmarks(),
-        fetchBookmarkCollections()
-      ]);
-      setBookmarks(Array.isArray(bookmarkPayload) ? bookmarkPayload : []);
-      setCollections(Array.isArray(collectionPayload) ? collectionPayload : []);
-    } catch (err) {
-      console.error('Failed to load bookmarks:', err);
-      setBookmarks([]);
-      setCollections([]);
-      setError(err?.message || 'Failed to load bookmarks.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [authUser, isOffline]);
-
-  useEffect(() => {
-    if (authLoading) {
-      return;
-    }
-    if (!authUser) {
-      setBookmarks([]);
-      setCollections([]);
-      setError('Sign in to view your bookmarks.');
-      setIsLoading(false);
-      return;
-    }
-    loadData();
-  }, [authLoading, authUser, isOffline, loadData]);
+  const {
+    groupedBookmarks,
+    totalCount,
+    isLoading,
+    error,
+    setError,
+    removalStatus,
+    setRemovalStatus,
+    removingPinId,
+    isExporting,
+    exportStatus,
+    setExportStatus,
+    handleRemoveBookmark,
+    handleExport,
+    refresh,
+    formatSavedDate
+  } = useBookmarksManager({ authUser, authLoading, isOffline });
 
   const handleViewPin = useCallback(
     (pinId) => {
@@ -154,83 +66,6 @@ function BookmarksPage() {
     },
     [navigate]
   );
-
-  const handleRemoveBookmark = useCallback(
-    async (bookmark) => {
-      const pinId = bookmark?.pinId || bookmark?.pin?._id;
-      if (!pinId) {
-        setRemovalStatus({ type: 'error', message: 'Bookmark does not include a pin id.' });
-        return;
-      }
-
-      if (isOffline) {
-        setRemovalStatus({ type: 'warning', message: 'Reconnect to remove bookmarks.' });
-        return;
-      }
-
-      setRemovalStatus(null);
-      setRemovingPinId(pinId);
-      try {
-        await removeBookmark(pinId);
-        setBookmarks((prev) =>
-          prev.filter((candidate) => {
-            if (candidate._id && bookmark._id) {
-              return candidate._id !== bookmark._id;
-            }
-            return candidate.pinId !== pinId;
-          })
-        );
-        setRemovalStatus({ type: 'success', message: 'Bookmark removed.' });
-      } catch (err) {
-        console.error('Failed to remove bookmark:', err);
-        setRemovalStatus({ type: 'error', message: err?.message || 'Failed to remove bookmark.' });
-      } finally {
-        setRemovingPinId(null);
-      }
-    },
-    [isOffline]
-  );
-
-  const handleExport = useCallback(async () => {
-    if (!authUser) {
-      setExportStatus({ type: 'error', message: 'Sign in to export your bookmarks.' });
-      return;
-    }
-
-    if (isOffline) {
-      setExportStatus({ type: 'warning', message: 'Reconnect to export your bookmarks.' });
-      return;
-    }
-
-    setExportStatus(null);
-    setIsExporting(true);
-    try {
-      const { blob, filename } = await exportBookmarks();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = downloadUrl;
-      anchor.download = filename || 'bookmarks.csv';
-      document.body.appendChild(anchor);
-      anchor.click();
-      window.setTimeout(() => {
-        document.body.removeChild(anchor);
-        window.URL.revokeObjectURL(downloadUrl);
-      }, 0);
-
-      setExportStatus({
-        type: 'success',
-        message:
-          totalCount > 0
-            ? `Exported ${totalCount} bookmark${totalCount === 1 ? '' : 's'} to ${filename || 'bookmarks.csv'}.`
-            : `Export ready. ${filename || 'bookmarks.csv'} downloaded.`
-      });
-    } catch (err) {
-      console.error('Failed to export bookmarks:', err);
-      setExportStatus({ type: 'error', message: err?.message || 'Failed to export bookmarks.' });
-    } finally {
-      setIsExporting(false);
-    }
-  }, [authUser, isOffline, totalCount]);
 
   return (
     <Box
@@ -284,7 +119,7 @@ function BookmarksPage() {
               type="button"
               variant="outlined"
               size="small"
-              onClick={loadData}
+              onClick={refresh}
               disabled={isOffline || isLoading || authLoading || !authUser}
               title={isOffline ? 'Reconnect to refresh bookmarks' : undefined}
             >

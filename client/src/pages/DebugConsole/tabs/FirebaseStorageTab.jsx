@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -10,6 +9,8 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
 import { fetchStorageObjects } from '../../../api/mongoDataApi';
+import formatDateTime, { formatRelativeTime } from '../../../utils/dates';
+import DebugPanel from '../components/DebugPanel';
 
 const DEFAULT_PREFIX = 'debug/';
 
@@ -46,7 +47,9 @@ const formatTimestamp = (value) => {
   if (Number.isNaN(date.getTime())) {
     return 'Unknown updated time';
   }
-  return date.toLocaleString();
+  const relative = formatRelativeTime(date);
+  const absolute = formatDateTime(date);
+  return relative ? `${relative} (${absolute})` : absolute || 'Unknown updated time';
 };
 
 function FirebaseStorageTab() {
@@ -111,180 +114,182 @@ function FirebaseStorageTab() {
 
   const hasFiles = files.length > 0;
 
+  const alerts = error
+    ? [
+        {
+          key: 'error',
+          severity: 'error',
+          content: error,
+          onClose: () => setError(null)
+        }
+      ]
+    : [];
+
   return (
-    <Stack spacing={2}>
-      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Typography variant="h6">Firebase Storage Explorer</Typography>
-        <Typography variant="body2" color="text.secondary">
-          List objects stored in your Firebase Storage bucket to verify uploads and CDN access.
-        </Typography>
-
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={2}
-          alignItems={{ xs: 'stretch', sm: 'center' }}
-        >
-          <TextField
-            label="Folder prefix"
-            value={prefixInput}
-            onChange={(event) => setPrefixInput(event.target.value)}
-            placeholder="debug/"
-            helperText="Enter a folder path inside the bucket"
-            fullWidth
-          />
-          <Stack direction={{ xs: 'row', sm: 'row' }} spacing={1}>
-            <Button
-              type="button"
-              variant="contained"
-              onClick={() => loadObjects(prefixInput)}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Loading...' : 'Load objects'}
-            </Button>
-            <Button
-              type="button"
-              variant="outlined"
-              onClick={() => loadObjects(lastFetchedPrefix)}
-              disabled={isLoading}
-            >
-              Refresh
-            </Button>
-          </Stack>
+    <DebugPanel
+      title="Firebase Storage Explorer"
+      description="List objects stored in your Firebase Storage bucket to verify uploads and CDN access."
+      alerts={alerts}
+    >
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        alignItems={{ xs: 'stretch', sm: 'center' }}
+      >
+        <TextField
+          label="Folder prefix"
+          value={prefixInput}
+          onChange={(event) => setPrefixInput(event.target.value)}
+          placeholder="debug/"
+          helperText="Enter a folder path inside the bucket"
+          fullWidth
+        />
+        <Stack direction={{ xs: 'row', sm: 'row' }} spacing={1}>
+          <Button
+            type="button"
+            variant="contained"
+            onClick={() => loadObjects(prefixInput)}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Loading...' : 'Load objects'}
+          </Button>
+          <Button
+            type="button"
+            variant="outlined"
+            onClick={() => loadObjects(lastFetchedPrefix)}
+            disabled={isLoading}
+          >
+            Refresh
+          </Button>
         </Stack>
+      </Stack>
 
-        <Typography variant="body2" color="text.secondary">
-          Showing objects under prefix:{' '}
-          <Typography component="span" variant="body2" color="text.primary">
-            {lastFetchedPrefix || '(entire bucket)'}
-          </Typography>
+      <Typography variant="body2" color="text.secondary">
+        Showing objects under prefix:{' '}
+        <Typography component="span" variant="body2" color="text.primary">
+          {lastFetchedPrefix || '(entire bucket)'}
         </Typography>
+      </Typography>
 
-        {error ? (
-          <Alert severity="error" onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        ) : null}
-
-        {isLoading ? (
-          <Stack direction="row" spacing={2} alignItems="center">
-            <CircularProgress size={24} />
-            <Typography variant="body2" color="text.secondary">
-              Fetching objects from Firebase Storage...
-            </Typography>
-          </Stack>
-        ) : null}
-
-        {!isLoading && !hasFiles && !error ? (
+      {isLoading ? (
+        <Stack direction="row" spacing={2} alignItems="center">
+          <CircularProgress size={24} />
           <Typography variant="body2" color="text.secondary">
-            No objects were found for this prefix.
+            Fetching objects from Firebase Storage...
           </Typography>
-        ) : null}
+        </Stack>
+      ) : null}
 
-        {!isLoading && hasFiles ? (
-          <Stack spacing={2}>
-            {files.map((file) => {
-              const isImage = file?.contentType?.startsWith('image/');
-              const previewName = relativeName(file?.name);
-              return (
-                <Paper
-                  key={file.name}
-                  variant="outlined"
-                  sx={{
-                    p: 2,
-                    display: 'flex',
-                    flexDirection: { xs: 'column', sm: 'row' },
-                    gap: 2
-                  }}
-                >
-                  {isImage && file.downloadUrl ? (
-                    <Box
-                      component="img"
-                      src={file.downloadUrl}
-                      alt={file.name}
-                      sx={{
-                        width: { xs: '100%', sm: 160 },
-                        height: { xs: 160, sm: 120 },
-                        objectFit: 'cover',
-                        borderRadius: 1,
-                        border: (theme) => `1px solid ${theme.palette.divider}`
-                      }}
-                    />
-                  ) : (
-                    <Box
-                      sx={{
-                        width: { xs: '100%', sm: 160 },
-                        height: { xs: 160, sm: 120 },
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: 1,
-                        border: (theme) => `1px dashed ${theme.palette.divider}`,
-                        color: 'text.secondary',
-                        typography: 'caption'
-                      }}
-                    >
-                      No preview
-                    </Box>
-                  )}
+      {!isLoading && !hasFiles && !error ? (
+        <Typography variant="body2" color="text.secondary">
+          No objects were found for this prefix.
+        </Typography>
+      ) : null}
 
-                  <Stack spacing={1} sx={{ flexGrow: 1 }}>
-                    <Stack spacing={0.5}>
-                      <Typography variant="subtitle1" sx={{ wordBreak: 'break-all' }}>
-                        {previewName || file.name}
+      {!isLoading && hasFiles ? (
+        <Stack spacing={2}>
+          {files.map((file) => {
+            const isImage = file?.contentType?.startsWith('image/');
+            const previewName = relativeName(file?.name);
+            return (
+              <Paper
+                key={file.name}
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  display: 'flex',
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  gap: 2
+                }}
+              >
+                {isImage && file.downloadUrl ? (
+                  <Box
+                    component="img"
+                    src={file.downloadUrl}
+                    alt={file.name}
+                    sx={{
+                      width: { xs: '100%', sm: 160 },
+                      height: { xs: 160, sm: 120 },
+                      objectFit: 'cover',
+                      borderRadius: 1,
+                      border: (theme) => `1px solid ${theme.palette.divider}`
+                    }}
+                  />
+                ) : (
+                  <Box
+                    sx={{
+                      width: { xs: '100%', sm: 160 },
+                      height: { xs: 160, sm: 120 },
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 1,
+                      border: (theme) => `1px dashed ${theme.palette.divider}`,
+                      color: 'text.secondary',
+                      typography: 'caption'
+                    }}
+                  >
+                    No preview
+                  </Box>
+                )}
+
+                <Stack spacing={1} sx={{ flexGrow: 1 }}>
+                  <Stack spacing={0.5}>
+                    <Typography variant="subtitle1" sx={{ wordBreak: 'break-all' }}>
+                      {previewName || file.name}
+                    </Typography>
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                      <Typography variant="body2" color="text.secondary">
+                        {formatBytes(file.size)}
                       </Typography>
-                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                        <Typography variant="body2" color="text.secondary">
-                          {formatBytes(file.size)}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {formatTimestamp(file.updatedAt)}
-                        </Typography>
-                        {file.contentType ? (
-                          <Chip label={file.contentType} size="small" variant="outlined" />
-                        ) : null}
-                      </Stack>
-                    </Stack>
-
-                    <Stack direction="row" spacing={1} flexWrap="wrap">
-                      {file.downloadUrl ? (
-                        <Button
-                          type="button"
-                          variant="outlined"
-                          size="small"
-                          href={file.downloadUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Open
-                        </Button>
+                      <Typography variant="body2" color="text.secondary">
+                        {formatTimestamp(file.updatedAt)}
+                      </Typography>
+                      {file.contentType ? (
+                        <Chip label={file.contentType} size="small" variant="outlined" />
                       ) : null}
+                    </Stack>
+                  </Stack>
+
+                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                    {file.downloadUrl ? (
+                      <Button
+                        type="button"
+                        variant="outlined"
+                        size="small"
+                        href={file.downloadUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Open
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="text"
+                      size="small"
+                      onClick={() => handleCopy(file.name)}
+                    >
+                      Copy object name
+                    </Button>
+                    {file.downloadUrl ? (
                       <Button
                         type="button"
                         variant="text"
                         size="small"
-                        onClick={() => handleCopy(file.name)}
+                        onClick={() => handleCopy(file.downloadUrl)}
                       >
-                        Copy object name
+                        Copy URL
                       </Button>
-                      {file.downloadUrl ? (
-                        <Button
-                          type="button"
-                          variant="text"
-                          size="small"
-                          onClick={() => handleCopy(file.downloadUrl)}
-                        >
-                          Copy URL
-                        </Button>
-                      ) : null}
-                    </Stack>
+                    ) : null}
                   </Stack>
-                </Paper>
-              );
-            })}
-          </Stack>
-        ) : null}
-      </Paper>
-    </Stack>
+                </Stack>
+              </Paper>
+            );
+          })}
+        </Stack>
+      ) : null}
+    </DebugPanel>
   );
 }
 

@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const fs = require('fs');
 const User = require('../models/User');
 const runtime = require('../config/runtime');
+const { toIdString } = require('../utils/ids');
 
 const USERNAME_MAX_LENGTH = 32;
 const DEFAULT_USERNAME_PREFIX = 'user';
@@ -89,19 +90,6 @@ const normalizeEmail = (email) => {
   }
   return email.trim().toLowerCase();
 };
-const toIdString = (value) => {
-  if (!value) {
-    return '';
-  }
-  if (value instanceof mongoose.Types.ObjectId) {
-    return value.toHexString();
-  }
-  if (typeof value === 'object' && value._id) {
-    return toIdString(value._id);
-  }
-  return String(value);
-};
-
 const extractProfileData = (profile = {}) => {
   const firebaseUid = profile.uid || profile.localId;
   const email = normalizeEmail(profile.email);

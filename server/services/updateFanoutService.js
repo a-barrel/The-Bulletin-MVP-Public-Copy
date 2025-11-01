@@ -4,13 +4,7 @@ const User = require('../models/User');
 const Pin = require('../models/Pin');
 const { PinPreviewSchema } = require('../schemas/pin');
 
-const toIdString = (value) => {
-  if (!value) return undefined;
-  if (typeof value === 'string') return value;
-  if (value instanceof mongoose.Types.ObjectId) return value.toString();
-  if (value._id) return value._id.toString();
-  return String(value);
-};
+const { toIdString } = require('../utils/ids');
 
 const toObjectId = (value) => {
   if (!value) return undefined;

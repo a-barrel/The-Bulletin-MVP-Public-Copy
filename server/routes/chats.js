@@ -25,6 +25,7 @@ const {
 const { grantBadge } = require('../services/badgeService');
 const { fetchGifAttachment, searchGifAttachments } = require('../services/gifService');
 const { MediaAssetSchema } = require('../schemas/common');
+const { toIdString, mapIdList } = require('../utils/ids');
 
 const router = express.Router();
 
@@ -181,14 +182,6 @@ const resolveViewerUser = async (req) => {
   }
 };
 
-const toIdString = (value) => {
-  if (!value) return null;
-  if (typeof value === 'string') return value;
-  if (value instanceof mongoose.Types.ObjectId) return value.toString();
-  if (value._id) return value._id.toString();
-  return String(value);
-};
-
 const haversineDistanceMeters = (lat1, lon1, lat2, lon2) => {
   const toRadians = (value) => (value * Math.PI) / 180;
   const earthRadiusMeters = 6371000;
@@ -341,15 +334,11 @@ const isViewerParticipant = (roomDoc, viewerId) => {
   if (toIdString(roomDoc.ownerId) === viewerId) {
     return true;
   }
-  const moderators = Array.isArray(roomDoc.moderatorIds)
-    ? roomDoc.moderatorIds.map((id) => toIdString(id))
-    : [];
+  const moderators = mapIdList(roomDoc.moderatorIds);
   if (moderators.includes(viewerId)) {
     return true;
   }
-  const participants = Array.isArray(roomDoc.participantIds)
-    ? roomDoc.participantIds.map((id) => toIdString(id))
-    : [];
+  const participants = mapIdList(roomDoc.participantIds);
   return participants.includes(viewerId);
 };
 

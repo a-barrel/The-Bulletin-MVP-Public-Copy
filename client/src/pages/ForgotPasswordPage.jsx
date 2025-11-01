@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import './ForgotPasswordPage.css';
 import { sendPasswordResetEmail } from 'firebase/auth';
+import AuthPageLayout from '../components/AuthPageLayout.jsx';
+import AuthEmailField, { validateAuthEmail } from '../components/AuthEmailField.jsx';
+import useShake from '../hooks/useShake.js';
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -10,14 +13,8 @@ function ForgotPasswordPage() {
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const [emailError, setEmailError] = useState("");
-  const [shake, setShake] = useState(false);
+  const { shake, triggerShake } = useShake();
   
-  const validateEmail = (value) => {
-    if (!value) return "Please enter an email address.";
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(value) ? "" : "Please enter a valid email address.";
-  };
-
   // Clear error pop-up after 3 seconds
   useEffect(() => {
     if (error) {
@@ -26,71 +23,82 @@ function ForgotPasswordPage() {
     }
   }, [error]);
  
-  const handleEmailSubmission = async (e) => {
-    e.preventDefault();
-    setError(null);
-
-    const emailErr = validateEmail(email);
-    setEmailError(emailErr);
-
-    // Check for empty fields before calling Firebase
-    if (!email) {
-      setEmailError('Please enter an email.');
-      setShake(true);
-      setTimeout(() => setShake(false), 300);
-      return;
-    }
-  
-    // TODO: DARREL - Messy implementation, it does send a email, refactor later. 
-    // DARREL - Made errors the same to avoid email enumeration
-    try {
-      //await sendPasswordResetEmail(auth, email);
-      setMessage('If this email is in use, a password reset email will be sent!');
-    } catch (error) {
-      setMessage('If this email is in use, a password reset email will be sent!');
+  const mapFirebaseError = (code) => {
+    switch (code) {
+      case 'auth/invalid-email':
+        return 'Please enter a valid email address.';
+      case 'auth/user-not-found':
+        return 'No account found with that email.';
+      case 'auth/missing-email':
+        return 'Please enter an email address.';
+      case 'auth/network-request-failed':
+        return 'Network error. Check your connection and try again.';
+      default:
+        return 'Something went wrong. Please try again.';
     }
   };
 
+  const handleEmailSubmission = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setMessage(null);
+
+    const emailErr = validateAuthEmail(email);
+    setEmailError(emailErr);
+
+    if (emailErr) {
+      triggerShake();
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setMessage('If this email is in use, a password reset email has been sent.');
+    } catch (err) {
+      setError(mapFirebaseError(err?.code));
+      triggerShake();
+    }
+  };
+
+  const alerts = [];
+  if (error) {
+    alerts.push({
+      id: 'error',
+      type: 'error',
+      content: error,
+      overlayClassName: 'message-overlay',
+      boxClassName: 'message-box',
+      onClose: () => setError(null)
+    });
+  }
+  if (message) {
+    alerts.push({
+      id: 'message',
+      type: 'info',
+      content: message,
+      onClose: () => setMessage(null)
+    });
+  }
+
   return (
-    <div className={`page-background ${shake ? 'shake' : ''}`}>
-      <div className="page-header">
-        <button
-          className="page-back-btn"
-          aria-label="Go back"
-          onClick={() => navigate(-1)}
-        >
-        &#8592;
-        </button>
-
-        <h1 className="page-sub-title">Forgot Password?</h1>
-      </div>
-
+    <AuthPageLayout
+      shake={shake}
+      onBack={() => navigate(-1)}
+      title="Forgot Password?"
+      alerts={alerts}
+    >
       <p className="instruction-text">
         Enter the email of the account you are trying to access.
       </p>
 
-      {message && (
-        <div className="message-overlay" onClick={() => setMessage(null)}>
-          <div className="message-box">
-            <p>{message}</p>
-          </div>
-        </div>
-      )}
-
       <form onSubmit={handleEmailSubmission} className={"page-form"}>
-        <div className="input-container">
-          <input
-            type="text" // Allow as text, external function will verify if it is email and call error if needed   
-            placeholder="Enter Email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value)
-              setEmailError("")
-            }}
-            className={emailError ? "input-error" : ""}
-          />
-          {emailError && <span className="input-error-text">{emailError}</span>}
-        </div>
+        <AuthEmailField
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          error={emailError}
+          onErrorChange={setEmailError}
+          placeholder="Enter Email"
+        />
         
         <button 
           type="submit" 
@@ -99,7 +107,7 @@ function ForgotPasswordPage() {
           Submit
         </button>
       </form>
-    </div>
+    </AuthPageLayout>
   );
 }
 

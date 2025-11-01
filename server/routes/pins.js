@@ -16,6 +16,9 @@ const {
   broadcastBookmarkCreated
 } = require('../services/updateFanoutService');
 const { grantBadge } = require('../services/badgeService');
+const { mapMediaAsset: mapMediaAssetResponse } = require('../utils/media');
+const { toIdString, mapIdList } = require('../utils/ids');
+const { METERS_PER_MILE, milesToMeters } = require('../utils/geo');
 
 const router = express.Router();
 
@@ -54,15 +57,6 @@ const CreateReplySchema = z.object({
     .optional()
 });
 
-const toIdString = (value) => {
-  if (!value) return undefined;
-  if (typeof value === 'string') return value;
-  if (value instanceof mongoose.Types.ObjectId) return value.toString();
-  if (value._id) return value._id.toString();
-  return String(value);
-};
-
-const METERS_PER_MILE = 1609.34;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const EVENT_MAX_LEAD_TIME_MS = 14 * MILLISECONDS_PER_DAY;
 const DISCUSSION_MAX_DURATION_MS = 3 * MILLISECONDS_PER_DAY;
@@ -71,7 +65,7 @@ const PAST_TOLERANCE_MS = 60 * 1000;
 const mapUserToPublic = (user) => {
   if (!user) return undefined;
   const doc = user.toObject ? user.toObject() : user;
-  const avatar = doc.avatar ? mapMediaAssetResponse(doc.avatar) : undefined;
+  const avatar = doc.avatar ? mapMediaAssetResponse(doc.avatar, { toIdString }) : undefined;
   return PublicUserSchema.parse({
     _id: toIdString(doc._id),
     username: doc.username,
@@ -255,11 +249,13 @@ const mapPinToFull = (pinDoc, creator, options = {}) => {
       accuracy: doc.coordinates.accuracy ?? undefined
     },
     proximityRadiusMeters: doc.proximityRadiusMeters,
-    photos: Array.isArray(doc.photos) ? doc.photos.map(mapMediaAssetResponse) : [],
-    coverPhoto: mapMediaAssetResponse(doc.coverPhoto),
-    tagIds: (doc.tagIds || []).map(toIdString),
+    photos: Array.isArray(doc.photos)
+      ? doc.photos.map((photo) => mapMediaAssetResponse(photo, { toIdString }))
+      : [],
+    coverPhoto: mapMediaAssetResponse(doc.coverPhoto, { toIdString }),
+    tagIds: mapIdList(doc.tagIds),
     tags: doc.tags || [],
-    relatedPinIds: (doc.relatedPinIds || []).map(toIdString),
+    relatedPinIds: mapIdList(doc.relatedPinIds),
     linkedLocationId: toIdString(doc.linkedLocationId),
     linkedChatRoomId: toIdString(doc.linkedChatRoomId),
     visibility: doc.visibility,
@@ -283,14 +279,12 @@ const mapPinToFull = (pinDoc, creator, options = {}) => {
       : undefined;
     base.participantCount = doc.participantCount ?? 0;
     base.participantLimit = doc.participantLimit ?? undefined;
-    base.attendingUserIds = (doc.attendingUserIds || []).map(toIdString);
-    base.attendeeWaitlistIds = (doc.attendeeWaitlistIds || []).map(toIdString);
+    base.attendingUserIds = mapIdList(doc.attendingUserIds);
+    base.attendeeWaitlistIds = mapIdList(doc.attendeeWaitlistIds);
     base.attendable = doc.attendable ?? true;
     if (options.viewerId) {
       const viewerId = options.viewerId;
-      base.viewerIsAttending = (doc.attendingUserIds || []).some(
-        (id) => toIdString(id) === viewerId
-      );
+      base.viewerIsAttending = base.attendingUserIds.some((id) => id === viewerId);
     }
   }
 
@@ -345,7 +339,7 @@ const mapReply = (replyDoc, author) => {
       type: reaction.type,
       reactedAt: (reaction.reactedAt || replyDoc.createdAt).toISOString()
     })),
-    mentionedUserIds: (doc.mentionedUserIds || []).map(toIdString),
+    mentionedUserIds: mapIdList(doc.mentionedUserIds),
     createdAt: replyDoc.createdAt.toISOString(),
     updatedAt: replyDoc.updatedAt.toISOString(),
     audit: doc.audit ? buildAudit(doc.audit, replyDoc.createdAt, replyDoc.updatedAt) : undefined
@@ -374,43 +368,6 @@ const normaliseMediaAsset = (asset, uploadedBy) => ({
   uploadedAt: new Date(),
   uploadedBy
 });
-
-const normalizeMediaUrl = (value) => {
-  if (!value || typeof value !== 'string') {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-  if (/^(?:https?:|data:)/i.test(trimmed)) {
-    return trimmed;
-  }
-  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-};
-
-const mapMediaAssetResponse = (asset) => {
-  if (!asset) {
-    return undefined;
-  }
-
-  const doc = asset.toObject ? asset.toObject() : asset;
-  const normalizedUrl = normalizeMediaUrl(doc.url);
-  const normalizedThumb = normalizeMediaUrl(doc.thumbnailUrl);
-  const normalizedPath = normalizeMediaUrl(doc.path);
-  const primaryUrl = normalizedUrl ?? normalizedThumb ?? normalizedPath;
-  const thumbnailUrl = normalizedThumb ?? (primaryUrl && primaryUrl !== normalizedThumb ? primaryUrl : undefined);
-  return {
-    url: primaryUrl,
-    thumbnailUrl,
-    width: doc.width ?? undefined,
-    height: doc.height ?? undefined,
-    mimeType: doc.mimeType || undefined,
-    description: doc.description || undefined,
-    uploadedAt: doc.uploadedAt ? doc.uploadedAt.toISOString() : undefined,
-    uploadedBy: doc.uploadedBy ? toIdString(doc.uploadedBy) : undefined
-  };
-};
 
 const NearbyPinsQuerySchema = z.object({
   latitude: z.coerce.number().min(-90).max(90),
@@ -686,7 +643,7 @@ router.post('/', verifyToken, async (req, res) => {
 router.get('/nearby', verifyToken, async (req, res) => {
   try {
     const { latitude, longitude, distanceMiles, limit, type } = NearbyPinsQuerySchema.parse(req.query);
-    const maxDistanceMeters = distanceMiles * METERS_PER_MILE;
+    const maxDistanceMeters = milesToMeters(distanceMiles) ?? distanceMiles * METERS_PER_MILE;
     const now = new Date();
     const queryFilters = [
       {
@@ -1034,7 +991,7 @@ router.get('/:pinId/attendees', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Only event pins have attendees' });
     }
 
-    const attendeeIdStrings = (pin.attendingUserIds || []).map(toIdString).filter(Boolean);
+    const attendeeIdStrings = mapIdList(pin.attendingUserIds);
     if (attendeeIdStrings.length === 0) {
       return res.json([]);
     }

@@ -1,269 +1,150 @@
-import { useState } from 'react';
-import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
-import MenuItem from '@mui/material/MenuItem';
-import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
-import {
-  createBookmark,
-  createBookmarkCollection,
-  exportBookmarks,
-  fetchBookmarkCollections,
-  fetchBookmarks
-} from '../../../api/mongoDataApi';
 import JsonPreview from '../components/JsonPreview';
-import {
-  parseCommaSeparated,
-  parseJsonField,
-  parseOptionalDate,
-  parseOptionalNumber,
-  parseRequiredNumber
-} from '../utils';
+import DebugPanel from '../components/DebugPanel';
+import useBookmarksTools from '../hooks/useBookmarksTools';
+
+const EMPTY_BOOKMARK_FORM = {
+  userId: '',
+  pinId: '',
+  collectionId: '',
+  notes: '',
+  reminderAt: '',
+  tagIds: ''
+};
+
+const EMPTY_COLLECTION_FORM = {
+  userId: '',
+  name: '',
+  description: '',
+  bookmarkIds: ''
+};
 
 function BookmarksTab() {
-  const [bookmarkForm, setBookmarkForm] = useState({
-    userId: '',
-    pinId: '',
-    collectionId: '',
-    notes: '',
-    reminderAt: '',
-    tagIds: ''
-  });
-  const [bookmarkStatus, setBookmarkStatus] = useState(null);
-  const [bookmarkResult, setBookmarkResult] = useState(null);
-  const [isCreatingBookmark, setIsCreatingBookmark] = useState(false);
+  const {
+    bookmarkForm,
+    setBookmarkForm,
+    bookmarkStatus,
+    setBookmarkStatus,
+    bookmarkResult,
+    isCreatingBookmark,
+    handleCreateBookmark,
+    updateBookmarkFormField,
+    collectionForm,
+    setCollectionForm,
+    collectionStatus,
+    setCollectionStatus,
+    collectionResult,
+    isCreatingCollection,
+    handleCreateCollection,
+    updateCollectionFormField,
+    bookmarksQuery,
+    setBookmarksQuery,
+    bookmarksStatus,
+    setBookmarksStatus,
+    bookmarksResult,
+    isFetchingBookmarks,
+    handleFetchBookmarks,
+    exportBookmarksStatus,
+    setExportBookmarksStatus,
+    isExportingBookmarks,
+    handleExportBookmarksCsv,
+    collectionsUserId,
+    setCollectionsUserId,
+    collectionsStatus,
+    setCollectionsStatus,
+    collectionsResult,
+    isFetchingCollections,
+    handleFetchCollections
+  } = useBookmarksTools();
 
-  const [collectionForm, setCollectionForm] = useState({
-    userId: '',
-    name: '',
-    description: '',
-    bookmarkIds: ''
-  });
-  const [collectionStatus, setCollectionStatus] = useState(null);
-  const [collectionResult, setCollectionResult] = useState(null);
-  const [isCreatingCollection, setIsCreatingCollection] = useState(false);
-
-  const [bookmarksQuery, setBookmarksQuery] = useState({ userId: '', limit: '20' });
-  const [bookmarksStatus, setBookmarksStatus] = useState(null);
-  const [bookmarksResult, setBookmarksResult] = useState(null);
-  const [isFetchingBookmarks, setIsFetchingBookmarks] = useState(false);
-  const [exportBookmarksStatus, setExportBookmarksStatus] = useState(null);
-  const [isExportingBookmarks, setIsExportingBookmarks] = useState(false);
-
-  const [collectionsUserId, setCollectionsUserId] = useState('');
-  const [collectionsStatus, setCollectionsStatus] = useState(null);
-  const [collectionsResult, setCollectionsResult] = useState(null);
-  const [isFetchingCollections, setIsFetchingCollections] = useState(false);
-
-  const handleCreateBookmark = async (event) => {
-    event.preventDefault();
-    setBookmarkStatus(null);
-
-    try {
-      const userId = bookmarkForm.userId.trim();
-      const pinId = bookmarkForm.pinId.trim();
-      if (!userId || !pinId) {
-        throw new Error('User ID and pin ID are required.');
-      }
-
-      const payload = {
-        userId,
-        pinId
-      };
-
-      const collectionId = bookmarkForm.collectionId.trim();
-      if (collectionId) {
-        payload.collectionId = collectionId;
-      }
-
-      const notes = bookmarkForm.notes.trim();
-      if (notes) {
-        payload.notes = notes;
-      }
-
-      const reminderAt = parseOptionalDate(bookmarkForm.reminderAt, 'Reminder at');
-      if (reminderAt) {
-        payload.reminderAt = reminderAt;
-      }
-
-      const tagIds = parseCommaSeparated(bookmarkForm.tagIds);
-      if (tagIds.length) {
-        payload.tagIds = tagIds;
-      }
-
-      setIsCreatingBookmark(true);
-      const result = await createBookmark(payload);
-      setBookmarkResult(result);
-      setBookmarkStatus({ type: 'success', message: 'Bookmark created.' });
-    } catch (error) {
-      setBookmarkStatus({ type: 'error', message: error.message || 'Failed to create bookmark.' });
-    } finally {
-      setIsCreatingBookmark(false);
-    }
-  };
-
-  const handleCreateCollection = async (event) => {
-    event.preventDefault();
-    setCollectionStatus(null);
-
-    try {
-      const userId = collectionForm.userId.trim();
-      const name = collectionForm.name.trim();
-      if (!userId || !name) {
-        throw new Error('User ID and collection name are required.');
-      }
-
-      const payload = {
-        userId,
-        name
-      };
-
-      const description = collectionForm.description.trim();
-      if (description) {
-        payload.description = description;
-      }
-
-      const bookmarkIds = parseCommaSeparated(collectionForm.bookmarkIds);
-      if (bookmarkIds.length) {
-        payload.bookmarkIds = bookmarkIds;
-      }
-
-      setIsCreatingCollection(true);
-      const result = await createBookmarkCollection(payload);
-      setCollectionResult(result);
-      setCollectionStatus({ type: 'success', message: 'Bookmark collection created.' });
-    } catch (error) {
-      setCollectionStatus({ type: 'error', message: error.message || 'Failed to create collection.' });
-    } finally {
-      setIsCreatingCollection(false);
-    }
-  };
-
-  const handleFetchBookmarks = async (event) => {
-    event.preventDefault();
-    setBookmarksStatus(null);
-    setExportBookmarksStatus(null);
-
-    const userId = bookmarksQuery.userId.trim();
-    if (!userId) {
-      setBookmarksStatus({ type: 'error', message: 'User ID is required.' });
-      return;
-    }
-
-    try {
-      const query = { userId };
-      const limitValue = parseOptionalNumber(bookmarksQuery.limit, 'Limit');
-      if (limitValue !== undefined) {
-        if (limitValue <= 0) {
-          throw new Error('Limit must be greater than 0.');
+  const bookmarkAlerts = [
+    bookmarkStatus
+      ? {
+          key: 'bookmark-status',
+          severity: bookmarkStatus.type,
+          content: bookmarkStatus.message,
+          onClose: () => setBookmarkStatus(null)
         }
-        query.limit = limitValue;
-      }
+      : null
+  ].filter(Boolean);
 
-      setIsFetchingBookmarks(true);
-      const bookmarks = await fetchBookmarks(query);
-      setBookmarksResult(bookmarks);
-      setBookmarksStatus({
-        type: 'success',
-        message: `Loaded ${bookmarks.length} bookmark${bookmarks.length === 1 ? '' : 's'}.`
-      });
-    } catch (error) {
-      setBookmarksStatus({ type: 'error', message: error.message || 'Failed to load bookmarks.' });
-    } finally {
-      setIsFetchingBookmarks(false);
-    }
+  const collectionAlerts = [
+    collectionStatus
+      ? {
+          key: 'collection-status',
+          severity: collectionStatus.type,
+          content: collectionStatus.message,
+          onClose: () => setCollectionStatus(null)
+        }
+      : null
+  ].filter(Boolean);
+
+  const bookmarksAlerts = [
+    bookmarksStatus
+      ? {
+          key: 'bookmarks-status',
+          severity: bookmarksStatus.type,
+          content: bookmarksStatus.message,
+          onClose: () => setBookmarksStatus(null)
+        }
+      : null,
+    exportBookmarksStatus
+      ? {
+          key: 'bookmarks-export-status',
+          severity: exportBookmarksStatus.type,
+          content: exportBookmarksStatus.message,
+          onClose: () => setExportBookmarksStatus(null)
+        }
+      : null
+  ].filter(Boolean);
+
+  const collectionsAlerts = [
+    collectionsStatus
+      ? {
+          key: 'collections-status',
+          severity: collectionsStatus.type,
+          content: collectionsStatus.message,
+          onClose: () => setCollectionsStatus(null)
+        }
+      : null
+  ].filter(Boolean);
+
+  const resetBookmarkForm = () => {
+    setBookmarkForm(EMPTY_BOOKMARK_FORM);
+    setBookmarkStatus(null);
   };
 
-  const handleExportBookmarksCsv = async () => {
-    setExportBookmarksStatus(null);
-    const userId = bookmarksQuery.userId.trim();
-    if (!userId) {
-      setExportBookmarksStatus({ type: 'error', message: 'User ID is required to export bookmarks.' });
-      return;
-    }
-
-    try {
-      setIsExportingBookmarks(true);
-      const { blob, filename } = await exportBookmarks({ userId });
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = downloadUrl;
-      anchor.download = filename || `bookmarks-${userId}.csv`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      window.setTimeout(() => {
-        document.body.removeChild(anchor);
-        window.URL.revokeObjectURL(downloadUrl);
-      }, 0);
-
-      setExportBookmarksStatus({
-        type: 'success',
-        message: `Exported bookmarks for ${userId} to ${filename || 'bookmarks.csv'}.`
-      });
-    } catch (error) {
-      console.error('Failed to export bookmarks:', error);
-      setExportBookmarksStatus({ type: 'error', message: error?.message || 'Failed to export bookmarks.' });
-    } finally {
-      setIsExportingBookmarks(false);
-    }
-  };
-
-  const handleFetchCollections = async (event) => {
-    event.preventDefault();
-    setCollectionsStatus(null);
-    const userId = collectionsUserId.trim();
-    if (!userId) {
-      setCollectionsStatus({ type: 'error', message: 'User ID is required.' });
-      return;
-    }
-
-    try {
-      setIsFetchingCollections(true);
-      const collections = await fetchBookmarkCollections(userId);
-      setCollectionsResult(collections);
-      setCollectionsStatus({
-        type: 'success',
-        message: `Loaded ${collections.length} collection${collections.length === 1 ? '' : 's'}.`
-      });
-    } catch (error) {
-      setCollectionsStatus({ type: 'error', message: error.message || 'Failed to load collections.' });
-    } finally {
-      setIsFetchingCollections(false);
-    }
+  const resetCollectionForm = () => {
+    setCollectionForm(EMPTY_COLLECTION_FORM);
+    setCollectionStatus(null);
   };
 
   return (
     <Stack spacing={2}>
-      <Paper
+      <DebugPanel
         component="form"
         onSubmit={handleCreateBookmark}
-        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+        title="Create bookmark"
+        description="Store a pin in a user's saved list or collection."
+        alerts={bookmarkAlerts}
       >
-        <Typography variant="h6">Create bookmark</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Store a pin in a user's saved list or collection.
-        </Typography>
-        {bookmarkStatus && (
-          <Alert severity={bookmarkStatus.type} onClose={() => setBookmarkStatus(null)}>
-            {bookmarkStatus.message}
-          </Alert>
-        )}
         <Stack spacing={2}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
               label="User ID"
               value={bookmarkForm.userId}
-              onChange={(event) => setBookmarkForm((prev) => ({ ...prev, userId: event.target.value }))}
+              onChange={updateBookmarkFormField('userId')}
               required
               fullWidth
             />
             <TextField
               label="Pin ID"
               value={bookmarkForm.pinId}
-              onChange={(event) => setBookmarkForm((prev) => ({ ...prev, pinId: event.target.value }))}
+              onChange={updateBookmarkFormField('pinId')}
               required
               fullWidth
             />
@@ -271,13 +152,13 @@ function BookmarksTab() {
           <TextField
             label="Collection ID (optional)"
             value={bookmarkForm.collectionId}
-            onChange={(event) => setBookmarkForm((prev) => ({ ...prev, collectionId: event.target.value }))}
+            onChange={updateBookmarkFormField('collectionId')}
             fullWidth
           />
           <TextField
             label="Notes"
             value={bookmarkForm.notes}
-            onChange={(event) => setBookmarkForm((prev) => ({ ...prev, notes: event.target.value }))}
+            onChange={updateBookmarkFormField('notes')}
             multiline
             minRows={2}
             fullWidth
@@ -286,67 +167,47 @@ function BookmarksTab() {
             label="Reminder at"
             type="datetime-local"
             value={bookmarkForm.reminderAt}
-            onChange={(event) => setBookmarkForm((prev) => ({ ...prev, reminderAt: event.target.value }))}
+            onChange={updateBookmarkFormField('reminderAt')}
             InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Tag IDs (comma separated)"
             value={bookmarkForm.tagIds}
-            onChange={(event) => setBookmarkForm((prev) => ({ ...prev, tagIds: event.target.value }))}
+            onChange={updateBookmarkFormField('tagIds')}
             fullWidth
           />
           <Stack direction="row" spacing={2}>
             <Button type="submit" variant="contained" disabled={isCreatingBookmark}>
               {isCreatingBookmark ? 'Creating...' : 'Create bookmark'}
             </Button>
-            <Button
-              type="button"
-              variant="text"
-              onClick={() =>
-                setBookmarkForm({
-                  userId: '',
-                  pinId: '',
-                  collectionId: '',
-                  notes: '',
-                  reminderAt: '',
-                  tagIds: ''
-                })
-              }
-            >
+            <Button type="button" variant="text" onClick={resetBookmarkForm}>
               Reset
             </Button>
           </Stack>
         </Stack>
         <JsonPreview data={bookmarkResult} />
-      </Paper>
+      </DebugPanel>
 
-      <Paper
+      <DebugPanel
         component="form"
         onSubmit={handleCreateCollection}
-        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+        title="Create bookmark collection"
+        description="Group bookmarks together for a user to simulate saved lists."
+        alerts={collectionAlerts}
       >
-        <Typography variant="h6">Create bookmark collection</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Group multiple bookmarks together for quick access.
-        </Typography>
-        {collectionStatus && (
-          <Alert severity={collectionStatus.type} onClose={() => setCollectionStatus(null)}>
-            {collectionStatus.message}
-          </Alert>
-        )}
         <Stack spacing={2}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
               label="User ID"
               value={collectionForm.userId}
-              onChange={(event) => setCollectionForm((prev) => ({ ...prev, userId: event.target.value }))}
+              onChange={updateCollectionFormField('userId')}
               required
               fullWidth
             />
             <TextField
-              label="Name"
+              label="Collection name"
               value={collectionForm.name}
-              onChange={(event) => setCollectionForm((prev) => ({ ...prev, name: event.target.value }))}
+              onChange={updateCollectionFormField('name')}
               required
               fullWidth
             />
@@ -354,7 +215,7 @@ function BookmarksTab() {
           <TextField
             label="Description"
             value={collectionForm.description}
-            onChange={(event) => setCollectionForm((prev) => ({ ...prev, description: event.target.value }))}
+            onChange={updateCollectionFormField('description')}
             multiline
             minRows={2}
             fullWidth
@@ -362,51 +223,28 @@ function BookmarksTab() {
           <TextField
             label="Bookmark IDs (comma separated)"
             value={collectionForm.bookmarkIds}
-            onChange={(event) => setCollectionForm((prev) => ({ ...prev, bookmarkIds: event.target.value }))}
+            onChange={updateCollectionFormField('bookmarkIds')}
             fullWidth
           />
           <Stack direction="row" spacing={2}>
             <Button type="submit" variant="contained" disabled={isCreatingCollection}>
               {isCreatingCollection ? 'Creating...' : 'Create collection'}
             </Button>
-            <Button
-              type="button"
-              variant="text"
-              onClick={() =>
-                setCollectionForm({
-                  userId: '',
-                  name: '',
-                  description: '',
-                  bookmarkIds: ''
-                })
-              }
-            >
+            <Button type="button" variant="text" onClick={resetCollectionForm}>
               Reset
             </Button>
           </Stack>
         </Stack>
         <JsonPreview data={collectionResult} />
-      </Paper>
+      </DebugPanel>
 
-      <Paper
+      <DebugPanel
         component="form"
         onSubmit={handleFetchBookmarks}
-        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+        title="Fetch bookmarks"
+        description="List saved pins for a given user."
+        alerts={bookmarksAlerts}
       >
-        <Typography variant="h6">Fetch bookmarks</Typography>
-        <Typography variant="body2" color="text.secondary">
-          List saved pins for a given user.
-        </Typography>
-        {bookmarksStatus && (
-          <Alert severity={bookmarksStatus.type} onClose={() => setBookmarksStatus(null)}>
-            {bookmarksStatus.message}
-          </Alert>
-        )}
-        {exportBookmarksStatus && (
-          <Alert severity={exportBookmarksStatus.type} onClose={() => setExportBookmarksStatus(null)}>
-            {exportBookmarksStatus.message}
-          </Alert>
-        )}
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={2}
@@ -441,22 +279,15 @@ function BookmarksTab() {
           </Stack>
         </Stack>
         <JsonPreview data={bookmarksResult} />
-      </Paper>
+      </DebugPanel>
 
-      <Paper
+      <DebugPanel
         component="form"
         onSubmit={handleFetchCollections}
-        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+        title="Fetch collections"
+        description="Retrieve bookmark collections owned by a user."
+        alerts={collectionsAlerts}
       >
-        <Typography variant="h6">Fetch collections</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Retrieve bookmark collections owned by a user.
-        </Typography>
-        {collectionsStatus && (
-          <Alert severity={collectionsStatus.type} onClose={() => setCollectionsStatus(null)}>
-            {collectionsStatus.message}
-          </Alert>
-        )}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField
             label="User ID"
@@ -470,7 +301,7 @@ function BookmarksTab() {
           </Button>
         </Stack>
         <JsonPreview data={collectionsResult} />
-      </Paper>
+      </DebugPanel>
     </Stack>
   );
 }

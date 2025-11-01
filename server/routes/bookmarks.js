@@ -11,6 +11,9 @@ const { PublicUserSchema } = require('../schemas/user');
 const verifyToken = require('../middleware/verifyToken');
 const { broadcastBookmarkCreated } = require('../services/updateFanoutService');
 const { grantBadge } = require('../services/badgeService');
+const { mapMediaAsset } = require('../utils/media');
+const { toIdString, mapIdList } = require('../utils/ids');
+const { toIsoDateString } = require('../utils/dates');
 
 const router = express.Router();
 
@@ -44,23 +47,6 @@ const CollectionQuerySchema = z.object({
       message: 'Invalid user id'
     })
 });
-
-const toIdString = (value) => {
-  if (!value) return undefined;
-  if (typeof value === 'string') return value;
-  if (value instanceof mongoose.Types.ObjectId) return value.toString();
-  if (value._id) return value._id.toString();
-  return String(value);
-};
-
-const toIsoDateString = (value) => {
-  if (!value) return undefined;
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'string') return value;
-  if (typeof value.toISOString === 'function') return value.toISOString();
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
-};
 
 const escapeCsvValue = (value) => {
   if (value === null || value === undefined) {
@@ -104,31 +90,6 @@ const ensureUserStatsShape = (user) => {
   user.stats.following = user.stats.following ?? 0;
 };
 
-const mapMediaAsset = (asset) => {
-  if (!asset) {
-    return undefined;
-  }
-
-  const doc = asset.toObject ? asset.toObject() : asset;
-  if (!doc.url) {
-    return undefined;
-  }
-  const result = {
-    url: doc.url,
-    thumbnailUrl: doc.thumbnailUrl || undefined,
-    width: doc.width ?? undefined,
-    height: doc.height ?? undefined,
-    mimeType: doc.mimeType || undefined,
-    description: doc.description || undefined,
-    uploadedAt: toIsoDateString(doc.uploadedAt),
-    uploadedBy: toIdString(doc.uploadedBy)
-  };
-
-  return Object.fromEntries(
-    Object.entries(result).filter(([, value]) => value !== undefined && value !== null)
-  );
-};
-
 const resolveViewerUser = async (req) => {
   if (!req?.user?.uid) {
     return null;
@@ -162,7 +123,7 @@ const mapUserToPublic = (user) => {
     _id: toIdString(doc._id),
     username: doc.username,
     displayName: doc.displayName,
-    avatar: mapMediaAsset(doc.avatar),
+    avatar: mapMediaAsset(doc.avatar, { toIdString }),
     stats: doc.stats || undefined,
     badges: doc.badges || [],
     primaryLocationId: toIdString(doc.primaryLocationId),
@@ -210,7 +171,7 @@ const mapBookmark = (bookmarkDoc, pinPreview) => {
     createdAt: bookmarkDoc.createdAt.toISOString(),
     notes: doc.notes || undefined,
     reminderAt: doc.reminderAt ? doc.reminderAt.toISOString() : undefined,
-    tagIds: (doc.tagIds || []).map(toIdString),
+    tagIds: mapIdList(doc.tagIds),
     pin: pinPreview,
     audit: buildAudit(doc.audit, bookmarkDoc.createdAt, bookmarkDoc.updatedAt)
   });
@@ -223,8 +184,8 @@ const mapCollection = (collectionDoc, bookmarks) => {
     name: doc.name,
     description: doc.description || undefined,
     userId: toIdString(doc.userId),
-    bookmarkIds: (doc.bookmarkIds || []).map(toIdString),
-    followerIds: (doc.followerIds || []).map(toIdString),
+    bookmarkIds: mapIdList(doc.bookmarkIds),
+    followerIds: mapIdList(doc.followerIds),
     createdAt: collectionDoc.createdAt.toISOString(),
     updatedAt: collectionDoc.updatedAt.toISOString(),
     bookmarks
@@ -526,6 +487,3 @@ router.delete('/:pinId', verifyToken, async (req, res) => {
 });
 
 module.exports = router;
-
-
-

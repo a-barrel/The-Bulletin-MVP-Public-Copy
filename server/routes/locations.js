@@ -8,14 +8,9 @@ const {
   NearbyUserSchema
 } = require('../schemas/location');
 const verifyToken = require('../middleware/verifyToken');
+const { toIdString, mapIdList } = require('../utils/ids');
 
 const toISOString = (value) => (value ? new Date(value).toISOString() : undefined);
-const toIdString = (value) => {
-  if (!value) return undefined;
-  if (typeof value === 'string') return value;
-  if (value.toString) return value.toString();
-  return `${value}`;
-};
 
 const mapLocationToDto = (location) => {
   const coordinates = {
@@ -40,9 +35,7 @@ const mapLocationToDto = (location) => {
     deviceId: toIdString(location.deviceId),
     source: location.source ?? undefined,
     appVersion: location.appVersion ?? undefined,
-    linkedPinIds: Array.isArray(location.linkedPinIds)
-      ? location.linkedPinIds.map(toIdString)
-      : [],
+    linkedPinIds: mapIdList(location.linkedPinIds),
     createdAt: toISOString(location.createdAt),
     lastSeenAt: toISOString(location.lastSeenAt),
     expiresAt: toISOString(location.expiresAt)
@@ -205,9 +198,7 @@ router.get('/nearby', verifyToken, async (req, res) => {
         lastSeenAt: toISOString(doc.lastSeenAt) || toISOString(new Date()),
         sessionId: toIdString(doc.sessionId),
         source: doc.source || undefined,
-        linkedPinIds: Array.isArray(doc.linkedPinIds)
-          ? doc.linkedPinIds.map(toIdString)
-          : []
+        linkedPinIds: mapIdList(doc.linkedPinIds)
       };
     });
 
