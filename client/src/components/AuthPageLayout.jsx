@@ -1,4 +1,5 @@
 import React from 'react';
+import '../styles/AuthForm.css';
 
 const renderOverlayContent = (content) =>
   typeof content === 'string' || typeof content === 'number' ? <p>{content}</p> : content;

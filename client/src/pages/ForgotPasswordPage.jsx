@@ -4,6 +4,8 @@ import { auth } from '../firebase';
 import './ForgotPasswordPage.css';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import AuthPageLayout from '../components/AuthPageLayout.jsx';
+import AuthEmailField, { validateAuthEmail } from '../components/AuthEmailField.jsx';
+import useShake from '../hooks/useShake.js';
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -11,14 +13,8 @@ function ForgotPasswordPage() {
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const [emailError, setEmailError] = useState("");
-  const [shake, setShake] = useState(false);
+  const { shake, triggerShake } = useShake();
   
-  const validateEmail = (value) => {
-    if (!value) return "Please enter an email address.";
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(value) ? "" : "Please enter a valid email address.";
-  };
-
   // Clear error pop-up after 3 seconds
   useEffect(() => {
     if (error) {
@@ -47,12 +43,11 @@ function ForgotPasswordPage() {
     setError(null);
     setMessage(null);
 
-    const emailErr = validateEmail(email);
+    const emailErr = validateAuthEmail(email);
     setEmailError(emailErr);
 
     if (emailErr) {
-      setShake(true);
-      setTimeout(() => setShake(false), 300);
+      triggerShake();
       return;
     }
 
@@ -61,8 +56,7 @@ function ForgotPasswordPage() {
       setMessage('If this email is in use, a password reset email has been sent.');
     } catch (err) {
       setError(mapFirebaseError(err?.code));
-      setShake(true);
-      setTimeout(() => setShake(false), 300);
+      triggerShake();
     }
   };
 
@@ -98,19 +92,13 @@ function ForgotPasswordPage() {
       </p>
 
       <form onSubmit={handleEmailSubmission} className={"page-form"}>
-        <div className="input-container">
-          <input
-            type="text" // Allow as text, external function will verify if it is email and call error if needed   
-            placeholder="Enter Email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value)
-              setEmailError("")
-            }}
-            className={emailError ? "input-error" : ""}
-          />
-          {emailError && <span className="input-error-text">{emailError}</span>}
-        </div>
+        <AuthEmailField
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          error={emailError}
+          onErrorChange={setEmailError}
+          placeholder="Enter Email"
+        />
         
         <button 
           type="submit" 

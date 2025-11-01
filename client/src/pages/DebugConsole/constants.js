@@ -1,6 +1,7 @@
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 
 import runtimeConfig from '../../config/runtime';
+import { METERS_PER_MILE } from '../../utils/geo';
 
 export const pageConfig = {
   id: 'debug-console',
@@ -50,7 +51,6 @@ export const UPDATE_TYPE_OPTIONS = [
   'moderation-warning'
 ];
 
-export const METERS_PER_MILE = 1609.34;
 export const DEFAULT_SPOOF_STEP_MILES = 2;
 export const SPOOF_MIN_MILES = 0.25;
 export const SPOOF_MAX_MILES = 5;
@@ -196,6 +196,8 @@ export const DIRECTION_SUCCESS_MESSAGES = {
   east: `Moved east by roughly ${DEFAULT_SPOOF_STEP_MILES} mile${DEFAULT_SPOOF_STEP_MILES === 1 ? '' : 's'}.`,
   west: `Moved west by roughly ${DEFAULT_SPOOF_STEP_MILES} mile${DEFAULT_SPOOF_STEP_MILES === 1 ? '' : 's'}.`
 };
+
+export { METERS_PER_MILE };
 
 export const JSON_PREVIEW_SX = {
   mt: 2,

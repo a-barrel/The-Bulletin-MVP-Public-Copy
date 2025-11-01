@@ -8,15 +8,17 @@ function PasswordField({
   onChange,
   error,
   placeholder = 'Enter password',
-  className = 'input-container',
+  className = 'auth-input-container',
   inputClassName = '',
-  buttonClassName = 'show-password-btn',
+  buttonClassName = 'auth-password-toggle',
   showPassword,
   onToggleVisibility,
   name,
   disabled = false,
   autoComplete = 'current-password',
-  inputProps = {}
+  inputProps = {},
+  errorTextClassName = 'auth-input-error-text',
+  onBlur
 }) {
   const generatedId = useId();
   const inputId = id || generatedId;
@@ -36,6 +38,7 @@ function PasswordField({
         type={showPassword ? 'text' : 'password'}
         value={value}
         onChange={onChange}
+        onBlur={onBlur}
         placeholder={placeholder}
         className={resolvedInputClassName}
         disabled={disabled}
@@ -50,7 +53,7 @@ function PasswordField({
       >
         {showPassword ? <FaEyeSlash /> : <FaEye />}
       </button>
-      {error ? <span className="input-error-text">{error}</span> : null}
+      {error ? <span className={errorTextClassName}>{error}</span> : null}
     </div>
   );
 }

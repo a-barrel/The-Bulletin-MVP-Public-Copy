@@ -1,7 +1,26 @@
 import runtimeConfig from '../../config/runtime';
 
-import { METERS_PER_MILE } from './constants';
 import sharedToIdString from '../../utils/ids';
+import formatDateTime, { formatRelativeTime } from '../../utils/dates';
+import {
+  clampLatitude,
+  formatDistanceMiles,
+  formatDistanceMetersLabel,
+  haversineDistanceMeters,
+  metersToLatitudeDegrees,
+  metersToLongitudeDegrees,
+  normalizeLongitude
+} from '../../utils/geo';
+
+export {
+  formatDistanceMiles,
+  formatDistanceMetersLabel,
+  haversineDistanceMeters,
+  metersToLatitudeDegrees,
+  metersToLongitudeDegrees,
+  clampLatitude,
+  normalizeLongitude
+};
 
 export const resolveMediaUrl = (value, fallback = '/images/profile/profile-01.jpg') => {
   const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
@@ -98,7 +117,9 @@ export const formatReadableTimestamp = (value) => {
   if (Number.isNaN(date.getTime())) {
     return value;
   }
-  return date.toLocaleString();
+  const relative = formatRelativeTime(date);
+  const absolute = formatDateTime(date);
+  return relative ? `${relative} (${absolute})` : absolute;
 };
 
 export const deriveInitials = (value) => {
@@ -115,53 +136,6 @@ export const deriveInitials = (value) => {
   const first = parts[0].charAt(0);
   const last = parts[parts.length - 1].charAt(0);
   return `${first}${last}`.toUpperCase();
-};
-
-export const formatDistanceMiles = (meters) => {
-  if (meters === undefined || meters === null) {
-    return null;
-  }
-  return (meters / METERS_PER_MILE).toFixed(1);
-};
-
-export const formatDistanceMetersLabel = (value) => {
-  if (!Number.isFinite(value)) {
-    return null;
-  }
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)} km`;
-  }
-  return `${Math.round(value)} m`;
-};
-
-const EARTH_RADIUS_METERS = 6371000;
-const toRadians = (value) => (value * Math.PI) / 180;
-
-export const metersToLatitudeDegrees = (meters) => (meters / EARTH_RADIUS_METERS) * (180 / Math.PI);
-
-export const metersToLongitudeDegrees = (meters, latitude) => {
-  const latitudeRadians = toRadians(latitude);
-  const denominator = Math.cos(latitudeRadians);
-  if (Math.abs(denominator) < 1e-6) {
-    return 0;
-  }
-  return (meters / (EARTH_RADIUS_METERS * denominator)) * (180 / Math.PI);
-};
-
-export const clampLatitude = (value) => Math.max(-90, Math.min(90, value));
-
-export const normalizeLongitude = (value) => {
-  if (!Number.isFinite(value)) {
-    return value;
-  }
-  let normalized = value;
-  while (normalized > 180) {
-    normalized -= 360;
-  }
-  while (normalized < -180) {
-    normalized += 360;
-  }
-  return normalized;
 };
 
 export const coordinatesEqual = (left, right) => {
@@ -224,21 +198,6 @@ export const shiftLocationByDirection = (source, direction, stepMeters) => {
     longitude,
     accuracy: source.accuracy
   };
-};
-
-export const haversineDistanceMeters = (pointA, pointB) => {
-  if (!pointA || !pointB) {
-    return Number.NaN;
-  }
-  const lat1 = toRadians(pointA.latitude);
-  const lat2 = toRadians(pointB.latitude);
-  const deltaLat = lat2 - lat1;
-  const deltaLon = toRadians(pointB.longitude - pointA.longitude);
-  const a =
-    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return EARTH_RADIUS_METERS * c;
 };
 
 export const evaluateRoomAccess = (room, location) => {

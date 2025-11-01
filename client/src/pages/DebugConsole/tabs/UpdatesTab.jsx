@@ -1,277 +1,97 @@
-import { useEffect, useState } from 'react';
-import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import MenuItem from '@mui/material/MenuItem';
-import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
-import {
-  createUpdate,
-  fetchCurrentUserProfile,
-  fetchUpdates
-} from '../../../api/mongoDataApi';
 import JsonPreview from '../components/JsonPreview';
+import DebugPanel from '../components/DebugPanel';
+import useUpdatesTools, { INITIAL_UPDATE_FORM } from '../hooks/useUpdatesTools';
 import { UPDATE_TYPE_OPTIONS } from '../constants';
-import {
-  parseCommaSeparated,
-  parseJsonField,
-  parseOptionalNumber
-} from '../utils';
 
 function UpdatesTab() {
-  const [updateForm, setUpdateForm] = useState({
-    userId: '',
-    sourceUserId: '',
-    targetUserIds: '',
-    type: UPDATE_TYPE_OPTIONS[0],
-    title: '',
-    body: '',
-    metadata: '',
-    relatedEntities: '',
-    pinId: '',
-    pinPreview: ''
-  });
-  const [updateStatus, setUpdateStatus] = useState(null);
-  const [updateResult, setUpdateResult] = useState(null);
-  const [isCreatingUpdate, setIsCreatingUpdate] = useState(false);
+  const {
+    updateForm,
+    setUpdateForm,
+    updateStatus,
+    setUpdateStatus,
+    updateResult,
+    isCreatingUpdate,
+    handleCreateUpdate,
+    updatesQuery,
+    setUpdatesQuery,
+    updatesStatus,
+    setUpdatesStatus,
+    updatesResult,
+    isFetchingUpdates,
+    handleFetchUpdates,
+    currentUserId,
+    sendDummyUpdate,
+    reloadCurrentProfile,
+    isSendingDummy
+  } = useUpdatesTools();
 
-  const [updatesQuery, setUpdatesQuery] = useState({ userId: '', limit: '20' });
-  const [updatesStatus, setUpdatesStatus] = useState(null);
-  const [updatesResult, setUpdatesResult] = useState(null);
-  const [isFetchingUpdates, setIsFetchingUpdates] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState('');
-  const [isSendingDummy, setIsSendingDummy] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const profile = await fetchCurrentUserProfile();
-        if (cancelled) {
-          return;
+  const quickActionsAlerts = [
+    updatesStatus && !updatesResult
+      ? {
+          key: 'quick-action-status',
+          severity: updatesStatus.type,
+          content: updatesStatus.message,
+          onClose: () => setUpdatesStatus(null)
         }
-        const resolved = profile?._id || profile?.userId || profile?.id;
-        if (resolved) {
-          setCurrentUserId(resolved);
-          setUpdatesQuery((prev) => ({ ...prev, userId: prev.userId || resolved }));
+      : null
+  ].filter(Boolean);
+
+  const createAlerts = [
+    updateStatus
+      ? {
+          key: 'create-update-status',
+          severity: updateStatus.type,
+          content: updateStatus.message,
+          onClose: () => setUpdateStatus(null)
         }
-      } catch (error) {
-        console.warn('Failed to auto-load current profile for updates tab', error);
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      : null
+  ].filter(Boolean);
 
-  const handleCreateUpdate = async (event) => {
-    event.preventDefault();
-    setUpdateStatus(null);
-
-    try {
-      const userId = updateForm.userId.trim();
-      const title = updateForm.title.trim();
-      if (!userId || !title) {
-        throw new Error('Target user ID and title are required.');
-      }
-
-      const payload = {
-        userId,
-        payload: {
-          type: updateForm.type,
-          title
+  const fetchAlerts = [
+    updatesStatus && updatesResult
+      ? {
+          key: 'fetch-updates-status',
+          severity: updatesStatus.type,
+          content: updatesStatus.message,
+          onClose: () => setUpdatesStatus(null)
         }
-      };
-
-      const sourceUserId = updateForm.sourceUserId.trim();
-      if (sourceUserId) {
-        payload.sourceUserId = sourceUserId;
-      }
-
-      const targetUserIds = parseCommaSeparated(updateForm.targetUserIds);
-      if (targetUserIds.length) {
-        payload.targetUserIds = targetUserIds;
-      }
-
-      const body = updateForm.body.trim();
-      if (body) {
-        payload.payload.body = body;
-      }
-
-      const metadata = parseJsonField(updateForm.metadata, 'metadata');
-      if (metadata !== undefined) {
-        payload.payload.metadata = metadata;
-      }
-
-      const relatedEntities = parseJsonField(updateForm.relatedEntities, 'related entities');
-      if (relatedEntities !== undefined) {
-        payload.payload.relatedEntities = relatedEntities;
-      }
-
-      const pinId = updateForm.pinId.trim();
-      if (pinId) {
-        payload.payload.pinId = pinId;
-      }
-
-      const pinPreview = parseJsonField(updateForm.pinPreview, 'pin preview');
-      if (pinPreview !== undefined) {
-        payload.payload.pinPreview = pinPreview;
-      }
-
-      setIsCreatingUpdate(true);
-      const result = await createUpdate(payload);
-      setUpdateResult(result);
-      setUpdateStatus({ type: 'success', message: 'Update created.' });
-    } catch (error) {
-      setUpdateStatus({ type: 'error', message: error.message || 'Failed to create update.' });
-    } finally {
-      setIsCreatingUpdate(false);
-    }
-  };
-
-  const handleFetchUpdates = async (event) => {
-    event.preventDefault();
-    setUpdatesStatus(null);
-
-    const userId = updatesQuery.userId.trim();
-    if (!userId) {
-      setUpdatesStatus({ type: 'error', message: 'User ID is required.' });
-      return;
-    }
-
-    try {
-      const query = { userId };
-      const limitValue = parseOptionalNumber(updatesQuery.limit, 'Limit');
-      if (limitValue !== undefined) {
-        if (limitValue <= 0) {
-          throw new Error('Limit must be greater than 0.');
-        }
-        query.limit = limitValue;
-      }
-
-      setIsFetchingUpdates(true);
-      const updates = await fetchUpdates(query);
-      setUpdatesResult(updates);
-      setUpdatesStatus({
-        type: 'success',
-        message: `Loaded ${updates.length} update${updates.length === 1 ? '' : 's'}.`
-      });
-    } catch (error) {
-      setUpdatesStatus({ type: 'error', message: error.message || 'Failed to load updates.' });
-    } finally {
-      setIsFetchingUpdates(false);
-    }
-  };
+      : null
+  ].filter(Boolean);
 
   return (
     <Stack spacing={2}>
-      <Paper
-        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
-      >
-        <Typography variant="h6">Quick actions</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Drop a canned notification for whichever account you&apos;re logged in with.
-        </Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
+      <DebugPanel
+        title="Quick actions"
+        description="Drop a canned notification for whichever account you're logged in with."
+        actions={[
           <Button
+            key="send"
             variant="contained"
             disabled={!currentUserId || isSendingDummy}
-            onClick={async () => {
-              setUpdatesStatus(null);
-            if (!currentUserId) {
-                setUpdatesStatus({ type: 'error', message: 'Load your profile first.' });
-                return;
-              }
-              try {
-                setIsSendingDummy(true);
-                const now = new Date();
-                const title = 'Debug badge unlocked';
-                const body = `You earned a tester badge at ${now.toLocaleTimeString([], {
-                  hour: 'numeric',
-                  minute: '2-digit'
-                })}.`;
-                await createUpdate({
-                  userId: currentUserId,
-                  payload: {
-                    type: 'badge-earned',
-                    title,
-                    body,
-                    metadata: {
-                      badgeId: 'debug-dummy',
-                      badgeLabel: 'Debugger',
-                      issuedAt: now.toISOString()
-                    },
-                    relatedEntities: [
-                      { id: currentUserId, type: 'user', label: 'You' }
-                    ]
-                  }
-                });
-                try {
-                  const query = { userId: currentUserId };
-                  const limitValue = parseOptionalNumber(updatesQuery.limit, 'Limit');
-                  if (limitValue && limitValue > 0) {
-                    query.limit = limitValue;
-                  }
-                  const refreshed = await fetchUpdates(query);
-                  setUpdatesResult(refreshed);
-                } catch (fetchError) {
-                  console.warn('Failed to refresh updates after dummy send', fetchError);
-                }
-                setUpdatesStatus({ type: 'success', message: 'Dummy update queued for your account.' });
-              } catch (error) {
-                setUpdatesStatus({
-                  type: 'error',
-                  message: error?.message || 'Failed to send dummy update.'
-                });
-              } finally {
-                setIsSendingDummy(false);
-              }
-            }}
+            onClick={sendDummyUpdate}
           >
             {isSendingDummy ? 'Sending...' : 'Send dummy update to me'}
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={async () => {
-              try {
-                const profile = await fetchCurrentUserProfile();
-                const resolved = profile?._id || profile?.userId || profile?.id;
-                if (resolved) {
-                  setCurrentUserId(resolved);
-                  setUpdatesQuery((prev) => ({ ...prev, userId: resolved }));
-                } else {
-                  setUpdatesStatus({ type: 'error', message: 'Current profile id is unavailable.' });
-                }
-              } catch (error) {
-                setUpdatesStatus({
-                  type: 'error',
-                  message: error?.message || 'Failed to load current user profile.'
-                });
-              }
-            }}
-          >
+          </Button>,
+          <Button key="reload" variant="outlined" onClick={reloadCurrentProfile}>
             Use my profile id
           </Button>
-        </Stack>
-      </Paper>
+        ]}
+        alerts={quickActionsAlerts}
+      />
 
-      <Paper
+      <DebugPanel
         component="form"
         onSubmit={handleCreateUpdate}
-        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+        title="Create user update"
+        description="Generate feed notifications for a user to exercise the updates API."
+        alerts={createAlerts}
       >
-        <Typography variant="h6">Create user update</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Generate feed notifications for a user to exercise the updates API.
-        </Typography>
-        {updateStatus && (
-          <Alert severity={updateStatus.type} onClose={() => setUpdateStatus(null)}>
-            {updateStatus.message}
-          </Alert>
-        )}
         <Stack spacing={2}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
@@ -361,45 +181,21 @@ function UpdatesTab() {
             <Button type="submit" variant="contained" disabled={isCreatingUpdate}>
               {isCreatingUpdate ? 'Creating...' : 'Create update'}
             </Button>
-            <Button
-              type="button"
-              variant="text"
-              onClick={() =>
-                setUpdateForm({
-                  userId: '',
-                  sourceUserId: '',
-                  targetUserIds: '',
-                  type: UPDATE_TYPE_OPTIONS[0],
-                  title: '',
-                  body: '',
-                  metadata: '',
-                  relatedEntities: '',
-                  pinId: '',
-                  pinPreview: ''
-                })
-              }
-            >
+            <Button type="button" variant="text" onClick={() => setUpdateForm(INITIAL_UPDATE_FORM)}>
               Reset
             </Button>
           </Stack>
         </Stack>
         <JsonPreview data={updateResult} />
-      </Paper>
+      </DebugPanel>
 
-      <Paper
+      <DebugPanel
         component="form"
         onSubmit={handleFetchUpdates}
-        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+        title="Fetch updates"
+        description="Inspect the notification queue for a given user."
+        alerts={fetchAlerts}
       >
-        <Typography variant="h6">Fetch updates</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Inspect the notification queue for a given user.
-        </Typography>
-        {updatesStatus && (
-          <Alert severity={updatesStatus.type} onClose={() => setUpdatesStatus(null)}>
-            {updatesStatus.message}
-          </Alert>
-        )}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField
             label="User ID"
@@ -419,7 +215,7 @@ function UpdatesTab() {
           </Button>
         </Stack>
         <JsonPreview data={updatesResult} />
-      </Paper>
+      </DebugPanel>
     </Stack>
   );
 }

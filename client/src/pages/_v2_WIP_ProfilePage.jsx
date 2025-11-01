@@ -36,6 +36,7 @@ import {
 import runtimeConfig from '../config/runtime';
 import { BADGE_METADATA } from '../utils/badges';
 import BackButton from '../components/BackButton';
+import { metersToMiles } from '../utils/geo';
 import './_v2_WIP_ProfilePage.css';
 
 const SECTION_BG_COLOR = '#d6e6ff';
@@ -154,7 +155,6 @@ const formatEntryValue = (value) => {
   return String(value);
 };
 
-const METERS_PER_MILE = 1609.34;
 const formatDateTime = (value) => {
   if (!value) {
     return 'N/A';
@@ -661,10 +661,13 @@ const detailEntries = useMemo(() => {
     const preferences = effectiveUser?.preferences ?? {};
     const theme = preferences.theme ?? 'system';
     const radiusMeters = preferences.radiusPreferenceMeters;
-    const radiusMiles =
-      typeof radiusMeters === 'number'
-        ? Math.round((100 * radiusMeters) / METERS_PER_MILE) / 100
-        : null;
+    let radiusMiles = null;
+    if (typeof radiusMeters === 'number') {
+      const miles = metersToMiles(radiusMeters);
+      if (miles !== null) {
+        radiusMiles = Math.round(miles * 100) / 100;
+      }
+    }
     return {
       theme,
       radiusMiles,

@@ -1,42 +1,10 @@
-/* For the textbox inputs*/
-.register-input-container {
-  width: 85vw;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
-.register-input-container input {
-  padding: 10px 12px;
-  border: 1.5px solid #888;
-  border-radius: 6px;
-  background-color: white;
-  color: black;
-  font-size: 1.2rem;
-  transition: 0.2s;
+/* Adjust spacing for auth inputs on the registration form */
+.register-form .auth-input-container input {
   margin-bottom: 2.5rem;
 }
 
-.register-input-container input:focus {
-  border-color: #75d2fd;
-  outline: none;
-}
-
-.register-input-container input::placeholder {
-  color: #c0c0c0;
-}
-
-
-/* The text under the input box when there is an input error */
-.register-input-error-text {
-  position: absolute;
+.register-form .auth-input-error-text {
   margin-top: 2.9rem;
-  color: red;
-  text-align: left;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: opacity 0.3s ease;
-  margin-left: 0.5rem;
 }
 
 /* Submit */

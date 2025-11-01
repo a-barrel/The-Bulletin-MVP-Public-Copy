@@ -2,7 +2,7 @@ import { Box, Typography } from '@mui/material';
 import { NavLink } from 'react-router-dom';
 import AvatarIcon from '../assets/AvatarIcon.svg';
 import "./MessageBubble.css";
-import { formatFriendlyTimestamp } from '../utils/dates';
+import { formatFriendlyTimestamp, formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
 
 
 
@@ -93,8 +93,11 @@ function MessageBubble({ msg, isSelf, authUser }) {
           <Typography className="chat-author">
             {msg.author?.displayName || 'User'}
           </Typography>
-          <Typography className="chat-time">
-            {formatFriendlyTimestamp(msg.createdAt)}
+          <Typography
+            className="chat-time"
+            title={formatAbsoluteDateTime(msg.createdAt) || undefined}
+          >
+            {formatFriendlyTimestamp(msg.createdAt) || formatRelativeTime(msg.createdAt) || ''}
           </Typography>
         </div>
         {displayMessage ? (

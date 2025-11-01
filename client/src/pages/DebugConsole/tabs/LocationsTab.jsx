@@ -1,201 +1,85 @@
-import { useState } from 'react';
-import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import MenuItem from '@mui/material/MenuItem';
-import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
-import {
-  fetchLocationHistory,
-  fetchNearbyUsers,
-  insertLocationUpdate
-} from '../../../api/mongoDataApi';
 import JsonPreview from '../components/JsonPreview';
+import DebugPanel from '../components/DebugPanel';
+import useLocationsTools from '../hooks/useLocationsTools';
 import { LOCATION_SOURCE_OPTIONS } from '../constants';
-import {
-  parseCommaSeparated,
-  parseOptionalDate,
-  parseOptionalNumber,
-  parseRequiredNumber
-} from '../utils';
 
 function LocationsTab() {
-  const [locationForm, setLocationForm] = useState({
-    userId: '',
-    latitude: '',
-    longitude: '',
-    accuracy: '',
-    source: LOCATION_SOURCE_OPTIONS[0],
-    sessionId: '',
-    deviceId: '',
-    linkedPinIds: '',
-    createdAt: '',
-    lastSeenAt: '',
-    expiresAt: '',
-    isPublic: true
-  });
-  const [locationStatus, setLocationStatus] = useState(null);
-  const [locationResult, setLocationResult] = useState(null);
-  const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const {
+    locationForm,
+    locationStatus,
+    setLocationStatus,
+    locationResult,
+    isSavingLocation,
+    handleSaveLocation,
+    handleLocationFieldChange,
+    resetLocationForm,
+    nearbyForm,
+    nearbyStatus,
+    setNearbyStatus,
+    nearbyResults,
+    isFetchingNearby,
+    handleFetchNearby,
+    handleNearbyFieldChange,
+    resetNearbyForm,
+    historyUserId,
+    setHistoryUserId,
+    historyStatus,
+    setHistoryStatus,
+    historyResults,
+    isFetchingHistory,
+    handleFetchHistory
+  } = useLocationsTools();
 
-  const [nearbyForm, setNearbyForm] = useState({ latitude: '', longitude: '', maxDistance: '1609' });
-  const [nearbyStatus, setNearbyStatus] = useState(null);
-  const [nearbyResults, setNearbyResults] = useState(null);
-  const [isFetchingNearby, setIsFetchingNearby] = useState(false);
+  const locationAlerts = locationStatus
+    ? [
+        {
+          key: 'location-status',
+          severity: locationStatus.type,
+          content: locationStatus.message,
+          onClose: () => setLocationStatus(null)
+        }
+      ]
+    : [];
 
-  const [historyUserId, setHistoryUserId] = useState('');
-  const [historyStatus, setHistoryStatus] = useState(null);
-  const [historyResults, setHistoryResults] = useState(null);
-  const [isFetchingHistory, setIsFetchingHistory] = useState(false);
+  const nearbyAlerts = nearbyStatus
+    ? [
+        {
+          key: 'nearby-status',
+          severity: nearbyStatus.type,
+          content: nearbyStatus.message,
+          onClose: () => setNearbyStatus(null)
+        }
+      ]
+    : [];
 
-  const handleLocationFieldChange = (field) => (event) => {
-    setLocationForm((prev) => ({
-      ...prev,
-      [field]: event.target.value
-    }));
-  };
-
-  const handleSaveLocation = async (event) => {
-    event.preventDefault();
-    setLocationStatus(null);
-
-    try {
-      const userId = locationForm.userId.trim();
-      if (!userId) {
-        throw new Error('User ID is required.');
-      }
-
-      const latitude = parseRequiredNumber(locationForm.latitude, 'Latitude');
-      const longitude = parseRequiredNumber(locationForm.longitude, 'Longitude');
-
-      const payload = {
-        userId,
-        coordinates: {
-          type: 'Point',
-          coordinates: [longitude, latitude]
-        },
-        isPublic: locationForm.isPublic,
-        source: locationForm.source
-      };
-
-      const accuracy = parseOptionalNumber(locationForm.accuracy, 'Accuracy');
-      if (accuracy !== undefined) {
-        payload.accuracy = accuracy;
-        payload.coordinates.accuracy = accuracy;
-      }
-
-      const sessionId = locationForm.sessionId.trim();
-      if (sessionId) {
-        payload.sessionId = sessionId;
-      }
-
-      const deviceId = locationForm.deviceId.trim();
-      if (deviceId) {
-        payload.deviceId = deviceId;
-      }
-
-      const linkedPinIds = parseCommaSeparated(locationForm.linkedPinIds);
-      if (linkedPinIds.length) {
-        payload.linkedPinIds = linkedPinIds;
-      }
-
-      const createdAt = parseOptionalDate(locationForm.createdAt, 'Created at');
-      if (createdAt) {
-        payload.createdAt = createdAt;
-      }
-
-      const lastSeenAt = parseOptionalDate(locationForm.lastSeenAt, 'Last seen at');
-      if (lastSeenAt) {
-        payload.lastSeenAt = lastSeenAt;
-      }
-
-      const expiresAt = parseOptionalDate(locationForm.expiresAt, 'Expires at');
-      if (expiresAt) {
-        payload.expiresAt = expiresAt;
-      }
-
-      setIsSavingLocation(true);
-      const result = await insertLocationUpdate(payload);
-      setLocationResult(result);
-      setLocationStatus({ type: 'success', message: 'Location update saved.' });
-    } catch (error) {
-      setLocationStatus({ type: 'error', message: error.message || 'Failed to save location update.' });
-    } finally {
-      setIsSavingLocation(false);
-    }
-  };
-
-  const handleFetchNearby = async (event) => {
-    event.preventDefault();
-    setNearbyStatus(null);
-
-    try {
-      const latitude = parseRequiredNumber(nearbyForm.latitude, 'Latitude');
-      const longitude = parseRequiredNumber(nearbyForm.longitude, 'Longitude');
-      const query = { latitude, longitude };
-      const maxDistance = parseOptionalNumber(nearbyForm.maxDistance, 'Max distance');
-      if (maxDistance !== undefined) {
-        query.maxDistance = maxDistance;
-      }
-
-      setIsFetchingNearby(true);
-      const results = await fetchNearbyUsers(query);
-      setNearbyResults(results);
-      setNearbyStatus({
-        type: 'success',
-        message: `Loaded ${results.length} nearby user${results.length === 1 ? '' : 's'}.`
-      });
-    } catch (error) {
-      setNearbyStatus({ type: 'error', message: error.message || 'Failed to load nearby users.' });
-    } finally {
-      setIsFetchingNearby(false);
-    }
-  };
-
-  const handleFetchHistory = async (event) => {
-    event.preventDefault();
-    setHistoryStatus(null);
-    const userId = historyUserId.trim();
-    if (!userId) {
-      setHistoryStatus({ type: 'error', message: 'User ID is required.' });
-      return;
-    }
-
-    try {
-      setIsFetchingHistory(true);
-      const results = await fetchLocationHistory(userId);
-      setHistoryResults(results);
-      setHistoryStatus({
-        type: 'success',
-        message: `Loaded ${results.length} location record${results.length === 1 ? '' : 's'}.`
-      });
-    } catch (error) {
-      setHistoryStatus({ type: 'error', message: error.message || 'Failed to load location history.' });
-    } finally {
-      setIsFetchingHistory(false);
-    }
-  };
+  const historyAlerts = historyStatus
+    ? [
+        {
+          key: 'history-status',
+          severity: historyStatus.type,
+          content: historyStatus.message,
+          onClose: () => setHistoryStatus(null)
+        }
+      ]
+    : [];
 
   return (
     <Stack spacing={2}>
-      <Paper
+      <DebugPanel
         component="form"
         onSubmit={handleSaveLocation}
-        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+        title="Insert location update"
+        description="Record or refresh a user's proximity anchor."
+        alerts={locationAlerts}
       >
-        <Typography variant="h6">Insert location update</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Record or refresh a user's proximity anchor.
-        </Typography>
-        {locationStatus && (
-          <Alert severity={locationStatus.type} onClose={() => setLocationStatus(null)}>
-            {locationStatus.message}
-          </Alert>
-        )}
         <Stack spacing={2}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
@@ -285,7 +169,7 @@ function LocationsTab() {
             control={
               <Switch
                 checked={locationForm.isPublic}
-                onChange={(event) => setLocationForm((prev) => ({ ...prev, isPublic: event.target.checked }))}
+                onChange={handleLocationFieldChange('isPublic')}
               />
             }
             label="Allow public proximity lookups"
@@ -294,91 +178,56 @@ function LocationsTab() {
             <Button type="submit" variant="contained" disabled={isSavingLocation}>
               {isSavingLocation ? 'Saving...' : 'Save location'}
             </Button>
-            <Button
-              type="button"
-              variant="text"
-              onClick={() =>
-                setLocationForm({
-                  userId: '',
-                  latitude: '',
-                  longitude: '',
-                  accuracy: '',
-                  source: LOCATION_SOURCE_OPTIONS[0],
-                  sessionId: '',
-                  deviceId: '',
-                  linkedPinIds: '',
-                  createdAt: '',
-                  lastSeenAt: '',
-                  expiresAt: '',
-                  isPublic: true
-                })
-              }
-            >
+            <Button type="button" variant="text" onClick={resetLocationForm}>
               Reset
             </Button>
           </Stack>
         </Stack>
         <JsonPreview data={locationResult} />
-      </Paper>
+      </DebugPanel>
 
-      <Paper
+      <DebugPanel
         component="form"
         onSubmit={handleFetchNearby}
-        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+        title="Fetch nearby users"
+        description="List users within a radius of the provided coordinates."
+        alerts={nearbyAlerts}
       >
-        <Typography variant="h6">Fetch nearby users</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Inspect who is within range of a coordinate.
-        </Typography>
-        {nearbyStatus && (
-          <Alert severity={nearbyStatus.type} onClose={() => setNearbyStatus(null)}>
-            {nearbyStatus.message}
-          </Alert>
-        )}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField
             label="Latitude"
             value={nearbyForm.latitude}
-            onChange={(event) => setNearbyForm((prev) => ({ ...prev, latitude: event.target.value }))}
+            onChange={handleNearbyFieldChange('latitude')}
             required
           />
           <TextField
             label="Longitude"
             value={nearbyForm.longitude}
-            onChange={(event) => setNearbyForm((prev) => ({ ...prev, longitude: event.target.value }))}
+            onChange={handleNearbyFieldChange('longitude')}
             required
           />
           <TextField
             label="Max distance (meters)"
             value={nearbyForm.maxDistance}
-            onChange={(event) => setNearbyForm((prev) => ({ ...prev, maxDistance: event.target.value }))}
+            onChange={handleNearbyFieldChange('maxDistance')}
           />
-        </Stack>
-        <Stack direction="row" spacing={2}>
           <Button type="submit" variant="outlined" disabled={isFetchingNearby}>
-            {isFetchingNearby ? 'Searching...' : 'Search'}
+            {isFetchingNearby ? 'Searching…' : 'Fetch nearby'}
           </Button>
-          <Button type="button" variant="text" onClick={() => setNearbyForm({ latitude: '', longitude: '', maxDistance: '1609' })}>
+          <Button type="button" variant="text" onClick={resetNearbyForm}>
             Reset
           </Button>
         </Stack>
         <JsonPreview data={nearbyResults} />
-      </Paper>
+      </DebugPanel>
 
-      <Paper
+      <DebugPanel
         component="form"
         onSubmit={handleFetchHistory}
-        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+        title="Fetch location history"
+        description="Review recent location records for a specific user."
+        alerts={historyAlerts}
       >
-        <Typography variant="h6">Fetch location history</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Review the historical samples associated with a user.
-        </Typography>
-        {historyStatus && (
-          <Alert severity={historyStatus.type} onClose={() => setHistoryStatus(null)}>
-            {historyStatus.message}
-          </Alert>
-        )}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField
             label="User ID"
@@ -388,11 +237,11 @@ function LocationsTab() {
             fullWidth
           />
           <Button type="submit" variant="outlined" disabled={isFetchingHistory}>
-            {isFetchingHistory ? 'Loading...' : 'Fetch'}
+            {isFetchingHistory ? 'Loading…' : 'Fetch history'}
           </Button>
         </Stack>
         <JsonPreview data={historyResults} />
-      </Paper>
+      </DebugPanel>
     </Stack>
   );
 }

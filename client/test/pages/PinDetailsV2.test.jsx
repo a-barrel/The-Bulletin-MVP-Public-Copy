@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import PinDetailsV2WIP, { pageConfig } from '../../src/pages/_v2_WIP_PinDetails';
-import { fetchPinById, fetchReplies } from '../../src/api/mongoDataApi';
+import { fetchPinById, fetchReplies, fetchCurrentUserProfile } from '../../src/api/mongoDataApi';
 import { useParams } from 'react-router-dom';
 
 jest.mock('../../src/config/runtime', () => ({
@@ -22,11 +22,13 @@ jest.mock('../../src/components/Map', () => ({
 jest.mock('../../src/api/mongoDataApi', () => ({
   __esModule: true,
   fetchPinById: jest.fn(),
-  fetchReplies: jest.fn()
+  fetchReplies: jest.fn(),
+  fetchCurrentUserProfile: jest.fn()
 }));
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn(),
+  useLocation: jest.fn(() => ({ pathname: '/pin-v2/test', state: null })),
   Link: ({ to, children, ...props }) => (
     <a data-testid={`link-${to}`} {...props}>
       {children}
@@ -64,6 +66,11 @@ describe('PinDetailsV2 pageConfig.resolveNavTarget', () => {
 describe('PinDetailsV2WIP page', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    fetchCurrentUserProfile.mockResolvedValue({
+      _id: 'viewer-123',
+      displayName: 'Viewer',
+      username: 'viewer'
+    });
   });
 
   it('shows fallback messaging when pin data lacks coordinates and replies', async () => {
@@ -82,16 +89,12 @@ describe('PinDetailsV2WIP page', () => {
     render(<PinDetailsV2WIP />);
 
     expect(await screen.findByText('Fallback Pin')).toBeInTheDocument();
-    expect(await screen.findByText('No map coordinates available for this pin.')).toBeInTheDocument();
+    expect(
+      await screen.findByText((content) => content.includes('No address information available.'))
+    ).toBeInTheDocument();
     expect(await screen.findByText('No replies yet.')).toBeInTheDocument();
-    expect(fetchPinById).toHaveBeenCalledWith(
-      'pin-fallback',
-      expect.objectContaining({ signal: expect.any(Object) })
-    );
-    expect(fetchReplies).toHaveBeenCalledWith(
-      'pin-fallback',
-      expect.objectContaining({ signal: expect.any(Object) })
-    );
+    expect(fetchPinById).toHaveBeenCalledWith('pin-fallback', expect.objectContaining({ previewMode: '' }));
+    expect(fetchReplies).toHaveBeenCalledWith('pin-fallback');
     expect(screen.queryByTestId('map-placeholder')).not.toBeInTheDocument();
   });
 
@@ -130,16 +133,10 @@ describe('PinDetailsV2WIP page', () => {
     render(<PinDetailsV2WIP />);
 
     expect(await screen.findByText('Community Cleanup')).toBeInTheDocument();
-    expect(fetchPinById).toHaveBeenCalledWith(
-      'pin-success',
-      expect.objectContaining({ signal: expect.any(Object) })
-    );
-    expect(fetchReplies).toHaveBeenCalledWith(
-      'pin-success',
-      expect.objectContaining({ signal: expect.any(Object) })
-    );
+    expect(fetchPinById).toHaveBeenCalledWith('pin-success', expect.objectContaining({ previewMode: '' }));
+    expect(fetchReplies).toHaveBeenCalledWith('pin-success');
     expect(screen.getByTestId('map-placeholder')).toBeInTheDocument();
     expect(screen.getByText('Looking forward to it!')).toBeInTheDocument();
-    expect(screen.getByText('Tags')).toBeInTheDocument();
+    expect(screen.getByText(/Bookmarks:\s*4/)).toBeInTheDocument();
   });
 });

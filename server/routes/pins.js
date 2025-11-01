@@ -18,6 +18,7 @@ const {
 const { grantBadge } = require('../services/badgeService');
 const { mapMediaAsset: mapMediaAssetResponse } = require('../utils/media');
 const { toIdString, mapIdList } = require('../utils/ids');
+const { METERS_PER_MILE, milesToMeters } = require('../utils/geo');
 
 const router = express.Router();
 
@@ -56,7 +57,6 @@ const CreateReplySchema = z.object({
     .optional()
 });
 
-const METERS_PER_MILE = 1609.34;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const EVENT_MAX_LEAD_TIME_MS = 14 * MILLISECONDS_PER_DAY;
 const DISCUSSION_MAX_DURATION_MS = 3 * MILLISECONDS_PER_DAY;
@@ -643,7 +643,7 @@ router.post('/', verifyToken, async (req, res) => {
 router.get('/nearby', verifyToken, async (req, res) => {
   try {
     const { latitude, longitude, distanceMiles, limit, type } = NearbyPinsQuerySchema.parse(req.query);
-    const maxDistanceMeters = distanceMiles * METERS_PER_MILE;
+    const maxDistanceMeters = milesToMeters(distanceMiles) ?? distanceMiles * METERS_PER_MILE;
     const now = new Date();
     const queryFilters = [
       {

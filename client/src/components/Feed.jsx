@@ -4,23 +4,16 @@ import PinTagIcon from "../assets/Event_Pin.svg";
 import DiscussionTagIcon from "../assets/chat-filled.svg";
 import CommentsIcon from "../assets/Comments.png";
 import InterestedIcon from "../assets/AttendanceIcon.png";
-import { fetchPinAttendees } from "../api/mongoDataApi";
 import resolveAssetUrl from "../utils/media";
 import toIdString from "../utils/ids";
-
-const DEFAULT_AVATAR = "https://i.pravatar.cc/100?img=64";
-
-const resolveAuthorName = (item) =>
-  item?.authorName ||
-  item?.author ||
-  item?.creator?.displayName ||
-  item?.creator?.username ||
-  "Unknown";
-
-const resolveAvatar = (item) =>
-  resolveAssetUrl(item?.creator?.avatar) ||
-  resolveAssetUrl(item?.avatar) ||
-  DEFAULT_AVATAR;
+import usePinAttendees from "../hooks/usePinAttendees";
+import {
+  DEFAULT_AVATAR,
+  FALLBACK_NAMES,
+  resolveAuthorAvatar,
+  resolveAuthorName,
+  resolveLibraryAvatar
+} from "../utils/feed";
 
 const TAG_ICON_MAP = {
   pin: {
@@ -42,24 +35,6 @@ const resolveTagBadge = (type) => {
     return TAG_ICON_MAP.discussion;
   }
   return TAG_ICON_MAP[key] || TAG_ICON_MAP.pin;
-};
-
-const attendeeCache = new Map();
-const FALLBACK_NAMES = [
-  "Scout",
-  "Soldier",
-  "Pyro",
-  "Demoman",
-  "Heavy",
-  "Engineer",
-  "Medic",
-  "Sniper",
-  "Spy",
-];
-
-const resolveLibraryAvatar = (seed = 0) => {
-  const normalizedSeed = Number.isFinite(seed) ? Math.abs(Math.floor(seed)) : 0;
-  return `https://i.pravatar.cc/100?u=pinpoint-fallback-${normalizedSeed}`;
 };
 
 function FeedCard({ item, onSelectItem, onSelectAuthor }) {
@@ -114,7 +89,12 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
     [item]
   );
 
-  const [attendees, setAttendees] = useState([]);
+  const { attendees } = usePinAttendees({
+    pinId,
+    enabled: isEventPin && isValidPinId,
+    participantCount,
+    attendeeSignature
+  });
 
   const badgeLabel =
     typeof item?.title === "string" && item.title.trim()
@@ -124,99 +104,6 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
     badgeLabel === tagBadge.label
       ? tagBadge.label
       : `${tagBadge.label} - ${badgeLabel}`;
-
-  useEffect(() => {
-    if (!isEventPin || !isValidPinId) {
-      setAttendees([]);
-      return;
-    }
-
-    const expectedCount = Number.isFinite(participantCount)
-      ? participantCount
-      : null;
-    const expectedSignature = attendeeSignature || null;
-
-    const cachedEntry = attendeeCache.get(pinId);
-    if (cachedEntry) {
-      setAttendees(Array.isArray(cachedEntry.items) ? cachedEntry.items : []);
-      const matchesCount =
-        expectedCount === null || cachedEntry.count === expectedCount;
-      const matchesSignature =
-        expectedSignature === null || cachedEntry.signature === expectedSignature;
-      if (matchesCount && matchesSignature) {
-        return;
-      }
-    }
-
-    let cancelled = false;
-    fetchPinAttendees(pinId)
-      .then((payload) => {
-        if (cancelled) {
-          return;
-        }
-        const normalizedIds = [];
-        const mapped = Array.isArray(payload)
-          ? payload.map((record, idx) => {
-              const normalizedId =
-                toIdString(record?.userId) ??
-                toIdString(record?._id) ??
-                toIdString(record?.profile?._id) ??
-                toIdString(record?.profile?.userId) ??
-                toIdString(record?.user?._id);
-              if (normalizedId && !normalizedIds.includes(normalizedId)) {
-                normalizedIds.push(normalizedId);
-              }
-              const name =
-                record?.displayName ||
-                record?.username ||
-                record?.profile?.displayName ||
-                record?.profile?.username ||
-                record?.email ||
-                record?.profile?.email ||
-                `Guest ${idx + 1}`;
-              const avatar =
-                resolveAssetUrl(
-                  record?.avatar ||
-                    record?.profile?.avatar ||
-                    record?.user?.avatar
-                ) ?? resolveLibraryAvatar(idx);
-              return {
-                id: normalizedId ?? `${pinId}-attendee-${idx}`,
-                userId: normalizedId ?? null,
-                name,
-                avatar,
-                raw: record,
-              };
-            })
-          : [];
-        const signature =
-          normalizedIds.length > 0
-            ? normalizedIds.join("|")
-            : expectedSignature;
-        attendeeCache.set(pinId, {
-          items: mapped,
-          count: mapped.length,
-          signature,
-          updatedAt: Date.now(),
-        });
-        setAttendees(mapped);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          attendeeCache.set(pinId, {
-            items: [],
-            count: 0,
-            signature: expectedSignature,
-            updatedAt: Date.now(),
-          });
-          setAttendees([]);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [attendeeSignature, isEventPin, isValidPinId, participantCount, pinId]);
 
   const fallbackAttendees = useMemo(() => {
     if (!isEventPin) {
@@ -447,7 +334,7 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
         >
           <img
             className="avatar"
-            src={resolveAvatar(item)}
+            src={resolveAuthorAvatar(item)}
             alt={`${authorName} avatar`}
             onError={(event) => {
               event.currentTarget.onerror = null;
