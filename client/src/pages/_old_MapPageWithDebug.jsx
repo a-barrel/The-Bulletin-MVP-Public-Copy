@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import "../pages/MapPage.css";
 import { useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import updatesIcon from "../assets/UpdateIcon.svg";
-import addIcon from "../assets/AddIcon.svg";
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -19,7 +16,6 @@ import Switch from '@mui/material/Switch';
 import MapIcon from '@mui/icons-material/Map';
 import Map from '../components/Map';
 import LocationShare from '../components/LocationShare';
-import GlobalNavMenu from '../components/GlobalNavMenu';
 import { routes } from '../routes';
 import {
   insertLocationUpdate,
@@ -32,14 +28,13 @@ import { useLocationContext } from '../contexts/LocationContext';
 import { auth } from '../firebase';
 import Navbar from '../components/Navbar';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
-import { useUpdates } from '../contexts/UpdatesContext';
 
 export const pageConfig = {
-  id: 'map',
-  label: 'Map',
+  id: 'olddebugmap',
+  label: 'Old Map with Debug',
   icon: MapIcon,
-  path: '/map',
-  order: 1,
+  path: '/olddebugmap',
+  order: 99,
   protected: true,
   showInNav: true
 };
@@ -142,7 +137,6 @@ function MapPage() {
   const navigate = useNavigate();
   const [authUser] = useAuthState(auth);
   const { isOffline } = useNetworkStatusContext();
-  const { unreadCount, refreshUnreadCount } = useUpdates();
   const { location: sharedLocation, setLocation: setSharedLocation } = useLocationContext();
   const sharedLatitude = sharedLocation?.latitude ?? null;
   const sharedLongitude = sharedLocation?.longitude ?? null;
@@ -173,12 +167,6 @@ function MapPage() {
   const [currentProfileId, setCurrentProfileId] = useState(null);
   const spoofAnchorRef = useRef(null);
   const [spoofStepMiles, setSpoofStepMiles] = useState(DEFAULT_SPOOF_STEP_MILES);
-
-  useEffect(() => {
-    if (typeof refreshUnreadCount === 'function' && !isOffline) {
-      refreshUnreadCount({ silent: true });
-    }
-  }, [isOffline, refreshUnreadCount]);
 
   useEffect(() => {
     if (!Number.isFinite(sharedLatitude) || !Number.isFinite(sharedLongitude)) {
@@ -832,60 +820,15 @@ function MapPage() {
     navigate(routes.profile.me);
   }, [navigate]);
 
-  const handleNotifications = useCallback(() => {
-    if (isOffline) {
-      return;
-    }
-    navigate(routes.updates.base);
-  }, [isOffline, navigate]);
-
-  const handleCreatePin = useCallback(() => {
-    if (isOffline) {
-      return;
-    }
-    navigate(routes.createPin.base);
-  }, [isOffline, navigate]);
-
-  const notificationsLabel =
-    unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
-  const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
-
   return (
-    <div className="map-page">
-      <div className="map-frame">
-        {/* Header (purple) */}
-        <header className="map-header">
-          <GlobalNavMenu triggerClassName="map-icon-btn" iconClassName="map-icon" />
-
-          <h1 className="map-title">Map</h1>
-
-          <button
-            className="map-icon-btn"
-            type="button"
-            aria-label={notificationsLabel}
-            onClick={handleNotifications}
-            disabled={isOffline}
-            title={isOffline ? 'Reconnect to view updates' : undefined}
-          >
-            <img src={updatesIcon} alt="" className="map-icon" aria-hidden="true" />
-            {displayBadge ? (
-              <span className="map-icon-badge" aria-hidden="true">
-                {displayBadge}
-              </span>
-            ) : null}
-          </button>
-        </header>
-
-    {/* Map area */}
     <Box
       sx={{
         width: '100%',
-        height: 'calc(100vh - var(--header-h) - 90px)',
-        position: 'relative',
-        flex: '1 1 auto',
         maxWidth: '100%',
-        p: 0,
-        m: 0,
+        mx: 0,
+        mt: { xs: 1, md: 2 },
+        mb: { xs: 2, md: 4 },
+        borderRadius: 0,
         overflow: 'hidden',
         boxShadow: 'none',
         display: 'flex',
@@ -893,7 +836,6 @@ function MapPage() {
         backgroundColor: 'background.paper'
       }}
     >
-    {/*
       <AppBar position="static">
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
@@ -904,8 +846,20 @@ function MapPage() {
           </Typography>
         </Toolbar>
       </AppBar>
-      */}
 
+      <Box
+        sx={{
+          position: 'relative',
+          width: '100vw',
+          left: '50%',
+          right: '50%',
+          marginLeft: '-50vw',
+          marginRight: '-50vw',
+          overflow: 'visible',
+          height: { xs: '65vh', md: '80vh' },
+          minHeight: { xs: 420, md: 720 }
+        }}
+      >
         <Map
           userLocation={userLocation}
           nearbyUsers={nearbyUsers}
@@ -920,21 +874,171 @@ function MapPage() {
         />
       </Box>
 
-        {/* Floating Add Button (always visible, under header) */}
-        <button
-          className="map-add-btn"
-          type="button"
-          aria-label="Create pin"
-          onClick={handleCreatePin}
-          disabled={isOffline}
-          title={isOffline ? 'Reconnect to create a pin' : undefined}
-        >
-          <img src={addIcon} alt="" aria-hidden="true" />
-        </button>
+      <Stack spacing={2} sx={{ p: { xs: 2, md: 3 }, borderTop: (theme) => `1px solid ${theme.palette.divider}` }}>
+        <LocationShare
+          isSharing={isSharing}
+          onToggle={() => (isSharing ? handleStopSharing() : handleStartSharing())}
+          disabled={shareDisabled}
+          helperText={shareHelperText}
+        />
 
-        <Navbar />
-      </div>
-    </div>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showChatRooms}
+              onChange={(event) => setShowChatRooms(event.target.checked)}
+              disabled={isOffline}
+            />
+          }
+          label="Show chat room coverage"
+        />
+
+        {isLoadingChatRooms ? (
+          <Alert severity="info">Loading chat rooms…</Alert>
+        ) : null}
+
+        {chatRoomsError ? (
+          <Alert severity="warning" onClose={() => setChatRoomsError(null)}>
+            {chatRoomsError}
+          </Alert>
+        ) : null}
+
+        {isOffline ? (
+          <Alert severity="warning">
+            Offline mode: map data is read-only. Location sharing and live updates will resume when
+            you reconnect.
+          </Alert>
+        ) : null}
+
+        {error && (
+          <Alert severity="error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
+        <Stack direction="row" spacing={2} alignItems="center">
+          {(isLoadingNearby || isLoadingPins) && <CircularProgress color="primary" size={28} />}
+          <Typography variant="body2" color="text.secondary">
+            {isLoadingNearby || isLoadingPins
+              ? 'Loading nearby data…'
+              : `Showing pins within a ${DEFAULT_RADIUS_MILES}-mile radius`}
+          </Typography>
+        </Stack>
+
+        <Paper elevation={1} sx={{ p: 2 }}>
+          <Stack spacing={1.5}>
+            <Typography variant="subtitle2">GPS Spoofing</Typography>
+            <Stack spacing={1}>
+              <Typography variant="body2" color="text.secondary">
+                Step size: {spoofStepMiles.toFixed(2)} mile{spoofStepMiles === 1 ? '' : 's'}
+              </Typography>
+              <Slider
+                min={SPOOF_MIN_MILES}
+                max={SPOOF_MAX_MILES}
+                step={SPOOF_STEP_INCREMENT}
+                value={spoofStepMiles}
+                onChange={(_, value) => {
+                  if (typeof value === 'number') {
+                    setSpoofStepMiles(value);
+                  }
+                }}
+                valueLabelDisplay="auto"
+                valueLabelFormat={(value) => `${value.toFixed(2)} mi`}
+              />
+            </Stack>
+            <Stack direction="row" spacing={1} justifyContent="center">
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleSpoofMove('north')}
+                disabled={isOffline}
+                sx={{ minWidth: 96 }}
+              >
+                North
+              </Button>
+            </Stack>
+            <Stack direction="row" spacing={1} justifyContent="center">
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleSpoofMove('west')}
+                disabled={isOffline}
+                sx={{ minWidth: 96 }}
+              >
+                West
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleSpoofMove('east')}
+                disabled={isOffline}
+                sx={{ minWidth: 96 }}
+              >
+                East
+              </Button>
+            </Stack>
+            <Stack direction="row" spacing={1} justifyContent="center">
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleSpoofMove('south')}
+                disabled={isOffline}
+                sx={{ minWidth: 96 }}
+              >
+                South
+              </Button>
+            </Stack>
+            <Typography variant="caption" color="text.secondary" align="center">
+              Each press moves the simulated location ~2 miles.
+            </Typography>
+          </Stack>
+        </Paper>
+
+        {showChatRooms ? (
+          <Paper elevation={1} sx={{ p: 2 }}>
+            <Stack spacing={1.25}>
+              <Typography variant="subtitle2">Chat room coverage</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {isLoadingChatRooms
+                  ? 'Loading chat rooms…'
+                  : chatRoomPins.length
+                  ? `Displaying ${chatRoomPins.length} chat room${chatRoomPins.length === 1 ? '' : 's'} near this area.`
+                  : 'No chat rooms found near this location.'}
+              </Typography>
+              {selectedChatRoom ? (
+                <Stack spacing={0.5}>
+                  <Typography variant="subtitle1">
+                    {selectedChatRoom.name ?? 'Untitled chat room'}
+                    {selectedChatRoom.isGlobal ? ' (global)' : ''}
+                  </Typography>
+                  {selectedChatRoom.description ? (
+                    <Typography variant="body2" color="text.secondary">
+                      {selectedChatRoom.description}
+                    </Typography>
+                  ) : null}
+                  {selectedChatRoomRadiusLabel ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Radius: {selectedChatRoomRadiusLabel}
+                    </Typography>
+                  ) : null}
+                  {selectedChatRoomDistanceLabel ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Distance from you: {selectedChatRoomDistanceLabel}
+                    </Typography>
+                  ) : null}
+                </Stack>
+              ) : chatRoomPins.length ? (
+                <Typography variant="body2" color="text.secondary">
+                  Select a chat room marker to view details.
+                </Typography>
+              ) : null}
+            </Stack>
+          </Paper>
+        ) : null}
+      </Stack>
+
+      <Navbar />
+    </Box>
   );
 }
 
