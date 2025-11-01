@@ -1,0 +1,31 @@
+[
+  {
+    "_id": { "$oid": "68e061721329566a22d49001" },
+    "requesterId": { "$oid": "68e061721329566a22d474a8" },
+    "recipientId": { "$oid": "68e061721329566a22d474a7" },
+    "status": "pending",
+    "message": "Hey Alex! Want to team up for the community mapping sprint?",
+    "createdAt": { "$date": "2026-10-24T18:10:00.000Z" },
+    "updatedAt": { "$date": "2026-10-24T18:10:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d49002" },
+    "requesterId": { "$oid": "68e061721329566a22d47510" },
+    "recipientId": { "$oid": "68e061721329566a22d47511" },
+    "status": "accepted",
+    "message": "Let’s sync on the Green Tech Expo schedule.",
+    "respondedAt": { "$date": "2026-10-20T17:45:00.000Z" },
+    "createdAt": { "$date": "2026-10-19T12:20:00.000Z" },
+    "updatedAt": { "$date": "2026-10-20T17:45:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d49003" },
+    "requesterId": { "$oid": "68e061721329566a22d474a9" },
+    "recipientId": { "$oid": "68e061721329566a22d474b3" },
+    "status": "declined",
+    "message": "Would love to stay in touch after latte study sessions!",
+    "respondedAt": { "$date": "2026-10-22T19:00:00.000Z" },
+    "createdAt": { "$date": "2026-10-21T10:05:00.000Z" },
+    "updatedAt": { "$date": "2026-10-22T19:00:00.000Z" }
+  }
+]

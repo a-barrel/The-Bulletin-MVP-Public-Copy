@@ -632,6 +632,205 @@ export async function unblockUser(userId) {
   return payload;
 }
 
+export async function fetchModerationOverview() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/moderation/overview`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load moderation overview');
+  }
+
+  return payload;
+}
+
+export async function fetchModerationHistory(userId) {
+  if (!userId) {
+    throw new Error('User id is required to fetch moderation history');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/moderation/history/${encodeURIComponent(userId)}`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load moderation history');
+  }
+
+  return payload;
+}
+
+export async function submitModerationAction(input) {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/moderation/actions`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify(input)
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to perform moderation action');
+  }
+
+  return payload;
+}
+
+export async function fetchFriendOverview() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/friends/overview`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load friend overview');
+  }
+
+  return payload;
+}
+
+export async function sendFriendRequest({ targetUserId, message }) {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/friends/request`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ targetUserId, message })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to send friend request');
+  }
+
+  return payload;
+}
+
+export async function respondToFriendRequest(requestId, decision) {
+  if (!requestId) {
+    throw new Error('requestId is required to respond to a friend request');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(
+    `${baseUrl}/api/debug/friends/requests/${encodeURIComponent(requestId)}/respond`,
+    {
+      method: 'POST',
+      headers: await buildHeaders(),
+      body: JSON.stringify({ decision })
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to resolve friend request');
+  }
+
+  return payload;
+}
+
+export async function removeFriendRelationship(friendId) {
+  if (!friendId) {
+    throw new Error('friendId is required to remove a friend');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/friends/${encodeURIComponent(friendId)}`, {
+    method: 'DELETE',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to remove friend');
+  }
+
+  return payload;
+}
+
+export async function fetchDirectMessageThreads() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/direct-messages/threads`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load direct message threads');
+  }
+
+  return payload;
+}
+
+export async function fetchDirectMessageThread(threadId) {
+  if (!threadId) {
+    throw new Error('threadId is required to load a direct message thread');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(
+    `${baseUrl}/api/debug/direct-messages/threads/${encodeURIComponent(threadId)}`,
+    {
+      method: 'GET',
+      headers: await buildHeaders()
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load direct message thread');
+  }
+
+  return payload;
+}
+
+export async function createDirectMessageThread({ participantIds, topic, initialMessage }) {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/direct-messages/threads`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ participantIds, topic, initialMessage })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to create direct message thread');
+  }
+
+  return payload;
+}
+
+export async function sendDirectMessage(threadId, { body, attachments }) {
+  if (!threadId) {
+    throw new Error('threadId is required to send a direct message');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(
+    `${baseUrl}/api/debug/direct-messages/threads/${encodeURIComponent(threadId)}/messages`,
+    {
+      method: 'POST',
+      headers: await buildHeaders(),
+      body: JSON.stringify({ body, attachments })
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to send direct message');
+  }
+
+  return payload;
+}
+
 export async function createBookmark(input) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/debug/bookmarks`, {

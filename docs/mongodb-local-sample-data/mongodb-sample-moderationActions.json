@@ -1,0 +1,30 @@
+[
+  {
+    "_id": { "$oid": "68e061721329566a22d4a001" },
+    "userId": { "$oid": "68e061721329566a22d474a9" },
+    "moderatorId": { "$oid": "68e061721329566a22d474a7" },
+    "type": "warn",
+    "reason": "Reminded user about respectful language expectations.",
+    "createdAt": { "$date": "2026-10-18T15:45:00.000Z" },
+    "updatedAt": { "$date": "2026-10-18T15:45:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d4a002" },
+    "userId": { "$oid": "68e061721329566a22d474b3" },
+    "moderatorId": { "$oid": "68e061721329566a22d474a8" },
+    "type": "mute",
+    "reason": "Muted after repeated spam in Belmont Shore chat.",
+    "expiresAt": { "$date": "2026-10-26T12:00:00.000Z" },
+    "createdAt": { "$date": "2026-10-25T11:00:00.000Z" },
+    "updatedAt": { "$date": "2026-10-25T11:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d4a003" },
+    "userId": { "$oid": "68e061721329566a22d47511" },
+    "moderatorId": { "$oid": "68e061721329566a22d47510" },
+    "type": "block",
+    "reason": "Temporary block during investigation of reported harassment.",
+    "createdAt": { "$date": "2026-10-23T09:30:00.000Z" },
+    "updatedAt": { "$date": "2026-10-23T09:30:00.000Z" }
+  }
+]

@@ -1,0 +1,64 @@
+[
+  {
+    "_id": { "$oid": "68e061721329566a22d4b001" },
+    "participants": [
+      { "$oid": "68e061721329566a22d474a7" },
+      { "$oid": "68e061721329566a22d474a8" }
+    ],
+    "topic": "Neighborhood Cleanup Planning",
+    "lastMessageAt": { "$date": "2026-10-24T21:30:00.000Z" },
+    "messages": [
+      {
+        "_id": { "$oid": "68e061721329566a22d4c101" },
+        "senderId": { "$oid": "68e061721329566a22d474a7" },
+        "body": "Can we confirm supplies for Saturday morning?",
+        "attachments": [],
+        "createdAt": { "$date": "2026-10-24T20:45:00.000Z" }
+      },
+      {
+        "_id": { "$oid": "68e061721329566a22d4c102" },
+        "senderId": { "$oid": "68e061721329566a22d474a8" },
+        "body": "Yep! Gloves and bags are set. I’ll pick up the water cooler.",
+        "attachments": [],
+        "createdAt": { "$date": "2026-10-24T21:30:00.000Z" }
+      }
+    ],
+    "createdAt": { "$date": "2026-10-20T19:10:00.000Z" },
+    "updatedAt": { "$date": "2026-10-24T21:30:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d4b002" },
+    "participants": [
+      { "$oid": "68e061721329566a22d474b3" },
+      { "$oid": "68e061721329566a22d474a9" },
+      { "$oid": "68e061721329566a22d47511" }
+    ],
+    "topic": "Study Group Highlights",
+    "lastMessageAt": { "$date": "2026-10-23T05:15:00.000Z" },
+    "messages": [
+      {
+        "_id": { "$oid": "68e061721329566a22d4c201" },
+        "senderId": { "$oid": "68e061721329566a22d474b3" },
+        "body": "Reminder: upload draft slides tonight.",
+        "attachments": [],
+        "createdAt": { "$date": "2026-10-23T04:55:00.000Z" }
+      },
+      {
+        "_id": { "$oid": "68e061721329566a22d4c202" },
+        "senderId": { "$oid": "68e061721329566a22d474a9" },
+        "body": "Uploaded mine in the shared folder.",
+        "attachments": [],
+        "createdAt": { "$date": "2026-10-23T05:05:00.000Z" }
+      },
+      {
+        "_id": { "$oid": "68e061721329566a22d4c203" },
+        "senderId": { "$oid": "68e061721329566a22d47511" },
+        "body": "Working on speaker notes now.",
+        "attachments": [],
+        "createdAt": { "$date": "2026-10-23T05:15:00.000Z" }
+      }
+    ],
+    "createdAt": { "$date": "2026-10-18T23:30:00.000Z" },
+    "updatedAt": { "$date": "2026-10-23T05:15:00.000Z" }
+  }
+]
