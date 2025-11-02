@@ -1616,16 +1616,44 @@ router.get('/direct-messages/threads', async (req, res) => {
         roles: 1,
         accountStatus: 1,
         avatar: 1,
-        stats: 1
+        stats: 1,
+        relationships: 1
       })
       .lean();
 
-    const userLookup = new Map(users.map((doc) => [toIdString(doc._id), mapUserSummary(doc)]));
-    userLookup.set(toIdString(viewer._id), mapUserSummary(viewer));
+    const viewerIdString = toIdString(viewer._id);
+    const viewerBlockedSet = new Set(mapIdList(viewer?.relationships?.blockedUserIds));
+
+    const userDocMap = new Map(users.map((doc) => [toIdString(doc._id), doc]));
+    userDocMap.set(viewerIdString, viewer.toObject ? viewer.toObject() : viewer);
+
+    const filteredThreads = threads.filter((thread) => {
+      const participants = (thread.participants || []).map((participant) => toIdString(participant));
+      for (const participantId of participants) {
+        if (!participantId || participantId === viewerIdString) {
+          continue;
+        }
+        if (viewerBlockedSet.has(participantId)) {
+          return false;
+        }
+        const participantDoc = userDocMap.get(participantId);
+        if (participantDoc) {
+          const participantBlocked = new Set(mapIdList(participantDoc.relationships?.blockedUserIds));
+          if (participantBlocked.has(viewerIdString)) {
+            return false;
+          }
+        }
+      }
+      return true;
+    });
+
+    const userLookup = new Map(
+      Array.from(userDocMap.entries()).map(([id, doc]) => [id, mapUserSummary(doc)])
+    );
 
     res.json({
       viewer: mapUserSummary(viewer),
-      threads: threads.map((thread) => mapDirectMessageThread(thread, userLookup))
+      threads: filteredThreads.map((thread) => mapDirectMessageThread(thread, userLookup))
     });
   } catch (error) {
     console.error('Failed to load direct message threads', error);
@@ -1667,12 +1695,38 @@ router.get('/direct-messages/threads/:threadId', async (req, res) => {
         roles: 1,
         accountStatus: 1,
         avatar: 1,
-        stats: 1
+        stats: 1,
+        relationships: 1
       })
       .lean();
 
-    const userLookup = new Map(users.map((doc) => [toIdString(doc._id), mapUserSummary(doc)]));
-    userLookup.set(toIdString(viewer._id), mapUserSummary(viewer));
+    const viewerIdString = toIdString(viewer._id);
+    const viewerBlockedSet = new Set(mapIdList(viewer?.relationships?.blockedUserIds));
+    const userDocMap = new Map(users.map((doc) => [toIdString(doc._id), doc]));
+    userDocMap.set(viewerIdString, viewer.toObject ? viewer.toObject() : viewer);
+
+    const blockedParticipant = participantIds.some((participantId) => {
+      if (!participantId || participantId === viewerIdString) {
+        return false;
+      }
+      if (viewerBlockedSet.has(participantId)) {
+        return true;
+      }
+      const participantDoc = userDocMap.get(participantId);
+      if (!participantDoc) {
+        return false;
+      }
+      const participantBlocked = new Set(mapIdList(participantDoc.relationships?.blockedUserIds));
+      return participantBlocked.has(viewerIdString);
+    });
+
+    if (blockedParticipant) {
+      return res.status(403).json({ message: 'This conversation is no longer available.' });
+    }
+
+    const userLookup = new Map(
+      Array.from(userDocMap.entries()).map(([id, doc]) => [id, mapUserSummary(doc)])
+    );
 
     res.json({
       thread: mapDirectMessageThread(thread, userLookup, { includeMessages: true })
@@ -1714,12 +1768,30 @@ router.post('/direct-messages/threads', async (req, res) => {
         roles: 1,
         accountStatus: 1,
         avatar: 1,
-        stats: 1
+        stats: 1,
+        relationships: 1
       })
       .lean();
 
     if (users.length !== participantIds.length) {
       return res.status(404).json({ message: 'One or more participants were not found.' });
+    }
+
+    const viewerIdString = toIdString(viewer._id);
+    const viewerBlockedSet = new Set(mapIdList(viewer?.relationships?.blockedUserIds));
+
+    for (const userDoc of users) {
+      const participantId = toIdString(userDoc._id);
+      if (!participantId || participantId === viewerIdString) {
+        continue;
+      }
+      if (viewerBlockedSet.has(participantId)) {
+        return res.status(403).json({ message: 'You have blocked one or more selected participants.' });
+      }
+      const participantBlocked = new Set(mapIdList(userDoc.relationships?.blockedUserIds));
+      if (participantBlocked.has(viewerIdString)) {
+        return res.status(403).json({ message: 'One or more participants has blocked you.' });
+      }
     }
 
     const now = new Date();
@@ -1782,6 +1854,26 @@ router.post('/direct-messages/threads/:threadId/messages', async (req, res) => {
     const participantIds = thread.participants.map((participant) => toIdString(participant));
     if (!participantIds.includes(toIdString(viewer._id))) {
       return res.status(403).json({ message: 'You are not a participant in this thread.' });
+    }
+
+    const participants = await User.find({ _id: { $in: thread.participants } })
+      .select({ relationships: 1 })
+      .lean();
+    const viewerIdString = toIdString(viewer._id);
+    const viewerBlockedSet = new Set(mapIdList(viewer?.relationships?.blockedUserIds));
+
+    for (const participant of participants) {
+      const participantId = toIdString(participant._id);
+      if (!participantId || participantId === viewerIdString) {
+        continue;
+      }
+      if (viewerBlockedSet.has(participantId)) {
+        return res.status(403).json({ message: 'You have blocked one or more participants in this conversation.' });
+      }
+      const participantBlocked = new Set(mapIdList(participant.relationships?.blockedUserIds));
+      if (participantBlocked.has(viewerIdString)) {
+        return res.status(403).json({ message: 'One or more participants has blocked you.' });
+      }
     }
 
     const message = {
