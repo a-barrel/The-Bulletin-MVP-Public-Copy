@@ -55,19 +55,13 @@ import { auth } from '../firebase';
 import useChatManager from '../hooks/useChatManager';
 import useModerationTools from '../hooks/useModerationTools';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
-import { formatFriendlyTimestamp, formatRelativeTime } from '../utils/dates';
 import { useLocationContext } from '../contexts/LocationContext';
 import { useUpdates } from '../contexts/UpdatesContext';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constants/moderationActions';
 import { previewChatGif, createContentReport } from '../api/mongoDataApi';
 import { ATTACHMENT_ONLY_PLACEHOLDER, MAX_CHAT_ATTACHMENTS } from '../utils/chatAttachments';
-import {
-  getParticipantId,
-  getParticipantDisplayName,
-  resolveAvatarSrc,
-  resolveThreadParticipants
-} from '../utils/chatParticipants';
+import { resolveThreadParticipants } from '../utils/chatParticipants';
 import normalizeObjectId from '../utils/normalizeObjectId';
 
 import './ChatPage.css';
@@ -545,7 +539,7 @@ function ChatPage() {
       setRoomAttachmentStatus(null);
     }, 4000);
     return () => window.clearTimeout(timeoutId);
-  }, [roomAttachmentStatus]);
+  }, [roomAttachmentStatus, setRoomAttachmentStatus]);
 
   useEffect(() => {
     if (!dmAttachmentStatus) {
@@ -555,7 +549,7 @@ function ChatPage() {
       setDmAttachmentStatus(null);
     }, 4000);
     return () => window.clearTimeout(timeoutId);
-  }, [dmAttachmentStatus]);
+  }, [dmAttachmentStatus, setDmAttachmentStatus]);
 
   useEffect(() => {
     const gifQuery = getGifCommandQuery(dmMessageDraft);
@@ -732,7 +726,7 @@ function ChatPage() {
         attachments: [selected.attachment]
       });
       setDmMessageDraft('');
-      setDmAttachments([]);
+      resetDmAttachments();
       setDmAttachmentStatus(null);
       handleDmGifPreviewCancel();
       focusComposer(dmComposerInputRef);
@@ -741,12 +735,15 @@ function ChatPage() {
     }
   }, [
     dmGifPreview,
+    focusComposer,
     handleDmGifPreviewCancel,
     isDmGifPreviewLoading,
     isSendingDirectMessage,
+    resetDmAttachments,
     selectedDirectThreadId,
     sendDirectMessage,
-    focusComposer
+    setDmAttachmentStatus,
+    setDmMessageDraft
   ]);
 
   const handleChannelDialogTabChange = useCallback(
@@ -882,7 +879,15 @@ function ChatPage() {
         focusComposer(roomComposerInputRef);
       }
     },
-    [focusComposer, handleSendMessage, isUploadingRoomAttachment, messageDraft, resetRoomAttachments, roomAttachments]
+    [
+      focusComposer,
+      handleSendMessage,
+      isUploadingRoomAttachment,
+      messageDraft,
+      resetRoomAttachments,
+      roomAttachments,
+      setRoomAttachmentStatus
+    ]
   );
 
   const handleRoomMessageKeyDown = useCallback(
@@ -913,7 +918,14 @@ function ChatPage() {
         .catch(() => {})
         .finally(() => focusComposer(roomComposerInputRef));
     },
-    [focusComposer, handleMessageInputKeyDown, isUploadingRoomAttachment, messageDraft, roomAttachments]
+    [
+      focusComposer,
+      handleMessageInputKeyDown,
+      isUploadingRoomAttachment,
+      messageDraft,
+      roomAttachments,
+      setRoomAttachmentStatus
+    ]
   );
 
   const handleSendDirectMessage = useCallback(
@@ -966,6 +978,7 @@ function ChatPage() {
       dmAttachments,
       dmGifPreview,
       dmMessageDraft,
+      focusComposer,
       handleDmGifPreviewCancel,
       handleDmGifPreviewConfirm,
       isSendingDirectMessage,
@@ -974,7 +987,8 @@ function ChatPage() {
       resetDmAttachments,
       selectedDirectThreadId,
       sendDirectMessage,
-      focusComposer
+      setDmAttachmentStatus,
+      setDmMessageDraft
     ]
   );
 
@@ -1020,7 +1034,8 @@ function ChatPage() {
       handleDmGifPreviewShuffle,
       handleSendDirectMessage,
       isDmGifPreviewLoading,
-      isUploadingDmAttachment
+      isUploadingDmAttachment,
+      setDmAttachmentStatus
     ]
   );
 

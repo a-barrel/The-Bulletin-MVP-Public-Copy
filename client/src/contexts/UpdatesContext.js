@@ -3,6 +3,8 @@ import { createContext, useContext } from 'react';
 const UpdatesContext = createContext({
   unreadCount: 0,
   unreadBookmarkCount: 0,
+  unreadDiscussionsCount: 0,
+  unreadEventsCount: 0,
   setUnreadCount: () => {},
   setUnreadBookmarkCount: () => {},
   setUnreadDiscussionsCount: () => {},

@@ -515,6 +515,8 @@ function App() {
     () => ({
       unreadCount,
       unreadBookmarkCount,
+      unreadDiscussionsCount,
+      unreadEventsCount,
       setUnreadCount,
       setUnreadBookmarkCount,
       setUnreadDiscussionsCount,
@@ -524,6 +526,8 @@ function App() {
     [
       unreadBookmarkCount,
       unreadCount,
+      unreadDiscussionsCount,
+      unreadEventsCount,
       refreshUnreadCount,
       setUnreadBookmarkCount,
       setUnreadCount,

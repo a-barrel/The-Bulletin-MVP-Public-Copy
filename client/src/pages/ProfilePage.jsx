@@ -167,7 +167,6 @@ function ProfilePage() {
     hasProfile,
     bioText,
     badgeList,
-    mutualFriends,
     mutualFriendPreview,
     mutualFriendCount,
     statsVisible,

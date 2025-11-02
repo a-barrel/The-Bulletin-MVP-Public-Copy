@@ -238,7 +238,7 @@ function UpdatesPage() {
                   onClick={async () => {
                     try {
                       await pushNotifications.requestPermission();
-                    } catch (error) {
+                    } catch {
                       // status handled by hook
                     }
                   }}

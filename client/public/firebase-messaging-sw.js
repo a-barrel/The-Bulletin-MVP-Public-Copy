@@ -1,4 +1,5 @@
-/* global firebase */
+/* eslint-env worker */
+/* global firebase, importScripts, clients */
 
 let firebaseInitialized = false;
 
@@ -64,4 +65,3 @@ self.addEventListener('push', (event) => {
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
-
