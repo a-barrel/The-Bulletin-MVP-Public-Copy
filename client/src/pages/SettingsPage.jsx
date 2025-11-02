@@ -1,3 +1,4 @@
+/* NOTE: Page exports configuration alongside the component. */
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -72,7 +73,6 @@ function SettingsPage() {
     saveStatus,
     setSaveStatus,
     isSaving,
-    baselineSettings,
     hasChanges,
     blockedOverlayOpen,
     blockedUsers,

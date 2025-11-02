@@ -1,3 +1,4 @@
+/* NOTE: Page exports configuration alongside the component. */
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ListPage.css';

@@ -1,3 +1,4 @@
+/* NOTE: Page exports configuration alongside the component. */
 import runtimeConfig from '../config/runtime';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';

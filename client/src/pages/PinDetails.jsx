@@ -1,3 +1,4 @@
+/* NOTE: Page exports configuration alongside the component. */
 import React from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import './PinDetails.css';
@@ -54,7 +55,6 @@ function PinDetails() {
   const {
     pin,
     isEventPin,
-    pinExpired,
     isInteractionLocked,
     pinTypeHeading,
     interactionOverlay,

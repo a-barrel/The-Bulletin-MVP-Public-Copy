@@ -1,3 +1,4 @@
+/* NOTE: Page exports configuration alongside the component. */
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppBar from '@mui/material/AppBar';
@@ -50,7 +51,6 @@ function MapPage() {
     chatRoomPins,
     showChatRooms,
     setShowChatRooms,
-    isUsingFallbackLocation,
     isSharing,
     shareDisabled,
     shareHelperText,

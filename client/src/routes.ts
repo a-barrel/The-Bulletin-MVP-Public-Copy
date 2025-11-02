@@ -26,8 +26,8 @@ export const routes = {
     base: '/updates'
   },
   directMessages: {
-    base: '/direct-messages',
-    thread: (threadId: string | number) => `/direct-messages/${encodeSegment(threadId)}`
+    base: '/chat?tab=direct',
+    thread: (threadId: string | number) => `/chat?tab=direct&thread=${encodeSegment(threadId)}`
   },
   list: {
     base: '/list'

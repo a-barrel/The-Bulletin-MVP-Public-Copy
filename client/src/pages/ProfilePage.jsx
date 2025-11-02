@@ -1,3 +1,4 @@
+/* NOTE: Page exports configuration alongside the component. */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
@@ -96,7 +97,7 @@ const formatEntryValue = (value) => {
   if (typeof value === 'object') {
     try {
       return JSON.stringify(value, null, 2);
-    } catch (error) {
+    } catch {
       return '[unserializable object]';
     }
   }
@@ -396,15 +397,12 @@ function ProfilePage() {
           reason: '',
           durationMinutes: prev.type === 'mute' ? prev.durationMinutes || '15' : prev.durationMinutes
         }));
-      } catch (error) {
+      } catch {
         // Errors surface through hook status; no-op.
       }
     },
     [moderationForm, moderationHasAccess, moderationTargetId, recordModerationAction]
   );
-
-  const canSubmitModeration =
-    Boolean(moderationTargetId) && moderationHasAccess !== false && !isOffline;
 
   const moderationAccessPending =
     !canEditProfile &&

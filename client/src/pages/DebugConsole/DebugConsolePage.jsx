@@ -18,7 +18,6 @@ import {
   EXPERIMENT_TITLE,
   LIVE_CHAT_TAB_ID,
   STORAGE_TAB_ID,
-  pageConfig
 } from './constants';
 import PinsTab from './tabs/PinsTab';
 import ProfilesTab from './tabs/ProfilesTab';

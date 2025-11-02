@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+/* NOTE: Page exports navigation config alongside the component. */
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
   Box,
   Stack,
   Typography,
-  Paper,
   Button,
   IconButton,
   List,
   ListItemButton,
+  ListItemAvatar,
   ListItemText,
   ListItemSecondaryAction,
   Chip,
@@ -23,7 +24,11 @@ import {
   FormControlLabel,
   CircularProgress,
   Alert,
-  MenuItem
+  Avatar,
+  MenuItem,
+  Tabs,
+  Tab,
+  Snackbar
 } from '@mui/material';
 import SmsIcon from '@mui/icons-material/Sms';
 import AddCommentIcon from '@mui/icons-material/AddComment';
@@ -31,24 +36,29 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import RoomIcon from '@mui/icons-material/Room';
 import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
+import MarkUnreadChatAltIcon from '@mui/icons-material/MarkUnreadChatAlt';
+import CloseIcon from '@mui/icons-material/Close';
 import updatesIcon from '../assets/UpdateIcon.svg';
+import AvatarIcon from '../assets/AvatarIcon.svg';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
 
 import Navbar from '../components/Navbar';
 import GlobalNavMenu from '../components/GlobalNavMenu';
 import MessageBubble from '../components/MessageBubble';
 import ChatComposer from '../components/ChatComposer';
+import useDirectMessages from '../hooks/useDirectMessages';
 
 import { auth } from '../firebase';
 import useChatManager from '../hooks/useChatManager';
 import useModerationTools from '../hooks/useModerationTools';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
-import { formatFriendlyTimestamp, formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
+import { formatFriendlyTimestamp, formatRelativeTime } from '../utils/dates';
 import { useLocationContext } from '../contexts/LocationContext';
 import { useUpdates } from '../contexts/UpdatesContext';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constants/moderationActions';
 import normalizeObjectId from '../utils/normalizeObjectId';
+import { previewChatGif, uploadImage } from '../api/mongoDataApi';
 
 import './ChatPage.css';
 
@@ -63,6 +73,198 @@ export const pageConfig = {
   protected: true
 };
 
+const MAX_CHAT_ATTACHMENTS = 10;
+const ATTACHMENT_ONLY_PLACEHOLDER = '[attachment-only-message]';
+
+const generateAttachmentId = () =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `attachment-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+const isSupportedImageFile = (file) => {
+  if (!file) {
+    return false;
+  }
+  if (file.type && file.type.startsWith('image/')) {
+    return true;
+  }
+  if (file.name) {
+    return /\.(jpe?g|png|gif|webp|avif|heic|heif)$/i.test(file.name);
+  }
+  return false;
+};
+
+const getParticipantId = (participant) => {
+  if (!participant) {
+    return null;
+  }
+  if (typeof participant === 'string') {
+    return normalizeObjectId(participant);
+  }
+  return normalizeObjectId(
+    participant.id ||
+      participant._id ||
+      (typeof participant?.id === 'object' && participant.id !== null && '$oid' in participant.id
+        ? participant.id.$oid
+        : null)
+  );
+};
+
+const getParticipantDisplayName = (participant) => {
+  if (!participant || typeof participant === 'string') {
+    return typeof participant === 'string' ? participant : '';
+  }
+  return (
+    participant.displayName ||
+    participant.username ||
+    participant.email ||
+    participant.id ||
+    participant._id ||
+    ''
+  );
+};
+
+const resolveAvatarSrc = (participant) => {
+  if (!participant) {
+    return AvatarIcon;
+  }
+  const avatar = participant.avatar;
+  const url =
+    typeof avatar === 'string'
+      ? avatar
+      : typeof avatar?.url === 'string'
+      ? avatar.url
+      : typeof avatar?.thumbnailUrl === 'string'
+      ? avatar.thumbnailUrl
+      : null;
+  if (typeof url === 'string' && url.trim()) {
+    const trimmed = url.trim();
+    if (trimmed.startsWith('http') || trimmed.startsWith('data:')) {
+      return trimmed;
+    }
+    return `/${trimmed.replace(/^\/+/, '')}`;
+  }
+  return AvatarIcon;
+};
+
+function AttachmentPreview({ attachments, onRemove, status, uploading, padding }) {
+  if (!attachments.length && !status && !uploading) {
+    return null;
+  }
+
+  return (
+    <>
+      {status ? (
+        <Box sx={{ px: padding, pb: 1 }}>
+          <Alert severity={status.type}>{status.message}</Alert>
+        </Box>
+      ) : null}
+      {attachments.length ? (
+        <Box sx={{ px: padding, pb: 1 }}>
+          <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+            {attachments.map((item) => (
+              <Box
+                key={item.id}
+                sx={{
+                  position: 'relative',
+                  width: 132,
+                  height: 132,
+                  borderRadius: 1.5,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  overflow: 'hidden',
+                  backgroundColor: 'background.paper',
+                  boxShadow: 3
+                }}
+              >
+                <Box
+                  component="img"
+                  src={item.asset.url}
+                  alt={item.asset.description || 'Chat attachment'}
+                  sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                {typeof onRemove === 'function' ? (
+                  <IconButton
+                    size="small"
+                    aria-label="Remove attachment"
+                    onClick={() => onRemove(item.id)}
+                    sx={{
+                      position: 'absolute',
+                      top: 4,
+                      right: 4,
+                      backgroundColor: 'rgba(0,0,0,0.55)',
+                      color: '#fff',
+                      '&:hover': {
+                        backgroundColor: 'rgba(0,0,0,0.75)'
+                      }
+                    }}
+                  >
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                ) : null}
+              </Box>
+            ))}
+          </Stack>
+        </Box>
+      ) : null}
+      {uploading ? (
+        <Box sx={{ px: padding, pb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CircularProgress size={16} />
+          <Typography variant="caption" color="text.secondary">
+            Uploading…
+          </Typography>
+        </Box>
+      ) : null}
+    </>
+  );
+}
+
+AttachmentPreview.defaultProps = {
+  attachments: [],
+  onRemove: undefined,
+  status: null,
+  uploading: false,
+  padding: { xs: 2, md: 3 }
+};
+
+const resolveThreadParticipants = (thread, viewerId) => {
+  if (!thread) {
+    return [];
+  }
+  const participants = Array.isArray(thread.participants) ? thread.participants : [];
+  const names = [];
+  const normalizedViewerId = viewerId ? normalizeObjectId(viewerId) : null;
+  participants.forEach((participant) => {
+    const participantId = participant?.id || participant?._id || participant;
+    const normalizedParticipantId = normalizeObjectId(participantId);
+    if (normalizedParticipantId && normalizedViewerId && normalizedParticipantId === normalizedViewerId) {
+      return;
+    }
+    const name =
+      participant?.displayName ||
+      participant?.username ||
+      participant?.email ||
+      participant?.id ||
+      participantId;
+    if (name) {
+      names.push(name);
+    }
+  });
+  return names.length ? names : ['You'];
+};
+
+const getGifCommandQuery = (value) => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed.toLowerCase().startsWith('/gif')) {
+    return null;
+  }
+  const query = trimmed.slice(4).trim();
+  return query.length ? query : null;
+};
+
 function ChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -75,8 +277,8 @@ function ChatPage() {
   const viewerLongitude = viewerLocation?.longitude ?? null;
 
   const {
-    debugMode,
-    setDebugMode,
+    debugMode: _debugMode,
+    setDebugMode: _setDebugMode,
     authUser,
     rooms,
     roomsError,
@@ -88,9 +290,7 @@ function ChatPage() {
     uniqueMessages,
     messagesError,
     isLoadingMessages,
-    handleRefreshCurrentRoom,
     presenceError,
-    activeUserCount,
     messageDraft,
     setMessageDraft,
     handleSendMessage,
@@ -130,6 +330,24 @@ function ChatPage() {
     resetActionStatus: resetModerationActionStatus
   } = useModerationTools({ autoLoad: false });
 
+  const {
+    viewer: dmViewer,
+    threads: dmThreads,
+    refreshThreads: refreshDmThreads,
+    isLoadingThreads: isLoadingDmThreads,
+    threadsStatus: dmThreadsStatus,
+    hasAccess: directMessagesHasAccess,
+    selectThread: selectDirectThread,
+    selectedThreadId: selectedDirectThreadId,
+    threadDetail: directThreadDetail,
+    isLoadingThread: isLoadingDirectThread,
+    threadStatus: directThreadStatus,
+    sendMessage: sendDirectMessage,
+    isSending: isSendingDirectMessage,
+    sendStatus: directSendStatus,
+    resetSendStatus: resetDirectSendStatus
+  } = useDirectMessages();
+
   const [moderationInitAttempted, setModerationInitAttempted] = useState(false);
   const [moderationContext, setModerationContext] = useState(null);
   const [moderationForm, setModerationForm] = useState({
@@ -137,13 +355,28 @@ function ChatPage() {
     reason: '',
     durationMinutes: '15'
   });
-  const [isRoomsDialogOpen, setIsRoomsDialogOpen] = useState(false);
+  const [channelTab, setChannelTab] = useState('rooms');
+  const [channelDialogTab, setChannelDialogTab] = useState('rooms');
+  const [isChannelDialogOpen, setIsChannelDialogOpen] = useState(false);
+  const [dmMessageDraft, setDmMessageDraft] = useState('');
+  const dmGifPreviewRequestRef = useRef(null);
+  const [dmGifPreview, setDmGifPreview] = useState(null);
+  const [dmGifPreviewError, setDmGifPreviewError] = useState(null);
+  const [isDmGifPreviewLoading, setIsDmGifPreviewLoading] = useState(false);
+  const [roomAttachments, setRoomAttachments] = useState([]);
+  const [roomAttachmentStatus, setRoomAttachmentStatus] = useState(null);
+  const [isUploadingRoomAttachment, setIsUploadingRoomAttachment] = useState(false);
+  const [dmAttachments, setDmAttachments] = useState([]);
+  const [dmAttachmentStatus, setDmAttachmentStatus] = useState(null);
+  const [isUploadingDmAttachment, setIsUploadingDmAttachment] = useState(false);
 
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [scrollBtnBottom, setScrollBtnBottom] = useState(0);
   const containerRef = useRef(null);
   const inputContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const roomAttachmentInputRef = useRef(null);
+  const dmAttachmentInputRef = useRef(null);
 
   const scrollMessagesToBottom = useCallback(() => {
     const container = containerRef.current;
@@ -211,12 +444,15 @@ function ChatPage() {
   }, []);
 
   useEffect(() => {
+    if (channelTab !== 'rooms') {
+      return;
+    }
     if (!uniqueMessages.length) {
       return;
     }
     const timer = setTimeout(scrollMessagesToBottom, 75);
     return () => clearTimeout(timer);
-  }, [uniqueMessages.length, scrollMessagesToBottom]);
+  }, [channelTab, uniqueMessages.length, scrollMessagesToBottom]);
 
   useEffect(() => {
     if (isOffline || moderationHasAccess === false) {
@@ -236,6 +472,61 @@ function ChatPage() {
   ]);
 
   useEffect(() => {
+    if (channelTab === 'direct' && directMessagesHasAccess === false) {
+      setChannelTab('rooms');
+    }
+  }, [channelTab, directMessagesHasAccess]);
+
+  useEffect(() => {
+    if (channelDialogTab === 'direct' && directMessagesHasAccess === false) {
+      setChannelDialogTab('rooms');
+    }
+  }, [channelDialogTab, directMessagesHasAccess]);
+
+  useEffect(() => {
+    if (channelTab === 'direct') {
+      refreshDmThreads().catch(() => {});
+    }
+  }, [channelTab, refreshDmThreads]);
+
+  useEffect(() => {
+    setRoomAttachments([]);
+    setRoomAttachmentStatus(null);
+  }, [selectedRoomId]);
+
+  useEffect(() => {
+    if (channelTab !== 'direct') {
+      return;
+    }
+    if (directMessagesHasAccess === false) {
+      return;
+    }
+    if (selectedDirectThreadId || dmThreads.length === 0) {
+      return;
+    }
+    selectDirectThread(dmThreads[0].id);
+  }, [channelTab, directMessagesHasAccess, dmThreads, selectedDirectThreadId, selectDirectThread]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tabParam = params.get('tab');
+    if (tabParam === 'direct' && directMessagesHasAccess !== false) {
+      setChannelTab('direct');
+      setChannelDialogTab('direct');
+      const threadParam = params.get('thread');
+      if (threadParam) {
+        selectDirectThread(threadParam);
+      }
+      return;
+    }
+
+    if (tabParam !== 'direct') {
+      setChannelTab((prev) => (prev === 'direct' ? 'rooms' : prev));
+      setChannelDialogTab((prev) => (prev === 'direct' ? 'rooms' : prev));
+    }
+  }, [directMessagesHasAccess, location.search, selectDirectThread]);
+
+  useEffect(() => {
     if (!moderationActionStatus) {
       return undefined;
     }
@@ -248,6 +539,57 @@ function ChatPage() {
   }, [moderationActionStatus, resetModerationActionStatus]);
 
   useEffect(() => {
+    if (!directSendStatus) {
+      return undefined;
+    }
+    const timeoutId = window.setTimeout(() => {
+      resetDirectSendStatus();
+    }, 4000);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [directSendStatus, resetDirectSendStatus]);
+
+  useEffect(() => {
+    if (!roomAttachmentStatus) {
+      return undefined;
+    }
+    const timeoutId = window.setTimeout(() => {
+      setRoomAttachmentStatus(null);
+    }, 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [roomAttachmentStatus]);
+
+  useEffect(() => {
+    if (!dmAttachmentStatus) {
+      return undefined;
+    }
+    const timeoutId = window.setTimeout(() => {
+      setDmAttachmentStatus(null);
+    }, 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [dmAttachmentStatus]);
+
+  useEffect(() => {
+    const gifQuery = getGifCommandQuery(dmMessageDraft);
+    if (!gifQuery) {
+      if (dmGifPreview || dmGifPreviewError || isDmGifPreviewLoading) {
+        dmGifPreviewRequestRef.current = null;
+        setDmGifPreview(null);
+        setDmGifPreviewError(null);
+        setIsDmGifPreviewLoading(false);
+      }
+      return;
+    }
+
+    if (dmGifPreview && dmGifPreview.query !== gifQuery && !isDmGifPreviewLoading) {
+      dmGifPreviewRequestRef.current = null;
+      setDmGifPreview(null);
+      setDmGifPreviewError(null);
+    }
+  }, [dmGifPreview, dmGifPreviewError, dmMessageDraft, isDmGifPreviewLoading]);
+
+  useEffect(() => {
     if (!moderationContext) {
       return;
     }
@@ -258,6 +600,16 @@ function ChatPage() {
     });
   }, [moderationContext]);
 
+  useEffect(() => {
+    dmGifPreviewRequestRef.current = null;
+    setDmGifPreview(null);
+    setDmGifPreviewError(null);
+    setIsDmGifPreviewLoading(false);
+    setDmMessageDraft('');
+    setDmAttachments([]);
+    setDmAttachmentStatus(null);
+  }, [selectedDirectThreadId]);
+
   const handleNotifications = useCallback(() => {
     navigate('/updates');
   }, [navigate]);
@@ -265,9 +617,514 @@ function ChatPage() {
   const handleChooseRoom = useCallback(
     (roomId) => {
       handleSelectRoom(roomId);
-      setIsRoomsDialogOpen(false);
+      setChannelTab('rooms');
+      setChannelDialogTab('rooms');
+      setIsChannelDialogOpen(false);
     },
     [handleSelectRoom]
+  );
+
+  const handleSelectDirectThreadId = useCallback(
+    (threadId) => {
+      selectDirectThread(threadId);
+      setChannelTab('direct');
+      setChannelDialogTab('direct');
+      setIsChannelDialogOpen(false);
+    },
+    [selectDirectThread]
+  );
+
+  const handleOpenChannelDialog = useCallback(() => {
+    setChannelDialogTab(
+      channelTab === 'direct' && directMessagesHasAccess !== false ? 'direct' : 'rooms'
+    );
+    setIsChannelDialogOpen(true);
+  }, [channelTab, directMessagesHasAccess]);
+
+  const requestDmGifPreview = useCallback(
+    async (query) => {
+      if (!authUser) {
+        return;
+      }
+      const trimmedQuery = typeof query === 'string' ? query.trim() : '';
+      if (!trimmedQuery) {
+        return;
+      }
+
+      const requestId = Symbol('dm-gif-preview');
+      dmGifPreviewRequestRef.current = requestId;
+      setDmGifPreview({ query: trimmedQuery, options: [], selectedIndex: null });
+      setIsDmGifPreviewLoading(true);
+      setDmGifPreviewError(null);
+
+      try {
+        const payload = await previewChatGif(trimmedQuery, { limit: 12 });
+        if (dmGifPreviewRequestRef.current !== requestId) {
+          return;
+        }
+        const options = Array.isArray(payload?.results) ? payload.results : [];
+        if (!options.length) {
+          setDmGifPreview({ query: trimmedQuery, options: [], selectedIndex: null });
+          setDmGifPreviewError(`No GIFs found for "${trimmedQuery}". Try another search.`);
+          return;
+        }
+        setDmGifPreview({ query: trimmedQuery, options, selectedIndex: 0 });
+      } catch (error) {
+        if (dmGifPreviewRequestRef.current !== requestId) {
+          return;
+        }
+        setDmGifPreviewError(error?.message || 'Failed to load GIF preview.');
+      } finally {
+        if (dmGifPreviewRequestRef.current === requestId) {
+          setIsDmGifPreviewLoading(false);
+        }
+      }
+    },
+    [authUser]
+  );
+
+  const handleDmGifPreviewCancel = useCallback(() => {
+    dmGifPreviewRequestRef.current = null;
+    setDmGifPreview(null);
+    setDmGifPreviewError(null);
+    setIsDmGifPreviewLoading(false);
+  }, []);
+
+  const handleDmGifPreviewShuffle = useCallback(() => {
+    if (isDmGifPreviewLoading) {
+      return;
+    }
+    if (!dmGifPreview) {
+      const query = getGifCommandQuery(dmMessageDraft);
+      if (query) {
+        setDmGifPreviewError(null);
+        requestDmGifPreview(query);
+      }
+      return;
+    }
+    setDmGifPreviewError(null);
+    const options = Array.isArray(dmGifPreview.options) ? dmGifPreview.options : [];
+    if (options.length > 1) {
+      setDmGifPreview((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const opts = Array.isArray(prev.options) ? prev.options : [];
+        if (opts.length < 2) {
+          return prev;
+        }
+        const nextIndex =
+          typeof prev.selectedIndex === 'number' ? (prev.selectedIndex + 1) % opts.length : 0;
+        return { ...prev, selectedIndex: nextIndex };
+      });
+    } else if (dmGifPreview.query) {
+      requestDmGifPreview(dmGifPreview.query);
+    }
+  }, [dmGifPreview, dmMessageDraft, isDmGifPreviewLoading, requestDmGifPreview]);
+
+  const handleDmGifPreviewConfirm = useCallback(async () => {
+    if (
+      isDmGifPreviewLoading ||
+      isSendingDirectMessage ||
+      !dmGifPreview ||
+      typeof dmGifPreview.selectedIndex !== 'number'
+    ) {
+      return;
+    }
+    const options = Array.isArray(dmGifPreview.options) ? dmGifPreview.options : [];
+    const selected = options[dmGifPreview.selectedIndex];
+    if (!selected?.attachment) {
+      return;
+    }
+    if (!selectedDirectThreadId) {
+      return;
+    }
+    try {
+      await sendDirectMessage({
+        threadId: selectedDirectThreadId,
+        body: `GIF: ${dmGifPreview.query}`,
+        attachments: [selected.attachment]
+      });
+      setDmMessageDraft('');
+      setDmAttachments([]);
+      setDmAttachmentStatus(null);
+      handleDmGifPreviewCancel();
+    } catch {
+      // surfaced via send status
+    }
+  }, [
+    dmGifPreview,
+    handleDmGifPreviewCancel,
+    isDmGifPreviewLoading,
+    isSendingDirectMessage,
+    selectedDirectThreadId,
+    sendDirectMessage
+  ]);
+
+  const handleChannelDialogTabChange = useCallback(
+    (event, value) => {
+      if (value === 'direct' && directMessagesHasAccess === false) {
+        return;
+      }
+      setChannelDialogTab(value);
+    },
+    [directMessagesHasAccess]
+  );
+
+  const handleOpenRoomAttachmentPicker = useCallback(() => {
+    if (isOffline) {
+      setRoomAttachmentStatus({ type: 'error', message: 'Reconnect to upload images.' });
+      return;
+    }
+    if (!selectedRoomId) {
+      setRoomAttachmentStatus({ type: 'error', message: 'Select a room before uploading images.' });
+      return;
+    }
+    if (roomAttachments.length >= MAX_CHAT_ATTACHMENTS) {
+      setRoomAttachmentStatus({ type: 'error', message: 'You can attach up to 10 images per message.' });
+      return;
+    }
+    roomAttachmentInputRef.current?.click();
+  }, [isOffline, roomAttachments.length, selectedRoomId]);
+
+  const handleOpenDmAttachmentPicker = useCallback(() => {
+    if (isOffline) {
+      setDmAttachmentStatus({ type: 'error', message: 'Reconnect to upload images.' });
+      return;
+    }
+    if (directMessagesHasAccess === false) {
+      setDmAttachmentStatus({ type: 'error', message: 'Direct messages are disabled for your account.' });
+      return;
+    }
+    if (!selectedDirectThreadId) {
+      setDmAttachmentStatus({ type: 'error', message: 'Select a conversation before uploading images.' });
+      return;
+    }
+    if (dmAttachments.length >= MAX_CHAT_ATTACHMENTS) {
+      setDmAttachmentStatus({ type: 'error', message: 'You can attach up to 10 images per message.' });
+      return;
+    }
+    dmAttachmentInputRef.current?.click();
+  }, [directMessagesHasAccess, dmAttachments.length, isOffline, selectedDirectThreadId]);
+
+  const handleRemoveRoomAttachment = useCallback((attachmentId) => {
+    setRoomAttachments((prev) => prev.filter((item) => item.id !== attachmentId));
+  }, []);
+
+  const handleRemoveDmAttachment = useCallback((attachmentId) => {
+    setDmAttachments((prev) => prev.filter((item) => item.id !== attachmentId));
+  }, []);
+
+  const handleRoomAttachmentInputChange = useCallback(
+    async (event) => {
+      const fileList = Array.from(event.target.files ?? []);
+      if (event.target) {
+        event.target.value = '';
+      }
+      if (!fileList.length) {
+        return;
+      }
+      if (isOffline) {
+        setRoomAttachmentStatus({ type: 'error', message: 'Reconnect to upload images.' });
+        return;
+      }
+
+      const remainingSlots = MAX_CHAT_ATTACHMENTS - roomAttachments.length;
+      if (remainingSlots <= 0) {
+        setRoomAttachmentStatus({ type: 'error', message: 'You can attach up to 10 images per message.' });
+        return;
+      }
+
+      const limitedFiles = fileList.slice(0, remainingSlots);
+      if (fileList.length > remainingSlots) {
+        setRoomAttachmentStatus({
+          type: 'info',
+          message: `Only the first ${remainingSlots} file${remainingSlots === 1 ? '' : 's'} were attached.`
+        });
+      }
+
+      const supportedFiles = limitedFiles.filter((file) => isSupportedImageFile(file));
+      if (!supportedFiles.length) {
+        setRoomAttachmentStatus({ type: 'error', message: 'Only image and GIF files are supported.' });
+        return;
+      }
+      if (supportedFiles.length !== limitedFiles.length) {
+        setRoomAttachmentStatus({ type: 'error', message: 'Unsupported file type removed. Only image and GIF files are supported.' });
+      }
+
+      setIsUploadingRoomAttachment(true);
+      try {
+        const uploadedEntries = [];
+        for (const file of supportedFiles) {
+          try {
+            const uploaded = await uploadImage(file);
+            const url = uploaded?.url || uploaded?.path;
+            if (!url) {
+              throw new Error(`Upload failed for ${file.name || 'image'}.`);
+            }
+            uploadedEntries.push({
+              id: generateAttachmentId(),
+              asset: {
+                url,
+                width: uploaded?.width,
+                height: uploaded?.height,
+                mimeType: uploaded?.mimeType || file.type || undefined,
+                description: uploaded?.fileName || file.name || undefined,
+                uploadedAt: uploaded?.uploadedAt
+              }
+            });
+          } catch (error) {
+            setRoomAttachmentStatus({
+              type: 'error',
+              message: error?.message || `Failed to upload ${file.name || 'image'}.`
+            });
+          }
+        }
+
+        if (uploadedEntries.length) {
+          setRoomAttachments((prev) => [...prev, ...uploadedEntries]);
+        }
+      } finally {
+        setIsUploadingRoomAttachment(false);
+      }
+    },
+    [isOffline, roomAttachments.length]
+  );
+
+  const handleDmAttachmentInputChange = useCallback(
+    async (event) => {
+      const fileList = Array.from(event.target.files ?? []);
+      if (event.target) {
+        event.target.value = '';
+      }
+      if (!fileList.length) {
+        return;
+      }
+      if (isOffline) {
+        setDmAttachmentStatus({ type: 'error', message: 'Reconnect to upload images.' });
+        return;
+      }
+      if (directMessagesHasAccess === false) {
+        setDmAttachmentStatus({ type: 'error', message: 'Direct messages are disabled for your account.' });
+        return;
+      }
+
+      const remainingSlots = MAX_CHAT_ATTACHMENTS - dmAttachments.length;
+      if (remainingSlots <= 0) {
+        setDmAttachmentStatus({ type: 'error', message: 'You can attach up to 10 images per message.' });
+        return;
+      }
+
+      const limitedFiles = fileList.slice(0, remainingSlots);
+      if (fileList.length > remainingSlots) {
+        setDmAttachmentStatus({
+          type: 'info',
+          message: `Only the first ${remainingSlots} file${remainingSlots === 1 ? '' : 's'} were attached.`
+        });
+      }
+
+      const supportedFiles = limitedFiles.filter((file) => isSupportedImageFile(file));
+      if (!supportedFiles.length) {
+        setDmAttachmentStatus({ type: 'error', message: 'Only image and GIF files are supported.' });
+        return;
+      }
+      if (supportedFiles.length !== limitedFiles.length) {
+        setDmAttachmentStatus({ type: 'error', message: 'Unsupported file type removed. Only image and GIF files are supported.' });
+      }
+
+      setIsUploadingDmAttachment(true);
+      try {
+        const uploadedEntries = [];
+        for (const file of supportedFiles) {
+          try {
+            const uploaded = await uploadImage(file);
+            const url = uploaded?.url || uploaded?.path;
+            if (!url) {
+              throw new Error(`Upload failed for ${file.name || 'image'}.`);
+            }
+            uploadedEntries.push({
+              id: generateAttachmentId(),
+              asset: {
+                url,
+                width: uploaded?.width,
+                height: uploaded?.height,
+                mimeType: uploaded?.mimeType || file.type || undefined,
+                description: uploaded?.fileName || file.name || undefined,
+                uploadedAt: uploaded?.uploadedAt
+              }
+            });
+          } catch (error) {
+            setDmAttachmentStatus({
+              type: 'error',
+              message: error?.message || `Failed to upload ${file.name || 'image'}.`
+            });
+          }
+        }
+
+        if (uploadedEntries.length) {
+          setDmAttachments((prev) => [...prev, ...uploadedEntries]);
+        }
+      } finally {
+        setIsUploadingDmAttachment(false);
+      }
+    },
+    [directMessagesHasAccess, dmAttachments.length, isOffline]
+  );
+
+  const handleRoomSendMessage = useCallback(
+    async (event) => {
+      if (isUploadingRoomAttachment) {
+        event.preventDefault();
+        setRoomAttachmentStatus({ type: 'info', message: 'Please wait for uploads to finish.' });
+        return;
+      }
+      const attachments = roomAttachments.map((item) => item.asset);
+      const hasText = messageDraft.trim().length > 0;
+      const options = {
+        attachments,
+        messageOverride: hasText || attachments.length === 0 ? undefined : ATTACHMENT_ONLY_PLACEHOLDER
+      };
+      const sent = await handleSendMessage(event, options);
+      if (sent) {
+        setRoomAttachments([]);
+        setRoomAttachmentStatus(null);
+      }
+    },
+    [handleSendMessage, isUploadingRoomAttachment, messageDraft, roomAttachments]
+  );
+
+  const handleRoomMessageKeyDown = useCallback(
+    (event) => {
+      const isPlainEnter =
+        event.key === 'Enter' &&
+        !event.shiftKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !event.metaKey &&
+        !event.nativeEvent?.isComposing;
+
+      if (isPlainEnter && isUploadingRoomAttachment) {
+        event.preventDefault();
+        setRoomAttachmentStatus({ type: 'info', message: 'Please wait for uploads to finish.' });
+        return;
+      }
+
+      const attachments = roomAttachments.map((item) => item.asset);
+      handleMessageInputKeyDown(event, {
+        attachments,
+        messageOverride:
+          messageDraft.trim().length > 0 || attachments.length === 0
+            ? undefined
+            : ATTACHMENT_ONLY_PLACEHOLDER
+      });
+    },
+    [handleMessageInputKeyDown, isUploadingRoomAttachment, messageDraft, roomAttachments]
+  );
+
+  const handleSendDirectMessage = useCallback(
+    async (event) => {
+      event.preventDefault();
+      if (!selectedDirectThreadId || isSendingDirectMessage) {
+        return;
+      }
+      if (isUploadingDmAttachment) {
+        setDmAttachmentStatus({ type: 'info', message: 'Please wait for uploads to finish.' });
+        return;
+      }
+      const trimmed = dmMessageDraft.trim();
+      const attachments = dmAttachments.map((item) => item.asset);
+      const hasText = trimmed.length > 0;
+      const hasAttachments = attachments.length > 0;
+      if (!hasText && !hasAttachments) {
+        return;
+      }
+      const pendingGifQuery = getGifCommandQuery(dmMessageDraft);
+      if (pendingGifQuery && !dmGifPreview) {
+        setDmGifPreviewError(null);
+        requestDmGifPreview(pendingGifQuery);
+        return;
+      }
+      if (
+        dmGifPreview &&
+        Array.isArray(dmGifPreview.options) &&
+        typeof dmGifPreview.selectedIndex === 'number' &&
+        dmGifPreview.options[dmGifPreview.selectedIndex]?.attachment
+      ) {
+        handleDmGifPreviewConfirm();
+        return;
+      }
+      try {
+        await sendDirectMessage({
+          threadId: selectedDirectThreadId,
+          body: hasText ? dmMessageDraft : ATTACHMENT_ONLY_PLACEHOLDER,
+          attachments
+        });
+        setDmMessageDraft('');
+        setDmAttachments([]);
+        setDmAttachmentStatus(null);
+        handleDmGifPreviewCancel();
+      } catch {
+        // surfaced via send status
+      }
+    },
+    [
+      dmAttachments,
+      dmGifPreview,
+      dmMessageDraft,
+      handleDmGifPreviewCancel,
+      handleDmGifPreviewConfirm,
+      isSendingDirectMessage,
+      isUploadingDmAttachment,
+      requestDmGifPreview,
+      selectedDirectThreadId,
+      sendDirectMessage
+    ]
+  );
+
+  const handleDirectMessageKeyDown = useCallback(
+    (event) => {
+      const isPlainEnter =
+        event.key === 'Enter' &&
+        !event.shiftKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !event.metaKey &&
+        !event.nativeEvent?.isComposing;
+      if (!isPlainEnter) {
+        return;
+      }
+      event.preventDefault();
+      if (isUploadingDmAttachment) {
+        setDmAttachmentStatus({ type: 'info', message: 'Please wait for uploads to finish.' });
+        return;
+      }
+      if (dmGifPreviewError) {
+        handleDmGifPreviewShuffle();
+        return;
+      }
+      if (isDmGifPreviewLoading) {
+        return;
+      }
+      if (
+        dmGifPreview &&
+        Array.isArray(dmGifPreview.options) &&
+        typeof dmGifPreview.selectedIndex === 'number' &&
+        dmGifPreview.options[dmGifPreview.selectedIndex]?.attachment
+      ) {
+        handleDmGifPreviewConfirm();
+        return;
+      }
+      handleSendDirectMessage(event);
+    },
+    [
+      dmGifPreview,
+      dmGifPreviewError,
+      handleDmGifPreviewConfirm,
+      handleDmGifPreviewShuffle,
+      handleSendDirectMessage,
+      isDmGifPreviewLoading,
+      isUploadingDmAttachment
+    ]
   );
 
   const notificationsLabel =
@@ -285,6 +1142,9 @@ function ChatPage() {
       return msg.message;
     }
     const stripped = msg.message.replace(/^GIF:\s*/i, '').trim();
+    if (stripped === ATTACHMENT_ONLY_PLACEHOLDER) {
+      return '';
+    }
     return stripped;
   }, []);
 
@@ -318,6 +1178,90 @@ function ChatPage() {
     return null;
   }, []);
 
+  const directViewerId = dmViewer?._id ? String(dmViewer._id) : null;
+
+  const selectedDirectThread = useMemo(() => {
+    if (!selectedDirectThreadId) {
+      return null;
+    }
+    return dmThreads.find((thread) => thread.id === selectedDirectThreadId) || null;
+  }, [dmThreads, selectedDirectThreadId]);
+
+  const selectedDirectNames = useMemo(
+    () => resolveThreadParticipants(selectedDirectThread, directViewerId),
+    [selectedDirectThread, directViewerId]
+  );
+
+  const directMessageItems = useMemo(() => {
+    if (!directThreadDetail || !Array.isArray(directThreadDetail.messages)) {
+      return [];
+    }
+    const sorted = [...directThreadDetail.messages].sort((a, b) => {
+      const aTime = new Date(a.createdAt).getTime();
+      const bTime = new Date(b.createdAt).getTime();
+      return aTime - bTime;
+    });
+    return sorted.map((message) => {
+      const author = message.sender || {};
+      const authorId = author.id || author._id || null;
+      const body = message.body || '';
+      const sanitizedBody = body === ATTACHMENT_ONLY_PLACEHOLDER ? '' : body;
+      return {
+        _id: message.id || message._id,
+        message: sanitizedBody,
+        createdAt: message.createdAt,
+        authorId,
+        author,
+        attachments: Array.isArray(message.attachments) ? message.attachments : []
+      };
+    });
+  }, [directThreadDetail]);
+
+  const dmSelectedGifOption = useMemo(() => {
+    if (
+      !dmGifPreview ||
+      !Array.isArray(dmGifPreview.options) ||
+      typeof dmGifPreview.selectedIndex !== 'number'
+    ) {
+      return null;
+    }
+    return dmGifPreview.options[dmGifPreview.selectedIndex] ?? null;
+  }, [dmGifPreview]);
+
+  const dmComposerGifPreview = useMemo(
+    () =>
+      dmGifPreview
+        ? {
+            query: dmGifPreview.query,
+            attachment: dmSelectedGifOption?.attachment || null,
+            sourceUrl: dmSelectedGifOption?.sourceUrl,
+            optionsCount: Array.isArray(dmGifPreview.options) ? dmGifPreview.options.length : 0
+          }
+        : null,
+    [dmGifPreview, dmSelectedGifOption]
+  );
+
+  const headerChannelLabel = useMemo(() => {
+    if (channelTab === 'direct') {
+      if (selectedDirectNames.length) {
+        return `Direct · ${selectedDirectNames.join(', ')}`;
+      }
+      return 'Direct messages';
+    }
+    return selectedRoom ? selectedRoom.name : 'Choose a room';
+  }, [channelTab, selectedDirectNames, selectedRoom]);
+
+  useEffect(() => {
+    if (channelTab !== 'direct') {
+      return;
+    }
+    if (!directMessageItems.length) {
+      return;
+    }
+    const timer = setTimeout(scrollMessagesToBottom, 75);
+    return () => clearTimeout(timer);
+  }, [channelTab, directMessageItems.length, scrollMessagesToBottom]);
+
   const handleSelectModerationAction = useCallback((actionType) => {
     setModerationForm((prev) => ({
       ...prev,
@@ -339,6 +1283,9 @@ function ChatPage() {
 
   const handleOpenModerationForMessage = useCallback(
     (message) => {
+      if (channelTab !== 'rooms') {
+        return;
+      }
       if (!canModerateMessages) {
         return;
       }
@@ -357,7 +1304,7 @@ function ChatPage() {
         messageId: resolvedKey || targetId
       });
     },
-    [canModerateMessages, getDisplayMessageText, getMessageAuthorId, getMessageKey]
+    [channelTab, canModerateMessages, getDisplayMessageText, getMessageAuthorId, getMessageKey]
   );
 
   const handleCloseModerationDialog = useCallback(() => {
@@ -393,7 +1340,7 @@ function ChatPage() {
           ...prev,
           reason: ''
         }));
-      } catch (error) {
+      } catch {
         // surfaced via action status
       }
     },
@@ -405,6 +1352,43 @@ function ChatPage() {
     moderationHasAccess === false ||
     isOffline ||
     isRecordingModerationAction;
+
+  const roomMessageBubbles = useMemo(
+    () =>
+      uniqueMessages.map((message, index) => (
+        <MessageBubble
+          key={getMessageKey(message, index)}
+          msg={
+            message.message === ATTACHMENT_ONLY_PLACEHOLDER
+              ? { ...message, message: '' }
+              : message
+          }
+          isSelf={Boolean(authUser && message.authorId === authUser.uid)}
+          authUser={authUser}
+          canModerate={canModerateMessages}
+          onModerate={handleOpenModerationForMessage}
+        />
+      )),
+    [authUser, canModerateMessages, getMessageKey, handleOpenModerationForMessage, uniqueMessages]
+  );
+
+  const directMessageBubbles = useMemo(
+    () =>
+      directMessageItems.map((message, index) => (
+        <MessageBubble
+          key={getMessageKey(message, index)}
+          msg={
+            message.message === ATTACHMENT_ONLY_PLACEHOLDER
+              ? { ...message, message: '' }
+              : message
+          }
+          isSelf={Boolean(directViewerId && message.authorId && directViewerId === message.authorId)}
+          authUser={authUser}
+          canModerate={false}
+        />
+      )),
+    [authUser, directMessageItems, directViewerId, getMessageKey]
+  );
 
   const RoomListContent = () => (
     <>
@@ -501,302 +1485,280 @@ function ChatPage() {
     </>
   );
 
-  const renderRoomList = () => (
-    <Paper
-      elevation={3}
-      sx={{
-        width: { xs: '100%', md: 320 },
-        flexShrink: 0,
-        borderRadius: 3,
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        maxHeight: { xs: 360, md: '100%' }
-      }}
-    >
-      <RoomListContent />
-    </Paper>
-  );
+  const DirectListContent = () => {
+    if (directMessagesHasAccess === false) {
+      return (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="body2" color="text.secondary">
+            Direct messages are disabled for your account.
+          </Typography>
+        </Box>
+      );
+    }
 
-  const renderConversation = () => (
-    <Paper
-      elevation={3}
-      sx={{
-        flexGrow: 1,
-        borderRadius: 3,
-        overflow: 'hidden',
-        minHeight: { xs: 420, md: '100%' },
-        display: 'flex',
-        flexDirection: 'column'
-      }}
-    >
-      {selectedRoom ? (
-        <>
-          <Box
-            sx={{
-              px: { xs: 2, md: 3 },
-              py: 2,
-              borderBottom: '1px solid',
-              borderColor: 'divider',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}
-          >
-            <Stack spacing={0.5}>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography variant="h5">{selectedRoom.name}</Typography>
-                <Chip
-                  icon={<GroupIcon fontSize="small" />}
-                  label={`${activeUserCount} online`}
-                  size="small"
-                  color="success"
-                  variant="outlined"
+    return (
+      <>
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="subtitle1" fontWeight={700}>
+              Direct messages
+            </Typography>
+            <Chip
+              label={dmThreads.length}
+              size="small"
+              color="secondary"
+              variant="outlined"
+            />
+          </Stack>
+          <Tooltip title="Refresh conversations">
+            <span>
+              <IconButton onClick={refreshDmThreads} disabled={isLoadingDmThreads}>
+                {isLoadingDmThreads ? <CircularProgress size={20} /> : <RefreshIcon fontSize="small" />}
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
+
+        {dmThreadsStatus && dmThreadsStatus.message ? (
+          <Box sx={{ p: 2 }}>
+            <Alert severity={dmThreadsStatus.type}>{dmThreadsStatus.message}</Alert>
+          </Box>
+        ) : null}
+
+        {dmThreads.length === 0 && !isLoadingDmThreads ? (
+          <Box sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              You have no conversations yet. Start one from a profile page.
+            </Typography>
+          </Box>
+        ) : null}
+
+        <List dense sx={{ overflowY: 'auto', flexGrow: 1 }}>
+          {dmThreads.map((thread) => {
+            const isActive = thread.id === selectedDirectThreadId;
+            const participantsArray = Array.isArray(thread.participants)
+              ? thread.participants
+              : [];
+            const otherParticipants = participantsArray.filter((participant) => {
+              const id = getParticipantId(participant);
+              if (!id) {
+                return false;
+              }
+              if (!directViewerId) {
+                return true;
+              }
+              return id !== normalizeObjectId(directViewerId);
+            });
+            const participantNames = otherParticipants.length
+              ? otherParticipants
+                  .map((participant) => getParticipantDisplayName(participant) || 'Unknown user')
+                  .filter(Boolean)
+              : resolveThreadParticipants(thread, directViewerId);
+            const displayName = participantNames.length
+              ? participantNames.join(', ')
+              : 'Direct message';
+            const avatarParticipant = otherParticipants[0];
+            const avatarSrc = resolveAvatarSrc(avatarParticipant);
+            return (
+              <ListItemButton
+                key={thread.id}
+                selected={isActive}
+                onClick={() => handleSelectDirectThreadId(thread.id)}
+                sx={{ alignItems: 'flex-start', py: 1.5 }}
+              >
+                <ListItemAvatar>
+                  <Avatar src={avatarSrc} alt={displayName} imgProps={{ referrerPolicy: 'no-referrer' }}>
+                    {displayName.charAt(0).toUpperCase()}
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      {displayName}
+                    </Typography>
+                  }
+                  secondary={
+                    <Typography variant="caption" color="text.secondary">
+                      {thread.lastMessageAt
+                        ? formatFriendlyTimestamp(thread.lastMessageAt) ||
+                          formatRelativeTime(thread.lastMessageAt) ||
+                          ''
+                        : `${thread.messageCount} messages`}
+                    </Typography>
+                  }
                 />
-              </Stack>
-              {selectedRoom.description ? (
-                <Typography variant="body2" color="text.secondary">
-                  {selectedRoom.description}
-                </Typography>
-              ) : null}
-            </Stack>
-            <Stack direction="row" spacing={1}>
-              <Tooltip title="Refresh messages">
-                <span>
-                  <IconButton onClick={handleRefreshCurrentRoom} disabled={isLoadingMessages}>
-                    {isLoadingMessages ? <CircularProgress size={20} /> : <RefreshIcon fontSize="small" />}
-                  </IconButton>
-                </span>
-              </Tooltip>
-            </Stack>
-          </Box>
+              </ListItemButton>
+            );
+          })}
+        </List>
+      </>
+    );
+  };
 
-          <Box
-            sx={{
-              flexGrow: 1,
-              overflowY: 'auto',
-              px: { xs: 2, md: 3 },
-              py: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 1.5
-            }}
-          >
-            {messagesError ? (
-              <Typography variant="body2" color="error">
-                {messagesError}
-              </Typography>
-            ) : uniqueMessages.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                No messages yet. Start the conversation!
-              </Typography>
-            ) : (
-              uniqueMessages.map((message, index) => {
-                const isSelf = authUser && message.authorId === authUser.uid;
-                const key = getMessageKey(message, index);
-                const bodyText = getDisplayMessageText(message);
-                return (
-                  <Stack key={key} alignItems={isSelf ? 'flex-end' : 'flex-start'}>
-                    <Paper
-                      elevation={1}
-                      sx={{
-                        maxWidth: '100%',
-                        p: 1.5,
-                        borderRadius: 2,
-                        backgroundColor: isSelf ? 'primary.light' : 'background.default'
-                      }}
-                    >
-                      <Stack spacing={0.5}>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Typography variant="subtitle2" fontWeight={600}>
-                            {message.author?.displayName || message.author?.username || 'Someone'}
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            title={formatAbsoluteDateTime(message.createdAt) || undefined}
-                          >
-                            {formatFriendlyTimestamp(message.createdAt) ||
-                              formatRelativeTime(message.createdAt) ||
-                              ''}
-                          </Typography>
-                        </Stack>
-                        {bodyText ? (
-                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                            {bodyText}
-                          </Typography>
-                        ) : null}
-                        {Array.isArray(message.attachments) && message.attachments.length > 0 ? (
-                          <Stack spacing={1}>
-                            {message.attachments.map((attachment, attachmentIndex) => {
-                              if (!attachment?.url) {
-                                return null;
-                              }
-                              return (
-                                <Box
-                                  key={`${message._id || message.id}-attachment-${attachmentIndex}`}
-                                  component="img"
-                                  src={attachment.url}
-                                  alt={attachment.description || 'Chat attachment'}
-                                  sx={{ maxWidth: 240, borderRadius: 1 }}
-                                  loading="lazy"
-                                />
-                              );
-                            })}
-                          </Stack>
-                        ) : null}
-                      </Stack>
-                    </Paper>
-                  </Stack>
-                );
-              })
-            )}
-          </Box>
-        </>
-      ) : (
+  const renderRoomMessagesMobile = () => {
+    if (!selectedRoom) {
+      return (
         <Stack
           spacing={2}
           alignItems="center"
           justifyContent="center"
-          sx={{ flexGrow: 1, p: 4, textAlign: 'center' }}
+          sx={{ flexGrow: 1, py: 6, textAlign: 'center', color: 'text.secondary' }}
         >
           <SmsIcon color="primary" sx={{ fontSize: 48 }} />
-          <Typography variant="h6">Select a room to get started</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Choose a chat from the list or create a new space for your team.
+          <Typography variant="h6">Choose a chat room to start talking</Typography>
+          <Typography variant="body2">
+            Pick a room from the selector in the header or create a new one.
           </Typography>
-          <Button variant="outlined" onClick={handleOpenCreateDialog}>
-            Create room
-          </Button>
         </Stack>
-      )}
-    </Paper>
-  );
+      );
+    }
+
+    if (messagesError) {
+      return (
+        <Alert severity="error" sx={{ mx: { xs: 2, md: 4 }, my: 2 }}>
+          {messagesError}
+        </Alert>
+      );
+    }
+
+    if (isLoadingMessages && uniqueMessages.length === 0) {
+      return (
+        <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
+          <CircularProgress />
+          <Typography variant="body2" color="text.secondary">
+            Loading messages…
+          </Typography>
+        </Stack>
+      );
+    }
+
+    if (uniqueMessages.length === 0) {
+      return (
+        <Stack spacing={1} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
+          <Typography variant="h6">No messages yet</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Start the conversation with everyone in this room.
+          </Typography>
+        </Stack>
+      );
+    }
+
+    return (
+      <>
+        {roomMessageBubbles}
+        <AttachmentPreview
+          attachments={roomAttachments}
+          onRemove={handleRemoveRoomAttachment}
+          status={roomAttachmentStatus}
+          uploading={isUploadingRoomAttachment}
+          padding={{ xs: 2, md: 3 }}
+        />
+        <div ref={messagesEndRef} />
+      </>
+    );
+  };
+
+  const renderDirectMessagesMobile = () => {
+    if (directMessagesHasAccess === false) {
+      return (
+        <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
+          <Typography variant="body2" color="text.secondary" align="center">
+            Direct messages are disabled for your account.
+          </Typography>
+        </Stack>
+      );
+    }
+
+    if (!selectedDirectThreadId) {
+      if (dmThreads.length === 0 && !isLoadingDmThreads) {
+        return (
+          <Stack spacing={1.5} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
+            <Typography variant="h6">Start a new conversation</Typography>
+            <Typography variant="body2" color="text.secondary" align="center">
+              Visit a profile and choose “Message user” to invite them to chat.
+            </Typography>
+          </Stack>
+        );
+      }
+      if (isLoadingDmThreads) {
+        return (
+          <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
+            <CircularProgress />
+            <Typography variant="body2" color="text.secondary">
+              Loading conversations…
+            </Typography>
+          </Stack>
+        );
+      }
+      return (
+        <Stack spacing={1.5} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
+          <Typography variant="h6">Select a direct message</Typography>
+          <Typography variant="body2" color="text.secondary" align="center">
+            Open the channel picker above and choose a conversation.
+          </Typography>
+        </Stack>
+      );
+    }
+
+    if (directThreadStatus && directThreadStatus.message) {
+      return (
+        <Alert severity={directThreadStatus.type} sx={{ mx: { xs: 2, md: 4 }, my: 2 }}>
+          {directThreadStatus.message}
+        </Alert>
+      );
+    }
+
+    if (isLoadingDirectThread && directMessageItems.length === 0) {
+      return (
+        <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
+          <CircularProgress />
+          <Typography variant="body2" color="text.secondary">
+            Loading messages…
+          </Typography>
+        </Stack>
+      );
+    }
+
+    if (directMessageItems.length === 0) {
+      return (
+        <Stack spacing={1.5} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
+          <Typography variant="h6">Say hello</Typography>
+          <Typography variant="body2" color="text.secondary" align="center">
+            Send the first message to keep the conversation going.
+          </Typography>
+        </Stack>
+      );
+    }
+
+    return (
+      <>
+        {directMessageBubbles}
+        <AttachmentPreview
+          attachments={dmAttachments}
+          onRemove={handleRemoveDmAttachment}
+          status={dmAttachmentStatus}
+          uploading={isUploadingDmAttachment}
+          padding={{ xs: 2, md: 3 }}
+        />
+        <div ref={messagesEndRef} />
+      </>
+    );
+  };
 
   return (
     <>
-      <Box className="page" sx={{ display: debugMode ? 'block' : 'none', width: '100%' }}>
-        <Button className="chat-debug-toggle" onClick={() => setDebugMode((prev) => !prev)}>
-          {debugMode ? 'Hide Chat Debug' : 'Show Chat Debug'}
-        </Button>
-
-        <Stack spacing={2} sx={{ width: '100%', maxWidth: 1200, mx: 'auto', px: { xs: 1.5, md: 3 }, py: { xs: 2, md: 4 } }}>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <SmsIcon color="primary" />
-            <Typography variant="h4" component="h1">
-              Chat
-            </Typography>
-            {authUser ? (
-              <Chip
-                label={`Signed in as ${authUser.displayName || authUser.email || 'You'}`}
-                size="small"
-                color="primary"
-                variant="outlined"
-              />
-            ) : (
-              <Chip label="Sign in to participate" size="small" color="warning" variant="outlined" />
-            )}
-          </Stack>
-
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ minHeight: { md: 560 } }}>
-            {renderRoomList()}
-            {renderConversation()}
-          </Stack>
-
-          {presenceError ? (
-            <Typography variant="body2" color="error">
-              {presenceError}
-            </Typography>
-          ) : null}
-        </Stack>
-
-        <Dialog open={isCreateDialogOpen} onClose={handleCloseCreateDialog} fullWidth maxWidth="sm">
-          <DialogTitle>Create chat room</DialogTitle>
-          <Box component="form" onSubmit={handleCreateRoom}>
-            <DialogContent>
-              <Stack spacing={2} sx={{ mt: 1 }}>
-                <TextField
-                  label="Name"
-                  value={createForm.name}
-                  onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
-                  required
-                  fullWidth
-                />
-                <TextField
-                  label="Description"
-                  value={createForm.description}
-                  onChange={(event) =>
-                    setCreateForm((prev) => ({ ...prev, description: event.target.value }))
-                  }
-                  multiline
-                  minRows={2}
-                  fullWidth
-                />
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <TextField
-                    label="Latitude"
-                    type="number"
-                    value={createForm.latitude}
-                    onChange={(event) =>
-                      setCreateForm((prev) => ({ ...prev, latitude: event.target.value }))
-                    }
-                    fullWidth
-                    inputProps={{ step: '0.0001' }}
-                  />
-                  <TextField
-                    label="Longitude"
-                    type="number"
-                    value={createForm.longitude}
-                    onChange={(event) =>
-                      setCreateForm((prev) => ({ ...prev, longitude: event.target.value }))
-                    }
-                    fullWidth
-                    inputProps={{ step: '0.0001' }}
-                  />
-                </Stack>
-                <TextField
-                  label="Radius (meters)"
-                  type="number"
-                  value={createForm.radiusMeters}
-                  onChange={(event) =>
-                    setCreateForm((prev) => ({ ...prev, radiusMeters: event.target.value }))
-                  }
-                  fullWidth
-                  inputProps={{ min: 50, step: 10 }}
-                />
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={createForm.isGlobal}
-                      onChange={(event) =>
-                        setCreateForm((prev) => ({ ...prev, isGlobal: event.target.checked }))
-                      }
-                    />
-                  }
-                  label="Global room (visible everywhere)"
-                />
-                {createError ? (
-                  <Typography variant="body2" color="error">
-                    {createError}
-                  </Typography>
-                ) : null}
-              </Stack>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={handleCloseCreateDialog} disabled={isCreatingRoom}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="contained" disabled={isCreatingRoom}>
-                {isCreatingRoom ? 'Creating…' : 'Create room'}
-              </Button>
-            </DialogActions>
-          </Box>
-        </Dialog>
-      </Box>
-
       <Box
         className="chat-page"
-        sx={{ display: debugMode ? 'none' : 'block' }}
       >
         {showScrollButton && (
           <IconButton
@@ -816,21 +1778,24 @@ function ChatPage() {
           <header className="chat-header-bar">
             <GlobalNavMenu />
 
-            <h1
-              className="chat-header-title"
-              onClick={() => setDebugMode((prev) => !prev)}
-            >
+            <h1 className="chat-header-title">
               Chat
             </h1>
             <div className="chat-header-actions">
               <Chip
                 className="chat-room-chip"
-                icon={<GroupIcon fontSize="small" />}
-                label={selectedRoom ? selectedRoom.name : 'Browse rooms'}
-                onClick={() => setIsRoomsDialogOpen(true)}
+                icon={
+                  channelTab === 'direct' ? (
+                    <MarkUnreadChatAltIcon fontSize="small" />
+                  ) : (
+                    <GroupIcon fontSize="small" />
+                  )
+                }
+                label={headerChannelLabel}
+                onClick={handleOpenChannelDialog}
                 variant="outlined"
-                color="secondary"
-                aria-label="Browse chat rooms"
+                color={channelTab === 'direct' ? 'secondary' : 'primary'}
+                aria-label="Choose channel"
               />
 
               <button
@@ -852,53 +1817,228 @@ function ChatPage() {
           </header>
 
           <Box ref={containerRef} className="chat-messages-field">
-            {uniqueMessages.map((msg, index) => (
-              <MessageBubble
-                key={getMessageKey(msg, index)}
-                msg={msg}
-                isSelf={authUser && msg.authorId === authUser.uid}
-                authUser={authUser}
-                canModerate={canModerateMessages}
-                onModerate={handleOpenModerationForMessage}
-              />
-            ))}
-            <div ref={messagesEndRef} />
+            {channelTab === 'direct' ? renderDirectMessagesMobile() : renderRoomMessagesMobile()}
           </Box>
 
-          <ChatComposer
-            variant="modern"
-            message={messageDraft}
-            placeholder="Send a message"
-            onMessageChange={(event) => setMessageDraft(event.target.value)}
-            onKeyDown={handleMessageInputKeyDown}
-            onSend={handleSendMessage}
-            disabled={!authUser || isSendingMessage}
-            sendDisabled={!authUser || !messageDraft.trim() || isSendingMessage}
-            isSending={isSendingMessage}
-            containerRef={inputContainerRef}
-            containerClassName="chat-input-container"
-            gifPreview={composerGifPreview}
-            gifPreviewError={gifPreviewError}
-            isGifPreviewLoading={isGifPreviewLoading}
-            onGifPreviewConfirm={handleGifPreviewConfirm}
-            onGifPreviewCancel={handleGifPreviewCancel}
-            onGifPreviewShuffle={handleGifPreviewShuffle}
-          />
+          {channelTab === 'direct' ? (
+            <>
+              <ChatComposer
+                variant="modern"
+                message={dmMessageDraft}
+                placeholder="Send a message"
+                onMessageChange={(event) => setDmMessageDraft(event.target.value)}
+                onKeyDown={handleDirectMessageKeyDown}
+                onSend={handleSendDirectMessage}
+                disabled={
+                  !selectedDirectThreadId ||
+                  isSendingDirectMessage ||
+                  directMessagesHasAccess === false ||
+                  isUploadingDmAttachment
+                }
+                sendDisabled={
+                  (!dmMessageDraft.trim() && dmAttachments.length === 0) ||
+                  !selectedDirectThreadId ||
+                  isSendingDirectMessage ||
+                  directMessagesHasAccess === false ||
+                  isUploadingDmAttachment
+                }
+                isSending={isSendingDirectMessage}
+                containerRef={inputContainerRef}
+                containerClassName="chat-input-container"
+                onAddAttachment={handleOpenDmAttachmentPicker}
+                addAttachmentTooltip="Upload image or GIF"
+                gifPreview={dmComposerGifPreview}
+                gifPreviewError={dmGifPreviewError}
+                isGifPreviewLoading={isDmGifPreviewLoading}
+                onGifPreviewConfirm={handleDmGifPreviewConfirm}
+                onGifPreviewCancel={handleDmGifPreviewCancel}
+                onGifPreviewShuffle={handleDmGifPreviewShuffle}
+              />
+            </>
+          ) : (
+            <>
+              <ChatComposer
+                variant="modern"
+                message={messageDraft}
+                placeholder="Send a message"
+                onMessageChange={(event) => setMessageDraft(event.target.value)}
+                onKeyDown={handleRoomMessageKeyDown}
+                onSend={handleRoomSendMessage}
+                disabled={!authUser || isSendingMessage || isUploadingRoomAttachment}
+                sendDisabled={
+                  (!messageDraft.trim() && roomAttachments.length === 0) ||
+                  !authUser ||
+                  isSendingMessage ||
+                  isUploadingRoomAttachment
+                }
+                isSending={isSendingMessage}
+                containerRef={inputContainerRef}
+                containerClassName="chat-input-container"
+                onAddAttachment={handleOpenRoomAttachmentPicker}
+                addAttachmentTooltip="Upload image or GIF"
+                gifPreview={composerGifPreview}
+                gifPreviewError={gifPreviewError}
+                isGifPreviewLoading={isGifPreviewLoading}
+                onGifPreviewConfirm={handleGifPreviewConfirm}
+                onGifPreviewCancel={handleGifPreviewCancel}
+                onGifPreviewShuffle={handleGifPreviewShuffle}
+              />
+            </>
+          )}
+
+          {presenceError ? (
+            <Box sx={{ px: 2, py: 1 }}>
+              <Alert severity="error">{presenceError}</Alert>
+            </Box>
+          ) : null}
+
+          <Snackbar
+            open={channelTab === 'direct' && Boolean(directSendStatus)}
+            autoHideDuration={4000}
+            onClose={(_, reason) => {
+              if (reason === 'clickaway') {
+                return;
+              }
+              resetDirectSendStatus();
+            }}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            sx={{ bottom: `${scrollBtnBottom + 16}px` }}
+          >
+            {directSendStatus ? (
+              <Alert
+                elevation={6}
+                variant="filled"
+                severity={directSendStatus.type}
+                onClose={resetDirectSendStatus}
+              >
+                {directSendStatus.message}
+              </Alert>
+            ) : null}
+          </Snackbar>
 
       <Navbar />
     </div>
   </Box>
 
+      <Dialog open={isCreateDialogOpen} onClose={handleCloseCreateDialog} fullWidth maxWidth="sm">
+        <DialogTitle>Create chat room</DialogTitle>
+        <Box component="form" onSubmit={handleCreateRoom}>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <TextField
+                label="Name"
+                value={createForm.name}
+                onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
+                required
+                fullWidth
+              />
+              <TextField
+                label="Description"
+                value={createForm.description}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, description: event.target.value }))
+                }
+                multiline
+                minRows={2}
+                fullWidth
+              />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  label="Latitude"
+                  type="number"
+                  value={createForm.latitude}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, latitude: event.target.value }))
+                  }
+                  fullWidth
+                  inputProps={{ step: '0.0001' }}
+                />
+                <TextField
+                  label="Longitude"
+                  type="number"
+                  value={createForm.longitude}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, longitude: event.target.value }))
+                  }
+                  fullWidth
+                  inputProps={{ step: '0.0001' }}
+                />
+              </Stack>
+              <TextField
+                label="Radius (meters)"
+                type="number"
+                value={createForm.radiusMeters}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, radiusMeters: event.target.value }))
+                }
+                fullWidth
+                inputProps={{ min: 50, step: 10 }}
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={createForm.isGlobal}
+                    onChange={(event) =>
+                      setCreateForm((prev) => ({ ...prev, isGlobal: event.target.checked }))
+                    }
+                  />
+                }
+                label="Global room (visible everywhere)"
+              />
+              {createError ? (
+                <Typography variant="body2" color="error">
+                  {createError}
+                </Typography>
+              ) : null}
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseCreateDialog} disabled={isCreatingRoom}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained" disabled={isCreatingRoom}>
+              {isCreatingRoom ? 'Creating…' : 'Create room'}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
+
       <Dialog
-        open={isRoomsDialogOpen}
-        onClose={() => setIsRoomsDialogOpen(false)}
+        open={isChannelDialogOpen}
+        onClose={() => setIsChannelDialogOpen(false)}
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle>Choose a chat room</DialogTitle>
-        <DialogContent dividers>
-          <RoomListContent />
+        <DialogTitle>Choose a conversation</DialogTitle>
+        <DialogContent dividers sx={{ p: 0 }}>
+          <Tabs
+            value={channelDialogTab}
+            onChange={handleChannelDialogTabChange}
+            variant="fullWidth"
+            indicatorColor="primary"
+            textColor="primary"
+          >
+            <Tab
+              value="rooms"
+              label="Rooms"
+              icon={<GroupIcon fontSize="small" />}
+              iconPosition="start"
+            />
+            <Tab
+              value="direct"
+              label="Direct messages"
+              icon={<MarkUnreadChatAltIcon fontSize="small" />}
+              iconPosition="start"
+              disabled={directMessagesHasAccess === false}
+            />
+          </Tabs>
+          <Box sx={{ maxHeight: 420, display: 'flex', flexDirection: 'column' }}>
+            {channelDialogTab === 'direct' ? <DirectListContent /> : <RoomListContent />}
+          </Box>
         </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsChannelDialogOpen(false)}>Close</Button>
+        </DialogActions>
       </Dialog>
 
       <Dialog
@@ -989,6 +2129,23 @@ function ChatPage() {
           </DialogActions>
         </Box>
       </Dialog>
+
+      <input
+        ref={roomAttachmentInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: 'none' }}
+        onChange={handleRoomAttachmentInputChange}
+      />
+      <input
+        ref={dmAttachmentInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: 'none' }}
+        onChange={handleDmAttachmentInputChange}
+      />
     </>
   );
 }

@@ -169,6 +169,22 @@ function App() {
   } = useBadgeCelebrationToast();
 
   const socialNotifications = useSocialNotifications({ enabled: !isOffline });
+  const {
+    friendRequestCount,
+    friendData,
+    friendIsLoading,
+    friendIsProcessing,
+    friendStatus,
+    respondToFriendRequest,
+    sendFriendRequest,
+    dmThreadCount,
+    dmThreads,
+    dmIsLoading,
+    dmStatus,
+    friendAccessDenied,
+    dmAccessDenied,
+    refreshAll: refreshSocialNotifications
+  } = socialNotifications;
 
   useEffect(() => {
     setBadgeSoundEnabled(badgeSoundEnabled);
@@ -389,8 +405,8 @@ function App() {
     if (AUTH_ROUTES.has(location.pathname)) {
       return;
     }
-    socialNotifications.refreshAll().catch(() => {});
-  }, [isOffline, location.pathname, socialNotifications.refreshAll]);
+    refreshSocialNotifications().catch(() => {});
+  }, [isOffline, location.pathname, refreshSocialNotifications]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -431,7 +447,7 @@ function App() {
 
     const handleFocus = () => {
       if (!isOffline) {
-        socialNotifications.refreshAll().catch(() => {});
+        refreshSocialNotifications().catch(() => {});
       }
     };
 
@@ -439,7 +455,7 @@ function App() {
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-  }, [isOffline, socialNotifications.refreshAll]);
+  }, [isOffline, refreshSocialNotifications]);
 
   const updatesContextValue = useMemo(
     () => ({
@@ -452,37 +468,37 @@ function App() {
 
   const socialNotificationsContextValue = useMemo(
     () => ({
-      friendRequestCount: socialNotifications.friendRequestCount,
-      friendData: socialNotifications.friendData,
-      friendIsLoading: socialNotifications.friendIsLoading,
-      friendIsProcessing: socialNotifications.friendIsProcessing,
-      friendStatus: socialNotifications.friendStatus,
-      respondToFriendRequest: socialNotifications.respondToFriendRequest,
-      sendFriendRequest: socialNotifications.sendFriendRequest,
-      dmThreadCount: socialNotifications.dmThreadCount,
-      dmThreads: socialNotifications.dmThreads,
-      dmIsLoading: socialNotifications.dmIsLoading,
-      dmStatus: socialNotifications.dmStatus,
-      friendAccessDenied: socialNotifications.friendAccessDenied,
-      dmAccessDenied: socialNotifications.dmAccessDenied,
-      isLoading: socialNotifications.friendIsLoading || socialNotifications.dmIsLoading,
-      refreshAll: socialNotifications.refreshAll
+      friendRequestCount,
+      friendData,
+      friendIsLoading,
+      friendIsProcessing,
+      friendStatus,
+      respondToFriendRequest,
+      sendFriendRequest,
+      dmThreadCount,
+      dmThreads,
+      dmIsLoading,
+      dmStatus,
+      friendAccessDenied,
+      dmAccessDenied,
+      isLoading: friendIsLoading || dmIsLoading,
+      refreshAll: refreshSocialNotifications
     }),
     [
-      socialNotifications.friendRequestCount,
-      socialNotifications.friendData,
-      socialNotifications.friendIsLoading,
-      socialNotifications.friendIsProcessing,
-      socialNotifications.friendStatus,
-      socialNotifications.respondToFriendRequest,
-      socialNotifications.sendFriendRequest,
-      socialNotifications.dmThreadCount,
-      socialNotifications.dmThreads,
-      socialNotifications.dmIsLoading,
-      socialNotifications.dmStatus,
-      socialNotifications.friendAccessDenied,
-      socialNotifications.dmAccessDenied,
-      socialNotifications.refreshAll
+      dmAccessDenied,
+      dmIsLoading,
+      dmStatus,
+      dmThreadCount,
+      dmThreads,
+      friendAccessDenied,
+      friendData,
+      friendIsLoading,
+      friendIsProcessing,
+      friendRequestCount,
+      friendStatus,
+      refreshSocialNotifications,
+      respondToFriendRequest,
+      sendFriendRequest
     ]
   );
 

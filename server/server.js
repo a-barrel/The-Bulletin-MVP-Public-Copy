@@ -63,6 +63,8 @@ app.set('imagesDir', imagesDir);
 app.set('soundsDir', soundsDir);
 app.use('/images', express.static(imagesDir));
 app.use('/images', express.static(clientImagesDir));
+app.use('/uploads/images', express.static(imagesDir));
+app.use('/uploads/images', express.static(clientImagesDir));
 app.use('/sounds', express.static(soundsDir));
 
 // MongoDB connection

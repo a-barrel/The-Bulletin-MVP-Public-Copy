@@ -1,3 +1,4 @@
+/* NOTE: Page exports navigation config alongside the component. */
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';

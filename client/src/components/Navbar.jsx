@@ -9,7 +9,6 @@ import ListIcon from "../assets/ListPage.svg";
 import ChatFilled from "../assets/chat-filled.svg";
 import MapFilled from "../assets/map-filled.svg";
 import ListFilled from "../assets/list-filled.svg";
-import { routes } from "../routes";
 import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
 
 export default function Navbar() {

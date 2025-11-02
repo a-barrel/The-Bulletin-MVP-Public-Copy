@@ -4,25 +4,40 @@ import useFriendGraph from './useFriendGraph';
 import useDirectMessages from './useDirectMessages';
 
 const useSocialNotifications = ({ enabled = true, autoLoad = true } = {}) => {
-  const friendGraph = useFriendGraph({ autoLoad: false });
-  const directMessages = useDirectMessages({ autoLoad: false });
+  const {
+    refresh: refreshFriendGraph,
+    graph: friendGraphData,
+    isLoading: friendIsLoading,
+    isProcessing: friendIsProcessing,
+    status: friendStatus,
+    hasAccess: friendHasAccess,
+    respondToRequest,
+    sendFriendRequest: sendFriendRequestAction
+  } = useFriendGraph({ autoLoad: false });
+  const {
+    refreshThreads: refreshDirectThreads,
+    threads: dmThreads,
+    isLoadingThreads: dmIsLoading,
+    threadsStatus: dmStatus,
+    hasAccess: dmHasAccess
+  } = useDirectMessages({ autoLoad: false });
 
   const didAutoLoadRef = useRef(false);
 
   const refreshAll = useCallback(async () => {
     const tasks = [];
-    if (friendGraph.refresh) {
-      tasks.push(friendGraph.refresh().catch(() => {}));
+    if (refreshFriendGraph) {
+      tasks.push(refreshFriendGraph().catch(() => {}));
     }
-    if (directMessages.refreshThreads) {
-      tasks.push(directMessages.refreshThreads().catch(() => {}));
+    if (refreshDirectThreads) {
+      tasks.push(refreshDirectThreads().catch(() => {}));
     }
     if (!tasks.length) {
       return null;
     }
     const results = await Promise.allSettled(tasks);
     return results;
-  }, [directMessages.refreshThreads, friendGraph.refresh]);
+  }, [refreshDirectThreads, refreshFriendGraph]);
 
   useEffect(() => {
     if (!enabled || !autoLoad || didAutoLoadRef.current) {
@@ -39,37 +54,37 @@ const useSocialNotifications = ({ enabled = true, autoLoad = true } = {}) => {
   }, [enabled]);
 
   const friendRequestCount = useMemo(() => {
-    if (friendGraph.hasAccess === false) {
+    if (friendHasAccess === false) {
       return 0;
     }
-    return Array.isArray(friendGraph.graph?.incomingRequests)
-      ? friendGraph.graph.incomingRequests.length
+    return Array.isArray(friendGraphData?.incomingRequests)
+      ? friendGraphData.incomingRequests.length
       : 0;
-  }, [friendGraph.graph, friendGraph.hasAccess]);
+  }, [friendGraphData, friendHasAccess]);
 
   const dmThreadCount = useMemo(() => {
-    if (directMessages.hasAccess === false) {
+    if (dmHasAccess === false) {
       return 0;
     }
-    return Array.isArray(directMessages.threads) ? directMessages.threads.length : 0;
-  }, [directMessages.hasAccess, directMessages.threads]);
+    return Array.isArray(dmThreads) ? dmThreads.length : 0;
+  }, [dmHasAccess, dmThreads]);
 
-  const friendAccessDenied = friendGraph.hasAccess === false;
-  const dmAccessDenied = directMessages.hasAccess === false;
+  const friendAccessDenied = friendHasAccess === false;
+  const dmAccessDenied = dmHasAccess === false;
 
   return {
     friendRequestCount,
-    friendData: friendGraph.graph,
-    friendIsLoading: friendGraph.isLoading,
-    friendIsProcessing: friendGraph.isProcessing,
-    friendStatus: friendGraph.status,
+    friendData: friendGraphData,
+    friendIsLoading,
+    friendIsProcessing,
+    friendStatus,
     friendAccessDenied,
-    respondToFriendRequest: friendGraph.respondToRequest,
-    sendFriendRequest: friendGraph.sendFriendRequest,
+    respondToFriendRequest: respondToRequest,
+    sendFriendRequest: sendFriendRequestAction,
     dmThreadCount,
-    dmThreads: directMessages.threads,
-    dmIsLoading: directMessages.isLoadingThreads,
-    dmStatus: directMessages.threadsStatus,
+    dmThreads,
+    dmIsLoading,
+    dmStatus,
     dmAccessDenied,
     refreshAll,
     hasAnyAccess: !friendAccessDenied || !dmAccessDenied

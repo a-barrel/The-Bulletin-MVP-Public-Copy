@@ -5,11 +5,14 @@ import "./MessageBubble.css";
 import { formatFriendlyTimestamp, formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
 import GavelIcon from '@mui/icons-material/Gavel';
 
+const ATTACHMENT_ONLY_PLACEHOLDER = '[attachment-only-message]';
+
 
 
 function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate }) {
   const rawMessage = typeof msg?.message === 'string' ? msg.message : '';
   const strippedMessage = rawMessage.replace(/^GIF:\s*/i, '').trim();
+  const isAttachmentOnly = rawMessage === ATTACHMENT_ONLY_PLACEHOLDER;
   const attachments = Array.isArray(msg?.attachments) ? msg.attachments : [];
   const imageAssets = attachments
     .map((asset, index) => ({
@@ -17,11 +20,13 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate 
       url: asset?.url,
       alt:
         asset?.description ||
-        (strippedMessage
-          ? `Attachment for message "${strippedMessage}"`
-          : rawMessage
-            ? `Attachment for message "${rawMessage}"`
-            : 'Chat attachment')
+        (isAttachmentOnly
+          ? 'Chat attachment'
+          : strippedMessage
+            ? `Attachment for message "${strippedMessage}"`
+            : rawMessage
+              ? `Attachment for message "${rawMessage}"`
+              : 'Chat attachment')
     }))
     .filter((asset) => typeof asset.url === 'string' && asset.url.trim().length > 0);
 
@@ -29,16 +34,18 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate 
     imageAssets.push({
       key: msg.imageUrl,
       url: msg.imageUrl,
-      alt: strippedMessage
-        ? `Attachment for message "${strippedMessage}"`
-        : rawMessage
-          ? `Attachment for message "${rawMessage}"`
-          : 'Chat attachment'
+      alt: isAttachmentOnly
+        ? 'Chat attachment'
+        : strippedMessage
+          ? `Attachment for message "${strippedMessage}"`
+          : rawMessage
+            ? `Attachment for message "${rawMessage}"`
+            : 'Chat attachment'
     });
   }
 
   const displayMessage = (() => {
-    if (!rawMessage) {
+    if (!rawMessage || isAttachmentOnly) {
       return '';
     }
     if (imageAssets.length === 0) {

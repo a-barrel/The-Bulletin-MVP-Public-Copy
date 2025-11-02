@@ -1,3 +1,4 @@
+/* NOTE: This module exports the celebration hook alongside the toast component. */
 import { useMemo, useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import Snackbar from '@mui/material/Snackbar';
