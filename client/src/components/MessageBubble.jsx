@@ -1,14 +1,18 @@
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, IconButton, Tooltip } from '@mui/material';
 import { NavLink } from 'react-router-dom';
 import AvatarIcon from '../assets/AvatarIcon.svg';
 import "./MessageBubble.css";
 import { formatFriendlyTimestamp, formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
+import GavelIcon from '@mui/icons-material/Gavel';
+import ReportProblemIcon from '@mui/icons-material/ReportProblemOutlined';
+import { ATTACHMENT_ONLY_PLACEHOLDER } from '../utils/chatAttachments';
 
 
 
-function MessageBubble({ msg, isSelf, authUser }) {
+function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate, onReport }) {
   const rawMessage = typeof msg?.message === 'string' ? msg.message : '';
   const strippedMessage = rawMessage.replace(/^GIF:\s*/i, '').trim();
+  const isAttachmentOnly = rawMessage === ATTACHMENT_ONLY_PLACEHOLDER;
   const attachments = Array.isArray(msg?.attachments) ? msg.attachments : [];
   const imageAssets = attachments
     .map((asset, index) => ({
@@ -16,11 +20,13 @@ function MessageBubble({ msg, isSelf, authUser }) {
       url: asset?.url,
       alt:
         asset?.description ||
-        (strippedMessage
-          ? `Attachment for message "${strippedMessage}"`
-          : rawMessage
-            ? `Attachment for message "${rawMessage}"`
-            : 'Chat attachment')
+        (isAttachmentOnly
+          ? 'Chat attachment'
+          : strippedMessage
+            ? `Attachment for message "${strippedMessage}"`
+            : rawMessage
+              ? `Attachment for message "${rawMessage}"`
+              : 'Chat attachment')
     }))
     .filter((asset) => typeof asset.url === 'string' && asset.url.trim().length > 0);
 
@@ -28,16 +34,18 @@ function MessageBubble({ msg, isSelf, authUser }) {
     imageAssets.push({
       key: msg.imageUrl,
       url: msg.imageUrl,
-      alt: strippedMessage
-        ? `Attachment for message "${strippedMessage}"`
-        : rawMessage
-          ? `Attachment for message "${rawMessage}"`
-          : 'Chat attachment'
+      alt: isAttachmentOnly
+        ? 'Chat attachment'
+        : strippedMessage
+          ? `Attachment for message "${strippedMessage}"`
+          : rawMessage
+            ? `Attachment for message "${rawMessage}"`
+            : 'Chat attachment'
     });
   }
 
   const displayMessage = (() => {
-    if (!rawMessage) {
+    if (!rawMessage || isAttachmentOnly) {
       return '';
     }
     if (imageAssets.length === 0) {
@@ -93,12 +101,64 @@ function MessageBubble({ msg, isSelf, authUser }) {
           <Typography className="chat-author">
             {msg.author?.displayName || 'User'}
           </Typography>
-          <Typography
-            className="chat-time"
-            title={formatAbsoluteDateTime(msg.createdAt) || undefined}
-          >
-            {formatFriendlyTimestamp(msg.createdAt) || formatRelativeTime(msg.createdAt) || ''}
-          </Typography>
+          <div className="chat-header-meta">
+            <Typography
+              className="chat-time"
+              title={formatAbsoluteDateTime(msg.createdAt) || undefined}
+            >
+              {formatFriendlyTimestamp(msg.createdAt) || formatRelativeTime(msg.createdAt) || ''}
+            </Typography>
+            {!isSelf && typeof onReport === 'function' ? (
+              <Tooltip title="Report message">
+                <span>
+                  <IconButton
+                    className="chat-report-btn"
+                    size="small"
+                    aria-label="Report this message"
+                    onClick={() => onReport(msg)}
+                    sx={{
+                      ml: 0.5,
+                      color: '#d84315',
+                      backgroundColor: 'rgba(216, 67, 21, 0.12)',
+                      borderRadius: '8px',
+                      transition: 'color 120ms ease, background-color 120ms ease',
+                      '&:hover, &:focus-visible': {
+                        color: '#ef6c00',
+                        backgroundColor: 'rgba(239, 108, 0, 0.16)'
+                      }
+                    }}
+                  >
+                    <ReportProblemIcon fontSize="inherit" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            ) : null}
+            {canModerate && !isSelf && typeof onModerate === 'function' ? (
+              <Tooltip title="Moderate user">
+                <span>
+                  <IconButton
+                    className="chat-moderation-btn"
+                    size="small"
+                    aria-label="Moderate this user"
+                    onClick={() => onModerate(msg)}
+                    sx={{
+                      ml: 0.5,
+                      color: '#1e6ef5',
+                      backgroundColor: 'rgba(30, 110, 245, 0.12)',
+                      borderRadius: '8px',
+                      transition: 'color 120ms ease, background-color 120ms ease',
+                      '&:hover, &:focus-visible': {
+                        color: '#7c4dff',
+                        backgroundColor: 'rgba(124, 77, 255, 0.16)'
+                      }
+                    }}
+                  >
+                    <GavelIcon fontSize="inherit" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            ) : null}
+          </div>
         </div>
         {displayMessage ? (
           <Typography className="chat-text">{displayMessage}</Typography>

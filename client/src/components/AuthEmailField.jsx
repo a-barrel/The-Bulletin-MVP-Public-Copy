@@ -1,3 +1,4 @@
+/* NOTE: This module shares helper validation used by tests and other components. */
 import { useId, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
 

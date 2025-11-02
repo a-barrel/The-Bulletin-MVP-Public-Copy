@@ -1,3 +1,4 @@
+/* NOTE: Page exports configuration alongside the component. */
 import { useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import runtimeConfig from '../config/runtime';
@@ -131,6 +132,4 @@ function EmulationTestPage() {
 }
 
 export default EmulationTestPage;
-
-
 

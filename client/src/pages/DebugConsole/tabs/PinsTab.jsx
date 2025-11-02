@@ -529,8 +529,6 @@ function PinsTab() {
 
     const now = new Date();
     const diffMs = target.getTime() - now.getTime();
-    const diffDays = diffMs / (1000 * 60 * 60 * 24);
-
     const absolute = formatDateTime(target);
     if (diffMs >= 0) {
       const relative = formatRelativeTime(target);

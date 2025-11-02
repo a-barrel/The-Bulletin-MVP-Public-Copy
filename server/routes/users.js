@@ -37,6 +37,11 @@ const MediaAssetUpdateSchema = z.object({
     .optional()
 });
 
+const PushTokenSchema = z.object({
+  token: z.string().trim().min(1, 'Token is required'),
+  platform: z.string().trim().max(64).optional()
+});
+
 const UserPreferencesUpdateSchema = z
   .object({
     theme: z.enum(['system', 'light', 'dark']).optional(),
@@ -250,6 +255,8 @@ const mapUserToProfile = (userDoc) => {
     bookmarkCollectionIds: mapIdList(doc.bookmarkCollectionIds),
     proximityChatRoomIds: mapIdList(doc.proximityChatRoomIds),
     recentLocationIds: mapIdList(doc.recentLocationIds),
+    mutualFriendCount: 0,
+    mutualFriends: [],
     createdAt: createdAt ?? new Date().toISOString(),
     updatedAt,
     audit: undefined
@@ -675,6 +682,58 @@ router.delete('/me/blocked/:userId', verifyToken, async (req, res) => {
   }
 });
 
+router.post('/me/push-tokens', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const input = PushTokenSchema.parse(req.body ?? {});
+    const token = input.token.trim();
+    if (!token) {
+      return res.status(400).json({ message: 'Token must not be empty' });
+    }
+    const platform = input.platform?.trim() || 'web';
+
+    if (!Array.isArray(viewer.messagingTokens)) {
+      viewer.messagingTokens = [];
+    }
+
+    const now = new Date();
+    const existingIndex = viewer.messagingTokens.findIndex((entry) => entry.token === token);
+    if (existingIndex !== -1) {
+      viewer.messagingTokens[existingIndex].platform = platform;
+      viewer.messagingTokens[existingIndex].lastSeenAt = now;
+    } else {
+      viewer.messagingTokens.push({
+        token,
+        platform,
+        addedAt: now,
+        lastSeenAt: now
+      });
+    }
+
+    if (viewer.messagingTokens.length > 15) {
+      viewer.messagingTokens = viewer.messagingTokens.slice(viewer.messagingTokens.length - 15);
+    }
+
+    await viewer.save();
+
+    res.status(existingIndex === -1 ? 201 : 200).json({
+      token,
+      platform,
+      total: viewer.messagingTokens.length
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid push token payload', issues: error.errors });
+    }
+    console.error('Failed to register push token:', error);
+    res.status(500).json({ message: 'Failed to register push token' });
+  }
+});
+
 router.get('/:userId', verifyToken, async (req, res) => {
   try {
     const { userId } = req.params;
@@ -687,8 +746,53 @@ router.get('/:userId', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    const viewer = await resolveViewerUser(req);
+
     try {
       const payload = mapUserToProfile(user);
+
+      if (viewer && user && !viewer._id.equals(user._id)) {
+        const viewerFriends = new Set(mapIdList(viewer.relationships?.friendIds));
+        const targetFriends = mapIdList(user.relationships?.friendIds);
+        const viewerBlocked = new Set(mapIdList(viewer.relationships?.blockedUserIds));
+        const targetBlocked = new Set(mapIdList(user.relationships?.blockedUserIds));
+        const mutualIds = targetFriends.filter((id) => {
+          if (!viewerFriends.has(id)) {
+            return false;
+          }
+          if (viewerBlocked.has(id) || targetBlocked.has(id)) {
+            return false;
+          }
+          return id !== toIdString(viewer._id);
+        });
+
+        if (mutualIds.length > 0) {
+          const uniqueIds = Array.from(new Set(mutualIds)).filter((id) => mongoose.Types.ObjectId.isValid(id));
+          const objectIds = uniqueIds.slice(0, 12).map((id) => new mongoose.Types.ObjectId(id));
+          if (objectIds.length) {
+            const mutualDocs = await User.find({ _id: { $in: objectIds } });
+            const mutualPreviews = mutualDocs
+              .map((doc) => {
+                try {
+                  return mapUserToPublic(doc);
+                } catch (error) {
+                  console.warn('Failed to map mutual friend for profile payload', {
+                    userId: toIdString(doc._id),
+                    error
+                  });
+                  return null;
+                }
+              })
+              .filter(Boolean);
+            payload.mutualFriendCount = mutualIds.length;
+            payload.mutualFriends = mutualPreviews;
+          } else {
+            payload.mutualFriendCount = mutualIds.length;
+            payload.mutualFriends = [];
+          }
+        }
+      }
+
       res.json(payload);
     } catch (error) {
       if (error instanceof ZodError) {

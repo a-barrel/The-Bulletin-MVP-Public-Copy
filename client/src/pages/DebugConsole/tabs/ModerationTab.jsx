@@ -32,7 +32,6 @@ const ACTION_OPTIONS = [
 const ModerationTab = () => {
   const {
     overview,
-    isLoadingOverview,
     overviewStatus,
     flaggedUsers,
     selectedUserId,

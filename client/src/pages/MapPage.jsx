@@ -36,6 +36,15 @@ function MapPage() {
     nearbyUsers,
     combinedPins,
     showChatRooms,
+    setShowChatRooms,
+    isSharing,
+    shareDisabled,
+    shareHelperText,
+    handleStartSharing,
+    handleStopSharing,
+    handleSpoofMove,
+    spoofStepMiles,
+    setSpoofStepMiles,
     handleMapPinSelect,
     selectedChatRoomId
   } = useMapExplorer({

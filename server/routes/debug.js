@@ -37,6 +37,8 @@ const FriendRequest = require('../models/FriendRequest');
 const ModerationAction = require('../models/ModerationAction');
 const DirectMessageThread = require('../models/DirectMessageThread');
 const { applyModerationAction } = require('../services/moderationActionService');
+const ContentReport = require('../models/ContentReport');
+const AnalyticsEvent = require('../models/AnalyticsEvent');
 
 const router = express.Router();
 
@@ -164,6 +166,33 @@ const mapModerationAction = (actionDoc, userLookup = new Map()) => {
     expiresAt: actionDoc.expiresAt ? actionDoc.expiresAt.toISOString() : null,
     moderator,
     subject
+  };
+};
+
+const mapContentReport = (reportDoc, userLookup = new Map()) => {
+  const reporter = userLookup.get(toIdString(reportDoc.reporterId)) || null;
+  const contentAuthor = userLookup.get(toIdString(reportDoc.contentAuthorId)) || null;
+  const resolvedBy = reportDoc.resolvedById ? userLookup.get(toIdString(reportDoc.resolvedById)) : null;
+
+  return {
+    id: toIdString(reportDoc._id),
+    contentType: reportDoc.contentType,
+    contentId: reportDoc.contentId,
+    status: reportDoc.status,
+    reason: reportDoc.reason || '',
+    context: reportDoc.context || '',
+    latestSnapshot: reportDoc.latestSnapshot || null,
+    reporter,
+    contentAuthor,
+    resolution: reportDoc.resolvedAt
+      ? {
+          resolvedAt: reportDoc.resolvedAt.toISOString(),
+          resolvedBy,
+          notes: reportDoc.resolutionNotes || ''
+        }
+      : null,
+    createdAt: reportDoc.createdAt.toISOString(),
+    updatedAt: reportDoc.updatedAt ? reportDoc.updatedAt.toISOString() : reportDoc.createdAt.toISOString()
   };
 };
 
@@ -1140,7 +1169,18 @@ router.get('/moderation/overview', async (req, res) => {
       ? viewer.relationships.mutedUserIds
       : [];
 
-    const [blockedDocs, mutedDocs, recentActions, flaggedAgg] = await Promise.all([
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const [
+      blockedDocs,
+      mutedDocs,
+      recentActions,
+      flaggedAgg,
+      shareEventsLast24h,
+      pushSubscribers,
+      activeUsers,
+      pendingReportCount
+    ] = await Promise.all([
       blockedIds.length
         ? User.find({ _id: { $in: blockedIds } })
             .select({
@@ -1184,7 +1224,11 @@ router.get('/moderation/overview', async (req, res) => {
         },
         { $sort: { count: -1, lastActionAt: -1 } },
         { $limit: 10 }
-      ])
+      ]),
+      AnalyticsEvent.countDocuments({ eventName: 'pin-share', createdAt: { $gte: twentyFourHoursAgo } }),
+      User.countDocuments({ 'messagingTokens.0': { $exists: true } }),
+      User.countDocuments({ accountStatus: 'active' }),
+      ContentReport.countDocuments({ status: 'pending' })
     ]);
 
     const referencedUserIds = new Set([
@@ -1218,7 +1262,15 @@ router.get('/moderation/overview', async (req, res) => {
         count: entry.count,
         lastActionAt: entry.lastActionAt ? entry.lastActionAt.toISOString() : null
       })),
-      recentActions: recentActions.map((action) => mapModerationAction(action, userLookup))
+      recentActions: recentActions.map((action) => mapModerationAction(action, userLookup)),
+      metrics: {
+        shareEventsLast24h,
+        pushSubscribers,
+        pushOptInCount: pushSubscribers,
+        activeUsers,
+        pushSubscriptionRate: activeUsers > 0 ? pushSubscribers / activeUsers : 0,
+        pendingReportCount
+      }
     };
 
     res.json(response);
@@ -1331,6 +1383,133 @@ router.post('/moderation/actions', async (req, res) => {
     }
     console.error('Failed to record moderation action', error);
     res.status(500).json({ message: 'Failed to record moderation action' });
+  }
+});
+
+const ModerationReportQuerySchema = z.object({
+  status: z.enum(['pending', 'resolved', 'dismissed']).optional(),
+  limit: z.coerce.number().int().positive().max(200).optional()
+});
+
+const ResolveReportSchema = z.object({
+  status: z.enum(['resolved', 'dismissed']),
+  resolutionNotes: z.string().trim().max(1000).optional()
+});
+
+router.get('/moderation/reports', async (req, res) => {
+  try {
+    const viewer = await ensureModerationAccess(req, res);
+    if (!viewer) {
+      return;
+    }
+
+    const query = ModerationReportQuerySchema.parse(req.query);
+    const match = query.status ? { status: query.status } : {};
+    const limit = query.limit ?? 100;
+
+    const reports = await ContentReport.find(match)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    const userIds = new Set();
+    userIds.add(toIdString(viewer._id));
+    for (const report of reports) {
+      userIds.add(toIdString(report.reporterId));
+      userIds.add(toIdString(report.contentAuthorId));
+      if (report.resolvedById) {
+        userIds.add(toIdString(report.resolvedById));
+      }
+    }
+
+    const users = await User.find({ _id: { $in: toObjectIdList(userIds) } })
+      .select({
+        username: 1,
+        displayName: 1,
+        roles: 1,
+        accountStatus: 1,
+        avatar: 1,
+        stats: 1
+      })
+      .lean();
+
+    const userLookup = new Map(users.map((doc) => [toIdString(doc._id), mapUserSummary(doc)]));
+
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const [pendingCount, resolvedTodayCount, dismissedCount] = await Promise.all([
+      ContentReport.countDocuments({ status: 'pending' }),
+      ContentReport.countDocuments({ status: 'resolved', resolvedAt: { $gte: startOfDay } }),
+      ContentReport.countDocuments({ status: 'dismissed' })
+    ]);
+
+    res.json({
+      summary: {
+        pendingCount,
+        resolvedTodayCount,
+        dismissedCount
+      },
+      reports: reports.map((report) => mapContentReport(report, userLookup))
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid report query.', issues: error.errors });
+    }
+    console.error('Failed to load moderation reports:', error);
+    res.status(500).json({ message: 'Failed to load reports.' });
+  }
+});
+
+router.post('/moderation/reports/:reportId/resolve', async (req, res) => {
+  try {
+    const viewer = await ensureModerationAccess(req, res);
+    if (!viewer) {
+      return;
+    }
+
+    const reportId = ObjectIdString.parse(req.params.reportId);
+    const input = ResolveReportSchema.parse(req.body);
+
+    const report = await ContentReport.findById(reportId);
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found.' });
+    }
+
+    if (report.status === input.status && report.resolutionNotes === (input.resolutionNotes?.trim() || '')) {
+      return res.json({ message: 'Report already reflects the requested state.' });
+    }
+
+    report.status = input.status;
+    report.resolvedById = viewer._id;
+    report.resolvedAt = new Date();
+    report.resolutionNotes = input.resolutionNotes?.trim() || '';
+    await report.save();
+
+    const users = await User.find({
+      _id: { $in: toObjectIdList([report.reporterId, report.contentAuthorId, viewer._id]) }
+    })
+      .select({
+        username: 1,
+        displayName: 1,
+        roles: 1,
+        accountStatus: 1,
+        avatar: 1,
+        stats: 1
+      })
+      .lean();
+
+    const userLookup = new Map(users.map((doc) => [toIdString(doc._id), mapUserSummary(doc)]));
+    res.json({
+      message: 'Report updated.',
+      report: mapContentReport(report.toObject(), userLookup)
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid resolution payload.', issues: error.errors });
+    }
+    console.error('Failed to resolve content report:', error);
+    res.status(500).json({ message: 'Failed to update report.' });
   }
 });
 
@@ -1616,16 +1795,44 @@ router.get('/direct-messages/threads', async (req, res) => {
         roles: 1,
         accountStatus: 1,
         avatar: 1,
-        stats: 1
+        stats: 1,
+        relationships: 1
       })
       .lean();
 
-    const userLookup = new Map(users.map((doc) => [toIdString(doc._id), mapUserSummary(doc)]));
-    userLookup.set(toIdString(viewer._id), mapUserSummary(viewer));
+    const viewerIdString = toIdString(viewer._id);
+    const viewerBlockedSet = new Set(mapIdList(viewer?.relationships?.blockedUserIds));
+
+    const userDocMap = new Map(users.map((doc) => [toIdString(doc._id), doc]));
+    userDocMap.set(viewerIdString, viewer.toObject ? viewer.toObject() : viewer);
+
+    const filteredThreads = threads.filter((thread) => {
+      const participants = (thread.participants || []).map((participant) => toIdString(participant));
+      for (const participantId of participants) {
+        if (!participantId || participantId === viewerIdString) {
+          continue;
+        }
+        if (viewerBlockedSet.has(participantId)) {
+          return false;
+        }
+        const participantDoc = userDocMap.get(participantId);
+        if (participantDoc) {
+          const participantBlocked = new Set(mapIdList(participantDoc.relationships?.blockedUserIds));
+          if (participantBlocked.has(viewerIdString)) {
+            return false;
+          }
+        }
+      }
+      return true;
+    });
+
+    const userLookup = new Map(
+      Array.from(userDocMap.entries()).map(([id, doc]) => [id, mapUserSummary(doc)])
+    );
 
     res.json({
       viewer: mapUserSummary(viewer),
-      threads: threads.map((thread) => mapDirectMessageThread(thread, userLookup))
+      threads: filteredThreads.map((thread) => mapDirectMessageThread(thread, userLookup))
     });
   } catch (error) {
     console.error('Failed to load direct message threads', error);
@@ -1667,12 +1874,38 @@ router.get('/direct-messages/threads/:threadId', async (req, res) => {
         roles: 1,
         accountStatus: 1,
         avatar: 1,
-        stats: 1
+        stats: 1,
+        relationships: 1
       })
       .lean();
 
-    const userLookup = new Map(users.map((doc) => [toIdString(doc._id), mapUserSummary(doc)]));
-    userLookup.set(toIdString(viewer._id), mapUserSummary(viewer));
+    const viewerIdString = toIdString(viewer._id);
+    const viewerBlockedSet = new Set(mapIdList(viewer?.relationships?.blockedUserIds));
+    const userDocMap = new Map(users.map((doc) => [toIdString(doc._id), doc]));
+    userDocMap.set(viewerIdString, viewer.toObject ? viewer.toObject() : viewer);
+
+    const blockedParticipant = participantIds.some((participantId) => {
+      if (!participantId || participantId === viewerIdString) {
+        return false;
+      }
+      if (viewerBlockedSet.has(participantId)) {
+        return true;
+      }
+      const participantDoc = userDocMap.get(participantId);
+      if (!participantDoc) {
+        return false;
+      }
+      const participantBlocked = new Set(mapIdList(participantDoc.relationships?.blockedUserIds));
+      return participantBlocked.has(viewerIdString);
+    });
+
+    if (blockedParticipant) {
+      return res.status(403).json({ message: 'This conversation is no longer available.' });
+    }
+
+    const userLookup = new Map(
+      Array.from(userDocMap.entries()).map(([id, doc]) => [id, mapUserSummary(doc)])
+    );
 
     res.json({
       thread: mapDirectMessageThread(thread, userLookup, { includeMessages: true })
@@ -1714,12 +1947,30 @@ router.post('/direct-messages/threads', async (req, res) => {
         roles: 1,
         accountStatus: 1,
         avatar: 1,
-        stats: 1
+        stats: 1,
+        relationships: 1
       })
       .lean();
 
     if (users.length !== participantIds.length) {
       return res.status(404).json({ message: 'One or more participants were not found.' });
+    }
+
+    const viewerIdString = toIdString(viewer._id);
+    const viewerBlockedSet = new Set(mapIdList(viewer?.relationships?.blockedUserIds));
+
+    for (const userDoc of users) {
+      const participantId = toIdString(userDoc._id);
+      if (!participantId || participantId === viewerIdString) {
+        continue;
+      }
+      if (viewerBlockedSet.has(participantId)) {
+        return res.status(403).json({ message: 'You have blocked one or more selected participants.' });
+      }
+      const participantBlocked = new Set(mapIdList(userDoc.relationships?.blockedUserIds));
+      if (participantBlocked.has(viewerIdString)) {
+        return res.status(403).json({ message: 'One or more participants has blocked you.' });
+      }
     }
 
     const now = new Date();
@@ -1782,6 +2033,26 @@ router.post('/direct-messages/threads/:threadId/messages', async (req, res) => {
     const participantIds = thread.participants.map((participant) => toIdString(participant));
     if (!participantIds.includes(toIdString(viewer._id))) {
       return res.status(403).json({ message: 'You are not a participant in this thread.' });
+    }
+
+    const participants = await User.find({ _id: { $in: thread.participants } })
+      .select({ relationships: 1 })
+      .lean();
+    const viewerIdString = toIdString(viewer._id);
+    const viewerBlockedSet = new Set(mapIdList(viewer?.relationships?.blockedUserIds));
+
+    for (const participant of participants) {
+      const participantId = toIdString(participant._id);
+      if (!participantId || participantId === viewerIdString) {
+        continue;
+      }
+      if (viewerBlockedSet.has(participantId)) {
+        return res.status(403).json({ message: 'You have blocked one or more participants in this conversation.' });
+      }
+      const participantBlocked = new Set(mapIdList(participant.relationships?.blockedUserIds));
+      if (participantBlocked.has(viewerIdString)) {
+        return res.status(403).json({ message: 'One or more participants has blocked you.' });
+      }
     }
 
     const message = {

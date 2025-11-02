@@ -45,6 +45,14 @@
   display: flex;
   gap: 0.5rem;
   width: 100%;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chat-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .chat-message.self .chat-text-area {
@@ -65,6 +73,24 @@
   font-size: 0.8rem !important;
   color: #b6b6b6;
   margin-top: 3px !important;
+}
+
+.chat-moderation-btn {
+  padding: 4px;
+  color: #1e6ef5;
+  background-color: rgba(30, 110, 245, 0.12);
+  border-radius: 8px;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.chat-moderation-btn .MuiSvgIcon-root {
+  color: inherit !important;
+}
+
+.chat-moderation-btn:hover,
+.chat-moderation-btn:focus-visible {
+  color: #7c4dff;
+  background-color: rgba(124, 77, 255, 0.16);
 }
 
 

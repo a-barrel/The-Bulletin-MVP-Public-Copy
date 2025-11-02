@@ -17,7 +17,6 @@ import { formatReadableTimestamp } from '../utils';
 
 const FriendsTab = () => {
   const {
-    overview,
     isLoadingOverview,
     overviewStatus,
     refreshOverview,
