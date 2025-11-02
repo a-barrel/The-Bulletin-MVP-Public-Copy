@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 
 const ModerationAction = require('../models/ModerationAction');
 const User = require('../models/User');
+const { recordAuditEntry } = require('./auditLogService');
+const { trackModerationEvent } = require('./analyticsService');
 
 const VIEWER_UPDATE_PROJECTION = {
   username: 1,
@@ -90,6 +92,27 @@ async function applyModerationAction({ viewer, target, type, reason = '', durati
   });
 
   const refreshedTarget = await User.findById(targetId).select(VIEWER_UPDATE_PROJECTION).lean();
+
+  const actionMetadata = {
+    type,
+    reason: reason || '',
+    expiresAt: expiresAt ? expiresAt.toISOString() : undefined
+  };
+
+  await Promise.all([
+    recordAuditEntry({
+      actorId: viewerId,
+      targetId,
+      action: `moderation:${type}`,
+      metadata: actionMetadata
+    }),
+    trackModerationEvent({
+      moderatorId: viewerId,
+      targetId,
+      type,
+      metadata: actionMetadata
+    })
+  ]);
 
   return {
     action: actionDoc,

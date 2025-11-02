@@ -1,12 +1,13 @@
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, IconButton, Tooltip } from '@mui/material';
 import { NavLink } from 'react-router-dom';
 import AvatarIcon from '../assets/AvatarIcon.svg';
 import "./MessageBubble.css";
 import { formatFriendlyTimestamp, formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
+import GavelIcon from '@mui/icons-material/Gavel';
 
 
 
-function MessageBubble({ msg, isSelf, authUser }) {
+function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate }) {
   const rawMessage = typeof msg?.message === 'string' ? msg.message : '';
   const strippedMessage = rawMessage.replace(/^GIF:\s*/i, '').trim();
   const attachments = Array.isArray(msg?.attachments) ? msg.attachments : [];
@@ -93,12 +94,38 @@ function MessageBubble({ msg, isSelf, authUser }) {
           <Typography className="chat-author">
             {msg.author?.displayName || 'User'}
           </Typography>
-          <Typography
-            className="chat-time"
-            title={formatAbsoluteDateTime(msg.createdAt) || undefined}
-          >
-            {formatFriendlyTimestamp(msg.createdAt) || formatRelativeTime(msg.createdAt) || ''}
-          </Typography>
+          <div className="chat-header-meta">
+            <Typography
+              className="chat-time"
+              title={formatAbsoluteDateTime(msg.createdAt) || undefined}
+            >
+              {formatFriendlyTimestamp(msg.createdAt) || formatRelativeTime(msg.createdAt) || ''}
+            </Typography>
+            {canModerate && !isSelf && typeof onModerate === 'function' ? (
+              <Tooltip title="Moderate user">
+                <span>
+                  <IconButton
+                    className="chat-moderation-btn"
+                    size="small"
+                    aria-label="Moderate this user"
+                    onClick={() => onModerate(msg)}
+                    sx={{
+                      color: '#1e6ef5',
+                      backgroundColor: 'rgba(30, 110, 245, 0.12)',
+                      borderRadius: '8px',
+                      transition: 'color 120ms ease, background-color 120ms ease',
+                      '&:hover, &:focus-visible': {
+                        color: '#7c4dff',
+                        backgroundColor: 'rgba(124, 77, 255, 0.16)'
+                      }
+                    }}
+                  >
+                    <GavelIcon fontSize="inherit" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            ) : null}
+          </div>
         </div>
         {displayMessage ? (
           <Typography className="chat-text">{displayMessage}</Typography>

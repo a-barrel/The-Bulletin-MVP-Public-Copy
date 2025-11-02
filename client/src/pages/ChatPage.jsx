@@ -21,7 +21,9 @@ import {
   DialogActions,
   Switch,
   FormControlLabel,
-  CircularProgress
+  CircularProgress,
+  Alert,
+  MenuItem
 } from '@mui/material';
 import SmsIcon from '@mui/icons-material/Sms';
 import AddCommentIcon from '@mui/icons-material/AddComment';
@@ -39,11 +41,14 @@ import ChatComposer from '../components/ChatComposer';
 
 import { auth } from '../firebase';
 import useChatManager from '../hooks/useChatManager';
+import useModerationTools from '../hooks/useModerationTools';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { formatFriendlyTimestamp, formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
 import { useLocationContext } from '../contexts/LocationContext';
 import { useUpdates } from '../contexts/UpdatesContext';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
+import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constants/moderationActions';
+import normalizeObjectId from '../utils/normalizeObjectId';
 
 import './ChatPage.css';
 
@@ -114,6 +119,25 @@ function ChatPage() {
     refreshUnreadCount,
     announceBadgeEarned
   });
+
+  const {
+    hasAccess: moderationHasAccess,
+    loadOverview: loadModerationOverview,
+    isLoadingOverview: isLoadingModerationOverview,
+    recordAction: recordModerationAction,
+    isSubmitting: isRecordingModerationAction,
+    actionStatus: moderationActionStatus,
+    resetActionStatus: resetModerationActionStatus
+  } = useModerationTools({ autoLoad: false });
+
+  const [moderationInitAttempted, setModerationInitAttempted] = useState(false);
+  const [moderationContext, setModerationContext] = useState(null);
+  const [moderationForm, setModerationForm] = useState({
+    type: 'warn',
+    reason: '',
+    durationMinutes: '15'
+  });
+  const [isRoomsDialogOpen, setIsRoomsDialogOpen] = useState(false);
 
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [scrollBtnBottom, setScrollBtnBottom] = useState(0);
@@ -194,24 +218,63 @@ function ChatPage() {
     return () => clearTimeout(timer);
   }, [uniqueMessages.length, scrollMessagesToBottom]);
 
+  useEffect(() => {
+    if (isOffline || moderationHasAccess === false) {
+      return;
+    }
+    if (moderationInitAttempted || isLoadingModerationOverview) {
+      return;
+    }
+    setModerationInitAttempted(true);
+    loadModerationOverview().catch(() => {});
+  }, [
+    isOffline,
+    moderationHasAccess,
+    moderationInitAttempted,
+    isLoadingModerationOverview,
+    loadModerationOverview
+  ]);
+
+  useEffect(() => {
+    if (!moderationActionStatus) {
+      return undefined;
+    }
+    const timeoutId = window.setTimeout(() => {
+      resetModerationActionStatus();
+    }, 4000);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [moderationActionStatus, resetModerationActionStatus]);
+
+  useEffect(() => {
+    if (!moderationContext) {
+      return;
+    }
+    setModerationForm({
+      type: 'warn',
+      reason: '',
+      durationMinutes: '15'
+    });
+  }, [moderationContext]);
+
   const handleNotifications = useCallback(() => {
     navigate('/updates');
   }, [navigate]);
+
+  const handleChooseRoom = useCallback(
+    (roomId) => {
+      handleSelectRoom(roomId);
+      setIsRoomsDialogOpen(false);
+    },
+    [handleSelectRoom]
+  );
 
   const notificationsLabel =
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
   const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
 
-  const getMessageKey = useCallback((message, fallbackIndex) => {
-    const rawId = message?._id || message?.id;
-    if (!rawId) {
-      return `message-${fallbackIndex}`;
-    }
-    if (typeof rawId === 'object' && rawId !== null && '$oid' in rawId) {
-      return rawId.$oid;
-    }
-    return rawId;
-  }, []);
+  const canModerateMessages = !isOffline && moderationHasAccess !== false;
 
   const getDisplayMessageText = useCallback((msg) => {
     if (!msg || typeof msg.message !== 'string') {
@@ -225,19 +288,126 @@ function ChatPage() {
     return stripped;
   }, []);
 
-  const renderRoomList = () => (
-    <Paper
-      elevation={3}
-      sx={{
-        width: { xs: '100%', md: 320 },
-        flexShrink: 0,
-        borderRadius: 3,
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        maxHeight: { xs: 360, md: '100%' }
-      }}
-    >
+  const getMessageKey = useCallback((message, fallbackIndex) => {
+    const rawId = message?._id || message?.id;
+    if (!rawId) {
+      return `message-${fallbackIndex}`;
+    }
+    if (typeof rawId === 'object' && rawId !== null && '$oid' in rawId) {
+      return rawId.$oid;
+    }
+    return rawId;
+  }, []);
+
+  const getMessageAuthorId = useCallback((message) => {
+    if (!message) {
+      return null;
+    }
+    const candidates = [
+      message.authorId,
+      message.author?.id,
+      message.author?._id,
+      message.author?._id?.$oid
+    ];
+    for (const candidate of candidates) {
+      const normalized = normalizeObjectId(candidate);
+      if (normalized) {
+        return normalized;
+      }
+    }
+    return null;
+  }, []);
+
+  const handleSelectModerationAction = useCallback((actionType) => {
+    setModerationForm((prev) => ({
+      ...prev,
+      type: actionType,
+      durationMinutes: actionType === 'mute' ? prev.durationMinutes || '15' : prev.durationMinutes
+    }));
+  }, []);
+
+  const handleModerationFieldChange = useCallback(
+    (field) => (event) => {
+      const { value } = event.target;
+      setModerationForm((prev) => ({
+        ...prev,
+        [field]: value
+      }));
+    },
+    []
+  );
+
+  const handleOpenModerationForMessage = useCallback(
+    (message) => {
+      if (!canModerateMessages) {
+        return;
+      }
+      const targetId = getMessageAuthorId(message);
+      if (!targetId) {
+        return;
+      }
+      const displayName =
+        message?.author?.displayName || message?.author?.username || message?.author?.id || 'User';
+      const messagePreview = getDisplayMessageText(message);
+      const resolvedKey = getMessageKey(message, 0);
+      setModerationContext({
+        userId: targetId,
+        displayName,
+        messagePreview,
+        messageId: resolvedKey || targetId
+      });
+    },
+    [canModerateMessages, getDisplayMessageText, getMessageAuthorId, getMessageKey]
+  );
+
+  const handleCloseModerationDialog = useCallback(() => {
+    setModerationContext(null);
+    resetModerationActionStatus();
+  }, [resetModerationActionStatus]);
+
+  const handleModerationSubmit = useCallback(
+    async (event) => {
+      event.preventDefault();
+      if (!moderationContext?.userId || moderationHasAccess === false) {
+        return;
+      }
+
+      const trimmedReason = moderationForm.reason.trim();
+      const payload = {
+        userId: moderationContext.userId,
+        type: moderationForm.type
+      };
+      if (trimmedReason) {
+        payload.reason = trimmedReason;
+      }
+      if (moderationForm.type === 'mute') {
+        const parsed = Number.parseInt(moderationForm.durationMinutes, 10);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          payload.durationMinutes = Math.min(1440, Math.max(1, parsed));
+        }
+      }
+
+      try {
+        await recordModerationAction(payload);
+        setModerationForm((prev) => ({
+          ...prev,
+          reason: ''
+        }));
+      } catch (error) {
+        // surfaced via action status
+      }
+    },
+    [moderationContext, moderationForm, moderationHasAccess, recordModerationAction]
+  );
+
+  const disableModerationSubmit =
+    !moderationContext?.userId ||
+    moderationHasAccess === false ||
+    isOffline ||
+    isRecordingModerationAction;
+
+  const RoomListContent = () => (
+    <>
       <Box
         sx={{
           px: 2,
@@ -294,7 +464,7 @@ function ChatPage() {
               <ListItemButton
                 key={room._id}
                 selected={isActive}
-                onClick={() => handleSelectRoom(room._id)}
+                onClick={() => handleChooseRoom(room._id)}
                 sx={{ alignItems: 'flex-start', py: 1.5 }}
               >
                 <ListItemText
@@ -318,7 +488,7 @@ function ChatPage() {
                 />
                 <ListItemSecondaryAction>
                   <Tooltip title={room.isGlobal ? 'Global room' : 'Local room'}>
-                    <IconButton edge="end" size="small">
+                    <IconButton edge="end" size="small" onClick={() => handleChooseRoom(room._id)}>
                       {room.isGlobal ? <PublicIcon fontSize="small" /> : <RoomIcon fontSize="small" />}
                     </IconButton>
                   </Tooltip>
@@ -328,6 +498,23 @@ function ChatPage() {
           })}
         </List>
       )}
+    </>
+  );
+
+  const renderRoomList = () => (
+    <Paper
+      elevation={3}
+      sx={{
+        width: { xs: '100%', md: 320 },
+        flexShrink: 0,
+        borderRadius: 3,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        maxHeight: { xs: 360, md: '100%' }
+      }}
+    >
+      <RoomListContent />
     </Paper>
   );
 
@@ -635,22 +822,33 @@ function ChatPage() {
             >
               Chat
             </h1>
+            <div className="chat-header-actions">
+              <Chip
+                className="chat-room-chip"
+                icon={<GroupIcon fontSize="small" />}
+                label={selectedRoom ? selectedRoom.name : 'Browse rooms'}
+                onClick={() => setIsRoomsDialogOpen(true)}
+                variant="outlined"
+                color="secondary"
+                aria-label="Browse chat rooms"
+              />
 
-            <button
-              className="updates-icon-btn"
-              type="button"
-              aria-label={notificationsLabel}
-              onClick={handleNotifications}
-              disabled={isOffline}
-              title={isOffline ? 'Reconnect to view updates' : undefined}
-            >
-              <img src={updatesIcon} alt="" className="updates-icon" aria-hidden="true" />
-              {displayBadge ? (
-                <span className="updates-icon-badge" aria-hidden="true">
-                  {displayBadge}
-                </span>
-              ) : null}
-            </button>
+              <button
+                className="updates-icon-btn"
+                type="button"
+                aria-label={notificationsLabel}
+                onClick={handleNotifications}
+                disabled={isOffline}
+                title={isOffline ? 'Reconnect to view updates' : undefined}
+              >
+                <img src={updatesIcon} alt="" className="updates-icon" aria-hidden="true" />
+                {displayBadge ? (
+                  <span className="updates-icon-badge" aria-hidden="true">
+                    {displayBadge}
+                  </span>
+                ) : null}
+              </button>
+            </div>
           </header>
 
           <Box ref={containerRef} className="chat-messages-field">
@@ -660,6 +858,8 @@ function ChatPage() {
                 msg={msg}
                 isSelf={authUser && msg.authorId === authUser.uid}
                 authUser={authUser}
+                canModerate={canModerateMessages}
+                onModerate={handleOpenModerationForMessage}
               />
             ))}
             <div ref={messagesEndRef} />
@@ -685,9 +885,110 @@ function ChatPage() {
             onGifPreviewShuffle={handleGifPreviewShuffle}
           />
 
-          <Navbar />
-        </div>
-      </Box>
+      <Navbar />
+    </div>
+  </Box>
+
+      <Dialog
+        open={isRoomsDialogOpen}
+        onClose={() => setIsRoomsDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Choose a chat room</DialogTitle>
+        <DialogContent dividers>
+          <RoomListContent />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(moderationContext)}
+        onClose={handleCloseModerationDialog}
+        fullWidth
+        maxWidth="xs"
+      >
+        <Box component="form" onSubmit={handleModerationSubmit}>
+          <DialogTitle>
+            Moderate {moderationContext?.displayName || 'user'}
+          </DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={1.5}>
+              {moderationContext?.messagePreview ? (
+                <Alert severity="info" variant="outlined">
+                  {moderationContext.messagePreview}
+                </Alert>
+              ) : null}
+
+              {moderationHasAccess === false ? (
+                <Alert severity="warning">Moderator privileges required to perform actions.</Alert>
+              ) : null}
+
+              {moderationActionStatus ? (
+                <Alert severity={moderationActionStatus.type}>
+                  {moderationActionStatus.message}
+                </Alert>
+              ) : null}
+
+              <Stack direction="row" flexWrap="wrap" gap={1}>
+                {MODERATION_ACTION_OPTIONS.filter((option) =>
+                  QUICK_MODERATION_ACTIONS.includes(option.value)
+                ).map((option) => (
+                  <Chip
+                    key={option.value}
+                    label={option.label}
+                    color={moderationForm.type === option.value ? 'primary' : 'default'}
+                    variant={moderationForm.type === option.value ? 'filled' : 'outlined'}
+                    onClick={() => handleSelectModerationAction(option.value)}
+                    role="button"
+                    aria-pressed={moderationForm.type === option.value}
+                  />
+                ))}
+              </Stack>
+
+              <TextField
+                select
+                label="Moderation action"
+                value={moderationForm.type}
+                onChange={handleModerationFieldChange('type')}
+                fullWidth
+              >
+                {MODERATION_ACTION_OPTIONS.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              {moderationForm.type === 'mute' ? (
+                <TextField
+                  label="Mute duration (minutes)"
+                  type="number"
+                  inputProps={{ min: 1, max: 1440, step: 5 }}
+                  value={moderationForm.durationMinutes}
+                  onChange={handleModerationFieldChange('durationMinutes')}
+                />
+              ) : null}
+
+              <TextField
+                label="Reason (optional)"
+                value={moderationForm.reason}
+                onChange={handleModerationFieldChange('reason')}
+                multiline
+                minRows={2}
+                placeholder="Share context for other moderators."
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseModerationDialog} disabled={isRecordingModerationAction}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained" disabled={disableModerationSubmit}>
+              {isRecordingModerationAction ? 'Applying…' : 'Apply action'}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
     </>
   );
 }

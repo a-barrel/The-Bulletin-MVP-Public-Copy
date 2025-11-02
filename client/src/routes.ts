@@ -25,6 +25,10 @@ export const routes = {
   updates: {
     base: '/updates'
   },
+  directMessages: {
+    base: '/direct-messages',
+    thread: (threadId: string | number) => `/direct-messages/${encodeSegment(threadId)}`
+  },
   list: {
     base: '/list'
   },

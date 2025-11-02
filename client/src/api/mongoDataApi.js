@@ -65,6 +65,33 @@ function parseFilenameFromContentDisposition(headerValue, fallback = 'bookmarks.
   }
 }
 
+function createApiError(response, payload, fallbackMessage) {
+  const statusCode = response?.status;
+  const defaultMessage =
+    fallbackMessage || (statusCode ? `Request failed with status ${statusCode}` : 'Request failed');
+  const message =
+    (payload && typeof payload === 'object' && payload.message) || defaultMessage;
+
+  const error = new Error(message);
+  if (typeof statusCode === 'number') {
+    error.status = statusCode;
+  }
+  if (response?.statusText) {
+    error.statusText = response.statusText;
+  }
+  if (response?.url) {
+    error.url = response.url;
+  }
+  if (payload && typeof payload === 'object') {
+    error.payload = payload;
+    if (payload.issues) {
+      error.issues = payload.issues;
+    }
+  }
+  error.isApiError = true;
+  return error;
+}
+
 export function isMongoDataApiConfigured() {
   if (!API_BASE_URL && runtimeConfig.isOnline) {
     console.warn(
@@ -641,7 +668,7 @@ export async function fetchModerationOverview() {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load moderation overview');
+    throw createApiError(response, payload, 'Failed to load moderation overview');
   }
 
   return payload;
@@ -660,7 +687,7 @@ export async function fetchModerationHistory(userId) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load moderation history');
+    throw createApiError(response, payload, 'Failed to load moderation history');
   }
 
   return payload;
@@ -676,7 +703,7 @@ export async function submitModerationAction(input) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to perform moderation action');
+    throw createApiError(response, payload, 'Failed to perform moderation action');
   }
 
   return payload;
@@ -686,15 +713,15 @@ export async function fetchFriendOverview() {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/debug/friends/overview`, {
     method: 'GET',
-    headers: await buildHeaders()
-  });
+      headers: await buildHeaders()
+    });
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load friend overview');
-  }
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw createApiError(response, payload, 'Failed to load friend overview');
+    }
 
-  return payload;
+    return payload;
 }
 
 export async function sendFriendRequest({ targetUserId, message }) {
@@ -707,7 +734,7 @@ export async function sendFriendRequest({ targetUserId, message }) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to send friend request');
+    throw createApiError(response, payload, 'Failed to send friend request');
   }
 
   return payload;
@@ -730,7 +757,7 @@ export async function respondToFriendRequest(requestId, decision) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to resolve friend request');
+    throw createApiError(response, payload, 'Failed to resolve friend request');
   }
 
   return payload;
@@ -749,7 +776,7 @@ export async function removeFriendRelationship(friendId) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to remove friend');
+    throw createApiError(response, payload, 'Failed to remove friend');
   }
 
   return payload;
@@ -764,7 +791,7 @@ export async function fetchDirectMessageThreads() {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load direct message threads');
+    throw createApiError(response, payload, 'Failed to load direct message threads');
   }
 
   return payload;
@@ -786,7 +813,7 @@ export async function fetchDirectMessageThread(threadId) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load direct message thread');
+    throw createApiError(response, payload, 'Failed to load direct message thread');
   }
 
   return payload;
@@ -802,7 +829,7 @@ export async function createDirectMessageThread({ participantIds, topic, initial
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to create direct message thread');
+    throw createApiError(response, payload, 'Failed to create direct message thread');
   }
 
   return payload;
@@ -825,7 +852,7 @@ export async function sendDirectMessage(threadId, { body, attachments }) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to send direct message');
+    throw createApiError(response, payload, 'Failed to send direct message');
   }
 
   return payload;

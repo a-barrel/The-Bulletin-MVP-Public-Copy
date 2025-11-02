@@ -13,6 +13,10 @@ import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -27,6 +31,7 @@ import {
 } from '../utils/dates';
 import useUpdatesFeed from '../hooks/useUpdatesFeed';
 import { routes } from '../routes';
+import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
 
 export const pageConfig = {
   id: 'updates',
@@ -55,6 +60,14 @@ const resolveBadgeImageUrl = (value) => {
 function UpdatesPage() {
   const navigate = useNavigate();
   const [selectedTab, setSelectedTab] = useState('All');
+  const socialNotifications = useSocialNotificationsContext();
+  const incomingRequests = socialNotifications.friendData?.incomingRequests || [];
+  const hasFriendRequests = !socialNotifications.friendAccessDenied && incomingRequests.length > 0;
+  const friendRequestsPreview = incomingRequests.slice(0, 3);
+  const remainingFriendRequests = Math.max(0, incomingRequests.length - friendRequestsPreview.length);
+  const [isFriendDialogOpen, setIsFriendDialogOpen] = useState(false);
+  const [respondingRequestId, setRespondingRequestId] = useState(null);
+  const [friendActionStatus, setFriendActionStatus] = useState(null);
 
   const {
     profileError,
@@ -115,6 +128,41 @@ function UpdatesPage() {
     });
   }, [filteredUpdates, selectedTab]);
 
+  const handleOpenFriendDialog = () => {
+    setFriendActionStatus(null);
+    setIsFriendDialogOpen(true);
+  };
+
+  const handleCloseFriendDialog = () => {
+    if (respondingRequestId) {
+      return;
+    }
+    setIsFriendDialogOpen(false);
+  };
+
+  const handleRespondToFriendRequest = async (requestId, decision) => {
+    if (!requestId || !decision || typeof socialNotifications.respondToFriendRequest !== 'function') {
+      return;
+    }
+    setRespondingRequestId(requestId);
+    setFriendActionStatus(null);
+    try {
+      await socialNotifications.respondToFriendRequest({ requestId, decision });
+      setFriendActionStatus({
+        type: 'success',
+        message: decision === 'accept' ? 'Friend request accepted.' : 'Friend request declined.'
+      });
+      await socialNotifications.refreshAll();
+    } catch (error) {
+      setFriendActionStatus({
+        type: 'error',
+        message: error?.message || 'Failed to update friend request.'
+      });
+    } finally {
+      setRespondingRequestId(null);
+    }
+  };
+
   return (
     <Box className="updates-page">
       <Box className="updates-frame">
@@ -146,6 +194,60 @@ function UpdatesPage() {
             Clear
           </Button>
         </header>
+
+        {hasFriendRequests ? (
+          <Paper
+            elevation={1}
+            sx={{
+              mt: 3,
+              mb: 2,
+              p: { xs: 2, md: 3 },
+              borderRadius: 3,
+              border: '1px solid',
+              borderColor: 'divider'
+            }}
+          >
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" component="h2">
+                  Pending friend requests
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {incomingRequests.length === 1
+                    ? '1 person is waiting for your response.'
+                    : `${incomingRequests.length} people are waiting for your response.`}
+                </Typography>
+                <Stack direction="row" spacing={1} mt={1} flexWrap="wrap" useFlexGap>
+                  {friendRequestsPreview.map((request) => (
+                    <Chip
+                      key={request.id}
+                      label={
+                        request.requester?.displayName ||
+                        request.requester?.username ||
+                        request.requester?.id ||
+                        'Unknown user'
+                      }
+                      color="secondary"
+                      variant="outlined"
+                    />
+                  ))}
+                  {remainingFriendRequests > 0 ? (
+                    <Chip label={`+${remainingFriendRequests} more`} variant="outlined" />
+                  ) : null}
+                </Stack>
+              </Box>
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={handleOpenFriendDialog}
+                disabled={socialNotifications.friendIsLoading || respondingRequestId !== null}
+                sx={{ alignSelf: { xs: 'flex-start', md: 'center' } }}
+              >
+                Review requests
+              </Button>
+            </Stack>
+          </Paper>
+        ) : null}
 
         <Box className="updates-tabs-container">
           {[
@@ -321,6 +423,84 @@ function UpdatesPage() {
           </Box>
         )}
       </Box>
+      <Dialog open={isFriendDialogOpen} onClose={handleCloseFriendDialog} fullWidth maxWidth="sm">
+        <DialogTitle>Pending friend requests</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {friendActionStatus ? (
+              <Alert severity={friendActionStatus.type}>{friendActionStatus.message}</Alert>
+            ) : null}
+
+            {incomingRequests.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                All caught up! You have no pending friend requests.
+              </Typography>
+            ) : null}
+
+            {incomingRequests.map((request) => {
+              const requesterName =
+                request.requester?.displayName ||
+                request.requester?.username ||
+                request.requester?.id ||
+                'Unknown user';
+              const isUpdating = respondingRequestId === request.id;
+
+              return (
+                <Paper
+                  key={request.id}
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    borderRadius: 3,
+                    backgroundColor: 'background.default'
+                  }}
+                >
+                  <Stack spacing={1}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        {requesterName}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {request.createdAt
+                          ? formatFriendlyTimestamp(request.createdAt)
+                          : null}
+                      </Typography>
+                    </Stack>
+                    {request.message ? (
+                      <Typography variant="body2" color="text.secondary">
+                        “{request.message}”
+                      </Typography>
+                    ) : null}
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => handleRespondToFriendRequest(request.id, 'accept')}
+                        disabled={isUpdating}
+                      >
+                        {isUpdating ? 'Updating…' : 'Accept'}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="inherit"
+                        onClick={() => handleRespondToFriendRequest(request.id, 'decline')}
+                        disabled={isUpdating}
+                      >
+                        Decline
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              );
+            })}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseFriendDialog} disabled={respondingRequestId !== null}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

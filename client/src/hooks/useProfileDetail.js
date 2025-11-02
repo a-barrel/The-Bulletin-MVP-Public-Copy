@@ -253,16 +253,17 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
     return primary;
   }, [effectiveUser]);
 
+  const viewerId = viewerProfile?._id ? String(viewerProfile._id) : null;
+  const effectiveUserId = effectiveUser?._id ? String(effectiveUser._id) : null;
+
   const canEditProfile =
     !userFromState &&
-    (shouldLoadCurrentUser ||
-      (effectiveUser && targetUserId && effectiveUser._id && effectiveUser._id === targetUserId));
+    (shouldLoadCurrentUser || (viewerId && effectiveUserId && viewerId === effectiveUserId));
 
   const editingAvatarSrc = formState.avatarCleared ? null : formState.avatarPreviewUrl ?? avatarUrl;
 
-  const viewerId = viewerProfile?._id ? String(viewerProfile._id) : null;
-  const normalizedTargetId = effectiveUser?._id
-    ? String(effectiveUser._id)
+  const normalizedTargetId = effectiveUserId
+    ? effectiveUserId
     : targetUserId && targetUserId !== 'me'
     ? targetUserId
     : null;
