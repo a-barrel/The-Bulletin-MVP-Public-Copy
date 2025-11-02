@@ -41,6 +41,8 @@ import OfflineBanner from './components/OfflineBanner.jsx';
 import { SocialNotificationsProvider } from './contexts/SocialNotificationsContext';
 import useSocialNotifications from './hooks/useSocialNotifications';
 import runtimeConfig from './config/runtime';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from './firebase';
 
 const theme = createTheme({
   palette: {
@@ -158,6 +160,7 @@ function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
+  const [firebaseAuthUser, authLoading] = useAuthState(auth);
   const [navOverlayOpen, setNavOverlayOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadBookmarkCount, setUnreadBookmarkCount] = useState(0);
@@ -172,7 +175,12 @@ function App() {
     handleClose: handleBadgeToastClose
   } = useBadgeCelebrationToast();
 
-  const socialNotifications = useSocialNotifications({ enabled: !isOffline });
+  const isAuthRoute = AUTH_ROUTES.has(location.pathname);
+  const isAuthReady = !authLoading && !!firebaseAuthUser;
+  const socialNotifications = useSocialNotifications({
+    enabled: !isOffline && !isAuthRoute && isAuthReady,
+    autoLoad: !isAuthRoute && isAuthReady
+  });
   const {
     friendRequestCount,
     friendData,
@@ -429,7 +437,7 @@ function App() {
   );
 
   useEffect(() => {
-    if (AUTH_ROUTES.has(location.pathname)) {
+    if (isAuthRoute || !isAuthReady) {
       setUnreadCount(0);
       setUnreadBookmarkCount(0);
       setUnreadDiscussionsCount(0);
@@ -438,7 +446,8 @@ function App() {
     }
     refreshUnreadCount({ silent: true });
   }, [
-    location.pathname,
+    isAuthReady,
+    isAuthRoute,
     refreshUnreadCount,
     setUnreadBookmarkCount,
     setUnreadCount,
@@ -447,21 +456,18 @@ function App() {
   ]);
 
   useEffect(() => {
-    if (isOffline) {
-      return;
-    }
-    if (AUTH_ROUTES.has(location.pathname)) {
+    if (isOffline || isAuthRoute || !isAuthReady) {
       return;
     }
     refreshSocialNotifications().catch(() => {});
-  }, [isOffline, location.pathname, refreshSocialNotifications]);
+  }, [isAuthReady, isAuthRoute, isOffline, refreshSocialNotifications]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
       return undefined;
     }
 
-    const shouldRefresh = () => !AUTH_ROUTES.has(location.pathname);
+    const shouldRefresh = () => isAuthReady && !AUTH_ROUTES.has(location.pathname);
 
     const handleFocus = () => {
       if (shouldRefresh()) {
@@ -486,7 +492,7 @@ function App() {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
     };
-  }, [location.pathname, refreshUnreadCount]);
+  }, [isAuthReady, location.pathname, refreshUnreadCount]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -494,7 +500,7 @@ function App() {
     }
 
     const handleFocus = () => {
-      if (!isOffline) {
+      if (!isOffline && !isAuthRoute && isAuthReady) {
         refreshSocialNotifications().catch(() => {});
       }
     };
@@ -503,7 +509,7 @@ function App() {
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-  }, [isOffline, refreshSocialNotifications]);
+  }, [isAuthReady, isAuthRoute, isOffline, refreshSocialNotifications]);
 
   const updatesContextValue = useMemo(
     () => ({

@@ -409,9 +409,12 @@ export async function fetchPinAttendees(pinId) {
   return payload;
 }
 
-export async function updatePinAttendance(pinId, attending) {
+export async function updatePinAttendance(pinId, { attending }) {
   if (!pinId) {
     throw new Error('Pin id is required');
+  }
+  if (typeof attending !== 'boolean') {
+    throw new Error('Attendance flag must be a boolean.');
   }
 
   const baseUrl = resolveApiBaseUrl();

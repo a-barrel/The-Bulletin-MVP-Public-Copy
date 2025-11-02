@@ -40,6 +40,7 @@ export const pageConfig = {
 const UNSORTED_COLLECTION_KEY = '__ungrouped__';
 const UNSORTED_LABEL = 'Unsorted';
 const BOOKMARK_QUICK_NAV_PREFS_KEY = 'pinpoint:bookmarkQuickNavPrefs';
+const BOOKMARK_QUICK_NAV_PREFS_VERSION = 1;
 
 function BookmarksPage() {
   const navigate = useNavigate();
@@ -72,9 +73,21 @@ function BookmarksPage() {
       const stored = window.localStorage.getItem(BOOKMARK_QUICK_NAV_PREFS_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed && Array.isArray(parsed.hidden)) {
-          return { hidden: parsed.hidden };
+        const version = parsed?.version ?? 0;
+        const hidden = Array.isArray(parsed?.hidden) ? parsed.hidden : [];
+        if (version === BOOKMARK_QUICK_NAV_PREFS_VERSION || version === 0) {
+          if (version === 0) {
+            window.localStorage.setItem(
+              BOOKMARK_QUICK_NAV_PREFS_KEY,
+              JSON.stringify({
+                version: BOOKMARK_QUICK_NAV_PREFS_VERSION,
+                hidden
+              })
+            );
+          }
+          return { hidden };
         }
+        window.localStorage.removeItem(BOOKMARK_QUICK_NAV_PREFS_KEY);
       }
     } catch (error) {
       console.warn('Failed to read bookmark quick nav preferences', error);
@@ -179,10 +192,17 @@ function BookmarksPage() {
       } else {
         hiddenSet.add(collectionKey);
       }
-      const next = { hidden: Array.from(hiddenSet) };
+      const nextHidden = Array.from(hiddenSet);
+      const next = { hidden: nextHidden };
       if (typeof window !== 'undefined') {
         try {
-          window.localStorage.setItem(BOOKMARK_QUICK_NAV_PREFS_KEY, JSON.stringify(next));
+          window.localStorage.setItem(
+            BOOKMARK_QUICK_NAV_PREFS_KEY,
+            JSON.stringify({
+              version: BOOKMARK_QUICK_NAV_PREFS_VERSION,
+              hidden: nextHidden
+            })
+          );
           window.dispatchEvent(new Event('pinpoint:bookmarkQuickNavPrefsChanged'));
         } catch (error) {
           console.warn('Failed to persist quick nav preferences', error);

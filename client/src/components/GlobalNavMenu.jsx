@@ -50,6 +50,8 @@ const BOOKMARK_QUICK_NAV_PREFS_KEY = 'pinpoint:bookmarkQuickNavPrefs';
 const BOOKMARK_UNSORTED_ID = '__ungrouped__';
 const QUICK_NAV_MAX_ITEMS = 4;
 const QUICK_NAV_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const BOOKMARK_QUICK_NAV_SCHEMA_VERSION = 2;
+const BOOKMARK_QUICK_NAV_PREFS_VERSION = 1;
 
 function areShortcutListsEqual(a, b) {
   if (a === b) {
@@ -140,17 +142,51 @@ export default function GlobalNavMenu({
       if (prefs) {
         try {
           const parsedPrefs = JSON.parse(prefs);
-          if (parsedPrefs && Array.isArray(parsedPrefs.hidden)) {
-            hiddenQuickNavRef.current = new Set(parsedPrefs.hidden);
+          const version = parsedPrefs?.version ?? 0;
+          const hidden = Array.isArray(parsedPrefs?.hidden) ? parsedPrefs.hidden : [];
+          if (version === BOOKMARK_QUICK_NAV_PREFS_VERSION || version === 0) {
+            hiddenQuickNavRef.current = new Set(hidden);
+            if (version === 0) {
+              window.localStorage.setItem(
+                BOOKMARK_QUICK_NAV_PREFS_KEY,
+                JSON.stringify({
+                  version: BOOKMARK_QUICK_NAV_PREFS_VERSION,
+                  hidden
+                })
+              );
+            }
+          } else {
+            hiddenQuickNavRef.current = new Set();
+            window.localStorage.removeItem(BOOKMARK_QUICK_NAV_PREFS_KEY);
           }
         } catch (prefError) {
           console.warn('Failed to parse bookmark quick nav preferences', prefError);
         }
       }
       if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed?.items)) {
-          applyBookmarkShortcuts(parsed.items);
+        try {
+          const parsed = JSON.parse(cached);
+          const version = parsed?.version ?? 0;
+          const updatedAt = parsed?.updatedAt ? new Date(parsed.updatedAt).getTime() : NaN;
+          const isFresh = !Number.isNaN(updatedAt) && Date.now() - updatedAt <= QUICK_NAV_CACHE_TTL_MS;
+          if (version === BOOKMARK_QUICK_NAV_SCHEMA_VERSION && Array.isArray(parsed?.items) && isFresh) {
+            applyBookmarkShortcuts(parsed.items);
+          } else if (Array.isArray(parsed?.items) && version === 0 && isFresh) {
+            applyBookmarkShortcuts(parsed.items);
+            window.localStorage.setItem(
+              BOOKMARK_QUICK_NAV_STORAGE_KEY,
+              JSON.stringify({
+                version: BOOKMARK_QUICK_NAV_SCHEMA_VERSION,
+                updatedAt: new Date().toISOString(),
+                items: parsed.items
+              })
+            );
+          } else {
+            window.localStorage.removeItem(BOOKMARK_QUICK_NAV_STORAGE_KEY);
+          }
+        } catch (cacheError) {
+          console.warn('Failed to parse bookmark quick nav cache', cacheError);
+          window.localStorage.removeItem(BOOKMARK_QUICK_NAV_STORAGE_KEY);
         }
       }
     } catch (error) {
@@ -240,6 +276,7 @@ export default function GlobalNavMenu({
             window.localStorage.setItem(
               BOOKMARK_QUICK_NAV_STORAGE_KEY,
               JSON.stringify({
+                version: BOOKMARK_QUICK_NAV_SCHEMA_VERSION,
                 updatedAt: new Date().toISOString(),
                 items
               })
@@ -267,10 +304,22 @@ export default function GlobalNavMenu({
         const stored = window.localStorage.getItem(BOOKMARK_QUICK_NAV_PREFS_KEY);
         if (stored) {
           const parsed = JSON.parse(stored);
-          if (parsed && Array.isArray(parsed.hidden)) {
-            hiddenQuickNavRef.current = new Set(parsed.hidden);
+          const version = parsed?.version ?? 0;
+          const hidden = Array.isArray(parsed?.hidden) ? parsed.hidden : [];
+          if (version === BOOKMARK_QUICK_NAV_PREFS_VERSION || version === 0) {
+            hiddenQuickNavRef.current = new Set(hidden);
+            if (version === 0) {
+              window.localStorage.setItem(
+                BOOKMARK_QUICK_NAV_PREFS_KEY,
+                JSON.stringify({
+                  version: BOOKMARK_QUICK_NAV_PREFS_VERSION,
+                  hidden
+                })
+              );
+            }
           } else {
             hiddenQuickNavRef.current = new Set();
+            window.localStorage.removeItem(BOOKMARK_QUICK_NAV_PREFS_KEY);
           }
         } else {
           hiddenQuickNavRef.current = new Set();
@@ -281,7 +330,25 @@ export default function GlobalNavMenu({
           if (cachedRaw) {
             const parsedCache = JSON.parse(cachedRaw);
             if (parsedCache && Array.isArray(parsedCache.items)) {
-              cachedItems = parsedCache.items;
+              const version = parsedCache?.version ?? 0;
+              const updatedAt = parsedCache?.updatedAt ? new Date(parsedCache.updatedAt).getTime() : NaN;
+              const isFresh =
+                !Number.isNaN(updatedAt) && Date.now() - updatedAt <= QUICK_NAV_CACHE_TTL_MS;
+              if (version === BOOKMARK_QUICK_NAV_SCHEMA_VERSION && isFresh) {
+                cachedItems = parsedCache.items;
+              } else if (version === 0 && isFresh) {
+                cachedItems = parsedCache.items;
+                window.localStorage.setItem(
+                  BOOKMARK_QUICK_NAV_STORAGE_KEY,
+                  JSON.stringify({
+                    version: BOOKMARK_QUICK_NAV_SCHEMA_VERSION,
+                    updatedAt: new Date().toISOString(),
+                    items: parsedCache.items
+                  })
+                );
+              } else {
+                window.localStorage.removeItem(BOOKMARK_QUICK_NAV_STORAGE_KEY);
+              }
             }
           }
         } catch (cacheError) {

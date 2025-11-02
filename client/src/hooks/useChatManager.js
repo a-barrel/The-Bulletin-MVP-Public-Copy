@@ -542,7 +542,11 @@ export function useChatManager({
         handleGifPreviewConfirm();
         return;
       }
-      handleSendMessage(event, options);
+      const result = handleSendMessage(event, options);
+      if (result && typeof result.then === 'function') {
+        result.catch(() => {});
+      }
+      return result;
     },
     [
       gifPreview,

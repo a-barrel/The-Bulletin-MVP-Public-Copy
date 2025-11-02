@@ -177,24 +177,86 @@ function AdminDashboard() {
     if (!overview) {
       return [];
     }
+    const blockedCount = overview.blockedUsers?.length ?? 0;
+    const mutedCount = overview.mutedUsers?.length ?? 0;
+    const flaggedCount = overview.flaggedUsers?.length ?? 0;
     return [
       {
         label: 'Blocked users',
-        value: overview.blockedUsers?.length ?? 0,
+        value: blockedCount.toLocaleString(),
         description: 'Users you have blocked via moderation tools'
       },
       {
         label: 'Muted users',
-        value: overview.mutedUsers?.length ?? 0,
+        value: mutedCount.toLocaleString(),
         description: 'Users currently muted by moderators'
       },
       {
         label: 'Flagged users',
-        value: overview.flaggedUsers?.length ?? 0,
+        value: flaggedCount.toLocaleString(),
         description: 'Users with multiple recent moderation actions'
       }
     ];
   }, [overview]);
+
+  const analyticsStats = useMemo(() => {
+    if (!overview?.metrics) {
+      return [];
+    }
+    const pendingReports =
+      (reportSummary?.pendingCount ?? overview.metrics.pendingReportCount ?? 0).toLocaleString();
+    const shareCount = (overview.metrics.shareEventsLast24h ?? 0).toLocaleString();
+    const pushSubscribers = overview.metrics.pushSubscribers ?? overview.metrics.pushOptInCount ?? 0;
+    const activeUsers = overview.metrics.activeUsers ?? 0;
+    const rate = overview.metrics.pushSubscriptionRate ?? (activeUsers > 0 ? pushSubscribers / activeUsers : 0);
+    const pushPercentage = `${Math.round(rate * 100)}%`;
+
+    return [
+      {
+        label: 'Pending reports',
+        value: pendingReports,
+        description: 'Unresolved submissions awaiting review'
+      },
+      {
+        label: 'Shares (24h)',
+        value: shareCount,
+        description: 'pin-share events tracked during the last 24 hours'
+      },
+      {
+        label: 'Push opt-in rate',
+        value: pushPercentage,
+        description: `${pushSubscribers.toLocaleString()} of ${activeUsers.toLocaleString()} active users`
+      }
+    ];
+  }, [overview?.metrics, reportSummary?.pendingCount]);
+
+  const analyticsAlerts = useMemo(() => {
+    const alerts = [];
+    const pending = reportSummary?.pendingCount ?? overview?.metrics?.pendingReportCount ?? 0;
+    if (pending > 25) {
+      alerts.push({
+        severity: 'warning',
+        message: 'Pending reports exceed 25 items. Consider reassigning reviewers to keep the queue healthy.'
+      });
+    }
+    const shares = overview?.metrics?.shareEventsLast24h ?? 0;
+    if (shares > 50) {
+      alerts.push({
+        severity: 'info',
+        message: 'Share activity is spiking; monitor pin submissions for potential spam.'
+      });
+    }
+    if (overview?.metrics) {
+      const rate = overview.metrics.pushSubscriptionRate ?? 0;
+      if (rate < 0.25 && (overview.metrics.activeUsers ?? 0) >= 50) {
+        alerts.push({
+          severity: 'info',
+          message: 'Push opt-in is below 25%. Consider prompting power users to enable notifications.'
+        });
+      }
+    }
+    return alerts;
+  }, [overview?.metrics, reportSummary?.pendingCount]);
 
   return (
     <Box
@@ -264,31 +326,69 @@ function AdminDashboard() {
                 </Typography>
               </Stack>
             ) : (
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={2}
-                alignItems={{ xs: 'stretch', sm: 'flex-start' }}
-              >
-                {overviewStats.map((stat) => (
-                  <Paper
-                    key={stat.label}
-                    elevation={0}
-                    sx={{
-                      flex: 1,
-                      borderRadius: 2,
-                      p: 2,
-                      border: '1px solid',
-                      borderColor: 'divider'
-                    }}
+              <Stack spacing={2} alignItems={{ xs: 'stretch', sm: 'flex-start' }}>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  alignItems={{ xs: 'stretch', sm: 'flex-start' }}
+                >
+                  {overviewStats.map((stat) => (
+                    <Paper
+                      key={stat.label}
+                      elevation={0}
+                      sx={{
+                        flex: 1,
+                        borderRadius: 2,
+                        p: 2,
+                        border: '1px solid',
+                        borderColor: 'divider'
+                      }}
+                    >
+                      <Typography variant="subtitle2" color="text.secondary">
+                        {stat.label}
+                      </Typography>
+                      <Typography variant="h4">{stat.value}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {stat.description}
+                      </Typography>
+                    </Paper>
+                  ))}
+                </Stack>
+
+                {analyticsStats.length ? (
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={2}
+                    alignItems={{ xs: 'stretch', sm: 'flex-start' }}
                   >
-                    <Typography variant="subtitle2" color="text.secondary">
-                      {stat.label}
-                    </Typography>
-                    <Typography variant="h4">{stat.value}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {stat.description}
-                    </Typography>
-                  </Paper>
+                    {analyticsStats.map((stat) => (
+                      <Paper
+                        key={stat.label}
+                        elevation={0}
+                        sx={{
+                          flex: 1,
+                          borderRadius: 2,
+                          p: 2,
+                          border: '1px solid',
+                          borderColor: 'divider'
+                        }}
+                      >
+                        <Typography variant="subtitle2" color="text.secondary">
+                          {stat.label}
+                        </Typography>
+                        <Typography variant="h4">{stat.value}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {stat.description}
+                        </Typography>
+                      </Paper>
+                    ))}
+                  </Stack>
+                ) : null}
+
+                {analyticsAlerts.map((alert, index) => (
+                  <Alert key={`${alert.severity}-${index}`} severity={alert.severity} variant="outlined">
+                    {alert.message}
+                  </Alert>
                 ))}
               </Stack>
             )}

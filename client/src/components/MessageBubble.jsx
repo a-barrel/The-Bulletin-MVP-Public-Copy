@@ -5,8 +5,7 @@ import "./MessageBubble.css";
 import { formatFriendlyTimestamp, formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
 import GavelIcon from '@mui/icons-material/Gavel';
 import ReportProblemIcon from '@mui/icons-material/ReportProblemOutlined';
-
-const ATTACHMENT_ONLY_PLACEHOLDER = '[attachment-only-message]';
+import { ATTACHMENT_ONLY_PLACEHOLDER } from '../utils/chatAttachments';
 
 
 

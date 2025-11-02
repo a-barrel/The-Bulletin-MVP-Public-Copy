@@ -27,6 +27,7 @@ function ChatComposer({
   addAttachmentAriaLabel = 'Add attachment',
   addAttachmentTooltip = 'Add image or GIF',
   onAddAttachment,
+  inputRef,
   gifPreview,
   gifPreviewError,
   isGifPreviewLoading = false,
@@ -39,7 +40,8 @@ function ChatComposer({
     onChange: onMessageChange,
     onKeyDown,
     multiline: true,
-    minRows: 1
+    minRows: 1,
+    inputRef
   };
 
   const previewActive = Boolean(isGifPreviewLoading || gifPreview || gifPreviewError);
@@ -204,6 +206,7 @@ function ChatComposer({
             variant="outlined"
             maxRows={5}
             className="chat-input"
+            inputRef={inputRef}
             disabled={disabled}
           />
 
@@ -269,6 +272,7 @@ function ChatComposer({
         placeholder={placeholder}
         maxRows={4}
         fullWidth
+        inputRef={inputRef}
         disabled={disabled}
       />
       <Button
@@ -302,6 +306,7 @@ ChatComposer.propTypes = {
   addAttachmentAriaLabel: PropTypes.string,
   addAttachmentTooltip: PropTypes.string,
   onAddAttachment: PropTypes.func,
+  inputRef: PropTypes.oneOfType([PropTypes.func, PropTypes.shape({ current: PropTypes.any })]),
   gifPreview: PropTypes.shape({
     query: PropTypes.string,
     attachment: PropTypes.oneOfType([

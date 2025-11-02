@@ -113,12 +113,23 @@ const mapPinPreview = (pinDoc, creator) => {
 
 const mapPinToListItem = (pinDoc, creator) => {
   const preview = mapPinPreview(pinDoc, creator);
+  const coverPhoto = pinDoc.coverPhoto
+    ? mapMediaAssetResponse(pinDoc.coverPhoto, { toIdString })
+    : undefined;
+  const photos = Array.isArray(pinDoc.photos)
+    ? pinDoc.photos
+        .map((photo) => mapMediaAssetResponse(photo, { toIdString }))
+        .filter(Boolean)
+    : undefined;
+
   return PinListItemSchema.parse({
     ...preview,
     distanceMeters: undefined,
     isBookmarked: undefined,
     replyCount: pinDoc.replyCount ?? undefined,
-    stats: pinDoc.stats || undefined
+    stats: pinDoc.stats || undefined,
+    coverPhoto,
+    photos
   });
 };
 
@@ -870,6 +881,8 @@ router.get('/', verifyToken, async (req, res) => {
     const limit = query.limit;
     const now = new Date();
     const filters = [];
+    const sortMode = query.sort ?? 'recent';
+    const statusFilter = query.status ?? 'active';
 
     if (statusFilter !== 'expired') {
       filters.push({ $or: [{ isActive: { $exists: false } }, { isActive: true }] });
@@ -885,9 +898,6 @@ router.get('/', verifyToken, async (req, res) => {
       }
       filters.push({ creatorId: new mongoose.Types.ObjectId(query.creatorId) });
     }
-
-    const sortMode = query.sort ?? 'recent';
-    const statusFilter = query.status ?? 'active';
 
     if (statusFilter === 'active') {
       if (sortMode === 'expiration') {

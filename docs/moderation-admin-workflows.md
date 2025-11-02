@@ -23,6 +23,22 @@ This guide summarizes the flows that ship in Sprint 3 for moderators and communi
 3. Apply warn/mute/ban actions directly from the dialog. The same presets and reason capture are available here.
 4. Use **Browse rooms** in the header to switch rooms or access the creation/join dialog without toggling debug mode.
 
+## Block Propagation Rules
+
+- Chat messages, proximity-room replies, and pinned content authored by a blocked user are removed from the viewer’s feeds immediately after the action completes.
+- Mutual blocks are enforced everywhere: a user cannot view or share content with someone who has blocked them, and direct messages are disabled in both directions.
+- When a moderator blocks or bans an account, the system clears cached bookmark counts and removes the user from ongoing DM threads. The admin dashboard reflects the change in the next refresh cycle.
+
+## Admin Queue Checklist
+
+Moderators review the **Content Moderation Queue** (`/admin`) before resolving escalations:
+
+1. **Pending tab** – Start here; each row shows the reporter, content summary, and timestamp. The badge in the header should trend toward zero by end of day.
+2. **Inspect context** – Click a row to expand the full report, including attachments or pinned content previews.
+3. **Resolve or dismiss** – Choose *Resolved* after taking corrective action (warn/mute/block/ban). Use *Dismiss* if the content is allowed. Both paths write to the audit log.
+4. **Analytics pulse** – The metrics header surfaces counts for blocked, muted, and flagged users. Investigate spikes; they often indicate coordinated abuse.
+5. **Follow-up** – After resolving, confirm the offending content is hidden by reloading the originating page with a non-admin account (use the offline admin toggle if needed).
+
 ## Friend Requests & Direct Messages
 
 - The bottom navigation now surfaces badges when pending friend requests or direct-message threads exist. Counts disappear automatically when access is revoked or queues empty.

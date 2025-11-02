@@ -10,7 +10,6 @@ import {
   IconButton,
   List,
   ListItemButton,
-  ListItemAvatar,
   ListItemText,
   ListItemSecondaryAction,
   Chip,
@@ -24,7 +23,6 @@ import {
   FormControlLabel,
   CircularProgress,
   Alert,
-  Avatar,
   MenuItem,
   Tabs,
   Tab,
@@ -39,7 +37,6 @@ import PublicIcon from '@mui/icons-material/Public';
 import MarkUnreadChatAltIcon from '@mui/icons-material/MarkUnreadChatAlt';
 import CloseIcon from '@mui/icons-material/Close';
 import updatesIcon from '../assets/UpdateIcon.svg';
-import AvatarIcon from '../assets/AvatarIcon.svg';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
 
 import Navbar from '../components/Navbar';
@@ -47,7 +44,12 @@ import GlobalNavMenu from '../components/GlobalNavMenu';
 import MessageBubble from '../components/MessageBubble';
 import ChatComposer from '../components/ChatComposer';
 import ReportContentDialog from '../components/ReportContentDialog';
+import DirectThreadList from '../components/chat/DirectThreadList';
 import useDirectMessages from '../hooks/useDirectMessages';
+import useAttachmentManager, {
+  mapDraftAttachmentPayloads,
+  sanitizeAttachmentOnlyMessage
+} from '../hooks/useAttachmentManager';
 
 import { auth } from '../firebase';
 import useChatManager from '../hooks/useChatManager';
@@ -58,8 +60,15 @@ import { useLocationContext } from '../contexts/LocationContext';
 import { useUpdates } from '../contexts/UpdatesContext';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constants/moderationActions';
+import { previewChatGif, createContentReport } from '../api/mongoDataApi';
+import { ATTACHMENT_ONLY_PLACEHOLDER, MAX_CHAT_ATTACHMENTS } from '../utils/chatAttachments';
+import {
+  getParticipantId,
+  getParticipantDisplayName,
+  resolveAvatarSrc,
+  resolveThreadParticipants
+} from '../utils/chatParticipants';
 import normalizeObjectId from '../utils/normalizeObjectId';
-import { previewChatGif, uploadImage, createContentReport } from '../api/mongoDataApi';
 
 import './ChatPage.css';
 
@@ -74,90 +83,44 @@ export const pageConfig = {
   protected: true
 };
 
-const MAX_CHAT_ATTACHMENTS = 10;
-const ATTACHMENT_ONLY_PLACEHOLDER = '[attachment-only-message]';
-
-const generateAttachmentId = () =>
-  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `attachment-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-const isSupportedImageFile = (file) => {
-  if (!file) {
-    return false;
-  }
-  if (file.type && file.type.startsWith('image/')) {
-    return true;
-  }
-  if (file.name) {
-    return /\.(jpe?g|png|gif|webp|avif|heic|heif)$/i.test(file.name);
-  }
-  return false;
-};
-
-const getParticipantId = (participant) => {
-  if (!participant) {
+function AttachmentPreview({
+  attachments,
+  onRemove,
+  status,
+  isUploading,
+  uploadProgress,
+  onRetry,
+  canRetry,
+  padding
+}) {
+  if (!attachments.length && !status && !isUploading) {
     return null;
   }
-  if (typeof participant === 'string') {
-    return normalizeObjectId(participant);
-  }
-  return normalizeObjectId(
-    participant.id ||
-      participant._id ||
-      (typeof participant?.id === 'object' && participant.id !== null && '$oid' in participant.id
-        ? participant.id.$oid
-        : null)
-  );
-};
 
-const getParticipantDisplayName = (participant) => {
-  if (!participant || typeof participant === 'string') {
-    return typeof participant === 'string' ? participant : '';
-  }
-  return (
-    participant.displayName ||
-    participant.username ||
-    participant.email ||
-    participant.id ||
-    participant._id ||
-    ''
-  );
-};
-
-const resolveAvatarSrc = (participant) => {
-  if (!participant) {
-    return AvatarIcon;
-  }
-  const avatar = participant.avatar;
-  const url =
-    typeof avatar === 'string'
-      ? avatar
-      : typeof avatar?.url === 'string'
-      ? avatar.url
-      : typeof avatar?.thumbnailUrl === 'string'
-      ? avatar.thumbnailUrl
-      : null;
-  if (typeof url === 'string' && url.trim()) {
-    const trimmed = url.trim();
-    if (trimmed.startsWith('http') || trimmed.startsWith('data:')) {
-      return trimmed;
+  const progressLabel = (() => {
+    if (!uploadProgress || typeof uploadProgress.total !== 'number' || uploadProgress.total <= 0) {
+      return 'Uploading…';
     }
-    return `/${trimmed.replace(/^\/+/, '')}`;
-  }
-  return AvatarIcon;
-};
-
-function AttachmentPreview({ attachments, onRemove, status, uploading, padding }) {
-  if (!attachments.length && !status && !uploading) {
-    return null;
-  }
+    const completed = Math.min(uploadProgress.completed || 0, uploadProgress.total);
+    return `Uploading ${completed}/${uploadProgress.total}…`;
+  })();
 
   return (
     <>
       {status ? (
         <Box sx={{ px: padding, pb: 1 }}>
-          <Alert severity={status.type}>{status.message}</Alert>
+          <Alert
+            severity={status.type}
+            action={
+              status.type === 'error' && typeof onRetry === 'function' && canRetry ? (
+                <Button color="inherit" size="small" onClick={onRetry}>
+                  Retry
+                </Button>
+              ) : null
+            }
+          >
+            {status.message}
+          </Alert>
         </Box>
       ) : null}
       {attachments.length ? (
@@ -208,11 +171,11 @@ function AttachmentPreview({ attachments, onRemove, status, uploading, padding }
           </Stack>
         </Box>
       ) : null}
-      {uploading ? (
+      {isUploading ? (
         <Box sx={{ px: padding, pb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
           <CircularProgress size={16} />
           <Typography variant="caption" color="text.secondary">
-            Uploading…
+            {progressLabel}
           </Typography>
         </Box>
       ) : null}
@@ -224,34 +187,11 @@ AttachmentPreview.defaultProps = {
   attachments: [],
   onRemove: undefined,
   status: null,
-  uploading: false,
+  isUploading: false,
+  uploadProgress: null,
+  onRetry: undefined,
+  canRetry: false,
   padding: { xs: 2, md: 3 }
-};
-
-const resolveThreadParticipants = (thread, viewerId) => {
-  if (!thread) {
-    return [];
-  }
-  const participants = Array.isArray(thread.participants) ? thread.participants : [];
-  const names = [];
-  const normalizedViewerId = viewerId ? normalizeObjectId(viewerId) : null;
-  participants.forEach((participant) => {
-    const participantId = participant?.id || participant?._id || participant;
-    const normalizedParticipantId = normalizeObjectId(participantId);
-    if (normalizedParticipantId && normalizedViewerId && normalizedParticipantId === normalizedViewerId) {
-      return;
-    }
-    const name =
-      participant?.displayName ||
-      participant?.username ||
-      participant?.email ||
-      participant?.id ||
-      participantId;
-    if (name) {
-      names.push(name);
-    }
-  });
-  return names.length ? names : ['You'];
 };
 
 const getGifCommandQuery = (value) => {
@@ -370,12 +310,34 @@ function ChatPage() {
   const [dmGifPreview, setDmGifPreview] = useState(null);
   const [dmGifPreviewError, setDmGifPreviewError] = useState(null);
   const [isDmGifPreviewLoading, setIsDmGifPreviewLoading] = useState(false);
-  const [roomAttachments, setRoomAttachments] = useState([]);
-  const [roomAttachmentStatus, setRoomAttachmentStatus] = useState(null);
-  const [isUploadingRoomAttachment, setIsUploadingRoomAttachment] = useState(false);
-  const [dmAttachments, setDmAttachments] = useState([]);
-  const [dmAttachmentStatus, setDmAttachmentStatus] = useState(null);
-  const [isUploadingDmAttachment, setIsUploadingDmAttachment] = useState(false);
+
+  const {
+    attachments: roomAttachments,
+    status: roomAttachmentStatus,
+    setStatus: setRoomAttachmentStatus,
+    isUploading: isUploadingRoomAttachment,
+    uploadProgress: roomUploadProgress,
+    canRetry: canRetryRoomUploads,
+    handleFiles: processRoomAttachmentFiles,
+    retryFailed: retryRoomFailedUploads,
+    removeAttachment: removeRoomAttachment,
+    reset: resetRoomAttachments,
+    canAttachMore: canAttachMoreRoom
+  } = useAttachmentManager();
+
+  const {
+    attachments: dmAttachments,
+    status: dmAttachmentStatus,
+    setStatus: setDmAttachmentStatus,
+    isUploading: isUploadingDmAttachment,
+    uploadProgress: dmUploadProgress,
+    canRetry: canRetryDmUploads,
+    handleFiles: processDmAttachmentFiles,
+    retryFailed: retryDmFailedUploads,
+    removeAttachment: removeDmAttachment,
+    reset: resetDmAttachments,
+    canAttachMore: canAttachMoreDm
+  } = useAttachmentManager();
 
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [scrollBtnBottom, setScrollBtnBottom] = useState(0);
@@ -384,6 +346,25 @@ function ChatPage() {
   const messagesEndRef = useRef(null);
   const roomAttachmentInputRef = useRef(null);
   const dmAttachmentInputRef = useRef(null);
+  const roomComposerInputRef = useRef(null);
+  const dmComposerInputRef = useRef(null);
+
+  const focusComposer = useCallback((targetRef) => {
+    if (!targetRef || !targetRef.current) {
+      return;
+    }
+    const focusNode = () => {
+      const node = targetRef.current;
+      if (node && typeof node.focus === 'function') {
+        node.focus();
+      }
+    };
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => focusNode());
+    } else {
+      setTimeout(focusNode, 0);
+    }
+  }, []);
 
   const scrollMessagesToBottom = useCallback(() => {
     const container = containerRef.current;
@@ -497,9 +478,8 @@ function ChatPage() {
   }, [channelTab, refreshDmThreads]);
 
   useEffect(() => {
-    setRoomAttachments([]);
-    setRoomAttachmentStatus(null);
-  }, [selectedRoomId]);
+    resetRoomAttachments();
+  }, [resetRoomAttachments, selectedRoomId]);
 
   useEffect(() => {
     if (channelTab !== 'direct') {
@@ -613,9 +593,8 @@ function ChatPage() {
     setDmGifPreviewError(null);
     setIsDmGifPreviewLoading(false);
     setDmMessageDraft('');
-    setDmAttachments([]);
-    setDmAttachmentStatus(null);
-  }, [selectedDirectThreadId]);
+    resetDmAttachments();
+  }, [resetDmAttachments, selectedDirectThreadId]);
 
   const handleNotifications = useCallback(() => {
     navigate('/updates');
@@ -756,6 +735,7 @@ function ChatPage() {
       setDmAttachments([]);
       setDmAttachmentStatus(null);
       handleDmGifPreviewCancel();
+      focusComposer(dmComposerInputRef);
     } catch {
       // surfaced via send status
     }
@@ -765,7 +745,8 @@ function ChatPage() {
     isDmGifPreviewLoading,
     isSendingDirectMessage,
     selectedDirectThreadId,
-    sendDirectMessage
+    sendDirectMessage,
+    focusComposer
   ]);
 
   const handleChannelDialogTabChange = useCallback(
@@ -787,12 +768,15 @@ function ChatPage() {
       setRoomAttachmentStatus({ type: 'error', message: 'Select a room before uploading images.' });
       return;
     }
-    if (roomAttachments.length >= MAX_CHAT_ATTACHMENTS) {
-      setRoomAttachmentStatus({ type: 'error', message: 'You can attach up to 10 images per message.' });
+    if (!canAttachMoreRoom) {
+      setRoomAttachmentStatus({
+        type: 'error',
+        message: `You can attach up to ${MAX_CHAT_ATTACHMENTS} images per message.`
+      });
       return;
     }
     roomAttachmentInputRef.current?.click();
-  }, [isOffline, roomAttachments.length, selectedRoomId]);
+  }, [canAttachMoreRoom, isOffline, selectedRoomId, setRoomAttachmentStatus]);
 
   const handleOpenDmAttachmentPicker = useCallback(() => {
     if (isOffline) {
@@ -807,20 +791,21 @@ function ChatPage() {
       setDmAttachmentStatus({ type: 'error', message: 'Select a conversation before uploading images.' });
       return;
     }
-    if (dmAttachments.length >= MAX_CHAT_ATTACHMENTS) {
-      setDmAttachmentStatus({ type: 'error', message: 'You can attach up to 10 images per message.' });
+    if (!canAttachMoreDm) {
+      setDmAttachmentStatus({
+        type: 'error',
+        message: `You can attach up to ${MAX_CHAT_ATTACHMENTS} images per message.`
+      });
       return;
     }
     dmAttachmentInputRef.current?.click();
-  }, [directMessagesHasAccess, dmAttachments.length, isOffline, selectedDirectThreadId]);
-
-  const handleRemoveRoomAttachment = useCallback((attachmentId) => {
-    setRoomAttachments((prev) => prev.filter((item) => item.id !== attachmentId));
-  }, []);
-
-  const handleRemoveDmAttachment = useCallback((attachmentId) => {
-    setDmAttachments((prev) => prev.filter((item) => item.id !== attachmentId));
-  }, []);
+  }, [
+    canAttachMoreDm,
+    directMessagesHasAccess,
+    isOffline,
+    selectedDirectThreadId,
+    setDmAttachmentStatus
+  ]);
 
   const handleRoomAttachmentInputChange = useCallback(
     async (event) => {
@@ -835,67 +820,14 @@ function ChatPage() {
         setRoomAttachmentStatus({ type: 'error', message: 'Reconnect to upload images.' });
         return;
       }
-
-      const remainingSlots = MAX_CHAT_ATTACHMENTS - roomAttachments.length;
-      if (remainingSlots <= 0) {
-        setRoomAttachmentStatus({ type: 'error', message: 'You can attach up to 10 images per message.' });
+      if (!selectedRoomId) {
+        setRoomAttachmentStatus({ type: 'error', message: 'Select a room before uploading images.' });
         return;
       }
 
-      const limitedFiles = fileList.slice(0, remainingSlots);
-      if (fileList.length > remainingSlots) {
-        setRoomAttachmentStatus({
-          type: 'info',
-          message: `Only the first ${remainingSlots} file${remainingSlots === 1 ? '' : 's'} were attached.`
-        });
-      }
-
-      const supportedFiles = limitedFiles.filter((file) => isSupportedImageFile(file));
-      if (!supportedFiles.length) {
-        setRoomAttachmentStatus({ type: 'error', message: 'Only image and GIF files are supported.' });
-        return;
-      }
-      if (supportedFiles.length !== limitedFiles.length) {
-        setRoomAttachmentStatus({ type: 'error', message: 'Unsupported file type removed. Only image and GIF files are supported.' });
-      }
-
-      setIsUploadingRoomAttachment(true);
-      try {
-        const uploadedEntries = [];
-        for (const file of supportedFiles) {
-          try {
-            const uploaded = await uploadImage(file);
-            const url = uploaded?.url || uploaded?.path;
-            if (!url) {
-              throw new Error(`Upload failed for ${file.name || 'image'}.`);
-            }
-            uploadedEntries.push({
-              id: generateAttachmentId(),
-              asset: {
-                url,
-                width: uploaded?.width,
-                height: uploaded?.height,
-                mimeType: uploaded?.mimeType || file.type || undefined,
-                description: uploaded?.fileName || file.name || undefined,
-                uploadedAt: uploaded?.uploadedAt
-              }
-            });
-          } catch (error) {
-            setRoomAttachmentStatus({
-              type: 'error',
-              message: error?.message || `Failed to upload ${file.name || 'image'}.`
-            });
-          }
-        }
-
-        if (uploadedEntries.length) {
-          setRoomAttachments((prev) => [...prev, ...uploadedEntries]);
-        }
-      } finally {
-        setIsUploadingRoomAttachment(false);
-      }
+      await processRoomAttachmentFiles(fileList);
     },
-    [isOffline, roomAttachments.length]
+    [isOffline, processRoomAttachmentFiles, selectedRoomId, setRoomAttachmentStatus]
   );
 
   const handleDmAttachmentInputChange = useCallback(
@@ -915,67 +847,20 @@ function ChatPage() {
         setDmAttachmentStatus({ type: 'error', message: 'Direct messages are disabled for your account.' });
         return;
       }
-
-      const remainingSlots = MAX_CHAT_ATTACHMENTS - dmAttachments.length;
-      if (remainingSlots <= 0) {
-        setDmAttachmentStatus({ type: 'error', message: 'You can attach up to 10 images per message.' });
+      if (!selectedDirectThreadId) {
+        setDmAttachmentStatus({ type: 'error', message: 'Select a conversation before uploading images.' });
         return;
       }
 
-      const limitedFiles = fileList.slice(0, remainingSlots);
-      if (fileList.length > remainingSlots) {
-        setDmAttachmentStatus({
-          type: 'info',
-          message: `Only the first ${remainingSlots} file${remainingSlots === 1 ? '' : 's'} were attached.`
-        });
-      }
-
-      const supportedFiles = limitedFiles.filter((file) => isSupportedImageFile(file));
-      if (!supportedFiles.length) {
-        setDmAttachmentStatus({ type: 'error', message: 'Only image and GIF files are supported.' });
-        return;
-      }
-      if (supportedFiles.length !== limitedFiles.length) {
-        setDmAttachmentStatus({ type: 'error', message: 'Unsupported file type removed. Only image and GIF files are supported.' });
-      }
-
-      setIsUploadingDmAttachment(true);
-      try {
-        const uploadedEntries = [];
-        for (const file of supportedFiles) {
-          try {
-            const uploaded = await uploadImage(file);
-            const url = uploaded?.url || uploaded?.path;
-            if (!url) {
-              throw new Error(`Upload failed for ${file.name || 'image'}.`);
-            }
-            uploadedEntries.push({
-              id: generateAttachmentId(),
-              asset: {
-                url,
-                width: uploaded?.width,
-                height: uploaded?.height,
-                mimeType: uploaded?.mimeType || file.type || undefined,
-                description: uploaded?.fileName || file.name || undefined,
-                uploadedAt: uploaded?.uploadedAt
-              }
-            });
-          } catch (error) {
-            setDmAttachmentStatus({
-              type: 'error',
-              message: error?.message || `Failed to upload ${file.name || 'image'}.`
-            });
-          }
-        }
-
-        if (uploadedEntries.length) {
-          setDmAttachments((prev) => [...prev, ...uploadedEntries]);
-        }
-      } finally {
-        setIsUploadingDmAttachment(false);
-      }
+      await processDmAttachmentFiles(fileList);
     },
-    [directMessagesHasAccess, dmAttachments.length, isOffline]
+    [
+      directMessagesHasAccess,
+      isOffline,
+      processDmAttachmentFiles,
+      selectedDirectThreadId,
+      setDmAttachmentStatus
+    ]
   );
 
   const handleRoomSendMessage = useCallback(
@@ -985,7 +870,7 @@ function ChatPage() {
         setRoomAttachmentStatus({ type: 'info', message: 'Please wait for uploads to finish.' });
         return;
       }
-      const attachments = roomAttachments.map((item) => item.asset);
+      const attachments = mapDraftAttachmentPayloads(roomAttachments);
       const hasText = messageDraft.trim().length > 0;
       const options = {
         attachments,
@@ -993,11 +878,11 @@ function ChatPage() {
       };
       const sent = await handleSendMessage(event, options);
       if (sent) {
-        setRoomAttachments([]);
-        setRoomAttachmentStatus(null);
+        resetRoomAttachments();
+        focusComposer(roomComposerInputRef);
       }
     },
-    [handleSendMessage, isUploadingRoomAttachment, messageDraft, roomAttachments]
+    [focusComposer, handleSendMessage, isUploadingRoomAttachment, messageDraft, resetRoomAttachments, roomAttachments]
   );
 
   const handleRoomMessageKeyDown = useCallback(
@@ -1016,16 +901,19 @@ function ChatPage() {
         return;
       }
 
-      const attachments = roomAttachments.map((item) => item.asset);
-      handleMessageInputKeyDown(event, {
+      const attachments = mapDraftAttachmentPayloads(roomAttachments);
+      const result = handleMessageInputKeyDown(event, {
         attachments,
         messageOverride:
           messageDraft.trim().length > 0 || attachments.length === 0
             ? undefined
             : ATTACHMENT_ONLY_PLACEHOLDER
       });
+      Promise.resolve(result)
+        .catch(() => {})
+        .finally(() => focusComposer(roomComposerInputRef));
     },
-    [handleMessageInputKeyDown, isUploadingRoomAttachment, messageDraft, roomAttachments]
+    [focusComposer, handleMessageInputKeyDown, isUploadingRoomAttachment, messageDraft, roomAttachments]
   );
 
   const handleSendDirectMessage = useCallback(
@@ -1039,7 +927,7 @@ function ChatPage() {
         return;
       }
       const trimmed = dmMessageDraft.trim();
-      const attachments = dmAttachments.map((item) => item.asset);
+      const attachments = mapDraftAttachmentPayloads(dmAttachments);
       const hasText = trimmed.length > 0;
       const hasAttachments = attachments.length > 0;
       if (!hasText && !hasAttachments) {
@@ -1067,9 +955,9 @@ function ChatPage() {
           attachments
         });
         setDmMessageDraft('');
-        setDmAttachments([]);
-        setDmAttachmentStatus(null);
+        resetDmAttachments();
         handleDmGifPreviewCancel();
+        focusComposer(dmComposerInputRef);
       } catch {
         // surfaced via send status
       }
@@ -1083,8 +971,10 @@ function ChatPage() {
       isSendingDirectMessage,
       isUploadingDmAttachment,
       requestDmGifPreview,
+      resetDmAttachments,
       selectedDirectThreadId,
-      sendDirectMessage
+      sendDirectMessage,
+      focusComposer
     ]
   );
 
@@ -1144,15 +1034,11 @@ function ChatPage() {
     if (!msg || typeof msg.message !== 'string') {
       return '';
     }
-    const hasAttachments = Array.isArray(msg.attachments) && msg.attachments.length > 0;
-    if (!hasAttachments) {
-      return msg.message;
+    const base = sanitizeAttachmentOnlyMessage(msg.message, msg.attachments);
+    if (!Array.isArray(msg.attachments) || msg.attachments.length === 0) {
+      return base;
     }
-    const stripped = msg.message.replace(/^GIF:\s*/i, '').trim();
-    if (stripped === ATTACHMENT_ONLY_PLACEHOLDER) {
-      return '';
-    }
-    return stripped;
+    return base.replace(/^GIF:\s*/i, '').trim();
   }, []);
 
   const getMessageKey = useCallback((message, fallbackIndex) => {
@@ -1247,7 +1133,7 @@ function ChatPage() {
 
       const authorId = author.id || author._id || null;
       const body = message.body || '';
-      const sanitizedBody = body === ATTACHMENT_ONLY_PLACEHOLDER ? '' : body;
+      const sanitizedBody = sanitizeAttachmentOnlyMessage(body, message.attachments);
       return {
         _id: message.id || message._id,
         message: sanitizedBody,
@@ -1623,126 +1509,6 @@ function ChatPage() {
     </>
   );
 
-  const DirectListContent = () => {
-    if (directMessagesHasAccess === false) {
-      return (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
-          <Typography variant="body2" color="text.secondary">
-            Direct messages are disabled for your account.
-          </Typography>
-        </Box>
-      );
-    }
-
-    return (
-      <>
-        <Box
-          sx={{
-            px: 2,
-            py: 1.5,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}
-        >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="subtitle1" fontWeight={700}>
-              Direct messages
-            </Typography>
-            <Chip
-              label={dmThreads.length}
-              size="small"
-              color="secondary"
-              variant="outlined"
-            />
-          </Stack>
-          <Tooltip title="Refresh conversations">
-            <span>
-              <IconButton onClick={refreshDmThreads} disabled={isLoadingDmThreads}>
-                {isLoadingDmThreads ? <CircularProgress size={20} /> : <RefreshIcon fontSize="small" />}
-              </IconButton>
-            </span>
-          </Tooltip>
-        </Box>
-
-        {dmThreadsStatus && dmThreadsStatus.message ? (
-          <Box sx={{ p: 2 }}>
-            <Alert severity={dmThreadsStatus.type}>{dmThreadsStatus.message}</Alert>
-          </Box>
-        ) : null}
-
-        {dmThreads.length === 0 && !isLoadingDmThreads ? (
-          <Box sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              You have no conversations yet. Start one from a profile page.
-            </Typography>
-          </Box>
-        ) : null}
-
-        <List dense sx={{ overflowY: 'auto', flexGrow: 1 }}>
-          {dmThreads.map((thread) => {
-            const isActive = thread.id === selectedDirectThreadId;
-            const participantsArray = Array.isArray(thread.participants)
-              ? thread.participants
-              : [];
-            const otherParticipants = participantsArray.filter((participant) => {
-              const id = getParticipantId(participant);
-              if (!id) {
-                return false;
-              }
-              if (!directViewerId) {
-                return true;
-              }
-              return id !== normalizeObjectId(directViewerId);
-            });
-            const participantNames = otherParticipants.length
-              ? otherParticipants
-                  .map((participant) => getParticipantDisplayName(participant) || 'Unknown user')
-                  .filter(Boolean)
-              : resolveThreadParticipants(thread, directViewerId);
-            const displayName = participantNames.length
-              ? participantNames.join(', ')
-              : 'Direct message';
-            const avatarParticipant = otherParticipants[0];
-            const avatarSrc = resolveAvatarSrc(avatarParticipant);
-            return (
-              <ListItemButton
-                key={thread.id}
-                selected={isActive}
-                onClick={() => handleSelectDirectThreadId(thread.id)}
-                sx={{ alignItems: 'flex-start', py: 1.5 }}
-              >
-                <ListItemAvatar>
-                  <Avatar src={avatarSrc} alt={displayName} imgProps={{ referrerPolicy: 'no-referrer' }}>
-                    {displayName.charAt(0).toUpperCase()}
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  primary={
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      {displayName}
-                    </Typography>
-                  }
-                  secondary={
-                    <Typography variant="caption" color="text.secondary">
-                      {thread.lastMessageAt
-                        ? formatFriendlyTimestamp(thread.lastMessageAt) ||
-                          formatRelativeTime(thread.lastMessageAt) ||
-                          ''
-                        : `${thread.messageCount} messages`}
-                    </Typography>
-                  }
-                />
-              </ListItemButton>
-            );
-          })}
-        </List>
-      </>
-    );
-  };
-
   const renderRoomMessagesMobile = () => {
     if (!selectedRoom) {
       return (
@@ -1796,9 +1562,12 @@ function ChatPage() {
         {roomMessageBubbles}
         <AttachmentPreview
           attachments={roomAttachments}
-          onRemove={handleRemoveRoomAttachment}
+          onRemove={removeRoomAttachment}
           status={roomAttachmentStatus}
-          uploading={isUploadingRoomAttachment}
+          isUploading={isUploadingRoomAttachment}
+          uploadProgress={roomUploadProgress}
+          onRetry={retryRoomFailedUploads}
+          canRetry={canRetryRoomUploads}
           padding={{ xs: 2, md: 3 }}
         />
         <div ref={messagesEndRef} />
@@ -1883,9 +1652,12 @@ function ChatPage() {
         {directMessageBubbles}
         <AttachmentPreview
           attachments={dmAttachments}
-          onRemove={handleRemoveDmAttachment}
+          onRemove={removeDmAttachment}
           status={dmAttachmentStatus}
-          uploading={isUploadingDmAttachment}
+          isUploading={isUploadingDmAttachment}
+          uploadProgress={dmUploadProgress}
+          onRetry={retryDmFailedUploads}
+          canRetry={canRetryDmUploads}
           padding={{ xs: 2, md: 3 }}
         />
         <div ref={messagesEndRef} />
@@ -1985,6 +1757,7 @@ function ChatPage() {
                 containerClassName="chat-input-container"
                 onAddAttachment={handleOpenDmAttachmentPicker}
                 addAttachmentTooltip="Upload image or GIF"
+                inputRef={dmComposerInputRef}
                 gifPreview={dmComposerGifPreview}
                 gifPreviewError={dmGifPreviewError}
                 isGifPreviewLoading={isDmGifPreviewLoading}
@@ -2014,6 +1787,7 @@ function ChatPage() {
                 containerClassName="chat-input-container"
                 onAddAttachment={handleOpenRoomAttachmentPicker}
                 addAttachmentTooltip="Upload image or GIF"
+                inputRef={roomComposerInputRef}
                 gifPreview={composerGifPreview}
                 gifPreviewError={gifPreviewError}
                 isGifPreviewLoading={isGifPreviewLoading}
@@ -2207,7 +1981,20 @@ function ChatPage() {
             />
           </Tabs>
           <Box sx={{ maxHeight: 420, display: 'flex', flexDirection: 'column' }}>
-            {channelDialogTab === 'direct' ? <DirectListContent /> : <RoomListContent />}
+            {channelDialogTab === 'direct' ? (
+              <DirectThreadList
+                threads={dmThreads}
+                selectedThreadId={selectedDirectThreadId}
+                onSelectThread={handleSelectDirectThreadId}
+                status={dmThreadsStatus}
+                isLoading={isLoadingDmThreads}
+                onRefresh={refreshDmThreads}
+                canAccess={directMessagesHasAccess !== false}
+                viewerId={directViewerId}
+              />
+            ) : (
+              <RoomListContent />
+            )}
           </Box>
         </DialogContent>
         <DialogActions>

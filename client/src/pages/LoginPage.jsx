@@ -15,6 +15,8 @@ import AuthPageLayout from "../components/AuthPageLayout.jsx";
 import PasswordField from "../components/PasswordField.jsx";
 import AuthEmailField, { validateAuthEmail } from "../components/AuthEmailField.jsx";
 import useShake from "../hooks/useShake.js";
+import GoogleIcon from "@mui/icons-material/Google";
+import AppleIcon from "@mui/icons-material/Apple";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -212,11 +214,7 @@ function LoginPage() {
           className="login-page-google-sign-in-btn" 
           onClick={handleGoogleSignIn}
         >
-          <img
-            src="https://www.svgrepo.com/show/475656/google-color.svg"
-            alt="Google logo"
-            className="google-icon"
-          />
+          <GoogleIcon className="google-icon" fontSize="small" />
           Sign in with Google
         </button>
 
@@ -225,11 +223,7 @@ function LoginPage() {
           className="login-page-apple-sign-in-btn"
           onClick={handleAppleSignIn}
         >
-          <img
-            src="https://www.svgrepo.com/show/452210/apple.svg"
-            alt="Apple logo"
-            className="apple-icon"
-          />
+          <AppleIcon className="apple-icon" fontSize="small" />
           Sign in with Apple
         </button>
 

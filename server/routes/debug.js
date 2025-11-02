@@ -38,6 +38,7 @@ const ModerationAction = require('../models/ModerationAction');
 const DirectMessageThread = require('../models/DirectMessageThread');
 const { applyModerationAction } = require('../services/moderationActionService');
 const ContentReport = require('../models/ContentReport');
+const AnalyticsEvent = require('../models/AnalyticsEvent');
 
 const router = express.Router();
 
@@ -1168,7 +1169,18 @@ router.get('/moderation/overview', async (req, res) => {
       ? viewer.relationships.mutedUserIds
       : [];
 
-    const [blockedDocs, mutedDocs, recentActions, flaggedAgg] = await Promise.all([
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const [
+      blockedDocs,
+      mutedDocs,
+      recentActions,
+      flaggedAgg,
+      shareEventsLast24h,
+      pushSubscribers,
+      activeUsers,
+      pendingReportCount
+    ] = await Promise.all([
       blockedIds.length
         ? User.find({ _id: { $in: blockedIds } })
             .select({
@@ -1212,7 +1224,11 @@ router.get('/moderation/overview', async (req, res) => {
         },
         { $sort: { count: -1, lastActionAt: -1 } },
         { $limit: 10 }
-      ])
+      ]),
+      AnalyticsEvent.countDocuments({ eventName: 'pin-share', createdAt: { $gte: twentyFourHoursAgo } }),
+      User.countDocuments({ 'messagingTokens.0': { $exists: true } }),
+      User.countDocuments({ accountStatus: 'active' }),
+      ContentReport.countDocuments({ status: 'pending' })
     ]);
 
     const referencedUserIds = new Set([
@@ -1246,7 +1262,15 @@ router.get('/moderation/overview', async (req, res) => {
         count: entry.count,
         lastActionAt: entry.lastActionAt ? entry.lastActionAt.toISOString() : null
       })),
-      recentActions: recentActions.map((action) => mapModerationAction(action, userLookup))
+      recentActions: recentActions.map((action) => mapModerationAction(action, userLookup)),
+      metrics: {
+        shareEventsLast24h,
+        pushSubscribers,
+        pushOptInCount: pushSubscribers,
+        activeUsers,
+        pushSubscriptionRate: activeUsers > 0 ? pushSubscribers / activeUsers : 0,
+        pendingReportCount
+      }
     };
 
     res.json(response);

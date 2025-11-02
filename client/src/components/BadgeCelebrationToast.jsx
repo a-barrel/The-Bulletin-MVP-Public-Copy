@@ -74,13 +74,23 @@ export function BadgeCelebrationToast({ toastState, onClose }) {
       open={open}
       message={
         <Box
+          role="button"
+          tabIndex={0}
+          onClick={(event) => onClose?.(event, 'manual')}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              onClose?.(event, 'manual');
+            }
+          }}
           sx={{
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             gap: 1.1,
-            textAlign: 'center'
+            textAlign: 'center',
+            cursor: 'pointer'
           }}
         >
           {gifUrl ? (
@@ -106,7 +116,7 @@ export function BadgeCelebrationToast({ toastState, onClose }) {
         </Box>
       }
       anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      autoHideDuration={4000}
+      autoHideDuration={3000}
       onClose={onClose}
       ContentProps={{
         sx: {
