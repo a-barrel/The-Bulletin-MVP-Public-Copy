@@ -6,7 +6,6 @@ import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
-import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
@@ -17,6 +16,7 @@ import {
   EXPERIMENT_TAB_ID,
   EXPERIMENT_TITLE
 } from '../constants';
+import DebugPanel from '../components/DebugPanel';
 
 function ExperimentTab() {
   const defaultScreenId = EXPERIMENT_SCREENS[0]?.id ?? null;
@@ -43,12 +43,10 @@ function ExperimentTab() {
 
   return (
     <>
-      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Typography variant="h6">{EXPERIMENT_TITLE}</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Private sandbox for Troy. Keep this local and off the main repo.
-        </Typography>
-
+      <DebugPanel
+        title={EXPERIMENT_TITLE}
+        description="Private sandbox for Troy. Keep this local and off the main repo."
+      >
         <Alert severity="warning" sx={{ alignItems: 'flex-start' }}>
           <Stack spacing={0.5}>
             <Typography variant="subtitle2">Heads up</Typography>
@@ -88,7 +86,7 @@ function ExperimentTab() {
         >
           Open Preview
         </Button>
-      </Paper>
+      </DebugPanel>
 
       <Dialog
         open={isPreviewOpen}

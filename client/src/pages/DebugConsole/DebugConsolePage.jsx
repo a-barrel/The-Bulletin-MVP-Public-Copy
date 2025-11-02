@@ -34,6 +34,10 @@ import RepliesTab from './tabs/RepliesTab';
 import AccountSwapTab from './tabs/AccountSwapTab';
 import ExperimentTab from './tabs/ExperimentTab';
 import FirebaseStorageTab from './tabs/FirebaseStorageTab';
+import SystemTab from './tabs/SystemTab';
+import ModerationTab from './tabs/ModerationTab';
+import FriendsTab from './tabs/FriendsTab';
+import DirectMessagesTab from './tabs/DirectMessagesTab';
 
 const BASE_TABS = [
   { id: 'pin', label: 'Pins & Events', Component: PinsTab },
@@ -46,7 +50,11 @@ const BASE_TABS = [
   { id: CHAT_VIS_TAB_ID, label: 'Chat Room Visualization', Component: ChatRoomVisualizationTab },
   { id: 'updates', label: 'Updates', Component: UpdatesTab },
   { id: STORAGE_TAB_ID, label: 'Storage Explorer', Component: FirebaseStorageTab },
+  { id: 'system', label: 'System Tools', Component: SystemTab },
   { id: 'bad-users', label: 'BAD USERS >:(', Component: BadUsersTab },
+  { id: 'moderation', label: 'Moderation', Component: ModerationTab },
+  { id: 'friends', label: 'Friends', Component: FriendsTab },
+  { id: 'direct-messages', label: 'Direct Messages', Component: DirectMessagesTab },
   { id: 'replies', label: 'Replies', Component: RepliesTab },
   { id: ACCOUNT_SWAP_TAB_ID, label: 'Account Swap', Component: AccountSwapTab }
 ];

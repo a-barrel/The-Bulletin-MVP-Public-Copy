@@ -42,6 +42,8 @@ import {
   parseRequiredNumber,
   resolveMediaUrl
 } from '../utils';
+import formatDateTime, { formatRelativeTime } from '../../../utils/dates';
+import DebugPanel from '../components/DebugPanel';
 
 function PinsTab() {
   const [pinType, setPinType] = useState('event');
@@ -529,20 +531,17 @@ function PinsTab() {
     const diffMs = target.getTime() - now.getTime();
     const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
+    const absolute = formatDateTime(target);
     if (diffMs >= 0) {
-      const remainingDays = diffDays >= 1 ? Math.ceil(diffDays) : 0;
-      const secondary =
-        remainingDays === 0
-          ? 'Less than one day remaining'
-          : `${remainingDays} day${remainingDays === 1 ? '' : 's'} remaining`;
+      const relative = formatRelativeTime(target);
       return {
-        primary: `Expires ${target.toLocaleString()}`,
-        secondary
+        primary: `Expires ${absolute}`,
+        secondary: relative
       };
     }
 
     return {
-      primary: `Expired ${target.toLocaleString()}`,
+      primary: `Expired ${absolute}`,
       secondary: 'This pin is no longer visible to end users.'
     };
   };
@@ -669,15 +668,11 @@ function PinsTab() {
         </Alert>
       )}
 
-      <Paper
+      <DebugPanel
         component="form"
         onSubmit={handleSubmit}
-        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 3 }}
-      >
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            Pin Details
-          </Typography>
+        title="Pin Details"
+        actions={
           <ToggleButtonGroup
             value={pinType}
             exclusive
@@ -698,8 +693,9 @@ function PinsTab() {
               </Stack>
             </ToggleButton>
           </ToggleButtonGroup>
-        </Stack>
-
+        }
+        sx={{ gap: 3 }}
+      >
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1}
@@ -875,13 +871,13 @@ function PinsTab() {
             {isSubmitting ? 'Posting...' : 'Post Pin'}
           </Button>
         </Stack>
-      </Paper>
+      </DebugPanel>
 
-      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Typography variant="h6">Test saved pin</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Fetch the pin you just created directly from MongoDB.
-        </Typography>
+      <DebugPanel
+        title="Test saved pin"
+        description="Fetch the pin you just created directly from MongoDB."
+        sx={{ gap: 2 }}
+      >
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
           <TextField
@@ -967,13 +963,13 @@ function PinsTab() {
             <JsonPreview data={createdPin} />
           </Stack>
         )}
-      </Paper>
+      </DebugPanel>
 
-      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Typography variant="h6">Find nearby pins</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Search for pins near the coordinates above to verify radius queries.
-        </Typography>
+      <DebugPanel
+        title="Find nearby pins"
+        description="Search for pins near the coordinates above to verify radius queries."
+        sx={{ gap: 2 }}
+      >
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
           <TextField
@@ -1021,13 +1017,13 @@ function PinsTab() {
               : 'Enter a distance and fetch to list pins near the provided coordinates.'}
           </Typography>
         )}
-      </Paper>
+      </DebugPanel>
 
-      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Typography variant="h6">Load and sort pins</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Fetch recent pins or sort them by expiration or distance.
-        </Typography>
+      <DebugPanel
+        title="Load and sort pins"
+        description="Fetch recent pins or sort them by expiration or distance."
+        sx={{ gap: 2 }}
+      >
 
         <Stack spacing={2}>
           <Stack
@@ -1158,13 +1154,13 @@ function PinsTab() {
               : 'Results will appear here after fetching or sorting.'}
           </Typography>
         )}
-      </Paper>
+      </DebugPanel>
 
-      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Typography variant="h6">Expiring pins</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Identify pins that will expire soon.
-        </Typography>
+      <DebugPanel
+        title="Expiring pins"
+        description="Identify pins that will expire soon."
+        sx={{ gap: 2 }}
+      >
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
           <TextField
@@ -1240,13 +1236,13 @@ function PinsTab() {
             {isFetchingExpiringPins ? 'Scanning...' : 'Results will appear here after fetching.'}
           </Typography>
         )}
-      </Paper>
+      </DebugPanel>
 
-      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Typography variant="h6">Expired pins</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Review pins whose expiration date has passed.
-        </Typography>
+      <DebugPanel
+        title="Expired pins"
+        description="Review pins whose expiration date has passed."
+        sx={{ gap: 2 }}
+      >
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
           <Button
@@ -1323,13 +1319,13 @@ function PinsTab() {
               : 'Expired pins stay hidden until you fetch them here.'}
           </Typography>
         )}
-      </Paper>
+      </DebugPanel>
 
-      <Paper sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Typography variant="h6">Map preview</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Markers reflect the pins returned above. Click a marker to populate its ID for quick lookups.
-        </Typography>
+      <DebugPanel
+        title="Map preview"
+        description="Markers reflect the pins returned above. Click a marker to populate its ID for quick lookups."
+        sx={{ gap: 2 }}
+      >
         <Box sx={{ height: 360, mt: 1, borderRadius: 2, overflow: 'hidden' }}>
           <LeafletMap
             userLocation={searchCenterLocation ?? undefined}
@@ -1349,7 +1345,7 @@ function PinsTab() {
             }}
           />
         </Box>
-      </Paper>
+      </DebugPanel>
     </Stack>
   );
 }

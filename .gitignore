@@ -3,6 +3,11 @@ node_modules/
 /.pnp
 .pnp.js
 
+# Lockfiles
+package-lock.json
+client/package-lock.json
+server/package-lock.json
+
 # Testing
 /coverage
 
@@ -26,6 +31,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 firebase-debug.log*
+DEBUG LOGS IGNORE/
 
 # Editor directories and files
 .vscode/
@@ -57,3 +63,5 @@ TODO AND IDEAS/sprint-2-backlog.md
 
 
 /.vscode/bulletin-app-6548a-firebase-adminsdk-*.json
+TODO AND IDEAS/demo-readiness-checklist.md
+TODO AND IDEAS/moderation-and-friends-roadmap.md

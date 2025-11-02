@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, Fragment } from 'react';
+import { useCallback, useEffect, useRef, useState, Fragment } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import './Map.css';
+import { formatDistanceMiles, haversineDistanceMeters } from '../utils/geo';
 
 // Fix for default marker icons in Leaflet with React
 delete L.Icon.Default.prototype._getIconUrl;
@@ -12,14 +14,18 @@ L.Icon.Default.mergeOptions({
 });
 
 // Custom marker icons
-const userIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+const createMarkerIcon = (color, extraClassName) =>
+  new L.Icon({
+    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+    className: ['leaflet-marker-icon', extraClassName].filter(Boolean).join(' ')
+  });
+
+const userIcon = createMarkerIcon('orange', 'user-location-icon');
 
 const nearbyIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
@@ -30,23 +36,10 @@ const nearbyIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-const pinIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
-
-const selectedPinIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+const defaultPinIcon = createMarkerIcon('green');
+const discussionPinIcon = createMarkerIcon('blue');
+const eventPinIcon = createMarkerIcon('violet');
+const selfPinIcon = createMarkerIcon('orange', 'self-pin-icon');
 
 // Component to handle map center updates
 function MapUpdater({ center }) {
@@ -64,39 +57,6 @@ function ResizeHandler({ signature }) {
   }, [signature, map]);
   return null;
 }
-
-const formatDistanceMiles = (meters) => {
-  if (typeof meters !== 'number' || Number.isNaN(meters)) {
-    return null;
-  }
-  return (meters / 1609.34).toFixed(1);
-};
-
-const calculateDistanceMeters = (pointA, pointB) => {
-  if (!Array.isArray(pointA) || !Array.isArray(pointB)) {
-    return null;
-  }
-
-  const [lat1, lon1] = pointA;
-  const [lat2, lon2] = pointB;
-
-  if (![lat1, lon1, lat2, lon2].every((value) => Number.isFinite(value))) {
-    return null;
-  }
-
-  const toRadians = (value) => (value * Math.PI) / 180;
-  const earthRadiusMeters = 6371000;
-
-  const dLat = toRadians(lat2 - lat1);
-  const dLon = toRadians(lon2 - lon1);
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return earthRadiusMeters * c;
-};
 
 const parseDate = (value) => {
   if (!value) return null;
@@ -149,19 +109,45 @@ const toLatLng = (location) => {
   return [latitude, longitude];
 };
 
+const resolvePinIcon = (pin) => {
+  const normalizedType = typeof pin?.type === 'string' ? pin.type.toLowerCase() : '';
+
+  if (pin?.isSelf || pin?.viewerIsCreator) {
+    return selfPinIcon;
+  }
+  if (normalizedType === 'discussion') {
+    return discussionPinIcon;
+  }
+  if (normalizedType === 'event') {
+    return eventPinIcon;
+  }
+  return defaultPinIcon;
+};
+
 const Map = ({
   userLocation,
   nearbyUsers = [],
   pins = [],
   onPinSelect,
+  onPinView,
+  onChatRoomView,
+  onCurrentUserView,
   selectedPinId,
   centerOverride,
-  userRadiusMeters
+  userRadiusMeters,
+  isOffline = false
 }) => {
   const tileLayerRef = useRef(null);
+  const tileErrorCountRef = useRef(0);
+  const [tilesUnavailable, setTilesUnavailable] = useState(false);
   const handleTileError = useCallback(() => {
     const layer = tileLayerRef.current;
     if (!layer || typeof layer.redraw !== 'function') {
+      return;
+    }
+    tileErrorCountRef.current += 1;
+    if (isOffline || tileErrorCountRef.current >= 2) {
+      setTilesUnavailable(true);
       return;
     }
     // Small delay lets transient network hiccups settle before refreshing tiles.
@@ -172,6 +158,36 @@ const Map = ({
         console.warn('Failed to redraw tile layer after error:', error);
       }
     }, 500);
+  }, [isOffline]);
+
+  useEffect(() => {
+    if (isOffline) {
+      setTilesUnavailable(true);
+    } else {
+      tileErrorCountRef.current = 0;
+      setTilesUnavailable(false);
+      const layer = tileLayerRef.current;
+      if (layer && typeof layer.redraw === 'function') {
+        try {
+          layer.redraw();
+        } catch (error) {
+          console.warn('Failed to redraw tile layer after regaining connection:', error);
+        }
+      }
+    }
+  }, [isOffline]);
+
+  const handleRetryTiles = useCallback(() => {
+    tileErrorCountRef.current = 0;
+    setTilesUnavailable(false);
+    const layer = tileLayerRef.current;
+    if (layer && typeof layer.redraw === 'function') {
+      try {
+        layer.redraw();
+      } catch (error) {
+        console.warn('Failed to redraw tile layer during manual retry:', error);
+      }
+    }
   }, []);
 
   const resolvedCenter = toLatLng(centerOverride) ?? toLatLng(userLocation) ?? [0, 0];
@@ -180,36 +196,59 @@ const Map = ({
   const resizeSignature = `${resolvedCenter?.[0] ?? 'na'}-${resolvedCenter?.[1] ?? 'na'}-${resolvedPins.length}-${nearbyUsers.length}-${userRadiusMeters ?? 'no-radius'}`;
 
   return (
-    <MapContainer
-      center={resolvedCenter}
-      zoom={13}
-      style={{ width: '100%', height: '100%' }}
-      whenCreated={(map) => {
-        window.setTimeout(() => {
-          try {
-            map.invalidateSize();
-          } catch {
-            // ignore
-          }
-        }, 0);
-      }}
-    >
-      <TileLayer
-        ref={tileLayerRef}
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        eventHandlers={{
-          tileerror: handleTileError
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <MapContainer
+        center={resolvedCenter}
+        zoom={13}
+        style={{ width: '100%', height: '100%' }}
+        whenCreated={(map) => {
+          window.setTimeout(() => {
+            try {
+              map.invalidateSize();
+            } catch {
+              // ignore
+            }
+          }, 0);
         }}
-      />
+      >
+        <TileLayer
+          ref={tileLayerRef}
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          eventHandlers={{
+            tileerror: handleTileError
+          }}
+        />
       
       {userMarkerPosition && (
-        <Marker
-          position={userMarkerPosition}
-          icon={userIcon}
-        >
+        <Marker position={userMarkerPosition} icon={userIcon}>
           <Popup>
-            <h3>You are here</h3>
+            <div>
+              <h3 style={{ margin: 0 }}>You are here</h3>
+              {typeof onCurrentUserView === 'function' ? (
+                <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onCurrentUserView();
+                    }}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      borderRadius: '999px',
+                      border: 'none',
+                      backgroundColor: '#3EB8F0',
+                      color: '#fff',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    View
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </Popup>
         </Marker>
       )}
@@ -221,20 +260,23 @@ const Map = ({
         />
       )}
 
-      {nearbyUsers.map((user, index) => (
-        <Marker
-          key={index}
-          position={[
-            user.coordinates.coordinates[1],
-            user.coordinates.coordinates[0]
-          ]}
-          icon={nearbyIcon}
-        >
-          <Popup>
-            <h3>User {user.userId}</h3>
-          </Popup>
-        </Marker>
-      ))}
+      {nearbyUsers.map((user, index) => {
+        const coordsArray = user?.coordinates?.coordinates || user?.location?.coordinates;
+        if (!Array.isArray(coordsArray) || coordsArray.length < 2) {
+          return null;
+        }
+        const [lon, lat] = coordsArray;
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+          return null;
+        }
+        return (
+          <Marker key={index} position={[lat, lon]} icon={nearbyIcon}>
+            <Popup>
+              <h3>User {user.userId ?? index + 1}</h3>
+            </Popup>
+          </Marker>
+        );
+      })}
 
       {resolvedPins.map((pin, index) => {
         const coordinates = pin?.coordinates?.coordinates;
@@ -248,10 +290,29 @@ const Map = ({
         }
 
         const providedDistance = typeof pin.distanceMeters === 'number' ? pin.distanceMeters : null;
-        const computedDistance = providedDistance ?? calculateDistanceMeters(userMarkerPosition, [latitude, longitude]);
-        const distanceLabel = formatDistanceMiles(computedDistance);
+        const computedDistance =
+          providedDistance ?? haversineDistanceMeters(userMarkerPosition, [latitude, longitude]);
+        const distanceLabel = formatDistanceMiles(computedDistance, { decimals: 1 });
         const expirationLabel = formatExpiration(pin);
         const key = pin._id ?? `pin-${index}-${latitude}-${longitude}`;
+        const isChatRoom = pin.type === 'chat-room' || pin.type === 'global-chat-room';
+        const isRegularPin = pin.type === 'event' || pin.type === 'discussion';
+        const canViewPin =
+          typeof onPinView === 'function' && !isChatRoom && isRegularPin;
+        const canViewChatRoom =
+          typeof onChatRoomView === 'function' && isChatRoom;
+
+        const handleViewPin = (canViewPin || canViewChatRoom)
+          ? (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              if (canViewPin) {
+                onPinView(pin);
+              } else if (canViewChatRoom) {
+                onChatRoomView(pin);
+              }
+            }
+          : null;
         const popupContent = (
           <div>
             <strong>{pin.title ?? 'Untitled pin'}</strong>
@@ -259,14 +320,32 @@ const Map = ({
             {pin._id ? <div>ID: {pin._id}</div> : null}
             {distanceLabel ? <div>Distance: {distanceLabel} mi</div> : null}
             {expirationLabel ? <div>{expirationLabel}</div> : null}
+            {canViewPin || canViewChatRoom ? (
+              <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
+                <button
+                  type="button"
+                  onClick={handleViewPin}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    borderRadius: '999px',
+                    border: 'none',
+                    backgroundColor: '#3EB8F0',
+                    color: '#fff',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  View
+                </button>
+              </div>
+            ) : null}
           </div>
         );
 
-        const isChatRoom = pin.type === 'chat-room' || pin.type === 'global-chat-room';
         if (isChatRoom) {
           const color = pin.type === 'global-chat-room' ? '#ffb300' : '#ff7043';
           const isSelected = pin._id && pin._id === selectedPinId;
-          const radius = isSelected ? 10 : 7;
+          const radius = isSelected ? 12 : 8;
 
           return (
             <Fragment key={key}>
@@ -274,7 +353,7 @@ const Map = ({
                 <Circle
                   center={[latitude, longitude]}
                   radius={pin.proximityRadiusMeters}
-                  pathOptions={{ color, weight: 1.5, dashArray: '6 4', fillOpacity: 0.04 }}
+                  pathOptions={{ color, weight: isSelected ? 2 : 1.2, dashArray: '6 6', fillColor: color, fillOpacity: 0.08 }}
                 />
               ) : null}
               <CircleMarker
@@ -284,12 +363,19 @@ const Map = ({
                   color,
                   weight: isSelected ? 3 : 2,
                   fillColor: color,
-                  fillOpacity: 0.7
+                  fillOpacity: 0.85
                 }}
                 eventHandlers={
-                  onPinSelect
+                  onPinSelect || canViewChatRoom
                     ? {
-                        click: () => onPinSelect(pin)
+                        click: () => {
+                          if (onPinSelect) {
+                            onPinSelect(pin);
+                          }
+                          if (canViewChatRoom && !onPinSelect) {
+                            onChatRoomView(pin);
+                          }
+                        }
                       }
                     : undefined
                 }
@@ -300,12 +386,14 @@ const Map = ({
           );
         }
 
-        const markerIcon = pin._id && pin._id === selectedPinId ? selectedPinIcon : pinIcon;
+        const markerIcon = resolvePinIcon(pin);
+        const markerZIndex = pin?.isSelf ? 1200 : pin._id && pin._id === selectedPinId ? 1100 : 1000;
         return (
           <Marker
             key={key}
             position={[latitude, longitude]}
             icon={markerIcon}
+            zIndexOffset={markerZIndex}
             eventHandlers={
               onPinSelect
                 ? {
@@ -321,7 +409,49 @@ const Map = ({
 
       <MapUpdater center={resolvedCenter} />
       <ResizeHandler signature={resizeSignature} />
-    </MapContainer>
+      </MapContainer>
+      {tilesUnavailable ? (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: 'rgba(9, 13, 20, 0.85)',
+            color: '#fff',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+            padding: '16px',
+            textAlign: 'center'
+          }}
+        >
+          <strong style={{ fontSize: '1.1rem' }}>Map tiles unavailable</strong>
+          <span style={{ maxWidth: 360 }}>
+            {isOffline
+              ? 'You appear to be offline. Reconnect to reload the map tiles.'
+              : 'We could not load map tiles right now. Check your connection or try again.'}
+          </span>
+          {!isOffline ? (
+            <button
+              type="button"
+              onClick={handleRetryTiles}
+              style={{
+                border: 'none',
+                backgroundColor: '#90caf9',
+                color: '#0b0f16',
+                fontWeight: 600,
+                padding: '8px 18px',
+                borderRadius: '999px',
+                cursor: 'pointer'
+              }}
+            >
+              Retry tiles
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 };
 

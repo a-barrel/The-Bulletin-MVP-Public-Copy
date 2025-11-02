@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Navbar from '../components/Navbar';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
   Box,
@@ -8,7 +8,6 @@ import {
   Paper,
   Button,
   IconButton,
-  Divider,
   List,
   ListItemButton,
   ListItemText,
@@ -28,23 +27,25 @@ import SmsIcon from '@mui/icons-material/Sms';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import RoomIcon from '@mui/icons-material/Room';
-import SendIcon from '@mui/icons-material/Send';
 import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
+import updatesIcon from '../assets/UpdateIcon.svg';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
+
+import Navbar from '../components/Navbar';
+import GlobalNavMenu from '../components/GlobalNavMenu';
+import MessageBubble from '../components/MessageBubble';
+import ChatComposer from '../components/ChatComposer';
+
 import { auth } from '../firebase';
-import { playBadgeSound } from '../utils/badgeSound';
-import { replaceProfanityWithFruit } from '../utils/profanityFilter';
+import useChatManager from '../hooks/useChatManager';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
-import {
-  fetchChatRooms,
-  createChatRoom,
-  fetchChatMessages,
-  createChatMessage,
-  fetchChatPresence,
-  upsertChatPresence,
-  fetchCurrentUserProfile
-} from '../api/mongoDataApi';
+import { formatFriendlyTimestamp, formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
 import { useLocationContext } from '../contexts/LocationContext';
+import { useUpdates } from '../contexts/UpdatesContext';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
+
+import './ChatPage.css';
 
 export const pageConfig = {
   id: 'chat',
@@ -57,371 +58,172 @@ export const pageConfig = {
   protected: true
 };
 
-const DEFAULT_COORDINATES = {
-  latitude: 33.7838,
-  longitude: -118.1136
-};
-
-const PRESENCE_HEARTBEAT_MS = 30_000;
-const MESSAGES_REFRESH_MS = 7_000;
-
 function ChatPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { unreadCount, refreshUnreadCount } = useUpdates();
+  const { isOffline } = useNetworkStatusContext();
   const { announceBadgeEarned } = useBadgeSound();
-  const [authUser, authLoading] = useAuthState(auth);
+  const [firebaseAuthUser, authLoading] = useAuthState(auth);
   const { location: viewerLocation } = useLocationContext();
   const viewerLatitude = viewerLocation?.latitude ?? null;
   const viewerLongitude = viewerLocation?.longitude ?? null;
-  const viewerAccuracy = Number.isFinite(viewerLocation?.accuracy)
-    ? viewerLocation.accuracy
-    : undefined;
-  const viewerCoordinates = useMemo(() => {
-    if (!Number.isFinite(viewerLatitude) || !Number.isFinite(viewerLongitude)) {
-      return null;
-    }
-    return {
-      latitude: viewerLatitude,
-      longitude: viewerLongitude,
-      ...(viewerAccuracy !== undefined ? { accuracy: viewerAccuracy } : {})
-    };
-  }, [viewerLatitude, viewerLongitude, viewerAccuracy]);
-  const [rooms, setRooms] = useState([]);
-  const [roomsError, setRoomsError] = useState(null);
-  const [isLoadingRooms, setIsLoadingRooms] = useState(false);
 
-  const [selectedRoomId, setSelectedRoomId] = useState(null);
-  const selectedRoom = useMemo(
-    () => rooms.find((room) => room._id === selectedRoomId) ?? null,
-    [rooms, selectedRoomId]
-  );
-
-  const [messages, setMessages] = useState([]);
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [messagesError, setMessagesError] = useState(null);
-
-  const [presence, setPresence] = useState([]);
-  const [presenceError, setPresenceError] = useState(null);
-
-  const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const [messageDraft, setMessageDraft] = useState('');
-
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [createError, setCreateError] = useState(null);
-  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
-  const [createForm, setCreateForm] = useState({
-    name: '',
-    description: '',
-    latitude: DEFAULT_COORDINATES.latitude,
-    longitude: DEFAULT_COORDINATES.longitude,
-    radiusMeters: 500,
-    isGlobal: false
+  const {
+    debugMode,
+    setDebugMode,
+    authUser,
+    rooms,
+    roomsError,
+    isLoadingRooms,
+    loadRooms,
+    selectedRoomId,
+    selectedRoom,
+    handleSelectRoom,
+    uniqueMessages,
+    messagesError,
+    isLoadingMessages,
+    handleRefreshCurrentRoom,
+    presenceError,
+    activeUserCount,
+    messageDraft,
+    setMessageDraft,
+    handleSendMessage,
+    handleMessageInputKeyDown,
+    isSendingMessage,
+    gifPreviewError,
+    isGifPreviewLoading,
+    handleGifPreviewConfirm,
+    handleGifPreviewCancel,
+    handleGifPreviewShuffle,
+    composerGifPreview,
+    handleOpenCreateDialog,
+    handleCloseCreateDialog,
+    handleCreateRoom,
+    isCreateDialogOpen,
+    createForm,
+    setCreateForm,
+    isCreatingRoom,
+    createError
+  } = useChatManager({
+    authUser: firebaseAuthUser,
+    authLoading,
+    viewerLatitude,
+    viewerLongitude,
+    isOffline,
+    refreshUnreadCount,
+    announceBadgeEarned
   });
-  const [viewerProfile, setViewerProfile] = useState(null);
-  const filterCussWordsEnabled = Boolean(viewerProfile?.preferences?.filterCussWords);
 
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [scrollBtnBottom, setScrollBtnBottom] = useState(0);
+  const containerRef = useRef(null);
+  const inputContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
-  const presenceIntervalRef = useRef(null);
-  const messageIntervalRef = useRef(null);
 
   const scrollMessagesToBottom = useCallback(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, []);
-
-  useEffect(() => {
-    scrollMessagesToBottom();
-  }, [messages, scrollMessagesToBottom]);
-
-  useEffect(() => {
-    if (!authLoading && !authUser) {
-      setRooms([]);
-      setSelectedRoomId(null);
-      setMessages([]);
-      setPresence([]);
-      setViewerProfile(null);
-    }
-  }, [authLoading, authUser]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    if (!authUser) {
-      setViewerProfile(null);
+    const container = containerRef.current;
+    if (!container) {
       return;
     }
-
-    const loadProfile = async () => {
-      try {
-        const profile = await fetchCurrentUserProfile();
-        if (!cancelled) {
-          setViewerProfile(profile);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          console.warn('Failed to load viewer profile for chat preferences', error);
-          setViewerProfile(null);
-        }
-      }
-    };
-
-    loadProfile();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [authUser]);
-
-  const loadRooms = useCallback(async () => {
-    if (!authUser) {
-      return;
-    }
-    setIsLoadingRooms(true);
-    setRoomsError(null);
-    try {
-      const data = await fetchChatRooms({
-        latitude: Number.isFinite(viewerLatitude) ? viewerLatitude : undefined,
-        longitude: Number.isFinite(viewerLongitude) ? viewerLongitude : undefined
-      });
-      setRooms(data);
-      if (data.length > 0 && !selectedRoomId) {
-        setSelectedRoomId(data[0]._id);
-      }
-    } catch (error) {
-      setRooms([]);
-      setRoomsError(error?.message || 'Failed to load chat rooms.');
-    } finally {
-      setIsLoadingRooms(false);
-    }
-  }, [authUser, selectedRoomId, viewerLatitude, viewerLongitude]);
-
-  useEffect(() => {
-    if (!authLoading && authUser) {
-      loadRooms();
-    }
-  }, [authLoading, authUser, loadRooms]);
-
-  const loadMessages = useCallback(
-    async (roomId, { silent } = {}) => {
-      if (!roomId) {
-        return;
-      }
-      if (!silent) {
-        setIsLoadingMessages(true);
-      }
-      setMessagesError(null);
-      try {
-        const data = await fetchChatMessages(roomId, {
-          latitude: viewerCoordinates?.latitude,
-          longitude: viewerCoordinates?.longitude
-        });
-        setMessages(data);
-      } catch (error) {
-        setMessages([]);
-        setMessagesError(error?.message || 'Failed to load messages.');
-      } finally {
-        if (!silent) {
-          setIsLoadingMessages(false);
-        }
-      }
-    },
-    [viewerCoordinates]
-  );
-
-  const loadPresence = useCallback(async (roomId) => {
-    if (!roomId) {
-      return;
-    }
-    try {
-      const data = await fetchChatPresence(roomId, {
-        latitude: viewerCoordinates?.latitude,
-        longitude: viewerCoordinates?.longitude
-      });
-      setPresence(data);
-      setPresenceError(null);
-    } catch (error) {
-      setPresence([]);
-      setPresenceError(error?.message || 'Failed to load room presence.');
-    }
-  }, [viewerCoordinates]);
-
-  useEffect(() => {
-    if (!selectedRoomId) {
-      setMessages([]);
-      setPresence([]);
-      return;
-    }
-
-    loadMessages(selectedRoomId);
-    loadPresence(selectedRoomId);
-
-    if (messageIntervalRef.current) {
-      clearInterval(messageIntervalRef.current);
-    }
-    messageIntervalRef.current = setInterval(() => {
-      loadMessages(selectedRoomId, { silent: true });
-    }, MESSAGES_REFRESH_MS);
-
-    if (presenceIntervalRef.current) {
-      clearInterval(presenceIntervalRef.current);
-    }
-    presenceIntervalRef.current = setInterval(() => {
-      loadPresence(selectedRoomId);
-    }, PRESENCE_HEARTBEAT_MS);
-
-    return () => {
-      if (messageIntervalRef.current) {
-        clearInterval(messageIntervalRef.current);
-        messageIntervalRef.current = null;
-      }
-      if (presenceIntervalRef.current) {
-        clearInterval(presenceIntervalRef.current);
-        presenceIntervalRef.current = null;
-      }
-    };
-  }, [loadMessages, loadPresence, selectedRoomId]);
-
-  useEffect(() => {
-    if (!authUser || !selectedRoomId) {
-      return;
-    }
-
-    const sendPresence = async () => {
-      try {
-        await upsertChatPresence(
-          selectedRoomId,
-          viewerCoordinates
-            ? {
-                latitude: viewerCoordinates.latitude,
-                longitude: viewerCoordinates.longitude,
-                ...(viewerCoordinates.accuracy !== undefined
-                  ? { accuracy: viewerCoordinates.accuracy }
-                  : {})
-              }
-            : {}
-        );
-      } catch (error) {
-        console.warn('Failed to update chat presence', error);
-      }
-    };
-
-    sendPresence();
-    const interval = setInterval(sendPresence, PRESENCE_HEARTBEAT_MS);
-    return () => clearInterval(interval);
-  }, [authUser, selectedRoomId, viewerCoordinates]);
-
-  const handleSelectRoom = useCallback((roomId) => {
-    setSelectedRoomId(roomId);
-  }, []);
-
-  const handleOpenCreateDialog = useCallback(() => {
-    setCreateForm((prev) => ({
-      ...prev,
-      name: '',
-      description: '',
-      radiusMeters: 500,
-      isGlobal: false
-    }));
-    setCreateError(null);
-    setIsCreateDialogOpen(true);
-  }, []);
-
-  const handleCloseCreateDialog = useCallback(() => {
-    if (isCreatingRoom) return;
-    setIsCreateDialogOpen(false);
-  }, [isCreatingRoom]);
-
-  const handleCreateRoom = useCallback(
-    async (event) => {
-      event.preventDefault();
-      if (!authUser) {
-        setCreateError('Sign in to create a chat room.');
-        return;
-      }
-
-      if (!createForm.name.trim()) {
-        setCreateError('Room name is required.');
-        return;
-      }
-
-      setIsCreatingRoom(true);
-      setCreateError(null);
-      try {
-        const payload = {
-          name: createForm.name.trim(),
-          description: createForm.description.trim() || undefined,
-          latitude: Number(createForm.latitude) || DEFAULT_COORDINATES.latitude,
-          longitude: Number(createForm.longitude) || DEFAULT_COORDINATES.longitude,
-          radiusMeters: Number(createForm.radiusMeters) || 500,
-          isGlobal: Boolean(createForm.isGlobal)
-        };
-
-        const room = await createChatRoom(payload);
-        setRooms((prev) => [room, ...prev]);
-        setSelectedRoomId(room._id);
-        setIsCreateDialogOpen(false);
-      } catch (error) {
-        setCreateError(error?.message || 'Failed to create chat room.');
-      } finally {
-        setIsCreatingRoom(false);
-      }
-    },
-    [authUser, createForm]
-  );
-
-  const handleSendMessage = useCallback(
-    async (event) => {
-      event.preventDefault();
-      if (!selectedRoomId || !authUser) {
-        return;
-      }
-      const trimmed = messageDraft.trim();
-      if (!trimmed) {
-        return;
-      }
-
-      setIsSendingMessage(true);
-      try {
-        const payload = { message: trimmed };
-        if (viewerCoordinates) {
-          payload.latitude = viewerCoordinates.latitude;
-          payload.longitude = viewerCoordinates.longitude;
-          if (viewerCoordinates.accuracy !== undefined) {
-            payload.accuracy = viewerCoordinates.accuracy;
-          }
-        }
-        const message = await createChatMessage(selectedRoomId, payload);
-        setMessages((prev) => [...prev, message]);
-        if (message?.badgeEarnedId) {
-          playBadgeSound();
-          announceBadgeEarned(message.badgeEarnedId);
-        }
-        setMessageDraft('');
-        scrollMessagesToBottom();
-      } catch (error) {
-        setMessagesError(error?.message || 'Failed to send message.');
-      } finally {
-        setIsSendingMessage(false);
-      }
-    },
-    [
-      announceBadgeEarned,
-      authUser,
-      messageDraft,
-      scrollMessagesToBottom,
-      selectedRoomId,
-      viewerCoordinates
-    ]
-  );
-
-  const filteredPresence = useMemo(() => {
-    const map = new Map();
-    presence.forEach((entry) => {
-      map.set(entry.userId, entry);
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth'
     });
-    return Array.from(map.values());
-  }, [presence]);
+  }, []);
 
-  const activeUserCount = filteredPresence.length;
+  useLayoutEffect(() => {
+    const timer = setTimeout(scrollMessagesToBottom, 100);
+    return () => clearTimeout(timer);
+  }, [selectedRoomId, location.pathname, scrollMessagesToBottom]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+    const handleScroll = () => {
+      const node = containerRef.current;
+      if (!node) {
+        return;
+      }
+      const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
+      setShowScrollButton(distanceFromBottom > 20);
+    };
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const inputContainer = inputContainerRef.current;
+    if (!inputContainer) {
+      return;
+    }
+
+    let frameId = null;
+    const resizeObserver = new ResizeObserver(([entry]) => {
+      if (!entry) {
+        return;
+      }
+      const targetBottom = Math.round(entry.contentRect.height) + 8;
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+      }
+      frameId = requestAnimationFrame(() => {
+        setScrollBtnBottom((prev) =>
+          Math.abs(prev - targetBottom) > 0.5 ? targetBottom : prev
+        );
+      });
+    });
+
+    resizeObserver.observe(inputContainer);
+
+    return () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+      }
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!uniqueMessages.length) {
+      return;
+    }
+    const timer = setTimeout(scrollMessagesToBottom, 75);
+    return () => clearTimeout(timer);
+  }, [uniqueMessages.length, scrollMessagesToBottom]);
+
+  const handleNotifications = useCallback(() => {
+    navigate('/updates');
+  }, [navigate]);
+
+  const notificationsLabel =
+    unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
+  const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
+
+  const getMessageKey = useCallback((message, fallbackIndex) => {
+    const rawId = message?._id || message?.id;
+    if (!rawId) {
+      return `message-${fallbackIndex}`;
+    }
+    if (typeof rawId === 'object' && rawId !== null && '$oid' in rawId) {
+      return rawId.$oid;
+    }
+    return rawId;
+  }, []);
+
+  const getDisplayMessageText = useCallback((msg) => {
+    if (!msg || typeof msg.message !== 'string') {
+      return '';
+    }
+    const hasAttachments = Array.isArray(msg.attachments) && msg.attachments.length > 0;
+    if (!hasAttachments) {
+      return msg.message;
+    }
+    const stripped = msg.message.replace(/^GIF:\s*/i, '').trim();
+    return stripped;
+  }, []);
 
   const renderRoomList = () => (
     <Paper
@@ -451,12 +253,7 @@ function ChatPage() {
           <Typography variant="subtitle1" fontWeight={700}>
             Rooms
           </Typography>
-          <Chip
-            label={rooms.length}
-            size="small"
-            color="primary"
-            variant="outlined"
-          />
+          <Chip label={rooms.length} size="small" color="primary" variant="outlined" />
         </Stack>
         <Stack direction="row" spacing={1}>
           <Tooltip title="Refresh rooms">
@@ -487,13 +284,7 @@ function ChatPage() {
           </Typography>
         </Box>
       ) : (
-        <List
-          dense
-          sx={{
-            overflowY: 'auto',
-            flexGrow: 1
-          }}
-        >
+        <List dense sx={{ overflowY: 'auto', flexGrow: 1 }}>
           {rooms.map((room) => {
             const isActive = room._id === selectedRoomId;
             const participantLabel = room.participantCount
@@ -585,15 +376,7 @@ function ChatPage() {
             <Stack direction="row" spacing={1}>
               <Tooltip title="Refresh messages">
                 <span>
-                  <IconButton
-                    onClick={() => {
-                      if (selectedRoomId) {
-                        loadMessages(selectedRoomId);
-                        loadPresence(selectedRoomId);
-                      }
-                    }}
-                    disabled={isLoadingMessages}
-                  >
+                  <IconButton onClick={handleRefreshCurrentRoom} disabled={isLoadingMessages}>
                     {isLoadingMessages ? <CircularProgress size={20} /> : <RefreshIcon fontSize="small" />}
                   </IconButton>
                 </span>
@@ -616,22 +399,17 @@ function ChatPage() {
               <Typography variant="body2" color="error">
                 {messagesError}
               </Typography>
-            ) : messages.length === 0 ? (
+            ) : uniqueMessages.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
                 No messages yet. Start the conversation!
               </Typography>
             ) : (
-              messages.map((message) => {
+              uniqueMessages.map((message, index) => {
                 const isSelf = authUser && message.authorId === authUser.uid;
-                const rawMessage = message.message ?? '';
-                const messageText = filterCussWordsEnabled
-                  ? replaceProfanityWithFruit(rawMessage)
-                  : rawMessage;
+                const key = getMessageKey(message, index);
+                const bodyText = getDisplayMessageText(message);
                 return (
-                  <Stack
-                    key={message._id}
-                    alignItems={isSelf ? 'flex-end' : 'flex-start'}
-                  >
+                  <Stack key={key} alignItems={isSelf ? 'flex-end' : 'flex-start'}>
                     <Paper
                       elevation={1}
                       sx={{
@@ -646,55 +424,46 @@ function ChatPage() {
                           <Typography variant="subtitle2" fontWeight={600}>
                             {message.author?.displayName || message.author?.username || 'Someone'}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {new Date(message.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            title={formatAbsoluteDateTime(message.createdAt) || undefined}
+                          >
+                            {formatFriendlyTimestamp(message.createdAt) ||
+                              formatRelativeTime(message.createdAt) ||
+                              ''}
                           </Typography>
                         </Stack>
-                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                          {messageText}
-                        </Typography>
+                        {bodyText ? (
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                            {bodyText}
+                          </Typography>
+                        ) : null}
+                        {Array.isArray(message.attachments) && message.attachments.length > 0 ? (
+                          <Stack spacing={1}>
+                            {message.attachments.map((attachment, attachmentIndex) => {
+                              if (!attachment?.url) {
+                                return null;
+                              }
+                              return (
+                                <Box
+                                  key={`${message._id || message.id}-attachment-${attachmentIndex}`}
+                                  component="img"
+                                  src={attachment.url}
+                                  alt={attachment.description || 'Chat attachment'}
+                                  sx={{ maxWidth: 240, borderRadius: 1 }}
+                                  loading="lazy"
+                                />
+                              );
+                            })}
+                          </Stack>
+                        ) : null}
                       </Stack>
                     </Paper>
                   </Stack>
                 );
               })
             )}
-            <div ref={messagesEndRef} />
-          </Box>
-
-          <Divider />
-
-          <Box
-            component="form"
-            onSubmit={handleSendMessage}
-            sx={{
-              display: 'flex',
-              gap: 1,
-              px: { xs: 2, md: 3 },
-              py: 2,
-              borderTop: '1px solid',
-              borderColor: 'divider'
-            }}
-          >
-            <TextField
-              value={messageDraft}
-              onChange={(event) => setMessageDraft(event.target.value)}
-              placeholder={authUser ? 'Type your message…' : 'Sign in to chat'}
-              multiline
-              minRows={1}
-              maxRows={4}
-              fullWidth
-              disabled={!authUser || isSendingMessage}
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              startIcon={<SendIcon />}
-              disabled={!authUser || !messageDraft.trim() || isSendingMessage}
-            >
-              {isSendingMessage ? 'Sending…' : 'Send'}
-            </Button>
           </Box>
         </>
       ) : (
@@ -719,137 +488,208 @@ function ChatPage() {
 
   return (
     <>
-      <Box
-      sx={{
-        width: '100%',
-        maxWidth: 1200,
-        mx: 'auto',
-        px: { xs: 1.5, md: 3 },
-        py: { xs: 2, md: 4 }
-      }}
-    >
-      <Stack spacing={2}>
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <SmsIcon color="primary" />
-          <Typography variant="h4" component="h1">
-            Chat
-          </Typography>
-          {authUser ? (
-            <Chip
-              label={`Signed in as ${authUser.displayName || authUser.email || 'You'}`}
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
-          ) : (
-            <Chip
-              label="Sign in to participate"
-              size="small"
-              color="warning"
-              variant="outlined"
-            />
-          )}
+      <Box className="page" sx={{ display: debugMode ? 'block' : 'none', width: '100%' }}>
+        <Button className="chat-debug-toggle" onClick={() => setDebugMode((prev) => !prev)}>
+          {debugMode ? 'Hide Chat Debug' : 'Show Chat Debug'}
+        </Button>
+
+        <Stack spacing={2} sx={{ width: '100%', maxWidth: 1200, mx: 'auto', px: { xs: 1.5, md: 3 }, py: { xs: 2, md: 4 } }}>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <SmsIcon color="primary" />
+            <Typography variant="h4" component="h1">
+              Chat
+            </Typography>
+            {authUser ? (
+              <Chip
+                label={`Signed in as ${authUser.displayName || authUser.email || 'You'}`}
+                size="small"
+                color="primary"
+                variant="outlined"
+              />
+            ) : (
+              <Chip label="Sign in to participate" size="small" color="warning" variant="outlined" />
+            )}
+          </Stack>
+
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ minHeight: { md: 560 } }}>
+            {renderRoomList()}
+            {renderConversation()}
+          </Stack>
+
+          {presenceError ? (
+            <Typography variant="body2" color="error">
+              {presenceError}
+            </Typography>
+          ) : null}
         </Stack>
 
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={2}
-          sx={{ minHeight: { md: 560 } }}
-        >
-          {renderRoomList()}
-          {renderConversation()}
-        </Stack>
-
-        {presenceError ? (
-          <Typography variant="body2" color="error">
-            {presenceError}
-          </Typography>
-        ) : null}
-      </Stack>
-
-      <Dialog open={isCreateDialogOpen} onClose={handleCloseCreateDialog} fullWidth maxWidth="sm">
-        <DialogTitle>Create chat room</DialogTitle>
-        <Box component="form" onSubmit={handleCreateRoom}>
-          <DialogContent>
-            <Stack spacing={2} sx={{ mt: 1 }}>
-              <TextField
-                label="Name"
-                value={createForm.name}
-                onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
-                required
-                fullWidth
-              />
-              <TextField
-                label="Description"
-                value={createForm.description}
-                onChange={(event) => setCreateForm((prev) => ({ ...prev, description: event.target.value }))}
-                multiline
-                minRows={2}
-                fullWidth
-              />
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        <Dialog open={isCreateDialogOpen} onClose={handleCloseCreateDialog} fullWidth maxWidth="sm">
+          <DialogTitle>Create chat room</DialogTitle>
+          <Box component="form" onSubmit={handleCreateRoom}>
+            <DialogContent>
+              <Stack spacing={2} sx={{ mt: 1 }}>
                 <TextField
-                  label="Latitude"
-                  type="number"
-                  value={createForm.latitude}
-                  onChange={(event) => setCreateForm((prev) => ({ ...prev, latitude: event.target.value }))}
+                  label="Name"
+                  value={createForm.name}
+                  onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
+                  required
                   fullWidth
-                  inputProps={{ step: '0.0001' }}
                 />
                 <TextField
-                  label="Longitude"
-                  type="number"
-                  value={createForm.longitude}
-                  onChange={(event) => setCreateForm((prev) => ({ ...prev, longitude: event.target.value }))}
+                  label="Description"
+                  value={createForm.description}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, description: event.target.value }))
+                  }
+                  multiline
+                  minRows={2}
                   fullWidth
-                  inputProps={{ step: '0.0001' }}
                 />
-              </Stack>
-              <TextField
-                label="Radius (meters)"
-                type="number"
-                value={createForm.radiusMeters}
-                onChange={(event) => setCreateForm((prev) => ({ ...prev, radiusMeters: event.target.value }))}
-                fullWidth
-                inputProps={{ min: 50, step: 10 }}
-              />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={createForm.isGlobal}
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                  <TextField
+                    label="Latitude"
+                    type="number"
+                    value={createForm.latitude}
                     onChange={(event) =>
-                      setCreateForm((prev) => ({ ...prev, isGlobal: event.target.checked }))
+                      setCreateForm((prev) => ({ ...prev, latitude: event.target.value }))
                     }
+                    fullWidth
+                    inputProps={{ step: '0.0001' }}
                   />
-                }
-                label="Global room (visible everywhere)"
-              />
-
-              {createError ? (
-                <Typography variant="body2" color="error">
-                  {createError}
-                </Typography>
-              ) : null}
-            </Stack>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseCreateDialog} disabled={isCreatingRoom}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="contained" disabled={isCreatingRoom}>
-              {isCreatingRoom ? 'Creating…' : 'Create room'}
-            </Button>
-          </DialogActions>
-        </Box>
-      </Dialog>
+                  <TextField
+                    label="Longitude"
+                    type="number"
+                    value={createForm.longitude}
+                    onChange={(event) =>
+                      setCreateForm((prev) => ({ ...prev, longitude: event.target.value }))
+                    }
+                    fullWidth
+                    inputProps={{ step: '0.0001' }}
+                  />
+                </Stack>
+                <TextField
+                  label="Radius (meters)"
+                  type="number"
+                  value={createForm.radiusMeters}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, radiusMeters: event.target.value }))
+                  }
+                  fullWidth
+                  inputProps={{ min: 50, step: 10 }}
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={createForm.isGlobal}
+                      onChange={(event) =>
+                        setCreateForm((prev) => ({ ...prev, isGlobal: event.target.checked }))
+                      }
+                    />
+                  }
+                  label="Global room (visible everywhere)"
+                />
+                {createError ? (
+                  <Typography variant="body2" color="error">
+                    {createError}
+                  </Typography>
+                ) : null}
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseCreateDialog} disabled={isCreatingRoom}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="contained" disabled={isCreatingRoom}>
+                {isCreatingRoom ? 'Creating…' : 'Create room'}
+              </Button>
+            </DialogActions>
+          </Box>
+        </Dialog>
       </Box>
-      <Navbar />
+
+      <Box
+        className="chat-page"
+        sx={{ display: debugMode ? 'none' : 'block' }}
+      >
+        {showScrollButton && (
+          <IconButton
+            className="chat-scroll-to-bottom-btn"
+            onClick={scrollMessagesToBottom}
+            style={{
+              bottom: `${scrollBtnBottom + 90}px`,
+              position: 'fixed'
+            }}
+            aria-label="Scroll to latest message"
+          >
+            <ArrowDownwardIcon className="scroll-to-bottom-icon" />
+          </IconButton>
+        )}
+
+        <div className="chat-frame">
+          <header className="chat-header-bar">
+            <GlobalNavMenu />
+
+            <h1
+              className="chat-header-title"
+              onClick={() => setDebugMode((prev) => !prev)}
+            >
+              Chat
+            </h1>
+
+            <button
+              className="updates-icon-btn"
+              type="button"
+              aria-label={notificationsLabel}
+              onClick={handleNotifications}
+              disabled={isOffline}
+              title={isOffline ? 'Reconnect to view updates' : undefined}
+            >
+              <img src={updatesIcon} alt="" className="updates-icon" aria-hidden="true" />
+              {displayBadge ? (
+                <span className="updates-icon-badge" aria-hidden="true">
+                  {displayBadge}
+                </span>
+              ) : null}
+            </button>
+          </header>
+
+          <Box ref={containerRef} className="chat-messages-field">
+            {uniqueMessages.map((msg, index) => (
+              <MessageBubble
+                key={getMessageKey(msg, index)}
+                msg={msg}
+                isSelf={authUser && msg.authorId === authUser.uid}
+                authUser={authUser}
+              />
+            ))}
+            <div ref={messagesEndRef} />
+          </Box>
+
+          <ChatComposer
+            variant="modern"
+            message={messageDraft}
+            placeholder="Send a message"
+            onMessageChange={(event) => setMessageDraft(event.target.value)}
+            onKeyDown={handleMessageInputKeyDown}
+            onSend={handleSendMessage}
+            disabled={!authUser || isSendingMessage}
+            sendDisabled={!authUser || !messageDraft.trim() || isSendingMessage}
+            isSending={isSendingMessage}
+            containerRef={inputContainerRef}
+            containerClassName="chat-input-container"
+            gifPreview={composerGifPreview}
+            gifPreviewError={gifPreviewError}
+            isGifPreviewLoading={isGifPreviewLoading}
+            onGifPreviewConfirm={handleGifPreviewConfirm}
+            onGifPreviewCancel={handleGifPreviewCancel}
+            onGifPreviewShuffle={handleGifPreviewShuffle}
+          />
+
+          <Navbar />
+        </div>
+      </Box>
     </>
   );
 }
 
 export default ChatPage;
-
-
-
-

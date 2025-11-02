@@ -52,12 +52,12 @@
     "visibility": "public",
     "isActive": true,
     "stats": {
-      "bookmarkCount": 12,
+      "bookmarkCount": 0,
       "replyCount": 3,
       "shareCount": 3,
       "viewCount": 148
     },
-    "bookmarkCount": 12,
+    "bookmarkCount": 0,
     "replyCount": 3,
     "startDate": {
       "$date": "2026-10-04T23:51:14.276Z"
@@ -76,7 +76,7 @@
       }
     },
     "participantLimit": 50,
-    "participantCount": 18,
+    "participantCount": 2,
     "attendingUserIds": [
       {
         "$oid": "68e061721329566a22d474a8"
@@ -148,12 +148,12 @@
     "visibility": "public",
     "isActive": true,
     "stats": {
-      "bookmarkCount": 8,
+      "bookmarkCount": 0,
       "replyCount": 3,
       "shareCount": 2,
       "viewCount": 203
     },
-    "bookmarkCount": 8,
+    "bookmarkCount": 0,
     "replyCount": 3,
     "approximateAddress": {
       "city": "Long Beach",
@@ -170,7 +170,8 @@
     },
     "updatedAt": {
       "$date": "2026-10-03T23:51:14.276Z"
-    }
+    },
+    "participantCount": 0
   },
   {
     "_id": {
@@ -223,13 +224,13 @@
     "visibility": "public",
     "isActive": true,
     "stats": {
-      "bookmarkCount": 21,
-      "replyCount": 7,
+      "bookmarkCount": 1,
+      "replyCount": 0,
       "shareCount": 9,
       "viewCount": 412
     },
-    "bookmarkCount": 21,
-    "replyCount": 1,
+    "bookmarkCount": 1,
+    "replyCount": 0,
     "startDate": {
       "$date": "2026-10-12T01:00:00.000Z"
     },
@@ -247,7 +248,7 @@
       }
     },
     "participantLimit": 300,
-    "participantCount": 185,
+    "participantCount": 2,
     "attendingUserIds": [
       {
         "$oid": "68e061721329566a22d474a7"
@@ -311,13 +312,13 @@
     "visibility": "public",
     "isActive": true,
     "stats": {
-      "bookmarkCount": 4,
-      "replyCount": 1,
+      "bookmarkCount": 0,
+      "replyCount": 0,
       "shareCount": 1,
       "viewCount": 62
     },
-    "bookmarkCount": 4,
-    "replyCount": 1,
+    "bookmarkCount": 0,
+    "replyCount": 0,
     "startDate": {
       "$date": "2026-10-18T16:00:00.000Z"
     },
@@ -333,7 +334,7 @@
       }
     },
     "participantLimit": 25,
-    "participantCount": 9,
+    "participantCount": 1,
     "attendingUserIds": [
       {
         "$oid": "68e061721329566a22d474a8"
@@ -394,12 +395,12 @@
     "visibility": "public",
     "isActive": true,
     "stats": {
-      "bookmarkCount": 6,
-      "replyCount": 2,
+      "bookmarkCount": 0,
+      "replyCount": 0,
       "shareCount": 1,
       "viewCount": 94
     },
-    "bookmarkCount": 6,
+    "bookmarkCount": 0,
     "replyCount": 0,
     "approximateAddress": {
       "city": "North Long Beach",
@@ -416,7 +417,8 @@
     },
     "updatedAt": {
       "$date": "2026-10-03T23:51:14.276Z"
-    }
+    },
+    "participantCount": 0
   },
   {
     "_id": {
@@ -464,13 +466,13 @@
     "visibility": "public",
     "isActive": true,
     "stats": {
-      "bookmarkCount": 10,
-      "replyCount": 3,
+      "bookmarkCount": 1,
+      "replyCount": 0,
       "shareCount": 2,
       "viewCount": 128
     },
-    "bookmarkCount": 10,
-    "replyCount": 1,
+    "bookmarkCount": 1,
+    "replyCount": 0,
     "startDate": {
       "$date": "2026-10-25T14:00:00.000Z"
     },
@@ -487,7 +489,7 @@
       }
     },
     "participantLimit": 80,
-    "participantCount": 32,
+    "participantCount": 2,
     "attendingUserIds": [
       {
         "$oid": "68e061721329566a22d474a7"
@@ -560,12 +562,12 @@
     "visibility": "public",
     "isActive": true,
     "stats": {
-      "bookmarkCount": 9,
+      "bookmarkCount": 1,
       "replyCount": 3,
       "shareCount": 4,
       "viewCount": 187
     },
-    "bookmarkCount": 9,
+    "bookmarkCount": 1,
     "replyCount": 3,
     "startDate": {
       "$date": "2026-10-17T18:00:00.000Z"
@@ -584,7 +586,7 @@
       }
     },
     "participantLimit": 120,
-    "participantCount": 54,
+    "participantCount": 4,
     "attendingUserIds": [
       {
         "$oid": "68e061721329566a22d47510"
@@ -664,13 +666,13 @@
     "visibility": "public",
     "isActive": true,
     "stats": {
-      "bookmarkCount": 7,
-      "replyCount": 2,
+      "bookmarkCount": 0,
+      "replyCount": 0,
       "shareCount": 1,
       "viewCount": 96
     },
-    "bookmarkCount": 7,
-    "replyCount": 1,
+    "bookmarkCount": 0,
+    "replyCount": 0,
     "startDate": {
       "$date": "2026-10-19T16:30:00.000Z"
     },
@@ -688,7 +690,7 @@
       }
     },
     "participantLimit": 30,
-    "participantCount": 16,
+    "participantCount": 3,
     "attendingUserIds": [
       {
         "$oid": "68e061721329566a22d47511"
@@ -766,12 +768,12 @@
     "visibility": "public",
     "isActive": true,
     "stats": {
-      "bookmarkCount": 5,
+      "bookmarkCount": 0,
       "replyCount": 2,
       "shareCount": 2,
       "viewCount": 83
     },
-    "bookmarkCount": 5,
+    "bookmarkCount": 0,
     "replyCount": 2,
     "approximateAddress": {
       "city": "Long Beach",
@@ -788,7 +790,8 @@
     },
     "updatedAt": {
       "$date": "2026-10-08T22:30:00.000Z"
-    }
+    },
+    "participantCount": 0
   },
   {
     "_id": {

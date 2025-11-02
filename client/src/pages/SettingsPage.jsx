@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signOut } from 'firebase/auth';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
   Box,
@@ -38,14 +37,15 @@ import BlockIcon from '@mui/icons-material/Block';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { auth } from '../firebase';
-import {
-  fetchBlockedUsers,
-  fetchCurrentUserProfile,
-  revokeCurrentSession,
-  unblockUser,
-  updateCurrentUserProfile
-} from '../api/mongoDataApi';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
+import { routes } from '../routes';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
+import useSettingsManager, {
+  DEFAULT_SETTINGS,
+  RADIUS_MAX,
+  RADIUS_MIN
+} from '../hooks/useSettingsManager';
+import { metersToMiles } from '../utils/geo';
 
 export const pageConfig = {
   id: 'settings',
@@ -58,366 +58,47 @@ export const pageConfig = {
   protected: true
 };
 
-const RADIUS_MIN = 100;
-const RADIUS_MAX = 80467; // 50 miles
-
-const DEFAULT_SETTINGS = {
-  theme: 'system',
-  radiusPreferenceMeters: 16093,
-  locationSharingEnabled: false,
-  filterCussWords: false,
-  statsPublic: true,
-  notifications: {
-    proximity: true,
-    updates: true,
-    marketing: false
-  }
-};
-
-const roundRadius = (value) => {
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    return DEFAULT_SETTINGS.radiusPreferenceMeters;
-  }
-  const clamped = Math.min(RADIUS_MAX, Math.max(RADIUS_MIN, Math.round(value)));
-  return clamped;
-};
-
 function SettingsPage() {
   const navigate = useNavigate();
   const [authUser, authLoading] = useAuthState(auth);
-  const [profile, setProfile] = useState(null);
-  const [profileError, setProfileError] = useState(null);
-  const [isFetchingProfile, setIsFetchingProfile] = useState(false);
-
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const [saveStatus, setSaveStatus] = useState(null);
-  const [isSaving, setIsSaving] = useState(false);
   const { enabled: badgeSoundEnabled, setEnabled: setBadgeSoundEnabled } = useBadgeSound();
-  const [blockedOverlayOpen, setBlockedOverlayOpen] = useState(false);
-  const [blockedUsers, setBlockedUsers] = useState([]);
-  const [isLoadingBlockedUsers, setIsLoadingBlockedUsers] = useState(false);
-  const [isManagingBlockedUsers, setIsManagingBlockedUsers] = useState(false);
-  const [blockedOverlayStatus, setBlockedOverlayStatus] = useState(null);
+  const { isOffline } = useNetworkStatusContext();
+
+  const {
+    profile,
+    profileError,
+    isFetchingProfile,
+    settings,
+    saveStatus,
+    setSaveStatus,
+    isSaving,
+    baselineSettings,
+    hasChanges,
+    blockedOverlayOpen,
+    blockedUsers,
+    isLoadingBlockedUsers,
+    isManagingBlockedUsers,
+    blockedOverlayStatus,
+    setBlockedOverlayStatus,
+    handleThemeChange,
+    handleRadiusChange,
+    handleNotificationToggle,
+    handleLocationSharingToggle,
+    handleStatsVisibilityToggle,
+    handleFilterCussWordsToggle,
+    handleOpenBlockedOverlay,
+    handleCloseBlockedOverlay,
+    handleUnblockUser,
+    handleReset,
+    handleSave,
+    handleSignOut
+  } = useSettingsManager({ authUser, authLoading, isOffline });
 
   const theme = settings.theme;
   const notifications = settings.notifications;
-
-  useEffect(() => {
-    if (authLoading) {
-      return;
-    }
-
-    if (!authUser) {
-      setProfile(null);
-      setProfileError('Sign in to manage your settings.');
-      return;
-    }
-
-    let cancelled = false;
-
-    const loadProfile = async () => {
-      setIsFetchingProfile(true);
-      setProfileError(null);
-      try {
-        const result = await fetchCurrentUserProfile();
-        if (cancelled) {
-          return;
-        }
-        setProfile(result);
-        setSettings({
-          theme: result?.preferences?.theme ?? DEFAULT_SETTINGS.theme,
-          radiusPreferenceMeters: roundRadius(result?.preferences?.radiusPreferenceMeters),
-          locationSharingEnabled: Boolean(result?.locationSharingEnabled),
-          filterCussWords: result?.preferences?.filterCussWords ?? DEFAULT_SETTINGS.filterCussWords,
-          statsPublic: result?.preferences?.statsPublic ?? DEFAULT_SETTINGS.statsPublic,
-          notifications: {
-            proximity:
-              result?.preferences?.notifications?.proximity ?? DEFAULT_SETTINGS.notifications.proximity,
-            updates:
-              result?.preferences?.notifications?.updates ?? DEFAULT_SETTINGS.notifications.updates,
-            marketing:
-              result?.preferences?.notifications?.marketing ?? DEFAULT_SETTINGS.notifications.marketing
-          }
-        });
-      } catch (error) {
-        if (!cancelled) {
-          setProfile(null);
-          setProfileError(error?.message || 'Failed to load account settings.');
-        }
-      } finally {
-        if (!cancelled) {
-          setIsFetchingProfile(false);
-        }
-      }
-    };
-
-    loadProfile();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [authLoading, authUser]);
-
-  useEffect(() => {
-    if (!blockedOverlayOpen) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const loadBlocked = async () => {
-      setIsLoadingBlockedUsers(true);
-      setBlockedOverlayStatus(null);
-      try {
-        const response = await fetchBlockedUsers();
-        if (cancelled) {
-          return;
-        }
-        setBlockedUsers(Array.isArray(response?.blockedUsers) ? response.blockedUsers : []);
-        if (response?.relationships) {
-          setProfile((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  relationships: response.relationships
-                }
-              : prev
-          );
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setBlockedUsers([]);
-          setBlockedOverlayStatus({
-            type: 'error',
-            message: error?.message || 'Failed to load blocked users.'
-          });
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoadingBlockedUsers(false);
-        }
-      }
-    };
-
-    loadBlocked();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [blockedOverlayOpen, setProfile]);
-
-  useEffect(() => {
-    if (!blockedOverlayStatus || blockedOverlayStatus.type !== 'success') {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setBlockedOverlayStatus(null);
-    }, 4000);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [blockedOverlayStatus]);
-
-  const baselineSettings = useMemo(() => {
-    if (!profile) {
-      return DEFAULT_SETTINGS;
-    }
-    return {
-      theme: profile?.preferences?.theme ?? DEFAULT_SETTINGS.theme,
-      radiusPreferenceMeters: roundRadius(profile?.preferences?.radiusPreferenceMeters),
-      locationSharingEnabled: Boolean(profile?.locationSharingEnabled),
-      filterCussWords: profile?.preferences?.filterCussWords ?? DEFAULT_SETTINGS.filterCussWords,
-      statsPublic: profile?.preferences?.statsPublic ?? DEFAULT_SETTINGS.statsPublic,
-      notifications: {
-        proximity:
-          profile?.preferences?.notifications?.proximity ?? DEFAULT_SETTINGS.notifications.proximity,
-        updates: profile?.preferences?.notifications?.updates ?? DEFAULT_SETTINGS.notifications.updates,
-        marketing:
-          profile?.preferences?.notifications?.marketing ?? DEFAULT_SETTINGS.notifications.marketing
-      }
-    };
-  }, [profile]);
-
-  const hasChanges = useMemo(() => {
-    return (
-      settings.theme !== baselineSettings.theme ||
-      settings.locationSharingEnabled !== baselineSettings.locationSharingEnabled ||
-      settings.radiusPreferenceMeters !== baselineSettings.radiusPreferenceMeters ||
-      settings.filterCussWords !== baselineSettings.filterCussWords ||
-      settings.statsPublic !== baselineSettings.statsPublic ||
-      settings.notifications.proximity !== baselineSettings.notifications.proximity ||
-      settings.notifications.updates !== baselineSettings.notifications.updates ||
-      settings.notifications.marketing !== baselineSettings.notifications.marketing
-    );
-  }, [baselineSettings, settings]);
-
-  const handleThemeChange = useCallback((event) => {
-    const value = event.target.value;
-    setSettings((prev) => ({
-      ...prev,
-      theme: value
-    }));
-  }, []);
-
-  const handleRadiusChange = useCallback((event, value) => {
-    setSettings((prev) => ({
-      ...prev,
-      radiusPreferenceMeters: roundRadius(Array.isArray(value) ? value[0] : value)
-    }));
-  }, []);
-
-  const handleNotificationToggle = useCallback((key) => {
-    setSettings((prev) => ({
-      ...prev,
-      notifications: {
-        ...prev.notifications,
-        [key]: !prev.notifications[key]
-      }
-    }));
-  }, []);
-
-  const handleLocationSharingToggle = useCallback(() => {
-    setSettings((prev) => ({
-      ...prev,
-      locationSharingEnabled: !prev.locationSharingEnabled
-    }));
-  }, []);
-
-  const handleStatsVisibilityToggle = useCallback(() => {
-    setSettings((prev) => ({
-      ...prev,
-      statsPublic: !prev.statsPublic
-    }));
-  }, []);
-
-  const handleFilterCussWordsToggle = useCallback(() => {
-    setSettings((prev) => ({
-      ...prev,
-      filterCussWords: !prev.filterCussWords
-    }));
-  }, []);
-
-  const handleOpenBlockedOverlay = useCallback(() => {
-    setBlockedOverlayStatus(null);
-    setBlockedOverlayOpen(true);
-  }, []);
-
-  const handleCloseBlockedOverlay = useCallback(() => {
-    if (isManagingBlockedUsers) {
-      return;
-    }
-    setBlockedOverlayOpen(false);
-  }, [isManagingBlockedUsers]);
-
-  const handleUnblockUser = useCallback(
-    async (userId) => {
-      if (!userId) {
-        return;
-      }
-
-      const targetUser = blockedUsers.find((user) => user._id === userId);
-      setIsManagingBlockedUsers(true);
-      setBlockedOverlayStatus(null);
-      try {
-        const response = await unblockUser(userId);
-        setBlockedUsers(Array.isArray(response?.blockedUsers) ? response.blockedUsers : []);
-        if (response?.updatedRelationships) {
-          setProfile((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  relationships: response.updatedRelationships
-                }
-              : prev
-          );
-        }
-        setBlockedOverlayStatus({
-          type: 'success',
-          message: targetUser
-            ? `Unblocked ${targetUser.displayName || targetUser.username || targetUser._id}.`
-            : 'User unblocked.'
-        });
-      } catch (error) {
-        setBlockedOverlayStatus({
-          type: 'error',
-          message: error?.message || 'Failed to unblock user.'
-        });
-      } finally {
-        setIsManagingBlockedUsers(false);
-      }
-    },
-    [blockedUsers, setProfile]
-  );
-
-  const handleReset = useCallback(() => {
-    setSettings(baselineSettings);
-    setSaveStatus(null);
-  }, [baselineSettings]);
-
-  const handleSave = useCallback(async () => {
-    if (!authUser || !hasChanges) {
-      return;
-    }
-
-    setIsSaving(true);
-    setSaveStatus(null);
-    try {
-      const payload = {
-        preferences: {
-          theme: settings.theme,
-          radiusPreferenceMeters: settings.radiusPreferenceMeters,
-          filterCussWords: settings.filterCussWords,
-          statsPublic: settings.statsPublic,
-          notifications: {
-            proximity: settings.notifications.proximity,
-            updates: settings.notifications.updates,
-            marketing: settings.notifications.marketing
-          }
-        },
-        locationSharingEnabled: settings.locationSharingEnabled
-      };
-
-      const updated = await updateCurrentUserProfile(payload);
-      setProfile(updated);
-      setSaveStatus({ type: 'success', message: 'Settings saved.' });
-    } catch (error) {
-      setSaveStatus({
-        type: 'error',
-        message: error?.message || 'Failed to update settings.'
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  }, [authUser, hasChanges, settings]);
-
-  const handleSignOut = useCallback(async () => {
-    let revokeError = null;
-    try {
-      await revokeCurrentSession();
-    } catch (error) {
-      console.error('Failed to revoke server session during sign out.', error);
-      revokeError = error;
-    }
-
-    try {
-      await signOut(auth);
-      if (revokeError) {
-        setSaveStatus({
-          type: 'error',
-          message:
-            revokeError?.message ||
-            'Signed out locally, but failed to invalidate the server session. Please retry if concerned.'
-        });
-      }
-    } catch (error) {
-      setSaveStatus({
-        type: 'error',
-        message: error?.message || 'Failed to sign out.'
-      });
-    }
-  }, [revokeCurrentSession]);
+  const radiusMeters = settings.radiusPreferenceMeters ?? DEFAULT_SETTINGS.radiusPreferenceMeters;
+  const rawRadiusMiles = metersToMiles(radiusMeters);
+  const radiusMiles = rawRadiusMiles === null ? null : Math.round(rawRadiusMiles * 10) / 10;
 
   return (
     <Box
@@ -467,223 +148,180 @@ function SettingsPage() {
         ) : null}
 
         {isFetchingProfile && !profile ? (
-          <Stack
-            spacing={2}
-            alignItems="center"
-            justifyContent="center"
-            sx={{ py: 6 }}
-          >
-            <CircularProgress />
-            <Typography variant="body2" color="text.secondary">
-              Loading your settings...
-            </Typography>
-          </Stack>
-        ) : (
-        <Paper
-          elevation={3}
-          sx={{
-            borderRadius: 3,
-            p: { xs: 2.5, md: 4 },
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 3
-          }}
-        >
-          <Stack spacing={0.5}>
-            <Typography variant="h6">Appearance</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Choose how Pinpoint should look on this device.
-            </Typography>
-          </Stack>
-          <FormControl>
-            <FormLabel>Theme preference</FormLabel>
-            <RadioGroup
-              row
-              value={theme}
-              onChange={handleThemeChange}
-              sx={{ mt: 1 }}
-            >
-              <FormControlLabel value="system" control={<Radio />} label="System default" />
-              <FormControlLabel value="light" control={<Radio />} label="Light" />
-              <FormControlLabel value="dark" control={<Radio />} label="Dark" />
-            </RadioGroup>
-          </FormControl>
+          <Paper elevation={3} sx={{ p: 3 }}>
+            <Stack direction="row" spacing={2} alignItems="center" justifyContent="center">
+              <CircularProgress size={20} />
+              <Typography variant="body2" color="text.secondary">
+                Loading your account settings...
+              </Typography>
+            </Stack>
+          </Paper>
+        ) : null}
 
-          <Divider />
+        <Paper elevation={4} sx={{ p: { xs: 2, md: 3 } }}>
+          <Stack spacing={3}>
+            <Stack spacing={1}>
+              <Typography variant="h6">Appearance</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Choose how Pinpoint adapts to your device.
+              </Typography>
+              <FormControl component="fieldset">
+                <FormLabel component="legend" sx={{ fontSize: '0.875rem' }}>
+                  Theme
+                </FormLabel>
+                <RadioGroup row value={theme} onChange={handleThemeChange}>
+                  <FormControlLabel value="system" control={<Radio />} label="Match system" />
+                  <FormControlLabel value="light" control={<Radio />} label="Light" />
+                  <FormControlLabel value="dark" control={<Radio />} label="Dark" />
+                </RadioGroup>
+              </FormControl>
+            </Stack>
 
-          <Stack spacing={0.5}>
-            <Typography variant="h6">Location & proximity</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Fine-tune how we share your location and surface nearby activity.
-            </Typography>
-          </Stack>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.locationSharingEnabled}
-                onChange={handleLocationSharingToggle}
-                color="primary"
+            <Divider />
+
+            <Stack spacing={2}>
+              <Typography variant="h6">Location radius</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Adjust how far from your location the app should pull nearby pins and updates.
+              </Typography>
+              <Slider
+                value={radiusMeters}
+                min={RADIUS_MIN}
+                max={RADIUS_MAX}
+                step={500}
+                valueLabelDisplay="auto"
+                valueLabelFormat={(value) => {
+                  const miles = metersToMiles(value);
+                  return miles === null ? 'N/A' : `${Math.round(miles * 10) / 10} mi`;
+                }}
+                onChange={handleRadiusChange}
               />
-            }
-            label="Share my location with nearby features"
-          />
-          <Box sx={{ px: { xs: 0.5, md: 2 }, py: 1 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Default radius for discovery ({Math.round(settings.radiusPreferenceMeters / 1609.34)} mi)
-            </Typography>
-            <Slider
-              value={settings.radiusPreferenceMeters}
-              min={RADIUS_MIN}
-              max={RADIUS_MAX}
-              step={100}
-              valueLabelDisplay="on"
-              valueLabelFormat={(value) => `${Math.round(value / 1609.34)} mi`}
-              onChange={handleRadiusChange}
-            />
-          </Box>
+              <Typography variant="caption" color="text.secondary">
+                Current radius: {radiusMeters} m ({radiusMiles ?? 'N/A'} mi)
+              </Typography>
+            </Stack>
 
-          <Divider />
+            <Divider />
 
-          <Stack spacing={0.5}>
-            <Typography variant="h6">Profile visibility</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Choose whether others can see your activity stats on your profile.
-            </Typography>
-          </Stack>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.statsPublic}
-                onChange={handleStatsVisibilityToggle}
+            <Stack spacing={2}>
+              <Typography variant="h6">Privacy &amp; personalization</Typography>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={settings.locationSharingEnabled}
+                    onChange={handleLocationSharingToggle}
+                  />
+                }
+                label="Share my live location with friends"
               />
-            }
-            label={
-              settings.statsPublic
-                ? 'Show my stats on my profile'
-                : 'Hide my stats from other users'
-            }
-          />
-
-          <Divider />
-
-          <Stack spacing={0.5}>
-            <Typography variant="h6">Audio</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Decide whether new badges should play a celebration sound.
-            </Typography>
-          </Stack>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={badgeSoundEnabled}
-                onChange={(event) => setBadgeSoundEnabled(event.target.checked)}
+              <FormControlLabel
+                control={<Switch checked={settings.statsPublic} onChange={handleStatsVisibilityToggle} />}
+                label="Allow others to view my stats"
               />
-            }
-            label="Play sound when I earn a badge"
-          />
-          <Typography variant="body2" color="text.secondary">
-            {badgeSoundEnabled
-              ? 'The badge chime is enabled and will play the next time you unlock something.'
-              : 'Badge chime remains muted. Turn it on here whenever you want to hear it.'}
-          </Typography>
-
-          <Divider />
-
-          <Stack spacing={0.5}>
-            <Typography variant="h6">Moderation</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Replace strong language in chats with friendlier wording.
-            </Typography>
-          </Stack>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.filterCussWords}
-                onChange={handleFilterCussWordsToggle}
+              <FormControlLabel
+                control={
+                  <Switch checked={settings.filterCussWords} onChange={handleFilterCussWordsToggle} />
+                }
+                label="Filter explicit language in public chats"
               />
-            }
-            label="Swap offensive language for fruit names"
-          />
-          <Typography variant="body2" color="text.secondary">
-            {settings.filterCussWords
-              ? 'Chats will show cheerful fruit names whenever someone drops a curse word.'
-              : 'Leave chat messages untouched, even if they include colorful language.'}
-          </Typography>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={badgeSoundEnabled}
+                    onChange={(_, value) => setBadgeSoundEnabled(value)}
+                  />
+                }
+                label="Play celebration sounds when I earn badges"
+              />
+            </Stack>
 
-          <Divider />
+            <Divider />
 
-          <Stack spacing={0.5}>
-            <Typography variant="h6">Notifications</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Control when Pinpoint should nudge you.
-            </Typography>
-          </Stack>
-          <Stack spacing={1}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={notifications.proximity}
-                  onChange={() => handleNotificationToggle('proximity')}
-                />
-              }
-              label="Notify me about nearby activity"
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={notifications.updates}
-                  onChange={() => handleNotificationToggle('updates')}
-                />
-              }
-              label="Send alerts for pin and chat updates"
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={notifications.marketing}
-                  onChange={() => handleNotificationToggle('marketing')}
-                />
-              }
-              label="Include marketing and tips"
-            />
-          </Stack>
+            <Stack spacing={2}>
+              <Typography variant="h6">Notifications</Typography>
+              <FormControl component="fieldset">
+                <FormLabel component="legend" sx={{ fontSize: '0.875rem' }}>
+                  Toggle the notification types you care about.
+                </FormLabel>
+                <Stack spacing={1.5}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={notifications.proximity}
+                        onChange={() => handleNotificationToggle('proximity')}
+                      />
+                    }
+                    label="Nearby pin alerts"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={notifications.updates}
+                        onChange={() => handleNotificationToggle('updates')}
+                      />
+                    }
+                    label="App updates & announcements"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={notifications.marketing}
+                        onChange={() => handleNotificationToggle('marketing')}
+                      />
+                    }
+                    label="Promotions & experiments"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={notifications.chatTransitions}
+                        onChange={() => handleNotificationToggle('chatTransitions')}
+                      />
+                    }
+                    label="Chatroom join/leave notifications"
+                  />
+                </Stack>
+              </FormControl>
+            </Stack>
 
-          <Divider />
+            <Divider />
 
-          <Stack spacing={0.5}>
-            <Typography variant="h6">Account</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Manage your profile and session.
-            </Typography>
-          </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-            <Button
-              onClick={handleOpenBlockedOverlay}
-              variant="outlined"
-              color="warning"
-              startIcon={<BlockIcon />}
-            >
-              Manage blocked users
-            </Button>
-            <Button
-              component={Link}
-              to="/profile/me"
-              variant="outlined"
-              startIcon={<ManageAccountsIcon />}
-            >
-              View profile
-            </Button>
-            <Button
-              onClick={handleSignOut}
-              variant="outlined"
-              color="error"
-              startIcon={<LogoutIcon />}
-            >
-              Sign out
-            </Button>
+            <Stack spacing={2}>
+              <Typography variant="h6">Manage account</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Review who you&apos;ve blocked or sign out of the app.
+              </Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                <Button
+                  onClick={handleOpenBlockedOverlay}
+                  variant="outlined"
+                  color="warning"
+                  startIcon={<BlockIcon />}
+                  disabled={isOffline || isManagingBlockedUsers}
+                  title={isOffline ? 'Reconnect to manage blocked users' : undefined}
+                >
+                  Manage blocked users
+                </Button>
+                <Button
+                  component={Link}
+                  to={routes.profile.me}
+                  variant="outlined"
+                  startIcon={<ManageAccountsIcon />}
+                >
+                  View profile
+                </Button>
+                <Button
+                  onClick={handleSignOut}
+                  variant="outlined"
+                  color="error"
+                  startIcon={<LogoutIcon />}
+                >
+                  Sign out
+                </Button>
+              </Stack>
+            </Stack>
           </Stack>
         </Paper>
-        )}
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} justifyContent="flex-end">
           <Button
@@ -697,14 +335,16 @@ function SettingsPage() {
           <Button
             variant="contained"
             startIcon={<SaveIcon />}
-            disabled={!profile || !hasChanges || isSaving || isFetchingProfile}
+            disabled={isOffline || !profile || !hasChanges || isSaving || isFetchingProfile}
             onClick={handleSave}
+            title={isOffline ? 'Reconnect to save changes' : undefined}
           >
             {isSaving ? <CircularProgress size={18} color="inherit" sx={{ mr: 1 }} /> : null}
             {isSaving ? 'Saving...' : 'Save changes'}
           </Button>
         </Stack>
       </Stack>
+
       <Dialog
         open={blockedOverlayOpen}
         onClose={handleCloseBlockedOverlay}
@@ -748,7 +388,8 @@ function SettingsPage() {
                         variant="outlined"
                         startIcon={<HowToRegIcon />}
                         onClick={() => handleUnblockUser(user._id)}
-                        disabled={isManagingBlockedUsers}
+                        disabled={isOffline || isManagingBlockedUsers}
+                        title={isOffline ? 'Reconnect to unblock users' : undefined}
                       >
                         Unblock
                       </Button>
@@ -766,7 +407,7 @@ function SettingsPage() {
             </List>
           ) : (
             <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
-              You haven't blocked any users yet. Block someone from their profile to see them here.
+              You haven&apos;t blocked any users yet. Block someone from their profile to see them here.
             </Typography>
           )}
         </DialogContent>

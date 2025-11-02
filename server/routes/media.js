@@ -1,9 +1,9 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 const { randomUUID, randomBytes } = require('crypto');
 const multer = require('multer');
 const sharp = require('sharp');
+const storageService = require('../services/storageService');
+const runtime = require('../config/runtime');
 
 const router = express.Router();
 
@@ -63,34 +63,39 @@ router.post('/images', processSingleImage, async (req, res) => {
       return res.status(400).json({ message: 'Image file is required.' });
     }
 
-    const imagesDir = req.app.get('imagesDir');
-    if (!imagesDir) {
-      return res.status(500).json({ message: 'Image storage directory is not configured.' });
-    }
-
     const identifier = randomUUID ? randomUUID() : randomBytes(16).toString('hex');
     const fileName = `${Date.now()}-${identifier}.jpg`;
-    const destinationPath = path.join(imagesDir, fileName);
+    const processed = sharp(req.file.buffer).resize(TARGET_DIMENSION, TARGET_DIMENSION, {
+      fit: 'cover',
+      position: 'centre'
+    });
+    const { data, info } = await processed.jpeg({ quality: 82 }).toBuffer({ resolveWithObject: true });
 
-    await sharp(req.file.buffer)
-      .resize(TARGET_DIMENSION, TARGET_DIMENSION, {
-        fit: 'cover',
-        position: 'centre'
-      })
-      .jpeg({ quality: 82 })
-      .toFile(destinationPath);
+    const storageResult = await storageService.saveImageAsset({
+      buffer: data,
+      fileName,
+      size: info?.size,
+      offlineDir: req.app.get('imagesDir'),
+      offlinePublicPath: '/images',
+      makePublic: runtime.isOnline
+    });
 
-    const { size } = await fs.promises.stat(destinationPath);
+    if (runtime.isOffline && !storageResult.relativeUrl) {
+      return res
+        .status(500)
+        .json({ message: 'Image storage directory is not configured for offline mode.' });
+    }
 
-    const publicUrl = `${resolveRequestBaseUrl(req)}/images/${fileName}`;
+    const imageUrl =
+      storageResult.publicUrl ?? `${resolveRequestBaseUrl(req)}${storageResult.relativeUrl}`;
 
     res.status(201).json({
-      url: publicUrl,
-      width: TARGET_DIMENSION,
-      height: TARGET_DIMENSION,
+      url: imageUrl,
+      width: info?.width ?? TARGET_DIMENSION,
+      height: info?.height ?? TARGET_DIMENSION,
       mimeType: 'image/jpeg',
       fileName,
-      size,
+      size: storageResult.size ?? info?.size ?? data.length,
       uploadedAt: new Date().toISOString()
     });
   } catch (error) {

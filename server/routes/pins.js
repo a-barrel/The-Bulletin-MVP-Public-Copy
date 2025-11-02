@@ -16,6 +16,9 @@ const {
   broadcastBookmarkCreated
 } = require('../services/updateFanoutService');
 const { grantBadge } = require('../services/badgeService');
+const { mapMediaAsset: mapMediaAssetResponse } = require('../utils/media');
+const { toIdString, mapIdList } = require('../utils/ids');
+const { METERS_PER_MILE, milesToMeters } = require('../utils/geo');
 
 const router = express.Router();
 
@@ -54,20 +57,15 @@ const CreateReplySchema = z.object({
     .optional()
 });
 
-const toIdString = (value) => {
-  if (!value) return undefined;
-  if (typeof value === 'string') return value;
-  if (value instanceof mongoose.Types.ObjectId) return value.toString();
-  if (value._id) return value._id.toString();
-  return String(value);
-};
-
-const METERS_PER_MILE = 1609.34;
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+const EVENT_MAX_LEAD_TIME_MS = 14 * MILLISECONDS_PER_DAY;
+const DISCUSSION_MAX_DURATION_MS = 3 * MILLISECONDS_PER_DAY;
+const PAST_TOLERANCE_MS = 60 * 1000;
 
 const mapUserToPublic = (user) => {
   if (!user) return undefined;
   const doc = user.toObject ? user.toObject() : user;
-  const avatar = doc.avatar ? mapMediaAssetResponse(doc.avatar) : undefined;
+  const avatar = doc.avatar ? mapMediaAssetResponse(doc.avatar, { toIdString }) : undefined;
   return PublicUserSchema.parse({
     _id: toIdString(doc._id),
     username: doc.username,
@@ -251,11 +249,13 @@ const mapPinToFull = (pinDoc, creator, options = {}) => {
       accuracy: doc.coordinates.accuracy ?? undefined
     },
     proximityRadiusMeters: doc.proximityRadiusMeters,
-    photos: Array.isArray(doc.photos) ? doc.photos.map(mapMediaAssetResponse) : [],
-    coverPhoto: mapMediaAssetResponse(doc.coverPhoto),
-    tagIds: (doc.tagIds || []).map(toIdString),
+    photos: Array.isArray(doc.photos)
+      ? doc.photos.map((photo) => mapMediaAssetResponse(photo, { toIdString }))
+      : [],
+    coverPhoto: mapMediaAssetResponse(doc.coverPhoto, { toIdString }),
+    tagIds: mapIdList(doc.tagIds),
     tags: doc.tags || [],
-    relatedPinIds: (doc.relatedPinIds || []).map(toIdString),
+    relatedPinIds: mapIdList(doc.relatedPinIds),
     linkedLocationId: toIdString(doc.linkedLocationId),
     linkedChatRoomId: toIdString(doc.linkedChatRoomId),
     visibility: doc.visibility,
@@ -279,14 +279,12 @@ const mapPinToFull = (pinDoc, creator, options = {}) => {
       : undefined;
     base.participantCount = doc.participantCount ?? 0;
     base.participantLimit = doc.participantLimit ?? undefined;
-    base.attendingUserIds = (doc.attendingUserIds || []).map(toIdString);
-    base.attendeeWaitlistIds = (doc.attendeeWaitlistIds || []).map(toIdString);
+    base.attendingUserIds = mapIdList(doc.attendingUserIds);
+    base.attendeeWaitlistIds = mapIdList(doc.attendeeWaitlistIds);
     base.attendable = doc.attendable ?? true;
     if (options.viewerId) {
       const viewerId = options.viewerId;
-      base.viewerIsAttending = (doc.attendingUserIds || []).some(
-        (id) => toIdString(id) === viewerId
-      );
+      base.viewerIsAttending = base.attendingUserIds.some((id) => id === viewerId);
     }
   }
 
@@ -341,7 +339,7 @@ const mapReply = (replyDoc, author) => {
       type: reaction.type,
       reactedAt: (reaction.reactedAt || replyDoc.createdAt).toISOString()
     })),
-    mentionedUserIds: (doc.mentionedUserIds || []).map(toIdString),
+    mentionedUserIds: mapIdList(doc.mentionedUserIds),
     createdAt: replyDoc.createdAt.toISOString(),
     updatedAt: replyDoc.updatedAt.toISOString(),
     audit: doc.audit ? buildAudit(doc.audit, replyDoc.createdAt, replyDoc.updatedAt) : undefined
@@ -370,24 +368,6 @@ const normaliseMediaAsset = (asset, uploadedBy) => ({
   uploadedAt: new Date(),
   uploadedBy
 });
-
-const mapMediaAssetResponse = (asset) => {
-  if (!asset) {
-    return undefined;
-  }
-
-  const doc = asset.toObject ? asset.toObject() : asset;
-  return {
-    url: doc.url,
-    thumbnailUrl: doc.thumbnailUrl || undefined,
-    width: doc.width ?? undefined,
-    height: doc.height ?? undefined,
-    mimeType: doc.mimeType || undefined,
-    description: doc.description || undefined,
-    uploadedAt: doc.uploadedAt ? doc.uploadedAt.toISOString() : undefined,
-    uploadedBy: doc.uploadedBy ? toIdString(doc.uploadedBy) : undefined
-  };
-};
 
 const NearbyPinsQuerySchema = z.object({
   latitude: z.coerce.number().min(-90).max(90),
@@ -470,8 +450,35 @@ router.post('/', verifyToken, async (req, res) => {
   try {
     const input = CreatePinSchema.parse(req.body);
 
+    const now = Date.now();
+    const maxEventTimestamp = now + EVENT_MAX_LEAD_TIME_MS;
+    const maxDiscussionTimestamp = now + DISCUSSION_MAX_DURATION_MS;
+
     if (input.type === 'event' && input.endDate < input.startDate) {
       return res.status(400).json({ message: 'endDate must be after startDate' });
+    }
+
+    if (input.type === 'event') {
+      if (input.startDate.getTime() < now - PAST_TOLERANCE_MS) {
+        return res.status(400).json({ message: 'Start date cannot be in the past.' });
+      }
+      if (input.endDate.getTime() < now - PAST_TOLERANCE_MS) {
+        return res.status(400).json({ message: 'End date cannot be in the past.' });
+      }
+      if (input.startDate.getTime() > maxEventTimestamp || input.endDate.getTime() > maxEventTimestamp) {
+        return res
+          .status(400)
+          .json({ message: 'Events can only be scheduled up to 14 days in advance.' });
+      }
+    } else if (input.type === 'discussion') {
+      if (input.expiresAt.getTime() < now - PAST_TOLERANCE_MS) {
+        return res.status(400).json({ message: 'Expiration date cannot be in the past.' });
+      }
+      if (input.expiresAt.getTime() > maxDiscussionTimestamp) {
+        return res
+          .status(400)
+          .json({ message: 'Discussions can only stay active for up to 3 days.' });
+      }
     }
 
     const viewer = await resolveViewerUser(req);
@@ -636,20 +643,43 @@ router.post('/', verifyToken, async (req, res) => {
 router.get('/nearby', verifyToken, async (req, res) => {
   try {
     const { latitude, longitude, distanceMiles, limit, type } = NearbyPinsQuerySchema.parse(req.query);
-    const maxDistanceMeters = distanceMiles * METERS_PER_MILE;
-
-    const geoQuery = {
-      coordinates: {
-        $near: {
-          $geometry: { type: 'Point', coordinates: [longitude, latitude] },
-          $maxDistance: maxDistanceMeters
+    const maxDistanceMeters = milesToMeters(distanceMiles) ?? distanceMiles * METERS_PER_MILE;
+    const now = new Date();
+    const queryFilters = [
+      {
+        coordinates: {
+          $near: {
+            $geometry: { type: 'Point', coordinates: [longitude, latitude] },
+            $maxDistance: maxDistanceMeters
+          }
         }
+      },
+      { $or: [{ isActive: { $exists: false } }, { isActive: true }] },
+      {
+        $or: [
+          { expiresAt: { $exists: false } },
+          { expiresAt: null },
+          { expiresAt: { $gt: now } }
+        ]
+      },
+      {
+        $or: [
+          { type: 'discussion' },
+          { type: 'event', endDate: { $exists: false } },
+          { type: 'event', endDate: null },
+          { type: 'event', endDate: { $gt: now } }
+        ]
       }
-    };
+    ];
 
     if (type) {
-      geoQuery.type = type;
+      queryFilters.push({ type });
     }
+
+    const geoQuery =
+      queryFilters.length === 1
+        ? queryFilters[0]
+        : { $and: queryFilters };
 
     const pins = await Pin.find(geoQuery)
       .limit(limit)
@@ -961,7 +991,7 @@ router.get('/:pinId/attendees', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Only event pins have attendees' });
     }
 
-    const attendeeIdStrings = (pin.attendingUserIds || []).map(toIdString).filter(Boolean);
+    const attendeeIdStrings = mapIdList(pin.attendingUserIds);
     if (attendeeIdStrings.length === 0) {
       return res.json([]);
     }
@@ -1103,6 +1133,10 @@ router.put('/:pinId', verifyToken, async (req, res) => {
     const { pinId } = PinIdSchema.parse(req.params);
     const input = CreatePinSchema.parse(req.body);
 
+    const now = Date.now();
+    const maxEventTimestamp = now + EVENT_MAX_LEAD_TIME_MS;
+    const maxDiscussionTimestamp = now + DISCUSSION_MAX_DURATION_MS;
+
     const pin = await Pin.findById(pinId).populate('creatorId');
     if (!pin) {
       return res.status(404).json({ message: 'Pin not found' });
@@ -1110,6 +1144,29 @@ router.put('/:pinId', verifyToken, async (req, res) => {
 
     if (input.type === 'event' && input.endDate < input.startDate) {
       return res.status(400).json({ message: 'endDate must be after startDate' });
+    }
+
+    if (input.type === 'event') {
+      if (input.startDate.getTime() < now - PAST_TOLERANCE_MS) {
+        return res.status(400).json({ message: 'Start date cannot be in the past.' });
+      }
+      if (input.endDate.getTime() < now - PAST_TOLERANCE_MS) {
+        return res.status(400).json({ message: 'End date cannot be in the past.' });
+      }
+      if (input.startDate.getTime() > maxEventTimestamp || input.endDate.getTime() > maxEventTimestamp) {
+        return res
+          .status(400)
+          .json({ message: 'Events can only be scheduled up to 14 days in advance.' });
+      }
+    } else if (input.type === 'discussion') {
+      if (input.expiresAt.getTime() < now - PAST_TOLERANCE_MS) {
+        return res.status(400).json({ message: 'Expiration date cannot be in the past.' });
+      }
+      if (input.expiresAt.getTime() > maxDiscussionTimestamp) {
+        return res
+          .status(400)
+          .json({ message: 'Discussions can only stay active for up to 3 days.' });
+      }
     }
 
     if (input.type === 'discussion' && input.proximityRadiusMeters && input.proximityRadiusMeters <= 0) {

@@ -18,9 +18,9 @@ module.exports = {
       setupFilesAfterEnv: ['<rootDir>/client/test/setupTests.js'],
       testPathIgnorePatterns: ['/node_modules/', '/dist/', '/build/', '/emulator-data/'],
       coveragePathIgnorePatterns: ['/node_modules/', '/dist/', '/build/'],
-      moduleFileExtensions: ['js', 'jsx', 'json'],
+      moduleFileExtensions: ['js', 'jsx', 'ts', 'tsx', 'json'],
       collectCoverageFrom: [
-        'client/src/**/*.{js,jsx}',
+        'client/src/**/*.{js,jsx,ts,tsx}',
         '!client/src/main.jsx',
         '!client/src/index.jsx',
         '!client/src/**/index.js'

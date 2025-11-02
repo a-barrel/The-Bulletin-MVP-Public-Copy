@@ -39,11 +39,50 @@ const normalizeStorageBucket = (value) => {
   return trimmed.replace(/^gs:\/\//i, '');
 };
 
+const parseBoolean = (value, fallback = false) => {
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized) {
+    return fallback;
+  }
+  if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) {
+    return true;
+  }
+  if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) {
+    return false;
+  }
+  return fallback;
+};
+
+const parseCsv = (value) =>
+  value
+    ? value
+        .split(/[,;]/)
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+    : [];
+
 const firebase = {
   serviceAccountJson: process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
   emulatorHost: process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099',
   storageBucket: normalizeStorageBucket(process.env.FIREBASE_STORAGE_BUCKET)
 };
+
+const integrations = {
+  tenor: {
+    apiKey: process.env.TENOR_API_KEY ? process.env.TENOR_API_KEY.trim() : undefined,
+    clientKey: process.env.TENOR_CLIENT_KEY
+      ? process.env.TENOR_CLIENT_KEY.trim()
+      : 'pinpoint-app'
+  }
+};
+
+const allowAccountSwapOnline = parseBoolean(process.env.PINPOINT_ENABLE_ACCOUNT_SWAP_ONLINE, false);
+const accountSwapAllowlist = new Set(
+  parseCsv(process.env.PINPOINT_ACCOUNT_SWAP_ALLOWLIST).map((entry) => entry.toLowerCase())
+);
 
 module.exports = {
   mode,
@@ -51,5 +90,10 @@ module.exports = {
   isOnline: !isOffline,
   mongoUri,
   firebase,
-  offlineAuthToken
+  integrations,
+  offlineAuthToken,
+  debugAuth: {
+    allowAccountSwapOnline,
+    accountSwapAllowlist
+  }
 };

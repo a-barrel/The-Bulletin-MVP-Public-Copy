@@ -10,50 +10,11 @@ const {
   ProximityChatPresenceSchema
 } = require('../schemas/proximityChat');
 const { PublicUserSchema } = require('../schemas/user');
+const { mapMediaAsset: mapMediaAssetResponse, mapUserAvatar } = require('../utils/media');
+const { toIdString, mapIdList } = require('../utils/ids');
+const { toIsoDateString } = require('../utils/dates');
 
-const toIdString = (value) => {
-  if (!value) return undefined;
-  if (typeof value === 'string') return value;
-  if (value instanceof mongoose.Types.ObjectId) return value.toString();
-  if (value._id) return value._id.toString();
-  return String(value);
-};
-
-const toIsoDateString = (value) => {
-  if (!value) return undefined;
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'string') return value;
-  if (typeof value.toISOString === 'function') return value.toISOString();
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
-};
-
-const mapMediaAsset = (asset) => {
-  if (!asset) {
-    return undefined;
-  }
-
-  const doc = asset.toObject ? asset.toObject() : asset;
-  const url = doc.url || doc.thumbnailUrl;
-  if (!url || typeof url !== 'string' || !url.trim()) {
-    return undefined;
-  }
-
-  const payload = {
-    url: url.trim(),
-    thumbnailUrl: doc.thumbnailUrl || undefined,
-    width: doc.width ?? undefined,
-    height: doc.height ?? undefined,
-    mimeType: doc.mimeType || undefined,
-    description: doc.description || undefined,
-    uploadedAt: toIsoDateString(doc.uploadedAt),
-    uploadedBy: toIdString(doc.uploadedBy)
-  };
-
-  return Object.fromEntries(
-    Object.entries(payload).filter(([, value]) => value !== undefined && value !== null)
-  );
-};
+const buildAvatarMedia = (userDoc) => mapUserAvatar(userDoc, { toIdString });
 
 const mapUserToPublic = (user) => {
   if (!user) return undefined;
@@ -62,7 +23,7 @@ const mapUserToPublic = (user) => {
     _id: toIdString(doc._id),
     username: doc.username,
     displayName: doc.displayName,
-    avatar: mapMediaAsset(doc.avatar),
+    avatar: buildAvatarMedia(doc),
     stats: doc.stats || undefined,
     badges: doc.badges || [],
     primaryLocationId: toIdString(doc.primaryLocationId),
@@ -92,8 +53,8 @@ const mapRoom = (roomDoc) => {
     radiusMeters: doc.radiusMeters,
     isGlobal: Boolean(doc.isGlobal),
     participantCount: doc.participantCount ?? 0,
-    participantIds: (doc.participantIds || []).map(toIdString),
-    moderatorIds: (doc.moderatorIds || []).map(toIdString),
+    participantIds: mapIdList(doc.participantIds),
+    moderatorIds: mapIdList(doc.moderatorIds),
     pinId: toIdString(doc.pinId),
     presetKey: typeof doc.presetKey === 'string' && doc.presetKey.trim().length > 0 ? doc.presetKey.trim() : undefined,
     createdAt: roomDoc.createdAt.toISOString(),
@@ -115,6 +76,10 @@ const mapMessage = (messageDoc) => {
         }
       : undefined;
 
+  const attachments = Array.isArray(doc.attachments)
+    ? doc.attachments.map((attachment) => mapMediaAssetResponse(attachment, { toIdString })).filter(Boolean)
+    : [];
+
   return ProximityChatMessageSchema.parse({
     _id: toIdString(doc._id),
     roomId: toIdString(doc.roomId),
@@ -124,7 +89,7 @@ const mapMessage = (messageDoc) => {
     replyToMessageId: toIdString(doc.replyToMessageId),
     message: doc.message,
     coordinates,
-    attachments: doc.attachments || [],
+    attachments,
     createdAt: messageDoc.createdAt.toISOString(),
     updatedAt: messageDoc.updatedAt.toISOString(),
     audit: doc.audit ? buildAudit(doc.audit, messageDoc.createdAt, messageDoc.updatedAt) : undefined
@@ -185,13 +150,18 @@ async function createMessage(input) {
     };
   }
 
+  const attachments = Array.isArray(input.attachments)
+    ? input.attachments.map((attachment) => mapMediaAssetResponse(attachment, { toIdString })).filter(Boolean)
+    : [];
+
   const message = await ProximityChatMessage.create({
     roomId: toObjectId(input.roomId),
     pinId: toObjectId(input.pinId),
     authorId: toObjectId(input.authorId),
     replyToMessageId: toObjectId(input.replyToMessageId),
     message: input.message,
-    coordinates
+    coordinates,
+    attachments
   });
 
   const populated = await message.populate('authorId');

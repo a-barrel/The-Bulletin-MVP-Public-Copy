@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -12,27 +11,42 @@ import Typography from '@mui/material/Typography';
 
 import runtimeConfig from '../../../config/runtime';
 import { auth } from '../../../firebase';
-import {
-  debugGrantBadge,
-  debugListBadges,
-  debugResetBadges,
-  debugRevokeBadge,
-  fetchCurrentUserProfile
-} from '../../../api/mongoDataApi';
 import { useBadgeSound } from '../../../contexts/BadgeSoundContext';
+import { playBadgeSound } from '../../../utils/badgeSound';
+import DebugPanel from '../components/DebugPanel';
+import useBadgeManager from '../hooks/useBadgeManager';
 
 function BadgesTab() {
   const { announceBadgeEarned } = useBadgeSound();
   const [currentUser] = useAuthState(auth);
   const [userIdInput, setUserIdInput] = useState('');
-  const [autoUserId, setAutoUserId] = useState('');
-  const [badgeStatus, setBadgeStatus] = useState(null);
-  const [status,       setStatus] = useState(null);
-  const [mutatingBadgeId, setMutatingBadgeId] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
 
-  const isMutating = Boolean(mutatingBadgeId) || isResetting;
+  const {
+    badgeStatus,
+    status,
+    setStatus,
+    mutatingBadgeId,
+    isLoading,
+    isResetting,
+    autoUserId,
+    loadBadges,
+    grantBadge,
+    revokeBadge,
+    resetBadges
+  } = useBadgeManager({ currentUser });
+
+  useEffect(() => {
+    if (!userIdInput && autoUserId) {
+      setUserIdInput(autoUserId);
+    }
+  }, [autoUserId, userIdInput]);
+
+  useEffect(() => {
+    const derivedId = badgeStatus?.user?._id;
+    if (derivedId) {
+      setUserIdInput((prev) => (prev.trim() ? prev : derivedId));
+    }
+  }, [badgeStatus]);
 
   const resolveBadgeImageUrl = useCallback((value) => {
     if (!value) {
@@ -57,175 +71,88 @@ function BadgesTab() {
     return autoUserId;
   }, [userIdInput, badgeStatus, autoUserId]);
 
-  const loadBadges = useCallback(
-    async (targetId, { suppressStatus = false } = {}) => {
-      const trimmed = targetId ? String(targetId).trim() : '';
-      if (!trimmed) {
-        if (!suppressStatus) {
-                  setStatus({ type: 'error', message: 'Enter a user ID to load badges.' });
-        }
-        return null;
-      }
-      if (!suppressStatus) {
-              setStatus(null);
-      }
-      setIsLoading(true);
-      try {
-        const data = await debugListBadges({ userId: trimmed });
-        setBadgeStatus(data);
-        setUserIdInput((prev) => (prev.trim() ? prev : data.user?._id ?? trimmed));
-        if (!suppressStatus) {
-          const displayName = data.user?.displayName || data.user?.username || trimmed;
-                  setStatus({ type: 'success', message: `Loaded badges for ${displayName}.` });
-        }
-        return data;
-      } catch (error) {
-        console.error('Failed to load badge status:', error);
-        if (!suppressStatus) {
-                  setStatus({ type: 'error', message: error?.message || 'Failed to load badges.' });
-        }
-        throw error;
-      } finally {
-      setIsLoading(false);
-      }
-    },
-    []
-  );
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const targetId = userIdInput.trim() || autoUserId;
+    loadBadges(targetId).catch(() => {});
+  };
 
-  useEffect(() => {
-    if (!currentUser) {
+  const handleUseMyId = () => {
+    if (!autoUserId) {
       return;
     }
-    let cancelled = false;
-    (async () => {
-      try {
-        const profile = await fetchCurrentUserProfile();
-        if (cancelled || !profile?._id) {
-          return;
-        }
-        setAutoUserId(profile._id);
-        setUserIdInput((prev) => (prev.trim() ? prev : profile._id));
-        await loadBadges(profile._id, { suppressStatus: true });
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Failed to load default badge status:', error);
-                  setStatus({ type: 'error', message: error?.message || 'Failed to load badges.' });
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUser, loadBadges]);
+    setUserIdInput(autoUserId);
+    loadBadges(autoUserId).catch(() => {});
+  };
 
-  const handleSubmit = useCallback(
-    async (event) => {
-      event.preventDefault();
-      const targetId = userIdInput.trim() || autoUserId;
-      try {
-        await loadBadges(targetId);
-      } catch {
-        // status handled within loadBadges
-      }
-    },
-    [userIdInput, autoUserId, loadBadges]
-  );
-
-  const handleGrant = useCallback(
-    async (badgeId) => {
-      if (!badgeId) {
-        return;
-      }
+  const handleGrant = async (badgeId) => {
+    if (!badgeId || !effectiveUserId) {
       if (!effectiveUserId) {
-                setStatus({ type: 'error', message: 'Load a user before granting badges.' });
-        return;
+        setStatus({ type: 'error', message: 'Load a user before granting badges.' });
       }
-      setMutatingBadgeId(badgeId);
-            setStatus(null);
-      try {
-        const data = await debugGrantBadge({ userId: effectiveUserId, badgeId });
-        setBadgeStatus(data);
-        const badgeMeta = data.badges?.find((badge) => badge.id === badgeId);
-                setStatus({
-          type: 'success',
-          message: `Granted "${badgeMeta?.label || badgeId}" badge.`
-        });
-        if (badgeMeta?.earned) {
-          playBadgeSound();
-          const earnedBadgeId = badgeMeta?.id ?? badgeId;
-          announceBadgeEarned(earnedBadgeId);
-        }
-      } catch (error) {
-        console.error('Failed to grant badge:', error);
-                setStatus({ type: 'error', message: error?.message || 'Failed to grant badge.' });
-      } finally {
-        setMutatingBadgeId(null);
-      }
-    },
-    [effectiveUserId]
-  );
-
-  const handleRevoke = useCallback(
-    async (badgeId) => {
-      if (!badgeId) {
-        return;
-      }
-      if (!effectiveUserId) {
-                setStatus({ type: 'error', message: 'Load a user before removing badges.' });
-        return;
-      }
-      setMutatingBadgeId(badgeId);
-            setStatus(null);
-      try {
-        const data = await debugRevokeBadge({ userId: effectiveUserId, badgeId });
-        setBadgeStatus(data);
-        const badgeMeta = data.badges?.find((badge) => badge.id === badgeId);
-                setStatus({
-          type: 'success',
-          message: `Removed "${badgeMeta?.label || badgeId}" badge.`
-        });
-      } catch (error) {
-        console.error('Failed to remove badge:', error);
-                setStatus({ type: 'error', message: error?.message || 'Failed to remove badge.' });
-      } finally {
-        setMutatingBadgeId(null);
-      }
-    },
-    [effectiveUserId]
-  );
-
-    const handleReset = useCallback(async () => {
-      if (!effectiveUserId) {
-              setStatus({ type: 'error', message: 'Load a user before resetting badges.' });
       return;
     }
-    setIsResetting(true);
-          setStatus(null);
     try {
-      const data = await debugResetBadges({ userId: effectiveUserId });
-      setBadgeStatus(data);
-              setStatus({ type: 'success', message: 'All badges reset.' });
+      const data = await grantBadge(effectiveUserId, badgeId);
+      const badgeMeta = data?.badges?.find((badge) => badge.id === badgeId);
+      if (badgeMeta?.earned) {
+        playBadgeSound();
+        announceBadgeEarned(badgeMeta?.id ?? badgeId);
+      }
+    } catch (error) {
+      console.error('Failed to grant badge:', error);
+    }
+  };
+
+  const handleRevoke = async (badgeId) => {
+    if (!badgeId || !effectiveUserId) {
+      if (!effectiveUserId) {
+        setStatus({ type: 'error', message: 'Load a user before removing badges.' });
+      }
+      return;
+    }
+    try {
+      await revokeBadge(effectiveUserId, badgeId);
+    } catch (error) {
+      console.error('Failed to remove badge:', error);
+    }
+  };
+
+  const handleReset = async () => {
+    if (!effectiveUserId) {
+      setStatus({ type: 'error', message: 'Load a user before resetting badges.' });
+      return;
+    }
+    try {
+      await resetBadges(effectiveUserId);
     } catch (error) {
       console.error('Failed to reset badges:', error);
-              setStatus({ type: 'error', message: error?.message || 'Failed to reset badges.' });
-    } finally {
-      setIsResetting(false);
     }
-  }, [effectiveUserId]);
+  };
 
+  const isMutating = Boolean(mutatingBadgeId) || isResetting;
   const badges = badgeStatus?.badges ?? [];
+
+  const alerts = status
+    ? [
+        {
+          key: 'status',
+          severity: status.type,
+          content: status.message,
+          onClose: () => setStatus(null)
+        }
+      ]
+    : [];
 
   return (
     <Stack spacing={2}>
-      <Paper
+      <DebugPanel
         component="form"
         onSubmit={handleSubmit}
-        sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+        title="Badge management"
+        description="Enter a MongoDB user ID to review or edit badges. Leave blank to manage your own badges."
+        alerts={alerts}
       >
-        <Typography variant="h6">Badge management</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Enter a MongoDB user ID to review or edit badges. Leave blank to manage your own badges.
-        </Typography>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={2}
@@ -245,12 +172,7 @@ function BadgesTab() {
             <Button
               type="button"
               variant="text"
-              onClick={() => {
-                if (autoUserId) {
-                  setUserIdInput(autoUserId);
-                  loadBadges(autoUserId).catch(() => {});
-                }
-              }}
+              onClick={handleUseMyId}
               disabled={isLoading || !autoUserId}
             >
               Use my ID
@@ -266,13 +188,7 @@ function BadgesTab() {
             </Button>
           </Stack>
         </Stack>
-      </Paper>
-
-      {status ? (
-        <Alert severity={status.type} onClose={() =>       setStatus(null)}>
-          {status.message}
-        </Alert>
-      ) : null}
+      </DebugPanel>
 
       {isLoading ? (
         <Stack alignItems="center" justifyContent="center" spacing={2} sx={{ py: 4 }}>

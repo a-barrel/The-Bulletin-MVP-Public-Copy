@@ -7,6 +7,9 @@ const { PublicUserSchema, UserProfileSchema } = require('../schemas/user');
 const { PinListItemSchema } = require('../schemas/pin');
 const verifyToken = require('../middleware/verifyToken');
 const { grantBadge } = require('../services/badgeService');
+const { mapMediaAsset, mapUserAvatar } = require('../utils/media');
+const { toIdString, mapIdList } = require('../utils/ids');
+const { toIsoDateString } = require('../utils/dates');
 
 const router = express.Router();
 
@@ -118,23 +121,6 @@ const normalizeMediaAssetInput = (asset) => {
   );
 };
 
-const toIdString = (value) => {
-  if (!value) return undefined;
-  if (typeof value === 'string') return value;
-  if (value instanceof mongoose.Types.ObjectId) return value.toString();
-  if (value._id) return value._id.toString();
-  return String(value);
-};
-
-const toIsoDateString = (value) => {
-  if (!value) return undefined;
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'string') return value;
-  if (typeof value.toISOString === 'function') return value.toISOString();
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
-};
-
 const resolveViewerUser = async (req) => {
   if (!req?.user?.uid) {
     return null;
@@ -149,23 +135,9 @@ const resolveViewerUser = async (req) => {
   }
 };
 
-const mapMediaAssetResponse = (asset) => {
-  if (!asset) {
-    return undefined;
-  }
+const mapMediaAssetResponse = (asset) => mapMediaAsset(asset, { toIdString });
 
-  const doc = asset.toObject ? asset.toObject() : asset;
-  return {
-    url: doc.url,
-    thumbnailUrl: doc.thumbnailUrl || undefined,
-    width: doc.width ?? undefined,
-    height: doc.height ?? undefined,
-    mimeType: doc.mimeType || undefined,
-    description: doc.description || undefined,
-    uploadedAt: toIsoDateString(doc.uploadedAt),
-    uploadedBy: toIdString(doc.uploadedBy)
-  };
-};
+const buildAvatarMedia = (userDoc) => mapUserAvatar(userDoc, { toIdString });
 
 const mapRelationships = (relationships) => {
   if (!relationships) {
@@ -173,11 +145,11 @@ const mapRelationships = (relationships) => {
   }
 
   return {
-    followerIds: (relationships.followerIds || []).map(toIdString),
-    followingIds: (relationships.followingIds || []).map(toIdString),
-    friendIds: (relationships.friendIds || []).map(toIdString),
-    mutedUserIds: (relationships.mutedUserIds || []).map(toIdString),
-    blockedUserIds: (relationships.blockedUserIds || []).map(toIdString)
+    followerIds: mapIdList(relationships.followerIds),
+    followingIds: mapIdList(relationships.followingIds),
+    friendIds: mapIdList(relationships.friendIds),
+    mutedUserIds: mapIdList(relationships.mutedUserIds),
+    blockedUserIds: mapIdList(relationships.blockedUserIds)
   };
 };
 
@@ -238,7 +210,7 @@ const mapUserToPublic = (userDoc) => {
     _id: toIdString(doc._id),
     username: doc.username,
     displayName: doc.displayName,
-    avatar: mapMediaAssetResponse(doc.avatar),
+    avatar: buildAvatarMedia(doc),
     stats: doc.stats || undefined,
     badges: doc.badges || [],
     primaryLocationId: toIdString(doc.primaryLocationId),
@@ -262,7 +234,7 @@ const mapUserToProfile = (userDoc) => {
     _id: toIdString(doc._id),
     username: doc.username,
     displayName: doc.displayName,
-    avatar: mapMediaAssetResponse(doc.avatar),
+    avatar: buildAvatarMedia(doc),
     stats: doc.stats || undefined,
     badges: doc.badges || [],
     primaryLocationId: toIdString(doc.primaryLocationId),
@@ -273,11 +245,11 @@ const mapUserToProfile = (userDoc) => {
     preferences: doc.preferences || undefined,
     relationships: mapRelationships(doc.relationships),
     locationSharingEnabled: Boolean(doc.locationSharingEnabled),
-    pinnedPinIds: (doc.pinnedPinIds || []).map(toIdString),
-    ownedPinIds: (doc.ownedPinIds || []).map(toIdString),
-    bookmarkCollectionIds: (doc.bookmarkCollectionIds || []).map(toIdString),
-    proximityChatRoomIds: (doc.proximityChatRoomIds || []).map(toIdString),
-    recentLocationIds: (doc.recentLocationIds || []).map(toIdString),
+    pinnedPinIds: mapIdList(doc.pinnedPinIds),
+    ownedPinIds: mapIdList(doc.ownedPinIds),
+    bookmarkCollectionIds: mapIdList(doc.bookmarkCollectionIds),
+    proximityChatRoomIds: mapIdList(doc.proximityChatRoomIds),
+    recentLocationIds: mapIdList(doc.recentLocationIds),
     createdAt: createdAt ?? new Date().toISOString(),
     updatedAt,
     audit: undefined
@@ -298,7 +270,7 @@ const loadBlockedUsers = async (userDoc) => {
     return [];
   }
 
-  const blockedIdStrings = relationships.blockedUserIds.map(toIdString).filter(Boolean);
+  const blockedIdStrings = mapIdList(relationships.blockedUserIds);
   if (blockedIdStrings.length === 0) {
     return [];
   }
@@ -515,6 +487,9 @@ router.patch('/me', verifyToken, async (req, res) => {
         }
         if (notifications.marketing !== undefined) {
           setDoc['preferences.notifications.marketing'] = notifications.marketing;
+        }
+        if (notifications.chatTransitions !== undefined) {
+          setDoc['preferences.notifications.chatTransitions'] = notifications.chatTransitions;
         }
       }
     }

@@ -18,8 +18,14 @@ const {
   createMessage,
   upsertPresence
 } = require('../services/proximityChatService');
-const { broadcastChatMessage } = require('../services/updateFanoutService');
+const {
+  broadcastChatMessage,
+  broadcastChatRoomTransition
+} = require('../services/updateFanoutService');
 const { grantBadge } = require('../services/badgeService');
+const { fetchGifAttachment, searchGifAttachments } = require('../services/gifService');
+const { MediaAssetSchema } = require('../schemas/common');
+const { toIdString, mapIdList } = require('../utils/ids');
 
 const router = express.Router();
 
@@ -131,7 +137,8 @@ const CreateMessageRequestSchema = z
     replyToMessageId: ObjectIdString.optional(),
     latitude: z.number().min(-90).max(90).optional(),
     longitude: z.number().min(-180).max(180).optional(),
-    accuracy: z.number().nonnegative().optional()
+    accuracy: z.number().nonnegative().optional(),
+    attachments: z.array(MediaAssetSchema).max(10).optional()
   })
   .refine(
     (value) =>
@@ -173,14 +180,6 @@ const resolveViewerUser = async (req) => {
     console.error('Failed to resolve viewer user for chats route:', error);
     return null;
   }
-};
-
-const toIdString = (value) => {
-  if (!value) return null;
-  if (typeof value === 'string') return value;
-  if (value instanceof mongoose.Types.ObjectId) return value.toString();
-  if (value._id) return value._id.toString();
-  return String(value);
 };
 
 const haversineDistanceMeters = (lat1, lon1, lat2, lon2) => {
@@ -335,15 +334,11 @@ const isViewerParticipant = (roomDoc, viewerId) => {
   if (toIdString(roomDoc.ownerId) === viewerId) {
     return true;
   }
-  const moderators = Array.isArray(roomDoc.moderatorIds)
-    ? roomDoc.moderatorIds.map((id) => toIdString(id))
-    : [];
+  const moderators = mapIdList(roomDoc.moderatorIds);
   if (moderators.includes(viewerId)) {
     return true;
   }
-  const participants = Array.isArray(roomDoc.participantIds)
-    ? roomDoc.participantIds.map((id) => toIdString(id))
-    : [];
+  const participants = mapIdList(roomDoc.participantIds);
   return participants.includes(viewerId);
 };
 
@@ -365,6 +360,14 @@ const evaluateRoomAccess = (roomDoc, { viewerId, coordinates, bookmarkedPinIds }
   }
 
   if (!coordinates) {
+    const isDebug = String(process.env.PINPOINT_RUNTIME_MODE).toLowerCase() === 'offline';
+    if (isDebug) {
+      return {
+        allowed: true,
+        reason: 'within-radius',
+        distanceMeters: 0
+      };
+    }
     return { allowed: false, reason: 'no-location', distanceMeters: null };
   }
 
@@ -410,6 +413,54 @@ const buildAccessDeniedMessage = (reason) => {
       return 'You are not permitted to access this chat room.';
   }
 };
+
+router.get('/gif-search', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const queryParam =
+      typeof req.query.q === 'string'
+        ? req.query.q
+        : typeof req.query.query === 'string'
+          ? req.query.query
+          : '';
+    const query = `${queryParam}`.trim();
+    if (!query) {
+      return res.status(400).json({ message: 'Enter a search term to find a GIF.' });
+    }
+
+    const limitRaw = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
+    const limitValue = Number.parseInt(limitRaw, 10);
+    const limit = Number.isFinite(limitValue) ? limitValue : undefined;
+
+    const result = await searchGifAttachments(query, { limit });
+    if (!result.ok) {
+      const status =
+        result.reason === 'missing-api-key' || result.reason === 'api-error' ? 503 : 400;
+      const message =
+        result.reason === 'missing-api-key'
+          ? 'GIF search is not configured for this environment.'
+          : result.reason === 'no-results'
+            ? `No GIFs found for "${query}".`
+            : result.message || 'Unable to fetch GIFs right now.';
+      return res.status(status).json({ message });
+    }
+
+    const payload = result.results.map((entry) => ({
+      id: entry.id,
+      attachment: entry.attachment,
+      sourceUrl: entry.sourceUrl
+    }));
+
+    res.json({ query, results: payload });
+  } catch (error) {
+    console.error('Failed to search GIFs:', error);
+    res.status(500).json({ message: 'Failed to search for GIFs.' });
+  }
+});
 
 router.post('/rooms', verifyToken, async (req, res) => {
   try {
@@ -474,8 +525,47 @@ router.post('/rooms/:roomId/messages', verifyToken, async (req, res) => {
         .json({ message: buildAccessDeniedMessage(access.reason) });
     }
 
-    const profanityCount = countProfanityInstances(input.message);
-    const sanitizedMessage = replaceProfanityWithFruit(input.message);
+    const trimmedMessage = input.message.trim();
+    const isGifCommand = trimmedMessage.toLowerCase().startsWith('/gif');
+
+    let messageForStorage = input.message;
+    let attachments = Array.isArray(input.attachments) ? input.attachments : [];
+
+    if (isGifCommand) {
+      const query = trimmedMessage.slice(4).trim();
+      if (!query) {
+        return res
+          .status(400)
+          .json({ message: 'Usage: /gif <search term>' });
+      }
+
+      messageForStorage = `GIF: ${query}`;
+      if (!attachments.length) {
+        const gifResult = await fetchGifAttachment(query);
+        if (!gifResult.ok) {
+          const status =
+            gifResult.reason === 'missing-api-key' || gifResult.reason === 'api-error'
+              ? 503
+              : 400;
+          let message = 'Unable to send GIF right now.';
+          if (gifResult.reason === 'missing-api-key') {
+            message = 'GIF search is not configured for this environment.';
+          } else if (gifResult.reason === 'no-results') {
+            message = `No GIFs found for "${query}".`;
+          } else if (gifResult.reason === 'empty-query') {
+            message = 'Enter a search term after /gif (e.g., "/gif cats").';
+          } else if (gifResult.message) {
+            message = gifResult.message;
+          }
+          return res.status(status).json({ message });
+        }
+
+        attachments = gifResult.attachment ? [gifResult.attachment] : [];
+      }
+    }
+
+    const profanityCount = countProfanityInstances(messageForStorage);
+    const sanitizedMessage = replaceProfanityWithFruit(messageForStorage);
 
     const { messageDoc, response } = await createMessage({
       roomId,
@@ -485,7 +575,8 @@ router.post('/rooms/:roomId/messages', verifyToken, async (req, res) => {
       replyToMessageId: input.replyToMessageId,
       latitude: input.latitude,
       longitude: input.longitude,
-      accuracy: input.accuracy
+      accuracy: input.accuracy,
+      attachments
     });
 
     let chatBadgeResult = null;
@@ -504,6 +595,9 @@ router.post('/rooms/:roomId/messages', verifyToken, async (req, res) => {
     }
 
     response.message = messageDoc.message;
+    if (attachments.length && !response.imageUrl) {
+      response.imageUrl = attachments[0]?.url;
+    }
 
     if (profanityCount > 0) {
       try {
@@ -548,6 +642,14 @@ router.post('/rooms/:roomId/presence', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Chat room not found' });
     }
 
+    const existingPresences = await ProximityChatPresence.find({ userId: viewer._id });
+    const currentPresence = existingPresences.find((presence) =>
+      presence.roomId && presence.roomId.equals(room._id)
+    );
+    const otherPresences = existingPresences.filter(
+      (presence) => !presence.roomId || !presence.roomId.equals(room._id)
+    );
+
     const accessContext = await buildViewerAccessContext({
       viewer,
       latitude: input.latitude,
@@ -561,6 +663,11 @@ router.post('/rooms/:roomId/presence', verifyToken, async (req, res) => {
         .json({ message: buildAccessDeniedMessage(access.reason) });
     }
 
+    const coordinates =
+      input.latitude !== undefined && input.longitude !== undefined
+        ? { latitude: input.latitude, longitude: input.longitude }
+        : null;
+
     const payload = await upsertPresence({
       roomId,
       userId: viewer._id.toString(),
@@ -568,6 +675,41 @@ router.post('/rooms/:roomId/presence', verifyToken, async (req, res) => {
       joinedAt: input.joinedAt,
       lastActiveAt: input.lastActiveAt
     });
+
+    let removedRooms = [];
+    if (otherPresences.length) {
+      const otherRoomIds = otherPresences
+        .map((presence) => presence.roomId)
+        .filter(Boolean);
+      if (otherRoomIds.length) {
+        removedRooms = await ProximityChatRoom.find({ _id: { $in: otherRoomIds } });
+      }
+      await ProximityChatPresence.deleteMany({
+        _id: { $in: otherPresences.map((presence) => presence._id) }
+      });
+      await Promise.all(
+        removedRooms.map((roomDoc) =>
+          broadcastChatRoomTransition({
+            userId: viewer._id,
+            fromRoom: roomDoc,
+            toRoom: null,
+            coordinates
+          })
+        )
+      );
+    }
+
+    if (!currentPresence) {
+      const fromRoomDoc =
+        removedRooms.length === 1 ? removedRooms[0] : null;
+      await broadcastChatRoomTransition({
+        userId: viewer._id,
+        fromRoom: fromRoomDoc,
+        toRoom: room,
+        distanceMeters: access.distanceMeters,
+        coordinates
+      });
+    }
 
     res.status(201).json(payload);
   } catch (error) {

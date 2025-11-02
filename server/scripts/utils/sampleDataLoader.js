@@ -13,6 +13,9 @@ const {
 } = require('../../models/ProximityChat');
 const Update = require('../../models/Update');
 const Location = require('../../models/Location');
+const FriendRequest = require('../../models/FriendRequest');
+const ModerationAction = require('../../models/ModerationAction');
+const DirectMessageThread = require('../../models/DirectMessageThread');
 
 const DEFAULT_DATA_DIR = path.join(__dirname, '..', '..', '..', 'docs', 'mongodb-local-sample-data');
 
@@ -26,7 +29,18 @@ const COLLECTIONS = [
   { name: 'proximityChatMessages', model: ProximityChatMessage, filename: 'mongodb-sample-proximityChatMessages.json' },
   { name: 'proximityChatPresence', model: ProximityChatPresence, filename: 'mongodb-sample-proximityChatPresence.json' },
   { name: 'updates', model: Update, filename: 'mongodb-sample-updates.json' },
-  { name: 'locations', model: Location, filename: 'mongodb-sample-locations.json' }
+  { name: 'locations', model: Location, filename: 'mongodb-sample-locations.json' },
+  { name: 'friendRequests', model: FriendRequest, filename: 'mongodb-sample-friendRequests.json' },
+  {
+    name: 'moderationActions',
+    model: ModerationAction,
+    filename: 'mongodb-sample-moderationActions.json'
+  },
+  {
+    name: 'directMessageThreads',
+    model: DirectMessageThread,
+    filename: 'mongodb-sample-directMessageThreads.json'
+  }
 ];
 
 const collectionIndex = new Map();

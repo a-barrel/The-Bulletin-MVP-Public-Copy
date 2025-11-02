@@ -12,8 +12,7 @@
 }
 
 /* header */
-.header {
-    background-color: #CDAEF2;
+.pin-details .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -24,12 +23,31 @@
     color: #5d3889
 }
 
-.header h2 {
+.pin-details.event-mode .header {
+    background-color: #CDAEF2;
+    color: #5d3889;
+}
+
+.pin-details.discussion-mode .header {
+    background-color: #3EB8F0;
+    color: #043c63;
+}
+
+.pin-details .header h2 {
     margin: 0;
 }
 
+.pin-details .header.event-header {
+    background-color: #CDAEF2;
+}
+
+.pin-details .header.discussion-header {
+    background-color: #3EB8F0;
+}
+
+
 /* back-button */
-.back-button {
+.pin-details .back-button {
     background: none;
     border: none;
     padding: 0;
@@ -40,27 +58,27 @@
     justify-content: center;
 }
 
-.back-arrow {
+.pin-details .back-arrow {
     width: 30px;
     height: 30px;
 }
 
 /* bookmark-button */
-.back-button {
+.pin-details .back-button {
     transition: transform 150ms ease, filter 150ms ease;
 }
 
-.back-button:hover {
+.pin-details .back-button:hover {
     transform: scale(1.08);
     filter: brightness(1.05);
 }
 
-.back-button:active {
+.pin-details .back-button:active {
     transform: scale(0.95);
 }
 
 
-.bookmark-button {
+.pin-details .bookmark-button {
     background: none;
     border: none;
     padding: 0;
@@ -71,14 +89,13 @@
     justify-content: center;
 }
 
-.bookmark {
+.pin-details .bookmark {
     width: 30px;
     height: 30px;
 }
 
-/* event name */
-.name {
-    background-color: #F4F0FC;
+/* pin name */
+.pin-details .name {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -89,29 +106,45 @@
     flex-direction: column;
 }
 
-.name h2 {
+.pin-details .name h2 {
     margin: 0;
 }
 
-.pin-id {
+.pin-details.event-mode .name {
+    background-color: #F4F0FC;
+}
+
+.pin-details.discussion-mode .name {
+    background-color: #EFF8FC;
+}
+
+.pin-details .name.event-name {
+    background-color: #F4F0FC;
+}
+
+.pin-details .name.discussion-name {
+    background-color: #EFF8FC;
+}
+
+.pin-details .pin-id {
     font-size: 0.9rem;
     color: #5d3889;
     margin-top: 0.25rem;
 }
 
-.pin-radius {
+.pin-details .pin-radius {
     font-size: 0.9rem;
     color: #5d3889;
     margin-top: 0.15rem;
 }
 
-.pin-timestamps {
+.pin-details .pin-timestamps {
     font-size: 0.85rem;
     color: #7b68b5;
     margin-top: 0.25rem;
 }
 
-.status-container {
+.pin-details .status-container {
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -119,9 +152,10 @@
     gap: 0.5rem;
     padding: 0.75rem 1rem;
     box-sizing: border-box;
+    background-color: #FFFFFF;
 }
 
-.status-message {
+.pin-details .status-message {
     width: 100%;
     max-width: 720px;
     padding: 0.75rem 1rem;
@@ -132,22 +166,44 @@
     text-align: center;
 }
 
-.status-message.error {
+.pin-details.discussion-mode .status-message {
+    border-color: #3EB8F0;
+    background-color: #EFF8FC;
+    color: #0b4a6e;
+}
+
+.pin-details .status-message.error {
     border-color: #f15bb5;
     background-color: #ffe4f0;
     color: #9b2960;
 }
 
 /* map */
-.map-section {
-    background-color: #F4F0FC;
+.pin-details .map-section {
     width: 100%;
     border-bottom: 1px solid black;
     padding: 1rem;
     box-sizing: border-box;
 }
 
-.map-wrapper {
+.pin-details.event-mode .map-section {
+    background-color: #F4F0FC;
+}
+
+.pin-details.discussion-mode .map-section {
+    background-color: #EFF8FC;
+}
+
+.pin-details .map-section.event-map {
+  background-color: #F4F0FC; 
+}
+
+.pin-details .map-section.discussion-map {
+  background-color: #EFF8FC; 
+}
+
+
+.pin-details .map-wrapper {
     width: 100%;
     height: 320px;
     border: 1px solid #CDAEF2;
@@ -156,7 +212,7 @@
     background-color: #FFFFFF;
 }
 
-.cover-photo {
+.pin-details .cover-photo {
     width: 100%;
     max-height: 320px;
     object-fit: cover;
@@ -165,7 +221,7 @@
     background-color: #FFFFFF;
 }
 
-.map-placeholder {
+.pin-details .map-placeholder {
     padding: 1.5rem;
     border: 1px dashed #CDAEF2;
     border-radius: 8px;
@@ -173,8 +229,7 @@
 }
 
 /* post-creator */
-.post-creator {
-    background-color: #F4F0FC;
+.pin-details .post-creator {
     display: flex;
     align-items: center;
     width: 100%;
@@ -185,23 +240,42 @@
     font-weight: bold;
 }
 
-.user-link {
-    text-decoration: none;
-    color: inherit;
+.pin-details.event-mode .post-creator {
+    background-color: #F4F0FC;
+    color: #F15BB5;
 }
 
-.user-link:focus-visible {
+.pin-details.discussion-mode .post-creator {
+    background-color: #EFF8FC;
+    color: #0569a5;
+}
+
+.pin-details .post-creator.event-creator {
+  background-color: #F4F0FC; 
+}
+
+.pin-details .post-creator.discussion-creator {
+  background-color: #EFF8FC; 
+}
+
+.pin-details .user-link {
+    text-decoration: none;
+    color: inherit;
+    padding-top: 1rem;
+}
+
+.pin-details .user-link:focus-visible {
     outline: 2px solid #5d3889;
     outline-offset: 2px;
     border-radius: 12px;
 }
 
-.user-link:hover .creator-name,
-.user-link:hover .commenter-info strong {
+.pin-details .user-link:hover .creator-name,
+.pin-details .user-link:hover .commenter-info strong {
     text-decoration: underline;
 }
 
-.profile-icon {
+.pin-details .profile-icon {
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -209,33 +283,32 @@
     background-color: #FFFFFF;
 }
 
-.post-creator-details {
+.pin-details .post-creator-details {
     display: flex;
     flex-direction: column;
 }
 
-.creator-name {
+.pin-details .creator-name {
     color: #5d3889;
     font-weight: 600;
 }
 
-.creator-username {
+.pin-details .creator-username {
     color: #7b68b5;
     font-size: 0.85rem;
 }
 
-.muted {
+.pin-details .muted {
     color: #7f7f7f;
     font-style: italic;
 }
 
-.error-text {
+.pin-details .error-text {
     color: #b00020;
 }
 
 /* post-description */
-.post-description {
-    background-color: #F4F0FC;
+.pin-details .post-description {
     display: block; 
     text-align: left; 
     width: 100%; 
@@ -243,30 +316,42 @@
     padding-left: 1rem;
     padding-right: 1rem;
     padding-bottom: 1rem;
+    background-color: #F4F0FC;
+}
+
+.pin-details.discussion-mode .post-description {
+  background-color: #EFF8FC;
 }
 
 /* post-images */
-.post-images {
-    background-color: #F4F0FC;
+.pin-details .post-images {
     width: 100%;
-    padding: 1rem;
+    padding: 0;
     box-sizing: border-box;
 }
 
-.photo-grid {
+.pin-details .post-images {
+  background-color: #F4F0FC;
+}
+
+.pin-details.discussion-mode .post-images {
+  background-color: #EFF8FC;
+}
+
+.pin-details .photo-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 0.75rem;
 }
 
-.pin-photo-item {
+.pin-details .pin-photo-item {
     display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 0.35rem;
 }
 
-.pin-photo {
+.pin-details .pin-photo {
     width: 100%;
     height: 160px;
     object-fit: cover;
@@ -275,14 +360,13 @@
     background-color: #FFFFFF;
 }
 
-.pin-photo-item figcaption {
+.pin-details .pin-photo-item figcaption {
     font-size: 0.8rem;
     color: #5d3889;
 }
 
 /* post-info */
-.post-info {
-    background-color: #F4F0FC;
+.pin-details .post-info {
     display: flex;
     flex-direction: column; 
     gap: 1rem;
@@ -290,26 +374,49 @@
     width: 100%;
     margin: 0;
     padding: 1rem;
+    background-color: #F4F0FC;
+}
+
+.pin-details.discussion-mode .post-info {
+  background-color: #EFF8FC; 
 }
 
 /* post-location */
-.post-location {
+.pin-details .post-location {
     display: flex;
     align-items: center;
-    color: #5d3889;
+    color: #000000;
     font-weight: bold;
     width: 100%;
 }
 
-.pin-icon {
-    width: 32px;
-    height: 32px;
+.pin-details .post-location.event-location .location-text {
+  background-color: #CDAEF2;
+  color: #5d3889; 
+}
+
+.pin-details .post-location.discussion-location .location-text {
+  background-color: #3EB8F0;
+  color: #003f5c; 
+}
+
+.pin-details .pin-icon {
+    width: 40px;
+    height: 40px;
     color: #5d3889;
     margin-right: 0.5rem;
     flex-shrink: 0;
 }
 
-.location-text {
+.pin-details .pin-icon.event-icon {
+  filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
+}
+
+.pin-details .pin-icon.discussion-icon {
+  filter: brightness(0) saturate(100%) invert(45%) sepia(55%) saturate(2100%) hue-rotate(160deg) brightness(95%) contrast(85%);
+}
+
+.pin-details .location-text {
     background-color: #CDAEF2;
     padding: 0.2rem 0.5rem;
     border: 1px solid black;
@@ -318,22 +425,40 @@
 }
 
 /* post-occurance */
-.post-occurance {
+.pin-details .post-occurance {
     display: flex;
     align-items: center;
-    color: #5d3889;
+    color: #000000;
     font-weight: bold;
     width: 100%;
 }
 
-.calendar-icon {
+.pin-details .post-occurance.event-occurance .occurance-text {
+  background-color: #CDAEF2;
+  color: #5d3889;
+}
+
+.pin-details .post-occurance.discussion-occurance .occurance-text {
+  background-color: #3EB8F0;
+  color: #003f5c;
+}
+
+.pin-details .calendar-icon {
     width: 40px;
     height: 40px;
     filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
     margin-right: 0.5rem;
 }
 
-.occurance-text {
+.pin-details .calendar-icon.event-icon {
+  filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
+}
+
+.pin-details .calendar-icon.discussion-icon {
+  filter: brightness(0) saturate(100%) invert(45%) sepia(55%) saturate(2100%) hue-rotate(160deg) brightness(95%) contrast(85%);
+}
+
+.pin-details .occurance-text {
     background-color: #CDAEF2;
     padding: 0.2rem 0.5rem;
     border: 1px solid black;
@@ -342,24 +467,42 @@
 }
 
 /* post-attendance */
-.post-attendance {
+.pin-details .post-attendance {
     display: flex;
     align-items: center;
     color: #5d3889;
     font-weight: bold;
     width: 100%;
-    gap: 0.75rem;
+    gap: 0;
     flex-wrap: wrap;
 }
 
-.attendance-icon {
+.pin-details .post-attendance.event-attendance .attendance-text {
+  background-color: #CDAEF2;
+  color: #5d3889;
+}
+
+.pin-details .post-attendance.discussion-attendance .attendance-text {
+  background-color: #3EB8F0;
+  color: #003f5c;
+}
+
+.pin-details .attendance-icon {
     width: 40px;
     height: 40px;
     filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
     margin-right: 0.5rem;
 }
 
-.attendance-text {
+.pin-details .attendance-icon.event-icon {
+  filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
+}
+
+.pin-details .attendance-icon.discussion-icon {
+  filter: brightness(0) saturate(100%) invert(45%) sepia(55%) saturate(2100%) hue-rotate(160deg) brightness(95%) contrast(85%);
+}
+
+.pin-details .attendance-text {
     background-color: #CDAEF2;
     padding: 0.2rem 0.5rem;
     border: 1px solid black;
@@ -367,38 +510,39 @@
     flex: 1;
 }
 
-.attending-icons {
+.pin-details .attending-icons {
     width: 25px;
     height: 25px;
     filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
     margin-right: 0.5rem;
 }
 
-.view-attendees-button {
+.pin-details .view-attendees-button {
     background-color: #9B5DE5;
     border: 1px solid black;
     border-radius: 8px;
     padding: 0.35rem 0.85rem;
-    color: #FFFFFF;
+    color: #000000;
     font-size: 0.9rem;
     cursor: pointer;
     transition: background-color 0.2s ease, transform 0.2s ease;
     flex-shrink: 0;
+    margin-left: 1rem;
 }
 
-.view-attendees-button:hover:not(:disabled) {
+.pin-details .view-attendees-button:hover:not(:disabled) {
     background-color: #7f47c3;
     transform: translateY(-1px);
 }
 
-.view-attendees-button:disabled {
+.pin-details .view-attendees-button:disabled {
     opacity: 0.65;
     cursor: not-allowed;
     transform: none;
 }
 
 /* attendance button */
-.attendance {
+.pin-details .attendance {
     background-color: #F4F0FC;
     display: flex;
     justify-content: center;
@@ -406,7 +550,7 @@
     width: 100%;
 }
 
-.attend-button {
+.pin-details .attend-button {
     background-color: #9B5DE5;
     border: none;
     padding: 0.5rem 1.5rem;
@@ -418,16 +562,16 @@
     border: 1px solid black;
 }
 
-.attend-button.attending {
+.pin-details .attend-button.attending {
     background-color: #F15BB5;
 }
 
-.attendance .attendance-error {
+.pin-details .attendance .attendance-error {
     margin-top: 0.5rem;
     text-align: center;
 }
 
-.reply-overlay {
+.pin-details .reply-overlay {
     position: fixed;
     inset: 0;
     z-index: 1200;
@@ -437,14 +581,14 @@
     pointer-events: none;
 }
 
-.reply-overlay-backdrop {
+.pin-details .reply-overlay-backdrop {
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.6);
     pointer-events: auto;
 }
 
-.reply-overlay-content {
+.pin-details .reply-overlay-content {
     position: relative;
     background-color: #141821;
     border-radius: 16px;
@@ -457,7 +601,7 @@
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
-.reply-overlay-header {
+.pin-details .reply-overlay-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -465,13 +609,13 @@
     gap: 1rem;
 }
 
-.reply-overlay-header h3 {
+.pin-details .reply-overlay-header h3 {
     margin: 0;
     font-size: 1.25rem;
     color: #f4f0fc;
 }
 
-.reply-overlay-close {
+.pin-details .reply-overlay-close {
     background: none;
     border: 1px solid #9B5DE5;
     border-radius: 6px;
@@ -482,29 +626,29 @@
     transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.reply-overlay-close:hover:not(:disabled) {
+.pin-details .reply-overlay-close:hover:not(:disabled) {
     background-color: #9B5DE5;
     color: #ffffff;
 }
 
-.reply-overlay-close:disabled {
+.pin-details .reply-overlay-close:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
 
-.reply-overlay-body {
+.pin-details .reply-overlay-body {
     padding: 0 1.25rem 1.25rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
 }
 
-.reply-overlay-label {
+.pin-details .reply-overlay-label {
     font-size: 0.9rem;
     color: #c7c6ff;
 }
 
-.reply-overlay-textarea {
+.pin-details .reply-overlay-textarea {
     width: 100%;
     min-height: 140px;
     resize: vertical;
@@ -518,28 +662,28 @@
     transition: border-color 0.2s ease;
 }
 
-.reply-overlay-textarea:focus {
+.pin-details .reply-overlay-textarea:focus {
     border-color: #9B5DE5;
 }
 
-.reply-overlay-textarea:disabled {
+.pin-details .reply-overlay-textarea:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
 
-.reply-overlay-footer {
+.pin-details .reply-overlay-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
 }
 
-.reply-overlay-count {
+.pin-details .reply-overlay-count {
     font-size: 0.8rem;
     color: #9ca3af;
 }
 
-.reply-overlay-submit {
+.pin-details .reply-overlay-submit {
     background-color: #9B5DE5;
     border: 1px solid black;
     border-radius: 8px;
@@ -550,18 +694,18 @@
     transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
-.reply-overlay-submit:hover:not(:disabled) {
+.pin-details .reply-overlay-submit:hover:not(:disabled) {
     background-color: #7f47c3;
     transform: translateY(-1px);
 }
 
-.reply-overlay-submit:disabled {
+.pin-details .reply-overlay-submit:disabled {
     opacity: 0.65;
     cursor: not-allowed;
     transform: none;
 }
 
-.attendee-overlay {
+.pin-details .attendee-overlay {
     position: fixed;
     inset: 0;
     z-index: 1200;
@@ -571,14 +715,14 @@
     pointer-events: none;
 }
 
-.attendee-overlay-backdrop {
+.pin-details .attendee-overlay-backdrop {
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.6);
     pointer-events: auto;
 }
 
-.attendee-overlay-content {
+.pin-details .attendee-overlay-content {
     position: relative;
     background-color: #141821;
     border-radius: 16px;
@@ -591,7 +735,7 @@
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
-.attendee-overlay-header {
+.pin-details .attendee-overlay-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -599,13 +743,13 @@
     gap: 1rem;
 }
 
-.attendee-overlay-header h3 {
+.pin-details .attendee-overlay-header h3 {
     margin: 0;
     font-size: 1.25rem;
     color: #f4f0fc;
 }
 
-.attendee-overlay-close {
+.pin-details .attendee-overlay-close {
     background: none;
     border: 1px solid #9B5DE5;
     border-radius: 6px;
@@ -616,12 +760,12 @@
     transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.attendee-overlay-close:hover {
+.pin-details .attendee-overlay-close:hover {
     background-color: #9B5DE5;
     color: #ffffff;
 }
 
-.attendee-overlay-body {
+.pin-details .attendee-overlay-body {
     padding: 0 1.25rem 1.25rem;
     overflow-y: auto;
     display: flex;
@@ -629,7 +773,7 @@
     gap: 1rem;
 }
 
-.attendee-list {
+.pin-details .attendee-list {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -638,7 +782,7 @@
     gap: 0.75rem;
 }
 
-.attendee-list-item {
+.pin-details .attendee-list-item {
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -651,12 +795,12 @@
     transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.attendee-list-item:hover {
+.pin-details .attendee-list-item:hover {
     background-color: #242b3d;
     border-color: #9B5DE5;
 }
 
-.attendee-avatar {
+.pin-details .attendee-avatar {
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -665,13 +809,13 @@
     border: 1px solid #2b2c3f;
 }
 
-.attendee-name {
+.pin-details .attendee-name {
     font-weight: 600;
     color: #f4f0fc;
 }
 
 /* comments-header */
-.comments-header {
+.pin-details .comments-header {
     background-color: #FFFFFF;
     display: flex;
     justify-content: center;
@@ -685,13 +829,21 @@
     gap: 0.5rem;
 }
 
-.comment-icon {
+.pin-details.discussion-mode .comments-header {
+    color: #0b4a6e;
+}
+
+.pin-details .comment-icon {
     width: 25px;
     height: 25px;
 }
 
+.pin-details.discussion-mode .comment-icon {
+    filter: invert(28%) sepia(52%) saturate(1249%) hue-rotate(176deg) brightness(94%) contrast(92%);
+}
+
 /* comments-section */
-.comments-section {
+.pin-details .comments-section {
     display: flex;
     flex-direction: column; 
     gap: 1rem;
@@ -700,9 +852,10 @@
     padding: 0 1rem;
     box-sizing: border-box;
     background-color: #FFFFFF;
+    padding-bottom: 1rem;
 }
 
-.comment {
+.pin-details .comment {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -712,16 +865,29 @@
   background-color: #CDAEF2;
 }
 
-.comment-header {
+.pin-details.discussion-mode .comment {
+  background-color: #D4EEFF;
+  border-color: #0b4a6e;
+}
+
+.pin-details .comment-header {
     display: flex;
     align-items: center; 
     gap: 0.5rem;            
     border-bottom: 1px solid black;
     padding: 0.5rem;
-    background-color: #CDAEF2;
 }
 
-.commenter-pfp {
+.pin-details.event-mode .comment-header {
+  background-color: #F4F0FC;
+}
+
+.pin-details.discussion-mode .comment-header {
+  background-color: #EFF8FC;
+  border-color: #0b4a6e;
+}
+
+.pin-details .commenter-pfp {
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -729,22 +895,26 @@
     background-color: #FFFFFF;
 }
 
-.commenter-info {
+.pin-details .commenter-info {
     display: flex;
     flex-direction: column;
 }
 
-.comment-timestamp {
+.pin-details .comment-timestamp {
     font-size: 0.75rem;
     color: #5d3889;
 }
 
-.comment-body {
+.pin-details.discussion-mode .comment-timestamp {
+    color: #0b4a6e;
+}
+
+.pin-details .comment-body {
     padding: 0rem 0.75rem;
 }
 
 /* create-comment */
-.create-comment {
+.pin-details .create-comment {
     position: fixed;
     bottom: 25px;
     right: 25px;
@@ -764,7 +934,7 @@
     transition: transform 160ms ease, box-shadow 200ms ease, filter 200ms ease;
 }
 
-.create-comment-button {
+.pin-details .create-comment-button {
     width: 42px;
     height: 42px;
     pointer-events: none;
@@ -772,68 +942,68 @@
     transition: transform 160ms ease;
 }
 
-.create-comment:hover {
+.pin-details .create-comment:hover {
     transform: translateY(-6px) scale(1.03);
     box-shadow: 0 18px 36px rgba(155, 93, 229, 0.55);
     filter: brightness(1.02);
 }
 
-.create-comment:active {
+.pin-details .create-comment:active {
     transform: translateY(-1px) scale(0.96);
     box-shadow: 0 10px 22px rgba(155, 93, 229, 0.45);
     filter: brightness(0.96);
 }
 
-.create-comment:focus-visible {
+.pin-details .create-comment:focus-visible {
     outline: 3px solid rgba(155, 93, 229, 0.8);
     outline-offset: 3px;
 }
 
-.back-button {
+.pin-details .back-button {
     transition: transform 150ms ease, filter 150ms ease;
 }
 
-.back-button:hover {
+.pin-details .back-button:hover {
     transform: scale(1.08);
     filter: brightness(1.05);
 }
 
-.back-button:active {
+.pin-details .back-button:active {
     transform: scale(0.95);
 }
 
 
-.bookmark-button {
+.pin-details .bookmark-button {
     transition: transform 150ms ease, filter 150ms ease;
 }
 
-.bookmark-button:hover {
+.pin-details .bookmark-button:hover {
     transform: scale(1.08);
     filter: brightness(1.05);
 }
 
-.bookmark-button:active {
+.pin-details .bookmark-button:active {
     transform: scale(0.95);
 }
 
 
-.bookmark-button-wrapper {
+.pin-details .bookmark-button-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.25rem;
 }
 
-.bookmark-button:disabled {
+.pin-details .bookmark-button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
 
-.bookmark-error {
+.pin-details .bookmark-error {
     font-size: 0.75rem;
 }
 
-.pin-expired-overlay {
+.pin-details .pin-expired-overlay {
     position: fixed;
     inset: 0;
     background: rgba(8, 10, 16, 0.78);
@@ -844,7 +1014,7 @@
     z-index: 2000;
 }
 
-.pin-expired-modal {
+.pin-details .pin-expired-modal {
     background-color: rgba(20, 22, 30, 0.95);
     border-radius: 24px;
     padding: 2.25rem 2rem;
@@ -856,25 +1026,25 @@
     color: #ffffff;
 }
 
-.pin-expired-modal h3 {
+.pin-details .pin-expired-modal h3 {
     font-size: 1.5rem;
     margin-bottom: 1rem;
     color: #ffffff;
 }
 
-.pin-expired-modal p {
+.pin-details .pin-expired-modal p {
     font-size: 0.95rem;
     line-height: 1.6;
     color: #ffffff;
 }
 
-.expired-actions {
+.pin-details .expired-actions {
     margin-top: 1.75rem;
     display: flex;
     justify-content: center;
 }
 
-.expired-return-button {
+.pin-details .expired-return-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -888,13 +1058,12 @@
     box-shadow: 0 10px 24px rgba(25, 118, 210, 0.35);
 }
 
-.expired-return-button:hover {
+.pin-details .expired-return-button:hover {
     transform: translateY(-2px);
     box-shadow: 0 14px 28px rgba(66, 165, 245, 0.4);
 }
 
-.create-comment:disabled {
+.pin-details .create-comment:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
-

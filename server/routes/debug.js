@@ -30,6 +30,13 @@ const {
   resetBadges,
   getBadgeStatusForUser
 } = require('../services/badgeService');
+const { mapMediaAsset, mapUserAvatar } = require('../utils/media');
+const { toIdString, mapIdList } = require('../utils/ids');
+const { toIsoDateString } = require('../utils/dates');
+const FriendRequest = require('../models/FriendRequest');
+const ModerationAction = require('../models/ModerationAction');
+const DirectMessageThread = require('../models/DirectMessageThread');
+const { applyModerationAction } = require('../services/moderationActionService');
 
 const router = express.Router();
 
@@ -48,23 +55,6 @@ const BadgeMutationSchema = z.object({
 
 const toObjectId = (value) => (value ? new mongoose.Types.ObjectId(value) : undefined);
 
-const toIdString = (value) => {
-  if (!value) return undefined;
-  if (typeof value === 'string') return value;
-  if (value instanceof mongoose.Types.ObjectId) return value.toString();
-  if (value._id) return value._id.toString();
-  return String(value);
-};
-
-const toIsoDateString = (value) => {
-  if (!value) return undefined;
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'string') return value;
-  if (typeof value.toISOString === 'function') return value.toISOString();
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
-};
-
 const resolveViewerUser = async (req) => {
   if (!req?.user?.uid) {
     return null;
@@ -78,33 +68,252 @@ const resolveViewerUser = async (req) => {
     return null;
   }
 };
-const mapMediaAsset = (asset) => {
-  if (!asset) {
-    return undefined;
+
+const MODERATION_ROLES = new Set(['admin', 'moderator', 'super-admin', 'system-admin']);
+const FRIEND_ADMIN_ROLES = new Set(['admin', 'moderator', 'community-manager', 'super-admin']);
+
+const normalizeRoles = (roles) =>
+  Array.isArray(roles)
+    ? roles
+        .map((role) => (typeof role === 'string' ? role.trim().toLowerCase() : ''))
+        .filter(Boolean)
+    : [];
+
+const hasAllowedRole = (viewer, allowedRoles) => {
+  if (!viewer) {
+    return false;
   }
 
-  const doc = asset.toObject ? asset.toObject() : asset;
-  const url = doc.url || doc.thumbnailUrl;
-  if (!url || typeof url !== 'string' || !url.trim()) {
-    return undefined;
-  }
-
-  const payload = {
-    url: url.trim(),
-    thumbnailUrl: doc.thumbnailUrl || undefined,
-    width: doc.width ?? undefined,
-    height: doc.height ?? undefined,
-    mimeType: doc.mimeType || undefined,
-    description: doc.description || undefined,
-    uploadedAt: toIsoDateString(doc.uploadedAt),
-    uploadedBy: toIdString(doc.uploadedBy)
-  };
-
-  return Object.fromEntries(
-    Object.entries(payload).filter(([, value]) => value !== undefined && value !== null)
-  );
+  const normalized = normalizeRoles(viewer.roles);
+  return normalized.some((role) => allowedRoles.has(role));
 };
 
+const ensureModerationAccess = async (req, res) => {
+  const viewer = await resolveViewerUser(req);
+  if (runtime.isOffline) {
+    return viewer;
+  }
+
+  if (!viewer || !hasAllowedRole(viewer, MODERATION_ROLES)) {
+    res.status(403).json({ message: 'Moderator privileges required.' });
+    return null;
+  }
+
+  return viewer;
+};
+
+const ensureFriendAdminAccess = async (req, res) => {
+  const viewer = await resolveViewerUser(req);
+  if (runtime.isOffline) {
+    return viewer;
+  }
+
+  if (!viewer || !hasAllowedRole(viewer, FRIEND_ADMIN_ROLES)) {
+    res.status(403).json({ message: 'Friend management privileges required.' });
+    return null;
+  }
+
+  return viewer;
+};
+
+const RATE_LIMIT_CACHE = new Map();
+
+const assertRateLimit = (key, windowMs) => {
+  const now = Date.now();
+  const last = RATE_LIMIT_CACHE.get(key) || 0;
+  if (now - last < windowMs) {
+    const retryAfter = Math.ceil((windowMs - (now - last)) / 1000);
+    const error = new Error('Please wait before trying again.');
+    error.status = 429;
+    error.retryAfter = retryAfter;
+    throw error;
+  }
+  RATE_LIMIT_CACHE.set(key, now);
+};
+
+const mapUserSummary = (userDoc) => {
+  if (!userDoc) {
+    return null;
+  }
+  const avatar = mapUserAvatar(userDoc, { toIdString });
+  return {
+    id: toIdString(userDoc._id),
+    username: userDoc.username || null,
+    displayName: userDoc.displayName || null,
+    roles: normalizeRoles(userDoc.roles),
+    accountStatus: userDoc.accountStatus || 'active',
+    avatar,
+    stats: {
+      cussCount: userDoc?.stats?.cussCount ?? 0,
+      followers: userDoc?.stats?.followers ?? 0,
+      following: userDoc?.stats?.following ?? 0
+    }
+  };
+};
+
+const mapModerationAction = (actionDoc, userLookup = new Map()) => {
+  const moderator = userLookup.get(toIdString(actionDoc.moderatorId)) || null;
+  const subject = userLookup.get(toIdString(actionDoc.userId)) || null;
+
+  return {
+    id: toIdString(actionDoc._id),
+    type: actionDoc.type,
+    reason: actionDoc.reason || '',
+    createdAt: actionDoc.createdAt ? actionDoc.createdAt.toISOString() : null,
+    updatedAt: actionDoc.updatedAt ? actionDoc.updatedAt.toISOString() : null,
+    expiresAt: actionDoc.expiresAt ? actionDoc.expiresAt.toISOString() : null,
+    moderator,
+    subject
+  };
+};
+
+const toObjectIdList = (ids) =>
+  Array.from(ids)
+    .map((value) => toIdString(value))
+    .filter((id) => id && mongoose.Types.ObjectId.isValid(id))
+    .map((id) => new mongoose.Types.ObjectId(id));
+
+const mapFriendRequestRecord = (requestDoc) => {
+  if (!requestDoc) {
+    return null;
+  }
+
+  const requester = mapUserSummary(requestDoc.requester || requestDoc.requesterId);
+  const recipient = mapUserSummary(requestDoc.recipient || requestDoc.recipientId);
+
+  return {
+    id: toIdString(requestDoc._id),
+    status: requestDoc.status,
+    message: requestDoc.message || '',
+    createdAt: requestDoc.createdAt ? requestDoc.createdAt.toISOString() : null,
+    updatedAt: requestDoc.updatedAt ? requestDoc.updatedAt.toISOString() : null,
+    respondedAt: requestDoc.respondedAt ? requestDoc.respondedAt.toISOString() : null,
+    requester,
+    recipient
+  };
+};
+
+const mapDirectMessageThread = (threadDoc, userLookup = new Map(), { includeMessages = false } = {}) => {
+  if (!threadDoc) {
+    return null;
+  }
+
+  const participants = (threadDoc.participants || []).map((participant) => {
+    const id = toIdString(participant);
+    return userLookup.get(id) || { id };
+  });
+
+  const base = {
+    id: toIdString(threadDoc._id),
+    topic: threadDoc.topic || '',
+    lastMessageAt: threadDoc.lastMessageAt
+      ? threadDoc.lastMessageAt.toISOString()
+      : threadDoc.updatedAt
+      ? threadDoc.updatedAt.toISOString()
+      : null,
+    participantCount: participants.length,
+    participants,
+    messageCount: Array.isArray(threadDoc.messages) ? threadDoc.messages.length : 0,
+    createdAt: threadDoc.createdAt ? threadDoc.createdAt.toISOString() : null,
+    updatedAt: threadDoc.updatedAt ? threadDoc.updatedAt.toISOString() : null
+  };
+
+  if (!includeMessages) {
+    return base;
+  }
+
+  return {
+    ...base,
+    messages: (threadDoc.messages || []).map((message) => {
+      const senderId = toIdString(message.senderId);
+      return {
+        id: toIdString(message._id),
+        sender: userLookup.get(senderId) || { id: senderId },
+        body: message.body,
+        attachments: Array.isArray(message.attachments) ? message.attachments : [],
+        createdAt: message.createdAt ? message.createdAt.toISOString() : null
+      };
+    })
+  };
+};
+
+const PRIVILEGED_ACCOUNT_SWAP_ROLES = new Set(['admin', 'super-admin', 'system-admin']);
+const accountSwapAllowlist =
+  runtime?.debugAuth?.accountSwapAllowlist instanceof Set
+    ? runtime.debugAuth.accountSwapAllowlist
+    : new Set();
+const allowAccountSwapOnline = Boolean(runtime?.debugAuth?.allowAccountSwapOnline);
+const toAllowlistKey = (value) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? trimmed.toLowerCase() : null;
+  }
+  if (typeof value.toString === 'function') {
+    const stringValue = value.toString();
+    if (typeof stringValue === 'string') {
+      const trimmed = stringValue.trim();
+      return trimmed ? trimmed.toLowerCase() : null;
+    }
+  }
+  return null;
+};
+
+const hasPrivilegedAccountSwapRole = (viewer) => {
+  const roles = Array.isArray(viewer?.roles) ? viewer.roles : [];
+  return roles
+    .map((role) => (typeof role === 'string' ? role.trim().toLowerCase() : ''))
+    .some((role) => role && PRIVILEGED_ACCOUNT_SWAP_ROLES.has(role));
+};
+
+const isAllowlistedForAccountSwap = (req, viewer) => {
+  if (!(accountSwapAllowlist instanceof Set) || accountSwapAllowlist.size === 0) {
+    return false;
+  }
+
+  if (accountSwapAllowlist.has('*')) {
+    return true;
+  }
+
+  const candidates = [
+    req?.user?.uid,
+    req?.user?.email,
+    viewer?.email,
+    viewer?._id,
+    viewer?.username
+  ];
+
+  return candidates.some((candidate) => {
+    const key = toAllowlistKey(candidate);
+    return key && accountSwapAllowlist.has(key);
+  });
+};
+
+const getAccountSwapGateFailureMessage = (req, viewer) => {
+  if (runtime.isOffline) {
+    return null;
+  }
+
+  if (hasPrivilegedAccountSwapRole(viewer)) {
+    return null;
+  }
+
+  if (!allowAccountSwapOnline) {
+    return 'Account swapping is disabled for this deployment.';
+  }
+
+  if (isAllowlistedForAccountSwap(req, viewer)) {
+    return null;
+  }
+
+  if (!(accountSwapAllowlist instanceof Set) || accountSwapAllowlist.size === 0) {
+    return 'Account swapping is disabled online because no tester allowlist is configured.';
+  }
+
+  return 'Account swapping is restricted to approved testers.';
+};
 const buildAudit = (audit, createdAt, updatedAt) => ({
   createdAt: createdAt.toISOString(),
   updatedAt: updatedAt.toISOString(),
@@ -118,22 +327,22 @@ const mapUserToProfile = (userDoc) => {
     _id: toIdString(doc._id),
     username: doc.username,
     displayName: doc.displayName,
-    avatar: mapMediaAsset(doc.avatar),
+    avatar: mapUserAvatar(doc, { toIdString }),
     stats: doc.stats || undefined,
     badges: doc.badges || [],
     primaryLocationId: toIdString(doc.primaryLocationId),
     accountStatus: doc.accountStatus || 'active',
     email: doc.email || undefined,
     bio: doc.bio || undefined,
-    banner: mapMediaAsset(doc.banner),
+    banner: mapMediaAsset(doc.banner, { toIdString }),
     preferences: doc.preferences || undefined,
     relationships: doc.relationships || undefined,
     locationSharingEnabled: Boolean(doc.locationSharingEnabled),
-    pinnedPinIds: (doc.pinnedPinIds || []).map(toIdString),
-    ownedPinIds: (doc.ownedPinIds || []).map(toIdString),
-    bookmarkCollectionIds: (doc.bookmarkCollectionIds || []).map(toIdString),
-    proximityChatRoomIds: (doc.proximityChatRoomIds || []).map(toIdString),
-    recentLocationIds: (doc.recentLocationIds || []).map(toIdString),
+    pinnedPinIds: mapIdList(doc.pinnedPinIds),
+    ownedPinIds: mapIdList(doc.ownedPinIds),
+    bookmarkCollectionIds: mapIdList(doc.bookmarkCollectionIds),
+    proximityChatRoomIds: mapIdList(doc.proximityChatRoomIds),
+    recentLocationIds: mapIdList(doc.recentLocationIds),
     createdAt: userDoc.createdAt.toISOString(),
     updatedAt: userDoc.updatedAt.toISOString(),
     audit: undefined
@@ -150,7 +359,7 @@ const mapBookmark = (bookmarkDoc, pinPreview) => {
     createdAt: bookmarkDoc.createdAt.toISOString(),
     notes: doc.notes || undefined,
     reminderAt: doc.reminderAt ? doc.reminderAt.toISOString() : undefined,
-    tagIds: (doc.tagIds || []).map(toIdString),
+    tagIds: mapIdList(doc.tagIds),
     pin: pinPreview,
     audit: buildAudit(doc.audit, bookmarkDoc.createdAt, bookmarkDoc.updatedAt)
   });
@@ -163,8 +372,8 @@ const mapCollection = (collectionDoc, bookmarks) => {
     name: doc.name,
     description: doc.description || undefined,
     userId: toIdString(doc.userId),
-    bookmarkIds: (doc.bookmarkIds || []).map(toIdString),
-    followerIds: (doc.followerIds || []).map(toIdString),
+    bookmarkIds: mapIdList(doc.bookmarkIds),
+    followerIds: mapIdList(doc.followerIds),
     createdAt: collectionDoc.createdAt.toISOString(),
     updatedAt: collectionDoc.updatedAt.toISOString(),
     bookmarks
@@ -177,7 +386,7 @@ const mapUpdate = (updateDoc) => {
     _id: toIdString(doc._id),
     userId: toIdString(doc.userId),
     sourceUserId: toIdString(doc.sourceUserId),
-    targetUserIds: (doc.targetUserIds || []).map(toIdString),
+    targetUserIds: mapIdList(doc.targetUserIds),
     payload: doc.payload,
     createdAt: updateDoc.createdAt.toISOString(),
     deliveredAt: doc.deliveredAt ? doc.deliveredAt.toISOString() : undefined,
@@ -213,7 +422,7 @@ const mapReply = (replyDoc) => {
       type: reaction.type,
       reactedAt: reaction.reactedAt ? reaction.reactedAt.toISOString() : undefined
     })),
-    mentionedUserIds: (doc.mentionedUserIds || []).map(toIdString),
+    mentionedUserIds: mapIdList(doc.mentionedUserIds),
     createdAt: replyDoc.createdAt.toISOString(),
     updatedAt: replyDoc.updatedAt.toISOString(),
     audit: doc.audit ? buildAudit(doc.audit, replyDoc.createdAt, replyDoc.updatedAt) : undefined
@@ -333,8 +542,16 @@ router.post('/badges/reset', async (req, res) => {
 });
 
 router.get('/auth/accounts', async (req, res) => {
-  if (!runtime.isOffline) {
-    return res.status(403).json({ message: 'Account swapping is only available in offline mode.' });
+  const viewer = await resolveViewerUser(req);
+  if (!viewer) {
+    return res.status(403).json({
+      message: 'Unable to resolve the authenticated user for account swapping.'
+    });
+  }
+
+  const gateFailure = getAccountSwapGateFailureMessage(req, viewer);
+  if (gateFailure) {
+    return res.status(403).json({ message: gateFailure });
   }
 
   try {
@@ -373,8 +590,16 @@ router.get('/auth/accounts', async (req, res) => {
 });
 
 router.post('/auth/swap', async (req, res) => {
-  if (!runtime.isOffline) {
-    return res.status(403).json({ message: 'Account swapping is only available in offline mode.' });
+  const viewer = await resolveViewerUser(req);
+  if (!viewer) {
+    return res.status(403).json({
+      message: 'Unable to resolve the authenticated user for account swapping.'
+    });
+  }
+
+  const gateFailure = getAccountSwapGateFailureMessage(req, viewer);
+  if (gateFailure) {
+    return res.status(403).json({ message: gateFailure });
   }
 
   const SwapSchema = z.object({
@@ -901,6 +1126,693 @@ router.post('/updates', async (req, res) => {
   }
 });
 
+router.get('/moderation/overview', async (req, res) => {
+  try {
+    const viewer = await ensureModerationAccess(req, res);
+    if (!viewer) {
+      return;
+    }
+
+    const blockedIds = Array.isArray(viewer?.relationships?.blockedUserIds)
+      ? viewer.relationships.blockedUserIds
+      : [];
+    const mutedIds = Array.isArray(viewer?.relationships?.mutedUserIds)
+      ? viewer.relationships.mutedUserIds
+      : [];
+
+    const [blockedDocs, mutedDocs, recentActions, flaggedAgg] = await Promise.all([
+      blockedIds.length
+        ? User.find({ _id: { $in: blockedIds } })
+            .select({
+              username: 1,
+              displayName: 1,
+              roles: 1,
+              accountStatus: 1,
+              avatar: 1,
+              stats: 1
+            })
+            .lean()
+        : [],
+      mutedIds.length
+        ? User.find({ _id: { $in: mutedIds } })
+            .select({
+              username: 1,
+              displayName: 1,
+              roles: 1,
+              accountStatus: 1,
+              avatar: 1,
+              stats: 1
+            })
+            .lean()
+        : [],
+      ModerationAction.find({})
+        .sort({ createdAt: -1 })
+        .limit(25)
+        .lean(),
+      ModerationAction.aggregate([
+        {
+          $match: {
+            type: { $in: ['warn', 'mute', 'block', 'ban', 'report'] }
+          }
+        },
+        {
+          $group: {
+            _id: '$userId',
+            count: { $sum: 1 },
+            lastActionAt: { $max: '$createdAt' }
+          }
+        },
+        { $sort: { count: -1, lastActionAt: -1 } },
+        { $limit: 10 }
+      ])
+    ]);
+
+    const referencedUserIds = new Set([
+      toIdString(viewer._id),
+      ...blockedDocs.map((doc) => toIdString(doc._id)),
+      ...mutedDocs.map((doc) => toIdString(doc._id)),
+      ...recentActions.map((action) => toIdString(action.userId)),
+      ...recentActions.map((action) => toIdString(action.moderatorId)),
+      ...flaggedAgg.map((entry) => toIdString(entry._id))
+    ]);
+
+    const referencedUsers = await User.find({ _id: { $in: toObjectIdList(referencedUserIds) } })
+      .select({
+        username: 1,
+        displayName: 1,
+        roles: 1,
+        accountStatus: 1,
+        avatar: 1,
+        stats: 1
+      })
+      .lean();
+
+    const userLookup = new Map(referencedUsers.map((doc) => [toIdString(doc._id), mapUserSummary(doc)]));
+
+    const response = {
+      viewer: mapUserSummary(viewer),
+      blockedUsers: blockedDocs.map(mapUserSummary),
+      mutedUsers: mutedDocs.map(mapUserSummary),
+      flaggedUsers: flaggedAgg.map((entry) => ({
+        user: userLookup.get(toIdString(entry._id)) || null,
+        count: entry.count,
+        lastActionAt: entry.lastActionAt ? entry.lastActionAt.toISOString() : null
+      })),
+      recentActions: recentActions.map((action) => mapModerationAction(action, userLookup))
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Failed to load moderation overview', error);
+    res.status(500).json({ message: 'Failed to load moderation overview' });
+  }
+});
+
+router.get('/moderation/history/:userId', async (req, res) => {
+  const { userId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: 'Invalid user id' });
+  }
+
+  try {
+    const viewer = await ensureModerationAccess(req, res);
+    if (!viewer) {
+      return;
+    }
+
+    const actions = await ModerationAction.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+
+    const uniqueUserIds = new Set([
+      toIdString(viewer._id),
+      userId,
+      ...actions.map((action) => toIdString(action.moderatorId))
+    ]);
+
+    const users = await User.find({
+      _id: { $in: toObjectIdList(uniqueUserIds) }
+    })
+      .select({
+        username: 1,
+        displayName: 1,
+        roles: 1,
+        accountStatus: 1,
+        avatar: 1,
+        stats: 1
+      })
+      .lean();
+
+    const userLookup = new Map(users.map((doc) => [toIdString(doc._id), mapUserSummary(doc)]));
+
+    res.json({
+      user: userLookup.get(userId) || null,
+      history: actions.map((action) => mapModerationAction(action, userLookup))
+    });
+  } catch (error) {
+    console.error('Failed to load moderation history', error);
+    res.status(500).json({ message: 'Failed to load moderation history' });
+  }
+});
+
+router.post('/moderation/actions', async (req, res) => {
+  const ModerationActionInputSchema = z.object({
+    userId: ObjectIdString,
+    type: z.enum(['warn', 'mute', 'unmute', 'block', 'unblock', 'ban', 'unban', 'report']),
+    reason: z.string().trim().max(500).optional(),
+    durationMinutes: z.coerce.number().int().positive().max(1440).optional()
+  });
+
+  try {
+    const input = ModerationActionInputSchema.parse(req.body);
+    const viewer = await ensureModerationAccess(req, res);
+    if (!viewer) {
+      return;
+    }
+
+    if (toIdString(viewer._id) === input.userId) {
+      return res.status(400).json({ message: 'You cannot moderate your own account.' });
+    }
+
+    const target = await User.findById(input.userId);
+    if (!target) {
+      return res.status(404).json({ message: 'Target user not found.' });
+    }
+
+    if (input.type === 'report') {
+      try {
+        assertRateLimit(`report:${viewer._id.toString()}`, 5000);
+      } catch (rateError) {
+        return res.status(rateError.status || 429).json({ message: rateError.message, retryAfter: rateError.retryAfter });
+      }
+    }
+
+    const { action: actionDoc, target: refreshedTarget } = await applyModerationAction({
+      viewer,
+      target,
+      type: input.type,
+      reason: input.reason?.trim(),
+      durationMinutes: input.durationMinutes
+    });
+
+    const userLookup = new Map([
+      [toIdString(viewer._id), mapUserSummary(viewer)],
+      [toIdString(target._id), mapUserSummary(refreshedTarget)]
+    ]);
+
+    res.status(201).json({
+      action: mapModerationAction(actionDoc.toObject(), userLookup),
+      user: mapUserSummary(refreshedTarget)
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid moderation payload', issues: error.errors });
+    }
+    console.error('Failed to record moderation action', error);
+    res.status(500).json({ message: 'Failed to record moderation action' });
+  }
+});
+
+router.get('/friends/overview', async (req, res) => {
+  try {
+    const viewer = await ensureFriendAdminAccess(req, res);
+    if (!viewer) {
+      return;
+    }
+
+    const friendIds = Array.isArray(viewer?.relationships?.friendIds)
+      ? viewer.relationships.friendIds
+      : [];
+
+    const [friendDocs, incomingRequests, outgoingRequests] = await Promise.all([
+      friendIds.length
+        ? User.find({ _id: { $in: friendIds } })
+            .select({
+              username: 1,
+              displayName: 1,
+              roles: 1,
+              accountStatus: 1,
+              avatar: 1,
+              stats: 1
+            })
+            .lean()
+        : [],
+      FriendRequest.find({ recipientId: viewer._id, status: 'pending' })
+        .sort({ createdAt: -1 })
+        .limit(25)
+        .populate('requesterId', 'username displayName roles accountStatus avatar stats')
+        .lean(),
+      FriendRequest.find({ requesterId: viewer._id, status: 'pending' })
+        .sort({ createdAt: -1 })
+        .limit(25)
+        .populate('recipientId', 'username displayName roles accountStatus avatar stats')
+        .lean()
+    ]);
+
+    res.json({
+      viewer: mapUserSummary(viewer),
+      friends: friendDocs.map(mapUserSummary),
+      incomingRequests: incomingRequests.map((request) =>
+        mapFriendRequestRecord({ ...request, requester: request.requesterId, recipient: viewer })
+      ),
+      outgoingRequests: outgoingRequests.map((request) =>
+        mapFriendRequestRecord({ ...request, requester: viewer, recipient: request.recipientId })
+      )
+    });
+  } catch (error) {
+    console.error('Failed to load friend overview', error);
+    res.status(500).json({ message: 'Failed to load friend overview' });
+  }
+});
+
+router.post('/friends/request', async (req, res) => {
+  const FriendRequestSchema = z.object({
+    targetUserId: ObjectIdString,
+    message: z.string().trim().max(280).optional()
+  });
+
+  try {
+    const input = FriendRequestSchema.parse(req.body);
+    const viewer = await ensureFriendAdminAccess(req, res);
+    if (!viewer) {
+      return;
+    }
+
+    if (toIdString(viewer._id) === input.targetUserId) {
+      return res.status(400).json({ message: 'Cannot send a friend request to yourself.' });
+    }
+
+    try {
+      assertRateLimit(`friend-request:${viewer._id.toString()}`, 5000);
+    } catch (rateError) {
+      return res.status(rateError.status || 429).json({ message: rateError.message, retryAfter: rateError.retryAfter });
+    }
+
+    const target = await User.findById(input.targetUserId);
+    if (!target) {
+      return res.status(404).json({ message: 'Target user not found.' });
+    }
+
+    const viewerFriends = Array.isArray(viewer?.relationships?.friendIds)
+      ? viewer.relationships.friendIds.map((id) => toIdString(id))
+      : [];
+    if (viewerFriends.includes(toIdString(target._id))) {
+      return res.status(409).json({ message: 'You are already friends with this user.' });
+    }
+
+    const inverseRequest = await FriendRequest.findOne({
+      requesterId: target._id,
+      recipientId: viewer._id,
+      status: 'pending'
+    });
+
+    if (inverseRequest) {
+      inverseRequest.status = 'accepted';
+      inverseRequest.respondedAt = new Date();
+      await inverseRequest.save();
+
+      await Promise.all([
+        User.findByIdAndUpdate(viewer._id, {
+          $addToSet: { 'relationships.friendIds': target._id }
+        }),
+        User.findByIdAndUpdate(target._id, {
+          $addToSet: { 'relationships.friendIds': viewer._id }
+        })
+      ]);
+
+      const populated = await inverseRequest.populate([
+        { path: 'requesterId', select: 'username displayName roles accountStatus avatar stats' },
+        { path: 'recipientId', select: 'username displayName roles accountStatus avatar stats' }
+      ]);
+
+      return res.status(200).json({
+        autoAccepted: true,
+        request: mapFriendRequestRecord({
+          ...populated.toObject(),
+          requester: populated.requesterId,
+          recipient: populated.recipientId
+        })
+      });
+    }
+
+    const requestDoc = await FriendRequest.findOneAndUpdate(
+      { requesterId: viewer._id, recipientId: target._id },
+      {
+        $set: {
+          status: 'pending',
+          message: input.message?.trim() || '',
+          respondedAt: null
+        }
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+
+    const populated = await requestDoc.populate([
+      { path: 'requesterId', select: 'username displayName roles accountStatus avatar stats' },
+      { path: 'recipientId', select: 'username displayName roles accountStatus avatar stats' }
+    ]);
+
+    res.status(201).json({
+      request: mapFriendRequestRecord({
+        ...populated.toObject(),
+        requester: populated.requesterId,
+        recipient: populated.recipientId
+      })
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid friend request payload', issues: error.errors });
+    }
+    if (error.code === 11000) {
+      return res.status(409).json({ message: 'Friend request already exists.' });
+    }
+    console.error('Failed to create friend request', error);
+    res.status(500).json({ message: 'Failed to create friend request' });
+  }
+});
+
+router.post('/friends/requests/:requestId/respond', async (req, res) => {
+  const { requestId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(requestId)) {
+    return res.status(400).json({ message: 'Invalid request id' });
+  }
+
+  const FriendDecisionSchema = z.object({
+    decision: z.enum(['accept', 'decline'])
+  });
+
+  try {
+    const input = FriendDecisionSchema.parse(req.body);
+    const viewer = await ensureFriendAdminAccess(req, res);
+    if (!viewer) {
+      return;
+    }
+
+    const requestDoc = await FriendRequest.findById(requestId);
+    if (!requestDoc) {
+      return res.status(404).json({ message: 'Friend request not found.' });
+    }
+
+    if (toIdString(requestDoc.recipientId) !== toIdString(viewer._id)) {
+      return res.status(403).json({ message: 'You can only respond to requests sent to you.' });
+    }
+
+    if (requestDoc.status !== 'pending') {
+      return res.status(409).json({ message: 'Friend request has already been resolved.' });
+    }
+
+    requestDoc.status = input.decision === 'accept' ? 'accepted' : 'declined';
+    requestDoc.respondedAt = new Date();
+    await requestDoc.save();
+
+    if (input.decision === 'accept') {
+      await Promise.all([
+        User.findByIdAndUpdate(viewer._id, {
+          $addToSet: { 'relationships.friendIds': requestDoc.requesterId }
+        }),
+        User.findByIdAndUpdate(requestDoc.requesterId, {
+          $addToSet: { 'relationships.friendIds': viewer._id }
+        })
+      ]);
+    }
+
+    const populated = await requestDoc.populate([
+      { path: 'requesterId', select: 'username displayName roles accountStatus avatar stats' },
+      { path: 'recipientId', select: 'username displayName roles accountStatus avatar stats' }
+    ]);
+
+    res.json({
+      request: mapFriendRequestRecord({
+        ...populated.toObject(),
+        requester: populated.requesterId,
+        recipient: populated.recipientId
+      })
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid decision payload', issues: error.errors });
+    }
+    console.error('Failed to resolve friend request', error);
+    res.status(500).json({ message: 'Failed to resolve friend request' });
+  }
+});
+
+router.delete('/friends/:friendId', async (req, res) => {
+  const { friendId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(friendId)) {
+    return res.status(400).json({ message: 'Invalid friend id' });
+  }
+
+  try {
+    const viewer = await ensureFriendAdminAccess(req, res);
+    if (!viewer) {
+      return;
+    }
+
+    const target = await User.findById(friendId);
+    if (!target) {
+      return res.status(404).json({ message: 'Friend not found.' });
+    }
+
+    await Promise.all([
+      User.findByIdAndUpdate(viewer._id, { $pull: { 'relationships.friendIds': target._id } }),
+      User.findByIdAndUpdate(target._id, { $pull: { 'relationships.friendIds': viewer._id } })
+    ]);
+
+    res.json({
+      removed: mapUserSummary(target)
+    });
+  } catch (error) {
+    console.error('Failed to remove friend', error);
+    res.status(500).json({ message: 'Failed to remove friend' });
+  }
+});
+
+router.get('/direct-messages/threads', async (req, res) => {
+  try {
+    const viewer = await ensureFriendAdminAccess(req, res);
+    if (!viewer) {
+      return;
+    }
+
+    const threads = await DirectMessageThread.find({ participants: viewer._id })
+      .sort({ updatedAt: -1 })
+      .limit(20)
+      .lean();
+
+    const referencedIds = new Set([
+      toIdString(viewer._id),
+      ...threads.flatMap((thread) => (thread.participants || []).map((participant) => toIdString(participant))),
+      ...threads.flatMap((thread) =>
+        (thread.messages || []).map((message) => toIdString(message.senderId))
+      )
+    ]);
+
+    const users = await User.find({ _id: { $in: toObjectIdList(referencedIds) } })
+      .select({
+        username: 1,
+        displayName: 1,
+        roles: 1,
+        accountStatus: 1,
+        avatar: 1,
+        stats: 1
+      })
+      .lean();
+
+    const userLookup = new Map(users.map((doc) => [toIdString(doc._id), mapUserSummary(doc)]));
+    userLookup.set(toIdString(viewer._id), mapUserSummary(viewer));
+
+    res.json({
+      viewer: mapUserSummary(viewer),
+      threads: threads.map((thread) => mapDirectMessageThread(thread, userLookup))
+    });
+  } catch (error) {
+    console.error('Failed to load direct message threads', error);
+    res.status(500).json({ message: 'Failed to load direct message threads' });
+  }
+});
+
+router.get('/direct-messages/threads/:threadId', async (req, res) => {
+  const { threadId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(threadId)) {
+    return res.status(400).json({ message: 'Invalid thread id' });
+  }
+
+  try {
+    const viewer = await ensureFriendAdminAccess(req, res);
+    if (!viewer) {
+      return;
+    }
+
+    const thread = await DirectMessageThread.findById(threadId).lean();
+    if (!thread) {
+      return res.status(404).json({ message: 'Thread not found.' });
+    }
+
+    const participantIds = (thread.participants || []).map((participant) => toIdString(participant));
+    if (!participantIds.includes(toIdString(viewer._id))) {
+      return res.status(403).json({ message: 'You are not a participant in this thread.' });
+    }
+
+    const referencedIds = new Set([
+      ...participantIds,
+      ...((thread.messages || []).map((message) => toIdString(message.senderId)))
+    ]);
+
+    const users = await User.find({ _id: { $in: toObjectIdList(referencedIds) } })
+      .select({
+        username: 1,
+        displayName: 1,
+        roles: 1,
+        accountStatus: 1,
+        avatar: 1,
+        stats: 1
+      })
+      .lean();
+
+    const userLookup = new Map(users.map((doc) => [toIdString(doc._id), mapUserSummary(doc)]));
+    userLookup.set(toIdString(viewer._id), mapUserSummary(viewer));
+
+    res.json({
+      thread: mapDirectMessageThread(thread, userLookup, { includeMessages: true })
+    });
+  } catch (error) {
+    console.error('Failed to load direct message thread', error);
+    res.status(500).json({ message: 'Failed to load direct message thread' });
+  }
+});
+
+router.post('/direct-messages/threads', async (req, res) => {
+  const CreateThreadSchema = z.object({
+    participantIds: z.array(ObjectIdString).min(1),
+    topic: z.string().trim().max(120).optional(),
+    initialMessage: z.string().trim().max(2000).optional()
+  });
+
+  try {
+    const input = CreateThreadSchema.parse(req.body);
+    const viewer = await ensureFriendAdminAccess(req, res);
+    if (!viewer) {
+      return;
+    }
+
+    const participants = new Set(
+      input.participantIds.map((id) => new mongoose.Types.ObjectId(id))
+    );
+    participants.add(viewer._id);
+
+    const participantIds = Array.from(participants);
+    if (participantIds.length < 2) {
+      return res.status(400).json({ message: 'Threads require at least two participants.' });
+    }
+
+    const users = await User.find({ _id: { $in: participantIds } })
+      .select({
+        username: 1,
+        displayName: 1,
+        roles: 1,
+        accountStatus: 1,
+        avatar: 1,
+        stats: 1
+      })
+      .lean();
+
+    if (users.length !== participantIds.length) {
+      return res.status(404).json({ message: 'One or more participants were not found.' });
+    }
+
+    const now = new Date();
+    const initialMessages = input.initialMessage
+      ? [
+          {
+            senderId: viewer._id,
+            body: input.initialMessage,
+            attachments: [],
+            createdAt: now
+          }
+        ]
+      : [];
+
+    const thread = await DirectMessageThread.create({
+      participants: participantIds,
+      topic: input.topic?.trim() || '',
+      messages: initialMessages,
+      lastMessageAt: input.initialMessage ? now : undefined
+    });
+
+    const userLookup = new Map(users.map((doc) => [toIdString(doc._id), mapUserSummary(doc)]));
+    userLookup.set(toIdString(viewer._id), mapUserSummary(viewer));
+
+    res.status(201).json({
+      thread: mapDirectMessageThread(thread.toObject(), userLookup, { includeMessages: true })
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid thread payload', issues: error.errors });
+    }
+    console.error('Failed to create direct message thread', error);
+    res.status(500).json({ message: 'Failed to create direct message thread' });
+  }
+});
+
+router.post('/direct-messages/threads/:threadId/messages', async (req, res) => {
+  const { threadId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(threadId)) {
+    return res.status(400).json({ message: 'Invalid thread id' });
+  }
+
+  const SendMessageSchema = z.object({
+    body: z.string().trim().min(1, 'Message body cannot be empty.').max(4000),
+    attachments: z.array(z.any()).optional()
+  });
+
+  try {
+    const input = SendMessageSchema.parse(req.body);
+    const viewer = await ensureFriendAdminAccess(req, res);
+    if (!viewer) {
+      return;
+    }
+
+    const thread = await DirectMessageThread.findById(threadId);
+    if (!thread) {
+      return res.status(404).json({ message: 'Thread not found.' });
+    }
+
+    const participantIds = thread.participants.map((participant) => toIdString(participant));
+    if (!participantIds.includes(toIdString(viewer._id))) {
+      return res.status(403).json({ message: 'You are not a participant in this thread.' });
+    }
+
+    const message = {
+      senderId: viewer._id,
+      body: input.body,
+      attachments: Array.isArray(input.attachments) ? input.attachments : [],
+      createdAt: new Date()
+    };
+
+    thread.messages.push(message);
+    thread.lastMessageAt = message.createdAt;
+    await thread.save();
+
+    res.status(201).json({
+      message: {
+        id: toIdString(thread.messages[thread.messages.length - 1]._id),
+        sender: mapUserSummary(viewer),
+        body: message.body,
+        attachments: message.attachments,
+        createdAt: message.createdAt.toISOString()
+      }
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid message payload', issues: error.errors });
+    }
+    console.error('Failed to send direct message', error);
+    res.status(500).json({ message: 'Failed to send direct message' });
+  }
+});
+
 router.get('/bad-users', async (req, res) => {
   try {
     const users = await User.find({ 'stats.cussCount': { $gt: 0 } })
@@ -915,20 +1827,18 @@ router.get('/bad-users', async (req, res) => {
       .sort({ 'stats.cussCount': -1, createdAt: 1 })
       .lean();
 
-    const payload = users.map((user) => ({
-      id: toIdString(user._id),
-      username: user.username || null,
-      displayName: user.displayName || null,
-      avatar: user.avatar
-        ? {
-            url: user.avatar.url || null,
-            thumbnailUrl: user.avatar.thumbnailUrl || null
-          }
-        : null,
-      cussCount: user?.stats?.cussCount ?? 0,
-      accountStatus: user.accountStatus || 'active',
-      createdAt: user.createdAt ? user.createdAt.toISOString() : null
-    }));
+    const payload = users.map((user) => {
+      const avatar = mapUserAvatar(user, { toIdString });
+      return {
+        id: toIdString(user._id),
+        username: user.username || null,
+        displayName: user.displayName || null,
+        avatar,
+        cussCount: user?.stats?.cussCount ?? 0,
+        accountStatus: user.accountStatus || 'active',
+        createdAt: user.createdAt ? user.createdAt.toISOString() : null
+      };
+    });
 
     res.json(payload);
   } catch (error) {
@@ -1025,4 +1935,3 @@ router.post('/replies', async (req, res) => {
 });
 
 module.exports = router;
-

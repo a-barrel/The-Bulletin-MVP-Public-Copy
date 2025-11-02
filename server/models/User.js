@@ -30,7 +30,8 @@ const userSchema = new mongoose.Schema(
       notifications: {
         proximity: { type: Boolean, default: true },
         updates: { type: Boolean, default: true },
-        marketing: { type: Boolean, default: false }
+        marketing: { type: Boolean, default: false },
+        chatTransitions: { type: Boolean, default: true }
       },
       radiusPreferenceMeters: { type: Number, default: 16093 },
       statsPublic: { type: Boolean, default: true },
