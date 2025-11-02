@@ -193,6 +193,24 @@ input[type="checkbox"] {
   height: 20px;
 }
 
+.login-page-apple-sign-in-btn {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 0.6rem;
+  background-color: #1c1c1f;
+  color: #fff;
+}
+
+.login-page-apple-sign-in-btn:hover {
+  background-color: #2c2c31;
+}
+
+.apple-icon {
+  width: 20px;
+  height: 20px;
+}
+
 /* "Getting Started" & Register Button*/
 .getting-started-text {
   margin-top: 2rem;

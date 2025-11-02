@@ -20,7 +20,9 @@ export const routes = {
     base: '/settings'
   },
   bookmarks: {
-    base: '/bookmarks'
+    base: '/bookmarks',
+    collection: (collectionId: string | number) =>
+      `/bookmarks?collection=${encodeSegment(collectionId)}`
   },
   updates: {
     base: '/updates'

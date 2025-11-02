@@ -78,6 +78,28 @@ export const pageConfig = {
   }
 };
 
+const FRIEND_AVATAR_FALLBACK = '/images/profile/profile-01.jpg';
+
+const resolveFriendAvatarUrl = (avatar) => {
+  const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+  if (!avatar) {
+    return FRIEND_AVATAR_FALLBACK;
+  }
+  const source =
+    typeof avatar === 'string'
+      ? avatar
+      : avatar.url || avatar.thumbnailUrl || avatar.path;
+  if (typeof source === 'string' && source.trim()) {
+    const trimmed = source.trim();
+    if (/^(?:https?:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
+      return trimmed;
+    }
+    const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+    return base ? `${base}${normalized}` : normalized;
+  }
+  return FRIEND_AVATAR_FALLBACK;
+};
+
 const resolveBadgeImageUrl = (value) => {
   if (!value) {
     return '—';
@@ -145,6 +167,9 @@ function ProfilePage() {
     hasProfile,
     bioText,
     badgeList,
+    mutualFriends,
+    mutualFriendPreview,
+    mutualFriendCount,
     statsVisible,
     statsEntries,
     activityEntries,
@@ -826,6 +851,65 @@ function ProfilePage() {
                   ) : (
                     <Typography variant="body2" color="text.secondary">
                       This user hasn't added a bio yet.
+                    </Typography>
+                  )}
+                </Section>
+
+                <Section
+                  title="Mutual friends"
+                  description="People you both know."
+                >
+                  {mutualFriendCount > 0 ? (
+                    <Stack spacing={1.5}>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                        sx={{ '--gap': '0.75rem' }}
+                      >
+                        {mutualFriendPreview.map((friend) => {
+                          const friendId = friend?._id || friend?.id;
+                          const friendName = friend?.displayName || friend?.username || 'Friend';
+                          const avatarSrc = resolveFriendAvatarUrl(friend?.avatar);
+                          return (
+                            <Button
+                              key={friendId || friendName}
+                              variant="outlined"
+                              color="inherit"
+                              size="small"
+                              startIcon={
+                                <Avatar
+                                  src={avatarSrc}
+                                  alt={friendName}
+                                  sx={{ width: 32, height: 32 }}
+                                />
+                              }
+                              onClick={() => {
+                                if (friendId) {
+                                  navigate(routes.profile.byId(friendId));
+                                }
+                              }}
+                              sx={{
+                                borderColor: 'rgba(255, 255, 255, 0.12)',
+                                textTransform: 'none'
+                              }}
+                            >
+                              {friendName}
+                            </Button>
+                          );
+                        })}
+                      </Stack>
+                      {mutualFriendCount > mutualFriendPreview.length ? (
+                        <Typography variant="caption" color="text.secondary">
+                          +{mutualFriendCount - mutualFriendPreview.length} more mutual
+                          {mutualFriendCount - mutualFriendPreview.length === 1 ? '' : 's'}
+                        </Typography>
+                      ) : null}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      You have no mutual friends yet. Start connecting!
                     </Typography>
                   )}
                 </Section>

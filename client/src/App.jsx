@@ -40,6 +40,7 @@ import { useNetworkStatusContext } from './contexts/NetworkStatusContext.jsx';
 import OfflineBanner from './components/OfflineBanner.jsx';
 import { SocialNotificationsProvider } from './contexts/SocialNotificationsContext';
 import useSocialNotifications from './hooks/useSocialNotifications';
+import runtimeConfig from './config/runtime';
 
 const theme = createTheme({
   palette: {
@@ -159,6 +160,9 @@ function App() {
   const { isOffline } = useNetworkStatusContext();
   const [navOverlayOpen, setNavOverlayOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadBookmarkCount, setUnreadBookmarkCount] = useState(0);
+  const [unreadDiscussionsCount, setUnreadDiscussionsCount] = useState(0);
+  const [unreadEventsCount, setUnreadEventsCount] = useState(0);
   const [badgeSoundEnabled, setBadgeSoundEnabledState] = useState(
     () => readStoredBadgeSoundPreference()
   );
@@ -204,7 +208,16 @@ function App() {
   }, [badgeSoundEnabled]);
 
   const navPages = useMemo(
-    () => pages.filter((page) => page.showInNav),
+    () =>
+      pages.filter((page) => {
+        if (page.showInNav) {
+          return true;
+        }
+        if (page.id === 'admin-dashboard' && runtimeConfig.isOffline) {
+          return true;
+        }
+        return false;
+      }),
     [pages]
   );
 
@@ -367,18 +380,43 @@ function App() {
         }
 
         const updates = await fetchUpdates({ userId: profile._id, limit: 100 });
-        const unread = updates.filter((update) => !update?.readAt).length;
-        setUnreadCount(unread);
+        let total = 0;
+        let bookmark = 0;
+        let discussions = 0;
+        let events = 0;
+
+        updates.forEach((update) => {
+          if (update?.readAt) {
+            return;
+          }
+          total += 1;
+          const type = update?.payload?.type;
+          if (type === 'bookmark-update') {
+            bookmark += 1;
+          } else if (type === 'event-starting-soon' || type === 'event-reminder') {
+            events += 1;
+          } else if (type === 'pin-update' || type === 'new-pin') {
+            discussions += 1;
+          }
+        });
+
+        setUnreadCount(total);
+        setUnreadBookmarkCount(bookmark);
+        setUnreadDiscussionsCount(discussions);
+        setUnreadEventsCount(events);
       } catch (error) {
         if (!silent) {
           console.warn('Failed to refresh unread update count', error);
         }
         setUnreadCount(0);
+        setUnreadBookmarkCount(0);
+        setUnreadDiscussionsCount(0);
+        setUnreadEventsCount(0);
       } finally {
         unreadRefreshPendingRef.current = false;
       }
     },
-    [setUnreadCount]
+    [setUnreadBookmarkCount, setUnreadCount, setUnreadDiscussionsCount, setUnreadEventsCount]
   );
 
   const badgeSoundContextValue = useMemo(
@@ -393,10 +431,20 @@ function App() {
   useEffect(() => {
     if (AUTH_ROUTES.has(location.pathname)) {
       setUnreadCount(0);
+      setUnreadBookmarkCount(0);
+      setUnreadDiscussionsCount(0);
+      setUnreadEventsCount(0);
       return;
     }
     refreshUnreadCount({ silent: true });
-  }, [location.pathname, refreshUnreadCount, setUnreadCount]);
+  }, [
+    location.pathname,
+    refreshUnreadCount,
+    setUnreadBookmarkCount,
+    setUnreadCount,
+    setUnreadDiscussionsCount,
+    setUnreadEventsCount
+  ]);
 
   useEffect(() => {
     if (isOffline) {
@@ -460,10 +508,22 @@ function App() {
   const updatesContextValue = useMemo(
     () => ({
       unreadCount,
+      unreadBookmarkCount,
       setUnreadCount,
+      setUnreadBookmarkCount,
+      setUnreadDiscussionsCount,
+      setUnreadEventsCount,
       refreshUnreadCount
     }),
-    [refreshUnreadCount, setUnreadCount, unreadCount]
+    [
+      unreadBookmarkCount,
+      unreadCount,
+      refreshUnreadCount,
+      setUnreadBookmarkCount,
+      setUnreadCount,
+      setUnreadDiscussionsCount,
+      setUnreadEventsCount
+    ]
   );
 
   const socialNotificationsContextValue = useMemo(

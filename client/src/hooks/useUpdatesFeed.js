@@ -30,20 +30,51 @@ export default function useUpdatesFeed() {
 
   const {
     setUnreadCount = noop,
+    setUnreadBookmarkCount = noop,
     setUnreadDiscussionsCount = noop,
     setUnreadEventsCount = noop
   } = useUpdates();
 
-  const unreadCount = useMemo(
-    () => updates.filter((update) => !update.readAt).length,
-    [updates]
-  );
+  const unreadMetrics = useMemo(() => {
+    const metrics = {
+      total: 0,
+      bookmark: 0,
+      discussions: 0,
+      events: 0
+    };
+
+    updates.forEach((update) => {
+      if (update?.readAt) {
+        return;
+      }
+      metrics.total += 1;
+      const type = String(update?.payload?.type || '').toLowerCase();
+      if (type === 'bookmark-update') {
+        metrics.bookmark += 1;
+      } else if (type.includes('event')) {
+        metrics.events += 1;
+      } else if (type.includes('pin')) {
+        metrics.discussions += 1;
+      }
+    });
+
+    return metrics;
+  }, [updates]);
+
+  const unreadCount = unreadMetrics.total;
 
   useEffect(() => {
-    setUnreadCount(unreadCount);
-    setUnreadDiscussionsCount(unreadCount);
-    setUnreadEventsCount(unreadCount);
-  }, [setUnreadCount, setUnreadDiscussionsCount, setUnreadEventsCount, unreadCount]);
+    setUnreadCount(unreadMetrics.total);
+    setUnreadBookmarkCount(unreadMetrics.bookmark);
+    setUnreadDiscussionsCount(unreadMetrics.discussions);
+    setUnreadEventsCount(unreadMetrics.events);
+  }, [
+    setUnreadBookmarkCount,
+    setUnreadCount,
+    setUnreadDiscussionsCount,
+    setUnreadEventsCount,
+    unreadMetrics
+  ]);
 
   useEffect(() => {
     if (firebaseLoading) {

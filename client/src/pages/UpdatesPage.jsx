@@ -1,12 +1,13 @@
 /* NOTE: Page exports configuration alongside the component. */
 import runtimeConfig from '../config/runtime';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
+import Snackbar from '@mui/material/Snackbar';
 import IconButton from '@mui/material/IconButton';
 import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
@@ -33,6 +34,7 @@ import {
 import useUpdatesFeed from '../hooks/useUpdatesFeed';
 import { routes } from '../routes';
 import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
+import usePushNotifications from '../hooks/usePushNotifications';
 
 export const pageConfig = {
   id: 'updates',
@@ -46,6 +48,7 @@ export const pageConfig = {
 };
 
 const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+const PUSH_PROMPT_DISMISS_KEY = 'pinpoint:pushPromptDismissed';
 
 const resolveBadgeImageUrl = (value) => {
   if (!value) {
@@ -62,6 +65,17 @@ function UpdatesPage() {
   const navigate = useNavigate();
   const [selectedTab, setSelectedTab] = useState('All');
   const socialNotifications = useSocialNotificationsContext();
+  const pushNotifications = usePushNotifications();
+  const [pushPromptDismissed, setPushPromptDismissed] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    try {
+      return window.localStorage.getItem(PUSH_PROMPT_DISMISS_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
   const incomingRequests = socialNotifications.friendData?.incomingRequests || [];
   const hasFriendRequests = !socialNotifications.friendAccessDenied && incomingRequests.length > 0;
   const friendRequestsPreview = incomingRequests.slice(0, 3);
@@ -69,6 +83,19 @@ function UpdatesPage() {
   const [isFriendDialogOpen, setIsFriendDialogOpen] = useState(false);
   const [respondingRequestId, setRespondingRequestId] = useState(null);
   const [friendActionStatus, setFriendActionStatus] = useState(null);
+
+  useEffect(() => {
+    if (pushNotifications.permission === 'granted') {
+      setPushPromptDismissed(true);
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem(PUSH_PROMPT_DISMISS_KEY, 'true');
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [pushNotifications.permission]);
 
   const {
     profileError,
@@ -195,6 +222,46 @@ function UpdatesPage() {
             Clear
           </Button>
         </header>
+
+        {pushNotifications.isSupported &&
+         pushNotifications.permission !== 'granted' &&
+         !pushPromptDismissed ? (
+          <Alert
+            severity="info"
+            variant="outlined"
+            sx={{ mb: 3 }}
+            action={
+              <Stack direction="row" spacing={1}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={async () => {
+                    try {
+                      await pushNotifications.requestPermission();
+                    } catch (error) {
+                      // status handled by hook
+                    }
+                  }}
+                  disabled={pushNotifications.isEnabling}
+                >
+                  {pushNotifications.isEnabling ? 'Enabling…' : 'Enable'}
+                </Button>
+                <Button
+                  size="small"
+                  color="inherit"
+                  onClick={() => {
+                    pushNotifications.dismissPrompt();
+                    setPushPromptDismissed(true);
+                  }}
+                >
+                  Dismiss
+                </Button>
+              </Stack>
+            }
+          >
+            Enable push notifications to get updates even when you're away.
+          </Alert>
+        ) : null}
 
         {hasFriendRequests ? (
           <Paper
@@ -502,6 +569,29 @@ function UpdatesPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={Boolean(pushNotifications.status)}
+        autoHideDuration={4000}
+        onClose={(_, reason) => {
+          if (reason === 'clickaway') {
+            return;
+          }
+          pushNotifications.setStatus(null);
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      >
+        {pushNotifications.status ? (
+          <Alert
+            elevation={6}
+            variant="filled"
+            severity={pushNotifications.status.type || 'info'}
+            onClose={() => pushNotifications.setStatus(null)}
+          >
+            {pushNotifications.status.message}
+          </Alert>
+        ) : null}
+      </Snackbar>
     </Box>
   );
 }

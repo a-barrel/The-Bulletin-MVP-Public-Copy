@@ -51,6 +51,7 @@ import useSettingsManager, {
   RADIUS_MIN
 } from '../hooks/useSettingsManager';
 import { metersToMiles } from '../utils/geo';
+import runtimeConfig from '../config/runtime';
 import { submitAnonymousFeedback } from '../api/mongoDataApi';
 
 export const pageConfig = {
@@ -112,12 +113,12 @@ function SettingsPage() {
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [feedbackStatus, setFeedbackStatus] = useState(null);
 
-  const canAccessAdminDashboard =
-    Array.isArray(profile?.roles) &&
-    profile.roles.some((role) =>
-      typeof role === 'string' &&
-      ['admin', 'moderator', 'super-admin', 'system-admin'].includes(role.toLowerCase())
-    );
+  const canAccessAdminDashboard = runtimeConfig.isOffline ||
+    (Array.isArray(profile?.roles) &&
+      profile.roles.some((role) =>
+        typeof role === 'string' &&
+        ['admin', 'moderator', 'super-admin', 'system-admin'].includes(role.toLowerCase())
+      ));
 
   const handleOpenFeedbackDialog = () => {
     setFeedbackDialogOpen(true);

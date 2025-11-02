@@ -479,6 +479,22 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
 
   const badgeList = effectiveUser?.badges ?? [];
 
+  const mutualFriends = useMemo(() => {
+    if (!Array.isArray(effectiveUser?.mutualFriends)) {
+      return [];
+    }
+    return effectiveUser.mutualFriends;
+  }, [effectiveUser?.mutualFriends]);
+
+  const mutualFriendCount = useMemo(() => {
+    if (typeof effectiveUser?.mutualFriendCount === 'number') {
+      return effectiveUser.mutualFriendCount;
+    }
+    return mutualFriends.length;
+  }, [effectiveUser?.mutualFriendCount, mutualFriends.length]);
+
+  const mutualFriendPreview = useMemo(() => mutualFriends.slice(0, 8), [mutualFriends]);
+
   const activityEntries = useMemo(() => {
     if (!effectiveUser) {
       return [];
@@ -697,6 +713,9 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
     hasProfile,
     bioText,
     badgeList,
+    mutualFriends,
+    mutualFriendPreview,
+    mutualFriendCount,
     statsVisible,
     statsEntries,
     activityEntries,

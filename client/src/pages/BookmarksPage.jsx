@@ -1,6 +1,6 @@
 /* NOTE: Page exports navigation config alongside the component. */
-import { useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
   Alert,
@@ -37,8 +37,13 @@ export const pageConfig = {
   protected: true
 };
 
+const UNSORTED_COLLECTION_KEY = '__ungrouped__';
+const UNSORTED_LABEL = 'Unsorted';
+const BOOKMARK_QUICK_NAV_PREFS_KEY = 'pinpoint:bookmarkQuickNavPrefs';
+
 function BookmarksPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isOffline } = useNetworkStatusContext();
   const [authUser, authLoading] = useAuthState(auth);
   const {
@@ -56,8 +61,136 @@ function BookmarksPage() {
     handleRemoveBookmark,
     handleExport,
     refresh,
-    formatSavedDate
+    formatSavedDate,
+    collections
   } = useBookmarksManager({ authUser, authLoading, isOffline });
+  const [quickNavPrefs, setQuickNavPrefs] = useState(() => {
+    if (typeof window === 'undefined') {
+      return { hidden: [] };
+    }
+    try {
+      const stored = window.localStorage.getItem(BOOKMARK_QUICK_NAV_PREFS_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && Array.isArray(parsed.hidden)) {
+          return { hidden: parsed.hidden };
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to read bookmark quick nav preferences', error);
+    }
+    return { hidden: [] };
+  });
+  const [highlightedCollectionKey, setHighlightedCollectionKey] = useState(null);
+  const collectionAnchorsRef = useRef(new Map());
+  const focusAppliedRef = useRef(null);
+  const focusParam = searchParams.get('collection');
+  const normalizedFocusParam = useMemo(
+    () => (focusParam ? focusParam.trim().toLowerCase() : null),
+    [focusParam]
+  );
+  const resolvedFocus = useMemo(() => {
+    if (!normalizedFocusParam) {
+      return null;
+    }
+    const foundById = collections?.find((collection) => collection?._id === focusParam);
+    if (foundById) {
+      return {
+        id: foundById._id,
+        name: foundById.name
+      };
+    }
+    const foundByName = collections?.find(
+      (collection) =>
+        typeof collection?.name === 'string' &&
+        collection.name.trim().toLowerCase() === normalizedFocusParam
+    );
+    if (foundByName) {
+      return {
+        id: foundByName._id,
+        name: foundByName.name
+      };
+    }
+    if (
+      normalizedFocusParam === UNSORTED_COLLECTION_KEY ||
+      normalizedFocusParam === UNSORTED_LABEL.toLowerCase()
+    ) {
+      return {
+        id: null,
+        name: UNSORTED_LABEL
+      };
+    }
+    return null;
+  }, [collections, focusParam, normalizedFocusParam]);
+
+  useEffect(() => {
+    if (!resolvedFocus) {
+      setHighlightedCollectionKey(null);
+      focusAppliedRef.current = null;
+      return undefined;
+    }
+
+    const focusKey = resolvedFocus.id ?? UNSORTED_COLLECTION_KEY;
+    if (focusAppliedRef.current === focusKey && highlightedCollectionKey === focusKey) {
+      return undefined;
+    }
+
+    const possibleKeys = [
+      focusKey,
+      resolvedFocus.name?.trim().toLowerCase(),
+      `${focusKey}::header`
+    ].filter(Boolean);
+
+    let targetNode = null;
+    for (const key of possibleKeys) {
+      const candidate = collectionAnchorsRef.current.get(key);
+      if (candidate) {
+        targetNode = candidate;
+        break;
+      }
+    }
+
+    if (!targetNode) {
+      return undefined;
+    }
+
+    focusAppliedRef.current = focusKey;
+    setHighlightedCollectionKey(focusKey);
+    try {
+      targetNode.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+    } catch {
+      targetNode.scrollIntoView(true);
+    }
+
+    const timer = window.setTimeout(() => {
+      setHighlightedCollectionKey((prev) => (prev === focusKey ? null : prev));
+    }, 2200);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [groupedBookmarks, highlightedCollectionKey, resolvedFocus]);
+
+  const handleQuickNavPreferenceChange = useCallback((collectionKey, enabled) => {
+    setQuickNavPrefs((prev) => {
+      const hiddenSet = new Set(prev.hidden);
+      if (enabled) {
+        hiddenSet.delete(collectionKey);
+      } else {
+        hiddenSet.add(collectionKey);
+      }
+      const next = { hidden: Array.from(hiddenSet) };
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem(BOOKMARK_QUICK_NAV_PREFS_KEY, JSON.stringify(next));
+          window.dispatchEvent(new Event('pinpoint:bookmarkQuickNavPrefsChanged'));
+        } catch (error) {
+          console.warn('Failed to persist quick nav preferences', error);
+        }
+      }
+      return next;
+    });
+  }, []);
 
   const handleViewPin = useCallback(
     (pinId) => {
@@ -188,23 +321,62 @@ function BookmarksPage() {
         ) : (
           <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
             <List disablePadding>
-              {groupedBookmarks.map(({ name, items }) => (
-                <Box key={name}>
+              {groupedBookmarks.map((group) => {
+                const { id: collectionId, name, description, items } = group;
+                const groupKey = collectionId ?? UNSORTED_COLLECTION_KEY;
+                const displayName = name || UNSORTED_LABEL;
+                const normalizedName = displayName.trim().toLowerCase();
+                const isHighlighted = highlightedCollectionKey === groupKey;
+                const isPinned = !quickNavPrefs.hidden.includes(groupKey);
+
+                return (
+                  <Box key={groupKey}>
                   <ListSubheader
                     component="div"
+                    ref={(node) => {
+                      const anchors = collectionAnchorsRef.current;
+                      const keys = [groupKey, normalizedName, `${groupKey}::header`].filter(Boolean);
+                      keys.forEach((key) => {
+                        if (!key) {
+                          return;
+                        }
+                        if (node) {
+                          anchors.set(key, node);
+                        } else {
+                          anchors.delete(key);
+                        }
+                      });
+                    }}
                     sx={{
-                      backgroundColor: 'background.paper',
+                      backgroundColor: isHighlighted ? 'rgba(144, 202, 249, 0.12)' : 'background.paper',
+                      transition: 'background-color 220ms ease',
                       px: 3,
                       py: 1.5,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 1
+                      gap: 1,
+                      borderLeft: isHighlighted ? '3px solid rgba(144, 202, 249, 0.6)' : '3px solid transparent'
                     }}
                   >
                     <Typography variant="subtitle1" fontWeight={600}>
-                      {name}
+                      {displayName}
                     </Typography>
                     <Chip label={items.length} size="small" variant="outlined" />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginLeft: 'auto' }}>
+                      {description ? (
+                        <Typography variant="body2" color="text.secondary">
+                          {description}
+                        </Typography>
+                      ) : null}
+                      <Button
+                        size="small"
+                        variant={isPinned ? 'contained' : 'outlined'}
+                        color="secondary"
+                        onClick={() => handleQuickNavPreferenceChange(groupKey, !isPinned)}
+                      >
+                        {isPinned ? 'Pinned' : 'Pin to quick nav'}
+                      </Button>
+                    </Box>
                   </ListSubheader>
                   <Divider />
                   {items.map((bookmark) => {
@@ -269,7 +441,8 @@ function BookmarksPage() {
                   })}
                   <Divider />
                 </Box>
-              ))}
+              );
+            })}
             </List>
           </Paper>
         )}

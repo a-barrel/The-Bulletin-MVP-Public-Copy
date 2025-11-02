@@ -24,18 +24,25 @@ const formatSavedDate = (input) => {
 
 const groupBookmarks = (bookmarks, collectionsById) => {
   const groups = new Map();
+
   bookmarks.forEach((bookmark) => {
     const collectionId = bookmark.collectionId || null;
-    const collectionName = collectionsById.get(collectionId)?.name ?? EMPTY_GROUP;
-    if (!groups.has(collectionName)) {
-      groups.set(collectionName, []);
+    const collection = collectionsById.get(collectionId) ?? null;
+    const key = collectionId ?? '__ungrouped__';
+
+    if (!groups.has(key)) {
+      groups.set(key, {
+        id: collectionId,
+        name: collection?.name ?? EMPTY_GROUP,
+        description: collection?.description ?? '',
+        items: []
+      });
     }
-    groups.get(collectionName).push(bookmark);
+
+    groups.get(key).items.push(bookmark);
   });
-  return Array.from(groups.entries()).map(([name, items]) => ({
-    name,
-    items
-  }));
+
+  return Array.from(groups.values());
 };
 
 export default function useBookmarksManager({ authUser, authLoading, isOffline }) {
@@ -203,7 +210,9 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
     handleRemoveBookmark,
     handleExport,
     refresh: loadData,
-    formatSavedDate
+    formatSavedDate,
+    collections,
+    collectionsById
   };
 }
 

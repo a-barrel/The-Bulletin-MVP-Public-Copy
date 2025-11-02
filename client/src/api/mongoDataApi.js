@@ -141,7 +141,18 @@ export async function fetchNearbyUsers(query) {
   return payload;
 }
 
-export async function fetchPinsNearby({ latitude, longitude, distanceMiles, limit }) {
+export async function fetchPinsNearby({
+  latitude,
+  longitude,
+  distanceMiles,
+  limit,
+  search,
+  types,
+  categories,
+  status,
+  startDate,
+  endDate
+}) {
   if (latitude === undefined || longitude === undefined) {
     throw new Error('Latitude and longitude are required');
   }
@@ -155,6 +166,34 @@ export async function fetchPinsNearby({ latitude, longitude, distanceMiles, limi
 
   if (limit !== undefined) {
     params.set('limit', String(limit));
+  }
+  if (typeof search === 'string' && search.trim()) {
+    params.set('search', search.trim());
+  }
+
+  const serializeArray = (value) =>
+    Array.isArray(value) ? value.map((entry) => String(entry).trim()).filter(Boolean) : [];
+
+  const typeList = serializeArray(types);
+  if (typeList.length) {
+    params.set('types', typeList.join(','));
+  }
+
+  const categoryList = serializeArray(categories);
+  if (categoryList.length) {
+    params.set('categories', categoryList.join(','));
+  }
+
+  if (status) {
+    params.set('status', status);
+  }
+
+  if (startDate) {
+    params.set('startDate', startDate);
+  }
+
+  if (endDate) {
+    params.set('endDate', endDate);
   }
 
   const response = await fetch(`${baseUrl}/api/pins/nearby?${params.toString()}`, {
@@ -195,6 +234,34 @@ export async function listPins(query = {}) {
   if (query.longitude !== undefined && query.longitude !== null) {
     params.set('longitude', String(query.longitude));
   }
+  if (typeof query.search === 'string' && query.search.trim()) {
+    params.set('search', query.search.trim());
+  }
+  const typeList = Array.isArray(query.types)
+    ? query.types
+    : typeof query.types === 'string'
+    ? query.types.split(',').map((entry) => entry.trim())
+    : [];
+  if (query.type) {
+    params.set('type', query.type);
+  }
+  if (typeList.length) {
+    params.set('types', typeList.join(','));
+  }
+  const categoryList = Array.isArray(query.categories)
+    ? query.categories
+    : typeof query.categories === 'string'
+    ? query.categories.split(',').map((entry) => entry.trim())
+    : [];
+  if (categoryList.length) {
+    params.set('categories', categoryList.join(','));
+  }
+  if (query.startDate) {
+    params.set('startDate', query.startDate);
+  }
+  if (query.endDate) {
+    params.set('endDate', query.endDate);
+  }
 
   const queryString = params.toString();
   const url = queryString ? `${baseUrl}/api/pins?${queryString}` : `${baseUrl}/api/pins`;
@@ -218,6 +285,20 @@ export async function fetchPinsSortedByExpiration({ limit = 20, status = 'active
     sort: 'expiration',
     status
   });
+}
+
+export async function fetchPinCategories() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/pins/categories`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => []);
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load pin categories');
+  }
+  return payload;
 }
 
 export async function fetchPinsSortedByDistance({ latitude, longitude, limit = 20 } = {}) {
@@ -363,6 +444,29 @@ export async function createPinBookmark(pinId) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(payload?.message || 'Failed to create bookmark');
+  }
+
+  return payload;
+}
+
+export async function sharePin(pinId, { platform, method } = {}) {
+  if (!pinId) {
+    throw new Error('pinId is required to share a pin');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/share`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({
+      platform: platform ?? undefined,
+      method: method ?? undefined
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, payload?.message || 'Failed to share pin');
   }
 
   return payload;

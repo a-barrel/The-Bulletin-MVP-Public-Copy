@@ -4,6 +4,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import './PinDetails.css';
 import { Alert, Snackbar } from '@mui/material';
 import PlaceIcon from '@mui/icons-material/Place'; // used only for pageConfig
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
 import LeafletMap from '../components/Map';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
@@ -98,6 +99,10 @@ function PinDetails() {
     isSubmittingReply,
     submitReplyError,
     handleSubmitReply,
+    shareStatus,
+    setShareStatus,
+    handleSharePin,
+    isSharing,
     attendeeItems,
     attendeeOverlayOpen,
     openAttendeeOverlay,
@@ -206,27 +211,42 @@ function PinDetails() {
 
         <h2>{pinTypeHeading}</h2>
 
-        <div className="bookmark-button-wrapper">
-          <button
-            className="bookmark-button"
-            onClick={handleToggleBookmark}
-            disabled={isOffline || isUpdatingBookmark || !pin || isInteractionLocked}
-            aria-pressed={bookmarked ? 'true' : 'false'}
-            aria-label={bookmarked ? 'Remove bookmark' : 'Save bookmark'}
-            aria-busy={isUpdatingBookmark ? 'true' : 'false'}
-            title={isOffline ? 'Reconnect to manage bookmarks' : undefined}
-          >
-            <img
-              src={
-                bookmarked
-                  ? 'https://www.svgrepo.com/show/347684/bookmark-fill.svg'
-                  : 'https://www.svgrepo.com/show/357397/bookmark-full.svg'
-              }
-              className="bookmark"
-              alt={bookmarked ? 'Bookmarked' : 'Bookmark icon'}
-            />
-          </button>
-          {bookmarkError ? <span className="error-text bookmark-error">{bookmarkError}</span> : null}
+        <div className="header-actions">
+          <div className="share-button-wrapper">
+            <button
+              className="share-button"
+              type="button"
+              onClick={() => handleSharePin()}
+              disabled={isOffline || isSharing || !pin}
+              aria-label="Share this pin"
+              aria-busy={isSharing ? 'true' : 'false'}
+              title={isOffline ? 'Reconnect to share pins' : 'Share pin link'}
+            >
+              <ShareOutlinedIcon fontSize="small" />
+            </button>
+          </div>
+          <div className="bookmark-button-wrapper">
+            <button
+              className="bookmark-button"
+              onClick={handleToggleBookmark}
+              disabled={isOffline || isUpdatingBookmark || !pin || isInteractionLocked}
+              aria-pressed={bookmarked ? 'true' : 'false'}
+              aria-label={bookmarked ? 'Remove bookmark' : 'Save bookmark'}
+              aria-busy={isUpdatingBookmark ? 'true' : 'false'}
+              title={isOffline ? 'Reconnect to manage bookmarks' : undefined}
+            >
+              <img
+                src={
+                  bookmarked
+                    ? 'https://www.svgrepo.com/show/347684/bookmark-fill.svg'
+                    : 'https://www.svgrepo.com/show/357397/bookmark-full.svg'
+                }
+                className="bookmark"
+                alt={bookmarked ? 'Bookmarked' : 'Bookmark icon'}
+              />
+            </button>
+            {bookmarkError ? <span className="error-text bookmark-error">{bookmarkError}</span> : null}
+          </div>
         </div>
       </header>
 
@@ -627,6 +647,29 @@ function PinDetails() {
             onClose={handleReportStatusClose}
           >
             {reportStatus.message}
+          </Alert>
+        ) : null}
+      </Snackbar>
+
+      <Snackbar
+        open={Boolean(shareStatus)}
+        autoHideDuration={3000}
+        onClose={(_, reason) => {
+          if (reason === 'clickaway') {
+            return;
+          }
+          setShareStatus(null);
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        {shareStatus ? (
+          <Alert
+            elevation={6}
+            variant="filled"
+            severity={shareStatus.type || 'info'}
+            onClose={() => setShareStatus(null)}
+          >
+            {shareStatus.message}
           </Alert>
         ) : null}
       </Snackbar>
