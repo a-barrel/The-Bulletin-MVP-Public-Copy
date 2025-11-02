@@ -207,7 +207,8 @@ export default function useNearbyPinsFeed({
   sharedLocation,
   isOffline,
   distanceMiles = DEFAULT_RADIUS_MILES,
-  limit = PIN_FETCH_LIMIT
+  limit = PIN_FETCH_LIMIT,
+  filters = {}
 }) {
   const sharedLatitude = sharedLocation?.latitude ?? null;
   const sharedLongitude = sharedLocation?.longitude ?? null;
@@ -277,7 +278,13 @@ export default function useNearbyPinsFeed({
           latitude: targetLocation.latitude,
           longitude: targetLocation.longitude,
           distanceMiles,
-          limit
+          limit,
+          search: typeof filters.search === 'string' ? filters.search : undefined,
+          types: Array.isArray(filters.types) ? filters.types : undefined,
+          categories: Array.isArray(filters.categories) ? filters.categories : undefined,
+          status: filters.status,
+          startDate: filters.startDate || undefined,
+          endDate: filters.endDate || undefined
         });
 
         if (!Array.isArray(results) || results.length === 0) {
@@ -318,7 +325,18 @@ export default function useNearbyPinsFeed({
         setLoading(false);
       }
     },
-    [distanceMiles, isOffline, limit, userLocation]
+    [
+      distanceMiles,
+      filters.categories,
+      filters.endDate,
+      filters.search,
+      filters.startDate,
+      filters.status,
+      filters.types,
+      isOffline,
+      limit,
+      userLocation
+    ]
   );
 
   useEffect(() => {

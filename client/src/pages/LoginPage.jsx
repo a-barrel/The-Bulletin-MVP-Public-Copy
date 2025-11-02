@@ -4,6 +4,7 @@ import { auth } from "../firebase";
 import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
+  OAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
 import "./LoginPage.css";
@@ -14,6 +15,8 @@ import AuthPageLayout from "../components/AuthPageLayout.jsx";
 import PasswordField from "../components/PasswordField.jsx";
 import AuthEmailField, { validateAuthEmail } from "../components/AuthEmailField.jsx";
 import useShake from "../hooks/useShake.js";
+import GoogleIcon from "@mui/icons-material/Google";
+import AppleIcon from "@mui/icons-material/Apple";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -95,7 +98,7 @@ function LoginPage() {
     }
   };
 
-    const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = async () => {
       setError(null);
       try {
         const provider = new GoogleAuthProvider();
@@ -105,6 +108,27 @@ function LoginPage() {
         navigate(routes.map.base);
       } catch (error) {
         setError(error.message);
+      }
+    };
+
+  const handleAppleSignIn = async () => {
+      setError(null);
+      try {
+        const provider = new OAuthProvider('apple.com');
+        const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
+        await applyAuthPersistence(auth, persistenceMode);
+        await signInWithPopup(auth, provider);
+        navigate(routes.map.base);
+      } catch (error) {
+        if (error?.code === 'auth/operation-not-supported-in-this-environment') {
+          setError('Apple sign-in is not available in this environment.');
+        } else if (error?.code === 'auth/account-exists-with-different-credential') {
+          setError('This email is linked to a different sign-in method. Try logging in with the original provider.');
+        } else if (error?.message) {
+          setError(error.message);
+        } else {
+          setError('Apple sign-in failed. Please try again.');
+        }
       }
     };
 
@@ -190,12 +214,17 @@ function LoginPage() {
           className="login-page-google-sign-in-btn" 
           onClick={handleGoogleSignIn}
         >
-          <img
-            src="https://www.svgrepo.com/show/475656/google-color.svg"
-            alt="Google logo"
-            className="google-icon"
-          />
+          <GoogleIcon className="google-icon" fontSize="small" />
           Sign in with Google
+        </button>
+
+        <button
+          type="button"
+          className="login-page-apple-sign-in-btn"
+          onClick={handleAppleSignIn}
+        >
+          <AppleIcon className="apple-icon" fontSize="small" />
+          Sign in with Apple
         </button>
 
         <p className="getting-started-text">Getting started?</p>

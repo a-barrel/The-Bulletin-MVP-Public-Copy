@@ -54,6 +54,14 @@ const userSchema = new mongoose.Schema(
       mutedUserIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
       blockedUserIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
     },
+    messagingTokens: [
+      {
+        token: { type: String, required: true },
+        platform: { type: String, default: 'web' },
+        addedAt: { type: Date, default: Date.now },
+        lastSeenAt: { type: Date, default: Date.now }
+      }
+    ],
     locationSharingEnabled: { type: Boolean, default: false },
     primaryLocationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Location' },
     pinnedPinIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Pin' }],

@@ -12,7 +12,6 @@ import DebugPanel from '../components/DebugPanel';
 function SystemTab() {
   const {
     isOnline,
-    isOffline,
     autoIsOnline,
     overrideMode,
     isOverrideEnabled,

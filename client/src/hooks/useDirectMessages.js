@@ -19,7 +19,9 @@ const initialState = {
   isSending: false,
   sendStatus: null,
   isCreating: false,
-  createStatus: null
+  createStatus: null,
+  hasAccess: null,
+  lastErrorStatus: null
 };
 
 const reducer = (state, action) => {
@@ -28,7 +30,8 @@ const reducer = (state, action) => {
       return {
         ...state,
         isLoadingThreads: true,
-        threadsStatus: null
+        threadsStatus: null,
+        lastErrorStatus: null
       };
     case 'threads/success':
       return {
@@ -36,13 +39,17 @@ const reducer = (state, action) => {
         isLoadingThreads: false,
         threadsStatus: { type: 'success' },
         threads: action.payload.threads || [],
-        viewer: action.payload.viewer || null
+        viewer: action.payload.viewer || null,
+        hasAccess: true,
+        lastErrorStatus: null
       };
     case 'threads/error':
       return {
         ...state,
         isLoadingThreads: false,
-        threadsStatus: { type: 'error', message: action.error }
+        threadsStatus: { type: 'error', message: action.error },
+        hasAccess: action.status === 403 ? false : state.hasAccess,
+        lastErrorStatus: action.status ?? state.lastErrorStatus
       };
     case 'thread/select':
       return {
@@ -71,7 +78,9 @@ const reducer = (state, action) => {
       return {
         ...state,
         isLoadingThread: false,
-        threadStatus: { type: 'error', message: action.error }
+        threadStatus: { type: 'error', message: action.error },
+        hasAccess: action.status === 403 ? false : state.hasAccess,
+        lastErrorStatus: action.status ?? state.lastErrorStatus
       };
     case 'thread/optimistic-message': {
       if (!state.threadDetail || state.threadDetail.id !== action.threadId) {
@@ -109,13 +118,17 @@ const reducer = (state, action) => {
       return {
         ...state,
         isSending: false,
-        sendStatus: { type: 'success', message: action.message }
+        sendStatus: { type: 'success', message: action.message },
+        hasAccess: true,
+        lastErrorStatus: null
       };
     case 'send/error':
       return {
         ...state,
         isSending: false,
-        sendStatus: { type: 'error', message: action.error }
+        sendStatus: { type: 'error', message: action.error },
+        hasAccess: action.status === 403 ? false : state.hasAccess,
+        lastErrorStatus: action.status ?? state.lastErrorStatus
       };
     case 'send/reset':
       return {
@@ -135,13 +148,17 @@ const reducer = (state, action) => {
         createStatus: { type: 'success', message: action.message },
         threads: action.payload.threads,
         selectedThreadId: action.payload.selectedThreadId,
-        threadDetail: action.payload.threadDetail || state.threadDetail
+        threadDetail: action.payload.threadDetail || state.threadDetail,
+        hasAccess: true,
+        lastErrorStatus: null
       };
     case 'create/error':
       return {
         ...state,
         isCreating: false,
-        createStatus: { type: 'error', message: action.error }
+        createStatus: { type: 'error', message: action.error },
+        hasAccess: action.status === 403 ? false : state.hasAccess,
+        lastErrorStatus: action.status ?? state.lastErrorStatus
       };
     case 'create/reset':
       return {
@@ -174,7 +191,11 @@ export default function useDirectMessages({ autoLoad = true } = {}) {
     } catch (error) {
       dispatch({
         type: 'threads/error',
-        error: error?.message || 'Failed to load direct message threads.'
+        error:
+          error?.status === 403
+            ? 'Friend management privileges required.'
+            : error?.message || 'Failed to load direct message threads.',
+        status: error?.status ?? null
       });
       throw error;
     }
@@ -195,7 +216,11 @@ export default function useDirectMessages({ autoLoad = true } = {}) {
       } catch (error) {
         dispatch({
           type: 'thread/error',
-          error: error?.message || 'Failed to load direct message thread.'
+          error:
+            error?.status === 403
+              ? 'Friend management privileges required.'
+              : error?.message || 'Failed to load direct message thread.',
+          status: error?.status ?? null
         });
         throw error;
       }
@@ -226,6 +251,12 @@ export default function useDirectMessages({ autoLoad = true } = {}) {
         throw error;
       }
 
+       if (state.hasAccess === false) {
+         const error = new Error('Friend management privileges required.');
+         dispatch({ type: 'send/error', error: error.message, status: 403 });
+         throw error;
+       }
+
       const optimisticMessage = buildOptimisticMessage({ body, sender });
       dispatch({ type: 'thread/optimistic-message', threadId, message: optimisticMessage });
       dispatch({ type: 'send/pending' });
@@ -248,12 +279,16 @@ export default function useDirectMessages({ autoLoad = true } = {}) {
         });
         dispatch({
           type: 'send/error',
-          error: error?.message || 'Failed to send direct message.'
+          error:
+            error?.status === 403
+              ? 'Friend management privileges required.'
+              : error?.message || 'Failed to send direct message.',
+          status: error?.status ?? null
         });
         throw error;
       }
     },
-    [loadThreadDetail]
+    [loadThreadDetail, state.hasAccess]
   );
 
   const createThread = useCallback(
@@ -261,6 +296,12 @@ export default function useDirectMessages({ autoLoad = true } = {}) {
       if (!participantIds || participantIds.length === 0) {
         const error = new Error('Add at least one participant.');
         dispatch({ type: 'create/error', error: error.message });
+        throw error;
+      }
+
+      if (state.hasAccess === false) {
+        const error = new Error('Friend management privileges required.');
+        dispatch({ type: 'create/error', error: error.message, status: 403 });
         throw error;
       }
 
@@ -293,12 +334,16 @@ export default function useDirectMessages({ autoLoad = true } = {}) {
       } catch (error) {
         dispatch({
           type: 'create/error',
-          error: error?.message || 'Failed to create direct message thread.'
+          error:
+            error?.status === 403
+              ? 'Friend management privileges required.'
+              : error?.message || 'Failed to create direct message thread.',
+          status: error?.status ?? null
         });
         throw error;
       }
     },
-    [loadThreads, loadThreadDetail, state.threads, state.selectedThreadId]
+    [loadThreads, loadThreadDetail, state.hasAccess, state.threads, state.selectedThreadId]
   );
 
   useEffect(() => {
@@ -321,6 +366,8 @@ export default function useDirectMessages({ autoLoad = true } = {}) {
     refreshThreads: loadThreads,
     isLoadingThreads: state.isLoadingThreads,
     threadsStatus: state.threadsStatus,
+    hasAccess: state.hasAccess,
+    lastErrorStatus: state.lastErrorStatus,
     selectedThreadId: state.selectedThreadId,
     selectThread,
     threadDetail: state.threadDetail,

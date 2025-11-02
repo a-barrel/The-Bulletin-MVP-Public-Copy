@@ -12,6 +12,33 @@ import { useUpdates } from '../contexts/UpdatesContext';
 
 const noop = () => {};
 
+const deriveUpdateCategory = (update) => {
+  const explicit = String(update?.payload?.category || '').trim().toLowerCase();
+  if (explicit) {
+    return explicit;
+  }
+
+  const type = String(update?.payload?.type || '').trim().toLowerCase();
+  if (!type) {
+    return 'other';
+  }
+
+  if (type.startsWith('event')) {
+    return 'event';
+  }
+
+  if (
+    type.includes('discussion') ||
+    type.includes('pin') ||
+    type.includes('reply') ||
+    type.includes('chat')
+  ) {
+    return 'discussion';
+  }
+
+  return 'other';
+};
+
 export default function useUpdatesFeed() {
   const [firebaseUser, firebaseLoading] = useAuthState(auth);
 
@@ -30,20 +57,52 @@ export default function useUpdatesFeed() {
 
   const {
     setUnreadCount = noop,
+    setUnreadBookmarkCount = noop,
     setUnreadDiscussionsCount = noop,
     setUnreadEventsCount = noop
   } = useUpdates();
 
-  const unreadCount = useMemo(
-    () => updates.filter((update) => !update.readAt).length,
-    [updates]
-  );
+  const unreadMetrics = useMemo(() => {
+    const metrics = {
+      total: 0,
+      bookmark: 0,
+      discussions: 0,
+      events: 0
+    };
+
+    updates.forEach((update) => {
+      if (update?.readAt) {
+        return;
+      }
+      metrics.total += 1;
+      const category = update?.category || deriveUpdateCategory(update);
+      const type = String(update?.payload?.type || '').toLowerCase();
+      if (type === 'bookmark-update') {
+        metrics.bookmark += 1;
+      } else if (category === 'event') {
+        metrics.events += 1;
+      } else if (category === 'discussion') {
+        metrics.discussions += 1;
+      }
+    });
+
+    return metrics;
+  }, [updates]);
+
+  const unreadCount = unreadMetrics.total;
 
   useEffect(() => {
-    setUnreadCount(unreadCount);
-    setUnreadDiscussionsCount(unreadCount);
-    setUnreadEventsCount(unreadCount);
-  }, [setUnreadCount, setUnreadDiscussionsCount, setUnreadEventsCount, unreadCount]);
+    setUnreadCount(unreadMetrics.total);
+    setUnreadBookmarkCount(unreadMetrics.bookmark);
+    setUnreadDiscussionsCount(unreadMetrics.discussions);
+    setUnreadEventsCount(unreadMetrics.events);
+  }, [
+    setUnreadBookmarkCount,
+    setUnreadCount,
+    setUnreadDiscussionsCount,
+    setUnreadEventsCount,
+    unreadMetrics
+  ]);
 
   useEffect(() => {
     if (firebaseLoading) {
@@ -97,7 +156,14 @@ export default function useUpdatesFeed() {
       pendingRefreshRef.current = true;
       try {
         const result = await fetchUpdates({ userId: profile._id, limit: 100 });
-        setUpdates(result);
+        setUpdates(
+          Array.isArray(result)
+            ? result.map((item) => ({
+                ...item,
+                category: deriveUpdateCategory(item)
+              }))
+            : []
+        );
       } catch (error) {
         setUpdates([]);
         setUpdatesError(error?.message || 'Failed to load updates.');
@@ -138,7 +204,8 @@ export default function useUpdatesFeed() {
             ? {
                 ...item,
                 readAt: updated.readAt,
-                readBy: updated.readBy
+                readBy: updated.readBy,
+                category: item.category ?? deriveUpdateCategory(updated)
               }
             : item
         )

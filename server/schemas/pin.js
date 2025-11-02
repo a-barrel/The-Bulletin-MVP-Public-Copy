@@ -108,7 +108,9 @@ const PinListItemSchema = PinPreviewSchema.extend({
   distanceMeters: z.number().nonnegative().optional(),
   isBookmarked: z.boolean().optional(),
   replyCount: z.number().int().nonnegative().optional(),
-  stats: PinStatsSchema.optional()
+  stats: PinStatsSchema.optional(),
+  coverPhoto: MediaAssetSchema.optional(),
+  photos: z.array(MediaAssetSchema).optional()
 });
 
 module.exports = {

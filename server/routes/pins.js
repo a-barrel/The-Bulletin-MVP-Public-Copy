@@ -16,6 +16,7 @@ const {
   broadcastBookmarkCreated
 } = require('../services/updateFanoutService');
 const { grantBadge } = require('../services/badgeService');
+const { trackEvent } = require('../services/analyticsService');
 const { mapMediaAsset: mapMediaAssetResponse } = require('../utils/media');
 const { toIdString, mapIdList } = require('../utils/ids');
 const { METERS_PER_MILE, milesToMeters } = require('../utils/geo');
@@ -29,13 +30,23 @@ const PinsQuerySchema = z.object({
   status: z.enum(['active', 'expired', 'all']).optional(),
   sort: z.enum(['recent', 'distance', 'expiration']).optional(),
   latitude: z.coerce.number().min(-90).max(90).optional(),
-  longitude: z.coerce.number().min(-180).max(180).optional()
+  longitude: z.coerce.number().min(-180).max(180).optional(),
+  search: z.string().trim().optional(),
+  categories: z.string().trim().optional(),
+  types: z.string().trim().optional(),
+  startDate: z.string().trim().optional(),
+  endDate: z.string().trim().optional()
 });
 
 const PinIdSchema = z.object({
   pinId: z.string().refine((value) => mongoose.Types.ObjectId.isValid(value), {
     message: 'Invalid pin id'
   })
+});
+
+const SharePinSchema = z.object({
+  platform: z.string().trim().max(64).optional(),
+  method: z.string().trim().max(64).optional()
 });
 
 const AttendanceUpdateSchema = z.object({
@@ -102,12 +113,23 @@ const mapPinPreview = (pinDoc, creator) => {
 
 const mapPinToListItem = (pinDoc, creator) => {
   const preview = mapPinPreview(pinDoc, creator);
+  const coverPhoto = pinDoc.coverPhoto
+    ? mapMediaAssetResponse(pinDoc.coverPhoto, { toIdString })
+    : undefined;
+  const photos = Array.isArray(pinDoc.photos)
+    ? pinDoc.photos
+        .map((photo) => mapMediaAssetResponse(photo, { toIdString }))
+        .filter(Boolean)
+    : undefined;
+
   return PinListItemSchema.parse({
     ...preview,
     distanceMeters: undefined,
     isBookmarked: undefined,
     replyCount: pinDoc.replyCount ?? undefined,
-    stats: pinDoc.stats || undefined
+    stats: pinDoc.stats || undefined,
+    coverPhoto,
+    photos
   });
 };
 
@@ -128,6 +150,51 @@ const ensureUserStats = (userDoc) => {
   }
 
   return userDoc.stats;
+};
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const parseCsvParam = (value) => {
+  if (!value || typeof value !== 'string') {
+    return [];
+  }
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+};
+
+const parseDateParam = (value) => {
+  if (!value || typeof value !== 'string') {
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
+};
+
+const USER_SUMMARY_PROJECTION =
+  'username displayName roles accountStatus avatar stats relationships.blockedUserIds';
+
+const buildBlockedSet = (userDoc) => new Set(mapIdList(userDoc?.relationships?.blockedUserIds));
+
+const isBlockedBetweenUsers = (viewer, target) => {
+  if (!viewer || !target) {
+    return false;
+  }
+  const viewerId = toIdString(viewer._id ?? viewer);
+  const targetId = toIdString(target._id ?? target);
+  if (!viewerId || !targetId) {
+    return false;
+  }
+  const viewerBlocked = buildBlockedSet(viewer);
+  if (viewerBlocked.has(targetId)) {
+    return true;
+  }
+  const targetBlocked = buildBlockedSet(target);
+  return targetBlocked.has(viewerId);
 };
 
 const ensureBookmarkForUser = async ({ userDoc, pinDoc }) => {
@@ -374,7 +441,13 @@ const NearbyPinsQuerySchema = z.object({
   longitude: z.coerce.number().min(-180).max(180),
   distanceMiles: z.coerce.number().positive().max(250),
   limit: z.coerce.number().int().positive().max(50).default(20),
-  type: z.enum(['event', 'discussion']).optional()
+  type: z.enum(['event', 'discussion']).optional(),
+  types: z.string().trim().optional(),
+  search: z.string().trim().optional(),
+  categories: z.string().trim().optional(),
+  status: z.enum(['active', 'expired', 'all']).optional(),
+  startDate: z.string().trim().optional(),
+  endDate: z.string().trim().optional()
 });
 
 const haversineDistanceMeters = (lat1, lon1, lat2, lon2) => {
@@ -572,7 +645,7 @@ router.post('/', verifyToken, async (req, res) => {
     } catch (error) {
       console.error('Failed to update creator stats after pin creation:', error);
     }
-    const hydrated = await Pin.findById(pin._id).populate('creatorId');
+    const hydrated = await Pin.findById(pin._id).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
     let sourcePin = hydrated ?? pin;
     const creatorPublic = hydrated ? mapUserToPublic(hydrated.creatorId) : undefined;
     const viewerId = viewer ? toIdString(viewer._id) : undefined;
@@ -642,50 +715,141 @@ router.post('/', verifyToken, async (req, res) => {
 
 router.get('/nearby', verifyToken, async (req, res) => {
   try {
-    const { latitude, longitude, distanceMiles, limit, type } = NearbyPinsQuerySchema.parse(req.query);
+    const {
+      latitude,
+      longitude,
+      distanceMiles,
+      limit,
+      type,
+      types: typesParam,
+      search,
+      categories: categoriesParam,
+      status: statusParam,
+      startDate: startDateParam,
+      endDate: endDateParam
+    } = NearbyPinsQuerySchema.parse(req.query);
+
     const maxDistanceMeters = milesToMeters(distanceMiles) ?? distanceMiles * METERS_PER_MILE;
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const viewerBlockedSet = buildBlockedSet(viewer);
+
     const now = new Date();
-    const queryFilters = [
-      {
-        coordinates: {
-          $near: {
-            $geometry: { type: 'Point', coordinates: [longitude, latitude] },
-            $maxDistance: maxDistanceMeters
-          }
-        }
-      },
-      { $or: [{ isActive: { $exists: false } }, { isActive: true }] },
-      {
+    const filters = [];
+
+    // Status filters
+    const effectiveStatus = statusParam || 'active';
+    if (effectiveStatus === 'active') {
+      filters.push({ $or: [{ isActive: { $exists: false } }, { isActive: true }] });
+      filters.push({
         $or: [
           { expiresAt: { $exists: false } },
           { expiresAt: null },
           { expiresAt: { $gt: now } }
         ]
-      },
-      {
+      });
+      filters.push({
         $or: [
           { type: 'discussion' },
           { type: 'event', endDate: { $exists: false } },
           { type: 'event', endDate: null },
           { type: 'event', endDate: { $gt: now } }
         ]
-      }
-    ];
-
-    if (type) {
-      queryFilters.push({ type });
+      });
+    } else if (effectiveStatus === 'expired') {
+      filters.push({ expiresAt: { $exists: true, $lte: now } });
+    } else {
+      filters.push({ $or: [{ isActive: { $exists: false } }, { isActive: true }] });
     }
 
-    const geoQuery =
-      queryFilters.length === 1
-        ? queryFilters[0]
-        : { $and: queryFilters };
+    // Type filters
+    const typeSet = new Set();
+    if (type) {
+      typeSet.add(type);
+    }
+    parseCsvParam(typesParam).forEach((entry) => {
+      if (entry.toLowerCase() === 'event' || entry.toLowerCase() === 'discussion') {
+        typeSet.add(entry.toLowerCase());
+      }
+    });
+    const requestedTypes = Array.from(typeSet);
+    if (requestedTypes.length === 1) {
+      filters.push({ type: requestedTypes[0] });
+    } else if (requestedTypes.length > 1) {
+      filters.push({ type: { $in: requestedTypes } });
+    }
 
-    const pins = await Pin.find(geoQuery)
+    // Keyword search
+    if (search && search.trim()) {
+      const pattern = new RegExp(escapeRegex(search.trim()), 'i');
+      filters.push({
+        $or: [{ title: pattern }, { description: pattern }, { tags: pattern }]
+      });
+    }
+
+    // Categories
+    const categoryList = parseCsvParam(categoriesParam);
+    if (categoryList.length > 0) {
+      filters.push({
+        $or: categoryList.map((category) => ({
+          tags: { $regex: new RegExp(`^${escapeRegex(category)}$`, 'i') }
+        }))
+      });
+    }
+
+    // Date range
+    const startDate = parseDateParam(startDateParam);
+    const endDate = parseDateParam(endDateParam);
+    if (startDate || endDate) {
+      const range = {};
+      if (startDate) {
+        range.$gte = startDate;
+      }
+      if (endDate) {
+        range.$lte = endDate;
+      }
+      filters.push({
+        $or: [
+          { startDate: range },
+          { endDate: range },
+          { createdAt: range },
+          { expiresAt: range }
+        ]
+      });
+    }
+
+    const findQuery = {
+      ...(filters.length ? { $and: filters } : {}),
+      coordinates: {
+        $near: {
+          $geometry: { type: 'Point', coordinates: [longitude, latitude] },
+          $maxDistance: maxDistanceMeters
+        }
+      }
+    };
+
+    const pins = await Pin.find(findQuery)
       .limit(limit)
-      .populate('creatorId');
+      .populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
 
-    const payload = pins.map((pinDoc) => {
+    const filteredPins = pins.filter((pinDoc) => {
+      const creatorDoc = pinDoc.creatorId;
+      if (!creatorDoc) {
+        return false;
+      }
+      const creatorId = toIdString(creatorDoc._id);
+      if (creatorId && viewerBlockedSet.has(creatorId)) {
+        return false;
+      }
+      if (isBlockedBetweenUsers(viewer, creatorDoc)) {
+        return false;
+      }
+      return true;
+    });
+
+    const payload = filteredPins.map((pinDoc) => {
       const creatorPublic = mapUserToPublic(pinDoc.creatorId);
       const listItem = mapPinToListItem(pinDoc, creatorPublic);
       const [pinLongitude, pinLatitude] = pinDoc.coordinates.coordinates;
@@ -709,9 +873,20 @@ router.get('/nearby', verifyToken, async (req, res) => {
 router.get('/', verifyToken, async (req, res) => {
   try {
     const query = PinsQuerySchema.parse(req.query);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const viewerBlockedSet = buildBlockedSet(viewer);
     const limit = query.limit;
     const now = new Date();
     const filters = [];
+    const sortMode = query.sort ?? 'recent';
+    const statusFilter = query.status ?? 'active';
+
+    if (statusFilter !== 'expired') {
+      filters.push({ $or: [{ isActive: { $exists: false } }, { isActive: true }] });
+    }
 
     if (query.type) {
       filters.push({ type: query.type });
@@ -723,9 +898,6 @@ router.get('/', verifyToken, async (req, res) => {
       }
       filters.push({ creatorId: new mongoose.Types.ObjectId(query.creatorId) });
     }
-
-    const sortMode = query.sort ?? 'recent';
-    const statusFilter = query.status ?? 'active';
 
     if (statusFilter === 'active') {
       if (sortMode === 'expiration') {
@@ -739,6 +911,58 @@ router.get('/', verifyToken, async (req, res) => {
       filters.push({ expiresAt: { $exists: true, $lte: now } });
     } else if (statusFilter === 'all' && sortMode === 'expiration') {
       filters.push({ expiresAt: { $exists: true } });
+    }
+
+    const typeSet = new Set();
+    if (query.type) {
+      typeSet.add(query.type);
+    }
+    parseCsvParam(query.types).forEach((entry) => {
+      if (entry.toLowerCase() === 'event' || entry.toLowerCase() === 'discussion') {
+        typeSet.add(entry.toLowerCase());
+      }
+    });
+    const requestedTypes = Array.from(typeSet);
+    if (requestedTypes.length === 1) {
+      filters.push({ type: requestedTypes[0] });
+    } else if (requestedTypes.length > 1) {
+      filters.push({ type: { $in: requestedTypes } });
+    }
+
+    if (query.search && query.search.trim()) {
+      const pattern = new RegExp(escapeRegex(query.search.trim()), 'i');
+      filters.push({
+        $or: [{ title: pattern }, { description: pattern }, { tags: pattern }]
+      });
+    }
+
+    const categoryList = parseCsvParam(query.categories);
+    if (categoryList.length > 0) {
+      filters.push({
+        $or: categoryList.map((category) => ({
+          tags: { $regex: new RegExp(`^${escapeRegex(category)}$`, 'i') }
+        }))
+      });
+    }
+
+    const startDate = parseDateParam(query.startDate);
+    const endDate = parseDateParam(query.endDate);
+    if (startDate || endDate) {
+      const range = {};
+      if (startDate) {
+        range.$gte = startDate;
+      }
+      if (endDate) {
+        range.$lte = endDate;
+      }
+      filters.push({
+        $or: [
+          { startDate: range },
+          { endDate: range },
+          { createdAt: range },
+          { expiresAt: range }
+        ]
+      });
     }
 
     const matchQuery =
@@ -775,14 +999,34 @@ router.get('/', verifyToken, async (req, res) => {
       const pipeline = [geoNearStage, { $limit: limit }];
       const aggregated = await Pin.aggregate(pipeline);
       const hydrated = aggregated.map((doc) => Pin.hydrate(doc));
-      const populated = await Pin.populate(hydrated, { path: 'creatorId' });
+      const populated = await Pin.populate(hydrated, {
+        path: 'creatorId',
+        select: USER_SUMMARY_PROJECTION
+      });
 
-      const payload = populated.map((pinDoc, index) => {
+      const distanceLookup = new Map(aggregated.map((doc, index) => [toIdString(doc._id), aggregated[index]?.distanceMeters]));
+
+      const filteredPins = populated.filter((pinDoc) => {
+        const creatorDoc = pinDoc.creatorId;
+        if (!creatorDoc) {
+          return false;
+        }
+        const creatorId = toIdString(creatorDoc._id);
+        if (creatorId && viewerBlockedSet.has(creatorId)) {
+          return false;
+        }
+        if (isBlockedBetweenUsers(viewer, creatorDoc)) {
+          return false;
+        }
+        return true;
+      });
+
+      const payload = filteredPins.map((pinDoc) => {
         const creatorPublic = mapUserToPublic(pinDoc.creatorId);
         const listItem = mapPinToListItem(pinDoc, creatorPublic);
         return {
           ...listItem,
-          distanceMeters: aggregated[index]?.distanceMeters
+          distanceMeters: distanceLookup.get(toIdString(pinDoc._id))
         };
       });
 
@@ -797,9 +1041,24 @@ router.get('/', verifyToken, async (req, res) => {
     const pins = await Pin.find(matchQuery)
       .sort(sortSpec)
       .limit(limit)
-      .populate('creatorId');
+      .populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
 
-    const payload = pins.map((pin) => {
+    const filteredPins = pins.filter((pin) => {
+      const creatorDoc = pin.creatorId;
+      if (!creatorDoc) {
+        return false;
+      }
+      const creatorId = toIdString(creatorDoc._id);
+      if (creatorId && viewerBlockedSet.has(creatorId)) {
+        return false;
+      }
+      if (isBlockedBetweenUsers(viewer, creatorDoc)) {
+        return false;
+      }
+      return true;
+    });
+
+    const payload = filteredPins.map((pin) => {
       const creatorPublic = mapUserToPublic(pin.creatorId);
       return mapPinToListItem(pin, creatorPublic);
     });
@@ -814,15 +1073,47 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
+router.get('/categories', verifyToken, async (req, res) => {
+  try {
+    const categories = await Pin.aggregate([
+      { $unwind: '$tags' },
+      {
+        $group: {
+          _id: '$tags',
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1, _id: 1 } },
+      { $limit: 50 }
+    ]);
+
+    res.json(
+      categories.map((entry) => ({
+        name: entry._id,
+        count: entry.count
+      }))
+    );
+  } catch (error) {
+    console.error('Failed to load pin categories:', error);
+    res.status(500).json({ message: 'Failed to load pin categories' });
+  }
+});
+
 router.get('/:pinId', verifyToken, async (req, res) => {
   try {
     const { pinId } = PinIdSchema.parse(req.params);
-    const pin = await Pin.findById(pinId).populate('creatorId');
+    const pin = await Pin.findById(pinId).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
     if (!pin) {
       return res.status(404).json({ message: 'Pin not found' });
     }
 
     const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (isBlockedBetweenUsers(viewer, pin.creatorId)) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
     const viewerId = viewer ? toIdString(viewer._id) : undefined;
     let viewerHasBookmarked = false;
     if (viewer) {
@@ -866,9 +1157,13 @@ router.post('/:pinId/attendance', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const pin = await Pin.findById(pinId).populate('creatorId');
+    const pin = await Pin.findById(pinId).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
     if (!pin) {
       return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    if (isBlockedBetweenUsers(viewer, pin.creatorId)) {
+      return res.status(403).json({ message: 'You cannot interact with this pin.' });
     }
 
     if (pin.type !== 'event') {
@@ -1044,6 +1339,66 @@ router.get('/:pinId/attendees', verifyToken, async (req, res) => {
   }
 });
 
+router.post('/:pinId/share', verifyToken, async (req, res) => {
+  try {
+    const { pinId } = PinIdSchema.parse(req.params);
+    const input = SharePinSchema.parse(req.body ?? {});
+
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const pin = await Pin.findById(pinId).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
+    if (!pin) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    if (isBlockedBetweenUsers(viewer, pin.creatorId)) {
+      return res.status(403).json({ message: 'You cannot share this pin.' });
+    }
+
+    pin.shareCount = (pin.shareCount ?? 0) + 1;
+    if (pin.stats) {
+      pin.stats.shareCount = (pin.stats.shareCount ?? 0) + 1;
+    } else {
+      pin.stats = {
+        bookmarkCount: pin.bookmarkCount ?? 0,
+        replyCount: pin.replyCount ?? 0,
+        shareCount: pin.shareCount ?? 1,
+        viewCount: pin.stats?.viewCount ?? 0
+      };
+    }
+    pin.markModified('stats');
+    await pin.save();
+
+    await trackEvent({
+      eventName: 'pin-share',
+      actorId: viewer._id,
+      targetId: pin.creatorId?._id ?? pin.creatorId,
+      payload: {
+        pinId: toIdString(pin._id),
+        platform: input.platform || 'unspecified',
+        method: input.method || 'share-button'
+      }
+    });
+
+    res.status(201).json({
+      pinId: toIdString(pin._id),
+      shareCount: pin.shareCount ?? 0,
+      stats: {
+        shareCount: pin.stats?.shareCount ?? pin.shareCount ?? 0
+      }
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid share payload', issues: error.errors });
+    }
+    console.error('Failed to record pin share:', error);
+    res.status(500).json({ message: 'Failed to record pin share' });
+  }
+});
+
 router.post('/:pinId/replies', verifyToken, async (req, res) => {
   try {
     const { pinId } = PinIdSchema.parse(req.params);
@@ -1054,18 +1409,25 @@ router.post('/:pinId/replies', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const pin = await Pin.findById(pinId).populate('creatorId');
+    const pin = await Pin.findById(pinId).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
     if (!pin) {
       return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    if (isBlockedBetweenUsers(viewer, pin.creatorId)) {
+      return res.status(403).json({ message: 'You cannot interact with this pin.' });
     }
 
     let parentReplyId = undefined;
     let parentReplyDoc = null;
     if (input.parentReplyId) {
       parentReplyId = new mongoose.Types.ObjectId(input.parentReplyId);
-      parentReplyDoc = await Reply.findOne({ _id: parentReplyId, pinId }).populate('authorId');
+      parentReplyDoc = await Reply.findOne({ _id: parentReplyId, pinId }).populate({ path: 'authorId', select: USER_SUMMARY_PROJECTION });
       if (!parentReplyDoc) {
         return res.status(404).json({ message: 'Parent reply not found for this pin' });
+      }
+      if (isBlockedBetweenUsers(viewer, parentReplyDoc.authorId)) {
+        return res.status(403).json({ message: 'You cannot reply to this comment.' });
       }
     }
 
@@ -1091,7 +1453,7 @@ router.post('/:pinId/replies', verifyToken, async (req, res) => {
     }
     await pin.save();
 
-    const populatedReply = await Reply.findById(reply._id).populate('authorId');
+    const populatedReply = await Reply.findById(reply._id).populate({ path: 'authorId', select: USER_SUMMARY_PROJECTION });
     const payload = mapReply(populatedReply ?? reply, mapUserToPublic(populatedReply?.authorId ?? viewer));
     broadcastPinReply({
       pin,
@@ -1114,11 +1476,40 @@ router.post('/:pinId/replies', verifyToken, async (req, res) => {
 router.get('/:pinId/replies', verifyToken, async (req, res) => {
   try {
     const { pinId } = PinIdSchema.parse(req.params);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const viewerBlockedSet = buildBlockedSet(viewer);
+
+    const pin = await Pin.findById(pinId).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
+    if (!pin) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
+    if (isBlockedBetweenUsers(viewer, pin.creatorId)) {
+      return res.status(404).json({ message: 'Replies unavailable.' });
+    }
+
     const replies = await Reply.find({ pinId })
       .sort({ createdAt: -1, updatedAt: -1, _id: -1 })
-      .populate('authorId');
+      .populate({ path: 'authorId', select: USER_SUMMARY_PROJECTION });
 
-    const payload = replies.map((reply) => mapReply(reply, mapUserToPublic(reply.authorId)));
+    const filteredReplies = replies.filter((reply) => {
+      const author = reply.authorId;
+      if (!author) {
+        return false;
+      }
+      const authorId = toIdString(author._id);
+      if (authorId && viewerBlockedSet.has(authorId)) {
+        return false;
+      }
+      if (isBlockedBetweenUsers(viewer, author)) {
+        return false;
+      }
+      return true;
+    });
+
+    const payload = filteredReplies.map((reply) => mapReply(reply, mapUserToPublic(reply.authorId)));
     res.json(payload);
   } catch (error) {
     if (error instanceof ZodError) {
@@ -1137,7 +1528,7 @@ router.put('/:pinId', verifyToken, async (req, res) => {
     const maxEventTimestamp = now + EVENT_MAX_LEAD_TIME_MS;
     const maxDiscussionTimestamp = now + DISCUSSION_MAX_DURATION_MS;
 
-    const pin = await Pin.findById(pinId).populate('creatorId');
+    const pin = await Pin.findById(pinId).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
     if (!pin) {
       return res.status(404).json({ message: 'Pin not found' });
     }
@@ -1234,7 +1625,7 @@ router.put('/:pinId', verifyToken, async (req, res) => {
     }
 
     await pin.save();
-    const hydrated = await Pin.findById(pin._id).populate('creatorId');
+    const hydrated = await Pin.findById(pin._id).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
     const sourcePin = hydrated ?? pin;
     const creatorPublic = hydrated ? mapUserToPublic(hydrated.creatorId) : mapUserToPublic(pin.creatorId);
     const viewer = await resolveViewerUser(req);

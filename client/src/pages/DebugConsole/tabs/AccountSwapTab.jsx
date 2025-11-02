@@ -43,7 +43,7 @@ function AccountSwapTab() {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchDebugAuthAccounts]);
+  }, []);
 
   useEffect(() => {
     loadAccounts();
@@ -71,7 +71,7 @@ function AccountSwapTab() {
         setPendingUid(null);
       }
     },
-    [loadAccounts, requestAccountSwap, signInWithCustomToken, auth]
+    [loadAccounts]
   );
 
   const currentUserLabel =

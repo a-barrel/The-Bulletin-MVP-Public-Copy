@@ -9,8 +9,18 @@ jest.mock('../../models/ModerationAction', () => ({
   create: jest.fn()
 }));
 
+jest.mock('../../services/auditLogService', () => ({
+  recordAuditEntry: jest.fn()
+}));
+
+jest.mock('../../services/analyticsService', () => ({
+  trackModerationEvent: jest.fn()
+}));
+
 const User = require('../../models/User');
 const ModerationAction = require('../../models/ModerationAction');
+const { recordAuditEntry } = require('../../services/auditLogService');
+const { trackModerationEvent } = require('../../services/analyticsService');
 
 describe('applyModerationAction', () => {
   const viewer = { _id: '64a6b5df0000000000000001' };
@@ -20,6 +30,8 @@ describe('applyModerationAction', () => {
     jest.clearAllMocks();
 
     User.findByIdAndUpdate.mockResolvedValue(null);
+    recordAuditEntry.mockResolvedValue(null);
+    trackModerationEvent.mockResolvedValue(null);
 
     const selectMock = jest.fn().mockReturnThis();
     const leanMock = jest.fn().mockResolvedValue({
@@ -63,6 +75,22 @@ describe('applyModerationAction', () => {
     );
 
     expect(User.findById).toHaveBeenCalledWith(expect.anything());
+
+    expect(recordAuditEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: expect.anything(),
+        targetId: expect.anything(),
+        action: 'moderation:mute'
+      })
+    );
+
+    expect(trackModerationEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        moderatorId: expect.anything(),
+        targetId: expect.anything(),
+        type: 'mute'
+      })
+    );
   });
 
   it('updates relationship graphs when blocking a user', async () => {
