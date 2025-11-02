@@ -4,6 +4,8 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BlockIcon from '@mui/icons-material/Block';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
+import FlagIcon from '@mui/icons-material/Flag';
+import MessageIcon from '@mui/icons-material/Message';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -339,11 +341,6 @@ function ProfilePage() {
   }, [effectiveUser, userId]);
 
   const avatarUrl = resolveAvatarUrl(effectiveUser?.avatar);
-  const canEditProfile =
-    !userFromState &&
-    (shouldLoadCurrentUser ||
-      (effectiveUser && targetUserId && effectiveUser._id && effectiveUser._id === targetUserId));
-  const editingAvatarSrc = formState.avatarCleared ? null : formState.avatarPreviewUrl ?? avatarUrl;
   const viewerId = viewerProfile?._id ? String(viewerProfile._id) : null;
   const normalizedTargetId = effectiveUser?._id
     ? String(effectiveUser._id)
@@ -356,6 +353,14 @@ function ProfilePage() {
   const isViewingSelf =
     shouldLoadCurrentUser ||
     Boolean(viewerId && normalizedTargetId && viewerId === normalizedTargetId);
+  // Only allow editing if viewing own profile and not from navigation state (prevents editing external views)
+  const canEditProfile = Boolean(
+    isViewingSelf && 
+    !userFromState && 
+    effectiveUser && 
+    viewerProfile
+  );
+  const editingAvatarSrc = formState.avatarCleared ? null : formState.avatarPreviewUrl ?? avatarUrl;
   const isBlocked = Boolean(
     normalizedTargetId && normalizedBlockedIds.includes(String(normalizedTargetId))
   );
@@ -935,19 +940,6 @@ function ProfilePage() {
               </Typography>
             </Box>
           </Stack>
-          {canManageBlock ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-              <Button
-                variant="outlined"
-                color={isBlocked ? 'primary' : 'error'}
-                startIcon={isBlocked ? <HowToRegIcon /> : <BlockIcon />}
-                onClick={isBlocked ? handleRequestUnblock : handleRequestBlock}
-                disabled={isProcessingBlockAction || isFetchingProfile}
-              >
-                {isBlocked ? 'Unblock user' : 'Block user'}
-              </Button>
-            </Box>
-          ) : null}
 
           {canEditProfile ? (
             <Stack spacing={2} sx={{ alignSelf: 'stretch' }}>
@@ -1152,6 +1144,95 @@ function ProfilePage() {
                     </Typography>
                   )}
                 </Section>
+
+                {/* Action buttons row */}
+                <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, width: '100%' }}>
+                  {/* Message box */}
+                  <Box
+                    className="section-content-box"
+                    sx={{
+                      flex: 1,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 2,
+                      p: 2,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 1,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <MessageIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      Message
+                    </Typography>
+                  </Box>
+
+                  {/* Report box */}
+                  <Box
+                    className="section-content-box"
+                    sx={{
+                      flex: 1,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 2,
+                      p: 2,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 1,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <FlagIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      Report
+                    </Typography>
+                  </Box>
+
+                  {/* Block/Unblock box (with functionality) */}
+                  {canManageBlock ? (
+                    <Box
+                      className="section-content-box"
+                      onClick={isBlocked ? handleRequestUnblock : handleRequestBlock}
+                      sx={{
+                        flex: 1,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                        p: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 1,
+                        cursor: isProcessingBlockAction || isFetchingProfile ? 'not-allowed' : 'pointer',
+                        opacity: isProcessingBlockAction || isFetchingProfile ? 0.6 : 1
+                      }}
+                    >
+                      {isBlocked ? (
+                        <HowToRegIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+                      ) : (
+                        <BlockIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+                      )}
+                      <Typography variant="body2" color="text.secondary">
+                        {isBlocked ? 'Unblock' : 'Block'}
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box
+                      className="section-content-box"
+                      sx={{
+                        flex: 1,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                        p: 2
+                      }}
+                    />
+                  )}
+                </Box>
+
                 {/*moved all testing text outside of this return statement. put it back here if you want to use it.*/}
                 {/*
                 <Section
