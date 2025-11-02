@@ -117,6 +117,8 @@ app.use('/api/bookmarks', verifyToken, require('./routes/bookmarks'));
 app.use('/api/chats', verifyToken, require('./routes/chats'));
 app.use('/api/updates', verifyToken, require('./routes/updates'));
 app.use('/api/media', verifyToken, require('./routes/media'));
+app.use('/api/reports', verifyToken, require('./routes/reports'));
+app.use('/api/feedback', verifyToken, require('./routes/feedback'));
 app.use('/api/storage', require('./routes/storage'));
 app.use('/api/debug', require('./routes/debug'));
 app.use('/api/auth', require('./routes/auth'));

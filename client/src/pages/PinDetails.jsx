@@ -1,12 +1,15 @@
 /* NOTE: Page exports configuration alongside the component. */
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import './PinDetails.css';
+import { Alert, Snackbar } from '@mui/material';
 import PlaceIcon from '@mui/icons-material/Place'; // used only for pageConfig
 import LeafletMap from '../components/Map';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import usePinDetails from '../hooks/usePinDetails';
+import ReportContentDialog from '../components/ReportContentDialog';
+import { createContentReport } from '../api/mongoDataApi';
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
@@ -104,6 +107,77 @@ function PinDetails() {
   } = usePinDetails({ pinId, location, isOffline });
 
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
+
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState(null);
+  const [reportReason, setReportReason] = useState('');
+  const [reportError, setReportError] = useState(null);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [reportStatus, setReportStatus] = useState(null);
+
+  const handleOpenReportReply = useCallback((reply) => {
+    if (!reply || !reply._id) {
+      setReportStatus({ type: 'error', message: 'Unable to report this reply.' });
+      return;
+    }
+    const summarySource = typeof reply.message === 'string' ? reply.message.trim() : '';
+    const summary = summarySource.length > 140 ? `${summarySource.slice(0, 137).trimEnd()}…` : summarySource || 'Reply';
+    const contextLabel = pin?.title ? `Pin: ${pin.title}` : 'Pin discussion';
+    setReportTarget({
+      contentType: 'reply',
+      contentId: reply._id,
+      summary,
+      context: contextLabel
+    });
+    setReportReason('');
+    setReportError(null);
+    setReportDialogOpen(true);
+  }, [pin]);
+
+  const handleCloseReportDialog = useCallback(() => {
+    if (isSubmittingReport) {
+      return;
+    }
+    setReportDialogOpen(false);
+    setReportTarget(null);
+    setReportReason('');
+    setReportError(null);
+  }, [isSubmittingReport]);
+
+  const handleSubmitReport = useCallback(async () => {
+    if (!reportTarget?.contentType || !reportTarget?.contentId) {
+      setReportError('Unable to submit this report.');
+      return;
+    }
+    if (isSubmittingReport) {
+      return;
+    }
+    setIsSubmittingReport(true);
+    setReportError(null);
+    try {
+      await createContentReport({
+        contentType: reportTarget.contentType,
+        contentId: reportTarget.contentId,
+        reason: reportReason.trim(),
+        context: reportTarget.context || ''
+      });
+      setReportDialogOpen(false);
+      setReportTarget(null);
+      setReportReason('');
+      setReportStatus({
+        type: 'success',
+        message: 'Thanks for the report. Our moderators will review it shortly.'
+      });
+    } catch (error) {
+      setReportError(error?.message || 'Failed to submit report. Please try again later.');
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  }, [reportReason, reportTarget, isSubmittingReport]);
+
+  const handleReportStatusClose = useCallback(() => {
+    setReportStatus(null);
+  }, []);
 
   return (
     <div className={`pin-details ${themeClass}`}>
@@ -393,6 +467,16 @@ function PinDetails() {
                   )}
                   <div className="comment-body">
                     <p>{message}</p>
+                    <button
+                      type="button"
+                      className="comment-report-btn"
+                      onClick={() => handleOpenReportReply(reply)}
+                      disabled={isOffline}
+                      aria-label="Report this reply"
+                      title={isOffline ? 'Reconnect to submit a report' : 'Report this reply'}
+                    >
+                      Report
+                    </button>
                   </div>
                 </div>
               );
@@ -511,6 +595,41 @@ function PinDetails() {
           </div>
         </div>
       ) : null}
+
+      <ReportContentDialog
+        open={reportDialogOpen}
+        onClose={handleCloseReportDialog}
+        onSubmit={handleSubmitReport}
+        reason={reportReason}
+        onReasonChange={setReportReason}
+        submitting={isSubmittingReport}
+        error={reportError}
+        contentSummary={reportTarget?.summary || ''}
+        context={reportTarget?.context || ''}
+      />
+
+      <Snackbar
+        open={Boolean(reportStatus)}
+        autoHideDuration={4000}
+        onClose={(_, reason) => {
+          if (reason === 'clickaway') {
+            return;
+          }
+          handleReportStatusClose();
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        {reportStatus ? (
+          <Alert
+            elevation={6}
+            variant="filled"
+            severity={reportStatus.type}
+            onClose={handleReportStatusClose}
+          >
+            {reportStatus.message}
+          </Alert>
+        ) : null}
+      </Snackbar>
     </div>
   );
 }

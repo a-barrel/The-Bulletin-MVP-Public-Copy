@@ -4,12 +4,13 @@ import AvatarIcon from '../assets/AvatarIcon.svg';
 import "./MessageBubble.css";
 import { formatFriendlyTimestamp, formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
 import GavelIcon from '@mui/icons-material/Gavel';
+import ReportProblemIcon from '@mui/icons-material/ReportProblemOutlined';
 
 const ATTACHMENT_ONLY_PLACEHOLDER = '[attachment-only-message]';
 
 
 
-function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate }) {
+function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate, onReport }) {
   const rawMessage = typeof msg?.message === 'string' ? msg.message : '';
   const strippedMessage = rawMessage.replace(/^GIF:\s*/i, '').trim();
   const isAttachmentOnly = rawMessage === ATTACHMENT_ONLY_PLACEHOLDER;
@@ -108,6 +109,31 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate 
             >
               {formatFriendlyTimestamp(msg.createdAt) || formatRelativeTime(msg.createdAt) || ''}
             </Typography>
+            {!isSelf && typeof onReport === 'function' ? (
+              <Tooltip title="Report message">
+                <span>
+                  <IconButton
+                    className="chat-report-btn"
+                    size="small"
+                    aria-label="Report this message"
+                    onClick={() => onReport(msg)}
+                    sx={{
+                      ml: 0.5,
+                      color: '#d84315',
+                      backgroundColor: 'rgba(216, 67, 21, 0.12)',
+                      borderRadius: '8px',
+                      transition: 'color 120ms ease, background-color 120ms ease',
+                      '&:hover, &:focus-visible': {
+                        color: '#ef6c00',
+                        backgroundColor: 'rgba(239, 108, 0, 0.16)'
+                      }
+                    }}
+                  >
+                    <ReportProblemIcon fontSize="inherit" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            ) : null}
             {canModerate && !isSelf && typeof onModerate === 'function' ? (
               <Tooltip title="Moderate user">
                 <span>
@@ -117,6 +143,7 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate 
                     aria-label="Moderate this user"
                     onClick={() => onModerate(msg)}
                     sx={{
+                      ml: 0.5,
                       color: '#1e6ef5',
                       backgroundColor: 'rgba(30, 110, 245, 0.12)',
                       borderRadius: '8px',

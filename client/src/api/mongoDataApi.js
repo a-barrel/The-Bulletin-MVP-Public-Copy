@@ -709,6 +709,102 @@ export async function submitModerationAction(input) {
   return payload;
 }
 
+export async function createContentReport({ contentType, contentId, reason, context }) {
+  if (!contentType || !contentId) {
+    throw new Error('contentType and contentId are required for reporting content');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/reports`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({
+      contentType,
+      contentId,
+      reason: reason ?? '',
+      context: context ?? ''
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, payload?.message || 'Failed to submit report');
+  }
+
+  return payload;
+}
+
+export async function listContentReports({ status, limit } = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const params = new URLSearchParams();
+  if (status) {
+    params.set('status', status);
+  }
+  if (limit) {
+    params.set('limit', String(limit));
+  }
+  const query = params.toString();
+
+  const response = await fetch(
+    `${baseUrl}/api/debug/moderation/reports${query ? `?${query}` : ''}`,
+    {
+      method: 'GET',
+      headers: await buildHeaders()
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, 'Failed to load moderation reports');
+  }
+
+  return payload;
+}
+
+export async function resolveContentReport(reportId, input) {
+  if (!reportId) {
+    throw new Error('reportId is required to resolve a report');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/moderation/reports/${encodeURIComponent(reportId)}/resolve`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify(input || {})
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, 'Failed to update report');
+  }
+
+  return payload;
+}
+
+export async function submitAnonymousFeedback({ message, contact, category }) {
+  if (!message || typeof message !== 'string') {
+    throw new Error('Feedback message is required.');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/feedback`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({
+      message,
+      contact: contact ?? '',
+      category: category ?? ''
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, 'Failed to send feedback');
+  }
+
+  return payload;
+}
+
 export async function fetchFriendOverview() {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/debug/friends/overview`, {

@@ -1,5 +1,5 @@
 /* NOTE: Page exports configuration alongside the component. */
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
@@ -9,6 +9,7 @@ import {
   Paper,
   Divider,
   Alert,
+  Snackbar,
   Button,
   CircularProgress,
   Dialog,
@@ -27,12 +28,15 @@ import {
   RadioGroup,
   Switch,
   Slider,
+  TextField,
   Chip
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SaveIcon from '@mui/icons-material/Save';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import FeedbackIcon from '@mui/icons-material/FeedbackOutlined';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import BlockIcon from '@mui/icons-material/Block';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
@@ -47,6 +51,7 @@ import useSettingsManager, {
   RADIUS_MIN
 } from '../hooks/useSettingsManager';
 import { metersToMiles } from '../utils/geo';
+import { submitAnonymousFeedback } from '../api/mongoDataApi';
 
 export const pageConfig = {
   id: 'settings',
@@ -99,6 +104,72 @@ function SettingsPage() {
   const radiusMeters = settings.radiusPreferenceMeters ?? DEFAULT_SETTINGS.radiusPreferenceMeters;
   const rawRadiusMiles = metersToMiles(radiusMeters);
   const radiusMiles = rawRadiusMiles === null ? null : Math.round(rawRadiusMiles * 10) / 10;
+
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackContact, setFeedbackContact] = useState('');
+  const [feedbackError, setFeedbackError] = useState(null);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackStatus, setFeedbackStatus] = useState(null);
+
+  const canAccessAdminDashboard =
+    Array.isArray(profile?.roles) &&
+    profile.roles.some((role) =>
+      typeof role === 'string' &&
+      ['admin', 'moderator', 'super-admin', 'system-admin'].includes(role.toLowerCase())
+    );
+
+  const handleOpenFeedbackDialog = () => {
+    setFeedbackDialogOpen(true);
+    setFeedbackMessage('');
+    setFeedbackContact('');
+    setFeedbackError(null);
+  };
+
+  const handleCloseFeedbackDialog = () => {
+    if (isSubmittingFeedback) {
+      return;
+    }
+    setFeedbackDialogOpen(false);
+    setFeedbackMessage('');
+    setFeedbackContact('');
+    setFeedbackError(null);
+  };
+
+  const handleSubmitFeedback = async () => {
+    const trimmedMessage = feedbackMessage.trim();
+    if (trimmedMessage.length < 10) {
+      setFeedbackError('Please share at least 10 characters.');
+      return;
+    }
+    if (isSubmittingFeedback) {
+      return;
+    }
+    setIsSubmittingFeedback(true);
+    setFeedbackError(null);
+    try {
+      await submitAnonymousFeedback({
+        message: trimmedMessage,
+        contact: feedbackContact.trim() || undefined,
+        category: 'settings-feedback'
+      });
+      setFeedbackStatus({
+        type: 'success',
+        message: 'Thanks for the feedback! We received it safely.'
+      });
+      setFeedbackDialogOpen(false);
+      setFeedbackMessage('');
+      setFeedbackContact('');
+    } catch (error) {
+      setFeedbackError(error?.message || 'Failed to send feedback. Please try again later.');
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
+  const handleFeedbackStatusClose = () => {
+    setFeedbackStatus(null);
+  };
 
   return (
     <Box
@@ -287,11 +358,41 @@ function SettingsPage() {
             <Divider />
 
             <Stack spacing={2}>
+              <Typography variant="h6">Anonymous feedback</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Share suggestions or bugs with the team. Add contact info if you’d like a follow-up.
+              </Typography>
+              <Button
+                type="button"
+                variant="contained"
+                color="secondary"
+                startIcon={<FeedbackIcon />}
+                onClick={handleOpenFeedbackDialog}
+                disabled={isOffline}
+                title={isOffline ? 'Reconnect to share feedback' : undefined}
+              >
+                Send feedback
+              </Button>
+            </Stack>
+
+            <Divider />
+
+            <Stack spacing={2}>
               <Typography variant="h6">Manage account</Typography>
               <Typography variant="body2" color="text.secondary">
                 Review who you&apos;ve blocked or sign out of the app.
               </Typography>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                {canAccessAdminDashboard ? (
+                  <Button
+                    component={Link}
+                    to={routes.admin.base}
+                    variant="outlined"
+                    startIcon={<AdminPanelSettingsIcon />}
+                  >
+                    Admin dashboard
+                  </Button>
+                ) : null}
                 <Button
                   onClick={handleOpenBlockedOverlay}
                   variant="outlined"
@@ -344,6 +445,58 @@ function SettingsPage() {
           </Button>
         </Stack>
       </Stack>
+
+      <Dialog
+        open={feedbackDialogOpen}
+        onClose={handleCloseFeedbackDialog}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Send anonymous feedback</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <Typography variant="body2" color="text.secondary">
+              We read every message. Please avoid sharing personal details unless you want us to reach out.
+            </Typography>
+            <TextField
+              label="Your feedback"
+              multiline
+              minRows={4}
+              value={feedbackMessage}
+              onChange={(event) => setFeedbackMessage(event.target.value)}
+              disabled={isSubmittingFeedback}
+              helperText="At least 10 characters."
+            />
+            <TextField
+              label="Contact (optional)"
+              value={feedbackContact}
+              onChange={(event) => setFeedbackContact(event.target.value)}
+              disabled={isSubmittingFeedback}
+              placeholder="Email or @username"
+            />
+            {feedbackError ? (
+              <Alert severity="error" onClose={() => setFeedbackError(null)}>
+                {feedbackError}
+              </Alert>
+            ) : null}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseFeedbackDialog} disabled={isSubmittingFeedback}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmitFeedback}
+            variant="contained"
+            color="secondary"
+            disabled={isSubmittingFeedback || isOffline}
+            title={isOffline ? 'Reconnect to send feedback' : undefined}
+          >
+            {isSubmittingFeedback ? <CircularProgress size={18} color="inherit" sx={{ mr: 1 }} /> : null}
+            {isSubmittingFeedback ? 'Sending...' : 'Send'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={blockedOverlayOpen}
@@ -417,6 +570,29 @@ function SettingsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={Boolean(feedbackStatus)}
+        autoHideDuration={4000}
+        onClose={(event, reason) => {
+          if (reason === 'clickaway') {
+            return;
+          }
+          handleFeedbackStatusClose();
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        {feedbackStatus ? (
+          <Alert
+            elevation={6}
+            variant="filled"
+            severity={feedbackStatus.type}
+            onClose={handleFeedbackStatusClose}
+          >
+            {feedbackStatus.message}
+          </Alert>
+        ) : null}
+      </Snackbar>
     </Box>
   );
 }

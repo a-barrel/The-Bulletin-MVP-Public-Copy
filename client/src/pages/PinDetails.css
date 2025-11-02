@@ -1067,3 +1067,26 @@
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+.comment-report-btn {
+  margin-top: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #d84315;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+  align-self: flex-start;
+}
+
+.comment-report-btn:hover,
+.comment-report-btn:focus-visible {
+  color: #ef6c00;
+}
+
+.comment-report-btn:disabled {
+  color: #9e9e9e;
+  cursor: not-allowed;
+  text-decoration: none;
+}

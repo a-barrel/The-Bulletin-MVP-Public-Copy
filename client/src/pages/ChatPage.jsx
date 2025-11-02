@@ -46,6 +46,7 @@ import Navbar from '../components/Navbar';
 import GlobalNavMenu from '../components/GlobalNavMenu';
 import MessageBubble from '../components/MessageBubble';
 import ChatComposer from '../components/ChatComposer';
+import ReportContentDialog from '../components/ReportContentDialog';
 import useDirectMessages from '../hooks/useDirectMessages';
 
 import { auth } from '../firebase';
@@ -58,7 +59,7 @@ import { useUpdates } from '../contexts/UpdatesContext';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constants/moderationActions';
 import normalizeObjectId from '../utils/normalizeObjectId';
-import { previewChatGif, uploadImage } from '../api/mongoDataApi';
+import { previewChatGif, uploadImage, createContentReport } from '../api/mongoDataApi';
 
 import './ChatPage.css';
 
@@ -358,6 +359,12 @@ function ChatPage() {
   const [channelTab, setChannelTab] = useState('rooms');
   const [channelDialogTab, setChannelDialogTab] = useState('rooms');
   const [isChannelDialogOpen, setIsChannelDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState(null);
+  const [reportReason, setReportReason] = useState('');
+  const [reportError, setReportError] = useState(null);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [reportStatus, setReportStatus] = useState(null);
   const [dmMessageDraft, setDmMessageDraft] = useState('');
   const dmGifPreviewRequestRef = useRef(null);
   const [dmGifPreview, setDmGifPreview] = useState(null);
@@ -1178,6 +1185,40 @@ function ChatPage() {
     return null;
   }, []);
 
+  const getMessageIdForReport = useCallback((message) => {
+    if (!message) {
+      return null;
+    }
+    const candidates = [message._id, message.id, message.messageId, message?._id?.$oid, message?.id?.$oid];
+    for (const candidate of candidates) {
+      const normalized = normalizeObjectId(candidate);
+      if (normalized) {
+        return normalized;
+      }
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+    if (typeof message?.messageId === 'string' && message.messageId.trim()) {
+      return message.messageId.trim();
+    }
+    return null;
+  }, []);
+
+  const getMessageReportSummary = useCallback((message) => {
+    if (!message) {
+      return '';
+    }
+    const text = getDisplayMessageText(message);
+    if (text) {
+      return text.length > 120 ? `${text.slice(0, 117).trimEnd()}…` : text;
+    }
+    if (Array.isArray(message?.attachments) && message.attachments.length > 0) {
+      return 'Attachment shared';
+    }
+    return 'Message';
+  }, [getDisplayMessageText]);
+
   const directViewerId = dmViewer?._id ? String(dmViewer._id) : null;
 
   const selectedDirectThread = useMemo(() => {
@@ -1203,6 +1244,7 @@ function ChatPage() {
     });
     return sorted.map((message) => {
       const author = message.sender || {};
+
       const authorId = author.id || author._id || null;
       const body = message.body || '';
       const sanitizedBody = body === ATTACHMENT_ONLY_PLACEHOLDER ? '' : body;
@@ -1216,6 +1258,100 @@ function ChatPage() {
       };
     });
   }, [directThreadDetail]);
+
+  const handleOpenReportForRoomMessage = useCallback(
+    (message) => {
+      const messageId = getMessageIdForReport(message);
+      if (!messageId) {
+        setReportStatus({ type: 'error', message: 'Unable to report this message.' });
+        return;
+      }
+      const summary = getMessageReportSummary(message);
+      const contextLabel = selectedRoom
+        ? `Room: ${selectedRoom.name || 'Unnamed room'}`
+        : 'Proximity chat';
+      setReportTarget({
+        contentType: 'chat-message',
+        contentId: messageId,
+        summary,
+        context: contextLabel
+      });
+      setReportReason('');
+      setReportError(null);
+      setReportDialogOpen(true);
+    },
+    [getMessageIdForReport, getMessageReportSummary, selectedRoom]
+  );
+
+  const handleOpenReportForDirectMessage = useCallback(
+    (message) => {
+      const messageId = getMessageIdForReport(message);
+      if (!messageId) {
+        setReportStatus({ type: 'error', message: 'Unable to report this message.' });
+        return;
+      }
+      const summary = getMessageReportSummary(message);
+      const contextLabel = selectedDirectNames.length
+        ? `Direct thread with ${selectedDirectNames.join(', ')}`
+        : 'Direct message thread';
+      setReportTarget({
+        contentType: 'direct-message',
+        contentId: messageId,
+        summary,
+        context: contextLabel,
+        threadId: selectedDirectThreadId
+      });
+      setReportReason('');
+      setReportError(null);
+      setReportDialogOpen(true);
+    },
+    [getMessageIdForReport, getMessageReportSummary, selectedDirectNames, selectedDirectThreadId]
+  );
+
+  const handleCloseReportDialog = useCallback(() => {
+    if (isSubmittingReport) {
+      return;
+    }
+    setReportDialogOpen(false);
+    setReportTarget(null);
+    setReportReason('');
+    setReportError(null);
+  }, [isSubmittingReport]);
+
+  const handleSubmitReport = useCallback(async () => {
+    if (!reportTarget?.contentType || !reportTarget?.contentId) {
+      setReportError('Unable to submit this report.');
+      return;
+    }
+    if (isSubmittingReport) {
+      return;
+    }
+    setIsSubmittingReport(true);
+    setReportError(null);
+    try {
+      await createContentReport({
+        contentType: reportTarget.contentType,
+        contentId: reportTarget.contentId,
+        reason: reportReason.trim(),
+        context: reportTarget.context || ''
+      });
+      setReportDialogOpen(false);
+      setReportTarget(null);
+      setReportReason('');
+      setReportStatus({
+        type: 'success',
+        message: 'Thanks for the report. Our moderators will review it shortly.'
+      });
+    } catch (error) {
+      setReportError(error?.message || 'Failed to submit report. Please try again later.');
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  }, [reportTarget, reportReason, isSubmittingReport]);
+
+  const handleReportStatusClose = useCallback(() => {
+    setReportStatus(null);
+  }, []);
 
   const dmSelectedGifOption = useMemo(() => {
     if (
@@ -1367,9 +1503,10 @@ function ChatPage() {
           authUser={authUser}
           canModerate={canModerateMessages}
           onModerate={handleOpenModerationForMessage}
+          onReport={handleOpenReportForRoomMessage}
         />
       )),
-    [authUser, canModerateMessages, getMessageKey, handleOpenModerationForMessage, uniqueMessages]
+    [authUser, canModerateMessages, getMessageKey, handleOpenModerationForMessage, handleOpenReportForRoomMessage, uniqueMessages]
   );
 
   const directMessageBubbles = useMemo(
@@ -1385,9 +1522,10 @@ function ChatPage() {
           isSelf={Boolean(directViewerId && message.authorId && directViewerId === message.authorId)}
           authUser={authUser}
           canModerate={false}
+          onReport={handleOpenReportForDirectMessage}
         />
       )),
-    [authUser, directMessageItems, directViewerId, getMessageKey]
+    [authUser, directMessageItems, directViewerId, getMessageKey, handleOpenReportForDirectMessage]
   );
 
   const RoomListContent = () => (
@@ -1891,6 +2029,42 @@ function ChatPage() {
               <Alert severity="error">{presenceError}</Alert>
             </Box>
           ) : null}
+
+          <ReportContentDialog
+            open={reportDialogOpen}
+            onClose={handleCloseReportDialog}
+            onSubmit={handleSubmitReport}
+            reason={reportReason}
+            onReasonChange={setReportReason}
+            submitting={isSubmittingReport}
+            error={reportError}
+            contentSummary={reportTarget?.summary || ''}
+            context={reportTarget?.context || ''}
+          />
+
+          <Snackbar
+            open={Boolean(reportStatus)}
+            autoHideDuration={4000}
+            onClose={(_, reason) => {
+              if (reason === 'clickaway') {
+                return;
+              }
+              handleReportStatusClose();
+            }}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            sx={{ bottom: `${scrollBtnBottom + 72}px` }}
+          >
+            {reportStatus ? (
+              <Alert
+                elevation={6}
+                variant="filled"
+                severity={reportStatus.type}
+                onClose={handleReportStatusClose}
+              >
+                {reportStatus.message}
+              </Alert>
+            ) : null}
+          </Snackbar>
 
           <Snackbar
             open={channelTab === 'direct' && Boolean(directSendStatus)}

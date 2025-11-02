@@ -130,6 +130,28 @@ const ensureUserStats = (userDoc) => {
   return userDoc.stats;
 };
 
+const USER_SUMMARY_PROJECTION =
+  'username displayName roles accountStatus avatar stats relationships.blockedUserIds';
+
+const buildBlockedSet = (userDoc) => new Set(mapIdList(userDoc?.relationships?.blockedUserIds));
+
+const isBlockedBetweenUsers = (viewer, target) => {
+  if (!viewer || !target) {
+    return false;
+  }
+  const viewerId = toIdString(viewer._id ?? viewer);
+  const targetId = toIdString(target._id ?? target);
+  if (!viewerId || !targetId) {
+    return false;
+  }
+  const viewerBlocked = buildBlockedSet(viewer);
+  if (viewerBlocked.has(targetId)) {
+    return true;
+  }
+  const targetBlocked = buildBlockedSet(target);
+  return targetBlocked.has(viewerId);
+};
+
 const ensureBookmarkForUser = async ({ userDoc, pinDoc }) => {
   if (!userDoc?._id || !pinDoc?._id) {
     return {
@@ -572,7 +594,7 @@ router.post('/', verifyToken, async (req, res) => {
     } catch (error) {
       console.error('Failed to update creator stats after pin creation:', error);
     }
-    const hydrated = await Pin.findById(pin._id).populate('creatorId');
+    const hydrated = await Pin.findById(pin._id).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
     let sourcePin = hydrated ?? pin;
     const creatorPublic = hydrated ? mapUserToPublic(hydrated.creatorId) : undefined;
     const viewerId = viewer ? toIdString(viewer._id) : undefined;
@@ -644,6 +666,12 @@ router.get('/nearby', verifyToken, async (req, res) => {
   try {
     const { latitude, longitude, distanceMiles, limit, type } = NearbyPinsQuerySchema.parse(req.query);
     const maxDistanceMeters = milesToMeters(distanceMiles) ?? distanceMiles * METERS_PER_MILE;
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const viewerIdString = toIdString(viewer._id);
+    const viewerBlockedSet = buildBlockedSet(viewer);
     const now = new Date();
     const queryFilters = [
       {
@@ -683,9 +711,24 @@ router.get('/nearby', verifyToken, async (req, res) => {
 
     const pins = await Pin.find(geoQuery)
       .limit(limit)
-      .populate('creatorId');
+      .populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
 
-    const payload = pins.map((pinDoc) => {
+    const filteredPins = pins.filter((pinDoc) => {
+      const creatorDoc = pinDoc.creatorId;
+      if (!creatorDoc) {
+        return false;
+      }
+      const creatorId = toIdString(creatorDoc._id);
+      if (creatorId && viewerBlockedSet.has(creatorId)) {
+        return false;
+      }
+      if (isBlockedBetweenUsers(viewer, creatorDoc)) {
+        return false;
+      }
+      return true;
+    });
+
+    const payload = filteredPins.map((pinDoc) => {
       const creatorPublic = mapUserToPublic(pinDoc.creatorId);
       const listItem = mapPinToListItem(pinDoc, creatorPublic);
       const [pinLongitude, pinLatitude] = pinDoc.coordinates.coordinates;
@@ -709,6 +752,12 @@ router.get('/nearby', verifyToken, async (req, res) => {
 router.get('/', verifyToken, async (req, res) => {
   try {
     const query = PinsQuerySchema.parse(req.query);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const viewerIdString = toIdString(viewer._id);
+    const viewerBlockedSet = buildBlockedSet(viewer);
     const limit = query.limit;
     const now = new Date();
     const filters = [];
@@ -775,14 +824,34 @@ router.get('/', verifyToken, async (req, res) => {
       const pipeline = [geoNearStage, { $limit: limit }];
       const aggregated = await Pin.aggregate(pipeline);
       const hydrated = aggregated.map((doc) => Pin.hydrate(doc));
-      const populated = await Pin.populate(hydrated, { path: 'creatorId' });
+      const populated = await Pin.populate(hydrated, {
+        path: 'creatorId',
+        select: USER_SUMMARY_PROJECTION
+      });
 
-      const payload = populated.map((pinDoc, index) => {
+      const distanceLookup = new Map(aggregated.map((doc, index) => [toIdString(doc._id), aggregated[index]?.distanceMeters]));
+
+      const filteredPins = populated.filter((pinDoc) => {
+        const creatorDoc = pinDoc.creatorId;
+        if (!creatorDoc) {
+          return false;
+        }
+        const creatorId = toIdString(creatorDoc._id);
+        if (creatorId && viewerBlockedSet.has(creatorId)) {
+          return false;
+        }
+        if (isBlockedBetweenUsers(viewer, creatorDoc)) {
+          return false;
+        }
+        return true;
+      });
+
+      const payload = filteredPins.map((pinDoc) => {
         const creatorPublic = mapUserToPublic(pinDoc.creatorId);
         const listItem = mapPinToListItem(pinDoc, creatorPublic);
         return {
           ...listItem,
-          distanceMeters: aggregated[index]?.distanceMeters
+          distanceMeters: distanceLookup.get(toIdString(pinDoc._id))
         };
       });
 
@@ -797,9 +866,24 @@ router.get('/', verifyToken, async (req, res) => {
     const pins = await Pin.find(matchQuery)
       .sort(sortSpec)
       .limit(limit)
-      .populate('creatorId');
+      .populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
 
-    const payload = pins.map((pin) => {
+    const filteredPins = pins.filter((pin) => {
+      const creatorDoc = pin.creatorId;
+      if (!creatorDoc) {
+        return false;
+      }
+      const creatorId = toIdString(creatorDoc._id);
+      if (creatorId && viewerBlockedSet.has(creatorId)) {
+        return false;
+      }
+      if (isBlockedBetweenUsers(viewer, creatorDoc)) {
+        return false;
+      }
+      return true;
+    });
+
+    const payload = filteredPins.map((pin) => {
       const creatorPublic = mapUserToPublic(pin.creatorId);
       return mapPinToListItem(pin, creatorPublic);
     });
@@ -817,12 +901,18 @@ router.get('/', verifyToken, async (req, res) => {
 router.get('/:pinId', verifyToken, async (req, res) => {
   try {
     const { pinId } = PinIdSchema.parse(req.params);
-    const pin = await Pin.findById(pinId).populate('creatorId');
+    const pin = await Pin.findById(pinId).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
     if (!pin) {
       return res.status(404).json({ message: 'Pin not found' });
     }
 
     const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (isBlockedBetweenUsers(viewer, pin.creatorId)) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
     const viewerId = viewer ? toIdString(viewer._id) : undefined;
     let viewerHasBookmarked = false;
     if (viewer) {
@@ -866,9 +956,13 @@ router.post('/:pinId/attendance', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const pin = await Pin.findById(pinId).populate('creatorId');
+    const pin = await Pin.findById(pinId).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
     if (!pin) {
       return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    if (isBlockedBetweenUsers(viewer, pin.creatorId)) {
+      return res.status(403).json({ message: 'You cannot interact with this pin.' });
     }
 
     if (pin.type !== 'event') {
@@ -1054,18 +1148,25 @@ router.post('/:pinId/replies', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const pin = await Pin.findById(pinId).populate('creatorId');
+    const pin = await Pin.findById(pinId).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
     if (!pin) {
       return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    if (isBlockedBetweenUsers(viewer, pin.creatorId)) {
+      return res.status(403).json({ message: 'You cannot interact with this pin.' });
     }
 
     let parentReplyId = undefined;
     let parentReplyDoc = null;
     if (input.parentReplyId) {
       parentReplyId = new mongoose.Types.ObjectId(input.parentReplyId);
-      parentReplyDoc = await Reply.findOne({ _id: parentReplyId, pinId }).populate('authorId');
+      parentReplyDoc = await Reply.findOne({ _id: parentReplyId, pinId }).populate({ path: 'authorId', select: USER_SUMMARY_PROJECTION });
       if (!parentReplyDoc) {
         return res.status(404).json({ message: 'Parent reply not found for this pin' });
+      }
+      if (isBlockedBetweenUsers(viewer, parentReplyDoc.authorId)) {
+        return res.status(403).json({ message: 'You cannot reply to this comment.' });
       }
     }
 
@@ -1091,7 +1192,7 @@ router.post('/:pinId/replies', verifyToken, async (req, res) => {
     }
     await pin.save();
 
-    const populatedReply = await Reply.findById(reply._id).populate('authorId');
+    const populatedReply = await Reply.findById(reply._id).populate({ path: 'authorId', select: USER_SUMMARY_PROJECTION });
     const payload = mapReply(populatedReply ?? reply, mapUserToPublic(populatedReply?.authorId ?? viewer));
     broadcastPinReply({
       pin,
@@ -1114,11 +1215,40 @@ router.post('/:pinId/replies', verifyToken, async (req, res) => {
 router.get('/:pinId/replies', verifyToken, async (req, res) => {
   try {
     const { pinId } = PinIdSchema.parse(req.params);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const viewerBlockedSet = buildBlockedSet(viewer);
+
+    const pin = await Pin.findById(pinId).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
+    if (!pin) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
+    if (isBlockedBetweenUsers(viewer, pin.creatorId)) {
+      return res.status(404).json({ message: 'Replies unavailable.' });
+    }
+
     const replies = await Reply.find({ pinId })
       .sort({ createdAt: -1, updatedAt: -1, _id: -1 })
-      .populate('authorId');
+      .populate({ path: 'authorId', select: USER_SUMMARY_PROJECTION });
 
-    const payload = replies.map((reply) => mapReply(reply, mapUserToPublic(reply.authorId)));
+    const filteredReplies = replies.filter((reply) => {
+      const author = reply.authorId;
+      if (!author) {
+        return false;
+      }
+      const authorId = toIdString(author._id);
+      if (authorId && viewerBlockedSet.has(authorId)) {
+        return false;
+      }
+      if (isBlockedBetweenUsers(viewer, author)) {
+        return false;
+      }
+      return true;
+    });
+
+    const payload = filteredReplies.map((reply) => mapReply(reply, mapUserToPublic(reply.authorId)));
     res.json(payload);
   } catch (error) {
     if (error instanceof ZodError) {
@@ -1137,7 +1267,7 @@ router.put('/:pinId', verifyToken, async (req, res) => {
     const maxEventTimestamp = now + EVENT_MAX_LEAD_TIME_MS;
     const maxDiscussionTimestamp = now + DISCUSSION_MAX_DURATION_MS;
 
-    const pin = await Pin.findById(pinId).populate('creatorId');
+    const pin = await Pin.findById(pinId).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
     if (!pin) {
       return res.status(404).json({ message: 'Pin not found' });
     }
@@ -1234,7 +1364,7 @@ router.put('/:pinId', verifyToken, async (req, res) => {
     }
 
     await pin.save();
-    const hydrated = await Pin.findById(pin._id).populate('creatorId');
+    const hydrated = await Pin.findById(pin._id).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
     const sourcePin = hydrated ?? pin;
     const creatorPublic = hydrated ? mapUserToPublic(hydrated.creatorId) : mapUserToPublic(pin.creatorId);
     const viewer = await resolveViewerUser(req);
