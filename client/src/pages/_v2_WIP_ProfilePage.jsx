@@ -35,7 +35,7 @@ import {
 } from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
 import { BADGE_METADATA } from '../utils/badges';
-import BackButton from '../components/BackButton';
+import '../components/BackButton.css';
 import './_v2_WIP_ProfilePage.css';
 
 export const pageConfig = {
@@ -172,11 +172,11 @@ const Section = ({ title, description, children }) => (
       ) : null}
     </Box>
     <Box
+      className="section-content-box"
       sx={{
         borderRadius: 2,
         border: '1px solid',
         borderColor: 'divider',
-        backgroundColor: 'background.default',
         p: { xs: 2, md: 3 }
       }}
     >
@@ -348,8 +348,8 @@ function ProfilePage() {
   const normalizedTargetId = effectiveUser?._id
     ? String(effectiveUser._id)
     : targetUserId && targetUserId !== 'me'
-    ? targetUserId
-    : null;
+      ? targetUserId
+      : null;
   const normalizedBlockedIds = Array.isArray(viewerProfile?.relationships?.blockedUserIds)
     ? viewerProfile.relationships.blockedUserIds.map((id) => String(id))
     : [];
@@ -544,10 +544,10 @@ function ProfilePage() {
     ]
   );
 
-const detailEntries = useMemo(() => {
-  if (!effectiveUser || typeof effectiveUser !== 'object') {
-    return [];
-  }
+  const detailEntries = useMemo(() => {
+    if (!effectiveUser || typeof effectiveUser !== 'object') {
+      return [];
+    }
 
     return Object.entries(effectiveUser)
       .filter(([, value]) => value !== undefined)
@@ -775,14 +775,38 @@ const detailEntries = useMemo(() => {
     return base ? `${base}${path}` : path;
   })();
 
+  const handleBack = useCallback(() => {
+    const originPath = typeof location.state?.from === 'string' ? location.state.from : null;
+    if (originPath) {
+      navigate(originPath);
+    } else {
+      navigate(-1);
+    }
+  }, [navigate, location.state]);
+
   return (
     <div className="profile-page-container">
-      <BackButton 
-        className="profile-back-nav"
-        buttonClassName="back-button"
-        ariaLabel="Go back to previous page"
-        centerText="Profile"
-      />
+      <div className="back-nav-bar profile-back-nav">
+        <button
+          type="button"
+          className="back-button"
+          aria-label="Go back to previous page"
+          onClick={handleBack}
+        >
+          <ArrowBackIcon className="back-button__icon" />
+          <span className="back-button__text">Profile</span>
+        </button>
+        {canEditProfile && !isEditing && (
+          <Button
+            variant="contained"
+            onClick={handleBeginEditing}
+            disabled={!effectiveUser || isFetchingProfile}
+            sx={{ ml: 'auto' }}
+          >
+            Edit profile
+          </Button>
+        )}
+      </div>
       <div className="profile-page-frame">
         <Box
           component="img"
@@ -1036,17 +1060,7 @@ const detailEntries = useMemo(() => {
                     </Button>
                   </Stack>
                 </Stack>
-              ) : (
-                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                  <Button
-                    variant="contained"
-                    onClick={handleBeginEditing}
-                    disabled={!effectiveUser || isFetchingProfile}
-                  >
-                    Edit profile
-                  </Button>
-                </Box>
-              )}
+              ) : null}
             </Stack>
           ) : null}
 
@@ -1080,7 +1094,7 @@ const detailEntries = useMemo(() => {
               <Stack spacing={3}>
                 <Section
                   title="Bio"
-                  description="Everything they want you to know right now."
+                  //description="Everything they want you to know right now."
                 >
                   {bioText ? (
                     <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
@@ -1095,7 +1109,6 @@ const detailEntries = useMemo(() => {
 
                 <Section
                   title="Badges & achievements"
-                  description="Recognition earned by this community member."
                 >
                   {badgeList.length ? (
                     <Stack direction="row" flexWrap="wrap" gap={1.5}>
@@ -1135,11 +1148,12 @@ const detailEntries = useMemo(() => {
                     </Stack>
                   ) : (
                     <Typography variant="body2" color="text.secondary">
-                      No badges yet â€” theyâ€™ll appear here once this user starts collecting achievements.
+                      No badges yet. They will appear here once this user starts collecting achievements.
                     </Typography>
                   )}
                 </Section>
-
+                {/*moved all testing text outside of this return statement. put it back here if you want to use it.*/}
+                {/*
                 <Section
                   title="Highlights"
                   description="At-a-glance stats across this profile."
@@ -1169,7 +1183,6 @@ const detailEntries = useMemo(() => {
                     </Typography>
                   )}
                 </Section>
-
                 <Section
                   title="Activity & collections"
                   description="Quick counts for pins, bookmarks, rooms, and locations associated with this user."
@@ -1351,6 +1364,7 @@ const detailEntries = useMemo(() => {
                     </Collapse>
                   </Stack>
                 ) : null}
+                */}
               </Stack>
             </>
           ) : null}
@@ -1383,12 +1397,12 @@ const detailEntries = useMemo(() => {
             {isProcessingBlockAction
               ? 'Updating...'
               : blockDialogMode === 'block'
-              ? 'Block user'
-              : 'Unblock user'}
+                ? 'Block user'
+                : 'Unblock user'}
           </Button>
         </DialogActions>
       </Dialog>
-    </div>
+    </div >
   );
 }
 
