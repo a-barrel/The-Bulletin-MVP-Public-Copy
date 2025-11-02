@@ -1613,7 +1613,16 @@ export async function createUpdate(input) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to create update');
+    const details = Array.isArray(payload?.issues)
+      ? `: ${payload.issues
+          .map((issue) => {
+            const path = Array.isArray(issue?.path) ? issue.path.join('.') : '';
+            return `${path} ${issue?.message ?? ''}`.trim();
+          })
+          .filter(Boolean)
+          .join('; ')}`
+      : '';
+    throw new Error((payload?.message || 'Failed to create update') + details);
   }
 
   return payload;

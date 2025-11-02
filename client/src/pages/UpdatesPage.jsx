@@ -127,11 +127,11 @@ function UpdatesPage() {
       if (update.readAt) {
         return;
       }
-      const category = (update.payload?.category || update.payload?.type || '').toLowerCase();
-      if (category.includes('discussion')) {
+      const category = (update.category || '').toLowerCase();
+      if (category === 'discussion') {
         counts.unreadDiscussionsCount += 1;
       }
-      if (category.includes('event')) {
+      if (category === 'event') {
         counts.unreadEventsCount += 1;
       }
     });
@@ -145,12 +145,12 @@ function UpdatesPage() {
     }
 
     return filteredUpdates.filter((update) => {
-      const category = (update.payload?.category || update.payload?.type || '').toLowerCase();
+      const category = (update.category || '').toLowerCase();
       if (selectedTab === 'Discussions') {
-        return category.includes('discussion');
+        return category === 'discussion';
       }
       if (selectedTab === 'Events') {
-        return category.includes('event');
+        return category === 'event';
       }
       return true;
     });

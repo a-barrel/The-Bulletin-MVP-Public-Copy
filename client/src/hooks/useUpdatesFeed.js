@@ -12,6 +12,33 @@ import { useUpdates } from '../contexts/UpdatesContext';
 
 const noop = () => {};
 
+const deriveUpdateCategory = (update) => {
+  const explicit = String(update?.payload?.category || '').trim().toLowerCase();
+  if (explicit) {
+    return explicit;
+  }
+
+  const type = String(update?.payload?.type || '').trim().toLowerCase();
+  if (!type) {
+    return 'other';
+  }
+
+  if (type.startsWith('event')) {
+    return 'event';
+  }
+
+  if (
+    type.includes('discussion') ||
+    type.includes('pin') ||
+    type.includes('reply') ||
+    type.includes('chat')
+  ) {
+    return 'discussion';
+  }
+
+  return 'other';
+};
+
 export default function useUpdatesFeed() {
   const [firebaseUser, firebaseLoading] = useAuthState(auth);
 
@@ -48,12 +75,13 @@ export default function useUpdatesFeed() {
         return;
       }
       metrics.total += 1;
+      const category = update?.category || deriveUpdateCategory(update);
       const type = String(update?.payload?.type || '').toLowerCase();
       if (type === 'bookmark-update') {
         metrics.bookmark += 1;
-      } else if (type.includes('event')) {
+      } else if (category === 'event') {
         metrics.events += 1;
-      } else if (type.includes('pin')) {
+      } else if (category === 'discussion') {
         metrics.discussions += 1;
       }
     });
@@ -128,7 +156,14 @@ export default function useUpdatesFeed() {
       pendingRefreshRef.current = true;
       try {
         const result = await fetchUpdates({ userId: profile._id, limit: 100 });
-        setUpdates(result);
+        setUpdates(
+          Array.isArray(result)
+            ? result.map((item) => ({
+                ...item,
+                category: deriveUpdateCategory(item)
+              }))
+            : []
+        );
       } catch (error) {
         setUpdates([]);
         setUpdatesError(error?.message || 'Failed to load updates.');
@@ -169,7 +204,8 @@ export default function useUpdatesFeed() {
             ? {
                 ...item,
                 readAt: updated.readAt,
-                readBy: updated.readBy
+                readBy: updated.readBy,
+                category: item.category ?? deriveUpdateCategory(updated)
               }
             : item
         )
