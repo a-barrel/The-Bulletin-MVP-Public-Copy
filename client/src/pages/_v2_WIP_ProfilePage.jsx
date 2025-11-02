@@ -1192,7 +1192,7 @@ function ProfilePage() {
                   </Box>
 
                   {/* Block/Unblock box (with functionality) */}
-                  {canManageBlock ? (
+                  {!isViewingSelf && canManageBlock ? (
                     <Box
                       className="section-content-box"
                       onClick={isBlocked ? handleRequestUnblock : handleRequestBlock}
@@ -1219,18 +1219,7 @@ function ProfilePage() {
                         {isBlocked ? 'Unblock' : 'Block'}
                       </Typography>
                     </Box>
-                  ) : (
-                    <Box
-                      className="section-content-box"
-                      sx={{
-                        flex: 1,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 2,
-                        p: 2
-                      }}
-                    />
-                  )}
+                  ) : null}
                 </Box>
 
                 {/*moved all testing text outside of this return statement. put it back here if you want to use it.*/}
