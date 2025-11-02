@@ -51,6 +51,39 @@ const BOOKMARK_UNSORTED_ID = '__ungrouped__';
 const QUICK_NAV_MAX_ITEMS = 4;
 const QUICK_NAV_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+function areShortcutListsEqual(a, b) {
+  if (a === b) {
+    return true;
+  }
+  if (!Array.isArray(a) || !Array.isArray(b)) {
+    return false;
+  }
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (let index = 0; index < a.length; index += 1) {
+    const prev = a[index];
+    const next = b[index];
+    if (prev === next) {
+      continue;
+    }
+    if (!prev || !next) {
+      return false;
+    }
+    if (
+      prev.key !== next.key ||
+      prev.label !== next.label ||
+      prev.to !== next.to ||
+      prev.count !== next.count ||
+      prev.description !== next.description ||
+      prev.badgeCount !== next.badgeCount
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export default function GlobalNavMenu({
   className = '',
   triggerClassName = 'header-icon-btn',
@@ -67,6 +100,7 @@ export default function GlobalNavMenu({
   const bookmarkFetchMetaRef = useRef({ fetchedAt: 0, loading: false });
   const hiddenQuickNavRef = useRef(new Set());
   const [bookmarkShortcuts, setBookmarkShortcuts] = useState([]);
+  const bookmarkShortcutsRef = useRef(bookmarkShortcuts);
   const [bookmarkStatus, setBookmarkStatus] = useState(null);
 
   const filterShortcuts = useCallback(
@@ -82,6 +116,18 @@ export default function GlobalNavMenu({
       }),
     []
   );
+
+  const applyBookmarkShortcuts = useCallback(
+    (items = []) => {
+      const filtered = filterShortcuts(Array.isArray(items) ? items : []);
+      setBookmarkShortcuts((prev) => (areShortcutListsEqual(prev, filtered) ? prev : filtered));
+    },
+    [filterShortcuts]
+  );
+
+  useEffect(() => {
+    bookmarkShortcutsRef.current = bookmarkShortcuts;
+  }, [bookmarkShortcuts]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -104,13 +150,13 @@ export default function GlobalNavMenu({
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed?.items)) {
-          setBookmarkShortcuts(filterShortcuts(parsed.items));
+          applyBookmarkShortcuts(parsed.items);
         }
       }
     } catch (error) {
       console.warn('Failed to read bookmark quick navigation cache', error);
     }
-  }, [filterShortcuts]);
+  }, [applyBookmarkShortcuts]);
 
   const computeBookmarkQuickNav = useCallback(
     (collections = []) => {
@@ -187,8 +233,7 @@ export default function GlobalNavMenu({
     fetchBookmarkCollections()
       .then((collections) => {
         const items = computeBookmarkQuickNav(Array.isArray(collections) ? collections : []);
-        const filteredItems = filterShortcuts(items);
-        setBookmarkShortcuts(filteredItems);
+        applyBookmarkShortcuts(items);
         meta.fetchedAt = Date.now();
         if (typeof window !== 'undefined') {
           try {
@@ -210,7 +255,7 @@ export default function GlobalNavMenu({
       .finally(() => {
         bookmarkFetchMetaRef.current.loading = false;
       });
-  }, [bookmarkShortcuts.length, computeBookmarkQuickNav, filterShortcuts, isOffline, open]);
+  }, [applyBookmarkShortcuts, bookmarkShortcuts.length, computeBookmarkQuickNav, isOffline, open]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -242,8 +287,8 @@ export default function GlobalNavMenu({
         } catch (cacheError) {
           console.warn('Failed to parse cached quick nav items', cacheError);
         }
-        const nextItems = cachedItems.length ? cachedItems : bookmarkShortcuts;
-        setBookmarkShortcuts(filterShortcuts(nextItems));
+        const nextItems = cachedItems.length ? cachedItems : bookmarkShortcutsRef.current;
+        applyBookmarkShortcuts(nextItems);
       } catch (error) {
         console.warn('Failed to sync bookmark quick nav preferences', error);
       }
@@ -262,7 +307,7 @@ export default function GlobalNavMenu({
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('pinpoint:bookmarkQuickNavPrefsChanged', syncPrefs);
     };
-  }, [bookmarkShortcuts, filterShortcuts]);
+  }, [applyBookmarkShortcuts]);
 
   const menuItems = useMemo(
     () => {

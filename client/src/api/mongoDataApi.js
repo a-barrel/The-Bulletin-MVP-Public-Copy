@@ -709,6 +709,35 @@ export async function updateCurrentUserProfile(input) {
   return payload;
 }
 
+export async function registerPushToken(token, options = {}) {
+  const normalizedToken = typeof token === 'string' ? token.trim() : '';
+  if (!normalizedToken) {
+    throw new Error('Push token is required.');
+  }
+
+  const platform =
+    typeof options?.platform === 'string' && options.platform.trim()
+      ? options.platform.trim()
+      : undefined;
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/push-tokens`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({
+      token: normalizedToken,
+      ...(platform ? { platform } : {})
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, payload?.message || 'Failed to register push token');
+  }
+
+  return payload;
+}
+
 export async function fetchBlockedUsers() {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/users/me/blocked`, {
