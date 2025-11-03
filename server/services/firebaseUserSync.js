@@ -9,11 +9,21 @@ const USERNAME_MAX_LENGTH = 32;
 const DEFAULT_USERNAME_PREFIX = 'user';
 const DEFAULT_SAMPLE_PASSWORD = 'Pinpoint123!';
 
+const resolveProfileImageExtension = () => {
+  const configured = process.env.PINPOINT_PROFILE_IMAGE_EXTENSION;
+  if (configured && configured.trim()) {
+    return configured.trim().replace(/^\.+/, '').toLowerCase();
+  }
+  return 'jpg';
+};
+
+const PROFILE_IMAGE_EXTENSION = resolveProfileImageExtension();
+
 const PROFILE_IMAGE_COUNT =
-  Number.parseInt(process.env.PINPOINT_PROFILE_IMAGE_COUNT ?? '12', 10) || 12;
+  Number.parseInt(process.env.PINPOINT_PROFILE_IMAGE_COUNT ?? '10', 10) || 10;
 const PROFILE_IMAGE_PATHS = Array.from({ length: PROFILE_IMAGE_COUNT }, (_, index) => {
   const padded = String(index + 1).padStart(2, '0');
-  return `/images/profile/profile-${padded}.jpg`;
+  return `/images/profile/profile-${padded}.${PROFILE_IMAGE_EXTENSION}`;
 });
 
 const hasProfileImages = PROFILE_IMAGE_PATHS.length > 0;

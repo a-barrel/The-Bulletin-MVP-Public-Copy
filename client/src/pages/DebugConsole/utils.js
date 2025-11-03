@@ -11,6 +11,7 @@ import {
   metersToLongitudeDegrees,
   normalizeLongitude
 } from '../../utils/geo';
+import { normalizeProfileImagePath } from '../../utils/media';
 
 export {
   formatDistanceMiles,
@@ -24,11 +25,12 @@ export {
 
 export const resolveMediaUrl = (value, fallback = '/images/profile/profile-01.jpg') => {
   const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
-  const target = value && value.trim().length > 0 ? value.trim() : fallback;
+  const target = value && value.trim().length > 0 ? normalizeProfileImagePath(value.trim()) : fallback;
   if (/^(?:[a-z]+:)?\/\//i.test(target) || target.startsWith('data:')) {
     return target;
   }
-  const normalized = target.startsWith('/') ? target : `/${target}`;
+  const normalizedRaw = target.startsWith('/') ? target : `/${target}`;
+  const normalized = normalizeProfileImagePath(normalizedRaw);
   return base ? `${base}${normalized}` : normalized;
 };
 

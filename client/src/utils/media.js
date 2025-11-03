@@ -2,7 +2,23 @@ import runtimeConfig from '../config/runtime';
 
 const DEFAULT_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
 
+const LEGACY_PROFILE_IMAGE_REGEX = /(\/images\/profile\/profile-\d+)\.png$/i;
+
+export const DEFAULT_PROFILE_IMAGE_REGEX = /\/images\/profile\/profile-\d+\.(?:png|jpg)$/i;
+
 const isAbsoluteUrl = (value) => /^(?:[a-z]+:)?\/\//i.test(value) || value.startsWith('data:');
+
+export const normalizeProfileImagePath = (value) => {
+  if (typeof value !== 'string' || value.length === 0) {
+    return value;
+  }
+
+  if (isAbsoluteUrl(value)) {
+    return value;
+  }
+
+  return value.replace(LEGACY_PROFILE_IMAGE_REGEX, '$1.jpg');
+};
 
 const resolveFromObject = (candidate, fallback, options) => {
   if (!candidate) {
@@ -52,14 +68,14 @@ export function resolveAssetUrl(asset, options = {}) {
   }
 
   if (typeof asset === 'string') {
-    const trimmed = asset.trim();
+    const trimmed = normalizeProfileImagePath(asset.trim());
     if (!trimmed) {
       return fallback;
     }
     if (isAbsoluteUrl(trimmed)) {
       return trimmed;
     }
-    const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+    const normalized = normalizeProfileImagePath(trimmed.startsWith('/') ? trimmed : `/${trimmed}`);
     return baseUrl ? `${baseUrl}${normalized}` : normalized;
   }
 
