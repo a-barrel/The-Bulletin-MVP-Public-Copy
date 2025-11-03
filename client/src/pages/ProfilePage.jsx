@@ -1,3 +1,8 @@
+// This is a profile page that follows the proposed design guidelines.
+// If you plan to add more features, please do so in ProfilePageAdditionalDetail.jsx (they still get displayed here)
+// This will help keep the main profile design consistent and give them time to add the features
+// officially later on in a mannor that follows the design guidelines.
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
