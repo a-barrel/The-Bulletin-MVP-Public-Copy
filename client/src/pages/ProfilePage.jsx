@@ -624,6 +624,8 @@ function ProfilePage() {
                   ) : null}
                 </Box>
 
+                  
+                {/* Commented out debug info, it is in the additional details section now
                 {preferenceSummary ? (
                   <Section
                     title="Preferences"
@@ -719,6 +721,8 @@ function ProfilePage() {
                     </Typography>
                   )}
                 </Section>
+
+          */}
 
                 {rawDataAvailable ? (
                   <Stack spacing={1}>
