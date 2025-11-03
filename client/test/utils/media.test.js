@@ -18,6 +18,12 @@ describe('utils/media', () => {
     expect(resolveAssetUrl(url)).toBe(url);
   });
 
+  test('normalizes legacy profile png paths to jpg', () => {
+    expect(resolveAssetUrl('/images/profile/profile-02.png')).toBe(
+      'https://cdn.example.com/images/profile/profile-02.jpg'
+    );
+  });
+
   test('prefixes relative paths with base URL', () => {
     expect(resolveAssetUrl('images/photo.jpg')).toBe('https://cdn.example.com/images/photo.jpg');
     expect(resolveAssetUrl('/images/photo.jpg')).toBe('https://cdn.example.com/images/photo.jpg');

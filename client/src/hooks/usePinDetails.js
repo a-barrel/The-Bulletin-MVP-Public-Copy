@@ -17,6 +17,7 @@ import { routes } from '../routes';
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { metersToMiles, METERS_PER_MILE } from '../utils/geo';
+import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
 
 const DEFAULT_AVATAR_PATH = '/images/profile/profile-01.jpg';
 const DEFAULT_COVER_PATH = '/images/background/background-01.jpg';
@@ -44,11 +45,11 @@ const resolveMediaAssetUrl = (asset, fallback) => {
   }
 
   if (typeof asset === 'string' && asset.trim().length > 0) {
-    const value = asset.trim();
+    const value = normalizeProfileImagePath(asset.trim());
     if (/^(?:[a-z]+:)?\/\//i.test(value) || value.startsWith('data:')) {
       return value;
     }
-    const normalized = value.startsWith('/') ? value : `/${value}`;
+    const normalized = normalizeProfileImagePath(value.startsWith('/') ? value : `/${value}`);
     return API_BASE_URL ? `${API_BASE_URL}${normalized}` : normalized;
   }
 
@@ -67,7 +68,7 @@ export const resolveUserAvatarUrl = (user, fallback = DEFAULT_AVATAR_PATH) => {
   for (const candidate of candidates) {
     const resolved = resolveMediaAssetUrl(candidate);
     if (resolved) {
-      if (/\/images\/profile\/profile-\d+\.jpg$/i.test(resolved ?? '') && user?.username) {
+      if (DEFAULT_PROFILE_IMAGE_REGEX.test(resolved ?? '') && user?.username) {
         const mapKey = String(user.username).trim().toLowerCase();
         const fallbackPath = TF2_AVATAR_MAP[mapKey];
         if (fallbackPath) {

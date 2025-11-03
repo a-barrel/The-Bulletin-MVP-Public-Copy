@@ -11,6 +11,7 @@ import {
 import formatDateTime from '../utils/dates';
 import runtimeConfig from '../config/runtime';
 import { metersToMiles } from '../utils/geo';
+import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
 
 const FALLBACK_AVATAR = '/images/profile/profile-01.jpg';
 
@@ -32,14 +33,14 @@ const resolveAvatarUrl = (avatar) => {
     if (!value) {
       return null;
     }
-    const trimmed = value.trim();
+    const trimmed = normalizeProfileImagePath(value.trim());
     if (!trimmed) {
       return null;
     }
     if (/^(?:[a-z]+:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
       return trimmed;
     }
-    const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+    const normalized = normalizeProfileImagePath(trimmed.startsWith('/') ? trimmed : `/${trimmed}`);
     return base ? `${base}${normalized}` : normalized;
   };
 
@@ -238,13 +239,13 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
       typeof effectiveUser?.username === 'string'
         ? effectiveUser.username.trim().toLowerCase()
         : null;
-    if (primary && /\/images\/profile\/profile-\d+\.jpg$/i.test(primary) && usernameKey) {
+    if (primary && DEFAULT_PROFILE_IMAGE_REGEX.test(primary) && usernameKey) {
       const fallbackPath = TF2_AVATAR_MAP[usernameKey];
       if (fallbackPath) {
         return resolveAvatarUrl(fallbackPath);
       }
     }
-    if ((!primary || /\/images\/profile\/profile-\d+\.jpg$/i.test(primary)) && usernameKey) {
+    if ((!primary || DEFAULT_PROFILE_IMAGE_REGEX.test(primary)) && usernameKey) {
       const fallbackPath = TF2_AVATAR_MAP[usernameKey];
       if (fallbackPath) {
         return resolveAvatarUrl(fallbackPath);

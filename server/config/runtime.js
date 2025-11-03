@@ -79,6 +79,25 @@ const integrations = {
   }
 };
 
+const resolvePublicBaseUrl = () => {
+  const explicit = process.env.PINPOINT_PUBLIC_BASE_URL;
+  if (explicit && explicit.trim()) {
+    return explicit.trim().replace(/\/+$/, '');
+  }
+
+  if (isOffline) {
+    const fallback = process.env.PINPOINT_PUBLIC_BASE_URL_OFFLINE;
+    if (fallback && fallback.trim()) {
+      return fallback.trim().replace(/\/+$/, '');
+    }
+    return 'http://localhost:5000';
+  }
+
+  return undefined;
+};
+
+const publicBaseUrl = resolvePublicBaseUrl();
+
 const allowAccountSwapOnline = parseBoolean(process.env.PINPOINT_ENABLE_ACCOUNT_SWAP_ONLINE, false);
 const accountSwapAllowlist = new Set(
   parseCsv(process.env.PINPOINT_ACCOUNT_SWAP_ALLOWLIST).map((entry) => entry.toLowerCase())
@@ -89,6 +108,7 @@ module.exports = {
   isOffline,
   isOnline: !isOffline,
   mongoUri,
+  publicBaseUrl,
   firebase,
   integrations,
   offlineAuthToken,
