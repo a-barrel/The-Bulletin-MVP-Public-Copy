@@ -65,6 +65,33 @@ function parseFilenameFromContentDisposition(headerValue, fallback = 'bookmarks.
   }
 }
 
+function createApiError(response, payload, fallbackMessage) {
+  const statusCode = response?.status;
+  const defaultMessage =
+    fallbackMessage || (statusCode ? `Request failed with status ${statusCode}` : 'Request failed');
+  const message =
+    (payload && typeof payload === 'object' && payload.message) || defaultMessage;
+
+  const error = new Error(message);
+  if (typeof statusCode === 'number') {
+    error.status = statusCode;
+  }
+  if (response?.statusText) {
+    error.statusText = response.statusText;
+  }
+  if (response?.url) {
+    error.url = response.url;
+  }
+  if (payload && typeof payload === 'object') {
+    error.payload = payload;
+    if (payload.issues) {
+      error.issues = payload.issues;
+    }
+  }
+  error.isApiError = true;
+  return error;
+}
+
 export function isMongoDataApiConfigured() {
   if (!API_BASE_URL && runtimeConfig.isOnline) {
     console.warn(
@@ -114,7 +141,18 @@ export async function fetchNearbyUsers(query) {
   return payload;
 }
 
-export async function fetchPinsNearby({ latitude, longitude, distanceMiles, limit }) {
+export async function fetchPinsNearby({
+  latitude,
+  longitude,
+  distanceMiles,
+  limit,
+  search,
+  types,
+  categories,
+  status,
+  startDate,
+  endDate
+}) {
   if (latitude === undefined || longitude === undefined) {
     throw new Error('Latitude and longitude are required');
   }
@@ -128,6 +166,34 @@ export async function fetchPinsNearby({ latitude, longitude, distanceMiles, limi
 
   if (limit !== undefined) {
     params.set('limit', String(limit));
+  }
+  if (typeof search === 'string' && search.trim()) {
+    params.set('search', search.trim());
+  }
+
+  const serializeArray = (value) =>
+    Array.isArray(value) ? value.map((entry) => String(entry).trim()).filter(Boolean) : [];
+
+  const typeList = serializeArray(types);
+  if (typeList.length) {
+    params.set('types', typeList.join(','));
+  }
+
+  const categoryList = serializeArray(categories);
+  if (categoryList.length) {
+    params.set('categories', categoryList.join(','));
+  }
+
+  if (status) {
+    params.set('status', status);
+  }
+
+  if (startDate) {
+    params.set('startDate', startDate);
+  }
+
+  if (endDate) {
+    params.set('endDate', endDate);
   }
 
   const response = await fetch(`${baseUrl}/api/pins/nearby?${params.toString()}`, {
@@ -168,6 +234,34 @@ export async function listPins(query = {}) {
   if (query.longitude !== undefined && query.longitude !== null) {
     params.set('longitude', String(query.longitude));
   }
+  if (typeof query.search === 'string' && query.search.trim()) {
+    params.set('search', query.search.trim());
+  }
+  const typeList = Array.isArray(query.types)
+    ? query.types
+    : typeof query.types === 'string'
+    ? query.types.split(',').map((entry) => entry.trim())
+    : [];
+  if (query.type) {
+    params.set('type', query.type);
+  }
+  if (typeList.length) {
+    params.set('types', typeList.join(','));
+  }
+  const categoryList = Array.isArray(query.categories)
+    ? query.categories
+    : typeof query.categories === 'string'
+    ? query.categories.split(',').map((entry) => entry.trim())
+    : [];
+  if (categoryList.length) {
+    params.set('categories', categoryList.join(','));
+  }
+  if (query.startDate) {
+    params.set('startDate', query.startDate);
+  }
+  if (query.endDate) {
+    params.set('endDate', query.endDate);
+  }
 
   const queryString = params.toString();
   const url = queryString ? `${baseUrl}/api/pins?${queryString}` : `${baseUrl}/api/pins`;
@@ -191,6 +285,20 @@ export async function fetchPinsSortedByExpiration({ limit = 20, status = 'active
     sort: 'expiration',
     status
   });
+}
+
+export async function fetchPinCategories() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/pins/categories`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => []);
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load pin categories');
+  }
+  return payload;
 }
 
 export async function fetchPinsSortedByDistance({ latitude, longitude, limit = 20 } = {}) {
@@ -301,9 +409,12 @@ export async function fetchPinAttendees(pinId) {
   return payload;
 }
 
-export async function updatePinAttendance(pinId, attending) {
+export async function updatePinAttendance(pinId, { attending }) {
   if (!pinId) {
     throw new Error('Pin id is required');
+  }
+  if (typeof attending !== 'boolean') {
+    throw new Error('Attendance flag must be a boolean.');
   }
 
   const baseUrl = resolveApiBaseUrl();
@@ -336,6 +447,29 @@ export async function createPinBookmark(pinId) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(payload?.message || 'Failed to create bookmark');
+  }
+
+  return payload;
+}
+
+export async function sharePin(pinId, { platform, method } = {}) {
+  if (!pinId) {
+    throw new Error('pinId is required to share a pin');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/share`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({
+      platform: platform ?? undefined,
+      method: method ?? undefined
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, payload?.message || 'Failed to share pin');
   }
 
   return payload;
@@ -578,6 +712,35 @@ export async function updateCurrentUserProfile(input) {
   return payload;
 }
 
+export async function registerPushToken(token, options = {}) {
+  const normalizedToken = typeof token === 'string' ? token.trim() : '';
+  if (!normalizedToken) {
+    throw new Error('Push token is required.');
+  }
+
+  const platform =
+    typeof options?.platform === 'string' && options.platform.trim()
+      ? options.platform.trim()
+      : undefined;
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/push-tokens`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({
+      token: normalizedToken,
+      ...(platform ? { platform } : {})
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, payload?.message || 'Failed to register push token');
+  }
+
+  return payload;
+}
+
 export async function fetchBlockedUsers() {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/users/me/blocked`, {
@@ -641,7 +804,7 @@ export async function fetchModerationOverview() {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load moderation overview');
+    throw createApiError(response, payload, 'Failed to load moderation overview');
   }
 
   return payload;
@@ -660,7 +823,7 @@ export async function fetchModerationHistory(userId) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load moderation history');
+    throw createApiError(response, payload, 'Failed to load moderation history');
   }
 
   return payload;
@@ -676,7 +839,103 @@ export async function submitModerationAction(input) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to perform moderation action');
+    throw createApiError(response, payload, 'Failed to perform moderation action');
+  }
+
+  return payload;
+}
+
+export async function createContentReport({ contentType, contentId, reason, context }) {
+  if (!contentType || !contentId) {
+    throw new Error('contentType and contentId are required for reporting content');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/reports`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({
+      contentType,
+      contentId,
+      reason: reason ?? '',
+      context: context ?? ''
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, payload?.message || 'Failed to submit report');
+  }
+
+  return payload;
+}
+
+export async function listContentReports({ status, limit } = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const params = new URLSearchParams();
+  if (status) {
+    params.set('status', status);
+  }
+  if (limit) {
+    params.set('limit', String(limit));
+  }
+  const query = params.toString();
+
+  const response = await fetch(
+    `${baseUrl}/api/debug/moderation/reports${query ? `?${query}` : ''}`,
+    {
+      method: 'GET',
+      headers: await buildHeaders()
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, 'Failed to load moderation reports');
+  }
+
+  return payload;
+}
+
+export async function resolveContentReport(reportId, input) {
+  if (!reportId) {
+    throw new Error('reportId is required to resolve a report');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/debug/moderation/reports/${encodeURIComponent(reportId)}/resolve`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify(input || {})
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, 'Failed to update report');
+  }
+
+  return payload;
+}
+
+export async function submitAnonymousFeedback({ message, contact, category }) {
+  if (!message || typeof message !== 'string') {
+    throw new Error('Feedback message is required.');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/feedback`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({
+      message,
+      contact: contact ?? '',
+      category: category ?? ''
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, 'Failed to send feedback');
   }
 
   return payload;
@@ -686,15 +945,15 @@ export async function fetchFriendOverview() {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/debug/friends/overview`, {
     method: 'GET',
-    headers: await buildHeaders()
-  });
+      headers: await buildHeaders()
+    });
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load friend overview');
-  }
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw createApiError(response, payload, 'Failed to load friend overview');
+    }
 
-  return payload;
+    return payload;
 }
 
 export async function sendFriendRequest({ targetUserId, message }) {
@@ -707,7 +966,7 @@ export async function sendFriendRequest({ targetUserId, message }) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to send friend request');
+    throw createApiError(response, payload, 'Failed to send friend request');
   }
 
   return payload;
@@ -730,7 +989,7 @@ export async function respondToFriendRequest(requestId, decision) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to resolve friend request');
+    throw createApiError(response, payload, 'Failed to resolve friend request');
   }
 
   return payload;
@@ -749,7 +1008,7 @@ export async function removeFriendRelationship(friendId) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to remove friend');
+    throw createApiError(response, payload, 'Failed to remove friend');
   }
 
   return payload;
@@ -764,7 +1023,7 @@ export async function fetchDirectMessageThreads() {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load direct message threads');
+    throw createApiError(response, payload, 'Failed to load direct message threads');
   }
 
   return payload;
@@ -786,7 +1045,7 @@ export async function fetchDirectMessageThread(threadId) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load direct message thread');
+    throw createApiError(response, payload, 'Failed to load direct message thread');
   }
 
   return payload;
@@ -802,7 +1061,7 @@ export async function createDirectMessageThread({ participantIds, topic, initial
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to create direct message thread');
+    throw createApiError(response, payload, 'Failed to create direct message thread');
   }
 
   return payload;
@@ -825,7 +1084,7 @@ export async function sendDirectMessage(threadId, { body, attachments }) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to send direct message');
+    throw createApiError(response, payload, 'Failed to send direct message');
   }
 
   return payload;
@@ -1354,7 +1613,16 @@ export async function createUpdate(input) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to create update');
+    const details = Array.isArray(payload?.issues)
+      ? `: ${payload.issues
+          .map((issue) => {
+            const path = Array.isArray(issue?.path) ? issue.path.join('.') : '';
+            return `${path} ${issue?.message ?? ''}`.trim();
+          })
+          .filter(Boolean)
+          .join('; ')}`
+      : '';
+    throw new Error((payload?.message || 'Failed to create update') + details);
   }
 
   return payload;

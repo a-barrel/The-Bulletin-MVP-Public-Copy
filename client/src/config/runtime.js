@@ -65,6 +65,7 @@ if (!firebaseConfig) {
 const firebaseAuthEmulatorUrl = isOffline
   ? import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_URL ?? 'http://localhost:9099'
   : undefined;
+const firebaseVapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || null;
 
 const troyExperimentEnabled = import.meta.env.VITE_ENABLE_TROY_EXPERIMENT === 'true';
 
@@ -77,7 +78,8 @@ export const runtimeConfig = {
   troyExperimentEnabled,
   firebase: {
     config: firebaseConfig,
-    authEmulatorUrl: firebaseAuthEmulatorUrl
+    authEmulatorUrl: firebaseAuthEmulatorUrl,
+    vapidKey: firebaseVapidKey
   }
 };
 

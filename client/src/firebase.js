@@ -9,4 +9,4 @@ if (runtimeConfig.firebase.authEmulatorUrl) {
   connectAuthEmulator(auth, runtimeConfig.firebase.authEmulatorUrl, { disableWarnings: true });
 }
 
-export { auth };
+export { auth, app };

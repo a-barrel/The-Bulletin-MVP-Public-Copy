@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 
 import usePinAttendees, { clearPinAttendeesCache } from '../../src/hooks/usePinAttendees';
 import { fetchPinAttendees } from '../../src/api/mongoDataApi';

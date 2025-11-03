@@ -9,10 +9,8 @@ import {
 } from '../../../api/mongoDataApi';
 import {
   parseCommaSeparated,
-  parseJsonField,
   parseOptionalDate,
-  parseOptionalNumber,
-  parseRequiredNumber
+  parseOptionalNumber
 } from '../utils';
 
 const useBookmarksTools = () => {

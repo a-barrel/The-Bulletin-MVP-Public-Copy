@@ -64,19 +64,41 @@ router.post('/images', processSingleImage, async (req, res) => {
     }
 
     const identifier = randomUUID ? randomUUID() : randomBytes(16).toString('hex');
-    const fileName = `${Date.now()}-${identifier}.jpg`;
-    const processed = sharp(req.file.buffer).resize(TARGET_DIMENSION, TARGET_DIMENSION, {
-      fit: 'cover',
-      position: 'centre'
-    });
-    const { data, info } = await processed.jpeg({ quality: 82 }).toBuffer({ resolveWithObject: true });
+    const requestMimeType = (req.file.mimetype || '').toLowerCase();
+    const originalName = req.file.originalname || '';
+    const isGif = requestMimeType === 'image/gif' || /\.gif$/i.test(originalName);
+
+    let buffer = req.file.buffer;
+    let info = null;
+    let fileName;
+    let mimeType;
+
+    if (isGif) {
+      fileName = `${Date.now()}-${identifier}.gif`;
+      try {
+        info = await sharp(req.file.buffer, { animated: true }).metadata();
+      } catch (error) {
+        console.warn('Failed to read GIF metadata:', error.message);
+      }
+      mimeType = 'image/gif';
+    } else {
+      fileName = `${Date.now()}-${identifier}.jpg`;
+      const processed = sharp(req.file.buffer).resize(TARGET_DIMENSION, TARGET_DIMENSION, {
+        fit: 'cover',
+        position: 'centre'
+      });
+      const result = await processed.jpeg({ quality: 82 }).toBuffer({ resolveWithObject: true });
+      buffer = result.data;
+      info = result.info;
+      mimeType = 'image/jpeg';
+    }
 
     const storageResult = await storageService.saveImageAsset({
-      buffer: data,
+      buffer,
       fileName,
-      size: info?.size,
+      size: info?.size ?? buffer.length,
       offlineDir: req.app.get('imagesDir'),
-      offlinePublicPath: '/images',
+      offlinePublicPath: '/uploads/images',
       makePublic: runtime.isOnline
     });
 
@@ -91,11 +113,11 @@ router.post('/images', processSingleImage, async (req, res) => {
 
     res.status(201).json({
       url: imageUrl,
-      width: info?.width ?? TARGET_DIMENSION,
-      height: info?.height ?? TARGET_DIMENSION,
-      mimeType: 'image/jpeg',
+      width: info?.width ?? (isGif ? undefined : TARGET_DIMENSION),
+      height: info?.height ?? (isGif ? undefined : TARGET_DIMENSION),
+      mimeType,
       fileName,
-      size: storageResult.size ?? info?.size ?? data.length,
+      size: storageResult.size ?? info?.size ?? buffer.length,
       uploadedAt: new Date().toISOString()
     });
   } catch (error) {

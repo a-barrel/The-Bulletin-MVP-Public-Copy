@@ -13,7 +13,9 @@ const initialState = {
   status: null,
   requestStatus: null,
   queueStatus: null,
-  isProcessing: false
+  isProcessing: false,
+  hasAccess: null,
+  lastErrorStatus: null
 };
 
 const reducer = (state, action) => {
@@ -22,20 +24,25 @@ const reducer = (state, action) => {
       return {
         ...state,
         isLoading: true,
-        status: null
+        status: null,
+        lastErrorStatus: null
       };
     case 'graph/success':
       return {
         ...state,
         isLoading: false,
         graph: action.payload,
-        status: { type: 'success' }
+        status: { type: 'success' },
+        hasAccess: true,
+        lastErrorStatus: null
       };
     case 'graph/error':
       return {
         ...state,
         isLoading: false,
-        status: { type: 'error', message: action.error }
+        status: { type: 'error', message: action.error },
+        hasAccess: action.status === 403 ? false : state.hasAccess,
+        lastErrorStatus: action.status ?? state.lastErrorStatus
       };
     case 'request/pending':
       return {
@@ -47,13 +54,17 @@ const reducer = (state, action) => {
       return {
         ...state,
         isProcessing: false,
-        requestStatus: { type: 'success', message: action.message }
+        requestStatus: { type: 'success', message: action.message },
+        hasAccess: true,
+        lastErrorStatus: null
       };
     case 'request/error':
       return {
         ...state,
         isProcessing: false,
-        requestStatus: { type: 'error', message: action.error }
+        requestStatus: { type: 'error', message: action.error },
+        hasAccess: action.status === 403 ? false : state.hasAccess,
+        lastErrorStatus: action.status ?? state.lastErrorStatus
       };
     case 'queue/pending':
       return {
@@ -65,13 +76,17 @@ const reducer = (state, action) => {
       return {
         ...state,
         isProcessing: false,
-        queueStatus: { type: 'success', message: action.message }
+        queueStatus: { type: 'success', message: action.message },
+        hasAccess: true,
+        lastErrorStatus: null
       };
     case 'queue/error':
       return {
         ...state,
         isProcessing: false,
-        queueStatus: { type: 'error', message: action.error }
+        queueStatus: { type: 'error', message: action.error },
+        hasAccess: action.status === 403 ? false : state.hasAccess,
+        lastErrorStatus: action.status ?? state.lastErrorStatus
       };
     default:
       return state;
@@ -109,7 +124,11 @@ export default function useFriendGraph({ autoLoad = true } = {}) {
     } catch (error) {
       dispatch({
         type: 'graph/error',
-        error: error?.message || 'Failed to load friend overview.'
+        error:
+          error?.status === 403
+            ? 'Friend management privileges required.'
+            : error?.message || 'Failed to load friend overview.',
+        status: error?.status ?? null
       });
       throw error;
     }
@@ -137,24 +156,28 @@ export default function useFriendGraph({ autoLoad = true } = {}) {
         });
       }
 
-      dispatch({ type: 'request/pending' });
-      try {
-        await sendFriendRequest({ targetUserId, message });
-        dispatch({
-          type: 'request/success',
-          message: 'Friend request sent.'
-        });
-        await loadGraph();
-      } catch (error) {
-        dispatch({
-          type: 'request/error',
-          error: error?.message || 'Failed to send friend request.'
-        });
-        if (state.graph) {
-          await loadGraph().catch(() => {});
-        }
-        throw error;
+    dispatch({ type: 'request/pending' });
+    try {
+      await sendFriendRequest({ targetUserId, message });
+      dispatch({
+        type: 'request/success',
+        message: 'Friend request sent.'
+      });
+      await loadGraph();
+    } catch (error) {
+      dispatch({
+        type: 'request/error',
+        error:
+          error?.status === 403
+            ? 'Friend management privileges required.'
+            : error?.message || 'Failed to send friend request.',
+        status: error?.status ?? null
+      });
+      if (state.graph) {
+        await loadGraph().catch(() => {});
       }
+      throw error;
+    }
     },
     [state.graph, loadGraph]
   );
@@ -166,22 +189,26 @@ export default function useFriendGraph({ autoLoad = true } = {}) {
         dispatch({ type: 'queue/error', error: error.message });
         throw error;
       }
-      dispatch({ type: 'queue/pending' });
-      try {
-        await respondToFriendRequest(requestId, decision);
-        dispatch({
-          type: 'queue/success',
-          message: decision === 'accept' ? 'Friend request accepted.' : 'Friend request declined.'
-        });
-        await loadGraph();
-      } catch (error) {
-        dispatch({
-          type: 'queue/error',
-          error: error?.message || 'Failed to update friend request.'
-        });
-        throw error;
-      }
-    },
+    dispatch({ type: 'queue/pending' });
+    try {
+      await respondToFriendRequest(requestId, decision);
+      dispatch({
+        type: 'queue/success',
+        message: decision === 'accept' ? 'Friend request accepted.' : 'Friend request declined.'
+      });
+      await loadGraph();
+    } catch (error) {
+      dispatch({
+        type: 'queue/error',
+        error:
+          error?.status === 403
+            ? 'Friend management privileges required.'
+            : error?.message || 'Failed to update friend request.',
+        status: error?.status ?? null
+      });
+      throw error;
+    }
+  },
     [loadGraph]
   );
 
@@ -192,22 +219,26 @@ export default function useFriendGraph({ autoLoad = true } = {}) {
         dispatch({ type: 'queue/error', error: error.message });
         throw error;
       }
-      dispatch({ type: 'queue/pending' });
-      try {
-        await removeFriendRelationship(friendId);
-        dispatch({
-          type: 'queue/success',
-          message: 'Friend removed.'
-        });
-        await loadGraph();
-      } catch (error) {
-        dispatch({
-          type: 'queue/error',
-          error: error?.message || 'Failed to remove friend.'
-        });
-        throw error;
-      }
-    },
+    dispatch({ type: 'queue/pending' });
+    try {
+      await removeFriendRelationship(friendId);
+      dispatch({
+        type: 'queue/success',
+        message: 'Friend removed.'
+      });
+      await loadGraph();
+    } catch (error) {
+      dispatch({
+        type: 'queue/error',
+        error:
+          error?.status === 403
+            ? 'Friend management privileges required.'
+            : error?.message || 'Failed to remove friend.',
+        status: error?.status ?? null
+      });
+      throw error;
+    }
+  },
     [loadGraph]
   );
 
@@ -234,6 +265,8 @@ export default function useFriendGraph({ autoLoad = true } = {}) {
     respondToRequest,
     queueStatus: state.queueStatus,
     removeFriend,
-    isProcessing: state.isProcessing
+    isProcessing: state.isProcessing,
+    hasAccess: state.hasAccess,
+    lastErrorStatus: state.lastErrorStatus
   };
 }

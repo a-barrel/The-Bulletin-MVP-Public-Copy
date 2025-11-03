@@ -2,7 +2,6 @@ import Button from '@mui/material/Button';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
-import Typography from '@mui/material/Typography';
 
 import JsonPreview from '../components/JsonPreview';
 import DebugPanel from '../components/DebugPanel';
@@ -26,18 +25,22 @@ function UpdatesTab() {
     isFetchingUpdates,
     handleFetchUpdates,
     currentUserId,
-    sendDummyUpdate,
+    sendDummyBadgeUpdate,
+    sendDummyEventUpdate,
+    sendDummyDiscussionUpdate,
     reloadCurrentProfile,
-    isSendingDummy
+    isSendingDummy,
+    dummyStatus,
+    setDummyStatus
   } = useUpdatesTools();
 
   const quickActionsAlerts = [
-    updatesStatus && !updatesResult
+    dummyStatus
       ? {
           key: 'quick-action-status',
-          severity: updatesStatus.type,
-          content: updatesStatus.message,
-          onClose: () => setUpdatesStatus(null)
+          severity: dummyStatus.type,
+          content: dummyStatus.message,
+          onClose: () => setDummyStatus(null)
         }
       : null
   ].filter(Boolean);
@@ -68,15 +71,31 @@ function UpdatesTab() {
     <Stack spacing={2}>
       <DebugPanel
         title="Quick actions"
-        description="Drop a canned notification for whichever account you're logged in with."
+        description="Drop canned notifications for whichever account you're logged in with."
         actions={[
           <Button
-            key="send"
+            key="badge"
             variant="contained"
             disabled={!currentUserId || isSendingDummy}
-            onClick={sendDummyUpdate}
+            onClick={sendDummyBadgeUpdate}
           >
-            {isSendingDummy ? 'Sending...' : 'Send dummy update to me'}
+            {isSendingDummy ? 'Sending...' : 'Send dummy badge update'}
+          </Button>,
+          <Button
+            key="event"
+            variant="contained"
+            disabled={!currentUserId || isSendingDummy}
+            onClick={sendDummyEventUpdate}
+          >
+            {isSendingDummy ? 'Sending...' : 'Send dummy event update'}
+          </Button>,
+          <Button
+            key="discussion"
+            variant="contained"
+            disabled={!currentUserId || isSendingDummy}
+            onClick={sendDummyDiscussionUpdate}
+          >
+            {isSendingDummy ? 'Sending...' : 'Send dummy discussion update'}
           </Button>,
           <Button key="reload" variant="outlined" onClick={reloadCurrentProfile}>
             Use my profile id

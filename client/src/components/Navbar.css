@@ -37,6 +37,7 @@
   color: #4b208c;
   text-decoration: none;
   transition: transform 0.2s ease, color 0.2s ease;
+  position: relative;
 }
 
 .nav-item:hover {
@@ -59,6 +60,21 @@
 
 .nav-item.active span {
   font-weight: 600;
+}
+
+.nav-item-badge {
+  position: absolute;
+  top: 2px;
+  right: 16px;
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #ff4b8b;
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: none;
 }
 
 @media (max-width: 480px) {

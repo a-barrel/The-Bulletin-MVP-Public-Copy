@@ -22,7 +22,6 @@ import useViewerLocation from '../hooks/useViewerLocation';
 import {
   dedupeChatRooms,
   evaluateRoomAccess,
-  formatReadableTimestamp,
   mongooseObjectIdLike,
   normalizeRoomName,
   resolveMediaUrl,
@@ -494,7 +493,7 @@ const useLiveChatSimulationTools = () => {
 
     (async () => {
       try {
-        const entries = await fetchChatPresence(toIdString(activeRoom?._id));
+        await fetchChatPresence(toIdString(activeRoom?._id));
         if (!cancelled) {
           // no-op: the presence panel currently relies on manual refresh, but we preload entries for future use
         }

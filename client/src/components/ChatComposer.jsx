@@ -1,5 +1,14 @@
 import PropTypes from 'prop-types';
-import { Box, TextField, Button, IconButton, Stack, Typography, CircularProgress } from '@mui/material';
+import {
+  Box,
+  TextField,
+  Button,
+  IconButton,
+  Stack,
+  Typography,
+  CircularProgress,
+  Tooltip
+} from '@mui/material';
 import SendIcon from '@mui/icons-material/SendRounded';
 import AddIcon from '@mui/icons-material/AddCircleOutlineRounded';
 
@@ -16,7 +25,9 @@ function ChatComposer({
   containerRef,
   containerClassName,
   addAttachmentAriaLabel = 'Add attachment',
+  addAttachmentTooltip = 'Add image or GIF',
   onAddAttachment,
+  inputRef,
   gifPreview,
   gifPreviewError,
   isGifPreviewLoading = false,
@@ -29,7 +40,8 @@ function ChatComposer({
     onChange: onMessageChange,
     onKeyDown,
     multiline: true,
-    minRows: 1
+    minRows: 1,
+    inputRef
   };
 
   const previewActive = Boolean(isGifPreviewLoading || gifPreview || gifPreviewError);
@@ -144,6 +156,31 @@ function ChatComposer({
   };
 
   if (variant === 'modern') {
+    const attachmentButton = (
+      <IconButton
+        className="add-img-btn"
+        type="button"
+        onClick={onAddAttachment}
+        disabled={disabled || !onAddAttachment}
+        aria-label={addAttachmentAriaLabel}
+        sx={{
+          color: 'primary.main',
+          backgroundColor: 'rgba(124, 77, 255, 0.08)',
+          transition: 'background-color 120ms ease, transform 120ms ease',
+          '&:hover, &:focus-visible': {
+            backgroundColor: 'rgba(124, 77, 255, 0.18)',
+            transform: 'scale(1.05)'
+          },
+          '&.Mui-disabled': {
+            backgroundColor: 'transparent',
+            color: 'action.disabled'
+          }
+        }}
+      >
+        <AddIcon className="add-img-icon" />
+      </IconButton>
+    );
+
     return (
       <Box
         component="form"
@@ -154,15 +191,13 @@ function ChatComposer({
       >
         {renderPreviewPanel('modern')}
         <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, width: '100%' }}>
-          <IconButton
-            className="add-img-btn"
-            type="button"
-            onClick={onAddAttachment}
-            disabled={disabled || !onAddAttachment}
-            aria-label={addAttachmentAriaLabel}
-          >
-            <AddIcon className="add-img-icon" />
-          </IconButton>
+          {onAddAttachment ? (
+            <Tooltip title={addAttachmentTooltip} enterDelay={200} arrow>
+              <span>{attachmentButton}</span>
+            </Tooltip>
+          ) : (
+            attachmentButton
+          )}
 
           <TextField
             {...sharedInputProps}
@@ -171,6 +206,7 @@ function ChatComposer({
             variant="outlined"
             maxRows={5}
             className="chat-input"
+            inputRef={inputRef}
             disabled={disabled}
           />
 
@@ -203,11 +239,40 @@ function ChatComposer({
       }}
     >
       {renderPreviewPanel('legacy')}
+      {onAddAttachment ? (
+        <Tooltip title={addAttachmentTooltip} enterDelay={200} arrow>
+          <span>
+            <IconButton
+              className="add-img-btn"
+              type="button"
+              onClick={onAddAttachment}
+              disabled={disabled}
+              aria-label={addAttachmentAriaLabel}
+              sx={{
+                color: 'primary.main',
+                transition: 'background-color 120ms ease, transform 120ms ease',
+                backgroundColor: 'rgba(124, 77, 255, 0.08)',
+                '&:hover, &:focus-visible': {
+                  backgroundColor: 'rgba(124, 77, 255, 0.18)',
+                  transform: 'scale(1.05)'
+                },
+                '&.Mui-disabled': {
+                  backgroundColor: 'transparent',
+                  color: 'action.disabled'
+                }
+              }}
+            >
+              <AddIcon className="add-img-icon" />
+            </IconButton>
+          </span>
+        </Tooltip>
+      ) : null}
       <TextField
         {...sharedInputProps}
         placeholder={placeholder}
         maxRows={4}
         fullWidth
+        inputRef={inputRef}
         disabled={disabled}
       />
       <Button
@@ -239,7 +304,9 @@ ChatComposer.propTypes = {
   ]),
   containerClassName: PropTypes.string,
   addAttachmentAriaLabel: PropTypes.string,
+  addAttachmentTooltip: PropTypes.string,
   onAddAttachment: PropTypes.func,
+  inputRef: PropTypes.oneOfType([PropTypes.func, PropTypes.shape({ current: PropTypes.any })]),
   gifPreview: PropTypes.shape({
     query: PropTypes.string,
     attachment: PropTypes.oneOfType([
