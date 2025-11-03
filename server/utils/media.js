@@ -1,5 +1,6 @@
 const { toIdString: defaultToIdString } = require('./ids');
 const { toIsoDateString } = require('./dates');
+const runtime = require('../config/runtime');
 
 const LEGACY_PROFILE_IMAGE_REGEX = /(\/images\/profile\/profile-\d+)\.png$/i;
 const DEFAULT_PROFILE_IMAGE_REGEX = /\/images\/profile\/profile-\d+\.(?:png|jpg)$/i;
@@ -28,7 +29,11 @@ const normalizeMediaUrl = (value) => {
     return trimmed;
   }
   const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  return normalizeProfileImagePath(normalized);
+  const resolvedPath = normalizeProfileImagePath(normalized);
+  if (runtime?.publicBaseUrl) {
+    return `${runtime.publicBaseUrl}${resolvedPath}`;
+  }
+  return resolvedPath;
 };
 
 const normalizeObject = (input) => (input && typeof input.toObject === 'function' ? input.toObject() : input);
