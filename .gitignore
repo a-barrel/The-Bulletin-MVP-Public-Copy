@@ -16,6 +16,7 @@ server/package-lock.json
 /dist
 /client/dist
 /server/dist
+client/public/images/
 
 # Environment files
 .env

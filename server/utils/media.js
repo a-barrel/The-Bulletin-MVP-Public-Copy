@@ -1,6 +1,21 @@
 const { toIdString: defaultToIdString } = require('./ids');
 const { toIsoDateString } = require('./dates');
 
+const LEGACY_PROFILE_IMAGE_REGEX = /(\/images\/profile\/profile-\d+)\.png$/i;
+const DEFAULT_PROFILE_IMAGE_REGEX = /\/images\/profile\/profile-\d+\.(?:png|jpg)$/i;
+
+const normalizeProfileImagePath = (value) => {
+  if (typeof value !== 'string' || value.length === 0) {
+    return value;
+  }
+
+  if (/^(?:[a-z]+:)?\/\//i.test(value)) {
+    return value;
+  }
+
+  return value.replace(LEGACY_PROFILE_IMAGE_REGEX, '$1.jpg');
+};
+
 const normalizeMediaUrl = (value) => {
   if (!value || typeof value !== 'string') {
     return undefined;
@@ -12,7 +27,8 @@ const normalizeMediaUrl = (value) => {
   if (/^(?:https?:|data:)/i.test(trimmed)) {
     return trimmed;
   }
-  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return normalizeProfileImagePath(normalized);
 };
 
 const normalizeObject = (input) => (input && typeof input.toObject === 'function' ? input.toObject() : input);
@@ -68,13 +84,21 @@ function mapUserAvatar(userDoc, { toIdString = defaultToIdString } = {}) {
   }
 
   const doc = normalizeObject(userDoc);
-  const avatar = mapMediaAsset(doc?.avatar, { toIdString });
+  const avatarSource = doc?.avatar
+    ? {
+        ...doc.avatar,
+        url: normalizeProfileImagePath(doc.avatar.url),
+        thumbnailUrl: normalizeProfileImagePath(doc.avatar.thumbnailUrl),
+        path: normalizeProfileImagePath(doc.avatar.path)
+      }
+    : undefined;
+  const avatar = mapMediaAsset(avatarSource, { toIdString });
 
   const usernameKey = typeof doc?.username === 'string' ? doc.username.trim().toLowerCase() : null;
   const fallbackPath = usernameKey ? TF2_AVATAR_MAP[usernameKey] : null;
 
   const needsFallback = Boolean(
-    fallbackPath && (!avatar?.url || /\/images\/profile\/profile-\d+\.jpg$/i.test(avatar.url))
+    fallbackPath && (!avatar?.url || DEFAULT_PROFILE_IMAGE_REGEX.test(avatar.url))
   );
 
   if (!needsFallback) {
@@ -98,5 +122,6 @@ function mapUserAvatar(userDoc, { toIdString = defaultToIdString } = {}) {
 module.exports = {
   normalizeMediaUrl,
   mapMediaAsset,
-  mapUserAvatar
+  mapUserAvatar,
+  normalizeProfileImagePath
 };

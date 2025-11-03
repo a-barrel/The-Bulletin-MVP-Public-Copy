@@ -36,6 +36,7 @@ import useProfileDetail from '../hooks/useProfileDetail';
 import useModerationTools from '../hooks/useModerationTools';
 import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constants/moderationActions';
 import { formatFriendlyTimestamp, formatAbsoluteDateTime } from '../utils/dates';
+import { normalizeProfileImagePath } from '../utils/media';
 import normalizeObjectId from '../utils/normalizeObjectId';
 import { createDirectMessageThread } from '../api/mongoDataApi';
 import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
@@ -87,14 +88,14 @@ const resolveFriendAvatarUrl = (avatar) => {
   }
   const source =
     typeof avatar === 'string'
-      ? avatar
-      : avatar.url || avatar.thumbnailUrl || avatar.path;
+      ? normalizeProfileImagePath(avatar)
+      : normalizeProfileImagePath(avatar?.url || avatar?.thumbnailUrl || avatar?.path);
   if (typeof source === 'string' && source.trim()) {
-    const trimmed = source.trim();
+    const trimmed = normalizeProfileImagePath(source.trim());
     if (/^(?:https?:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
       return trimmed;
     }
-    const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+    const normalized = normalizeProfileImagePath(trimmed.startsWith('/') ? trimmed : `/${trimmed}`);
     return base ? `${base}${normalized}` : normalized;
   }
   return FRIEND_AVATAR_FALLBACK;

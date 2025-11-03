@@ -1,10 +1,21 @@
-const { normalizeMediaUrl, mapMediaAsset, mapUserAvatar } = require('../../utils/media');
+const {
+  normalizeMediaUrl,
+  mapMediaAsset,
+  mapUserAvatar,
+  normalizeProfileImagePath
+} = require('../../utils/media');
 
 describe('server/utils/media', () => {
   test('normalizeMediaUrl handles absolute and relative paths', () => {
     expect(normalizeMediaUrl(' https://example.com/img.png ')).toBe('https://example.com/img.png');
     expect(normalizeMediaUrl('path/to.png')).toBe('/path/to.png');
     expect(normalizeMediaUrl('')).toBeUndefined();
+  });
+
+  test('normalizeProfileImagePath promotes legacy png profile paths to jpg', () => {
+    expect(normalizeProfileImagePath('/images/profile/profile-01.png')).toBe('/images/profile/profile-01.jpg');
+    expect(normalizeProfileImagePath('images/profile/profile-02.png')).toBe('images/profile/profile-02.jpg');
+    expect(normalizeProfileImagePath('https://example.com/asset.png')).toBe('https://example.com/asset.png');
   });
 
   test('mapMediaAsset maps core fields', () => {

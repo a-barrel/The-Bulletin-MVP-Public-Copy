@@ -37,6 +37,7 @@ import runtimeConfig from '../config/runtime';
 import { BADGE_METADATA } from '../utils/badges';
 import BackButton from '../components/BackButton';
 import { metersToMiles } from '../utils/geo';
+import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
 import './_v2_WIP_ProfilePage.css';
 
 const SECTION_BG_COLOR = '#d6e6ff';
@@ -111,14 +112,14 @@ const resolveAvatarUrl = (avatar) => {
     if (!value) {
       return null;
     }
-    const trimmed = value.trim();
+    const trimmed = normalizeProfileImagePath(value.trim());
     if (!trimmed) {
       return null;
     }
     if (/^(?:[a-z]+:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
       return trimmed;
     }
-    const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+    const normalized = normalizeProfileImagePath(trimmed.startsWith('/') ? trimmed : `/${trimmed}`);
     return base ? `${base}${normalized}` : normalized;
   };
 
@@ -364,13 +365,13 @@ function ProfilePage() {
       typeof effectiveUser?.username === 'string'
         ? effectiveUser.username.trim().toLowerCase()
         : null;
-    if (primary && /\/images\/profile\/profile-\d+\.jpg$/i.test(primary) && usernameKey) {
+    if (primary && DEFAULT_PROFILE_IMAGE_REGEX.test(primary) && usernameKey) {
       const fallbackPath = TF2_AVATAR_MAP[usernameKey];
       if (fallbackPath) {
         return resolveAvatarUrl(fallbackPath);
       }
     }
-    if ((!primary || /\/images\/profile\/profile-\d+\.jpg$/i.test(primary)) && usernameKey) {
+    if ((!primary || DEFAULT_PROFILE_IMAGE_REGEX.test(primary)) && usernameKey) {
       const fallbackPath = TF2_AVATAR_MAP[usernameKey];
       if (fallbackPath) {
         return resolveAvatarUrl(fallbackPath);
