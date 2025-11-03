@@ -355,9 +355,9 @@ function ProfilePage() {
     Boolean(viewerId && normalizedTargetId && viewerId === normalizedTargetId);
   // Only allow editing if viewing own profile and not from navigation state (prevents editing external views)
   const canEditProfile = Boolean(
-    isViewingSelf && 
-    !userFromState && 
-    effectiveUser && 
+    isViewingSelf &&
+    !userFromState &&
+    effectiveUser &&
     viewerProfile
   );
   const editingAvatarSrc = formState.avatarCleared ? null : formState.avatarPreviewUrl ?? avatarUrl;
@@ -958,8 +958,8 @@ function ProfilePage() {
                     p: 2,
                     borderRadius: 2,
                     border: '1px solid',
-                    borderColor: 'divider',
-                    backgroundColor: 'background.default'
+                    borderColor: '#000',
+                    backgroundColor: '#ffffff'
                   }}
                 >
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
@@ -1086,7 +1086,7 @@ function ProfilePage() {
               <Stack spacing={3}>
                 <Section
                   title="Bio"
-                  //description="Everything they want you to know right now."
+                //description="Everything they want you to know right now."
                 >
                   {bioText ? (
                     <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>

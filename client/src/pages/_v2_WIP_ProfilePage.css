@@ -8,10 +8,10 @@
 .profile-page-container {
   display: flex;
   flex-direction: column;
-  background-color: #000;
+  background-color: black;
   width: 100vw;
   height: 100vh;
-  color: #CDAEF2; /* Ensure text defaults to black inside container */
+  color: #000; /* Ensure text defaults to black inside container */
 }
 
 /* Force all text elements to use Urbanist font */
