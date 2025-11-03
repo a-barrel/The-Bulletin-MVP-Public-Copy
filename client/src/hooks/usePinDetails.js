@@ -8,7 +8,8 @@ import {
   createPinBookmark,
   deletePinBookmark,
   createPinReply,
-  fetchCurrentUserProfile
+  fetchCurrentUserProfile,
+  sharePin
 } from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
 import formatDateTime from '../utils/dates';
@@ -328,6 +329,8 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   const [replyMessage, setReplyMessage] = useState('');
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
   const [submitReplyError, setSubmitReplyError] = useState(null);
+  const [shareStatus, setShareStatus] = useState(null);
+  const [isSharing, setIsSharing] = useState(false);
 
   useEffect(() => {
     if (viewerProfileId) {
@@ -527,6 +530,27 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     return expiry.getTime() < Date.now();
   }, [pin]);
 
+  const pinCreatorId = useMemo(() => {
+    if (!pin) {
+      return null;
+    }
+    if (typeof pin?.creatorId === 'string' && pin.creatorId.trim().length > 0) {
+      return pin.creatorId.trim();
+    }
+    const nestedId = pin?.creator?._id;
+    if (typeof nestedId === 'string' && nestedId.trim().length > 0) {
+      return nestedId.trim();
+    }
+    return null;
+  }, [pin]);
+
+  const isOwnPin = useMemo(() => {
+    if (!pinCreatorId || !viewerProfileId) {
+      return false;
+    }
+    return pinCreatorId === viewerProfileId;
+  }, [pinCreatorId, viewerProfileId]);
+
   const viewerWithinInteractionRadius =
     typeof pin?.viewerWithinInteractionRadius === 'boolean'
       ? pin.viewerWithinInteractionRadius
@@ -537,7 +561,8 @@ export default function usePinDetails({ pinId, location, isOffline }) {
       : null;
   const distanceLockActive =
     !pinExpired && (previewMode === 'far' || viewerWithinInteractionRadius === false);
-  const isInteractionLocked = pinExpired || distanceLockActive;
+  const isInteractionLocked =
+    pinExpired || (distanceLockActive && !bookmarked && !isOwnPin);
   const viewerInteractionLockMessage = pin?.viewerInteractionLockMessage;
 
   const viewerDistanceLabel = useMemo(() => {
@@ -576,27 +601,6 @@ export default function usePinDetails({ pinId, location, isOffline }) {
 
     return null;
   }, [pinExpired, distanceLockActive, viewerInteractionLockMessage, viewerDistanceLabel]);
-
-  const pinCreatorId = useMemo(() => {
-    if (!pin) {
-      return null;
-    }
-    if (typeof pin?.creatorId === 'string' && pin.creatorId.trim().length > 0) {
-      return pin.creatorId.trim();
-    }
-    const nestedId = pin?.creator?._id;
-    if (typeof nestedId === 'string' && nestedId.trim().length > 0) {
-      return nestedId.trim();
-    }
-    return null;
-  }, [pin]);
-
-  const isOwnPin = useMemo(() => {
-    if (!pinCreatorId || !viewerProfileId) {
-      return false;
-    }
-    return pinCreatorId === viewerProfileId;
-  }, [pinCreatorId, viewerProfileId]);
 
   const pinTypeHeading = useMemo(() => {
     if (!pin) {
@@ -996,6 +1000,69 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     [pin?.replyCount, pin?.stats?.replyCount, replies.length]
   );
 
+  const handleSharePin = useCallback(
+    async (options = {}) => {
+      if (!pinId) {
+        return;
+      }
+
+      const sharePath = `/pin/${encodeURIComponent(pinId)}`;
+      const shareUrl =
+        typeof window !== 'undefined' && window.location
+          ? new URL(sharePath, window.location.origin).toString()
+          : sharePath;
+
+      setIsSharing(true);
+      setShareStatus(null);
+
+      let recorded = false;
+      try {
+        if (typeof navigator !== 'undefined' && navigator.share) {
+          await navigator.share({
+            title: pin?.title || 'Check out this pin',
+            text: pin?.description ? pin.description.slice(0, 120) : undefined,
+            url: shareUrl
+          });
+          recorded = true;
+          setShareStatus({ type: 'success', message: 'Share dialog opened.' });
+        } else if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(shareUrl);
+          recorded = true;
+          setShareStatus({ type: 'success', message: 'Link copied to clipboard.' });
+        } else {
+          recorded = true;
+          setShareStatus({
+            type: 'info',
+            message: `Share link: ${shareUrl}`
+          });
+        }
+
+        if (recorded) {
+          await sharePin(pinId, {
+            platform:
+              options.platform || (typeof navigator !== 'undefined' && navigator.share ? 'web-share' : 'manual'),
+            method: options.method || 'pin-details'
+          });
+        }
+      } catch (error) {
+        if (error?.name === 'AbortError') {
+          setShareStatus({
+            type: 'info',
+            message: 'Share canceled.'
+          });
+        } else {
+          setShareStatus({
+            type: 'error',
+            message: error?.message || 'Failed to share this pin.'
+          });
+        }
+      } finally {
+        setIsSharing(false);
+      }
+    },
+    [pin?.description, pin?.title, pinId]
+  );
+
   const replyItems = useMemo(
     () =>
       replies.map((reply) => ({
@@ -1077,6 +1144,10 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     isSubmittingReply,
     submitReplyError,
     handleSubmitReply,
+    shareStatus,
+    setShareStatus,
+    isSharing,
+    handleSharePin,
     attendees,
     attendeeOverlayOpen,
     openAttendeeOverlay,

@@ -29,6 +29,14 @@ const { toIdString, mapIdList } = require('../utils/ids');
 
 const router = express.Router();
 
+const toObjectIdList = (ids) =>
+  Array.from(ids)
+    .map((value) => toIdString(value))
+    .filter((id) => id && mongoose.Types.ObjectId.isValid(id))
+    .map((id) => new mongoose.Types.ObjectId(id));
+
+const buildBlockedSet = (user) => new Set(mapIdList(user?.relationships?.blockedUserIds));
+
 const PROFANITY_WORDS = [
   'fuck',
   'fucking',
@@ -795,11 +803,33 @@ router.get('/rooms/:roomId/messages', verifyToken, async (req, res) => {
         .json({ message: buildAccessDeniedMessage(access.reason) });
     }
 
+    const viewerBlockedIds = buildBlockedSet(viewer);
+    const viewerIdString = toIdString(viewer._id);
+
     const messages = await ProximityChatMessage.find({ roomId })
       .sort({ createdAt: 1 })
-      .populate('authorId');
+      .populate({
+        path: 'authorId',
+        select: 'username displayName roles accountStatus avatar stats relationships.blockedUserIds'
+      });
 
-    const payload = messages.map((message) => mapMessage(message));
+    const filteredMessages = messages.filter((message) => {
+      const authorDoc = message.authorId;
+      const authorIdString = toIdString(authorDoc?._id || authorDoc);
+      if (!authorIdString) {
+        return true;
+      }
+      if (viewerBlockedIds.has(authorIdString)) {
+        return false;
+      }
+      const authorBlockedSet = buildBlockedSet(authorDoc);
+      if (authorBlockedSet.has(viewerIdString)) {
+        return false;
+      }
+      return true;
+    });
+
+    const payload = filteredMessages.map((message) => mapMessage(message));
     res.json(payload);
   } catch (error) {
     if (error instanceof ZodError) {
@@ -838,7 +868,38 @@ router.get('/rooms/:roomId/presence', verifyToken, async (req, res) => {
     }
 
     const presences = await ProximityChatPresence.find({ roomId });
-    const payload = presences.map(mapPresence);
+
+    const viewerBlockedIds = buildBlockedSet(viewer);
+    const viewerIdString = toIdString(viewer._id);
+
+    const participantIds = new Set(presences.map((presence) => toIdString(presence.userId)));
+    const participantDocs = await User.find({ _id: { $in: toObjectIdList(participantIds) } })
+      .select({ relationships: 1 })
+      .lean();
+    const participantMap = new Map(
+      participantDocs.map((doc) => [toIdString(doc._id), doc])
+    );
+
+    const filteredPresences = presences.filter((presence) => {
+      const userIdString = toIdString(presence.userId);
+      if (!userIdString) {
+        return true;
+      }
+      if (viewerBlockedIds.has(userIdString)) {
+        return false;
+      }
+      const participantDoc = participantMap.get(userIdString);
+      if (!participantDoc) {
+        return true;
+      }
+      const participantBlocked = buildBlockedSet(participantDoc);
+      if (participantBlocked.has(viewerIdString)) {
+        return false;
+      }
+      return true;
+    });
+
+    const payload = filteredPresences.map(mapPresence);
     res.json(payload);
   } catch (error) {
     if (error instanceof ZodError) {
@@ -850,4 +911,3 @@ router.get('/rooms/:roomId/presence', verifyToken, async (req, res) => {
 });
 
 module.exports = router;
-

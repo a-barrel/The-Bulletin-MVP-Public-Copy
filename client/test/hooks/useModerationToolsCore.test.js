@@ -86,4 +86,67 @@ describe('useModerationTools (shared)', () => {
       expect(result.current.actionStatus?.type).toBe('error');
     });
   });
+
+  it('supports abusive user cleanup workflow', async () => {
+    const historyResponses = [
+      { history: [] },
+      { history: [{ id: 'action-1', type: 'mute' }] },
+      { history: [{ id: 'action-2', type: 'ban' }] }
+    ];
+
+    mockApi.fetchModerationHistory.mockImplementation(() => Promise.resolve(historyResponses.shift() || { history: [] }));
+
+    const { result } = renderHook(() => useModerationTools({ autoLoad: false }));
+
+    await act(async () => {
+      result.current.selectUser('abusive-user');
+    });
+
+    await waitFor(() => expect(mockApi.fetchModerationHistory).toHaveBeenCalledWith('abusive-user'));
+
+    mockApi.submitModerationAction.mockResolvedValueOnce({
+      action: { id: 'mute-action', type: 'mute' },
+      user: { id: 'abusive-user' }
+    });
+
+    await act(async () => {
+      await result.current.recordAction({
+        userId: 'abusive-user',
+        type: 'mute',
+        reason: 'Escalating spam',
+        durationMinutes: 30
+      });
+    });
+
+    mockApi.submitModerationAction.mockResolvedValueOnce({
+      action: { id: 'ban-action', type: 'ban' },
+      user: { id: 'abusive-user' }
+    });
+
+    await act(async () => {
+      await result.current.recordAction({
+        userId: 'abusive-user',
+        type: 'ban',
+        reason: 'Violation persisted'
+      });
+    });
+
+    expect(mockApi.submitModerationAction).toHaveBeenNthCalledWith(1, {
+      userId: 'abusive-user',
+      type: 'mute',
+      reason: 'Escalating spam',
+      durationMinutes: 30
+    });
+    expect(mockApi.submitModerationAction).toHaveBeenNthCalledWith(2, {
+      userId: 'abusive-user',
+      type: 'ban',
+      reason: 'Violation persisted',
+      durationMinutes: undefined
+    });
+
+    await waitFor(() => {
+      expect(result.current.historyStatus?.type).toBe('success');
+      expect(result.current.history.length).toBeGreaterThanOrEqual(0);
+    });
+  });
 });

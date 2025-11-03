@@ -4,6 +4,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './Map.css';
 import { formatDistanceMiles, haversineDistanceMeters } from '../utils/geo';
+import runtimeConfig from '../config/runtime';
+import resolveAssetUrl from '../utils/media';
 
 // Fix for default marker icons in Leaflet with React
 delete L.Icon.Default.prototype._getIconUrl;
@@ -122,6 +124,45 @@ const resolvePinIcon = (pin) => {
     return eventPinIcon;
   }
   return defaultPinIcon;
+};
+
+const ensureAbsoluteUploadsUrl = (url) => {
+  if (!url || typeof url !== 'string') {
+    return url;
+  }
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  let normalized = url.trim();
+  if (!normalized) {
+    return url;
+  }
+  if (normalized.startsWith('./')) {
+    normalized = normalized.slice(1);
+  }
+  if (
+    runtimeConfig.apiBaseUrl &&
+    (normalized.startsWith('/uploads/') || normalized.startsWith('uploads/'))
+  ) {
+    const base = runtimeConfig.apiBaseUrl.replace(/\/$/, '');
+    const trimmed = normalized.startsWith('/') ? normalized : `/${normalized}`;
+    return `${base}${trimmed}`;
+  }
+  return normalized.startsWith('/') ? normalized : `/${normalized}`;
+};
+
+const resolveThumbnailUrl = (asset) => {
+  if (!asset) {
+    return null;
+  }
+
+  const directUrl = resolveAssetUrl(asset, { fallback: null, baseUrl: '' });
+  if (directUrl) {
+    return ensureAbsoluteUploadsUrl(directUrl);
+  }
+
+  const apiUrl = resolveAssetUrl(asset, { fallback: null });
+  return ensureAbsoluteUploadsUrl(apiUrl);
 };
 
 const Map = ({
@@ -313,9 +354,31 @@ const Map = ({
               }
             }
           : null;
+        const thumbnailAsset = pin?.coverPhoto || (Array.isArray(pin?.photos) ? pin.photos : null);
+        const thumbnailUrl = resolveThumbnailUrl(thumbnailAsset);
+
         const popupContent = (
-          <div>
-            <strong>{pin.title ?? 'Untitled pin'}</strong>
+          <div style={{ minWidth: '208px', maxWidth: '240px' }}>
+            {thumbnailUrl ? (
+              <div
+                style={{
+                  width: '100%',
+                  marginBottom: '0.65rem',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  boxShadow: '0 8px 20px rgba(12, 17, 28, 0.28)'
+                }}
+              >
+                <img
+                  src={thumbnailUrl}
+                  alt={pin?.title ? `${pin.title} preview` : 'Pin preview'}
+                  style={{ display: 'block', width: '100%', height: '132px', objectFit: 'cover' }}
+                />
+              </div>
+            ) : null}
+            <strong style={{ display: 'block', fontSize: '1rem', marginBottom: '0.35rem' }}>
+              {pin.title ?? 'Untitled pin'}
+            </strong>
             {pin.type ? <div>Type: {pin.type}</div> : null}
             {pin._id ? <div>ID: {pin._id}</div> : null}
             {distanceLabel ? <div>Distance: {distanceLabel} mi</div> : null}

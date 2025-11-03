@@ -25,6 +25,23 @@ const INITIAL_UPDATE_FORM = {
   pinPreview: ''
 };
 
+const createObjectId = () => {
+  const length = 12;
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(length);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  }
+  return Array.from({ length }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, '0')).join('');
+};
+
+const ensureObjectId = (value) => {
+  if (typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value)) {
+    return value;
+  }
+  return createObjectId();
+};
+
 const useUpdatesTools = () => {
   const [updateForm, setUpdateForm] = useState(INITIAL_UPDATE_FORM);
   const [updateStatus, setUpdateStatus] = useState(null);
@@ -37,6 +54,7 @@ const useUpdatesTools = () => {
   const [isFetchingUpdates, setIsFetchingUpdates] = useState(false);
   const [currentUserId, setCurrentUserId] = useState('');
   const [isSendingDummy, setIsSendingDummy] = useState(false);
+  const [dummyStatus, setDummyStatus] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -182,49 +200,117 @@ const useUpdatesTools = () => {
     [updatesQuery]
   );
 
-  const sendDummyUpdate = useCallback(async () => {
-    setUpdatesStatus(null);
-    if (!currentUserId) {
-      setUpdatesStatus({ type: 'error', message: 'Load your profile first.' });
-      return;
-    }
+  const runDummyUpdate = useCallback(
+    async ({ payload, successMessage }) => {
+      setDummyStatus(null);
+      if (!currentUserId) {
+        setDummyStatus({ type: 'error', message: 'Load your profile first.' });
+        return;
+      }
 
-    try {
-      setIsSendingDummy(true);
-      const now = new Date();
-      const title = 'Debug badge unlocked';
-      const body = `You earned a tester badge at ${now.toLocaleTimeString([], {
-        hour: 'numeric',
-        minute: '2-digit'
-      })}.`;
-      await createUpdate({
-        userId: currentUserId,
-        payload: {
-          type: 'badge-earned',
-          title,
-          body,
-          metadata: {
-            badgeId: 'debug-dummy',
-            badgeLabel: 'Debugger',
-            issuedAt: now.toISOString()
-          },
-          relatedEntities: [{ id: currentUserId, type: 'user', label: 'You' }]
-        }
-      });
+      try {
+        setIsSendingDummy(true);
+        await createUpdate({
+          userId: currentUserId,
+          payload
+        });
 
-      const limitValue = parseOptionalNumber(updatesQuery.limit, 'Limit');
-      await refreshUpdates(currentUserId, limitValue);
+        const limitValue = parseOptionalNumber(updatesQuery.limit, 'Limit');
+        await refreshUpdates(currentUserId, limitValue);
 
-      setUpdatesStatus({ type: 'success', message: 'Dummy update queued for your account.' });
-    } catch (error) {
-      setUpdatesStatus({
-        type: 'error',
-        message: error?.message || 'Failed to send dummy update.'
-      });
-    } finally {
-      setIsSendingDummy(false);
-    }
-  }, [currentUserId, refreshUpdates, updatesQuery.limit]);
+        setDummyStatus({
+          type: 'success',
+          message: successMessage || 'Dummy update queued for your account.'
+        });
+      } catch (error) {
+        setDummyStatus({
+          type: 'error',
+          message: error?.message || 'Failed to send dummy update.'
+        });
+      } finally {
+        setIsSendingDummy(false);
+      }
+    },
+    [currentUserId, refreshUpdates, updatesQuery.limit]
+  );
+
+  const sendDummyBadgeUpdate = useCallback(() => {
+    const now = new Date();
+    const title = 'Debug badge unlocked';
+    const body = `You earned a tester badge at ${now.toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit'
+    })}.`;
+    const badgeId = '656565656565656565656565';
+    return runDummyUpdate({
+      payload: {
+        type: 'badge-earned',
+        title,
+        body,
+        metadata: {
+          badgeId,
+          badgeLabel: 'Debugger',
+          issuedAt: now.toISOString()
+        },
+        relatedEntities: [{ id: currentUserId, type: 'user', label: 'You' }]
+      },
+      successMessage: 'Badge update queued for your account.'
+    });
+  }, [currentUserId, runDummyUpdate]);
+
+  const sendDummyEventUpdate = useCallback(() => {
+    const now = new Date();
+    const title = 'Event reminder: Debug Expo';
+    const body = `Debug Expo starts in 30 minutes (${now.toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit'
+    })}).`;
+    const eventId = createObjectId();
+    return runDummyUpdate({
+      payload: {
+        type: 'event-reminder',
+        title,
+        body,
+        metadata: {
+          startsAt: now.toISOString(),
+          proximityMeters: 500
+        },
+        relatedEntities: [
+          { id: eventId, type: 'pin', label: 'Debug Expo' },
+          { id: currentUserId, type: 'user', label: 'You' }
+        ]
+      },
+      successMessage: 'Event update queued for your account.'
+    });
+  }, [currentUserId, runDummyUpdate]);
+
+  const sendDummyDiscussionUpdate = useCallback(() => {
+    const now = new Date();
+    const title = 'New reply in Debug Support';
+    const body = `A teammate replied to your thread at ${now.toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit'
+    })}.`;
+    const threadId = ensureObjectId();
+    const replyId = ensureObjectId();
+    return runDummyUpdate({
+      payload: {
+        type: 'chat-message',
+        title,
+        body,
+        metadata: {
+          threadId,
+          replyId,
+          replySnippet: 'Appreciate the quick fix!'
+        },
+        relatedEntities: [
+          { id: threadId, type: 'chat-room', label: 'Debug Support' },
+          { id: currentUserId, type: 'user', label: 'You' }
+        ]
+      },
+      successMessage: 'Discussion update queued for your account.'
+    });
+  }, [currentUserId, runDummyUpdate]);
 
   const reloadCurrentProfile = useCallback(async () => {
     try {
@@ -260,9 +346,13 @@ const useUpdatesTools = () => {
     isFetchingUpdates,
     handleFetchUpdates,
     currentUserId,
-    sendDummyUpdate,
+    sendDummyBadgeUpdate,
+    sendDummyEventUpdate,
+    sendDummyDiscussionUpdate,
     reloadCurrentProfile,
-    isSendingDummy
+    isSendingDummy,
+    dummyStatus,
+    setDummyStatus
   };
 };
 

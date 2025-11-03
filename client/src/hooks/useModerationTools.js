@@ -10,6 +10,9 @@ const initialState = {
   overview: null,
   overviewStatus: null,
   isLoadingOverview: false,
+  viewer: null,
+  hasAccess: null,
+  lastErrorStatus: null,
   historyByUser: {},
   historyStatus: null,
   isLoadingHistory: false,
@@ -31,20 +34,28 @@ const reducer = (state, action) => {
       return {
         ...state,
         isLoadingOverview: true,
-        overviewStatus: null
+        overviewStatus: null,
+        lastErrorStatus: null
       };
     case 'overview/success':
       return {
         ...state,
         isLoadingOverview: false,
         overview: action.payload,
-        overviewStatus: { type: 'success' }
+        overviewStatus: { type: 'success' },
+        viewer: action.payload?.viewer ?? null,
+        hasAccess: true,
+        lastErrorStatus: null
       };
     case 'overview/error':
       return {
         ...state,
         isLoadingOverview: false,
-        overviewStatus: { type: 'error', message: action.error }
+        overviewStatus: { type: 'error', message: action.error },
+        hasAccess: action.status === 403 ? false : state.hasAccess,
+        lastErrorStatus: action.status ?? null,
+        viewer: action.status === 403 ? null : state.viewer,
+        overview: action.status === 403 ? null : state.overview
       };
     case 'history/pending':
       return {
@@ -66,7 +77,9 @@ const reducer = (state, action) => {
       return {
         ...state,
         isLoadingHistory: false,
-        historyStatus: { type: 'error', message: action.error }
+        historyStatus: { type: 'error', message: action.error },
+        hasAccess: action.status === 403 ? false : state.hasAccess,
+        lastErrorStatus: action.status ?? state.lastErrorStatus
       };
     case 'action/pending':
       return {
@@ -91,7 +104,9 @@ const reducer = (state, action) => {
         actionStatus: action.message
           ? { type: 'success', message: action.message }
           : null,
-        lastOptimisticActionId: null
+        lastOptimisticActionId: null,
+        hasAccess: true,
+        lastErrorStatus: null
       };
     case 'action/error': {
       const { userId, optimisticId, error } = action;
@@ -107,7 +122,9 @@ const reducer = (state, action) => {
           ...state.historyByUser,
           [userId]: filteredHistory
         },
-        lastOptimisticActionId: null
+        lastOptimisticActionId: null,
+        hasAccess: action.status === 403 ? false : state.hasAccess,
+        lastErrorStatus: action.status ?? state.lastErrorStatus
       };
     }
     case 'action/reset':
@@ -148,7 +165,8 @@ export default function useModerationTools({ autoLoad = true } = {}) {
     } catch (error) {
       dispatch({
         type: 'overview/error',
-        error: error?.message || 'Failed to load moderation overview.'
+        error: error?.message || 'Failed to load moderation overview.',
+        status: error?.status ?? null
       });
       throw error;
     }
@@ -172,7 +190,11 @@ export default function useModerationTools({ autoLoad = true } = {}) {
       } catch (error) {
         dispatch({
           type: 'history/error',
-          error: error?.message || 'Failed to load moderation history.'
+          error:
+            error?.status === 403
+              ? 'Moderator privileges required.'
+              : error?.message || 'Failed to load moderation history.',
+          status: error?.status ?? null
         });
         throw error;
       }
@@ -195,6 +217,18 @@ export default function useModerationTools({ autoLoad = true } = {}) {
       if (!userId) {
         const error = new Error('Select a user before performing an action.');
         dispatch({ type: 'action/error', error: error.message, userId: '', optimisticId: null });
+        throw error;
+      }
+
+      if (state.hasAccess === false) {
+        const error = new Error('Moderator privileges required.');
+        dispatch({
+          type: 'action/error',
+          userId,
+          optimisticId: null,
+          error: error.message,
+          status: 403
+        });
         throw error;
       }
 
@@ -226,12 +260,16 @@ export default function useModerationTools({ autoLoad = true } = {}) {
           type: 'action/error',
           userId,
           optimisticId: optimisticAction.id,
-          error: error?.message || 'Failed to record moderation action.'
+          error:
+            error?.status === 403
+              ? 'Moderator privileges required.'
+              : error?.message || 'Failed to record moderation action.',
+          status: error?.status ?? null
         });
         throw error;
       }
     },
-    [loadOverview, loadHistory]
+    [loadOverview, loadHistory, state.hasAccess]
   );
 
   const resetActionStatus = useCallback(() => {
@@ -254,6 +292,9 @@ export default function useModerationTools({ autoLoad = true } = {}) {
     overview: state.overview,
     overviewStatus: state.overviewStatus,
     isLoadingOverview: state.isLoadingOverview,
+    viewer: state.viewer,
+    hasAccess: state.hasAccess,
+    lastErrorStatus: state.lastErrorStatus,
     history,
     historyStatus: state.historyStatus,
     isLoadingHistory: state.isLoadingHistory,

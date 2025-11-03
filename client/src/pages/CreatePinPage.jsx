@@ -1,3 +1,4 @@
+/* NOTE: Page exports configuration alongside the component. */
 import { useCallback, useEffect, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';

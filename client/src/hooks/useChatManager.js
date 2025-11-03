@@ -398,36 +398,57 @@ export function useChatManager({
   );
 
   const handleSendMessage = useCallback(
-    async (event) => {
+    async (event, options = {}) => {
       event.preventDefault();
       if (!selectedRoomId || !authUser || isSendingMessage) {
-        return;
+        return false;
       }
 
       const trimmed = messageDraft.trim();
-      if (!trimmed) {
-        return;
+      const attachments = Array.isArray(options.attachments) ? options.attachments : [];
+      const hasMessage = trimmed.length > 0;
+      const hasAttachments = attachments.length > 0;
+
+      if (!hasMessage && !hasAttachments) {
+        return false;
       }
 
       const pendingGifQuery = getGifCommandQuery(messageDraft);
       if (pendingGifQuery && !gifPreview) {
         setGifPreviewError(null);
         requestGifPreview(pendingGifQuery);
-        return;
+        return false;
       }
+
+      const messageToSend = hasMessage
+        ? messageDraft
+        : options.messageOverride || 'Attachment';
 
       setIsSendingMessage(true);
       setMessagesError(null);
       try {
-        const message = await createChatMessage(selectedRoomId, { message: trimmed });
+        const message = await createChatMessage(selectedRoomId, {
+          message: messageToSend,
+          attachments
+        });
         handleMessageSent(message);
+        return true;
       } catch (error) {
         setMessagesError(error?.message || 'Failed to send message.');
+        return false;
       } finally {
         setIsSendingMessage(false);
       }
     },
-    [authUser, gifPreview, handleMessageSent, isSendingMessage, messageDraft, requestGifPreview, selectedRoomId]
+    [
+      authUser,
+      gifPreview,
+      handleMessageSent,
+      isSendingMessage,
+      messageDraft,
+      requestGifPreview,
+      selectedRoomId
+    ]
   );
 
   const handleGifPreviewConfirm = useCallback(() => {
@@ -492,7 +513,7 @@ export function useChatManager({
   }, [gifPreview, isGifPreviewLoading, messageDraft, requestGifPreview]);
 
   const handleMessageInputKeyDown = useCallback(
-    (event) => {
+    (event, options = {}) => {
       if (
         event.key !== 'Enter' ||
         event.shiftKey ||
@@ -521,7 +542,11 @@ export function useChatManager({
         handleGifPreviewConfirm();
         return;
       }
-      handleSendMessage(event);
+      const result = handleSendMessage(event, options);
+      if (result && typeof result.then === 'function') {
+        result.catch(() => {});
+      }
+      return result;
     },
     [
       gifPreview,

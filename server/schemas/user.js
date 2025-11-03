@@ -64,6 +64,8 @@ const UserProfileSchema = PublicUserSchema.extend({
   bookmarkCollectionIds: z.array(ObjectIdSchema).default([]),
   proximityChatRoomIds: z.array(ObjectIdSchema).default([]),
   recentLocationIds: z.array(ObjectIdSchema).default([]),
+  mutualFriendCount: z.number().int().nonnegative().default(0).optional(),
+  mutualFriends: z.array(PublicUserSchema).default([]).optional(),
   createdAt: IsoDateStringSchema,
   updatedAt: IsoDateStringSchema,
   audit: AuditMetadataSchema.optional()

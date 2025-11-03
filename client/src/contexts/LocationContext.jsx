@@ -1,3 +1,4 @@
+/* NOTE: Context exports helper utilities alongside the provider. */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import runtimeConfig from '../config/runtime';
 

@@ -1,3 +1,4 @@
+/* NOTE: Context file also exports helper utilities. */
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import useNetworkStatus from '../hooks/useNetworkStatus';
 

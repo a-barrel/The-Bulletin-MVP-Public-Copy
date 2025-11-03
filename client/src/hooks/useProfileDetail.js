@@ -253,16 +253,17 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
     return primary;
   }, [effectiveUser]);
 
+  const viewerId = viewerProfile?._id ? String(viewerProfile._id) : null;
+  const effectiveUserId = effectiveUser?._id ? String(effectiveUser._id) : null;
+
   const canEditProfile =
     !userFromState &&
-    (shouldLoadCurrentUser ||
-      (effectiveUser && targetUserId && effectiveUser._id && effectiveUser._id === targetUserId));
+    (shouldLoadCurrentUser || (viewerId && effectiveUserId && viewerId === effectiveUserId));
 
   const editingAvatarSrc = formState.avatarCleared ? null : formState.avatarPreviewUrl ?? avatarUrl;
 
-  const viewerId = viewerProfile?._id ? String(viewerProfile._id) : null;
-  const normalizedTargetId = effectiveUser?._id
-    ? String(effectiveUser._id)
+  const normalizedTargetId = effectiveUserId
+    ? effectiveUserId
     : targetUserId && targetUserId !== 'me'
     ? targetUserId
     : null;
@@ -477,6 +478,22 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
   }, [effectiveUser]);
 
   const badgeList = effectiveUser?.badges ?? [];
+
+  const mutualFriends = useMemo(() => {
+    if (!Array.isArray(effectiveUser?.mutualFriends)) {
+      return [];
+    }
+    return effectiveUser.mutualFriends;
+  }, [effectiveUser?.mutualFriends]);
+
+  const mutualFriendCount = useMemo(() => {
+    if (typeof effectiveUser?.mutualFriendCount === 'number') {
+      return effectiveUser.mutualFriendCount;
+    }
+    return mutualFriends.length;
+  }, [effectiveUser?.mutualFriendCount, mutualFriends.length]);
+
+  const mutualFriendPreview = useMemo(() => mutualFriends.slice(0, 8), [mutualFriends]);
 
   const activityEntries = useMemo(() => {
     if (!effectiveUser) {
@@ -696,6 +713,9 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
     hasProfile,
     bioText,
     badgeList,
+    mutualFriends,
+    mutualFriendPreview,
+    mutualFriendCount,
     statsVisible,
     statsEntries,
     activityEntries,

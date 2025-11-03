@@ -20,10 +20,19 @@ export const routes = {
     base: '/settings'
   },
   bookmarks: {
-    base: '/bookmarks'
+    base: '/bookmarks',
+    collection: (collectionId: string | number) =>
+      `/bookmarks?collection=${encodeSegment(collectionId)}`
   },
   updates: {
     base: '/updates'
+  },
+  admin: {
+    base: '/admin'
+  },
+  directMessages: {
+    base: '/chat?tab=direct',
+    thread: (threadId: string | number) => `/chat?tab=direct&thread=${encodeSegment(threadId)}`
   },
   list: {
     base: '/list'
