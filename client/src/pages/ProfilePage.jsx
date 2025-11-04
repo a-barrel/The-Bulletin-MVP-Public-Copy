@@ -85,10 +85,10 @@ export const pageConfig = {
       return profileMe;
     }
     const sanitized = trimmed.replace(/^\/+/, '');
-    if (new RegExp(`^${profilePattern}\/.+`, 'i').test(sanitized)) {
+    if (new RegExp(`^${profilePattern}/.+`, 'i').test(sanitized)) {
       return `/${sanitized}`;
     }
-    if (new RegExp(`^\/${profilePattern}\/.+`, 'i').test(trimmed)) {
+    if (new RegExp(`^/${profilePattern}/.+`, 'i').test(trimmed)) {
       return trimmed;
     }
     return `${routes.profile.base}/${sanitized}`;
