@@ -91,11 +91,13 @@ export default function GlobalNavMenu({
   triggerClassName = 'header-icon-btn',
   triggerAriaLabel = 'Open navigation menu',
   iconClassName = 'header-icon',
-  menuTitle = 'Quick Navigation',
+  menuTitle = 'Menu',
   items = DEFAULT_ITEMS
 }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef(null);
+  const [anchor, setAnchor] = useState({ x: 16, y: 56, w: 40, h: 40 });
   const { isOffline } = useNetworkStatusContext();
   const socialNotifications = useSocialNotificationsContext();
   const { unreadBookmarkCount } = useUpdates();
@@ -442,12 +444,14 @@ export default function GlobalNavMenu({
   );
 
   const handleOpen = useCallback(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setAnchor({ x: rect.left, y: rect.top, w: rect.width, h: rect.height });
+    }
     setOpen(true);
   }, []);
 
-  const handleClose = useCallback(() => {
-    setOpen(false);
-  }, []);
+  const handleClose = useCallback(() => setOpen(false), []);
 
   const handleNavigate = useCallback(
     (to) => {
@@ -471,9 +475,13 @@ export default function GlobalNavMenu({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open]);
 
+  const originX = anchor.x + anchor.w / 2;
+  const originY = anchor.y + anchor.h / 2;
+
   return (
     <div className={`global-nav-menu ${className}`}>
       <button
+        ref={triggerRef}
         type="button"
         className={triggerClassName}
         aria-label={triggerAriaLabel}
@@ -490,7 +498,15 @@ export default function GlobalNavMenu({
             aria-label="Close navigation menu"
             onClick={handleClose}
           />
-          <div className="global-nav-menu__panel">
+          <div
+            className="global-nav-menu__panel global-nav-menu__panel--anchored"
+            style={{
+              '--anchor-x': `${anchor.x}px`,
+              '--anchor-y': `${anchor.y}px`,
+              '--origin-x': `${originX}px`,
+              '--origin-y': `${originY}px`
+            }}
+          >
             <div className="global-nav-menu__header">
               <h2 className="global-nav-menu__title">{menuTitle}</h2>
               <button
