@@ -2,6 +2,8 @@
 const Update = require('../models/Update');
 const User = require('../models/User');
 const Pin = require('../models/Pin');
+const { Bookmark } = require('../models/Bookmark');
+const Reply = require('../models/Reply');
 const { PinPreviewSchema } = require('../schemas/pin');
 
 const { toIdString } = require('../utils/ids');
@@ -58,6 +60,79 @@ const buildPinPreview = (pinDoc) => {
     endDate: doc.endDate ? new Date(doc.endDate).toISOString() : undefined,
     expiresAt: doc.expiresAt ? new Date(doc.expiresAt).toISOString() : undefined
   });
+};
+
+const normalizeDateValue = (value) => {
+  if (!value) {
+    return null;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  const timestamp = date.getTime();
+  return Number.isNaN(timestamp) ? null : timestamp;
+};
+
+const summarizePinChanges = (previous, updated) => {
+  if (!previous || !updated) {
+    return [];
+  }
+
+  const changes = new Set();
+  const prevDoc = previous.toObject ? previous.toObject({ depopulate: false }) : previous;
+  const nextDoc = updated.toObject ? updated.toObject({ depopulate: false }) : updated;
+
+  const prevTitle = typeof prevDoc.title === 'string' ? prevDoc.title.trim() : '';
+  const nextTitle = typeof nextDoc.title === 'string' ? nextDoc.title.trim() : '';
+  if (prevTitle !== nextTitle) {
+    changes.add('title');
+  }
+
+  const prevDescription = typeof prevDoc.description === 'string' ? prevDoc.description.trim() : '';
+  const nextDescription = typeof nextDoc.description === 'string' ? nextDoc.description.trim() : '';
+  if (prevDescription !== nextDescription) {
+    changes.add('description');
+  }
+
+  if ((prevDoc.proximityRadiusMeters ?? null) !== (nextDoc.proximityRadiusMeters ?? null)) {
+    changes.add('radius');
+  }
+
+  const normalizedType = typeof nextDoc.type === 'string' ? nextDoc.type.toLowerCase() : '';
+
+  if (normalizedType === 'event') {
+    const prevStart = normalizeDateValue(prevDoc.startDate);
+    const nextStart = normalizeDateValue(nextDoc.startDate);
+    const prevEnd = normalizeDateValue(prevDoc.endDate);
+    const nextEnd = normalizeDateValue(nextDoc.endDate);
+    if (prevStart !== nextStart || prevEnd !== nextEnd) {
+      changes.add('schedule');
+    }
+  } else if (normalizedType === 'discussion') {
+    const prevExpires = normalizeDateValue(prevDoc.expiresAt);
+    const nextExpires = normalizeDateValue(nextDoc.expiresAt);
+    if (prevExpires !== nextExpires) {
+      changes.add('expiration');
+    }
+  }
+
+  const prevCover = typeof prevDoc.coverPhoto?.url === 'string' ? prevDoc.coverPhoto.url : null;
+  const nextCover = typeof nextDoc.coverPhoto?.url === 'string' ? nextDoc.coverPhoto.url : null;
+  if (prevCover !== nextCover) {
+    changes.add('cover');
+  }
+
+  const prevPhotoCount = Array.isArray(prevDoc.photos) ? prevDoc.photos.length : 0;
+  const nextPhotoCount = Array.isArray(nextDoc.photos) ? nextDoc.photos.length : 0;
+  if (prevPhotoCount !== nextPhotoCount) {
+    changes.add('photos');
+  }
+
+  const prevLocation = JSON.stringify(prevDoc.address ?? prevDoc.approximateAddress ?? null);
+  const nextLocation = JSON.stringify(nextDoc.address ?? nextDoc.approximateAddress ?? null);
+  if (prevLocation !== nextLocation) {
+    changes.add('location');
+  }
+
+  return Array.from(changes);
 };
 
 const createRelatedEntity = (id, type, label, summary) => {
@@ -175,6 +250,271 @@ const broadcastPinCreated = async (pinDoc) => {
     await insertUpdates(updates, 'pin-created');
   } catch (error) {
     console.error('Failed to fan out pin creation update', error);
+  }
+};
+
+const broadcastPinUpdated = async ({ previous, updated, editor }) => {
+  try {
+    if (!updated) {
+      return;
+    }
+
+    const pinDoc = updated.toObject ? updated.toObject({ depopulate: false }) : updated;
+    const pinId = toIdString(pinDoc._id);
+    const pinObjectId = toObjectId(pinDoc._id);
+    if (!pinId || !pinObjectId) {
+      return;
+    }
+
+    const changes = summarizePinChanges(previous, pinDoc);
+    if (!changes.length) {
+      return;
+    }
+
+    const editorDoc = editor?.toObject ? editor.toObject() : editor;
+    const editorId = toIdString(editorDoc?._id);
+    const editorObjectId = toObjectId(editorDoc?._id);
+    const editorName = getDisplayName(editorDoc);
+
+    const bookmarks = await Bookmark.find({ pinId: pinObjectId }, { userId: 1 }).lean();
+    if (!bookmarks.length) {
+      return;
+    }
+
+    const candidateRecipients = new Set(
+      bookmarks
+        .map((bookmark) => toIdString(bookmark.userId))
+        .filter(Boolean)
+    );
+
+    if (editorId) {
+      candidateRecipients.delete(editorId);
+    }
+
+    if (!candidateRecipients.size) {
+      return;
+    }
+
+    const filteredRecipients = await filterRecipientsByPreference(Array.from(candidateRecipients));
+    if (!filteredRecipients.length) {
+      return;
+    }
+
+    const changeLabels = {
+      title: 'title',
+      description: 'description',
+      schedule: 'schedule',
+      expiration: 'expiration',
+      radius: 'radius',
+      cover: 'cover image',
+      photos: 'photos',
+      location: 'location'
+    };
+
+    const labelList = changes.map((key) => changeLabels[key] || key);
+    const changeSummary = `Updated ${labelList.join(', ')}`;
+
+    const preview = buildPinPreview(updated);
+    const pinTitle = pinDoc.title || 'a pin';
+
+    const updates = filteredRecipients.map((recipientId) => ({
+      userId: toObjectId(recipientId),
+      sourceUserId: editorObjectId ?? undefined,
+      payload: {
+        type: 'pin-update',
+        title: `${editorName} updated "${pinTitle}"`,
+        body: changeSummary,
+        metadata: {
+          updateKind: 'pin-edit',
+          changedFields: changes
+        },
+        pin: preview,
+        relatedEntities: [
+          createRelatedEntity(pinDoc._id, 'pin', pinTitle),
+          editorId ? createRelatedEntity(editorId, 'user', editorName) : null
+        ].filter(Boolean)
+      }
+    }));
+
+    await insertUpdates(updates, 'pin-updated');
+  } catch (error) {
+    console.error('Failed to fan out pin updated notification', error);
+  }
+};
+
+const broadcastEventStartingSoon = async ({ pin }) => {
+  try {
+    if (!pin) {
+      return;
+    }
+
+    const pinDoc = pin.toObject ? pin.toObject({ depopulate: false }) : pin;
+    const pinObjectId = toObjectId(pinDoc._id);
+    const pinId = toIdString(pinDoc._id);
+    if (!pinObjectId || !pinId) {
+      return;
+    }
+
+    const normalizedType = typeof pinDoc.type === 'string' ? pinDoc.type.toLowerCase() : '';
+    if (normalizedType !== 'event') {
+      return;
+    }
+
+    const attendeeIds = Array.isArray(pinDoc.attendingUserIds)
+      ? pinDoc.attendingUserIds.map((id) => toIdString(id)).filter(Boolean)
+      : [];
+
+    const bookmarkDocs = await Bookmark.find({ pinId: pinObjectId }, { userId: 1 }).lean();
+    const bookmarkIds = bookmarkDocs.map((doc) => toIdString(doc.userId)).filter(Boolean);
+
+    const recipientIds = new Set([...attendeeIds, ...bookmarkIds]);
+    if (!recipientIds.size) {
+      return;
+    }
+
+    const recipientIdList = Array.from(recipientIds);
+    const recipientObjectIds = recipientIdList.map((id) => toObjectId(id)).filter(Boolean);
+    if (!recipientObjectIds.length) {
+      return;
+    }
+
+    const existing = await Update.find(
+      {
+        userId: { $in: recipientObjectIds },
+        'payload.type': 'event-starting-soon',
+        'payload.pin._id': pinObjectId
+      },
+      { userId: 1 }
+    ).lean();
+
+    const alreadyNotified = new Set(existing.map((entry) => toIdString(entry.userId)).filter(Boolean));
+    const pendingRecipients = recipientIdList.filter((id) => !alreadyNotified.has(id));
+    if (!pendingRecipients.length) {
+      return;
+    }
+
+    const filteredRecipients = await filterRecipientsByPreference(pendingRecipients);
+    if (!filteredRecipients.length) {
+      return;
+    }
+
+    const preview = buildPinPreview(pinDoc);
+    const hostName = getDisplayName(pinDoc.creatorId);
+    const startDateIso = pinDoc.startDate ? new Date(pinDoc.startDate).toISOString() : undefined;
+    const title = pinDoc.title || 'Upcoming event';
+    const sourceUserId = toObjectId(pinDoc.creatorId?._id ?? pinDoc.creatorId);
+
+    const updates = filteredRecipients.map((recipientId) => ({
+      userId: toObjectId(recipientId),
+      sourceUserId: sourceUserId ?? undefined,
+      payload: {
+        type: 'event-starting-soon',
+        title: `${title} starts in 2 hours`,
+        body: hostName ? `${hostName} is getting ready.` : undefined,
+        metadata: {
+          updateKind: 'event-starting-soon',
+          startDate: startDateIso
+        },
+        pin: preview,
+        relatedEntities: [
+          createRelatedEntity(pinDoc._id, 'pin', title),
+          pinDoc.creatorId ? createRelatedEntity(pinDoc.creatorId._id ?? pinDoc.creatorId, 'user', hostName) : null
+        ].filter(Boolean)
+      }
+    }));
+
+    await insertUpdates(updates, 'event-starting-soon');
+  } catch (error) {
+    console.error('Failed to fan out event starting soon update', error);
+  }
+};
+
+const broadcastDiscussionExpiringSoon = async ({ pin }) => {
+  try {
+    if (!pin) {
+      return;
+    }
+
+    const pinDoc = pin.toObject ? pin.toObject({ depopulate: false }) : pin;
+    const pinObjectId = toObjectId(pinDoc._id);
+    const pinId = toIdString(pinDoc._id);
+    if (!pinObjectId || !pinId) {
+      return;
+    }
+
+    const normalizedType = typeof pinDoc.type === 'string' ? pinDoc.type.toLowerCase() : '';
+    if (normalizedType !== 'discussion') {
+      return;
+    }
+
+    const expiresAtTs = normalizeDateValue(pinDoc.expiresAt);
+    if (!expiresAtTs) {
+      return;
+    }
+
+    const replies = await Reply.find({ pinId: pinObjectId }, { authorId: 1 }).lean();
+    if (!replies.length) {
+      return;
+    }
+
+    const authorIds = replies.map((reply) => toIdString(reply.authorId)).filter(Boolean);
+    if (!authorIds.length) {
+      return;
+    }
+
+    const authorObjectIds = authorIds.map((id) => toObjectId(id)).filter(Boolean);
+    if (!authorObjectIds.length) {
+      return;
+    }
+
+    const existing = await Update.find(
+      {
+        userId: { $in: authorObjectIds },
+        'payload.type': 'discussion-expiring-soon',
+        'payload.pin._id': pinObjectId
+      },
+      { userId: 1 }
+    ).lean();
+
+    const alreadyNotified = new Set(existing.map((entry) => toIdString(entry.userId)).filter(Boolean));
+    const pendingRecipients = authorIds.filter((id) => !alreadyNotified.has(id));
+    if (!pendingRecipients.length) {
+      return;
+    }
+
+    const filteredRecipients = await filterRecipientsByPreference(pendingRecipients);
+    if (!filteredRecipients.length) {
+      return;
+    }
+
+    const preview = buildPinPreview(pinDoc);
+    const title = pinDoc.title || 'Discussion';
+    const expiresAtIso = new Date(expiresAtTs).toISOString();
+    const sourceUserId = toObjectId(pinDoc.creatorId?._id ?? pinDoc.creatorId);
+    const hostName = getDisplayName(pinDoc.creatorId);
+
+    const updates = filteredRecipients.map((recipientId) => ({
+      userId: toObjectId(recipientId),
+      sourceUserId: sourceUserId ?? undefined,
+      payload: {
+        type: 'discussion-expiring-soon',
+        title: `${title} wraps up tomorrow`,
+        body: 'Add your final thoughts before it closes.',
+        metadata: {
+          updateKind: 'discussion-expiring-soon',
+          expiresAt: expiresAtIso
+        },
+        pin: preview,
+        relatedEntities: [
+          createRelatedEntity(pinDoc._id, 'pin', title),
+          pinDoc.creatorId ? createRelatedEntity(pinDoc.creatorId._id ?? pinDoc.creatorId, 'user', hostName) : null
+        ].filter(Boolean)
+      }
+    }));
+
+    await insertUpdates(updates, 'discussion-expiring');
+  } catch (error) {
+    console.error('Failed to fan out discussion expiration update', error);
   }
 };
 
@@ -544,6 +884,9 @@ const broadcastBadgeEarned = async ({ userId, badge, sourceUserId }) => {
 
 module.exports = {
   broadcastPinCreated,
+  broadcastPinUpdated,
+  broadcastEventStartingSoon,
+  broadcastDiscussionExpiringSoon,
   broadcastPinReply,
   broadcastAttendanceChange,
   broadcastBookmarkCreated,

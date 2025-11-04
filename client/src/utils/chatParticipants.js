@@ -1,5 +1,6 @@
 import AvatarIcon from '../assets/AvatarIcon.svg';
 import normalizeObjectId from './normalizeObjectId';
+import resolveAssetUrl from './media';
 
 export const getParticipantId = (participant) => {
   if (!participant) {
@@ -35,27 +36,18 @@ export const resolveAvatarSrc = (participant) => {
   if (!participant || typeof participant === 'string') {
     return AvatarIcon;
   }
-  const avatarUrl =
-    participant.avatar?.url ||
-    participant.avatarUrl ||
+
+  const candidate =
     participant.avatar ||
+    participant.avatarUrl ||
     participant.photoUrl ||
     participant.photoURL ||
+    participant.profile?.avatar ||
+    participant.profile?.photoUrl ||
     null;
-  if (!avatarUrl) {
-    return AvatarIcon;
-  }
-  if (typeof avatarUrl === 'string' && avatarUrl.trim()) {
-    const trimmed = avatarUrl.trim();
-    if (trimmed.startsWith('http') || trimmed.startsWith('data:')) {
-      return trimmed;
-    }
-    return `/${trimmed.replace(/^\/+/, '')}`;
-  }
-  if (typeof avatarUrl === 'object' && avatarUrl !== null && '$oid' in avatarUrl) {
-    return avatarUrl.$oid || AvatarIcon;
-  }
-  return AvatarIcon;
+
+  const resolved = resolveAssetUrl(candidate, { fallback: AvatarIcon });
+  return resolved || AvatarIcon;
 };
 
 export const resolveThreadParticipants = (thread, viewerId) => {

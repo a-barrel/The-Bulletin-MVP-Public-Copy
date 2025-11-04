@@ -89,9 +89,14 @@
     justify-content: center;
 }
 
-.bookmark {
-    width: 30px;
-    height: 30px;
+.bookmark-icon {
+    font-size: 30px;
+    color: #1c1c1c;
+    transition: color 150ms ease, transform 150ms ease;
+}
+
+.bookmark-icon--locked {
+    color: #ffb347;
 }
 
 /* pin name */
@@ -977,9 +982,30 @@
     transition: transform 150ms ease, filter 150ms ease;
 }
 
+.bookmark-button--locked {
+    cursor: not-allowed;
+}
+
+.bookmark-button--locked:disabled {
+    opacity: 1;
+}
+
+.bookmark-button--locked:hover {
+    transform: none;
+    filter: none;
+}
+
 .bookmark-button:hover {
     transform: scale(1.08);
     filter: brightness(1.05);
+}
+
+.bookmark-button:hover .bookmark-icon:not(.bookmark-icon--locked) {
+    color: #5d3889;
+}
+
+.bookmark-button:hover .bookmark-icon--locked {
+    color: #e68a00;
 }
 
 .bookmark-button:active {

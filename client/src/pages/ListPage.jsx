@@ -213,12 +213,12 @@ export default function ListPage() {
     handleClearFilters();
   }, [handleClearFilters]);
   const handleFeedItemSelect = useCallback(
-    (pinId) => {
+    (pinId, pin) => {
       const normalized = toIdString(pinId);
       if (!normalized) {
         return;
       }
-      navigate(routes.pin.byId(normalized));
+      navigate(routes.pin.byId(normalized), { state: { pin } });
     },
     [navigate]
   );

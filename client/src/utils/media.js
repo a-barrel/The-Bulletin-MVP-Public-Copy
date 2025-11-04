@@ -63,6 +63,11 @@ export function resolveAssetUrl(asset, options = {}) {
     keys
   } = normalizedOptions;
 
+  const shouldReturnRelativeOffline = (path) =>
+    runtimeConfig.isOffline &&
+    typeof path === 'string' &&
+    (path.startsWith('/images/') || path.startsWith('/sounds/'));
+
   if (!asset && asset !== 0) {
     return fallback;
   }
@@ -72,10 +77,26 @@ export function resolveAssetUrl(asset, options = {}) {
     if (!trimmed) {
       return fallback;
     }
+
     if (isAbsoluteUrl(trimmed)) {
+      if (runtimeConfig.isOffline) {
+        try {
+          const url = new URL(trimmed);
+          const offlineHosts = new Set(['localhost:5000', '127.0.0.1:5000', 'localhost:8000', '127.0.0.1:8000']);
+          if (offlineHosts.has(url.host) && shouldReturnRelativeOffline(url.pathname)) {
+            return url.pathname;
+          }
+        } catch (error) {
+          // noop – fall back to absolute URL behaviour
+        }
+      }
       return trimmed;
     }
+
     const normalized = normalizeProfileImagePath(trimmed.startsWith('/') ? trimmed : `/${trimmed}`);
+    if (shouldReturnRelativeOffline(normalized)) {
+      return normalized;
+    }
     return baseUrl ? `${baseUrl}${normalized}` : normalized;
   }
 

@@ -14,6 +14,7 @@ import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import { useLocationContext } from '../contexts/LocationContext';
 import { useNavOverlay } from '../contexts/NavOverlayContext';
 import useCreatePinForm from '../hooks/useCreatePinForm';
+import normalizeObjectId from '../utils/normalizeObjectId';
 import './CreatePinPage.css';
 
 export const pageConfig = {
@@ -106,8 +107,10 @@ function CreatePinPage() {
 
   const handlePinCreated = useCallback(
     (pin) => {
-      if (pin?._id) {
-        navigate(routes.pin.byId(pin._id));
+      const candidate = pin?._id ?? pin?.id ?? pin;
+      const resolvedId = normalizeObjectId(candidate);
+      if (resolvedId) {
+        navigate(routes.pin.byId(resolvedId), { state: { pin } });
       }
     },
     [navigate]
