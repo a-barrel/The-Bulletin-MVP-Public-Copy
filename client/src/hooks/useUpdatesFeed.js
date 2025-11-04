@@ -9,6 +9,7 @@ import {
 } from '../api/mongoDataApi';
 import { auth } from '../firebase';
 import { useUpdates } from '../contexts/UpdatesContext';
+import usePullToRefresh from './usePullToRefresh';
 
 const noop = () => {};
 
@@ -175,6 +176,8 @@ export default function useUpdatesFeed() {
     [profile?._id]
   );
 
+  const { containerRef, pullDistance, isPullRefreshing } = usePullToRefresh(loadUpdates);
+
   useEffect(() => {
     if (profile?._id) {
       loadUpdates({ silent: true });
@@ -262,6 +265,9 @@ export default function useUpdatesFeed() {
     pendingUpdateIds,
     isMarkingAllRead,
     unreadCount,
+    containerRef,
+    pullDistance,
+    isPullRefreshing,
     handleToggleUnreadOnly,
     handleRefresh,
     handleMarkRead,

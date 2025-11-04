@@ -25,6 +25,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import UpdateIcon from '@mui/icons-material/Update';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import './UpdatesPage.css';
 import {
   formatFriendlyTimestamp,
@@ -77,7 +78,8 @@ function UpdatesPage() {
     }
   });
   const incomingRequests = socialNotifications.friendData?.incomingRequests || [];
-  const hasFriendRequests = !socialNotifications.friendAccessDenied && incomingRequests.length > 0;
+  const canShowFriendRequests = !socialNotifications.friendAccessDenied;
+  const hasFriendRequests = canShowFriendRequests && incomingRequests.length > 0;
   const friendRequestsPreview = incomingRequests.slice(0, 3);
   const remainingFriendRequests = Math.max(0, incomingRequests.length - friendRequestsPreview.length);
   const [isFriendDialogOpen, setIsFriendDialogOpen] = useState(false);
@@ -108,6 +110,9 @@ function UpdatesPage() {
     pendingUpdateIds,
     isMarkingAllRead,
     unreadCount,
+    containerRef,
+    pullDistance,
+    isPullRefreshing,
     handleDismissUpdatesError,
     handleToggleUnreadOnly,
     handleRefresh,
@@ -193,10 +198,10 @@ function UpdatesPage() {
 
   return (
     <Box className="updates-page">
-      <Box className="updates-frame">
+      <Box ref={containerRef} className="updates-frame">
         <header className="updates-header-bar">
           <IconButton onClick={() => navigate(-1)} className="updates-header-back-btn">
-            <ArrowBackIcon />
+            <ArrowBackIcon className="updates-header-back-icon" />
           </IconButton>
 
           <h1 className="updates-header-title">Updates</h1>
@@ -223,57 +228,75 @@ function UpdatesPage() {
           </Button>
         </header>
 
-        {pushNotifications.isSupported &&
-         pushNotifications.permission !== 'granted' &&
-         !pushPromptDismissed ? (
-          <Alert
-            severity="info"
-            variant="outlined"
-            sx={{ mb: 3 }}
-            action={
-              <Stack direction="row" spacing={1}>
-                <Button
-                  size="small"
-                  variant="contained"
-                  onClick={async () => {
-                    try {
-                      await pushNotifications.requestPermission();
-                    } catch {
-                      // status handled by hook
-                    }
-                  }}
-                  disabled={pushNotifications.isEnabling}
-                >
-                  {pushNotifications.isEnabling ? 'Enabling…' : 'Enable'}
-                </Button>
-                <Button
-                  size="small"
-                  color="inherit"
-                  onClick={() => {
-                    pushNotifications.dismissPrompt();
-                    setPushPromptDismissed(true);
-                  }}
-                >
-                  Dismiss
-                </Button>
-              </Stack>
-            }
-          >
-            Enable push notifications to get updates even when you're away.
-          </Alert>
-        ) : null}
+        <Box className="updates-content">
+          <Box className="updates-tabs-container">
+            {[
+              { label: 'All', count: unreadCount },
+              { label: 'Discussions', count: unreadDiscussionsCount },
+              { label: 'Events', count: unreadEventsCount }
+            ].map((tab) => (
+              <Button
+                key={tab.label}
+                className={`update-tab ${selectedTab === tab.label ? 'active' : ''}`}
+                onClick={() => setSelectedTab(tab.label)}
+              >
+                {tab.label}
+                {tab.count > 0 ? <span className="unread-badge">{tab.count}</span> : null}
+              </Button>
+            ))}
+          </Box>
 
-        {hasFriendRequests ? (
-          <Paper
-            elevation={1}
-            sx={{
-              mt: 3,
-              mb: 2,
-              p: { xs: 2, md: 3 },
-              borderRadius: 3,
-              border: '1px solid',
-              borderColor: 'divider'
-            }}
+          {pushNotifications.isSupported &&
+           pushNotifications.permission !== 'granted' &&
+           !pushPromptDismissed ? (
+            <Alert
+              severity="info"
+              variant="outlined"
+              sx={{ mb: 3 }}
+              action={
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={async () => {
+                      try {
+                        await pushNotifications.requestPermission();
+                      } catch {
+                        // status handled by hook
+                      }
+                    }}
+                    disabled={pushNotifications.isEnabling}
+                  >
+                    {pushNotifications.isEnabling ? 'Enabling…' : 'Enable'}
+                  </Button>
+                  <Button
+                    size="small"
+                    color="inherit"
+                    onClick={() => {
+                      pushNotifications.dismissPrompt();
+                      setPushPromptDismissed(true);
+                    }}
+                  >
+                    Dismiss
+                  </Button>
+                </Stack>
+              }
+            >
+              Enable push notifications to get updates even when you're away.
+            </Alert>
+          ) : null}
+
+          {canShowFriendRequests ? (
+            <Paper
+              elevation={1}
+              sx={{
+                mt: 2,
+                mb: 2,
+                p: { xs: 2, md: 3 },
+                borderRadius: 3,
+                border: '1px solid',
+                borderColor: 'divider'
+              }}
           >
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }}>
               <Box sx={{ flex: 1 }}>
@@ -281,213 +304,239 @@ function UpdatesPage() {
                   Pending friend requests
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {incomingRequests.length === 1
-                    ? '1 person is waiting for your response.'
-                    : `${incomingRequests.length} people are waiting for your response.`}
+                  {hasFriendRequests
+                    ? incomingRequests.length === 1
+                      ? '1 person is waiting for your response.'
+                      : `${incomingRequests.length} people are waiting for your response.`
+                    : 'All caught up — new friend requests will appear here.'}
                 </Typography>
-                <Stack direction="row" spacing={1} mt={1} flexWrap="wrap" useFlexGap>
-                  {friendRequestsPreview.map((request) => (
-                    <Chip
-                      key={request.id}
-                      label={
-                        request.requester?.displayName ||
-                        request.requester?.username ||
-                        request.requester?.id ||
-                        'Unknown user'
-                      }
-                      color="secondary"
-                      variant="outlined"
-                    />
-                  ))}
-                  {remainingFriendRequests > 0 ? (
-                    <Chip label={`+${remainingFriendRequests} more`} variant="outlined" />
-                  ) : null}
-                </Stack>
+                {hasFriendRequests ? (
+                  <Stack direction="row" spacing={1} mt={1} flexWrap="wrap" useFlexGap>
+                    {friendRequestsPreview.map((request) => (
+                      <Chip
+                        key={request.id}
+                        label={
+                          request.requester?.displayName ||
+                          request.requester?.username ||
+                          request.requester?.id ||
+                          'Unknown user'
+                        }
+                        color="secondary"
+                        variant="outlined"
+                      />
+                    ))}
+                    {remainingFriendRequests > 0 ? (
+                      <Chip label={`+${remainingFriendRequests} more`} variant="outlined" />
+                    ) : null}
+                  </Stack>
+                ) : (
+                  <Stack direction="row" spacing={1} mt={2}>
+                    <Chip label="No pending requests" color="default" variant="outlined" />
+                  </Stack>
+                )}
               </Box>
               <Button
                 variant="contained"
                 color="secondary"
                 onClick={handleOpenFriendDialog}
-                disabled={socialNotifications.friendIsLoading || respondingRequestId !== null}
+                disabled={
+                  socialNotifications.friendIsLoading ||
+                  respondingRequestId !== null
+                }
                 sx={{ alignSelf: { xs: 'flex-start', md: 'center' } }}
               >
                 Review requests
               </Button>
             </Stack>
           </Paper>
-        ) : null}
+          ) : null}
 
-        <Box className="updates-tabs-container">
-          {[
-            { label: 'All', count: unreadCount },
-            { label: 'Discussions', count: unreadDiscussionsCount },
-            { label: 'Events', count: unreadEventsCount }
-          ].map((tab) => (
-            <Button
-              key={tab.label}
-              className={`update-tab ${selectedTab === tab.label ? 'active' : ''}`}
-              onClick={() => setSelectedTab(tab.label)}
+          {profileError ? (
+            <Alert severity="warning" variant="outlined">
+              {profileError}
+            </Alert>
+          ) : null}
+
+          {updatesError ? (
+            <Alert severity="error" onClose={handleDismissUpdatesError}>
+              {updatesError}
+            </Alert>
+          ) : null}
+
+          {isLoading ? (
+            <Box className="loading-bar-container">
+              <CircularProgress />
+              <Typography className="loading-bar-label">Loading updates...</Typography>
+            </Box>
+          ) : tabFilteredUpdates.length === 0 ? (
+            <Paper
+              className="empty-updates-msg"
+              elevation={0}
+              sx={{
+                p: 4,
+                borderRadius: 3,
+                borderColor: 'divider'
+              }}
             >
-              {tab.label}
-              {tab.count > 0 ? <span className="unread-badge">{tab.count}</span> : null}
-            </Button>
-          ))}
-        </Box>
+              <NotificationsActiveIcon className="notification-icon" color="disabled" fontSize="large" />
 
-        {profileError ? (
-          <Alert severity="warning" variant="outlined">
-            {profileError}
-          </Alert>
-        ) : null}
+              <Typography className="empty-updates-msg-title" variant="h6" sx={{ mt: 2 }}>
+                Nothing new yet
+              </Typography>
 
-        {updatesError ? (
-          <Alert severity="error" onClose={handleDismissUpdatesError}>
-            {updatesError}
-          </Alert>
-        ) : null}
-
-        {isLoading ? (
-          <Box className="loading-bar-container">
-            <CircularProgress />
-            <Typography className="loading-bar-label">Loading updates...</Typography>
-          </Box>
-        ) : tabFilteredUpdates.length === 0 ? (
-          <Paper
-            className="empty-updates-msg"
-            elevation={0}
-            sx={{
-              p: 4,
-              borderRadius: 3,
-              borderColor: 'divider'
-            }}
-          >
-            <NotificationsActiveIcon className="notification-icon" color="disabled" fontSize="large" />
-
-            <Typography className="empty-updates-msg-title" variant="h6" sx={{ mt: 2 }}>
-              Nothing new yet
-            </Typography>
-
-            <Typography className="empty-updates-msg-body" variant="body2" color="text.secondary">
-              Stay tuned — new activity on your pins and chats will show up here.
-            </Typography>
-          </Paper>
-        ) : (
-          <Box className="updates-list">
-            {tabFilteredUpdates.map((update) => {
-              const read = Boolean(update.readAt);
-              const pending = pendingUpdateIds.includes(update._id);
-              const message = update.payload?.body;
-              const pinTitle = update.payload?.pin?.title;
-              const pinId = update.payload?.pin?._id;
-              const typeKey = update.payload?.type ?? 'update';
-              const displayTypeLabel = typeKey.replace(/-/g, ' ');
-              const isBadgeUpdate = typeKey === 'badge-earned';
-              const badgeImage = update.payload?.metadata?.badgeImage;
-              const badgeImageUrl = badgeImage ? resolveBadgeImageUrl(badgeImage) : null;
-              const createdAt = update.createdAt;
-
-              return (
-                <Paper
-                  className="update-card"
-                  key={update._id}
-                  sx={{
-                    borderColor: read ? 'divider' : 'secondary.main',
-                    backgroundColor: read ? 'background.paper' : 'rgba(144, 202, 249, 0.04)',
-                    mb: 2
-                  }}
-                >
-                  <Stack direction="row" spacing={1} alignItems="center" className="update-header">
-                    <Chip
-                      label={displayTypeLabel}
-                      size="small"
-                      color={read ? 'default' : 'secondary'}
-                    />
-
-                    {pinTitle ? <Chip label={pinTitle} size="small" variant="outlined" /> : null}
-
-                    <Typography
-                      className="update-time"
-                      variant="body2"
-                      sx={{ marginLeft: 'auto' }}
-                      title={formatAbsoluteDateTime(createdAt) || undefined}
+              <Typography className="empty-updates-msg-body" variant="body2" color="text.secondary">
+                Stay tuned — new activity on your pins and chats will show up here.
+              </Typography>
+            </Paper>
+          ) : (
+            <Box className="updates-list">
+              <Box
+                className="pull-refresh-indicator"
+                style={{
+                  height: Math.max(isPullRefreshing ? 48 : 0, pullDistance),
+                  opacity: pullDistance > 0 || isPullRefreshing ? 1 : 0
+                }}
+              >
+                {isPullRefreshing ? (
+                  <CircularProgress className="pull-refresh-loading-circle" size={28} />
+                ) : (
+                  <>
+                    <span
+                      className={`pull-refresh-arrow-wrapper${
+                        pullDistance > 36 ? ' pull-refresh-arrow-wrapper--flipped' : ''
+                      }`}
                     >
-                      {formatFriendlyTimestamp(createdAt) || formatRelativeTime(createdAt) || ''}
+                      <ArrowUpwardRoundedIcon className="pull-refresh-prompt-arrow" />
+                    </span>
+                    <Typography className="pull-refresh-label" variant="body2">
+                      {pullDistance > 36 ? 'Release to refresh' : 'Pull to refresh'}
                     </Typography>
-                  </Stack>
+                  </>
+                )}
+              </Box>
+              {tabFilteredUpdates.map((update) => {
+                const read = Boolean(update.readAt);
+                const pending = pendingUpdateIds.includes(update._id);
+                const message = update.payload?.body;
+                const pinTitle = update.payload?.pin?.title;
+                const pinId = update.payload?.pin?._id;
+                const typeKey = update.payload?.type ?? 'update';
+                const displayTypeLabel = typeKey.replace(/-/g, ' ');
+                const isBadgeUpdate = typeKey === 'badge-earned';
+                const badgeImage = update.payload?.metadata?.badgeImage;
+                const badgeImageUrl = badgeImage ? resolveBadgeImageUrl(badgeImage) : null;
+                const createdAt = update.createdAt;
 
-                  {update.payload?.title ? (
-                    <Typography className="update-title" variant="h6" sx={{ mt: 1 }}>
-                      {update.payload.title}
-                    </Typography>
-                  ) : null}
+                return (
+                  <Paper
+                    className="update-card"
+                    key={update._id}
+                    sx={{
+                      borderColor: read ? 'divider' : 'secondary.main',
+                      backgroundColor: read ? 'background.paper' : 'rgba(144, 202, 249, 0.04)',
+                      mb: 2
+                    }}
+                  >
+                    <Stack direction="row" spacing={1} alignItems="center" className="update-header">
+                      <Chip
+                        label={displayTypeLabel}
+                        size="small"
+                        color={read ? 'default' : 'secondary'}
+                      />
 
-                  {message ? (
-                    <Typography className="update-message" sx={{ mt: 1 }}>
-                      {message}
-                    </Typography>
-                  ) : null}
+                      {pinTitle ? (
+                        <Chip label={pinTitle} size="small" className="pin-title-chip" variant="outlined" />
+                      ) : null}
 
-                  {update.payload?.avatars?.length ? (
-                    <Box className="avatar-row" sx={{ mt: 1 }}>
-                      {update.payload.avatars.map((src, idx) => (
-                        <img key={idx} src={src} alt="participant" className="avatar" />
-                      ))}
-                    </Box>
-                  ) : null}
+                      <Typography
+                        className="update-time"
+                        variant="body2"
+                        sx={{ marginLeft: 'auto' }}
+                        title={formatAbsoluteDateTime(createdAt) || undefined}
+                      >
+                        {formatFriendlyTimestamp(createdAt) || formatRelativeTime(createdAt) || ''}
+                      </Typography>
+                    </Stack>
 
-                  {isBadgeUpdate && badgeImageUrl ? (
-                    <Box
-                      component="img"
-                      src={badgeImageUrl || undefined}
-                      alt={
-                        update.payload?.metadata?.badgeId
-                          ? `${update.payload.metadata.badgeId} badge`
-                          : 'Badge earned'
-                      }
-                      sx={{
-                        width: { xs: 96, sm: 128 },
-                        height: { xs: 96, sm: 128 },
-                        borderRadius: 3,
-                        alignSelf: 'flex-start',
-                        border: (theme) => `1px solid ${theme.palette.divider}`,
-                        objectFit: 'cover',
-                        mt: 2
-                      }}
-                    />
-                  ) : null}
-
-                  <Divider sx={{ my: 2 }} />
-
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    {pinId ? (
-                      <Button component={Link} to={routes.pin.byId(pinId)} size="small" variant="outlined">
-                        View pin
-                      </Button>
+                    {update.payload?.title ? (
+                      <Typography className="update-title" variant="h6" sx={{ mt: 1 }}>
+                        {update.payload.title}
+                      </Typography>
                     ) : null}
 
-                    {read ? (
-                      <Chip
-                        label="Read"
-                        size="small"
-                        icon={<CheckCircleOutlineIcon fontSize="small" />}
-                        variant="outlined"
+                    {message ? (
+                      <Typography className="update-message" sx={{ mt: 1 }}>
+                        {message}
+                      </Typography>
+                    ) : null}
+
+                    {update.payload?.avatars?.length ? (
+                      <Box className="avatar-row" sx={{ mt: 1 }}>
+                        {update.payload.avatars.map((src, idx) => (
+                          <img key={idx} src={src} alt="participant" className="avatar" />
+                        ))}
+                      </Box>
+                    ) : null}
+
+                    {isBadgeUpdate && badgeImageUrl ? (
+                      <Box
+                        component="img"
+                        src={badgeImageUrl || undefined}
+                        alt={
+                          update.payload?.metadata?.badgeId
+                            ? `${update.payload.metadata.badgeId} badge`
+                            : 'Badge earned'
+                        }
+                        sx={{
+                          width: { xs: 96, sm: 128 },
+                          height: { xs: 96, sm: 128 },
+                          borderRadius: 3,
+                          alignSelf: 'flex-start',
+                          border: (theme) => `1px solid ${theme.palette.divider}`,
+                          objectFit: 'cover',
+                          mt: 2
+                        }}
                       />
-                    ) : (
-                      <Button
-                        size="small"
-                        variant="contained"
-                        color="secondary"
-                        startIcon={<CheckCircleOutlineIcon fontSize="small" />}
-                        onClick={() => handleMarkRead(update._id)}
-                        disabled={pending}
-                      >
-                        {pending ? 'Marking...' : 'Mark as read'}
-                      </Button>
-                    )}
-                  </Stack>
-                </Paper>
-              );
-            })}
+                    ) : null}
+
+                    <Divider sx={{ my: 2 }} />
+
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      {pinId ? (
+                        <Button
+                          component={Link}
+                          to={routes.pin.byId(pinId)}
+                          size="small"
+                          className="view-pin-btn"
+                          variant="contained"
+                        >
+                          View pin
+                        </Button>
+                      ) : null}
+
+                      {read ? (
+                        <Chip
+                          label="Read"
+                          size="small"
+                          icon={<CheckCircleOutlineIcon fontSize="small" />}
+                          variant="outlined"
+                        />
+                      ) : (
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="secondary"
+                          startIcon={<CheckCircleOutlineIcon fontSize="small" />}
+                          onClick={() => handleMarkRead(update._id)}
+                          disabled={pending}
+                        >
+                          {pending ? 'Marking...' : 'Mark as read'}
+                        </Button>
+                      )}
+                    </Stack>
+                  </Paper>
+                );
+              })}
           </Box>
         )}
       </Box>
@@ -593,6 +642,7 @@ function UpdatesPage() {
         ) : null}
       </Snackbar>
     </Box>
+  </Box>
   );
 }
 
