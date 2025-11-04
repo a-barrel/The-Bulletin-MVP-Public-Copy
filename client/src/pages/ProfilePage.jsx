@@ -1,5 +1,4 @@
-/* NOTE: Page exports configuration alongside the component. */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -26,20 +25,23 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Tooltip from '@mui/material/Tooltip';
-import Snackbar from '@mui/material/Snackbar';
-
+import {
+  blockUser,
+  fetchCurrentUserProfile,
+  fetchUserProfile,
+  unblockUser,
+  updateCurrentUserProfile,
+  uploadImage
+} from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
 import { BADGE_METADATA } from '../utils/badges';
+import BackButton from '../components/BackButton';
+import { metersToMiles } from '../utils/geo';
+import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
 import { routes } from '../routes';
-import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
-import useProfileDetail from '../hooks/useProfileDetail';
-import useModerationTools from '../hooks/useModerationTools';
-import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constants/moderationActions';
-import { formatFriendlyTimestamp, formatAbsoluteDateTime } from '../utils/dates';
-import { normalizeProfileImagePath } from '../utils/media';
-import normalizeObjectId from '../utils/normalizeObjectId';
-import { createDirectMessageThread } from '../api/mongoDataApi';
-import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
+import './ProfilePage.css';
+
+const SECTION_BG_COLOR = '#d6e6ff';
 
 export const pageConfig = {
   id: 'profile',
@@ -79,43 +81,17 @@ export const pageConfig = {
   }
 };
 
-const FRIEND_AVATAR_FALLBACK = '/images/profile/profile-01.jpg';
-
-const resolveFriendAvatarUrl = (avatar) => {
-  const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
-  const rewriteOfflineHost = (urlString) => {
-    if (!runtimeConfig.isOffline) {
-      return urlString;
-    }
-    try {
-      const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
-      const url = new URL(urlString, origin);
-      const offlineHosts = new Set(['localhost:5000', '127.0.0.1:5000']);
-      if (offlineHosts.has(url.host) && url.pathname.startsWith('/images/')) {
-        const normalizedPath = normalizeProfileImagePath(url.pathname);
-        return base ? `${base}${normalizedPath}` : normalizedPath;
-      }
-    } catch (error) {
-      return urlString;
-    }
-    return urlString;
-  };
-  if (!avatar) {
-    return FRIEND_AVATAR_FALLBACK;
-  }
-  const source =
-    typeof avatar === 'string'
-      ? normalizeProfileImagePath(avatar)
-      : normalizeProfileImagePath(avatar?.url || avatar?.thumbnailUrl || avatar?.path);
-  if (typeof source === 'string' && source.trim()) {
-    const trimmed = normalizeProfileImagePath(source.trim());
-    if (/^(?:https?:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
-      return rewriteOfflineHost(trimmed);
-    }
-    const normalized = normalizeProfileImagePath(trimmed.startsWith('/') ? trimmed : `/${trimmed}`);
-    return base ? `${base}${normalized}` : normalized;
-  }
-  return FRIEND_AVATAR_FALLBACK;
+const FALLBACK_AVATAR = '/images/profile/profile-01.jpg';
+const TF2_AVATAR_MAP = {
+  'tf2_scout': '/images/emulation/avatars/Scoutava.jpg',
+  'tf2_soldier': '/images/emulation/avatars/Soldierava.jpg',
+  'tf2_pyro': '/images/emulation/avatars/Pyroava.jpg',
+  'tf2_demoman': '/images/emulation/avatars/Demomanava.jpg',
+  'tf2_heavy': '/images/emulation/avatars/Heavyava.jpg',
+  'tf2_engineer': '/images/emulation/avatars/Engineerava.jpg',
+  'tf2_medic': '/images/emulation/avatars/Medicava.jpg',
+  'tf2_sniper': '/images/emulation/avatars/Sniperava.jpg',
+  'tf2_spy': '/images/emulation/avatars/Spyava.jpg'
 };
 
 const resolveBadgeImageUrl = (value) => {
@@ -130,6 +106,55 @@ const resolveBadgeImageUrl = (value) => {
   return base ? `${base}${normalized}` : normalized;
 };
 
+const resolveAvatarUrl = (avatar) => {
+  const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+  const toAbsolute = (value) => {
+    if (!value) {
+      return null;
+    }
+    const trimmed = normalizeProfileImagePath(value.trim());
+    if (!trimmed) {
+      return null;
+    }
+    if (/^(?:[a-z]+:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
+      if (runtimeConfig.isOffline) {
+        try {
+          const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+          const url = new URL(trimmed, origin);
+          const offlineHosts = new Set(['localhost:5000', '127.0.0.1:5000']);
+          if (offlineHosts.has(url.host) && url.pathname.startsWith('/images/')) {
+            const relative = normalizeProfileImagePath(url.pathname);
+            return base ? `${base}${relative}` : relative;
+          }
+        } catch (error) {
+          return trimmed;
+        }
+      }
+      return trimmed;
+    }
+    const normalized = normalizeProfileImagePath(trimmed.startsWith('/') ? trimmed : `/${trimmed}`);
+    return base ? `${base}${normalized}` : normalized;
+  };
+
+  if (!avatar) {
+    return toAbsolute(FALLBACK_AVATAR) ?? FALLBACK_AVATAR;
+  }
+
+  if (typeof avatar === 'string') {
+    return toAbsolute(avatar) ?? toAbsolute(FALLBACK_AVATAR) ?? FALLBACK_AVATAR;
+  }
+
+  if (typeof avatar === 'object') {
+    const source = avatar.url ?? avatar.thumbnailUrl ?? avatar.path;
+    const resolved = typeof source === 'string' ? toAbsolute(source) : null;
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return toAbsolute(FALLBACK_AVATAR) ?? FALLBACK_AVATAR;
+};
+
 const formatEntryValue = (value) => {
   if (value === null) {
     return 'null';
@@ -137,12 +162,27 @@ const formatEntryValue = (value) => {
   if (typeof value === 'object') {
     try {
       return JSON.stringify(value, null, 2);
-    } catch {
+    } catch (error) {
       return '[unserializable object]';
     }
   }
   return String(value);
 };
+
+const formatDateTime = (value) => {
+  if (!value) {
+    return 'N/A';
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'N/A';
+  }
+  return date.toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
+};
+
 
 const Section = ({ title, description, children }) => (
   <Stack spacing={1.5}>
@@ -151,9 +191,11 @@ const Section = ({ title, description, children }) => (
         {title}
       </Typography>
       {description ? (
-        <Typography variant="body2" color="text.secondary">
-          {description}
-        </Typography>
+        <div className="description-box">
+          <Typography variant="body2" color="text.secondary">
+            {description}
+          </Typography>
+        </div>
       ) : null}
     </Box>
     <Box
@@ -161,7 +203,7 @@ const Section = ({ title, description, children }) => (
         borderRadius: 2,
         border: '1px solid',
         borderColor: 'divider',
-        backgroundColor: 'background.default',
+        backgroundColor: SECTION_BG_COLOR,
         p: { xs: 2, md: 3 }
       }}
     >
@@ -174,475 +216,645 @@ function ProfilePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { userId } = useParams();
-  const { isOffline } = useNetworkStatusContext();
-
-  const {
-    originPath,
-    targetUserId,
-    effectiveUser,
-    displayName,
-    avatarUrl,
-    bannerUrl,
-    hasProfile,
-    bioText,
-    badgeList,
-    mutualFriendPreview,
-    mutualFriendCount,
-    statsVisible,
-    statsEntries,
-    activityEntries,
-    preferenceSummary,
-    notificationPreferences,
-    accountTimeline,
-    detailEntries,
-    rawDataAvailable,
-    showRawData,
-    setShowRawData,
-    isFetchingProfile,
-    fetchError,
-    relationshipStatus,
-    setRelationshipStatus,
-    isEditing,
-    formState,
-    handleBeginEditing,
-    handleCancelEditing,
-    handleAvatarFileChange,
-    handleClearAvatar,
-    handleBannerFileChange,
-    handleClearBanner,
-    handleFieldChange,
-    handleThemeChange,
-    handleToggleLocationSharing,
-    handleSaveProfile,
-    isSavingProfile,
-    updateStatus,
-    setUpdateStatus,
-    editingAvatarSrc,
-    editingBannerSrc,
-    canEditProfile,
-    handleRequestBlock,
-    handleRequestUnblock,
-    handleCloseBlockDialog,
-    handleConfirmBlockDialog,
-    blockDialogMode,
-    isProcessingBlockAction,
-    canManageBlock,
-    isBlocked
-  } = useProfileDetail({
-    userIdParam: userId,
-    locationState: location.state,
-    isOffline
+  const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
+  const shouldLoadCurrentUser =
+    normalizedUserId.length === 0 || normalizedUserId === 'me' || normalizedUserId === ':userId';
+  const targetUserId = shouldLoadCurrentUser ? null : normalizedUserId;
+  const userFromState = location.state?.user;
+  const originPath = typeof location.state?.from === 'string' ? location.state.from : null;
+  const [fetchedUser, setFetchedUser] = useState(null);
+  const [isFetchingProfile, setIsFetchingProfile] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState(null);
+  const [viewerProfile, setViewerProfile] = useState(null);
+  const [relationshipStatus, setRelationshipStatus] = useState(null);
+  const [blockDialogMode, setBlockDialogMode] = useState(null);
+  const [isProcessingBlockAction, setIsProcessingBlockAction] = useState(false);
+  const [showRawData, setShowRawData] = useState(false);
+  const [formState, setFormState] = useState({
+    displayName: '',
+    bio: '',
+    locationSharingEnabled: false,
+    theme: 'system',
+    avatarFile: null,
+    avatarPreviewUrl: null,
+    avatarCleared: true
   });
+  const avatarPreviewUrlRef = useRef(null);
 
-  const {
-    overview: moderationOverview,
-    hasAccess: moderationHasAccess,
-    isLoadingOverview: isLoadingModerationOverview,
-    overviewStatus: moderationOverviewStatus,
-    history: moderationHistory,
-    historyStatus: moderationHistoryStatus,
-    isLoadingHistory: isLoadingModerationHistory,
-    recordAction: recordModerationAction,
-    isSubmitting: isRecordingModerationAction,
-    actionStatus: moderationActionStatus,
-    resetActionStatus: resetModerationActionStatus,
-    selectedUserId: moderationSelectedUserId,
-    selectUser: selectModerationUser,
-    loadOverview: loadModerationOverview
-  } = useModerationTools({ autoLoad: false });
-
-  const [moderationForm, setModerationForm] = useState({
-    type: 'warn',
-    reason: '',
-    durationMinutes: '15'
-  });
-
-  const [moderationInitAttempted, setModerationInitAttempted] = useState(false);
-  const [isDmDialogOpen, setIsDmDialogOpen] = useState(false);
-  const [dmMessage, setDmMessage] = useState('');
-  const [isCreatingDm, setIsCreatingDm] = useState(false);
-  const [dmStatus, setDmStatus] = useState(null);
-  const [dmSnackbar, setDmSnackbar] = useState(null);
-  const [friendStatus, setFriendStatus] = useState(null);
-  const [friendSnackbar, setFriendSnackbar] = useState(null);
-  const [isFriendActionPending, setIsFriendActionPending] = useState(false);
-  const socialNotifications = useSocialNotificationsContext();
-
-  const avatarDisplaySrc = isEditing ? editingAvatarSrc ?? avatarUrl : avatarUrl;
-  const bannerDisplaySrc = isEditing ? editingBannerSrc ?? bannerUrl : bannerUrl;
-
-  const moderationTargetId = useMemo(() => {
-    if (effectiveUser) {
-      const resolved = normalizeObjectId(effectiveUser._id);
-      if (resolved) {
-        return resolved;
-      }
+  const clearAvatarPreviewUrl = useCallback(() => {
+    if (avatarPreviewUrlRef.current && avatarPreviewUrlRef.current.startsWith('blob:')) {
+      URL.revokeObjectURL(avatarPreviewUrlRef.current);
     }
-    if (targetUserId && targetUserId !== 'me') {
-      return targetUserId;
-    }
-    return null;
-  }, [effectiveUser, targetUserId]);
-
-  const friendData = socialNotifications?.friendData || null;
-  const hasFriendAccess = !socialNotifications?.friendAccessDenied;
-
-  const isFriend = useMemo(() => {
-    if (!hasFriendAccess || !moderationTargetId) {
-      return false;
-    }
-    return Boolean(friendData?.friends?.some((friend) => friend?.id === moderationTargetId));
-  }, [friendData, hasFriendAccess, moderationTargetId]);
-
-  const incomingFriendRequest = useMemo(() => {
-    if (!hasFriendAccess || !moderationTargetId) {
-      return null;
-    }
-    return (friendData?.incomingRequests || []).find(
-      (request) => request?.requester?.id === moderationTargetId
-    ) || null;
-  }, [friendData, hasFriendAccess, moderationTargetId]);
-
-  const outgoingFriendRequest = useMemo(() => {
-    if (!hasFriendAccess || !moderationTargetId) {
-      return null;
-    }
-    return (friendData?.outgoingRequests || []).find(
-      (request) => request?.recipient?.id === moderationTargetId
-    ) || null;
-  }, [friendData, hasFriendAccess, moderationTargetId]);
+    avatarPreviewUrlRef.current = null;
+  }, []);
 
   useEffect(() => {
-    setModerationInitAttempted(false);
-  }, [moderationTargetId]);
+    let ignore = false;
 
-  useEffect(() => {
-    if (!moderationTargetId || canEditProfile || isOffline) {
-      return;
-    }
-    if (moderationHasAccess === false) {
-      return;
-    }
-    if (moderationSelectedUserId === moderationTargetId) {
-      return;
-    }
-    if (moderationInitAttempted || isLoadingModerationOverview) {
-      if (moderationHasAccess && moderationSelectedUserId !== moderationTargetId) {
-        selectModerationUser(moderationTargetId);
-      }
-      return;
-    }
-
-    setModerationInitAttempted(true);
-    let cancelled = false;
-    loadModerationOverview()
-      .then(() => {
-        if (!cancelled) {
-          selectModerationUser(moderationTargetId);
+    async function loadViewerProfile() {
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (!ignore) {
+          setViewerProfile(profile);
         }
-      })
-      .catch(() => {});
+      } catch (error) {
+        if (!ignore) {
+          console.warn('Failed to load viewer profile for relationship management', error);
+          setViewerProfile(null);
+        }
+      }
+    }
+
+    loadViewerProfile();
 
     return () => {
-      cancelled = true;
+      ignore = true;
     };
-  }, [
-    moderationTargetId,
-    canEditProfile,
-    isOffline,
-    moderationHasAccess,
-    moderationSelectedUserId,
-    moderationInitAttempted,
-    isLoadingModerationOverview,
-    loadModerationOverview,
-    selectModerationUser
-  ]);
+  }, []);
 
-  useEffect(() => {
-    if (!moderationActionStatus) {
-      return undefined;
-    }
-    const timeoutId = window.setTimeout(() => {
-      resetModerationActionStatus();
-    }, 4000);
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [moderationActionStatus, resetModerationActionStatus]);
-
-  const isTargetBlocked = useMemo(() => {
-    if (!moderationOverview || !moderationTargetId) {
-      return false;
-    }
-    return Boolean(
-      moderationOverview.blockedUsers?.some((user) => user?.id === moderationTargetId)
-    );
-  }, [moderationOverview, moderationTargetId]);
-
-  const isTargetMuted = useMemo(() => {
-    if (!moderationOverview || !moderationTargetId) {
-      return false;
-    }
-    return Boolean(
-      moderationOverview.mutedUsers?.some((user) => user?.id === moderationTargetId)
-    );
-  }, [moderationOverview, moderationTargetId]);
-
-  const moderationHistoryPreview = useMemo(
-    () => (Array.isArray(moderationHistory) ? moderationHistory.slice(0, 5) : []),
-    [moderationHistory]
+  const initializeFormState = useCallback(
+    (profile) => ({
+      displayName: profile?.displayName ?? '',
+      bio: profile?.bio ?? '',
+      locationSharingEnabled: Boolean(profile?.locationSharingEnabled),
+      theme: profile?.preferences?.theme ?? 'system',
+      avatarFile: null,
+      avatarPreviewUrl: profile?.avatar ? resolveAvatarUrl(profile.avatar) : null,
+      avatarCleared: !profile?.avatar
+    }),
+    []
   );
 
-  const handleSelectModerationAction = useCallback(
-    (actionType) => {
-      if (moderationHasAccess === false) {
+  useEffect(
+    () => () => {
+      clearAvatarPreviewUrl();
+    },
+    [clearAvatarPreviewUrl]
+  );
+
+  useEffect(() => {
+    let ignore = false;
+
+    if (userFromState) {
+      setFetchedUser(userFromState);
+      setFetchError(null);
+    }
+
+    const shouldFetchProfile = shouldLoadCurrentUser || Boolean(targetUserId);
+
+    if (!shouldFetchProfile) {
+      if (!userFromState) {
+        setFetchedUser(null);
+      }
+      setIsFetchingProfile(false);
+      return () => {
+        ignore = true;
+      };
+    }
+
+    setIsFetchingProfile(true);
+    setFetchError(null);
+
+    async function loadProfile() {
+      try {
+        const profile = shouldLoadCurrentUser
+          ? await fetchCurrentUserProfile()
+          : await fetchUserProfile(targetUserId);
+        if (ignore) {
+          return;
+        }
+        setFetchedUser(profile);
+      } catch (error) {
+        if (ignore) {
+          return;
+        }
+        console.error('Failed to load user profile:', error);
+        setFetchError(error?.message || 'Failed to load user profile.');
+        if (!userFromState) {
+          setFetchedUser(null);
+        }
+      } finally {
+        if (!ignore) {
+          setIsFetchingProfile(false);
+        }
+      }
+    }
+
+    loadProfile();
+
+    return () => {
+      ignore = true;
+    };
+  }, [targetUserId, shouldLoadCurrentUser, userFromState]);
+
+  const effectiveUser = userFromState ?? fetchedUser ?? null;
+
+  useEffect(() => {
+    if (shouldLoadCurrentUser && effectiveUser) {
+      setViewerProfile(effectiveUser);
+    }
+  }, [effectiveUser, shouldLoadCurrentUser]);
+
+  const displayName = useMemo(() => {
+    if (effectiveUser) {
+      return (
+        effectiveUser.displayName ||
+        effectiveUser.username ||
+        effectiveUser.fullName ||
+        effectiveUser.email ||
+        userId ||
+        'Unknown User'
+      );
+    }
+    return userId || 'Unknown User';
+  }, [effectiveUser, userId]);
+
+  const avatarUrl = useMemo(() => {
+    const primary = resolveAvatarUrl(effectiveUser?.avatar);
+    const usernameKey =
+      typeof effectiveUser?.username === 'string'
+        ? effectiveUser.username.trim().toLowerCase()
+        : null;
+    if (primary && DEFAULT_PROFILE_IMAGE_REGEX.test(primary) && usernameKey) {
+      const fallbackPath = TF2_AVATAR_MAP[usernameKey];
+      if (fallbackPath) {
+        return resolveAvatarUrl(fallbackPath);
+      }
+    }
+    if ((!primary || DEFAULT_PROFILE_IMAGE_REGEX.test(primary)) && usernameKey) {
+      const fallbackPath = TF2_AVATAR_MAP[usernameKey];
+      if (fallbackPath) {
+        return resolveAvatarUrl(fallbackPath);
+      }
+    }
+    return primary;
+  }, [effectiveUser]);
+  const canEditProfile =
+    !userFromState &&
+    (shouldLoadCurrentUser ||
+      (effectiveUser && targetUserId && effectiveUser._id && effectiveUser._id === targetUserId));
+  const editingAvatarSrc = formState.avatarCleared ? null : formState.avatarPreviewUrl ?? avatarUrl;
+  const viewerId = viewerProfile?._id ? String(viewerProfile._id) : null;
+  const normalizedTargetId = effectiveUser?._id
+    ? String(effectiveUser._id)
+    : targetUserId && targetUserId !== 'me'
+    ? targetUserId
+    : null;
+  const normalizedBlockedIds = Array.isArray(viewerProfile?.relationships?.blockedUserIds)
+    ? viewerProfile.relationships.blockedUserIds.map((id) => String(id))
+    : [];
+  const isViewingSelf =
+    shouldLoadCurrentUser ||
+    Boolean(viewerId && normalizedTargetId && viewerId === normalizedTargetId);
+  const isBlocked = Boolean(
+    normalizedTargetId && normalizedBlockedIds.includes(String(normalizedTargetId))
+  );
+  const canManageBlock = Boolean(!isViewingSelf && viewerProfile && normalizedTargetId);
+
+  useEffect(() => {
+    if (!isEditing && effectiveUser) {
+      setFormState(initializeFormState(effectiveUser));
+    }
+  }, [effectiveUser, initializeFormState, isEditing]);
+
+  const handleBeginEditing = useCallback(() => {
+    if (!effectiveUser) {
+      return;
+    }
+    clearAvatarPreviewUrl();
+    setFormState(initializeFormState(effectiveUser));
+    setUpdateStatus(null);
+    setIsEditing(true);
+  }, [clearAvatarPreviewUrl, effectiveUser, initializeFormState]);
+
+  const handleCancelEditing = useCallback(() => {
+    clearAvatarPreviewUrl();
+    setFormState(initializeFormState(effectiveUser));
+    setIsEditing(false);
+  }, [clearAvatarPreviewUrl, effectiveUser, initializeFormState]);
+
+  const handleAvatarFileChange = useCallback(
+    (event) => {
+      const file = event.target.files?.[0];
+      if (!file) {
         return;
       }
-      setModerationForm((prev) => ({
+      if (avatarPreviewUrlRef.current && avatarPreviewUrlRef.current.startsWith('blob:')) {
+        URL.revokeObjectURL(avatarPreviewUrlRef.current);
+      }
+      const previewUrl = URL.createObjectURL(file);
+      avatarPreviewUrlRef.current = previewUrl;
+      setFormState((prev) => ({
         ...prev,
-        type: actionType,
-        durationMinutes: actionType === 'mute' ? prev.durationMinutes || '15' : prev.durationMinutes
+        avatarFile: file,
+        avatarPreviewUrl: previewUrl,
+        avatarCleared: false
       }));
-    },
-    [moderationHasAccess]
-  );
-
-  const handleModerationFieldChange = useCallback(
-    (field) => (event) => {
-      const { value } = event.target;
-      setModerationForm((prev) => ({
-        ...prev,
-        [field]: value
-      }));
+      event.target.value = '';
     },
     []
   );
 
-  const handleModerationSubmit = useCallback(
+  const handleClearAvatar = useCallback(() => {
+    clearAvatarPreviewUrl();
+    setFormState((prev) => ({
+      ...prev,
+      avatarFile: null,
+      avatarPreviewUrl: null,
+      avatarCleared: true
+    }));
+  }, [clearAvatarPreviewUrl]);
+
+  const handleFieldChange = useCallback((field) => {
+    return (event) => {
+      const value = typeof event?.target?.value === 'string' ? event.target.value : '';
+      setFormState((prev) => ({
+        ...prev,
+        [field]: value
+      }));
+    };
+  }, []);
+
+  const handleThemeChange = useCallback((event) => {
+    const value = typeof event?.target?.value === 'string' ? event.target.value : 'system';
+    setFormState((prev) => ({
+      ...prev,
+      theme: value
+    }));
+  }, []);
+
+  const handleToggleLocationSharing = useCallback((event) => {
+    setFormState((prev) => ({
+      ...prev,
+      locationSharingEnabled: Boolean(event?.target?.checked)
+    }));
+  }, []);
+
+  const handleSaveProfile = useCallback(
     async (event) => {
       event.preventDefault();
-      if (!moderationTargetId || moderationHasAccess === false) {
-        return;
-      }
-
-      const trimmedReason = moderationForm.reason.trim();
-      const payload = {
-        userId: moderationTargetId,
-        type: moderationForm.type,
-        reason: trimmedReason ? trimmedReason : undefined
-      };
-
-      if (moderationForm.type === 'mute') {
-        const parsed = Number.parseInt(moderationForm.durationMinutes, 10);
-        if (Number.isFinite(parsed) && parsed > 0) {
-          payload.durationMinutes = Math.min(1440, Math.max(1, parsed));
-        }
-      }
-
-      try {
-        await recordModerationAction(payload);
-        setModerationForm((prev) => ({
-          ...prev,
-          reason: '',
-          durationMinutes: prev.type === 'mute' ? prev.durationMinutes || '15' : prev.durationMinutes
-        }));
-      } catch {
-        // Errors surface through hook status; no-op.
-      }
-    },
-    [moderationForm, moderationHasAccess, moderationTargetId, recordModerationAction]
-  );
-
-  const moderationAccessPending =
-    !canEditProfile &&
-    !isOffline &&
-    Boolean(moderationTargetId) &&
-    moderationHasAccess === null;
-
-  const showModerationSection =
-    !canEditProfile &&
-    Boolean(moderationTargetId) &&
-    !isOffline;
-
-  const moderationInputsDisabled = moderationHasAccess === false || isOffline;
-
-  const disableModerationSubmit =
-    moderationInputsDisabled ||
-    !moderationTargetId ||
-    isRecordingModerationAction ||
-    isLoadingModerationOverview;
-
-  const canSendFriendRequest =
-    hasFriendAccess &&
-    !isFriend &&
-    !incomingFriendRequest &&
-    !outgoingFriendRequest &&
-    !isOffline;
-
-  const friendActionDisabled = isFriendActionPending || !hasFriendAccess || isOffline;
-
-  const handleBack = () => {
-    if (originPath) {
-      navigate(originPath);
-    } else {
-      navigate(-1);
-    }
-  };
-
-  const handleOpenDmDialog = useCallback(() => {
-    setDmMessage('');
-    setDmStatus(null);
-    setIsDmDialogOpen(true);
-  }, []);
-
-  const handleCloseDmDialog = useCallback(() => {
-    if (isCreatingDm) {
-      return;
-    }
-    setIsDmDialogOpen(false);
-    setDmStatus(null);
-  }, [isCreatingDm]);
-
-  const handleSubmitDirectMessage = useCallback(async () => {
-    if (!moderationTargetId) {
-      setDmStatus({
-        type: 'error',
-        message: 'Select a valid user before starting a conversation.'
-      });
-      return;
-    }
-
-    const trimmed = dmMessage.trim();
-    setIsCreatingDm(true);
-    setDmStatus(null);
-    try {
-      const response = await createDirectMessageThread({
-        participantIds: [moderationTargetId],
-        initialMessage: trimmed ? trimmed : undefined
-      });
-      if (typeof socialNotifications?.refreshAll === 'function') {
-        await socialNotifications.refreshAll().catch(() => {});
-      }
-      setIsDmDialogOpen(false);
-      setDmSnackbar('Direct message thread created.');
-      if (response?.thread?.id) {
-        navigate(routes.directMessages.thread(response.thread.id));
-      } else {
-        navigate(routes.directMessages.base);
-      }
-    } catch (error) {
-      setDmStatus({
-        type: 'error',
-        message: error?.message || 'Failed to start a direct message with this user.'
-      });
-    } finally {
-      setIsCreatingDm(false);
-    }
-  }, [dmMessage, moderationTargetId, navigate, socialNotifications]);
-
-  const handleDmSnackbarClose = useCallback(() => {
-    setDmSnackbar(null);
-  }, []);
-
-  const handleSendFriendRequest = useCallback(async () => {
-    if (!hasFriendAccess || !moderationTargetId || typeof socialNotifications?.sendFriendRequest !== 'function') {
-      return;
-    }
-    setIsFriendActionPending(true);
-    setFriendStatus(null);
-    try {
-      await socialNotifications.sendFriendRequest({ targetUserId: moderationTargetId });
-      setFriendStatus({ type: 'success', message: 'Friend request sent.' });
-      setFriendSnackbar('Friend request sent.');
-      if (typeof socialNotifications.refreshAll === 'function') {
-        await socialNotifications.refreshAll().catch(() => {});
-      }
-    } catch (error) {
-      setFriendStatus({
-        type: 'error',
-        message: error?.message || 'Failed to send friend request.'
-      });
-    } finally {
-      setIsFriendActionPending(false);
-    }
-  }, [hasFriendAccess, moderationTargetId, socialNotifications]);
-
-  const handleRespondToFriendRequest = useCallback(
-    async (decision) => {
-      if (!incomingFriendRequest || typeof socialNotifications?.respondToFriendRequest !== 'function') {
-        return;
-      }
-      setIsFriendActionPending(true);
-      setFriendStatus(null);
-      try {
-        await socialNotifications.respondToFriendRequest({
-          requestId: incomingFriendRequest.id,
-          decision
-        });
-        setFriendStatus({
-          type: 'success',
-          message: decision === 'accept' ? 'Friend request accepted.' : 'Friend request declined.'
-        });
-        setFriendSnackbar(
-          decision === 'accept' ? 'Friend request accepted.' : 'Friend request declined.'
-        );
-        if (typeof socialNotifications.refreshAll === 'function') {
-          await socialNotifications.refreshAll().catch(() => {});
-        }
-      } catch (error) {
-        setFriendStatus({
+      if (!effectiveUser) {
+        setUpdateStatus({
           type: 'error',
-          message: error?.message || 'Failed to update friend request.'
+          message: 'No profile data is loaded.'
         });
+        return;
+      }
+
+      const trimmedDisplayName = formState.displayName.trim();
+      if (!trimmedDisplayName) {
+        setUpdateStatus({ type: 'error', message: 'Display name cannot be empty.' });
+        return;
+      }
+
+      const payload = {};
+
+      if (trimmedDisplayName !== (effectiveUser.displayName ?? '')) {
+        payload.displayName = trimmedDisplayName;
+      }
+
+      const normalizedBio = formState.bio.trim();
+      const existingBio = effectiveUser?.bio ?? '';
+      if (normalizedBio !== existingBio) {
+        payload.bio = normalizedBio.length > 0 ? normalizedBio : null;
+      }
+
+      if (formState.locationSharingEnabled !== Boolean(effectiveUser?.locationSharingEnabled)) {
+        payload.locationSharingEnabled = formState.locationSharingEnabled;
+      }
+
+      if (formState.avatarCleared && (effectiveUser?.avatar || formState.avatarFile)) {
+        payload.avatar = null;
+      } else if (formState.avatarFile) {
+        let uploaded;
+        try {
+          setIsSavingProfile(true);
+          uploaded = await uploadImage(formState.avatarFile);
+        } catch (error) {
+          setIsSavingProfile(false);
+          setUpdateStatus({ type: 'error', message: error?.message || 'Failed to upload avatar.' });
+          return;
+        }
+
+        payload.avatar = Object.fromEntries(
+          Object.entries({
+            url: uploaded?.url,
+            thumbnailUrl: uploaded?.thumbnailUrl,
+            width: uploaded?.width,
+            height: uploaded?.height,
+            mimeType: uploaded?.mimeType,
+            description: uploaded?.description,
+            uploadedAt: uploaded?.uploadedAt,
+            uploadedBy: effectiveUser?._id
+          }).filter(([, value]) => value !== undefined && value !== null && value !== '')
+        );
+      }
+
+      const preferencesPayload = {};
+      const currentTheme = effectiveUser?.preferences?.theme ?? 'system';
+      if (formState.theme !== currentTheme) {
+        preferencesPayload.theme = formState.theme;
+      }
+
+      if (Object.keys(preferencesPayload).length > 0) {
+        payload.preferences = preferencesPayload;
+      }
+
+      if (Object.keys(payload).length === 0) {
+        setUpdateStatus({ type: 'info', message: 'No changes to save.' });
+        return;
+      }
+
+      try {
+        setIsSavingProfile(true);
+        const updatedProfile = await updateCurrentUserProfile(payload);
+        setFetchedUser(updatedProfile);
+        setUpdateStatus({ type: 'success', message: 'Profile updated successfully.' });
+        setIsEditing(false);
+        clearAvatarPreviewUrl();
+        setFormState(initializeFormState(updatedProfile));
+      } catch (error) {
+        setUpdateStatus({ type: 'error', message: error?.message || 'Failed to update profile.' });
       } finally {
-        setIsFriendActionPending(false);
+        setIsSavingProfile(false);
       }
     },
-    [incomingFriendRequest, socialNotifications]
+    [
+      clearAvatarPreviewUrl,
+      effectiveUser,
+      formState.avatarCleared,
+      formState.avatarFile,
+      formState.bio,
+      formState.displayName,
+      formState.locationSharingEnabled,
+      formState.theme,
+      initializeFormState,
+      updateCurrentUserProfile,
+      uploadImage
+    ]
   );
 
-  const handleFriendSnackbarClose = useCallback(() => {
-    setFriendSnackbar(null);
-  }, []);
+const detailEntries = useMemo(() => {
+  if (!effectiveUser || typeof effectiveUser !== 'object') {
+    return [];
+  }
 
-  const handleDismissFriendStatus = useCallback(() => {
-    setFriendStatus(null);
-  }, []);
+    return Object.entries(effectiveUser)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => ({
+        key,
+        value,
+        isObject: typeof value === 'object' && value !== null
+      }));
+  }, [effectiveUser]);
+  const hasProfile = Boolean(effectiveUser);
+  const bioText = useMemo(() => {
+    const rawBio = effectiveUser?.bio;
+    if (typeof rawBio !== 'string') {
+      return null;
+    }
+    const trimmed = rawBio.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }, [effectiveUser?.bio]);
+  const statsVisible = effectiveUser?.preferences?.statsPublic !== false;
+  const statsEntries = useMemo(() => {
+    const stats = effectiveUser?.stats;
+    if (!stats) {
+      return [];
+    }
+    return [
+      { key: 'eventsHosted', label: 'Events hosted', value: stats.eventsHosted ?? 0 },
+      { key: 'eventsAttended', label: 'Events attended', value: stats.eventsAttended ?? 0 },
+      { key: 'posts', label: 'Posts', value: stats.posts ?? 0 },
+      { key: 'bookmarks', label: 'Bookmarks', value: stats.bookmarks ?? 0 },
+      { key: 'followers', label: 'Followers', value: stats.followers ?? 0 },
+      { key: 'following', label: 'Following', value: stats.following ?? 0 },
+      { key: 'cussCount', label: 'Times cussed', value: stats.cussCount ?? 0 }
+    ];
+  }, [effectiveUser]);
+
+  const badgeList = effectiveUser?.badges ?? [];
+
+  const activityEntries = useMemo(() => {
+    if (!effectiveUser) {
+      return [];
+    }
+    return [
+      {
+        key: 'pinnedPinIds',
+        label: 'Pinned pins',
+        value: effectiveUser.pinnedPinIds?.length ?? 0
+      },
+      {
+        key: 'ownedPinIds',
+        label: 'Pins created',
+        value: effectiveUser.ownedPinIds?.length ?? 0
+      },
+      {
+        key: 'bookmarkCollectionIds',
+        label: 'Bookmark collections',
+        value: effectiveUser.bookmarkCollectionIds?.length ?? 0
+      },
+      {
+        key: 'proximityChatRoomIds',
+        label: 'Chat rooms joined',
+        value: effectiveUser.proximityChatRoomIds?.length ?? 0
+      },
+      {
+        key: 'recentLocationIds',
+        label: 'Recent locations',
+        value: effectiveUser.recentLocationIds?.length ?? 0
+      }
+    ];
+  }, [effectiveUser]);
+
+  const preferenceSummary = useMemo(() => {
+    const preferences = effectiveUser?.preferences ?? {};
+    const theme = preferences.theme ?? 'system';
+    const radiusMeters = preferences.radiusPreferenceMeters;
+    let radiusMiles = null;
+    if (typeof radiusMeters === 'number') {
+      const miles = metersToMiles(radiusMeters);
+      if (miles !== null) {
+        radiusMiles = Math.round(miles * 100) / 100;
+      }
+    }
+    return {
+      theme,
+      radiusMiles,
+      locationSharing: Boolean(effectiveUser?.locationSharingEnabled)
+    };
+  }, [effectiveUser]);
+
+  const notificationPreferences = useMemo(() => {
+    const notifications = effectiveUser?.preferences?.notifications ?? {};
+    return [
+      {
+        key: 'proximity',
+        label: 'Nearby activity alerts',
+        enabled: notifications.proximity !== false
+      },
+      {
+        key: 'updates',
+        label: 'Pin & chat updates',
+        enabled: notifications.updates !== false
+      },
+      {
+        key: 'marketing',
+        label: 'Tips & marketing',
+        enabled: notifications.marketing === true
+      }
+    ];
+  }, [effectiveUser]);
+
+  const accountTimeline = useMemo(() => {
+    if (!effectiveUser) {
+      return null;
+    }
+    return {
+      createdAt: formatDateTime(effectiveUser?.createdAt),
+      updatedAt: formatDateTime(effectiveUser?.updatedAt),
+      status: effectiveUser.accountStatus ?? 'unknown',
+      email: effectiveUser.email ?? 'â€”',
+      userId: effectiveUser._id ?? targetUserId ?? 'â€”'
+    };
+  }, [effectiveUser, targetUserId]);
+
+  const rawDataAvailable = detailEntries.length > 0;
+
+  const handleRequestBlock = useCallback(() => {
+    if (!canManageBlock) {
+      return;
+    }
+    setRelationshipStatus(null);
+    setBlockDialogMode('block');
+  }, [canManageBlock]);
+
+  const handleRequestUnblock = useCallback(() => {
+    if (!canManageBlock) {
+      return;
+    }
+    setRelationshipStatus(null);
+    setBlockDialogMode('unblock');
+  }, [canManageBlock]);
+
+  const handleCloseBlockDialog = useCallback(() => {
+    if (isProcessingBlockAction) {
+      return;
+    }
+    setBlockDialogMode(null);
+  }, [isProcessingBlockAction]);
+
+  const handleConfirmBlockDialog = useCallback(async () => {
+    if (!blockDialogMode) {
+      return;
+    }
+
+    const targetId = effectiveUser?._id ? String(effectiveUser._id) : normalizedTargetId;
+    if (!targetId) {
+      return;
+    }
+
+    setIsProcessingBlockAction(true);
+    setRelationshipStatus(null);
+    try {
+      const response =
+        blockDialogMode === 'block' ? await blockUser(targetId) : await unblockUser(targetId);
+
+      setViewerProfile((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        if (response?.updatedRelationships) {
+          return {
+            ...prev,
+            relationships: response.updatedRelationships
+          };
+        }
+
+        const currentRelationships = prev.relationships ?? {};
+        const currentBlockedIds = Array.isArray(currentRelationships.blockedUserIds)
+          ? currentRelationships.blockedUserIds.map((id) => String(id))
+          : [];
+        const blockedSet = new Set(currentBlockedIds);
+        if (blockDialogMode === 'block') {
+          blockedSet.add(targetId);
+        } else {
+          blockedSet.delete(targetId);
+        }
+        return {
+          ...prev,
+          relationships: {
+            ...currentRelationships,
+            blockedUserIds: Array.from(blockedSet)
+          }
+        };
+      });
+
+      setRelationshipStatus({
+        type: 'success',
+        message:
+          blockDialogMode === 'block'
+            ? `${displayName} has been blocked.`
+            : `${displayName} has been unblocked.`
+      });
+      setBlockDialogMode(null);
+    } catch (error) {
+      setRelationshipStatus({
+        type: 'error',
+        message: error?.message || 'Failed to update block status.'
+      });
+    } finally {
+      setIsProcessingBlockAction(false);
+    }
+  }, [blockDialogMode, displayName, effectiveUser, normalizedTargetId]);
+
+  useEffect(() => {
+    if (!relationshipStatus) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      setRelationshipStatus(null);
+    }, 5000);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [relationshipStatus]);
+
+  const headerImageUrl = (() => {
+    const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+    const path = '/images/background/background-01.jpg';
+    return base ? `${base}${path}` : path;
+  })();
 
   return (
-    <Box
-      component="section"
-      sx={{
-        minHeight: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        p: { xs: 2, md: 4 }
-      }}
-    >
-      <Paper
-        elevation={6}
-        sx={{
-          width: '100%',
-          maxWidth: 680,
-          borderRadius: 4,
-          p: { xs: 3, md: 4 },
-          backgroundColor: 'background.paper'
-        }}
-      >
+    <div className="profile-page-container">
+      <BackButton 
+        className="profile-back-nav"
+        buttonClassName="back-button"
+        ariaLabel="Go back to previous page"
+        centerText="Profile"
+      />
+      <div className="profile-page-frame">
+        <Box
+          component="img"
+          src={headerImageUrl}
+          alt="Profile header"
+          sx={{
+            width: { xs: 'calc(100% + 1rem)', sm: 'calc(100% + 2rem)' },
+            height: '100px',
+            objectFit: 'fill',
+            display: 'block',
+            marginTop: { xs: '-56px', sm: '-60px' },
+            marginLeft: { xs: '-0.5rem', sm: '-1rem' },
+            marginRight: { xs: '-0.5rem', sm: '-1rem' }
+          }}
+        />
         <Stack spacing={3}>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-            <Button
-              onClick={handleBack}
-              startIcon={<ArrowBackIcon />}
-              size="small"
-              color="primary"
-              sx={{ alignSelf: 'flex-start' }}
-            >
-              Back
-            </Button>
-          </Box>
-
           {isFetchingProfile ? (
             <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
               <CircularProgress size={18} thickness={5} />
@@ -658,70 +870,20 @@ function ProfilePage() {
             </Alert>
           ) : null}
 
-          {isOffline ? (
-            <Alert severity="warning" variant="outlined">
-              You are offline. Profile changes and relationship actions are disabled until you reconnect.
-            </Alert>
-          ) : null}
-
           {relationshipStatus ? (
             <Alert severity={relationshipStatus.type} onClose={() => setRelationshipStatus(null)}>
               {relationshipStatus.message}
             </Alert>
           ) : null}
-
-          <Stack spacing={2} alignItems="center" textAlign="center" sx={{ width: '100%' }}>
-            <Box
-              sx={{
-                position: 'relative',
-                width: '100%',
-                borderRadius: 3,
-                overflow: 'hidden',
-                backgroundColor: 'grey.800',
-                minHeight: { xs: 160, sm: 200 }
-              }}
+          {/*
+          <Stack spacing={2} alignItems="left" textAlign="left">
+            <Avatar
+              src={avatarUrl}
+              alt={`${displayName} avatar`}
+              sx={{ width: 96, height: 96, bgcolor: 'secondary.main' }}
             >
-              {bannerDisplaySrc ? (
-                <Box
-                  component="img"
-                  src={bannerDisplaySrc}
-                  alt="Profile banner"
-                  sx={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover'
-                  }}
-                />
-              ) : (
-                <Box
-                  aria-hidden="true"
-                  sx={{
-                    width: '100%',
-                    height: '100%',
-                    background: 'linear-gradient(135deg, #4B3F72 0%, #2E2157 100%)'
-                  }}
-                />
-              )}
-              <Avatar
-                src={avatarDisplaySrc ?? undefined}
-                alt={`${displayName} avatar`}
-                sx={{
-                  width: 112,
-                  height: 112,
-                  position: 'absolute',
-                  left: '50%',
-                  bottom: -56,
-                  transform: 'translateX(-50%)',
-                  border: '4px solid',
-                  borderColor: 'background.paper',
-                  bgcolor: 'secondary.main',
-                  boxShadow: 3
-                }}
-              >
-                {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
-              </Avatar>
-            </Box>
-            <Box sx={{ height: 72 }} aria-hidden="true" />
+              {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
+            </Avatar>
             <Box>
               <Typography variant="h4" component="h1">
                 {displayName}
@@ -732,219 +894,210 @@ function ProfilePage() {
             </Box>
             {!hasProfile && !isFetchingProfile && !fetchError ? (
               <Typography variant="body2" color="text.secondary">
-                No additional user context was provided. Use a pin, reply, or enter a valid user ID to see
-                more detail here.
+                No additional user context was provided. Use a pin, reply, or enter a valid user ID
+                to preview available data.
               </Typography>
             ) : null}
-            {!canEditProfile ? (
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center">
-                <Button variant="contained" color="secondary" onClick={handleOpenDmDialog}>
-                  Message user
-                </Button>
-                {hasFriendAccess ? (
-                  isFriend ? (
-                    <Chip label="Friends" color="success" variant="outlined" />
-                  ) : incomingFriendRequest ? (
-                    <Stack direction="row" spacing={1}>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => handleRespondToFriendRequest('accept')}
-                        disabled={friendActionDisabled}
-                      >
-                        {friendActionDisabled ? 'Updating…' : 'Accept request'}
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="inherit"
-                        onClick={() => handleRespondToFriendRequest('decline')}
-                        disabled={friendActionDisabled}
-                      >
-                        Decline
-                      </Button>
-                    </Stack>
-                  ) : outgoingFriendRequest ? (
-                    <Chip label="Request sent" color="secondary" variant="outlined" />
-                  ) : (
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      onClick={handleSendFriendRequest}
-                      disabled={!canSendFriendRequest || friendActionDisabled}
-                    >
-                      {friendActionDisabled ? 'Sending…' : 'Add friend'}
-                    </Button>
-                  )
-                ) : (
-                  <Tooltip title="Friend management privileges required">
-                    <span>
-                      <Button variant="outlined" color="inherit" disabled>
-                        Add friend
-                      </Button>
-                    </span>
-                  </Tooltip>
-                )}
-              </Stack>
-            ) : null}
-            {friendStatus ? (
-              <Alert severity={friendStatus.type} onClose={handleDismissFriendStatus}>
-                {friendStatus.message}
-              </Alert>
-            ) : null}
-            {canManageBlock ? (
+          </Stack>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar
+                src={avatarUrl}
+                alt={`${displayName} avatar`}
+                sx={{ width: 96, height: 96, bgcolor: 'secondary.main' }}
+              >
+                {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
+              </Avatar>
+                <Box>
+                  <Typography variant="h4" component="h1">
+                    {displayName}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    User ID: {effectiveUser?._id || targetUserId || 'N/A'}
+                  </Typography>
+                </Box>
+          </Stack>
+
+          <Stack className="user-card">
+            <Avatar
+              src={avatarUrl}
+              alt={`${displayName} avatar`}
+              className="user-avatar"
+            >
+              {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
+            </Avatar>
+            <Box className="user-info">
+              <Typography variant="h4" component="h1">
+                {displayName}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                User ID: {effectiveUser?._id || targetUserId || 'N/A'}
+              </Typography>
+            </Box>
+          </Stack>
+
+*/}
+          <Stack
+            direction="row"     // horizontal layout
+            spacing={2}
+            alignItems="center" // vertically centers the items
+            sx={{ py: 4 }}
+          >
+            <Avatar
+              src={avatarUrl}
+              alt={`${displayName} avatar`}
+              sx={{ width: 96, height: 96, bgcolor: 'secondary.main' }}
+            >
+              {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
+            </Avatar>
+            <Box>
+              {/*
+              <Typography variant="h4" component="h1">
+                {displayName}
+              </Typography>
+*/}
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{ fontWeight: 'bold', fontSize: '2rem' }}
+              >
+                {displayName}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Joined: {formatDateTime(effectiveUser?.createdAt) || targetUserId || 'N/A'}
+              </Typography>
+            </Box>
+          </Stack>
+          {canManageBlock ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
               <Button
                 variant="outlined"
-                startIcon={isBlocked ? <HowToRegIcon /> : <BlockIcon />}
                 color={isBlocked ? 'primary' : 'error'}
+                startIcon={isBlocked ? <HowToRegIcon /> : <BlockIcon />}
                 onClick={isBlocked ? handleRequestUnblock : handleRequestBlock}
+                disabled={isProcessingBlockAction || isFetchingProfile}
               >
                 {isBlocked ? 'Unblock user' : 'Block user'}
               </Button>
-            ) : null}
-          </Stack>
-
-          {updateStatus ? (
-            <Alert severity={updateStatus.type} onClose={() => setUpdateStatus(null)}>
-              {updateStatus.message}
-            </Alert>
+            </Box>
           ) : null}
 
-              {canEditProfile ? (
-            <Stack spacing={2}>
+          {canEditProfile ? (
+            <Stack spacing={2} sx={{ alignSelf: 'stretch' }}>
+              {updateStatus ? (
+                <Alert severity={updateStatus.type} onClose={() => setUpdateStatus(null)}>
+                  {updateStatus.message}
+                </Alert>
+              ) : null}
+
               {isEditing ? (
-                <Box component="form" onSubmit={handleSaveProfile}>
-                  <Stack spacing={2}>
-                    <Typography variant="h6">Edit profile</Typography>
-                    <Stack spacing={1.5}>
-                      <Typography variant="subtitle1">Profile banner</Typography>
-                      <Box
-                        sx={{
-                          width: '100%',
-                          minHeight: 140,
-                          borderRadius: 2,
-                          overflow: 'hidden',
-                          backgroundColor: 'grey.800',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        {editingBannerSrc ? (
-                          <Box
-                            component="img"
-                            src={editingBannerSrc}
-                            alt="Profile banner preview"
-                            sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            No banner selected.
-                          </Typography>
-                        )}
-                      </Box>
-                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                        <Button variant="outlined" component="label">
-                          Upload banner
-                          <input
-                            type="file"
-                            accept="image/*"
-                            hidden
-                            onChange={handleBannerFileChange}
-                          />
-                        </Button>
-                        <Button
-                          variant="text"
-                          color="secondary"
-                          onClick={handleClearBanner}
-                          disabled={
-                            formState.bannerCleared && !formState.bannerFile && !effectiveUser?.banner
-                          }
-                        >
-                          Remove banner
-                        </Button>
-                      </Stack>
-                    </Stack>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-                      <Avatar
-                        src={editingAvatarSrc ?? avatarUrl ?? undefined}
-                        alt={`${displayName} avatar`}
-                        sx={{ width: 96, height: 96 }}
-                      />
-                      <Stack spacing={1} direction={{ xs: 'column', sm: 'row' }}>
-                        <Button variant="outlined" component="label">
-                          Upload avatar
-                          <input
-                            type="file"
-                            accept="image/*"
-                            hidden
-                            onChange={handleAvatarFileChange}
-                          />
-                        </Button>
-                        <Button variant="text" color="secondary" onClick={handleClearAvatar}>
-                          Remove avatar
-                        </Button>
-                      </Stack>
-                    </Stack>
-
-                    <TextField
-                      label="Display name"
-                      value={formState.displayName}
-                      onChange={handleFieldChange('displayName')}
-                      required
-                      fullWidth
-                    />
-
-                    <TextField
-                      label="Bio"
-                      value={formState.bio}
-                      onChange={handleFieldChange('bio')}
-                      fullWidth
-                      multiline
-                      minRows={2}
-                    />
-
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={formState.locationSharingEnabled}
-                          onChange={handleToggleLocationSharing}
-                        />
-                      }
-                      label="Share location with friends"
-                    />
-
-                    <TextField
-                      select
-                      label="Interface theme"
-                      value={formState.theme}
-                      onChange={handleThemeChange}
+                <Stack
+                  component="form"
+                  spacing={2}
+                  onSubmit={handleSaveProfile}
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  backgroundColor: SECTION_BG_COLOR
+                }}
+              >
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+                    <Avatar
+                      src={editingAvatarSrc}
+                      alt="Profile avatar preview"
+                      sx={{ width: 96, height: 96, bgcolor: 'secondary.main' }}
                     >
-                      <MenuItem value="system">Match system</MenuItem>
-                      <MenuItem value="light">Light</MenuItem>
-                      <MenuItem value="dark">Dark</MenuItem>
-                    </TextField>
-
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Button variant="text" onClick={handleCancelEditing} disabled={isSavingProfile}>
-                        Cancel
+                      {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
+                    </Avatar>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                      <Button component="label" variant="outlined" size="small" disabled={isSavingProfile}>
+                        Upload avatar
+                        <input type="file" hidden accept="image/*" onChange={handleAvatarFileChange} />
                       </Button>
                       <Button
-                        type="submit"
-                        variant="contained"
-                        disabled={isSavingProfile}
+                        type="button"
+                        variant="text"
+                        color="warning"
+                        size="small"
+                        onClick={handleClearAvatar}
+                        disabled={
+                          isSavingProfile ||
+                          (formState.avatarCleared && !formState.avatarFile && !effectiveUser?.avatar)
+                        }
                       >
-                        {isSavingProfile ? 'Saving…' : 'Save changes'}
+                        Remove avatar
                       </Button>
                     </Stack>
                   </Stack>
-                </Box>
+
+                  <TextField
+                    label="Display name"
+                    value={formState.displayName}
+                    onChange={handleFieldChange('displayName')}
+                    required
+                    disabled={isSavingProfile}
+                    fullWidth
+                  />
+
+                  <TextField
+                    label="Bio"
+                    value={formState.bio}
+                    onChange={handleFieldChange('bio')}
+                    multiline
+                    minRows={3}
+                    helperText="Share something about yourself (500 characters max)."
+                    disabled={isSavingProfile}
+                    inputProps={{ maxLength: 500 }}
+                    fullWidth
+                  />
+
+                  <TextField
+                    label="Theme preference"
+                    value={formState.theme}
+                    onChange={handleThemeChange}
+                    select
+                    disabled={isSavingProfile}
+                    fullWidth
+                  >
+                    <MenuItem value="system">System default</MenuItem>
+                    <MenuItem value="light">Light</MenuItem>
+                    <MenuItem value="dark">Dark</MenuItem>
+                  </TextField>
+
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={formState.locationSharingEnabled}
+                        onChange={handleToggleLocationSharing}
+                        color="primary"
+                        disabled={isSavingProfile}
+                      />
+                    }
+                    label="Share location with nearby features"
+                  />
+
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} justifyContent="flex-end">
+                    <Button
+                      type="button"
+                      variant="outlined"
+                      color="inherit"
+                      onClick={handleCancelEditing}
+                      disabled={isSavingProfile}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" variant="contained" disabled={isSavingProfile}>
+                      {isSavingProfile ? 'Saving...' : 'Save changes'}
+                    </Button>
+                  </Stack>
+                </Stack>
               ) : (
                 <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                   <Button
                     variant="contained"
                     onClick={handleBeginEditing}
-                    disabled={isOffline || !effectiveUser || isFetchingProfile}
-                    title={isOffline ? 'Reconnect to edit your profile' : undefined}
+                    disabled={!effectiveUser || isFetchingProfile}
                   >
                     Edit profile
                   </Button>
@@ -968,65 +1121,6 @@ function ProfilePage() {
                   ) : (
                     <Typography variant="body2" color="text.secondary">
                       This user hasn't added a bio yet.
-                    </Typography>
-                  )}
-                </Section>
-
-                <Section
-                  title="Mutual friends"
-                  description="People you both know."
-                >
-                  {mutualFriendCount > 0 ? (
-                    <Stack spacing={1.5}>
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                        flexWrap="wrap"
-                        useFlexGap
-                        sx={{ '--gap': '0.75rem' }}
-                      >
-                        {mutualFriendPreview.map((friend) => {
-                          const friendId = friend?._id || friend?.id;
-                          const friendName = friend?.displayName || friend?.username || 'Friend';
-                          const avatarSrc = resolveFriendAvatarUrl(friend?.avatar);
-                          return (
-                            <Button
-                              key={friendId || friendName}
-                              variant="outlined"
-                              color="inherit"
-                              size="small"
-                              startIcon={
-                                <Avatar
-                                  src={avatarSrc}
-                                  alt={friendName}
-                                  sx={{ width: 32, height: 32 }}
-                                />
-                              }
-                              onClick={() => {
-                                if (friendId) {
-                                  navigate(routes.profile.byId(friendId));
-                                }
-                              }}
-                              sx={{
-                                borderColor: 'rgba(255, 255, 255, 0.12)',
-                                textTransform: 'none'
-                              }}
-                            >
-                              {friendName}
-                            </Button>
-                          );
-                        })}
-                      </Stack>
-                      {mutualFriendCount > mutualFriendPreview.length ? (
-                        <Typography variant="caption" color="text.secondary">
-                          +{mutualFriendCount - mutualFriendPreview.length} more mutual
-                          {mutualFriendCount - mutualFriendPreview.length === 1 ? '' : 's'}
-                        </Typography>
-                      ) : null}
-                    </Stack>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      You have no mutual friends yet. Start connecting!
                     </Typography>
                   )}
                 </Section>
@@ -1143,8 +1237,7 @@ function ProfilePage() {
                           Interface theme
                         </Typography>
                         <Typography variant="body1">
-                          {preferenceSummary.theme.charAt(0).toUpperCase() +
-                            preferenceSummary.theme.slice(1)}
+                          {preferenceSummary.theme.charAt(0).toUpperCase() + preferenceSummary.theme.slice(1)}
                         </Typography>
                       </Box>
                       <Box>
@@ -1190,221 +1283,6 @@ function ProfilePage() {
                   </Stack>
                 </Section>
 
-                {showModerationSection ? (
-                  <Section
-                    title="Moderation controls"
-                    description="Apply warnings or restrict access for this user without leaving their profile."
-                  >
-                    <Stack spacing={2}>
-                      {moderationHasAccess === false ? (
-                        <Alert severity="info">
-                          Moderator privileges required. Ask an administrator to assign you the moderator role.
-                        </Alert>
-                      ) : null}
-
-                      {moderationAccessPending ? (
-                        <Alert severity="info">Loading moderation toolkit…</Alert>
-                      ) : null}
-
-                      {moderationOverviewStatus && moderationOverviewStatus.message ? (
-                        <Alert severity={moderationOverviewStatus.type}>
-                          {moderationOverviewStatus.message}
-                        </Alert>
-                      ) : null}
-
-                      <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3}>
-                        <Box
-                          component="form"
-                          onSubmit={handleModerationSubmit}
-                          sx={{
-                            flex: 1,
-                            minWidth: 0,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 1.5
-                          }}
-                        >
-                          <Stack spacing={1.25}>
-                            <Typography variant="subtitle2" color="text.secondary">
-                              Quick presets
-                            </Typography>
-                            <Stack direction="row" flexWrap="wrap" gap={1}>
-                              {MODERATION_ACTION_OPTIONS.filter((option) =>
-                                QUICK_MODERATION_ACTIONS.includes(option.value)
-                              ).map((option) => (
-                                <Chip
-                                  key={option.value}
-                                  label={option.label}
-                                  color={moderationForm.type === option.value ? 'primary' : 'default'}
-                                  variant={moderationForm.type === option.value ? 'filled' : 'outlined'}
-                                  onClick={() => handleSelectModerationAction(option.value)}
-                                  role="button"
-                                  aria-pressed={moderationForm.type === option.value}
-                                  disabled={moderationInputsDisabled}
-                                />
-                              ))}
-                            </Stack>
-
-                            <TextField
-                              select
-                              label="Moderation action"
-                              value={moderationForm.type}
-                              onChange={handleModerationFieldChange('type')}
-                              helperText="Choose how you want to intervene."
-                              fullWidth
-                              disabled={moderationInputsDisabled}
-                            >
-                              {MODERATION_ACTION_OPTIONS.map((option) => (
-                                <MenuItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </MenuItem>
-                              ))}
-                            </TextField>
-
-                            {moderationForm.type === 'mute' ? (
-                              <TextField
-                                label="Mute duration (minutes)"
-                                type="number"
-                                inputProps={{ min: 1, max: 1440, step: 5 }}
-                                value={moderationForm.durationMinutes}
-                                onChange={handleModerationFieldChange('durationMinutes')}
-                                helperText="Muted users lose chat access for this duration."
-                                disabled={moderationInputsDisabled}
-                              />
-                            ) : null}
-
-                            <TextField
-                              label="Reason (optional)"
-                              value={moderationForm.reason}
-                              onChange={handleModerationFieldChange('reason')}
-                              multiline
-                              minRows={2}
-                              placeholder="Add context for other moderators."
-                              disabled={moderationInputsDisabled}
-                            />
-
-                            <Stack direction="row" spacing={1}>
-                              <Button type="submit" variant="contained" disabled={disableModerationSubmit}>
-                                {isRecordingModerationAction ? 'Recording…' : 'Apply action'}
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outlined"
-                                onClick={() => moderationTargetId && selectModerationUser(moderationTargetId)}
-                                disabled={isLoadingModerationHistory || moderationInputsDisabled}
-                              >
-                                {isLoadingModerationHistory ? 'Refreshing…' : 'Refresh history'}
-                              </Button>
-                            </Stack>
-
-                            {moderationActionStatus ? (
-                              <Alert severity={moderationActionStatus.type}>
-                                {moderationActionStatus.message}
-                              </Alert>
-                            ) : null}
-
-                            <Stack direction="row" spacing={1} flexWrap="wrap">
-                              {isTargetBlocked ? (
-                                <Chip size="small" label="Currently blocked" color="error" variant="outlined" />
-                              ) : null}
-                              {isTargetMuted ? (
-                                <Chip size="small" label="Muted" color="warning" variant="outlined" />
-                              ) : null}
-                            </Stack>
-                          </Stack>
-                        </Box>
-
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Stack spacing={1.5}>
-                            <Stack
-                              direction="row"
-                              alignItems="center"
-                              justifyContent="space-between"
-                              spacing={1}
-                            >
-                              <Typography variant="subtitle2" color="text.secondary">
-                                Recent moderation history
-                              </Typography>
-                              {isLoadingModerationHistory ? <CircularProgress size={16} /> : null}
-                            </Stack>
-
-                            {moderationHistoryStatus && moderationHistoryStatus.message ? (
-                              <Alert severity={moderationHistoryStatus.type}>
-                                {moderationHistoryStatus.message}
-                              </Alert>
-                            ) : null}
-
-                            {moderationHistoryPreview.length ? (
-                              <Stack spacing={1.25}>
-                                {moderationHistoryPreview.map((entry) => (
-                                  <Paper
-                                    key={entry.id}
-                                    variant="outlined"
-                                    sx={{ p: 1.5, backgroundColor: 'background.default' }}
-                                  >
-                                    <Stack spacing={0.75}>
-                                      <Stack
-                                        direction="row"
-                                        spacing={1}
-                                        alignItems="center"
-                                        justifyContent="space-between"
-                                      >
-                                        <Chip
-                                          size="small"
-                                          label={entry.type.toUpperCase()}
-                                          color="primary"
-                                          variant="outlined"
-                                        />
-                                        <Typography
-                                          variant="caption"
-                                          color="text.secondary"
-                                          title={
-                                            entry.createdAt
-                                              ? formatAbsoluteDateTime(entry.createdAt)
-                                              : undefined
-                                          }
-                                        >
-                                          {entry.createdAt
-                                            ? formatFriendlyTimestamp(entry.createdAt)
-                                            : '—'}
-                                        </Typography>
-                                      </Stack>
-                                      {entry.reason ? (
-                                        <Typography variant="body2">{entry.reason}</Typography>
-                                      ) : (
-                                        <Typography variant="body2" color="text.secondary">
-                                          No reason provided.
-                                        </Typography>
-                                      )}
-                                      <Typography variant="caption" color="text.secondary">
-                                        {entry.moderator
-                                          ? `By ${
-                                              entry.moderator.displayName ||
-                                              entry.moderator.username ||
-                                              entry.moderator.id
-                                            }`
-                                          : 'Moderator record'}
-                                      </Typography>
-                                    </Stack>
-                                  </Paper>
-                                ))}
-                              </Stack>
-                            ) : isLoadingModerationOverview || isLoadingModerationHistory ? (
-                              <Typography variant="body2" color="text.secondary">
-                                Loading moderation history…
-                              </Typography>
-                            ) : (
-                              <Typography variant="body2" color="text.secondary">
-                                No moderation actions recorded for this user yet.
-                              </Typography>
-                            )}
-                          </Stack>
-                        </Box>
-                      </Stack>
-                    </Stack>
-                  </Section>
-                ) : null}
-
                 <Section
                   title="Account timeline"
                   description="Provisioning details captured when this account was created."
@@ -1440,7 +1318,7 @@ function ProfilePage() {
                     </Stack>
                   ) : (
                     <Typography variant="body2" color="text.secondary">
-                      We’ll surface account timestamps once this profile finishes loading.
+                      We'll surface account timestamps once this profile finishes loading.
                     </Typography>
                   )}
                 </Section>
@@ -1465,7 +1343,7 @@ function ProfilePage() {
                               borderRadius: 2,
                               border: '1px dashed',
                               borderColor: 'divider',
-                              backgroundColor: 'background.default',
+                              backgroundColor: SECTION_BG_COLOR,
                               p: 2
                             }}
                           >
@@ -1509,42 +1387,7 @@ function ProfilePage() {
             </>
           ) : null}
         </Stack>
-      </Paper>
-      <Dialog
-        open={isDmDialogOpen}
-        onClose={handleCloseDmDialog}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Message {displayName}</DialogTitle>
-        <DialogContent sx={{ pt: 2 }}>
-          <Stack spacing={2}>
-            {dmStatus ? <Alert severity={dmStatus.type}>{dmStatus.message}</Alert> : null}
-            <TextField
-              label="Message"
-              value={dmMessage}
-              onChange={(event) => setDmMessage(event.target.value)}
-              placeholder="Say hello or share a quick update."
-              multiline
-              minRows={3}
-              disabled={isCreatingDm || isOffline}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleCloseDmDialog} disabled={isCreatingDm}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmitDirectMessage}
-            variant="contained"
-            color="secondary"
-            disabled={isCreatingDm || isOffline || !moderationTargetId}
-          >
-            {isCreatingDm ? 'Sending…' : 'Send message'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      </div>
       <Dialog
         open={Boolean(blockDialogMode)}
         onClose={handleCloseBlockDialog}
@@ -1573,24 +1416,18 @@ function ProfilePage() {
               ? 'Updating...'
               : blockDialogMode === 'block'
               ? 'Block user'
-            : 'Unblock user'}
+              : 'Unblock user'}
           </Button>
         </DialogActions>
       </Dialog>
-      <Snackbar
-        open={Boolean(dmSnackbar)}
-        autoHideDuration={4000}
-        onClose={handleDmSnackbarClose}
-        message={dmSnackbar || ''}
-      />
-      <Snackbar
-        open={Boolean(friendSnackbar)}
-        autoHideDuration={4000}
-        onClose={handleFriendSnackbarClose}
-        message={friendSnackbar || ''}
-      />
-    </Box>
+    </div>
   );
 }
 
 export default ProfilePage;
+
+
+
+
+
+
