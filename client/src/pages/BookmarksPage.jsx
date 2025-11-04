@@ -25,6 +25,7 @@ import { auth } from '../firebase';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import useBookmarksManager from '../hooks/useBookmarksManager';
+import normalizeObjectId from '../utils/normalizeObjectId';
 
 export const pageConfig = {
   id: 'bookmarks',
@@ -213,10 +214,12 @@ function BookmarksPage() {
   }, []);
 
   const handleViewPin = useCallback(
-    (pinId) => {
-      if (pinId) {
-        navigate(routes.pin.byId(pinId));
+    (pinId, pin) => {
+      const normalized = normalizeObjectId(pinId);
+      if (!normalized) {
+        return;
       }
+      navigate(routes.pin.byId(normalized), { state: { pin } });
     },
     [navigate]
   );
@@ -413,7 +416,7 @@ function BookmarksPage() {
                       <ListItemButton
                         key={bookmark._id || pinId}
                         alignItems="flex-start"
-                        onClick={() => handleViewPin(pinId)}
+                        onClick={() => handleViewPin(pinId, pin)}
                         sx={{ py: 2, px: { xs: 2, md: 3 }, gap: 1.5 }}
                       >
                         <ListItemText
@@ -437,7 +440,7 @@ function BookmarksPage() {
                           startIcon={<LaunchIcon fontSize="small" />}
                           onClick={(event) => {
                             event.stopPropagation();
-                            handleViewPin(pinId);
+                            handleViewPin(pinId, pin);
                           }}
                         >
                           View

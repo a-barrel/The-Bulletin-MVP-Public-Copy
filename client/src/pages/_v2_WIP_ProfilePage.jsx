@@ -94,6 +94,55 @@ const resolveBadgeImageUrl = (value) => {
   return base ? `${base}${normalized}` : normalized;
 };
 
+const resolveAvatarUrl = (avatar) => {
+  const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+  const toAbsolute = (value) => {
+    if (!value) {
+      return null;
+    }
+    const trimmed = normalizeProfileImagePath(value.trim());
+    if (!trimmed) {
+      return null;
+    }
+    if (/^(?:[a-z]+:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
+      if (runtimeConfig.isOffline) {
+        try {
+          const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+          const url = new URL(trimmed, origin);
+          const offlineHosts = new Set(['localhost:5000', '127.0.0.1:5000']);
+          if (offlineHosts.has(url.host) && url.pathname.startsWith('/images/')) {
+            const relative = normalizeProfileImagePath(url.pathname);
+            return base ? `${base}${relative}` : relative;
+          }
+        } catch (error) {
+          return trimmed;
+        }
+      }
+      return trimmed;
+    }
+    const normalized = normalizeProfileImagePath(trimmed.startsWith('/') ? trimmed : `/${trimmed}`);
+    return base ? `${base}${normalized}` : normalized;
+  };
+
+  if (!avatar) {
+    return toAbsolute(FALLBACK_AVATAR) ?? FALLBACK_AVATAR;
+  }
+
+  if (typeof avatar === 'string') {
+    return toAbsolute(avatar) ?? toAbsolute(FALLBACK_AVATAR) ?? FALLBACK_AVATAR;
+  }
+
+  if (typeof avatar === 'object') {
+    const source = avatar.url ?? avatar.thumbnailUrl ?? avatar.path;
+    const resolved = typeof source === 'string' ? toAbsolute(source) : null;
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return toAbsolute(FALLBACK_AVATAR) ?? FALLBACK_AVATAR;
+};
+
 const formatEntryValue = (value) => {
   if (value === null) {
     return 'null';

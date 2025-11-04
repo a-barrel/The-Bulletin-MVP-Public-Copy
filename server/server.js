@@ -44,12 +44,20 @@ if (runtime.isOffline) {
 
 const Location = require('./models/Location');
 const { syncAllFirebaseUsers } = require('./services/firebaseUserSync');
+const { startUpdateScheduler } = require('./services/updateScheduler');
 
 const app = express();
 app.enable('trust proxy');
+app.set('etag', false);
 
 // Middleware
 app.use(cors());
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
 app.use(express.json());
 
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -96,6 +104,8 @@ mongoose
     } catch (error) {
       console.error('Failed to synchronize Firebase users with MongoDB:', error);
     }
+
+    startUpdateScheduler();
   })
   .catch((err) => console.error('MongoDB connection error:', err));
 

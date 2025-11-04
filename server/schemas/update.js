@@ -14,7 +14,8 @@ const UpdatePayloadSchema = z.object({
     'chat-message',
     'friend-request',
     'chat-room-transition',
-    'badge-earned'
+    'badge-earned',
+    'discussion-expiring-soon'
   ]),
   pin: PinPreviewSchema.optional(),
   title: z.string().min(1),

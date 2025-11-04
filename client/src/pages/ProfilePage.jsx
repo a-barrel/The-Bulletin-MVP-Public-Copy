@@ -84,6 +84,23 @@ const FRIEND_AVATAR_FALLBACK = '/images/profile/profile-01.jpg';
 
 const resolveFriendAvatarUrl = (avatar) => {
   const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+  const rewriteOfflineHost = (urlString) => {
+    if (!runtimeConfig.isOffline) {
+      return urlString;
+    }
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+      const url = new URL(urlString, origin);
+      const offlineHosts = new Set(['localhost:5000', '127.0.0.1:5000']);
+      if (offlineHosts.has(url.host) && url.pathname.startsWith('/images/')) {
+        const normalizedPath = normalizeProfileImagePath(url.pathname);
+        return base ? `${base}${normalizedPath}` : normalizedPath;
+      }
+    } catch (error) {
+      return urlString;
+    }
+    return urlString;
+  };
   if (!avatar) {
     return FRIEND_AVATAR_FALLBACK;
   }
@@ -94,7 +111,7 @@ const resolveFriendAvatarUrl = (avatar) => {
   if (typeof source === 'string' && source.trim()) {
     const trimmed = source.trim();
     if (/^(?:https?:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
-      return trimmed;
+      return rewriteOfflineHost(trimmed);
     }
     const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
     return base ? `${base}${normalized}` : normalized;
@@ -166,6 +183,7 @@ function ProfilePage() {
     effectiveUser,
     displayName,
     avatarUrl,
+    bannerUrl,
     hasProfile,
     bioText,
     badgeList,
@@ -191,6 +209,8 @@ function ProfilePage() {
     handleCancelEditing,
     handleAvatarFileChange,
     handleClearAvatar,
+    handleBannerFileChange,
+    handleClearBanner,
     handleFieldChange,
     handleThemeChange,
     handleToggleLocationSharing,
@@ -199,6 +219,7 @@ function ProfilePage() {
     updateStatus,
     setUpdateStatus,
     editingAvatarSrc,
+    editingBannerSrc,
     canEditProfile,
     handleRequestBlock,
     handleRequestUnblock,
@@ -247,6 +268,9 @@ function ProfilePage() {
   const [friendSnackbar, setFriendSnackbar] = useState(null);
   const [isFriendActionPending, setIsFriendActionPending] = useState(false);
   const socialNotifications = useSocialNotificationsContext();
+
+  const avatarDisplaySrc = isEditing ? editingAvatarSrc ?? avatarUrl : avatarUrl;
+  const bannerDisplaySrc = isEditing ? editingBannerSrc ?? bannerUrl : bannerUrl;
 
   const moderationTargetId = useMemo(() => {
     if (effectiveUser) {
@@ -647,14 +671,58 @@ function ProfilePage() {
             </Alert>
           ) : null}
 
-          <Stack spacing={2} alignItems="center" textAlign="center">
-            <Avatar
-              src={avatarUrl}
-              alt={`${displayName} avatar`}
-              sx={{ width: 96, height: 96, bgcolor: 'secondary.main' }}
+          <Stack spacing={2} alignItems="center" textAlign="center" sx={{ width: '100%' }}>
+            <Box
+              sx={{
+                position: 'relative',
+                width: '100%',
+                borderRadius: 3,
+                overflow: 'hidden',
+                backgroundColor: 'grey.800',
+                minHeight: { xs: 160, sm: 200 }
+              }}
             >
-              {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
-            </Avatar>
+              {bannerDisplaySrc ? (
+                <Box
+                  component="img"
+                  src={bannerDisplaySrc}
+                  alt="Profile banner"
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+              ) : (
+                <Box
+                  aria-hidden="true"
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    background: 'linear-gradient(135deg, #4B3F72 0%, #2E2157 100%)'
+                  }}
+                />
+              )}
+              <Avatar
+                src={avatarDisplaySrc ?? undefined}
+                alt={`${displayName} avatar`}
+                sx={{
+                  width: 112,
+                  height: 112,
+                  position: 'absolute',
+                  left: '50%',
+                  bottom: -56,
+                  transform: 'translateX(-50%)',
+                  border: '4px solid',
+                  borderColor: 'background.paper',
+                  bgcolor: 'secondary.main',
+                  boxShadow: 3
+                }}
+              >
+                {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
+              </Avatar>
+            </Box>
+            <Box sx={{ height: 72 }} aria-hidden="true" />
             <Box>
               <Typography variant="h4" component="h1">
                 {displayName}
@@ -742,15 +810,64 @@ function ProfilePage() {
             </Alert>
           ) : null}
 
-          {canEditProfile ? (
+              {canEditProfile ? (
             <Stack spacing={2}>
               {isEditing ? (
                 <Box component="form" onSubmit={handleSaveProfile}>
                   <Stack spacing={2}>
                     <Typography variant="h6">Edit profile</Typography>
+                    <Stack spacing={1.5}>
+                      <Typography variant="subtitle1">Profile banner</Typography>
+                      <Box
+                        sx={{
+                          width: '100%',
+                          minHeight: 140,
+                          borderRadius: 2,
+                          overflow: 'hidden',
+                          backgroundColor: 'grey.800',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        {editingBannerSrc ? (
+                          <Box
+                            component="img"
+                            src={editingBannerSrc}
+                            alt="Profile banner preview"
+                            sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            No banner selected.
+                          </Typography>
+                        )}
+                      </Box>
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                        <Button variant="outlined" component="label">
+                          Upload banner
+                          <input
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            onChange={handleBannerFileChange}
+                          />
+                        </Button>
+                        <Button
+                          variant="text"
+                          color="secondary"
+                          onClick={handleClearBanner}
+                          disabled={
+                            formState.bannerCleared && !formState.bannerFile && !effectiveUser?.banner
+                          }
+                        >
+                          Remove banner
+                        </Button>
+                      </Stack>
+                    </Stack>
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
                       <Avatar
-                        src={editingAvatarSrc || avatarUrl}
+                        src={editingAvatarSrc ?? avatarUrl ?? undefined}
                         alt={`${displayName} avatar`}
                         sx={{ width: 96, height: 96 }}
                       />

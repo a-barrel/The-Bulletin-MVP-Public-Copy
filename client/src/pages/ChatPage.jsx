@@ -8,8 +8,11 @@ import {
   Typography,
   Button,
   IconButton,
+  Avatar,
   List,
+  ListItem,
   ListItemButton,
+  ListItemAvatar,
   ListItemText,
   ListItemSecondaryAction,
   Chip,
@@ -35,6 +38,7 @@ import RoomIcon from '@mui/icons-material/Room';
 import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
 import MarkUnreadChatAltIcon from '@mui/icons-material/MarkUnreadChatAlt';
+import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import CloseIcon from '@mui/icons-material/Close';
 import updatesIcon from '../assets/UpdateIcon.svg';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
@@ -54,6 +58,7 @@ import useAttachmentManager, {
 import { auth } from '../firebase';
 import useChatManager from '../hooks/useChatManager';
 import useModerationTools from '../hooks/useModerationTools';
+import useFriendGraph from '../hooks/useFriendGraph';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { useLocationContext } from '../contexts/LocationContext';
 import { useUpdates } from '../contexts/UpdatesContext';
@@ -61,7 +66,11 @@ import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constants/moderationActions';
 import { previewChatGif, createContentReport } from '../api/mongoDataApi';
 import { ATTACHMENT_ONLY_PLACEHOLDER, MAX_CHAT_ATTACHMENTS } from '../utils/chatAttachments';
-import { resolveThreadParticipants } from '../utils/chatParticipants';
+import {
+  getParticipantId,
+  resolveAvatarSrc,
+  resolveThreadParticipants
+} from '../utils/chatParticipants';
 import normalizeObjectId from '../utils/normalizeObjectId';
 
 import './ChatPage.css';
@@ -280,8 +289,21 @@ function ChatPage() {
     sendMessage: sendDirectMessage,
     isSending: isSendingDirectMessage,
     sendStatus: directSendStatus,
-    resetSendStatus: resetDirectSendStatus
+    resetSendStatus: resetDirectSendStatus,
+    isCreating: isCreatingDirectThread,
+    createThread: createDirectThread
   } = useDirectMessages();
+
+  const {
+    graph: friendGraph,
+    refresh: refreshFriendGraph,
+    isLoading: isLoadingFriends,
+    status: friendStatus,
+    queueStatus: friendQueueStatus,
+    removeFriend: removeFriendRelationship,
+    hasAccess: friendHasAccess,
+    isProcessing: isProcessingFriendAction
+  } = useFriendGraph();
 
   const [moderationInitAttempted, setModerationInitAttempted] = useState(false);
   const [moderationContext, setModerationContext] = useState(null);
@@ -292,6 +314,7 @@ function ChatPage() {
   });
   const [channelTab, setChannelTab] = useState('rooms');
   const [channelDialogTab, setChannelDialogTab] = useState('rooms');
+  const [lastConversationTab, setLastConversationTab] = useState('rooms');
   const [isChannelDialogOpen, setIsChannelDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
@@ -299,6 +322,7 @@ function ChatPage() {
   const [reportError, setReportError] = useState(null);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportStatus, setReportStatus] = useState(null);
+  const [friendActionStatus, setFriendActionStatus] = useState(null);
   const [dmMessageDraft, setDmMessageDraft] = useState('');
   const dmGifPreviewRequestRef = useRef(null);
   const [dmGifPreview, setDmGifPreview] = useState(null);
@@ -460,6 +484,12 @@ function ChatPage() {
   }, [channelTab, directMessagesHasAccess]);
 
   useEffect(() => {
+    if (channelTab === 'rooms' || channelTab === 'direct') {
+      setLastConversationTab(channelTab);
+    }
+  }, [channelTab, setLastConversationTab]);
+
+  useEffect(() => {
     if (channelDialogTab === 'direct' && directMessagesHasAccess === false) {
       setChannelDialogTab('rooms');
     }
@@ -470,6 +500,18 @@ function ChatPage() {
       refreshDmThreads().catch(() => {});
     }
   }, [channelTab, refreshDmThreads]);
+
+  useEffect(() => {
+    if (channelTab === 'friends') {
+      refreshFriendGraph().catch(() => {});
+    }
+  }, [channelTab, refreshFriendGraph]);
+
+  useEffect(() => {
+    if (friendQueueStatus) {
+      setFriendActionStatus(friendQueueStatus);
+    }
+  }, [friendQueueStatus]);
 
   useEffect(() => {
     resetRoomAttachments();
@@ -491,20 +533,29 @@ function ChatPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get('tab');
-    if (tabParam === 'direct' && directMessagesHasAccess !== false) {
-      setChannelTab('direct');
-      setChannelDialogTab('direct');
-      const threadParam = params.get('thread');
-      if (threadParam) {
-        selectDirectThread(threadParam);
+    if (tabParam === 'direct') {
+      if (directMessagesHasAccess !== false) {
+        setChannelTab('direct');
+        setChannelDialogTab('direct');
+        const threadParam = params.get('thread');
+        if (threadParam) {
+          selectDirectThread(threadParam);
+        }
+      } else {
+        setChannelTab('rooms');
+        setChannelDialogTab('rooms');
       }
       return;
     }
 
-    if (tabParam !== 'direct') {
-      setChannelTab((prev) => (prev === 'direct' ? 'rooms' : prev));
-      setChannelDialogTab((prev) => (prev === 'direct' ? 'rooms' : prev));
+    if (tabParam === 'friends') {
+      setChannelTab('friends');
+      setChannelDialogTab('friends');
+      return;
     }
+
+    setChannelTab('rooms');
+    setChannelDialogTab((prev) => (prev === 'direct' ? 'rooms' : prev));
   }, [directMessagesHasAccess, location.search, selectDirectThread]);
 
   useEffect(() => {
@@ -574,10 +625,17 @@ function ChatPage() {
     if (!moderationContext) {
       return;
     }
+    const defaultType =
+      typeof moderationContext.defaultAction === 'string'
+        ? moderationContext.defaultAction
+        : 'warn';
     setModerationForm({
-      type: 'warn',
+      type: defaultType,
       reason: '',
-      durationMinutes: '15'
+      durationMinutes:
+        defaultType === 'mute'
+          ? moderationContext.defaultDurationMinutes || '15'
+          : '15'
     });
   }, [moderationContext]);
 
@@ -614,10 +672,150 @@ function ChatPage() {
     [selectDirectThread]
   );
 
+  const handleActivateFriendsView = useCallback(() => {
+    if (channelTab === 'friends') {
+      let targetTab = lastConversationTab;
+      if (targetTab === 'direct' && directMessagesHasAccess === false) {
+        targetTab = 'rooms';
+      }
+      setChannelTab(targetTab);
+      setChannelDialogTab(
+        targetTab === 'direct' && directMessagesHasAccess !== false ? 'direct' : 'rooms'
+      );
+      setIsChannelDialogOpen(false);
+      return;
+    }
+    setChannelTab('friends');
+    setChannelDialogTab('friends');
+    setIsChannelDialogOpen(false);
+  }, [channelTab, directMessagesHasAccess, lastConversationTab, setChannelDialogTab, setChannelTab, setIsChannelDialogOpen]);
+
+  const handleMessageFriend = useCallback(
+    async (friend) => {
+      const friendId = normalizeObjectId(friend?.id);
+      if (!friendId) {
+        setFriendActionStatus({ type: 'error', message: 'Unable to open this conversation.' });
+        return;
+      }
+      if (directMessagesHasAccess === false) {
+        setFriendActionStatus({
+          type: 'error',
+          message: 'Direct messages are disabled for your account.'
+        });
+        return;
+      }
+
+      const normalizedFriendId = normalizeObjectId(friendId);
+      const existingThread = dmThreads.find((thread) => {
+        const participants = Array.isArray(thread.participants) ? thread.participants : [];
+        return participants.some(
+          (participant) => getParticipantId(participant) === normalizedFriendId
+        );
+      });
+
+      if (existingThread?.id) {
+        handleSelectDirectThreadId(existingThread.id);
+        setFriendActionStatus({
+          type: 'success',
+          message: `Opened conversation with ${friend.displayName || friend.username || 'friend'}.`
+        });
+        return;
+      }
+
+      try {
+        const result = await createDirectThread({
+          participantIds: [normalizedFriendId]
+        });
+        let newThreadId = result?.thread?.id || '';
+        if (!newThreadId) {
+          const refreshed = await refreshDmThreads().catch(() => null);
+          if (refreshed?.threads) {
+            const fallback = refreshed.threads.find((thread) => {
+              const participants = Array.isArray(thread.participants) ? thread.participants : [];
+              return participants.some(
+                (participant) => getParticipantId(participant) === normalizedFriendId
+              );
+            });
+            if (fallback?.id) {
+              newThreadId = fallback.id;
+            }
+          }
+        }
+        if (newThreadId) {
+          handleSelectDirectThreadId(newThreadId);
+        } else {
+          refreshDmThreads().catch(() => {});
+        }
+        setFriendActionStatus({
+          type: 'success',
+          message: `Started a conversation with ${friend.displayName || friend.username || 'friend'}.`
+        });
+      } catch (error) {
+        setFriendActionStatus({
+          type: 'error',
+          message: error?.message || 'Failed to start conversation.'
+        });
+      }
+    },
+    [
+      createDirectThread,
+      directMessagesHasAccess,
+      dmThreads,
+      handleSelectDirectThreadId,
+      refreshDmThreads,
+      setFriendActionStatus
+    ]
+  );
+
+  const handleUnfriend = useCallback(
+    async (friend) => {
+      const friendId = normalizeObjectId(friend?.id);
+      if (!friendId) {
+        setFriendActionStatus({ type: 'error', message: 'Unable to remove this friend.' });
+        return;
+      }
+      try {
+        await removeFriendRelationship(friendId);
+        setFriendActionStatus({
+          type: 'success',
+          message: `${friend.displayName || friend.username || 'Friend'} removed.`
+        });
+      } catch (error) {
+        setFriendActionStatus({
+          type: 'error',
+          message: error?.message || 'Failed to remove friend.'
+        });
+      }
+    },
+    [removeFriendRelationship, setFriendActionStatus]
+  );
+
+  const handleReportFriend = useCallback(
+    (friend) => {
+      const friendId = normalizeObjectId(friend?.id);
+      if (!friendId) {
+        setFriendActionStatus({ type: 'error', message: 'Unable to report this friend.' });
+        return;
+      }
+      setModerationContext({
+        userId: friendId,
+        displayName: friend.displayName || friend.username || 'User',
+        messagePreview: '',
+        messageId: friendId,
+        defaultAction: 'report'
+      });
+    },
+    [setFriendActionStatus, setModerationContext]
+  );
+
   const handleOpenChannelDialog = useCallback(() => {
-    setChannelDialogTab(
-      channelTab === 'direct' && directMessagesHasAccess !== false ? 'direct' : 'rooms'
-    );
+    if (channelTab === 'direct') {
+      setChannelDialogTab(directMessagesHasAccess !== false ? 'direct' : 'rooms');
+    } else if (channelTab === 'friends') {
+      setChannelDialogTab('friends');
+    } else {
+      setChannelDialogTab('rooms');
+    }
     setIsChannelDialogOpen(true);
   }, [channelTab, directMessagesHasAccess]);
 
@@ -1285,6 +1483,9 @@ function ChatPage() {
       }
       return 'Direct messages';
     }
+    if (channelTab === 'friends') {
+      return 'Friends list';
+    }
     return selectedRoom ? selectedRoom.name : 'Choose a room';
   }, [channelTab, selectedDirectNames, selectedRoom]);
 
@@ -1554,7 +1755,7 @@ function ChatPage() {
       return (
         <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
           <CircularProgress />
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.primary">
             Loading messages…
           </Typography>
         </Stack>
@@ -1565,7 +1766,7 @@ function ChatPage() {
       return (
         <Stack spacing={1} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
           <Typography variant="h6">No messages yet</Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.primary">
             Start the conversation with everyone in this room.
           </Typography>
         </Stack>
@@ -1644,7 +1845,7 @@ function ChatPage() {
       return (
         <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
           <CircularProgress />
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.primary">
             Loading messages…
           </Typography>
         </Stack>
@@ -1653,9 +1854,16 @@ function ChatPage() {
 
     if (directMessageItems.length === 0) {
       return (
-        <Stack spacing={1.5} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-          <Typography variant="h6">Say hello</Typography>
-          <Typography variant="body2" color="text.secondary" align="center">
+        <Stack
+          spacing={1.5}
+          alignItems="center"
+          justifyContent="center"
+          sx={{ flexGrow: 1, py: 6, color: '#111' }}
+        >
+          <Typography variant="h6" sx={{ color: '#111' }}>
+            Say hello
+          </Typography>
+          <Typography variant="body2" align="center" sx={{ color: '#333' }}>
             Send the first message to keep the conversation going.
           </Typography>
         </Stack>
@@ -1677,6 +1885,226 @@ function ChatPage() {
         />
         <div ref={messagesEndRef} />
       </>
+    );
+  };
+
+  const renderFriendsList = ({ isOverlay = false } = {}) => {
+    if (friendHasAccess === false) {
+      return (
+        <Stack
+          spacing={1.5}
+          alignItems="center"
+          justifyContent="center"
+          sx={{ flexGrow: 1, py: 6, color: isOverlay ? 'inherit' : '#111' }}
+        >
+          <Typography variant="h6" align="center" sx={!isOverlay ? { color: '#111' } : undefined}>
+            Friend access required
+          </Typography>
+          <Typography
+            variant="body2"
+            align="center"
+            sx={!isOverlay ? { color: '#555' } : undefined}
+          >
+            You need additional privileges to view or manage friends.
+          </Typography>
+        </Stack>
+      );
+    }
+
+    const friends = Array.isArray(friendGraph?.friends) ? friendGraph.friends : [];
+
+    if (isLoadingFriends && friends.length === 0) {
+      return (
+        <Stack
+          spacing={2}
+          alignItems="center"
+          justifyContent="center"
+          sx={{ flexGrow: 1, py: 6, color: isOverlay ? 'inherit' : '#111' }}
+        >
+          <CircularProgress />
+          <Typography variant="body2" sx={!isOverlay ? { color: '#111' } : undefined}>
+            Loading friends…
+          </Typography>
+        </Stack>
+      );
+    }
+
+    return (
+      <Box
+        sx={{
+          flexGrow: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          color: isOverlay ? 'inherit' : '#111'
+        }}
+      >
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 2
+          }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography
+              variant="subtitle1"
+              fontWeight={700}
+              sx={!isOverlay ? { color: '#111' } : undefined}
+            >
+              Friends
+            </Typography>
+            <Chip label={friends.length} size="small" color="primary" variant="outlined" />
+          </Stack>
+          <Tooltip title="Refresh friends">
+            <span>
+              <IconButton
+                onClick={refreshFriendGraph}
+                disabled={isLoadingFriends || isProcessingFriendAction}
+                color="primary"
+                sx={{
+                  '&.Mui-disabled': {
+                    color: (theme) => theme.palette.action.disabled
+                  }
+                }}
+              >
+                {isLoadingFriends ? (
+                  <CircularProgress size={20} color="primary" />
+                ) : (
+                  <RefreshIcon fontSize="small" />
+                )}
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
+
+        {friendStatus && friendStatus.message ? (
+          <Box sx={{ px: 2, py: 1.5 }}>
+            <Alert severity={friendStatus.type || 'error'}>{friendStatus.message}</Alert>
+          </Box>
+        ) : null}
+
+        {friends.length === 0 && !isLoadingFriends ? (
+          <Stack
+            spacing={1.5}
+            alignItems="center"
+            justifyContent="center"
+            sx={{ flexGrow: 1, py: 6, color: isOverlay ? 'inherit' : '#111' }}
+          >
+            <Typography variant="h6" sx={!isOverlay ? { color: '#111' } : undefined}>
+              No friends yet
+            </Typography>
+            <Typography
+              variant="body2"
+              align="center"
+              sx={!isOverlay ? { color: '#555' } : undefined}
+            >
+              Add some friends to start direct conversations and plan meetups.
+            </Typography>
+          </Stack>
+        ) : null}
+
+        {friends.length ? (
+          <List dense sx={{ flexGrow: 1, overflowY: 'auto', px: { xs: 1, sm: 2 } }}>
+            {friends.map((friend) => {
+              const displayName = friend.displayName || friend.username || 'Friend';
+              const secondaryLabel = friend.username ? `@${friend.username}` : '';
+              const avatarSrc = resolveAvatarSrc(friend);
+              return (
+                <ListItem
+                  key={friend.id}
+                  alignItems="center"
+                  sx={{
+                    py: 1.5,
+                    px: { xs: 1, sm: 0 },
+                    gap: { xs: 1.5, sm: 2 },
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    alignItems: { xs: 'flex-start', sm: 'center' },
+                    color: isOverlay ? 'inherit' : '#111'
+                  }}
+                >
+                  <ListItemAvatar>
+                    <Avatar
+                      src={avatarSrc}
+                      alt={displayName}
+                      imgProps={{ referrerPolicy: 'no-referrer' }}
+                    >
+                      {displayName.charAt(0).toUpperCase()}
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={
+                      <Typography
+                        variant="subtitle1"
+                        fontWeight={600}
+                        sx={!isOverlay ? { color: '#111' } : undefined}
+                      >
+                        {displayName}
+                      </Typography>
+                    }
+                    secondary={
+                      secondaryLabel ? (
+                        <Typography
+                          variant="caption"
+                          color={isOverlay ? 'text.secondary' : undefined}
+                          sx={!isOverlay ? { color: '#555' } : undefined}
+                        >
+                          {secondaryLabel}
+                        </Typography>
+                      ) : null
+                    }
+                    sx={{ flex: 1, minWidth: 0 }}
+                  />
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      width: { xs: '100%', sm: 'auto' },
+                      justifyContent: { xs: 'flex-end', sm: 'flex-start' },
+                      flexWrap: 'wrap',
+                      rowGap: 1
+                    }}
+                  >
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="primary"
+                      onClick={() => handleMessageFriend(friend)}
+                      disabled={
+                        directMessagesHasAccess === false ||
+                        isProcessingFriendAction ||
+                        isCreatingDirectThread
+                      }
+                    >
+                      Message
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="secondary"
+                      onClick={() => handleUnfriend(friend)}
+                      disabled={isProcessingFriendAction}
+                    >
+                      Unfriend
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => handleReportFriend(friend)}
+                    >
+                      Report
+                    </Button>
+                  </Stack>
+                </ListItem>
+              );
+            })}
+          </List>
+        ) : null}
+      </Box>
     );
   };
 
@@ -1723,6 +2151,16 @@ function ChatPage() {
                 aria-label="Choose channel"
               />
 
+              <Button
+                className="chat-friends-btn"
+                variant={channelTab === 'friends' ? 'contained' : 'outlined'}
+                color="secondary"
+                size="small"
+                onClick={handleActivateFriendsView}
+              >
+                Friends
+              </Button>
+
               <button
                 className="updates-icon-btn"
                 type="button"
@@ -1742,7 +2180,11 @@ function ChatPage() {
           </header>
 
           <Box ref={containerRef} className="chat-messages-field">
-            {channelTab === 'direct' ? renderDirectMessagesMobile() : renderRoomMessagesMobile()}
+            {channelTab === 'direct'
+              ? renderDirectMessagesMobile()
+              : channelTab === 'friends'
+              ? renderFriendsList({ isOverlay: false })
+              : renderRoomMessagesMobile()}
           </Box>
 
           {channelTab === 'direct' ? (
@@ -1781,7 +2223,7 @@ function ChatPage() {
                 onGifPreviewShuffle={handleDmGifPreviewShuffle}
               />
             </>
-          ) : (
+          ) : channelTab === 'rooms' ? (
             <>
               <ChatComposer
                 variant="modern"
@@ -1811,9 +2253,9 @@ function ChatPage() {
                 onGifPreviewShuffle={handleGifPreviewShuffle}
               />
             </>
-          )}
+          ) : null}
 
-          {presenceError ? (
+          {channelTab === 'rooms' && presenceError ? (
             <Box sx={{ px: 2, py: 1 }}>
               <Alert severity="error">{presenceError}</Alert>
             </Box>
@@ -1832,7 +2274,7 @@ function ChatPage() {
           />
 
           <Snackbar
-            open={Boolean(reportStatus)}
+            open={reportStatus}
             autoHideDuration={4000}
             onClose={(_, reason) => {
               if (reason === 'clickaway') {
@@ -1843,7 +2285,7 @@ function ChatPage() {
             anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
             sx={{ bottom: `${scrollBtnBottom + 72}px` }}
           >
-            {reportStatus ? (
+            {reportStatus && (
               <Alert
                 elevation={6}
                 variant="filled"
@@ -1852,11 +2294,11 @@ function ChatPage() {
               >
                 {reportStatus.message}
               </Alert>
-            ) : null}
+            )}
           </Snackbar>
 
           <Snackbar
-            open={channelTab === 'direct' && Boolean(directSendStatus)}
+            open={channelTab === 'direct' && directSendStatus}
             autoHideDuration={4000}
             onClose={(_, reason) => {
               if (reason === 'clickaway') {
@@ -1867,7 +2309,7 @@ function ChatPage() {
             anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
             sx={{ bottom: `${scrollBtnBottom + 16}px` }}
           >
-            {directSendStatus ? (
+            {directSendStatus && (
               <Alert
                 elevation={6}
                 variant="filled"
@@ -1876,7 +2318,31 @@ function ChatPage() {
               >
                 {directSendStatus.message}
               </Alert>
-            ) : null}
+            )}
+          </Snackbar>
+
+          <Snackbar
+            open={friendActionStatus}
+            autoHideDuration={4000}
+            onClose={(_, reason) => {
+              if (reason === 'clickaway') {
+                return;
+              }
+              setFriendActionStatus(null);
+            }}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            sx={{ bottom: `${scrollBtnBottom + 40}px` }}
+          >
+            {friendActionStatus && (
+              <Alert
+                elevation={6}
+                variant="filled"
+                severity={friendActionStatus.type || 'info'}
+                onClose={() => setFriendActionStatus(null)}
+              >
+                {friendActionStatus.message}
+              </Alert>
+            )}
           </Snackbar>
 
       <Navbar />
@@ -1994,6 +2460,12 @@ function ChatPage() {
               iconPosition="start"
               disabled={directMessagesHasAccess === false}
             />
+            <Tab
+              value="friends"
+              label="Friends"
+              icon={<PeopleAltIcon fontSize="small" />}
+              iconPosition="start"
+            />
           </Tabs>
           <Box sx={{ maxHeight: 420, display: 'flex', flexDirection: 'column' }}>
             {channelDialogTab === 'direct' ? (
@@ -2006,7 +2478,11 @@ function ChatPage() {
                 onRefresh={refreshDmThreads}
                 canAccess={directMessagesHasAccess !== false}
                 viewerId={directViewerId}
+                viewerUsername={dmViewer?.username || null}
+                viewerDisplayName={dmViewer?.displayName || null}
               />
+            ) : channelDialogTab === 'friends' ? (
+              renderFriendsList({ isOverlay: true })
             ) : (
               <RoomListContent />
             )}

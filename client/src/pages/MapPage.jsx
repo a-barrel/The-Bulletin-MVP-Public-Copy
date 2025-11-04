@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import '../pages/MapPage.css';
 import { useNavigate } from 'react-router-dom';
 import MapIcon from '@mui/icons-material/Map';
@@ -24,6 +24,13 @@ export const pageConfig = {
   protected: true,
   showInNav: true
 };
+
+const EVENT_MARKER_ICON =
+  'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png';
+const DISCUSSION_MARKER_ICON =
+  'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
+const PERSONAL_MARKER_ICON =
+  'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png';
 
 function MapPage() {
   const navigate = useNavigate();
@@ -53,6 +60,38 @@ function MapPage() {
     isOffline
   });
 
+  const [showEvents, setShowEvents] = useState(true);
+  const [showDiscussions, setShowDiscussions] = useState(true);
+  const [showPersonalPins, setShowPersonalPins] = useState(true);
+
+  const filteredPins = useMemo(() => {
+    if (!Array.isArray(combinedPins)) {
+      return [];
+    }
+
+    return combinedPins.filter((pin) => {
+      if (!pin || typeof pin !== 'object') {
+        return false;
+      }
+
+      const type = typeof pin.type === 'string' ? pin.type.toLowerCase() : '';
+
+      if (type === 'event' && !showEvents) {
+        return false;
+      }
+
+      if (type === 'discussion' && !showDiscussions) {
+        return false;
+      }
+
+      if ((pin.isSelf || pin.viewerIsCreator) && !showPersonalPins) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [combinedPins, showDiscussions, showEvents, showPersonalPins]);
+
   useEffect(() => {
     if (typeof refreshUnreadCount === 'function' && !isOffline) {
       refreshUnreadCount({ silent: true });
@@ -68,7 +107,7 @@ function MapPage() {
       if (!pinId) {
         return;
       }
-      navigate(routes.pin.byId(pinId));
+      navigate(routes.pin.byId(pinId), { state: { pin } });
     },
     [navigate]
   );
@@ -76,6 +115,18 @@ function MapPage() {
   const handleViewChatRoom = useCallback(() => {
     navigate(routes.chat.base);
   }, [navigate]);
+
+  const handleToggleEvents = useCallback((event) => {
+    setShowEvents(Boolean(event?.target?.checked));
+  }, []);
+
+  const handleToggleDiscussions = useCallback((event) => {
+    setShowDiscussions(Boolean(event?.target?.checked));
+  }, []);
+
+  const handleTogglePersonalPins = useCallback((event) => {
+    setShowPersonalPins(Boolean(event?.target?.checked));
+  }, []);
 
   const handleViewProfile = useCallback(() => {
     navigate(routes.profile.me);
@@ -143,7 +194,7 @@ function MapPage() {
           <Map
             userLocation={userLocation}
             nearbyUsers={nearbyUsers}
-            pins={combinedPins}
+            pins={filteredPins}
             userRadiusMeters={DEFAULT_MAX_DISTANCE_METERS}
             selectedPinId={showChatRooms ? selectedChatRoomId : undefined}
             onPinSelect={showChatRooms ? handleMapPinSelect : undefined}
@@ -164,6 +215,54 @@ function MapPage() {
         >
           <img src={addIcon} alt="" aria-hidden="true" />
         </button>
+
+        <div className="map-filter-panel" role="group" aria-label="Pin visibility filters">
+          <label className="map-filter-toggle">
+            <img src={EVENT_MARKER_ICON} alt="" className="map-filter-icon" aria-hidden="true" />
+            <span className="map-filter-label">Events</span>
+            <input
+              type="checkbox"
+              checked={showEvents}
+              onChange={handleToggleEvents}
+              aria-label="Toggle event pins"
+            />
+            <span className="map-filter-slider" aria-hidden="true" />
+          </label>
+
+          <label className="map-filter-toggle">
+            <img
+              src={DISCUSSION_MARKER_ICON}
+              alt=""
+              className="map-filter-icon"
+              aria-hidden="true"
+            />
+            <span className="map-filter-label">Discussions</span>
+            <input
+              type="checkbox"
+              checked={showDiscussions}
+              onChange={handleToggleDiscussions}
+              aria-label="Toggle discussion pins"
+            />
+            <span className="map-filter-slider" aria-hidden="true" />
+          </label>
+
+          <label className="map-filter-toggle">
+            <img
+              src={PERSONAL_MARKER_ICON}
+              alt=""
+              className="map-filter-icon"
+              aria-hidden="true"
+            />
+            <span className="map-filter-label">Personal pins</span>
+            <input
+              type="checkbox"
+              checked={showPersonalPins}
+              onChange={handleTogglePersonalPins}
+              aria-label="Toggle your pins"
+            />
+            <span className="map-filter-slider" aria-hidden="true" />
+          </label>
+        </div>
 
         <Navbar />
       </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   fetchPinById,
@@ -306,12 +306,13 @@ const extractViewerProfileIdFromState = (state) => {
 
 export default function usePinDetails({ pinId, location, isOffline }) {
   const locationState = location?.state;
+  const pinFromState = locationState?.pin ?? null;
   const { announceBadgeEarned } = useBadgeSound();
   const [viewerProfileId, setViewerProfileId] = useState(() =>
     extractViewerProfileIdFromState(locationState)
   );
-  const [pin, setPin] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [pin, setPin] = useState(pinFromState);
+  const [isLoading, setIsLoading] = useState(!pinFromState);
   const [error, setError] = useState(null);
   const [bookmarked, setBookmarked] = useState(false);
   const [isUpdatingBookmark, setIsUpdatingBookmark] = useState(false);
@@ -332,6 +333,21 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   const [submitReplyError, setSubmitReplyError] = useState(null);
   const [shareStatus, setShareStatus] = useState(null);
   const [isSharing, setIsSharing] = useState(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(
+    () => () => {
+      isMountedRef.current = false;
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (pinFromState) {
+      setPin(pinFromState);
+      setIsLoading(false);
+    }
+  }, [pinFromState]);
 
   useEffect(() => {
     if (viewerProfileId) {
@@ -376,54 +392,62 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     return (params.get('preview') || '').toLowerCase();
   }, [location?.search]);
 
-  useEffect(() => {
-    if (!pinId) {
-      setPin(null);
-      setIsLoading(false);
-      setError('Pin ID was not provided.');
-      return;
-    }
-
-    let ignore = false;
-
-    async function loadPin() {
-      if (isOffline) {
-        setIsLoading(false);
-        setError((prev) => prev ?? 'You are offline. Connect to load the latest pin details.');
-        return;
+  const reloadPin = useCallback(
+    async ({ silent } = {}) => {
+      if (!pinId) {
+        if (isMountedRef.current) {
+          setPin(null);
+          setIsLoading(false);
+          setError('Pin ID was not provided.');
+        }
+        return null;
       }
 
-      setIsLoading(true);
-      setError(null);
+      if (isOffline) {
+        if (isMountedRef.current) {
+          if (!silent) {
+            setIsLoading(false);
+          }
+          setError((prev) => prev ?? 'You are offline. Connect to load the latest pin details.');
+        }
+        return null;
+      }
+
+      if (isMountedRef.current && !silent) {
+        setIsLoading(true);
+      }
+      if (isMountedRef.current) {
+        setError(null);
+      }
 
       try {
         const payload = await fetchPinById(pinId, { previewMode });
-        if (ignore) {
-          return;
+        if (!isMountedRef.current) {
+          return payload;
         }
         setPin(payload);
         setBookmarked(Boolean(payload?.viewerHasBookmarked));
         setAttending(Boolean(payload?.viewerIsAttending));
+        return payload;
       } catch (loadError) {
-        if (ignore) {
-          return;
+        if (!isMountedRef.current) {
+          return null;
         }
         console.error('Failed to load pin details:', loadError);
         setError(loadError?.message || 'Failed to load pin details.');
-        setPin(null);
+        return null;
       } finally {
-        if (!ignore) {
+        if (isMountedRef.current && !silent) {
           setIsLoading(false);
         }
       }
-    }
+    },
+    [pinId, isOffline, previewMode]
+  );
 
-    loadPin();
-
-    return () => {
-      ignore = true;
-    };
-  }, [isOffline, pinId, previewMode]);
+  useEffect(() => {
+    reloadPin({ silent: Boolean(pinFromState) });
+  }, [reloadPin, pinFromState]);
 
   useEffect(() => {
     if (!pinId) {
@@ -761,6 +785,10 @@ export default function usePinDetails({ pinId, location, isOffline }) {
       setBookmarkError('Bookmarks are unavailable while offline.');
       return;
     }
+    if (isOwnPin && bookmarked) {
+      setBookmarkError('Creators keep their pins bookmarked automatically.');
+      return;
+    }
     if (!pin || isUpdatingBookmark || isInteractionLocked) {
       if (pinExpired) {
         setBookmarkError('Expired pins cannot be bookmarked.');
@@ -850,6 +878,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     bookmarked,
     distanceLockActive,
     isInteractionLocked,
+    isOwnPin,
     isOffline,
     isUpdatingBookmark,
     pin,
@@ -1101,6 +1130,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   return {
     pin,
     isEventPin: typeof pin?.type === 'string' ? pin.type.toLowerCase() === 'event' : false,
+    isOwnPin,
     pinExpired,
     distanceLockActive,
     isInteractionLocked,
@@ -1149,6 +1179,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     setShareStatus,
     isSharing,
     handleSharePin,
+    reloadPin,
     attendees,
     attendeeOverlayOpen,
     openAttendeeOverlay,
