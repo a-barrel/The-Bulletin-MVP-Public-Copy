@@ -4,6 +4,8 @@ import './PinDetails.css';
 import './_v2_WIP_PinDetails.css';
 import PlaceIcon from '@mui/icons-material/Place'; // used only for pageConfig
 import LeafletMap from '../components/Map';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import usePinDetails from '../hooks/usePinDetails';
@@ -55,6 +57,7 @@ function PinDetailsV2() {
   const {
     pin,
     isEventPin,
+    isOwnPin,
     isInteractionLocked,
     pinTypeHeading,
     interactionOverlay,
@@ -104,6 +107,7 @@ function PinDetailsV2() {
   } = usePinDetails({ pinId, location, isOffline });
 
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
+  const bookmarkLocked = isOwnPin && bookmarked;
 
   return (
     <div className={`pin-details pin-details--v2 ${themeClass}`}>
@@ -134,23 +138,36 @@ function PinDetailsV2() {
 
         <div className="bookmark-button-wrapper">
           <button
-            className="bookmark-button"
+            className={`bookmark-button${bookmarkLocked ? ' bookmark-button--locked' : ''}`}
+            type="button"
             onClick={handleToggleBookmark}
-            disabled={isOffline || isUpdatingBookmark || !pin || isInteractionLocked}
+            disabled={
+              bookmarkLocked || isOffline || isUpdatingBookmark || !pin || isInteractionLocked
+            }
             aria-pressed={bookmarked ? 'true' : 'false'}
-            aria-label={bookmarked ? 'Remove bookmark' : 'Save bookmark'}
+            aria-label={
+              bookmarkLocked
+                ? 'This pin stays bookmarked for its creator'
+                : bookmarked
+                ? 'Remove bookmark'
+                : 'Save bookmark'
+            }
             aria-busy={isUpdatingBookmark ? 'true' : 'false'}
-            title={isOffline ? 'Reconnect to manage bookmarks' : undefined}
+            title={
+              bookmarkLocked
+                ? 'Creators keep their pins bookmarked automatically.'
+                : isOffline
+                ? 'Reconnect to manage bookmarks'
+                : undefined
+            }
           >
-            <img
-              src={
-                bookmarked
-                  ? 'https://www.svgrepo.com/show/347684/bookmark-fill.svg'
-                  : 'https://www.svgrepo.com/show/357397/bookmark-full.svg'
-              }
-              className="bookmark"
-              alt={bookmarked ? 'Bookmarked' : 'Bookmark icon'}
-            />
+            {bookmarked ? (
+              <BookmarkIcon
+                className={`bookmark-icon${bookmarkLocked ? ' bookmark-icon--locked' : ''}`}
+              />
+            ) : (
+              <BookmarkBorderIcon className="bookmark-icon" />
+            )}
           </button>
           {bookmarkError ? <span className="error-text bookmark-error">{bookmarkError}</span> : null}
         </div>

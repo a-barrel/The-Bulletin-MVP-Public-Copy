@@ -22,7 +22,24 @@ async function resolveAuthToken() {
     return null;
   }
 
-  return currentUser.getIdToken();
+  try {
+    return await currentUser.getIdToken();
+  } catch (error) {
+    const errorCode = typeof error?.code === 'string' ? error.code : '';
+    const shouldForceLogout =
+      errorCode === 'auth/id-token-revoked' || errorCode === 'auth/user-token-expired';
+
+    if (shouldForceLogout) {
+      if (typeof window !== 'undefined') {
+        auth.signOut().catch(() => {});
+      }
+      const sessionError = new Error('Your session expired. Please sign in again.');
+      sessionError.isAuthError = true;
+      throw sessionError;
+    }
+
+    throw error;
+  }
 }
 
 async function buildHeaders(extra = {}, options = {}) {
@@ -71,6 +88,7 @@ function createApiError(response, payload, fallbackMessage) {
     fallbackMessage || (statusCode ? `Request failed with status ${statusCode}` : 'Request failed');
   const message =
     (payload && typeof payload === 'object' && payload.message) || defaultMessage;
+  const normalizedMessage = String(message || '').toLowerCase();
 
   const error = new Error(message);
   if (typeof statusCode === 'number') {
@@ -89,6 +107,21 @@ function createApiError(response, payload, fallbackMessage) {
     }
   }
   error.isApiError = true;
+
+  const tokenRevoked =
+    normalizedMessage.includes('token') &&
+    (normalizedMessage.includes('revoked') ||
+      normalizedMessage.includes('expired') ||
+      normalizedMessage.includes('invalid'));
+
+  if ((statusCode === 401 || statusCode === 403) && tokenRevoked) {
+    error.isAuthError = true;
+    error.message = 'Your session expired. Please sign in again.';
+    if (typeof window !== 'undefined') {
+      auth.signOut().catch(() => {});
+    }
+  }
+
   return error;
 }
 
@@ -332,10 +365,11 @@ export async function createPin(input) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
+    const fallbackBase = 'Failed to create pin';
     const details = Array.isArray(payload?.issues)
       ? `: ${payload.issues.map((issue) => `${issue.path?.join('.') ?? ''} ${issue.message}`.trim()).join('; ')}`
       : '';
-    throw new Error((payload?.message || 'Failed to create pin') + details);
+    throw createApiError(response, payload, `${fallbackBase}${details}`);
   }
 
   return payload;
@@ -379,12 +413,13 @@ export async function fetchPinById(pinId, options = {}) {
   const response = await fetch(url, {
     method: 'GET',
     headers: await buildHeaders(),
-    signal
+    signal,
+    cache: 'no-store'
   });
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load pin');
+    throw createApiError(response, payload, 'Failed to load pin');
   }
 
   return payload;
@@ -398,7 +433,8 @@ export async function fetchPinAttendees(pinId) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/attendees`, {
     method: 'GET',
-    headers: await buildHeaders()
+    headers: await buildHeaders(),
+    cache: 'no-store'
   });
 
   const payload = await response.json().catch(() => []);
@@ -1712,7 +1748,8 @@ export async function fetchReplies(pinId) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/replies`, {
     method: 'GET',
-    headers: await buildHeaders()
+    headers: await buildHeaders(),
+    cache: 'no-store'
   });
 
   const payload = await response.json().catch(() => []);

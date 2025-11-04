@@ -14,6 +14,7 @@ import { metersToMiles } from '../utils/geo';
 import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
 
 const FALLBACK_AVATAR = '/images/profile/profile-01.jpg';
+const FALLBACK_BANNER = null;
 
 const TF2_AVATAR_MAP = {
   tf2_scout: '/images/emulation/avatars/Scoutava.jpg',
@@ -38,6 +39,19 @@ const resolveAvatarUrl = (avatar) => {
       return null;
     }
     if (/^(?:[a-z]+:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
+      if (runtimeConfig.isOffline) {
+        try {
+          const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+          const url = new URL(trimmed, origin);
+          const offlineHosts = new Set(['localhost:5000', '127.0.0.1:5000']);
+          if (offlineHosts.has(url.host) && url.pathname.startsWith('/images/')) {
+            const relative = normalizeProfileImagePath(url.pathname);
+            return base ? `${base}${relative}` : relative;
+          }
+        } catch (error) {
+          return trimmed;
+        }
+      }
       return trimmed;
     }
     const normalized = normalizeProfileImagePath(trimmed.startsWith('/') ? trimmed : `/${trimmed}`);
@@ -62,6 +76,70 @@ const resolveAvatarUrl = (avatar) => {
 
   return toAbsolute(FALLBACK_AVATAR) ?? FALLBACK_AVATAR;
 };
+
+const resolveBannerUrl = (banner) => {
+  const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+
+  const toAbsolute = (value) => {
+    if (!value) {
+      return null;
+    }
+    const trimmed = normalizeProfileImagePath(value.trim());
+    if (!trimmed) {
+      return null;
+    }
+    if (/^(?:[a-z]+:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
+      if (runtimeConfig.isOffline) {
+        try {
+          const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+          const url = new URL(trimmed, origin);
+          const offlineHosts = new Set(['localhost:5000', '127.0.0.1:5000']);
+          if (offlineHosts.has(url.host) && url.pathname.startsWith('/images/')) {
+            const normalizedPath = normalizeProfileImagePath(url.pathname);
+            return base ? `${base}${normalizedPath}` : normalizedPath;
+          }
+        } catch {
+          return trimmed;
+        }
+      }
+      return trimmed;
+    }
+    const normalized = normalizeProfileImagePath(trimmed.startsWith('/') ? trimmed : `/${trimmed}`);
+    return base ? `${base}${normalized}` : normalized;
+  };
+
+  if (!banner) {
+    return FALLBACK_BANNER ? toAbsolute(FALLBACK_BANNER) ?? FALLBACK_BANNER : null;
+  }
+
+  if (typeof banner === 'string') {
+    return toAbsolute(banner) ?? (FALLBACK_BANNER ? toAbsolute(FALLBACK_BANNER) ?? FALLBACK_BANNER : null);
+  }
+
+  if (typeof banner === 'object') {
+    const source = banner.url ?? banner.thumbnailUrl ?? banner.path;
+    const resolved = typeof source === 'string' ? toAbsolute(source) : null;
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return FALLBACK_BANNER ? toAbsolute(FALLBACK_BANNER) ?? FALLBACK_BANNER : null;
+};
+
+const buildMediaAssetPayload = (uploaded, uploadedBy) =>
+  Object.fromEntries(
+    Object.entries({
+      url: uploaded?.url,
+      thumbnailUrl: uploaded?.thumbnailUrl,
+      width: uploaded?.width,
+      height: uploaded?.height,
+      mimeType: uploaded?.mimeType,
+      description: uploaded?.description,
+      uploadedAt: uploaded?.uploadedAt,
+      uploadedBy: uploadedBy ?? undefined
+    }).filter(([, value]) => value !== undefined && value !== null && value !== '')
+  );
 
 const formatDisplayDateTime = (value) =>
   formatDateTime(value, {
@@ -88,14 +166,22 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
   const [isProcessingBlockAction, setIsProcessingBlockAction] = useState(false);
   const [showRawData, setShowRawData] = useState(false);
 
-  const avatarPreviewUrlRef = useRef(null);
+const avatarPreviewUrlRef = useRef(null);
+const bannerPreviewUrlRef = useRef(null);
 
-  const clearAvatarPreviewUrl = useCallback(() => {
-    if (avatarPreviewUrlRef.current && avatarPreviewUrlRef.current.startsWith('blob:')) {
-      URL.revokeObjectURL(avatarPreviewUrlRef.current);
-    }
-    avatarPreviewUrlRef.current = null;
-  }, []);
+const clearAvatarPreviewUrl = useCallback(() => {
+  if (avatarPreviewUrlRef.current && avatarPreviewUrlRef.current.startsWith('blob:')) {
+    URL.revokeObjectURL(avatarPreviewUrlRef.current);
+  }
+  avatarPreviewUrlRef.current = null;
+}, []);
+
+const clearBannerPreviewUrl = useCallback(() => {
+  if (bannerPreviewUrlRef.current && bannerPreviewUrlRef.current.startsWith('blob:')) {
+    URL.revokeObjectURL(bannerPreviewUrlRef.current);
+  }
+  bannerPreviewUrlRef.current = null;
+}, []);
 
   const initializeFormState = useCallback((profile) => ({
     displayName: profile?.displayName ?? '',
@@ -104,7 +190,10 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
     theme: profile?.preferences?.theme ?? 'system',
     avatarFile: null,
     avatarPreviewUrl: profile?.avatar ? resolveAvatarUrl(profile.avatar) : null,
-    avatarCleared: !profile?.avatar
+    avatarCleared: !profile?.avatar,
+    bannerFile: null,
+    bannerPreviewUrl: profile?.banner ? resolveBannerUrl(profile.banner) : null,
+    bannerCleared: !profile?.banner
   }), []);
 
   const [formState, setFormState] = useState(() => initializeFormState(userFromState ?? null));
@@ -112,8 +201,9 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
   useEffect(
     () => () => {
       clearAvatarPreviewUrl();
+      clearBannerPreviewUrl();
     },
-    [clearAvatarPreviewUrl]
+    [clearAvatarPreviewUrl, clearBannerPreviewUrl]
   );
 
   useEffect(() => {
@@ -233,6 +323,8 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
     return userIdParam || 'Unknown User';
   }, [effectiveUser, userIdParam]);
 
+  const bannerUrl = useMemo(() => resolveBannerUrl(effectiveUser?.banner), [effectiveUser]);
+
   const avatarUrl = useMemo(() => {
     const primary = resolveAvatarUrl(effectiveUser?.avatar);
     const usernameKey =
@@ -262,6 +354,7 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
     (shouldLoadCurrentUser || (viewerId && effectiveUserId && viewerId === effectiveUserId));
 
   const editingAvatarSrc = formState.avatarCleared ? null : formState.avatarPreviewUrl ?? avatarUrl;
+  const editingBannerSrc = formState.bannerCleared ? null : formState.bannerPreviewUrl ?? bannerUrl;
 
   const normalizedTargetId = effectiveUserId
     ? effectiveUserId
@@ -288,16 +381,18 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
       return;
     }
     clearAvatarPreviewUrl();
+    clearBannerPreviewUrl();
     setFormState(initializeFormState(effectiveUser));
     setUpdateStatus(null);
     setIsEditing(true);
-  }, [clearAvatarPreviewUrl, effectiveUser, initializeFormState, isOffline]);
+  }, [clearAvatarPreviewUrl, clearBannerPreviewUrl, effectiveUser, initializeFormState, isOffline]);
 
   const handleCancelEditing = useCallback(() => {
     clearAvatarPreviewUrl();
+    clearBannerPreviewUrl();
     setFormState(initializeFormState(effectiveUser));
     setIsEditing(false);
-  }, [clearAvatarPreviewUrl, effectiveUser, initializeFormState]);
+  }, [clearAvatarPreviewUrl, clearBannerPreviewUrl, effectiveUser, initializeFormState]);
 
   const handleAvatarFileChange = useCallback(
     (event) => {
@@ -320,6 +415,35 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
     },
     []
   );
+
+  const handleBannerFileChange = useCallback((event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    if (bannerPreviewUrlRef.current && bannerPreviewUrlRef.current.startsWith('blob:')) {
+      URL.revokeObjectURL(bannerPreviewUrlRef.current);
+    }
+    const previewUrl = URL.createObjectURL(file);
+    bannerPreviewUrlRef.current = previewUrl;
+    setFormState((prev) => ({
+      ...prev,
+      bannerFile: file,
+      bannerPreviewUrl: previewUrl,
+      bannerCleared: false
+    }));
+    event.target.value = '';
+  }, []);
+
+  const handleClearBanner = useCallback(() => {
+    clearBannerPreviewUrl();
+    setFormState((prev) => ({
+      ...prev,
+      bannerFile: null,
+      bannerPreviewUrl: null,
+      bannerCleared: true
+    }));
+  }, [clearBannerPreviewUrl]);
 
   const handleClearAvatar = useCallback(() => {
     clearAvatarPreviewUrl();
@@ -379,6 +503,7 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
       }
 
       const payload = {};
+      const preferencesPayload = {};
 
       if (trimmedDisplayName !== (effectiveUser.displayName ?? '')) {
         payload.displayName = trimmedDisplayName;
@@ -394,20 +519,43 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
         payload.locationSharingEnabled = formState.locationSharingEnabled;
       }
 
-      let uploadedAvatarPayload = null;
+      if (formState.theme !== (effectiveUser?.preferences?.theme ?? 'system')) {
+        preferencesPayload.theme = formState.theme;
+      }
+
+      let uploadedAvatar = null;
+      let uploadedBanner = null;
 
       if (formState.avatarCleared && (effectiveUser?.avatar || formState.avatarFile)) {
         payload.avatar = null;
       } else if (formState.avatarFile) {
         try {
           setIsSavingProfile(true);
-          uploadedAvatarPayload = await uploadImage(formState.avatarFile);
-          payload.avatar = uploadedAvatarPayload?.path ?? null;
+          uploadedAvatar = await uploadImage(formState.avatarFile);
+          payload.avatar = buildMediaAssetPayload(uploadedAvatar, effectiveUser?._id);
         } catch (error) {
           setIsSavingProfile(false);
           setUpdateStatus({ type: 'error', message: error?.message || 'Failed to upload avatar.' });
           return;
         }
+      }
+
+      if (formState.bannerCleared && (effectiveUser?.banner || formState.bannerFile)) {
+        payload.banner = null;
+      } else if (formState.bannerFile) {
+        try {
+          setIsSavingProfile(true);
+          uploadedBanner = await uploadImage(formState.bannerFile);
+          payload.banner = buildMediaAssetPayload(uploadedBanner, effectiveUser?._id);
+        } catch (error) {
+          setIsSavingProfile(false);
+          setUpdateStatus({ type: 'error', message: error?.message || 'Failed to upload banner.' });
+          return;
+        }
+      }
+
+      if (Object.keys(preferencesPayload).length > 0) {
+        payload.preferences = preferencesPayload;
       }
 
       if (!Object.keys(payload).length) {
@@ -422,17 +570,34 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
         setUpdateStatus({ type: 'success', message: 'Profile updated successfully.' });
         setIsEditing(false);
         clearAvatarPreviewUrl();
+        clearBannerPreviewUrl();
         setFormState(initializeFormState(updatedProfile));
       } catch (error) {
         setUpdateStatus({ type: 'error', message: error?.message || 'Failed to update profile.' });
       } finally {
-        if (uploadedAvatarPayload?.previewUrl && uploadedAvatarPayload.previewUrl.startsWith('blob:')) {
-          URL.revokeObjectURL(uploadedAvatarPayload.previewUrl);
-        }
         setIsSavingProfile(false);
       }
     },
-    [clearAvatarPreviewUrl, effectiveUser, formState, initializeFormState, isOffline]
+    [
+      clearAvatarPreviewUrl,
+      clearBannerPreviewUrl,
+      effectiveUser,
+      formState.avatarCleared,
+      formState.avatarFile,
+      formState.bannerCleared,
+      formState.bannerFile,
+      formState.bio,
+      formState.displayName,
+      formState.locationSharingEnabled,
+      formState.theme,
+      initializeFormState,
+      isOffline,
+      setFetchedUser,
+      setIsEditing,
+      setUpdateStatus,
+      updateCurrentUserProfile,
+      uploadImage
+    ]
   );
 
   const detailEntries = useMemo(() => {
@@ -711,6 +876,7 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
     effectiveUser,
     displayName,
     avatarUrl,
+    bannerUrl,
     hasProfile,
     bioText,
     badgeList,
@@ -737,6 +903,8 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
     handleCancelEditing,
     handleAvatarFileChange,
     handleClearAvatar,
+    handleBannerFileChange,
+    handleClearBanner,
     handleFieldChange,
     handleThemeChange,
     handleToggleLocationSharing,
@@ -745,6 +913,7 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
     updateStatus,
     setUpdateStatus,
     editingAvatarSrc,
+    editingBannerSrc,
     canEditProfile,
     handleRequestBlock,
     handleRequestUnblock,

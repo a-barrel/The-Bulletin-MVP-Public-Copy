@@ -1,16 +1,30 @@
 /* NOTE: Page exports configuration alongside the component. */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import './PinDetails.css';
-import { Alert, Snackbar } from '@mui/material';
+import {
+  Alert,
+  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Stack,
+  Button,
+  FormControlLabel,
+  Switch
+} from '@mui/material';
 import PlaceIcon from '@mui/icons-material/Place'; // used only for pageConfig
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import LeafletMap from '../components/Map';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import usePinDetails from '../hooks/usePinDetails';
 import ReportContentDialog from '../components/ReportContentDialog';
-import { createContentReport } from '../api/mongoDataApi';
+import { createContentReport, updatePin } from '../api/mongoDataApi';
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
@@ -51,6 +65,106 @@ export const pageConfig = {
   }
 };
 
+const formatDateTimeLocal = (value) => {
+  if (!value) {
+    return '';
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  const pad = (input) => String(input).padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const parseDateInput = (value) => {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const normalizeMediaAssetForUpdate = (asset) => {
+  if (!asset || typeof asset !== 'object') {
+    return null;
+  }
+  const sourceUrl =
+    typeof asset.url === 'string' && asset.url.trim()
+      ? asset.url.trim()
+      : typeof asset.path === 'string' && asset.path.trim()
+      ? asset.path.trim()
+      : null;
+
+  if (!sourceUrl) {
+    return null;
+  }
+
+  const normalized = { url: sourceUrl };
+
+  if (Number.isFinite(asset.width)) {
+    normalized.width = asset.width;
+  }
+  if (Number.isFinite(asset.height)) {
+    normalized.height = asset.height;
+  }
+  if (typeof asset.mimeType === 'string' && asset.mimeType.trim()) {
+    normalized.mimeType = asset.mimeType.trim();
+  }
+  if (typeof asset.description === 'string' && asset.description.trim()) {
+    normalized.description = asset.description.trim();
+  }
+
+  return normalized;
+};
+
+const buildInitialEditForm = (pin) => {
+  if (!pin || typeof pin !== 'object') {
+    return {
+      title: '',
+      description: '',
+      proximityRadiusMeters: '',
+      startDate: '',
+      endDate: '',
+      expiresAt: '',
+      autoDelete: true
+    };
+  }
+
+  const normalizedType = typeof pin.type === 'string' ? pin.type.toLowerCase() : '';
+  const radius = Number.isFinite(pin.proximityRadiusMeters)
+    ? pin.proximityRadiusMeters
+    : typeof pin.proximityRadiusMeters === 'number'
+    ? pin.proximityRadiusMeters
+    : 1609;
+
+  const base = {
+    title: pin.title ?? '',
+    description: pin.description ?? '',
+    proximityRadiusMeters: radius ? String(Math.max(1, Math.round(radius))) : '',
+    startDate: '',
+    endDate: '',
+    expiresAt: '',
+    autoDelete: pin.autoDelete ?? true
+  };
+
+  if (normalizedType === 'event') {
+    base.startDate = formatDateTimeLocal(pin.startDate ?? null);
+    base.endDate = formatDateTimeLocal(pin.endDate ?? null);
+  } else {
+    const expiresSource = pin.expiresAt ?? pin.endDate ?? null;
+    base.expiresAt = formatDateTimeLocal(expiresSource);
+    base.autoDelete = pin.autoDelete ?? true;
+  }
+
+  return base;
+};
+
 function PinDetails() {
   const { pinId } = useParams();
   const location = useLocation();
@@ -59,6 +173,7 @@ function PinDetails() {
   const {
     pin,
     isEventPin,
+    isOwnPin,
     isInteractionLocked,
     pinTypeHeading,
     interactionOverlay,
@@ -102,6 +217,7 @@ function PinDetails() {
     shareStatus,
     setShareStatus,
     handleSharePin,
+    reloadPin,
     isSharing,
     attendeeItems,
     attendeeOverlayOpen,
@@ -112,6 +228,7 @@ function PinDetails() {
   } = usePinDetails({ pinId, location, isOffline });
 
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
+  const bookmarkLocked = isOwnPin && bookmarked;
 
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
@@ -119,6 +236,183 @@ function PinDetails() {
   const [reportError, setReportError] = useState(null);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportStatus, setReportStatus] = useState(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState(() => buildInitialEditForm(pin));
+  const [editError, setEditError] = useState(null);
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [editStatus, setEditStatus] = useState(null);
+
+  useEffect(() => {
+    if (pin && !isEditDialogOpen) {
+      setEditForm(buildInitialEditForm(pin));
+    }
+  }, [pin, isEditDialogOpen]);
+
+  const handleOpenEditDialog = useCallback(() => {
+    if (!pin) {
+      return;
+    }
+    setEditForm(buildInitialEditForm(pin));
+    setEditError(null);
+    setIsEditDialogOpen(true);
+  }, [pin]);
+
+  const handleCloseEditDialog = useCallback(() => {
+    if (isSubmittingEdit) {
+      return;
+    }
+    setIsEditDialogOpen(false);
+    setEditError(null);
+  }, [isSubmittingEdit]);
+
+  const handleEditFieldChange = useCallback(
+    (field) => (event) => {
+      const value = event?.target?.value ?? '';
+      setEditForm((prev) => ({
+        ...(prev || {}),
+        [field]: value
+      }));
+    },
+    []
+  );
+
+  const handleToggleAutoDelete = useCallback((event) => {
+    const checked = Boolean(event?.target?.checked);
+    setEditForm((prev) => ({
+      ...(prev || {}),
+      autoDelete: checked
+    }));
+  }, []);
+
+  const handleEditStatusClose = useCallback(() => {
+    setEditStatus(null);
+  }, []);
+
+  const handleSubmitEdit = useCallback(
+    async (event) => {
+      event.preventDefault();
+      if (!pin || !editForm) {
+        return;
+      }
+      if (isOffline) {
+        setEditError('Reconnect to edit this pin.');
+        return;
+      }
+
+      setEditError(null);
+
+      const title = typeof editForm.title === 'string' ? editForm.title.trim() : '';
+      if (!title) {
+        setEditError('Title is required.');
+        return;
+      }
+
+      const description = typeof editForm.description === 'string' ? editForm.description.trim() : '';
+      if (!description) {
+        setEditError('Description is required.');
+        return;
+      }
+
+      const coordinatesArray = Array.isArray(pin?.coordinates?.coordinates)
+        ? pin.coordinates.coordinates
+        : [];
+      const [longitudeRaw, latitudeRaw] = coordinatesArray;
+      const latitude = Number(latitudeRaw);
+      const longitude = Number(longitudeRaw);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        setEditError('Pin coordinates are missing and cannot be updated.');
+        return;
+      }
+
+      const radiusMeters = Number(editForm.proximityRadiusMeters);
+      if (!Number.isFinite(radiusMeters) || radiusMeters <= 0) {
+        setEditError('Proximity radius must be a positive number.');
+        return;
+      }
+
+      const payload = {
+        type: pin.type,
+        title,
+        description,
+        coordinates: {
+          latitude,
+          longitude
+        },
+        proximityRadiusMeters: Math.round(radiusMeters)
+      };
+
+      const rawCreatorId =
+        typeof pin?.creatorId === 'string'
+          ? pin.creatorId
+          : typeof pin?.creatorId?._id === 'string'
+          ? pin.creatorId._id
+          : typeof pin?.creator?._id === 'string'
+          ? pin.creator._id
+          : null;
+      if (rawCreatorId) {
+        payload.creatorId = String(rawCreatorId);
+      }
+
+      const normalizedPhotos = Array.isArray(pin?.photos)
+        ? pin.photos.map((asset) => normalizeMediaAssetForUpdate(asset)).filter(Boolean)
+        : undefined;
+      if (normalizedPhotos) {
+        payload.photos = normalizedPhotos;
+      }
+
+      const normalizedCoverPhoto = normalizeMediaAssetForUpdate(pin?.coverPhoto);
+      if (normalizedCoverPhoto) {
+        payload.coverPhoto = normalizedCoverPhoto;
+      }
+
+      const normalizedType = typeof pin?.type === 'string' ? pin.type.toLowerCase() : '';
+
+      if (normalizedType === 'event') {
+        const startDate = parseDateInput(editForm.startDate);
+        const endDate = parseDateInput(editForm.endDate);
+        if (!startDate || !endDate) {
+          setEditError('Start and end times are required for events.');
+          return;
+        }
+        if (endDate <= startDate) {
+          setEditError('End time must be after the start time.');
+          return;
+        }
+        payload.startDate = startDate.toISOString();
+        payload.endDate = endDate.toISOString();
+        if (pin.address && typeof pin.address === 'object') {
+          payload.address = {
+            precise: pin.address.precise ?? undefined,
+            components: pin.address.components ?? undefined
+          };
+        }
+      } else {
+        const expiresAt = parseDateInput(editForm.expiresAt);
+        if (!expiresAt) {
+          setEditError('Expiration time is required for discussions.');
+          return;
+        }
+        payload.expiresAt = expiresAt.toISOString();
+        payload.autoDelete = Boolean(editForm.autoDelete);
+        if (pin.approximateAddress && typeof pin.approximateAddress === 'object') {
+          payload.approximateAddress = { ...pin.approximateAddress };
+        }
+      }
+
+      setIsSubmittingEdit(true);
+      try {
+        await updatePin(pin._id, payload);
+        await reloadPin({ silent: true });
+        setEditStatus({ type: 'success', message: 'Pin updated successfully.' });
+        setIsEditDialogOpen(false);
+      } catch (error) {
+        setEditError(error?.message || 'Failed to update pin.');
+      } finally {
+        setIsSubmittingEdit(false);
+      }
+    },
+    [editForm, isOffline, pin, reloadPin]
+  );
 
   const handleOpenReportReply = useCallback((reply) => {
     if (!reply || !reply._id) {
@@ -212,6 +506,19 @@ function PinDetails() {
         <h2>{pinTypeHeading}</h2>
 
         <div className="header-actions">
+          {isOwnPin ? (
+            <div className="edit-button-wrapper">
+              <button
+                className="edit-pin-button"
+                type="button"
+                onClick={handleOpenEditDialog}
+                disabled={isOffline || !pin || isLoading || isSubmittingEdit}
+                title={isOffline ? 'Reconnect to edit your pin' : 'Edit this pin'}
+              >
+                Edit
+              </button>
+            </div>
+          ) : null}
           <div className="share-button-wrapper">
             <button
               className="share-button"
@@ -227,23 +534,36 @@ function PinDetails() {
           </div>
           <div className="bookmark-button-wrapper">
             <button
-              className="bookmark-button"
+              className={`bookmark-button${bookmarkLocked ? ' bookmark-button--locked' : ''}`}
+              type="button"
               onClick={handleToggleBookmark}
-              disabled={isOffline || isUpdatingBookmark || !pin || isInteractionLocked}
+              disabled={
+                bookmarkLocked || isOffline || isUpdatingBookmark || !pin || isInteractionLocked
+              }
               aria-pressed={bookmarked ? 'true' : 'false'}
-              aria-label={bookmarked ? 'Remove bookmark' : 'Save bookmark'}
+              aria-label={
+                bookmarkLocked
+                  ? 'This pin stays bookmarked for its creator'
+                  : bookmarked
+                  ? 'Remove bookmark'
+                  : 'Save bookmark'
+              }
               aria-busy={isUpdatingBookmark ? 'true' : 'false'}
-              title={isOffline ? 'Reconnect to manage bookmarks' : undefined}
+              title={
+                bookmarkLocked
+                  ? 'Creators keep their pins bookmarked automatically.'
+                  : isOffline
+                  ? 'Reconnect to manage bookmarks'
+                  : undefined
+              }
             >
-              <img
-                src={
-                  bookmarked
-                    ? 'https://www.svgrepo.com/show/347684/bookmark-fill.svg'
-                    : 'https://www.svgrepo.com/show/357397/bookmark-full.svg'
-                }
-                className="bookmark"
-                alt={bookmarked ? 'Bookmarked' : 'Bookmark icon'}
-              />
+              {bookmarked ? (
+                <BookmarkIcon
+                  className={`bookmark-icon${bookmarkLocked ? ' bookmark-icon--locked' : ''}`}
+                />
+              ) : (
+                <BookmarkBorderIcon className="bookmark-icon" />
+              )}
             </button>
             {bookmarkError ? <span className="error-text bookmark-error">{bookmarkError}</span> : null}
           </div>
@@ -616,6 +936,100 @@ function PinDetails() {
         </div>
       ) : null}
 
+      <Dialog
+        open={isEditDialogOpen}
+        onClose={handleCloseEditDialog}
+        fullWidth
+        maxWidth="sm"
+        aria-labelledby="edit-pin-dialog-title"
+      >
+        <form onSubmit={handleSubmitEdit}>
+          <DialogTitle id="edit-pin-dialog-title">Edit {pinTypeHeading}</DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              {editError ? <Alert severity="error">{editError}</Alert> : null}
+              <TextField
+                label="Title"
+                value={editForm?.title ?? ''}
+                onChange={handleEditFieldChange('title')}
+                required
+                disabled={isSubmittingEdit}
+              />
+              <TextField
+                label="Description"
+                value={editForm?.description ?? ''}
+                onChange={handleEditFieldChange('description')}
+                required
+                multiline
+                minRows={3}
+                disabled={isSubmittingEdit}
+              />
+              <TextField
+                label="Proximity radius (meters)"
+                type="number"
+                value={editForm?.proximityRadiusMeters ?? ''}
+                onChange={handleEditFieldChange('proximityRadiusMeters')}
+                inputProps={{ min: 1, step: 1 }}
+                required
+                disabled={isSubmittingEdit}
+              />
+              {isEventPin ? (
+                <>
+                  <TextField
+                    label="Start time"
+                    type="datetime-local"
+                    value={editForm?.startDate ?? ''}
+                    onChange={handleEditFieldChange('startDate')}
+                    InputLabelProps={{ shrink: true }}
+                    required
+                    disabled={isSubmittingEdit}
+                  />
+                  <TextField
+                    label="End time"
+                    type="datetime-local"
+                    value={editForm?.endDate ?? ''}
+                    onChange={handleEditFieldChange('endDate')}
+                    InputLabelProps={{ shrink: true }}
+                    required
+                    disabled={isSubmittingEdit}
+                  />
+                </>
+              ) : (
+                <>
+                  <TextField
+                    label="Expires at"
+                    type="datetime-local"
+                    value={editForm?.expiresAt ?? ''}
+                    onChange={handleEditFieldChange('expiresAt')}
+                    InputLabelProps={{ shrink: true }}
+                    required
+                    disabled={isSubmittingEdit}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={Boolean(editForm?.autoDelete)}
+                        onChange={handleToggleAutoDelete}
+                        disabled={isSubmittingEdit}
+                      />
+                    }
+                    label="Automatically remove when expired"
+                  />
+                </>
+              )}
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseEditDialog} disabled={isSubmittingEdit}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained" disabled={isSubmittingEdit}>
+              {isSubmittingEdit ? 'Saving…' : 'Save changes'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
       <ReportContentDialog
         open={reportDialogOpen}
         onClose={handleCloseReportDialog}
@@ -627,6 +1041,29 @@ function PinDetails() {
         contentSummary={reportTarget?.summary || ''}
         context={reportTarget?.context || ''}
       />
+
+      <Snackbar
+        open={Boolean(editStatus)}
+        autoHideDuration={3500}
+        onClose={(_, reason) => {
+          if (reason === 'clickaway') {
+            return;
+          }
+          handleEditStatusClose();
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        {editStatus ? (
+          <Alert
+            elevation={6}
+            variant="filled"
+            severity={editStatus.type || 'success'}
+            onClose={handleEditStatusClose}
+          >
+            {editStatus.message}
+          </Alert>
+        ) : null}
+      </Snackbar>
 
       <Snackbar
         open={Boolean(reportStatus)}

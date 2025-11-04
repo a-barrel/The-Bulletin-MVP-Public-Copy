@@ -1,0 +1,21 @@
+Profile banners (include option when editing profile)
+
+A "Edit" button to edit your own pins (after they're created). 
+And have it send updates to users who bookmarked
+the pin that there's been changes (aside from user of course,
+the person who edited it doesnt need an update)
+
+-Add an update system when events are starting in 2 hours
+-Add an update when discussions a user has replied too
+will expire in a day
+
+On the map, in the top right, 
+under the button that navigates to pin creation ,
+include 3 sliders to turn on/off:
+1. Event on/off
+2. Discussion on/off
+3. Personal Pins on/off
+
+And use the SVGs/Symbols we used on the map with same colors
+next to the sliding toggle so they know which slider is linked
+to which pin type through the color. 

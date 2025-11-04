@@ -403,7 +403,7 @@ function App() {
             bookmark += 1;
           } else if (type === 'event-starting-soon' || type === 'event-reminder') {
             events += 1;
-          } else if (type === 'pin-update' || type === 'new-pin') {
+          } else if (type === 'pin-update' || type === 'new-pin' || type === 'discussion-expiring-soon') {
             discussions += 1;
           }
         });

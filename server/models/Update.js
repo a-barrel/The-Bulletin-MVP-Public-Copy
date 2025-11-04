@@ -61,7 +61,8 @@ const updateSchema = new mongoose.Schema(
       'chat-message',
       'friend-request',
       'chat-room-transition',
-      'badge-earned'
+      'badge-earned',
+      'discussion-expiring-soon'
     ],
     required: true
   },

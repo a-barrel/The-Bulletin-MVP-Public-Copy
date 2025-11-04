@@ -84,6 +84,39 @@
     gap: 0.75rem;
 }
 
+.pin-details .edit-button-wrapper {
+    display: flex;
+}
+
+.pin-details .edit-pin-button {
+    border: none;
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #5d3889 0%, #a67be9 100%);
+    color: #ffffff;
+    cursor: pointer;
+    transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
+}
+
+.pin-details .edit-pin-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(93, 56, 137, 0.35);
+}
+
+.pin-details .edit-pin-button:active {
+    transform: translateY(0);
+    filter: brightness(0.95);
+}
+
+.pin-details .edit-pin-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+    filter: none;
+}
+
 .pin-details .share-button-wrapper {
     display: flex;
     flex-direction: column;
@@ -129,9 +162,14 @@
     justify-content: center;
 }
 
-.pin-details .bookmark {
-    width: 30px;
-    height: 30px;
+.pin-details .bookmark-icon {
+    font-size: 30px;
+    color: #1c1c1c;
+    transition: color 150ms ease, transform 150ms ease;
+}
+
+.pin-details .bookmark-icon--locked {
+    color: #ffb347;
 }
 
 /* pin name */
@@ -1017,9 +1055,31 @@
     transition: transform 150ms ease, filter 150ms ease;
 }
 
+.pin-details .bookmark-button--locked {
+    cursor: not-allowed;
+}
+
+.pin-details .bookmark-button--locked:disabled {
+    opacity: 1;
+}
+
+.pin-details .bookmark-button--locked:hover {
+    transform: none;
+    filter: none;
+}
+
+
 .pin-details .bookmark-button:hover {
     transform: scale(1.08);
     filter: brightness(1.05);
+}
+
+.pin-details .bookmark-button:hover .bookmark-icon:not(.bookmark-icon--locked) {
+    color: #5d3889;
+}
+
+.pin-details .bookmark-button:hover .bookmark-icon--locked {
+    color: #e68a00;
 }
 
 .pin-details .bookmark-button:active {
@@ -1037,6 +1097,9 @@
 .pin-details .bookmark-button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+.pin-details .bookmark-button--locked:disabled {
+    opacity: 1;
 }
 
 .pin-details .bookmark-error {

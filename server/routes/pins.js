@@ -11,6 +11,7 @@ const { PublicUserSchema } = require('../schemas/user');
 const verifyToken = require('../middleware/verifyToken');
 const {
   broadcastPinCreated,
+  broadcastPinUpdated,
   broadcastPinReply,
   broadcastAttendanceChange,
   broadcastBookmarkCreated
@@ -1523,6 +1524,14 @@ router.put('/:pinId', verifyToken, async (req, res) => {
   try {
     const { pinId } = PinIdSchema.parse(req.params);
     const input = CreatePinSchema.parse(req.body);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const viewerId = toIdString(viewer._id);
+    const viewerRoles = Array.isArray(viewer.roles) ? viewer.roles : [];
+    const hasElevatedRole = viewerRoles.includes('admin') || viewerRoles.includes('moderator');
 
     const now = Date.now();
     const maxEventTimestamp = now + EVENT_MAX_LEAD_TIME_MS;
@@ -1531,6 +1540,17 @@ router.put('/:pinId', verifyToken, async (req, res) => {
     const pin = await Pin.findById(pinId).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
     if (!pin) {
       return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    const pinCreatorId = toIdString(pin.creatorId?._id ?? pin.creatorId);
+    if (!hasElevatedRole && (!viewerId || !pinCreatorId || viewerId !== pinCreatorId)) {
+      return res.status(403).json({ message: 'You do not have permission to update this pin.' });
+    }
+
+    if (input.creatorId && !hasElevatedRole) {
+      if (input.creatorId !== viewerId) {
+        return res.status(403).json({ message: 'You cannot reassign this pin.' });
+      }
     }
 
     if (input.type === 'event' && input.endDate < input.startDate) {
@@ -1563,6 +1583,8 @@ router.put('/:pinId', verifyToken, async (req, res) => {
     if (input.type === 'discussion' && input.proximityRadiusMeters && input.proximityRadiusMeters <= 0) {
       return res.status(400).json({ message: 'proximityRadiusMeters must be greater than zero' });
     }
+
+    const previousPin = pin.toObject({ depopulate: false });
 
     let creatorObjectId = pin.creatorId?._id ? pin.creatorId._id : pin.creatorId;
     if (input.creatorId) {
@@ -1628,10 +1650,8 @@ router.put('/:pinId', verifyToken, async (req, res) => {
     const hydrated = await Pin.findById(pin._id).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
     const sourcePin = hydrated ?? pin;
     const creatorPublic = hydrated ? mapUserToPublic(hydrated.creatorId) : mapUserToPublic(pin.creatorId);
-    const viewer = await resolveViewerUser(req);
-    const viewerId = viewer ? toIdString(viewer._id) : undefined;
     let viewerHasBookmarked = false;
-    if (viewer) {
+    if (viewerId) {
       const bookmarkExists = await Bookmark.exists({ userId: viewer._id, pinId: sourcePin._id });
       viewerHasBookmarked = Boolean(bookmarkExists);
     }
@@ -1639,7 +1659,8 @@ router.put('/:pinId', verifyToken, async (req, res) => {
       viewerId,
       viewerHasBookmarked
     });
-    res.json(payload);
+    await broadcastPinUpdated({ previous: previousPin, updated: sourcePin, editor: viewer });
+    return res.json(payload);
   } catch (error) {
     if (error instanceof ZodError) {
       return res.status(400).json({ message: 'Invalid pin payload', issues: error.errors });

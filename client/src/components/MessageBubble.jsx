@@ -6,6 +6,7 @@ import { formatFriendlyTimestamp, formatAbsoluteDateTime, formatRelativeTime } f
 import GavelIcon from '@mui/icons-material/Gavel';
 import ReportProblemIcon from '@mui/icons-material/ReportProblemOutlined';
 import { ATTACHMENT_ONLY_PLACEHOLDER } from '../utils/chatAttachments';
+import { resolveAvatarSrc } from '../utils/chatParticipants';
 
 
 
@@ -72,13 +73,7 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
         ? `/profile/${authorId}`
         : '/profile/me';
 
-  const avatarUrl = msg?.author?.avatar?.url;
-  const resolvedAvatarSrc =
-    typeof avatarUrl === 'string' && avatarUrl.trim()
-      ? avatarUrl.trim().startsWith('http') || avatarUrl.trim().startsWith('data:')
-        ? avatarUrl.trim()
-        : `/${avatarUrl.trim().replace(/^\/+/, '')}`
-      : AvatarIcon;
+  const resolvedAvatarSrc = resolveAvatarSrc(msg?.author) || AvatarIcon;
 
   return (
     <Box className={`chat-message ${isSelf ? 'self' : ''}`}>

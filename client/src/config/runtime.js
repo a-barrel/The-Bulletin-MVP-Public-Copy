@@ -35,10 +35,12 @@ function parseJson(value, fallback = null) {
   }
 }
 
+const DEFAULT_OFFLINE_API_BASE_URL = 'http://localhost:8000';
+
 const apiBaseUrl = isOffline
   ? import.meta.env.VITE_API_BASE_URL_OFFLINE ??
     import.meta.env.VITE_API_URL_OFFLINE ??
-    ''
+    DEFAULT_OFFLINE_API_BASE_URL
   : import.meta.env.VITE_API_BASE_URL ??
     import.meta.env.VITE_API_URL ??
     '';

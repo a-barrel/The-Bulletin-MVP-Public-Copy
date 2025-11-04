@@ -64,6 +64,9 @@
         },
         {
           "$oid": "68e061721329566a22d47510"
+        },
+        {
+          "$oid": "68e061721329566a22d474a9"
         }
       ],
       "mutedUserIds": [],
@@ -199,6 +202,9 @@
         },
         {
           "$oid": "68e061721329566a22d47510"
+        },
+        {
+          "$oid": "68e061721329566a22d474a9"
         }
       ],
       "mutedUserIds": [],
@@ -305,6 +311,9 @@
       "friendIds": [
         {
           "$oid": "68e061721329566a22d474a8"
+        },
+        {
+          "$oid": "68e061721329566a22d474a7"
         }
       ],
       "mutedUserIds": [],
@@ -620,10 +629,37 @@
       "followers": 0,
       "following": 0
     },
-    "socialGraph": {
-      "friendUserIds": [],
+    "relationships": {
+      "followerIds": [],
+      "followingIds": [],
       "mutedUserIds": [],
-      "blockedUserIds": []
+      "blockedUserIds": [],
+      "friendIds": [
+        {
+          "$oid": "9090e547f3b4cf5aa61d19a7"
+        },
+        {
+          "$oid": "934981bc88eca7e088f557c6"
+        },
+        {
+          "$oid": "8184947383c54cde27f6a325"
+        },
+        {
+          "$oid": "1e056a58ce0c08e0e420bca0"
+        },
+        {
+          "$oid": "486e6bdd712130e78538ba6f"
+        },
+        {
+          "$oid": "9bfa44ec70cf17a8086a01e0"
+        },
+        {
+          "$oid": "4d250de16a246c301a52b095"
+        },
+        {
+          "$oid": "d7a6491309b83aad8e67f14c"
+        }
+      ]
     },
     "locationSharingEnabled": true,
     "primaryLocationId": null,
@@ -678,10 +714,37 @@
       "followers": 0,
       "following": 0
     },
-    "socialGraph": {
-      "friendUserIds": [],
+    "relationships": {
+      "followerIds": [],
+      "followingIds": [],
       "mutedUserIds": [],
-      "blockedUserIds": []
+      "blockedUserIds": [],
+      "friendIds": [
+        {
+          "$oid": "46157fa6da7698fc59105392"
+        },
+        {
+          "$oid": "9090e547f3b4cf5aa61d19a7"
+        },
+        {
+          "$oid": "934981bc88eca7e088f557c6"
+        },
+        {
+          "$oid": "8184947383c54cde27f6a325"
+        },
+        {
+          "$oid": "1e056a58ce0c08e0e420bca0"
+        },
+        {
+          "$oid": "486e6bdd712130e78538ba6f"
+        },
+        {
+          "$oid": "9bfa44ec70cf17a8086a01e0"
+        },
+        {
+          "$oid": "4d250de16a246c301a52b095"
+        }
+      ]
     },
     "locationSharingEnabled": true,
     "primaryLocationId": null,
@@ -736,10 +799,37 @@
       "followers": 0,
       "following": 0
     },
-    "socialGraph": {
-      "friendUserIds": [],
+    "relationships": {
+      "followerIds": [],
+      "followingIds": [],
       "mutedUserIds": [],
-      "blockedUserIds": []
+      "blockedUserIds": [],
+      "friendIds": [
+        {
+          "$oid": "46157fa6da7698fc59105392"
+        },
+        {
+          "$oid": "934981bc88eca7e088f557c6"
+        },
+        {
+          "$oid": "8184947383c54cde27f6a325"
+        },
+        {
+          "$oid": "1e056a58ce0c08e0e420bca0"
+        },
+        {
+          "$oid": "486e6bdd712130e78538ba6f"
+        },
+        {
+          "$oid": "9bfa44ec70cf17a8086a01e0"
+        },
+        {
+          "$oid": "4d250de16a246c301a52b095"
+        },
+        {
+          "$oid": "d7a6491309b83aad8e67f14c"
+        }
+      ]
     },
     "locationSharingEnabled": true,
     "primaryLocationId": null,
@@ -794,10 +884,37 @@
       "followers": 0,
       "following": 0
     },
-    "socialGraph": {
-      "friendUserIds": [],
+    "relationships": {
+      "followerIds": [],
+      "followingIds": [],
       "mutedUserIds": [],
-      "blockedUserIds": []
+      "blockedUserIds": [],
+      "friendIds": [
+        {
+          "$oid": "46157fa6da7698fc59105392"
+        },
+        {
+          "$oid": "9090e547f3b4cf5aa61d19a7"
+        },
+        {
+          "$oid": "8184947383c54cde27f6a325"
+        },
+        {
+          "$oid": "1e056a58ce0c08e0e420bca0"
+        },
+        {
+          "$oid": "486e6bdd712130e78538ba6f"
+        },
+        {
+          "$oid": "9bfa44ec70cf17a8086a01e0"
+        },
+        {
+          "$oid": "4d250de16a246c301a52b095"
+        },
+        {
+          "$oid": "d7a6491309b83aad8e67f14c"
+        }
+      ]
     },
     "locationSharingEnabled": true,
     "primaryLocationId": null,
@@ -852,10 +969,37 @@
       "followers": 0,
       "following": 0
     },
-    "socialGraph": {
-      "friendUserIds": [],
+    "relationships": {
+      "followerIds": [],
+      "followingIds": [],
       "mutedUserIds": [],
-      "blockedUserIds": []
+      "blockedUserIds": [],
+      "friendIds": [
+        {
+          "$oid": "46157fa6da7698fc59105392"
+        },
+        {
+          "$oid": "9090e547f3b4cf5aa61d19a7"
+        },
+        {
+          "$oid": "934981bc88eca7e088f557c6"
+        },
+        {
+          "$oid": "1e056a58ce0c08e0e420bca0"
+        },
+        {
+          "$oid": "486e6bdd712130e78538ba6f"
+        },
+        {
+          "$oid": "9bfa44ec70cf17a8086a01e0"
+        },
+        {
+          "$oid": "4d250de16a246c301a52b095"
+        },
+        {
+          "$oid": "d7a6491309b83aad8e67f14c"
+        }
+      ]
     },
     "locationSharingEnabled": true,
     "primaryLocationId": null,
@@ -910,10 +1054,37 @@
       "followers": 0,
       "following": 0
     },
-    "socialGraph": {
-      "friendUserIds": [],
+    "relationships": {
+      "followerIds": [],
+      "followingIds": [],
       "mutedUserIds": [],
-      "blockedUserIds": []
+      "blockedUserIds": [],
+      "friendIds": [
+        {
+          "$oid": "46157fa6da7698fc59105392"
+        },
+        {
+          "$oid": "9090e547f3b4cf5aa61d19a7"
+        },
+        {
+          "$oid": "934981bc88eca7e088f557c6"
+        },
+        {
+          "$oid": "8184947383c54cde27f6a325"
+        },
+        {
+          "$oid": "486e6bdd712130e78538ba6f"
+        },
+        {
+          "$oid": "9bfa44ec70cf17a8086a01e0"
+        },
+        {
+          "$oid": "4d250de16a246c301a52b095"
+        },
+        {
+          "$oid": "d7a6491309b83aad8e67f14c"
+        }
+      ]
     },
     "locationSharingEnabled": true,
     "primaryLocationId": null,
@@ -968,10 +1139,37 @@
       "followers": 0,
       "following": 0
     },
-    "socialGraph": {
-      "friendUserIds": [],
+    "relationships": {
+      "followerIds": [],
+      "followingIds": [],
       "mutedUserIds": [],
-      "blockedUserIds": []
+      "blockedUserIds": [],
+      "friendIds": [
+        {
+          "$oid": "46157fa6da7698fc59105392"
+        },
+        {
+          "$oid": "9090e547f3b4cf5aa61d19a7"
+        },
+        {
+          "$oid": "934981bc88eca7e088f557c6"
+        },
+        {
+          "$oid": "8184947383c54cde27f6a325"
+        },
+        {
+          "$oid": "1e056a58ce0c08e0e420bca0"
+        },
+        {
+          "$oid": "9bfa44ec70cf17a8086a01e0"
+        },
+        {
+          "$oid": "4d250de16a246c301a52b095"
+        },
+        {
+          "$oid": "d7a6491309b83aad8e67f14c"
+        }
+      ]
     },
     "locationSharingEnabled": true,
     "primaryLocationId": null,
@@ -1026,10 +1224,37 @@
       "followers": 0,
       "following": 0
     },
-    "socialGraph": {
-      "friendUserIds": [],
+    "relationships": {
+      "followerIds": [],
+      "followingIds": [],
       "mutedUserIds": [],
-      "blockedUserIds": []
+      "blockedUserIds": [],
+      "friendIds": [
+        {
+          "$oid": "46157fa6da7698fc59105392"
+        },
+        {
+          "$oid": "9090e547f3b4cf5aa61d19a7"
+        },
+        {
+          "$oid": "934981bc88eca7e088f557c6"
+        },
+        {
+          "$oid": "8184947383c54cde27f6a325"
+        },
+        {
+          "$oid": "1e056a58ce0c08e0e420bca0"
+        },
+        {
+          "$oid": "486e6bdd712130e78538ba6f"
+        },
+        {
+          "$oid": "4d250de16a246c301a52b095"
+        },
+        {
+          "$oid": "d7a6491309b83aad8e67f14c"
+        }
+      ]
     },
     "locationSharingEnabled": true,
     "primaryLocationId": null,
@@ -1084,10 +1309,37 @@
       "followers": 0,
       "following": 0
     },
-    "socialGraph": {
-      "friendUserIds": [],
+    "relationships": {
+      "followerIds": [],
+      "followingIds": [],
       "mutedUserIds": [],
-      "blockedUserIds": []
+      "blockedUserIds": [],
+      "friendIds": [
+        {
+          "$oid": "46157fa6da7698fc59105392"
+        },
+        {
+          "$oid": "9090e547f3b4cf5aa61d19a7"
+        },
+        {
+          "$oid": "934981bc88eca7e088f557c6"
+        },
+        {
+          "$oid": "8184947383c54cde27f6a325"
+        },
+        {
+          "$oid": "1e056a58ce0c08e0e420bca0"
+        },
+        {
+          "$oid": "486e6bdd712130e78538ba6f"
+        },
+        {
+          "$oid": "9bfa44ec70cf17a8086a01e0"
+        },
+        {
+          "$oid": "d7a6491309b83aad8e67f14c"
+        }
+      ]
     },
     "locationSharingEnabled": true,
     "primaryLocationId": null,
