@@ -44,21 +44,23 @@ import './ProfilePage.css';
 const SECTION_BG_COLOR = '#d6e6ff';
 
 export const pageConfig = {
-  // EDIT THIS ONCE READY TO REPLACE ProfilePage.jsx
-  id: 'profile-add-detail',
-  label: 'Profile Additional Detail',
+  id: 'profile',
+  label: 'Profile',
   icon: AccountCircleIcon,
-  path: '/profile-add-detail/:userId',
+  path: `${routes.profile.base}/:userId`,
   order: 91,
   showInNav: true,
   protected: true,
   resolveNavTarget: ({ currentPath } = {}) => {
+    const profileBase = routes.profile.base.replace(/^\/+/, '');
+    const profilePattern = profileBase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const profileMe = routes.profile.me;
     if (!runtimeConfig.isOffline) {
-      return '/profile-add-detail/me';
+      return profileMe;
     }
 
     if (typeof window === 'undefined') {
-      return '/profile-add-detail/me';
+      return profileMe;
     }
 
     const input = window.prompt(
@@ -69,16 +71,16 @@ export const pageConfig = {
     }
     const trimmed = input.trim();
     if (!trimmed || trimmed.toLowerCase() === 'me') {
-      return '/profile-add-detail/me';
+      return profileMe;
     }
     const sanitized = trimmed.replace(/^\/+/, '');
-    if (/^profile-add-detail\/.+/i.test(sanitized)) {
+    if (new RegExp(`^${profilePattern}\/.+`, 'i').test(sanitized)) {
       return `/${sanitized}`;
     }
-    if (/^\/profile-add-detail\/.+/i.test(trimmed)) {
+    if (new RegExp(`^\/${profilePattern}\/.+`, 'i').test(trimmed)) {
       return trimmed;
     }
-    return `/profile-add-detail/${sanitized}`;
+    return `${routes.profile.base}/${sanitized}`;
   }
 };
 
