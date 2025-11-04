@@ -28,34 +28,35 @@ import DialogActions from '@mui/material/DialogActions';
 import Tooltip from '@mui/material/Tooltip';
 import Snackbar from '@mui/material/Snackbar';
 
-import runtimeConfig from '../config/runtime';
-import { BADGE_METADATA } from '../utils/badges';
-import { routes } from '../routes';
+import runtimeConfig from '../config/runtime.js';
+import { BADGE_METADATA } from '../utils/badges.js';
+import { routes } from '../routes.js';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
-import useProfileDetail from '../hooks/useProfileDetail';
-import useModerationTools from '../hooks/useModerationTools';
-import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constants/moderationActions';
-import { formatFriendlyTimestamp, formatAbsoluteDateTime } from '../utils/dates';
-import { normalizeProfileImagePath } from '../utils/media';
-import normalizeObjectId from '../utils/normalizeObjectId';
-import { createDirectMessageThread } from '../api/mongoDataApi';
-import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
+import useProfileDetail from '../hooks/useProfileDetail.js';
+import useModerationTools from '../hooks/useModerationTools.js';
+import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constants/moderationActions.js';
+import { formatFriendlyTimestamp, formatAbsoluteDateTime } from '../utils/dates.js';
+import normalizeObjectId from '../utils/normalizeObjectId.js';
+import { createDirectMessageThread } from '../api/mongoDataApi.js';
+import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext.js';
+
 
 export const pageConfig = {
-  id: 'profile',
-  label: 'Profile',
+  // EDIT THIS ONCE READY TO REPLACE ProfilePage.jsx
+  id: 'profile-add-detail',
+  label: 'Profile Additional Detail',
   icon: AccountCircleIcon,
-  path: '/profile/:userId',
+  path: '/profile-add-detail/:userId',
   order: 91,
   showInNav: true,
   protected: true,
   resolveNavTarget: ({ currentPath } = {}) => {
     if (!runtimeConfig.isOffline) {
-      return routes.profile.me;
+      return '/profile-add-detail/me';
     }
 
     if (typeof window === 'undefined') {
-      return routes.profile.me;
+      return '/profile-add-detail/me';
     }
 
     const input = window.prompt(
@@ -66,16 +67,16 @@ export const pageConfig = {
     }
     const trimmed = input.trim();
     if (!trimmed || trimmed.toLowerCase() === 'me') {
-      return routes.profile.me;
+      return '/profile-add-detail/me';
     }
     const sanitized = trimmed.replace(/^\/+/, '');
-    if (/^profile\/.+/i.test(sanitized)) {
+    if (/^profile-add-detail\/.+/i.test(sanitized)) {
       return `/${sanitized}`;
     }
-    if (/^\/profile\/.+/i.test(trimmed)) {
+    if (/^\/profile-add-detail\/.+/i.test(trimmed)) {
       return trimmed;
     }
-    return routes.profile.byId(sanitized);
+    return `/profile-add-detail/${sanitized}`;
   }
 };
 
@@ -105,14 +106,14 @@ const resolveFriendAvatarUrl = (avatar) => {
   }
   const source =
     typeof avatar === 'string'
-      ? normalizeProfileImagePath(avatar)
-      : normalizeProfileImagePath(avatar?.url || avatar?.thumbnailUrl || avatar?.path);
+      ? avatar
+      : avatar.url || avatar.thumbnailUrl || avatar.path;
   if (typeof source === 'string' && source.trim()) {
-    const trimmed = normalizeProfileImagePath(source.trim());
+    const trimmed = source.trim();
     if (/^(?:https?:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
       return rewriteOfflineHost(trimmed);
     }
-    const normalized = normalizeProfileImagePath(trimmed.startsWith('/') ? trimmed : `/${trimmed}`);
+    const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
     return base ? `${base}${normalized}` : normalized;
   }
   return FRIEND_AVATAR_FALLBACK;
