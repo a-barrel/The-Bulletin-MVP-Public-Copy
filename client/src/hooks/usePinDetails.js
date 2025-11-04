@@ -36,6 +36,31 @@ const TF2_AVATAR_MAP = {
   tf2_spy: '/images/emulation/avatars/Spyava.jpg'
 };
 
+/**
+ * Resolve any media pointer (string or object) to a usable URL.
+ *
+ * Context:
+ * - Seed data and older uploads may store absolute URLs pointing at
+ *   localhost:5000 (or 8000). In dev we actually serve the API on 8000 and
+ *   the front-end on 5173, so hard-coded 5000 URLs fail and leave the page
+ *   stuck on "Loading…".
+ * - We also want a single place to fall back to the bundled profile
+ *   avatars/backgrounds (DEFAULT_* constants) when nothing custom is present.
+ *
+ * Behaviour:
+ *   • Objects are unwrapped (url/thumbnail/path).
+ *   • Strings are normalised via normalizeProfileImagePath.
+ *   • Absolute URLs are returned as-is unless they target our offline hosts,
+ *     in which case we rewrite the host to runtimeConfig.apiBaseUrl or to the
+ *     current window origin (for the static /images/ bundle assets).
+ *   • Fallbacks are resolved recursively so we eventually land on a usable
+ *     default image.
+ *
+ * This logic was introduced after we tracked a “Loading pin…” loop caused by
+ * asset URLs pointing at localhost:5000; the page fetched real data but the
+ * images 404’d, leaving the UI in a loading state. If you see that again,
+ * check this helper first.
+ */
 const resolveMediaAssetUrl = (asset, fallback) => {
   if (asset && typeof asset === 'object') {
     const source = asset.url ?? asset.thumbnailUrl ?? asset.path;
@@ -47,13 +72,39 @@ const resolveMediaAssetUrl = (asset, fallback) => {
   if (typeof asset === 'string' && asset.trim().length > 0) {
     const value = normalizeProfileImagePath(asset.trim());
     if (/^(?:[a-z]+:)?\/\//i.test(value) || value.startsWith('data:')) {
+      if (!value.startsWith('data:')) {
+        try {
+          const parsed = new URL(value);
+          const offlineHosts = new Set([
+            'localhost:5000',
+            '127.0.0.1:5000',
+            'localhost:8000',
+            '127.0.0.1:8000'
+          ]);
+          if (offlineHosts.has(parsed.host)) {
+            if (API_BASE_URL) {
+              return `${API_BASE_URL}${parsed.pathname}`;
+            }
+            if (typeof window !== 'undefined' && window.location?.origin) {
+              return `${window.location.origin}${parsed.pathname}`;
+            }
+            return parsed.pathname;
+          }
+        } catch (error) {
+          // fall back to original absolute value
+        }
+      }
       return value;
     }
     const normalized = normalizeProfileImagePath(value.startsWith('/') ? value : `/${value}`);
     return API_BASE_URL ? `${API_BASE_URL}${normalized}` : normalized;
   }
 
-  return fallback ?? null;
+  if (fallback) {
+    return resolveMediaAssetUrl(fallback);
+  }
+
+  return null;
 };
 
 export const resolveUserAvatarUrl = (user, fallback = DEFAULT_AVATAR_PATH) => {
@@ -335,17 +386,20 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   const [isSharing, setIsSharing] = useState(false);
   const isMountedRef = useRef(true);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
       isMountedRef.current = false;
-    },
-    []
-  );
+    };
+  }, [pinId]);
 
   useEffect(() => {
     if (pinFromState) {
       setPin(pinFromState);
       setIsLoading(false);
+      if (process.env.NODE_ENV !== 'production') {
+        console.debug('[usePinDetails] pinFromState applied', { pinId, pinFromState });
+      }
     }
   }, [pinFromState]);
 
@@ -356,6 +410,9 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     const candidate = extractViewerProfileIdFromState(locationState);
     if (candidate) {
       setViewerProfileId(candidate);
+      if (process.env.NODE_ENV !== 'production') {
+        console.debug('[usePinDetails] viewerProfileId from state', { pinId, viewerProfileId: candidate });
+      }
     }
   }, [locationState, viewerProfileId]);
 
@@ -394,6 +451,9 @@ export default function usePinDetails({ pinId, location, isOffline }) {
 
   const reloadPin = useCallback(
     async ({ silent } = {}) => {
+      if (process.env.NODE_ENV !== 'production') {
+        console.debug('[usePinDetails] reload start', { pinId, silent });
+      }
       if (!pinId) {
         if (isMountedRef.current) {
           setPin(null);
@@ -423,11 +483,17 @@ export default function usePinDetails({ pinId, location, isOffline }) {
       try {
         const payload = await fetchPinById(pinId, { previewMode });
         if (!isMountedRef.current) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.debug('[usePinDetails] reload ignored - unmounted', { pinId });
+          }
           return payload;
         }
         setPin(payload);
         setBookmarked(Boolean(payload?.viewerHasBookmarked));
         setAttending(Boolean(payload?.viewerIsAttending));
+        if (process.env.NODE_ENV !== 'production') {
+          console.debug('[usePinDetails] reload success', { pinId, title: payload?.title });
+        }
         return payload;
       } catch (loadError) {
         if (!isMountedRef.current) {

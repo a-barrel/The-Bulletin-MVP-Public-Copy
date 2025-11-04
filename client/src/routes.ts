@@ -16,6 +16,11 @@ export const routes = {
     me: '/profile/me',
     byId: (userId: string | number) => `/profile/${encodeSegment(userId)}`
   },
+  profileDebug: {
+    base: '/profile-debug',
+    me: '/profile-debug/me',
+    byId: (userId: string | number) => `/profile-debug/${encodeSegment(userId)}`
+  },
   settings: {
     base: '/settings'
   },
