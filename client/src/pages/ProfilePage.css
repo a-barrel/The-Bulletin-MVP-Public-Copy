@@ -14,6 +14,18 @@
   color: #000; /* Ensure text defaults to black inside container */
 }
 
+/* Force all text elements to use Urbanist font */
+.profile-page-container,
+.profile-page-container *,
+.profile-page-container *::before,
+.profile-page-container *::after,
+.profile-back-nav,
+.profile-back-nav *,
+.profile-back-nav *::before,
+.profile-back-nav *::after {
+  font-family: "Urbanist", sans-serif !important;
+}
+
 /* Force common text elements to render black if components set their own color */
 .profile-page-container :is(p, h1, h2, h3, h4, h5, h6, span, label, div, .MuiTypography-root) {
   color: #000;
@@ -24,7 +36,7 @@
   max-width: none;
   flex: 1;  /* Take remaining space after BackButton */
   background: #fff;
-  border-radius: 0;
+  border-radius: 0 #CDAEF2;
 
   /* ⬇ Remove top padding */
   padding: 60px 1rem 1.5rem; /* Added 60px top padding for fixed BackButton */
@@ -86,6 +98,18 @@
     width: 100vw;
     flex: 1;
   }
+}
+
+/* Summary stat boxes under header */
+.summary-box {
+  background-color: #CDAEF2;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+/* Section content boxes */
+.section-content-box {
+  background-color: #CDAEF2;
 }
 .user-card {
   padding-top: 16px;

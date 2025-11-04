@@ -44,20 +44,21 @@ import './ProfilePage.css';
 const SECTION_BG_COLOR = '#d6e6ff';
 
 export const pageConfig = {
-  id: 'profile',
-  label: 'Profile',
+  // EDIT THIS ONCE READY TO REPLACE ProfilePage.jsx
+  id: 'profile-add-detail',
+  label: 'Profile Additional Detail',
   icon: AccountCircleIcon,
-  path: '/profile/:userId',
+  path: '/profile-add-detail/:userId',
   order: 91,
   showInNav: true,
   protected: true,
   resolveNavTarget: ({ currentPath } = {}) => {
     if (!runtimeConfig.isOffline) {
-      return routes.profile.me;
+      return '/profile-add-detail/me';
     }
 
     if (typeof window === 'undefined') {
-      return routes.profile.me;
+      return '/profile-add-detail/me';
     }
 
     const input = window.prompt(
@@ -68,16 +69,16 @@ export const pageConfig = {
     }
     const trimmed = input.trim();
     if (!trimmed || trimmed.toLowerCase() === 'me') {
-      return routes.profile.me;
+      return '/profile-add-detail/me';
     }
     const sanitized = trimmed.replace(/^\/+/, '');
-    if (/^profile\/.+/i.test(sanitized)) {
+    if (/^profile-add-detail\/.+/i.test(sanitized)) {
       return `/${sanitized}`;
     }
-    if (/^\/profile\/.+/i.test(trimmed)) {
+    if (/^\/profile-add-detail\/.+/i.test(trimmed)) {
       return trimmed;
     }
-    return routes.profile.byId(sanitized);
+    return `/profile-add-detail/${sanitized}`;
   }
 };
 
