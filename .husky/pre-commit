@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "[husky] Running lint check…"
+if ! npm run lint; then
+  echo "[husky] Lint failed, running test suite instead…"
+  if ! npm test; then
+    echo "[husky] Tests failed; aborting commit." >&2
+    exit 1
+  fi
+fi
+
+renamed_files=$(git diff --cached --name-status | awk '$1 ~ /^R/ {printf "  %s -> %s\n", $2, $3}')
+if [ -n "$renamed_files" ]; then
+  printf '\n[husky] Warning: renamed files detected. Double-check intent before committing:\n%s\n' "$renamed_files" >&2
+fi

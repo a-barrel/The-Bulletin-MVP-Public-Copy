@@ -3,7 +3,9 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BlockIcon from '@mui/icons-material/Block';
+import FlagIcon from '@mui/icons-material/Flag';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
+import MessageIcon from '@mui/icons-material/Message';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -19,7 +21,6 @@ import Switch from '@mui/material/Switch';
 import MenuItem from '@mui/material/MenuItem';
 import Chip from '@mui/material/Chip';
 import Grid from '@mui/material/Grid';
-import Collapse from '@mui/material/Collapse';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -36,12 +37,22 @@ import {
 import runtimeConfig from '../config/runtime';
 import { BADGE_METADATA } from '../utils/badges';
 import BackButton from '../components/BackButton';
-import { metersToMiles } from '../utils/geo';
 import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
 import { routes } from '../routes';
 import './ProfilePage.css';
 
-const SECTION_BG_COLOR = '#d6e6ff';
+/*
+ * NOTE:
+ * - This layout intentionally hides several richer views and power tools that still exist in the data layer:
+ *   • Preferences & notifications summary
+ *   • Account timeline / provisioning metadata
+ *   • Raw profile JSON inspector
+ *   • Moderation & trust-and-safety controls (reporting, quick actions)
+ *   • Messaging/report initiation handlers (UI placeholders remain)
+ * - All underlying fetch/update logic (editing flows, block/unblock, moderation requests, etc.) continues to live in useProfileDetail.
+ * - ProfilePage_debug.jsx still surfaces every control if the full debug experience is needed.
+ */
+const SECTION_BG_COLOR = '#CDAEF2';
 
 export const pageConfig = {
   id: 'profile',
@@ -158,20 +169,6 @@ const resolveAvatarUrl = (avatar) => {
   return toAbsolute(FALLBACK_AVATAR) ?? FALLBACK_AVATAR;
 };
 
-const formatEntryValue = (value) => {
-  if (value === null) {
-    return 'null';
-  }
-  if (typeof value === 'object') {
-    try {
-      return JSON.stringify(value, null, 2);
-    } catch (error) {
-      return '[unserializable object]';
-    }
-  }
-  return String(value);
-};
-
 const formatDateTime = (value) => {
   if (!value) {
     return 'N/A';
@@ -202,6 +199,7 @@ const Section = ({ title, description, children }) => (
       ) : null}
     </Box>
     <Box
+      className="section-content-box"
       sx={{
         borderRadius: 2,
         border: '1px solid',
@@ -235,7 +233,6 @@ function ProfilePage() {
   const [relationshipStatus, setRelationshipStatus] = useState(null);
   const [blockDialogMode, setBlockDialogMode] = useState(null);
   const [isProcessingBlockAction, setIsProcessingBlockAction] = useState(false);
-  const [showRawData, setShowRawData] = useState(false);
   const [formState, setFormState] = useState({
     displayName: '',
     bio: '',
@@ -600,19 +597,6 @@ function ProfilePage() {
     ]
   );
 
-const detailEntries = useMemo(() => {
-  if (!effectiveUser || typeof effectiveUser !== 'object') {
-    return [];
-  }
-
-    return Object.entries(effectiveUser)
-      .filter(([, value]) => value !== undefined)
-      .map(([key, value]) => ({
-        key,
-        value,
-        isObject: typeof value === 'object' && value !== null
-      }));
-  }, [effectiveUser]);
   const hasProfile = Boolean(effectiveUser);
   const bioText = useMemo(() => {
     const rawBio = effectiveUser?.bio;
@@ -638,6 +622,26 @@ const detailEntries = useMemo(() => {
       { key: 'cussCount', label: 'Times cussed', value: stats.cussCount ?? 0 }
     ];
   }, [effectiveUser]);
+
+  const statValues = useMemo(
+    () =>
+      statsEntries.reduce((accumulator, { key, value }) => {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          accumulator[key] = value;
+        } else if (value !== undefined && value !== null) {
+          const parsed = Number(value);
+          accumulator[key] = Number.isFinite(parsed) ? parsed : 0;
+        } else {
+          accumulator[key] = 0;
+        }
+        return accumulator;
+      }, {}),
+    [statsEntries]
+  );
+
+  const postCount = statValues.posts ?? 0;
+  const eventsHosted = statValues.eventsHosted ?? 0;
+  const eventsAttended = statValues.eventsAttended ?? 0;
 
   const badgeList = effectiveUser?.badges ?? [];
 
@@ -674,45 +678,6 @@ const detailEntries = useMemo(() => {
     ];
   }, [effectiveUser]);
 
-  const preferenceSummary = useMemo(() => {
-    const preferences = effectiveUser?.preferences ?? {};
-    const theme = preferences.theme ?? 'system';
-    const radiusMeters = preferences.radiusPreferenceMeters;
-    let radiusMiles = null;
-    if (typeof radiusMeters === 'number') {
-      const miles = metersToMiles(radiusMeters);
-      if (miles !== null) {
-        radiusMiles = Math.round(miles * 100) / 100;
-      }
-    }
-    return {
-      theme,
-      radiusMiles,
-      locationSharing: Boolean(effectiveUser?.locationSharingEnabled)
-    };
-  }, [effectiveUser]);
-
-  const notificationPreferences = useMemo(() => {
-    const notifications = effectiveUser?.preferences?.notifications ?? {};
-    return [
-      {
-        key: 'proximity',
-        label: 'Nearby activity alerts',
-        enabled: notifications.proximity !== false
-      },
-      {
-        key: 'updates',
-        label: 'Pin & chat updates',
-        enabled: notifications.updates !== false
-      },
-      {
-        key: 'marketing',
-        label: 'Tips & marketing',
-        enabled: notifications.marketing === true
-      }
-    ];
-  }, [effectiveUser]);
-
   const accountTimeline = useMemo(() => {
     if (!effectiveUser) {
       return null;
@@ -726,7 +691,8 @@ const detailEntries = useMemo(() => {
     };
   }, [effectiveUser, targetUserId]);
 
-  const rawDataAvailable = detailEntries.length > 0;
+  const joinedDisplay = accountTimeline?.createdAt ?? 'N/A';
+
 
   const handleRequestBlock = useCallback(() => {
     if (!canManageBlock) {
@@ -966,24 +932,41 @@ const detailEntries = useMemo(() => {
                 {displayName}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Joined: {formatDateTime(effectiveUser?.createdAt) || targetUserId || 'N/A'}
+                Joined: {joinedDisplay}
               </Typography>
-            </Box>
-          </Stack>
-          {canManageBlock ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-              <Button
-                variant="outlined"
-                color={isBlocked ? 'primary' : 'error'}
-                startIcon={isBlocked ? <HowToRegIcon /> : <BlockIcon />}
-                onClick={isBlocked ? handleRequestUnblock : handleRequestBlock}
-                disabled={isProcessingBlockAction || isFetchingProfile}
-              >
-                {isBlocked ? 'Unblock user' : 'Block user'}
-              </Button>
+          </Box>
+        </Stack>
+          {hasProfile ? (
+            <Box sx={{ width: '100%' }}>
+              {statsVisible ? (
+                <>
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    justifyContent="space-between"
+                    alignItems={{ xs: 'stretch', sm: 'center' }}
+                    spacing={1}
+                    sx={{ px: 0.5 }}
+                  >
+                    <Box className="summary-box" sx={{ flex: '0 0 auto' }}>
+                      <Typography variant="body2">Post count: {postCount}</Typography>
+                    </Box>
+                    <Box className="summary-box" sx={{ flex: '0 0 auto', textAlign: 'right' }}>
+                      <Typography variant="body2">Events hosted: {eventsHosted}</Typography>
+                    </Box>
+                  </Stack>
+                  <Stack direction="row" sx={{ px: 0.5 }}>
+                    <Box className="summary-box" sx={{ flex: '0 0 auto' }}>
+                      <Typography variant="body2">Events attended: {eventsAttended}</Typography>
+                    </Box>
+                  </Stack>
+                </>
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ px: 0.5 }}>
+                  This user keeps their stats private.
+                </Typography>
+              )}
             </Box>
           ) : null}
-
           {canEditProfile ? (
             <Stack spacing={2} sx={{ alignSelf: 'stretch' }}>
               {updateStatus ? (
@@ -1175,6 +1158,105 @@ const detailEntries = useMemo(() => {
                   )}
                 </Section>
 
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    gap: 2,
+                    width: '100%'
+                  }}
+                >
+                  <Box
+                    className="section-content-box"
+                    sx={{
+                      flex: 1,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 2,
+                      p: 2,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 1,
+                      cursor: 'pointer'
+                    }}
+                    role="button"
+                    aria-disabled="true"
+                    tabIndex={-1}
+                    title="Messaging actions coming soon"
+                  >
+                    <MessageIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      Message
+                    </Typography>
+                  </Box>
+
+                  <Box
+                    className="section-content-box"
+                    sx={{
+                      flex: 1,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 2,
+                      p: 2,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 1,
+                      cursor: 'pointer'
+                    }}
+                    role="button"
+                    aria-disabled="true"
+                    tabIndex={-1}
+                    title="Report flow coming soon"
+                  >
+                    <FlagIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      Report
+                    </Typography>
+                  </Box>
+
+                  {canManageBlock ? (
+                    <Box
+                      className="section-content-box"
+                      onClick={isBlocked ? handleRequestUnblock : handleRequestBlock}
+                      sx={{
+                        flex: 1,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                        p: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 1,
+                        cursor: isProcessingBlockAction || isFetchingProfile ? 'not-allowed' : 'pointer',
+                        opacity: isProcessingBlockAction || isFetchingProfile ? 0.6 : 1
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={isBlocked ? 'Unblock user' : 'Block user'}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          if (!isProcessingBlockAction && !isFetchingProfile) {
+                            (isBlocked ? handleRequestUnblock : handleRequestBlock)();
+                          }
+                        }
+                      }}
+                    >
+                      {isBlocked ? (
+                        <HowToRegIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+                      ) : (
+                        <BlockIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+                      )}
+                      <Typography variant="body2" color="text.secondary">
+                        {isBlocked ? 'Unblock' : 'Block'}
+                      </Typography>
+                    </Box>
+                  ) : null}
+                </Box>
+
                 <Section
                   title="Highlights"
                   description="At-a-glance stats across this profile."
@@ -1229,163 +1311,6 @@ const detailEntries = useMemo(() => {
                   )}
                 </Section>
 
-                <Section
-                  title="Preferences"
-                  description="Theme, privacy, and notification settings currently applied to this profile."
-                >
-                  <Stack spacing={1.5}>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                      <Box>
-                        <Typography variant="subtitle2" color="text.secondary">
-                          Interface theme
-                        </Typography>
-                        <Typography variant="body1">
-                          {preferenceSummary.theme.charAt(0).toUpperCase() + preferenceSummary.theme.slice(1)}
-                        </Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="subtitle2" color="text.secondary">
-                          Discovery radius
-                        </Typography>
-                        <Typography variant="body1">
-                          {typeof preferenceSummary.radiusMiles === 'number'
-                            ? `${preferenceSummary.radiusMiles} mi`
-                            : 'Default'}
-                        </Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="subtitle2" color="text.secondary">
-                          Location sharing
-                        </Typography>
-                        <Typography variant="body1">
-                          {preferenceSummary.locationSharing ? 'Enabled' : 'Disabled'}
-                        </Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="subtitle2" color="text.secondary">
-                          Stats visibility
-                        </Typography>
-                        <Typography variant="body1">
-                          {statsVisible ? 'Shared' : 'Hidden'}
-                        </Typography>
-                      </Box>
-                    </Stack>
-
-                    <Divider flexItem />
-
-                    <Stack direction="row" flexWrap="wrap" gap={1}>
-                      {notificationPreferences.map(({ key, label, enabled }) => (
-                        <Chip
-                          key={key}
-                          label={`${label}${enabled ? '' : ' (off)'}`}
-                          color={enabled ? 'success' : 'default'}
-                          variant={enabled ? 'filled' : 'outlined'}
-                        />
-                      ))}
-                    </Stack>
-                  </Stack>
-                </Section>
-
-                <Section
-                  title="Account timeline"
-                  description="Provisioning details captured when this account was created."
-                >
-                  {accountTimeline ? (
-                    <Stack spacing={1}>
-                      <Typography variant="body2" color="text.secondary">
-                        User ID
-                      </Typography>
-                      <Typography variant="body1">{accountTimeline.userId}</Typography>
-
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        Email
-                      </Typography>
-                      <Typography variant="body1">{accountTimeline.email}</Typography>
-
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        Account status
-                      </Typography>
-                      <Typography variant="body1">
-                        {accountTimeline.status.charAt(0).toUpperCase() + accountTimeline.status.slice(1)}
-                      </Typography>
-
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        Created
-                      </Typography>
-                      <Typography variant="body1">{accountTimeline.createdAt}</Typography>
-
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        Last updated
-                      </Typography>
-                      <Typography variant="body1">{accountTimeline.updatedAt}</Typography>
-                    </Stack>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      We'll surface account timestamps once this profile finishes loading.
-                    </Typography>
-                  )}
-                </Section>
-
-                {rawDataAvailable ? (
-                  <Stack spacing={1}>
-                    <Button
-                      type="button"
-                      variant="text"
-                      color="secondary"
-                      onClick={() => setShowRawData((prev) => !prev)}
-                      sx={{ alignSelf: 'flex-start' }}
-                    >
-                      {showRawData ? 'Hide raw profile JSON' : 'Show raw profile JSON'}
-                    </Button>
-                    <Collapse in={showRawData} unmountOnExit>
-                      <Stack spacing={1.5}>
-                        {detailEntries.map(({ key, value, isObject }) => (
-                          <Box
-                            key={key}
-                            sx={{
-                              borderRadius: 2,
-                              border: '1px dashed',
-                              borderColor: 'divider',
-                              backgroundColor: SECTION_BG_COLOR,
-                              p: 2
-                            }}
-                          >
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{
-                                textTransform: 'uppercase',
-                                letterSpacing: 0.6,
-                                fontWeight: 600
-                              }}
-                            >
-                              {key}
-                            </Typography>
-                            {isObject ? (
-                              <Box
-                                component="pre"
-                                sx={{
-                                  mt: 1,
-                                  mb: 0,
-                                  fontSize: '0.85rem',
-                                  lineHeight: 1.5,
-                                  whiteSpace: 'pre-wrap',
-                                  wordBreak: 'break-word'
-                                }}
-                              >
-                                {formatEntryValue(value)}
-                              </Box>
-                            ) : (
-                              <Typography variant="body1" sx={{ mt: 0.5 }}>
-                                {formatEntryValue(value)}
-                              </Typography>
-                            )}
-                          </Box>
-                        ))}
-                      </Stack>
-                    </Collapse>
-                  </Stack>
-                ) : null}
               </Stack>
             </>
           ) : null}
