@@ -90,7 +90,7 @@ const resolvePublicBaseUrl = () => {
     if (fallback && fallback.trim()) {
       return fallback.trim().replace(/\/+$/, '');
     }
-    return 'http://localhost:5000';
+    return 'http://localhost:8000';
   }
 
   return undefined;

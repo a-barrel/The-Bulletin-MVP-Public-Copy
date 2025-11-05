@@ -191,4 +191,4 @@ function logPinPayload(payload) {
 }
 ```
 
-**API reminder:** all calls require `Authorization: Bearer <token>` (`demo-test-token` works offline). Base URLs - local: `http://localhost:5000`, production: `https://bulletin-app.onrender.com`. Primary endpoint: `GET /api/pins/:pinId`.
+**API reminder:** all calls require `Authorization: Bearer <token>` (`demo-test-token` works offline). Base URLs - local: `http://localhost:8000`, production: `https://bulletin-app.onrender.com`. Primary endpoint: `GET /api/pins/:pinId`.

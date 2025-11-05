@@ -5,17 +5,27 @@ const runtime = require('../config/runtime');
 const LEGACY_PROFILE_IMAGE_REGEX = /(\/images\/profile\/profile-\d+)\.png$/i;
 const DEFAULT_PROFILE_IMAGE_REGEX = /\/images\/profile\/profile-\d+\.(?:png|jpg)$/i;
 
+const isAbsoluteUrl = (value) => /^(?:[a-z]+:)?\/\//i.test(value);
+
 const normalizeProfileImagePath = (value) => {
   if (typeof value !== 'string' || value.length === 0) {
     return value;
   }
 
-  if (/^(?:[a-z]+:)?\/\//i.test(value)) {
+  if (isAbsoluteUrl(value)) {
     return value;
   }
 
-  return value.replace(LEGACY_PROFILE_IMAGE_REGEX, '$1.jpg');
+  const hadLeadingSlash = value.startsWith('/');
+  const normalizedSource = hadLeadingSlash ? value : `/${value}`;
+  const replaced = normalizedSource.replace(LEGACY_PROFILE_IMAGE_REGEX, '$1.jpg');
+  if (hadLeadingSlash) {
+    return replaced;
+  }
+  return replaced.startsWith('/') ? replaced.slice(1) : replaced;
 };
+
+const OFFLINE_MEDIA_HOSTS = new Set(['localhost:5000', '127.0.0.1:5000']);
 
 const normalizeMediaUrl = (value) => {
   if (!value || typeof value !== 'string') {
@@ -25,7 +35,22 @@ const normalizeMediaUrl = (value) => {
   if (!trimmed) {
     return undefined;
   }
-  if (/^(?:https?:|data:)/i.test(trimmed)) {
+  if (/^data:/i.test(trimmed)) {
+    return trimmed;
+  }
+  if (/^https?:/i.test(trimmed)) {
+    try {
+      const parsed = new URL(trimmed);
+      if (OFFLINE_MEDIA_HOSTS.has(parsed.host)) {
+        const normalizedPath = normalizeProfileImagePath(parsed.pathname);
+        if (runtime?.publicBaseUrl) {
+          return `${runtime.publicBaseUrl}${normalizedPath}`;
+        }
+        return normalizedPath;
+      }
+    } catch (error) {
+      // fall through to best-effort handling
+    }
     return trimmed;
   }
   const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;

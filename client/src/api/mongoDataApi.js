@@ -4,13 +4,13 @@ import runtimeConfig from '../config/runtime';
 const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
 
 function resolveApiBaseUrl() {
-  if (API_BASE_URL) {
-    return API_BASE_URL;
+  // In dev we rely on Vite's proxy to avoid CORS and absolute origins.
+  if (import.meta.env.DEV) {
+    return '';
   }
 
-  // In offline/dev mode we proxy to the local server.
-  if (runtimeConfig.isOffline || import.meta.env.DEV) {
-    return '';
+  if (API_BASE_URL) {
+    return API_BASE_URL;
   }
 
   return '';
