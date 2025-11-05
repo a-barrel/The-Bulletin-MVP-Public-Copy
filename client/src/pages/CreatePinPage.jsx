@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import MapIcon from '@mui/icons-material/Map';
 import EventNoteIcon from '@mui/icons-material/EventNote';
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -205,12 +206,7 @@ function CreatePinPage() {
               onClick={handleHeaderBack}
               aria-label={backButtonLabel}
             >
-              <img
-                src="https://www.svgrepo.com/show/326886/arrow-back-sharp.svg"
-                className="back-arrow"
-                alt=""
-                aria-hidden="true"
-              />
+              <ArrowBackIosNewIcon className="back-arrow" aria-hidden="true" />
             </button>
 
             <div className="header-content">

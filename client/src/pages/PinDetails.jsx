@@ -19,6 +19,11 @@ import PlaceIcon from '@mui/icons-material/Place'; // used only for pageConfig
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
+import ForumIcon from '@mui/icons-material/Forum';
+import AddCommentIcon from '@mui/icons-material/AddComment';
 import LeafletMap from '../components/Map';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
@@ -495,12 +500,8 @@ function PinDetails() {
       ) : null}
 
       <header className="header">
-        <Link to={routes.list.base} className="back-button">
-          <img
-            src="https://www.svgrepo.com/show/326886/arrow-back-sharp.svg"
-            className="back-arrow"
-            alt="Back"
-          />
+        <Link to={routes.list.base} className="back-button" aria-label="Back to pin list">
+          <ArrowBackIosNewIcon className="back-arrow" aria-hidden="true" />
         </Link>
 
         <h2>{pinTypeHeading}</h2>
@@ -700,10 +701,9 @@ function PinDetails() {
             </div>
 
             <div className="post-occurance">
-              <img
-                src="https://www.svgrepo.com/show/533378/calendar.svg"
-                className="calendar-icon"
-                alt="Calendar icon"
+              <CalendarMonthIcon
+                className={`calendar-icon ${isEventPin ? 'event-icon' : 'discussion-icon'}`}
+                aria-hidden="true"
               />
               <span className="occurance-text">
                 {isEventPin ? 'Occurs:' : 'Expires:'}
@@ -715,10 +715,9 @@ function PinDetails() {
             </div>
 
             <div className="post-attendance">
-              <img
-                src="https://www.svgrepo.com/show/511192/user-check.svg"
-                className="attendance-icon"
-                alt="Attendance icon"
+              <HowToRegIcon
+                className={`attendance-icon ${isEventPin ? 'event-icon' : 'discussion-icon'}`}
+                aria-hidden="true"
               />
               <span className="attendance-text">
                 Bookmarks: {pin.bookmarkCount ?? 0}
@@ -762,11 +761,7 @@ function PinDetails() {
           ) : null}
 
           <div className="comments-header">
-            <img
-              src="https://www.svgrepo.com/show/361088/comment-discussion.svg"
-              className="comment-icon"
-              alt="Comments icon"
-            />
+            <ForumIcon className="comment-icon" aria-hidden="true" />
             <p>
               Comments (
               {isLoadingReplies ? '...' : replyCount}
@@ -830,11 +825,7 @@ function PinDetails() {
             aria-label="Create reply"
             title={isOffline ? 'Reconnect to add a reply' : undefined}
           >
-            <img
-              src="https://www.svgrepo.com/show/489238/add-comment.svg"
-              className="create-comment-button"
-              alt="Create comment button"
-            />
+            <AddCommentIcon className="create-comment-button" aria-hidden="true" />
           </button>
         </>
       ) : null}

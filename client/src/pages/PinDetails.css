@@ -59,8 +59,7 @@
 }
 
 .pin-details .back-arrow {
-    width: 30px;
-    height: 30px;
+    font-size: 30px;
 }
 
 /* bookmark-button */
@@ -522,18 +521,17 @@
 }
 
 .pin-details .calendar-icon {
-    width: 40px;
-    height: 40px;
-    filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
+    font-size: 40px;
     margin-right: 0.5rem;
+    color: #5d3889;
 }
 
 .pin-details .calendar-icon.event-icon {
-  filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
+  color: #5d3889;
 }
 
 .pin-details .calendar-icon.discussion-icon {
-  filter: brightness(0) saturate(100%) invert(45%) sepia(55%) saturate(2100%) hue-rotate(160deg) brightness(95%) contrast(85%);
+  color: #0b4a6e;
 }
 
 .pin-details .occurance-text {
@@ -566,18 +564,17 @@
 }
 
 .pin-details .attendance-icon {
-    width: 40px;
-    height: 40px;
-    filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
+    font-size: 40px;
     margin-right: 0.5rem;
+    color: #5d3889;
 }
 
 .pin-details .attendance-icon.event-icon {
-  filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
+  color: #5d3889;
 }
 
 .pin-details .attendance-icon.discussion-icon {
-  filter: brightness(0) saturate(100%) invert(45%) sepia(55%) saturate(2100%) hue-rotate(160deg) brightness(95%) contrast(85%);
+  color: #0b4a6e;
 }
 
 .pin-details .attendance-text {
@@ -912,12 +909,11 @@
 }
 
 .pin-details .comment-icon {
-    width: 25px;
-    height: 25px;
+    font-size: 25px;
 }
 
 .pin-details.discussion-mode .comment-icon {
-    filter: invert(28%) sepia(52%) saturate(1249%) hue-rotate(176deg) brightness(94%) contrast(92%);
+    color: #0b4a6e;
 }
 
 /* comments-section */
@@ -1013,10 +1009,9 @@
 }
 
 .pin-details .create-comment-button {
-    width: 42px;
-    height: 42px;
+    font-size: 42px;
     pointer-events: none;
-    filter: invert(100%);
+    color: #ffffff;
     transition: transform 160ms ease;
 }
 
