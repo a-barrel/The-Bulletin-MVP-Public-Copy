@@ -42,13 +42,13 @@ import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import useProfileDetail from '../hooks/useProfileDetail.js';
 import '../components/BackButton.css';
 import './_v2_WIP_ProfilePage.css';
-import ProfilePageAdditionalDetail from './ProfilePage_debug.jsx;
+import ProfilePageAdditionalDetail from './ProfilePage_debug.jsx';
 
 export const pageConfig = {
-  id: 'profile',
-  label: 'Profile',
+  id: 'profile_comparing_delete_later',
+  label: 'Profile_comparing_delete_later',
   icon: AccountCircleIcon,
-  path: '/profile/:userId',
+  path: '/profile_comparing_delete_later/:userId',
   order: 91,
   showInNav: true,
   protected: true,
@@ -72,10 +72,10 @@ export const pageConfig = {
       return routes.profile.me;
     }
     const sanitized = trimmed.replace(/^\/+/, '');
-    if (/^profile\/.+/i.test(sanitized)) {
+    if (/^profile_comparing_delete_later\/.+/i.test(sanitized)) {
       return `/${sanitized}`;
     }
-    if (/^\/profile\/.+/i.test(trimmed)) {
+    if (/^\/profile_comparing_delete_later\/.+/i.test(trimmed)) {
       return trimmed;
     }
     return routes.profile.byId(sanitized);
