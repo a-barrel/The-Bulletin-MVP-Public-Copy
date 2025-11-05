@@ -8,7 +8,8 @@ const {
 describe('server/utils/media', () => {
   test('normalizeMediaUrl handles absolute and relative paths', () => {
     expect(normalizeMediaUrl(' https://example.com/img.png ')).toBe('https://example.com/img.png');
-    expect(normalizeMediaUrl('path/to.png')).toBe('http://localhost:5000/path/to.png');
+    expect(normalizeMediaUrl('path/to.png')).toBe('http://localhost:8000/path/to.png');
+    expect(normalizeMediaUrl('http://localhost:5000/assets/demo.png')).toBe('http://localhost:8000/assets/demo.png');
     expect(normalizeMediaUrl('')).toBeUndefined();
   });
 
@@ -32,8 +33,8 @@ describe('server/utils/media', () => {
 
     const mapped = mapMediaAsset(asset);
     expect(mapped).toEqual({
-      url: 'http://localhost:5000/image.png',
-      thumbnailUrl: 'http://localhost:5000/thumb.png',
+      url: 'http://localhost:8000/image.png',
+      thumbnailUrl: 'http://localhost:8000/thumb.png',
       width: 400,
       height: 300,
       mimeType: 'image/png',
@@ -72,8 +73,8 @@ describe('server/utils/media', () => {
     };
 
     expect(mapUserAvatar(user)).toEqual({
-      url: 'http://localhost:5000/images/emulation/avatars/Scoutava.jpg',
-      thumbnailUrl: 'http://localhost:5000/images/emulation/avatars/Scoutava.jpg',
+      url: 'http://localhost:8000/images/emulation/avatars/Scoutava.jpg',
+      thumbnailUrl: 'http://localhost:8000/images/emulation/avatars/Scoutava.jpg',
       width: 184,
       height: 184,
       mimeType: 'image/jpeg'

@@ -754,7 +754,14 @@ router.get('/rooms', verifyToken, async (req, res) => {
     const includeBookmarked =
       query.includeBookmarked === undefined ? true : Boolean(query.includeBookmarked);
 
-    const rooms = await ProximityChatRoom.find(criteria).sort({ updatedAt: -1 });
+    const roomsTimingLabel = `chat:rooms:query:${viewer._id}:${Date.now()}`;
+    console.time(roomsTimingLabel);
+    let rooms;
+    try {
+      rooms = await ProximityChatRoom.find(criteria).sort({ updatedAt: -1 });
+    } finally {
+      console.timeEnd(roomsTimingLabel);
+    }
 
     const accessContext = await buildViewerAccessContext({
       viewer,
@@ -806,12 +813,19 @@ router.get('/rooms/:roomId/messages', verifyToken, async (req, res) => {
     const viewerBlockedIds = buildBlockedSet(viewer);
     const viewerIdString = toIdString(viewer._id);
 
-    const messages = await ProximityChatMessage.find({ roomId })
-      .sort({ createdAt: 1 })
-      .populate({
-        path: 'authorId',
-        select: 'username displayName roles accountStatus avatar stats relationships.blockedUserIds'
-      });
+    const messagesTimingLabel = `chat:messages:query:${roomId}:${Date.now()}`;
+    console.time(messagesTimingLabel);
+    let messages;
+    try {
+      messages = await ProximityChatMessage.find({ roomId })
+        .sort({ createdAt: 1 })
+        .populate({
+          path: 'authorId',
+          select: 'username displayName roles accountStatus avatar stats relationships.blockedUserIds'
+        });
+    } finally {
+      console.timeEnd(messagesTimingLabel);
+    }
 
     const filteredMessages = messages.filter((message) => {
       const authorDoc = message.authorId;

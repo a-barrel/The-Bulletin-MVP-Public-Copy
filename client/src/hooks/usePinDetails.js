@@ -44,6 +44,10 @@ const TF2_AVATAR_MAP = {
  *   localhost:5000 (or 8000). In dev we actually serve the API on 8000 and
  *   the front-end on 5173, so hard-coded 5000 URLs fail and leave the page
  *   stuck on "Loading…".
+ * - Port 5000 persists in legacy data because our earliest dev server hosted
+ *   both the API and static bundle on that port; when we moved to the Node API
+ *   (8000) + Vite front-end (5173) split we kept the data but never rewrote the
+ *   baked URLs.
  * - We also want a single place to fall back to the bundled profile
  *   avatars/backgrounds (DEFAULT_* constants) when nothing custom is present.
  *

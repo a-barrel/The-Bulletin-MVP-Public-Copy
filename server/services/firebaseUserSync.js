@@ -35,7 +35,7 @@ const resolveProfileImageBaseUrl = () => {
   }
 
   if (runtime.isOffline) {
-    return 'http://localhost:5000';
+    return 'http://localhost:8000';
   }
 
   const fallback = process.env.PINPOINT_PUBLIC_BASE_URL || process.env.VITE_API_BASE_URL;
