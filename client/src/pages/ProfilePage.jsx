@@ -60,6 +60,7 @@ import ProfilePageAdditionalDetail from './ProfilePage_debug.jsx';
  * - All underlying fetch/update logic (editing flows, block/unblock, moderation requests, etc.) continues to live in useProfileDetail.
  * - ProfilePage_debug.jsx still surfaces every control if the full debug experience is needed.
  */
+
 export const pageConfig = {
   id: 'profile',
   label: 'Profile',
