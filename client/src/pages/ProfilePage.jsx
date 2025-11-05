@@ -1,8 +1,18 @@
+// This is a profile page that follows the proposed design guidelines.
+// If you plan to add more features, please do so in ProfilePage_debug.jsx (they still get displayed here)
+// This will help keep the main profile design consistent and give them time to add the features
+// officially later on in a mannor that follows the design guidelines.
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BlockIcon from '@mui/icons-material/Block';
+import { ThemeProvider, createTheme, useTheme } from '@mui/material/styles';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
 import FlagIcon from '@mui/icons-material/Flag';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import MessageIcon from '@mui/icons-material/Message';
@@ -40,6 +50,7 @@ import BackButton from '../components/BackButton';
 import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
 import { routes } from '../routes';
 import './ProfilePage.css';
+import ProfilePageAdditionalDetail from './ProfilePage_debug.jsx';
 
 /*
  * NOTE:
@@ -214,6 +225,28 @@ const Section = ({ title, description, children }) => (
 );
 
 function ProfilePage() {
+  const muiTheme = useTheme()
+  
+  const legacyProfileTheme = useMemo(
+        () =>
+          createTheme(muiTheme, {
+            palette: {
+              mode: 'light',
+              background: {
+                ...muiTheme.palette.background,
+                default: '#f5f5f5',
+                paper: '#ffffff'
+              },
+              text: {
+                ...muiTheme.palette.text,
+                primary: '#1f1f1f',
+                secondary: '#475467'
+              }
+            }
+          }),
+        [muiTheme]
+      );
+
   const location = useLocation();
   const navigate = useNavigate();
   const { userId } = useParams();
@@ -1262,6 +1295,7 @@ function ProfilePage() {
                   ) : null}
                 </Box>
 
+                {/*}
                 <Section
                   title="Highlights"
                   description="At-a-glance stats across this profile."
@@ -1315,12 +1349,75 @@ function ProfilePage() {
                     </Typography>
                   )}
                 </Section>
+                */}
 
               </Stack>
             </>
           ) : null}
         </Stack>
+
+
+      {/* Additional Content Accordion - Show ProfilePage_debug.jsx */}
+
+      <ThemeProvider theme={legacyProfileTheme}>
+        <Accordion
+          disableGutters
+          sx={(theme) => ({
+            borderRadius: 2,
+            boxShadow: 'none',
+            border: '1px solid',
+            borderColor: theme.palette.divider,
+            mt: 3,
+            backgroundColor: theme.palette.background.paper,
+            color: theme.palette.text.primary
+          })}
+        >
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon />}
+            aria-controls="additional-content-panel"
+            id="additional-content-header"
+            sx={(theme) => ({
+              backgroundColor: theme.palette.background.paper,
+              color: theme.palette.text.primary,
+              px: 2,
+              '& .MuiAccordionSummary-expandIconWrapper svg': {
+                color: theme.palette.text.secondary
+              },
+              '& .MuiTypography-root': {
+                color: theme.palette.text.primary,
+                fontWeight: 600
+              }
+            })}
+          >
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              Additional Content
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails
+            sx={(theme) => ({
+              px: { xs: 1, sm: 2 },
+              py: 2,
+              backgroundColor: theme.palette.background.paper,
+              color: theme.palette.text.primary,
+              borderTop: '1px solid',
+              borderColor: theme.palette.divider
+            })}
+          >
+            <Box
+              sx={(theme) => ({
+                width: '100%',
+                color: theme.palette.text.primary,
+                backgroundColor: theme.palette.background.paper
+              })}
+            >
+              <ProfilePageAdditionalDetail />
+            </Box>
+          </AccordionDetails>
+        </Accordion>
+      </ThemeProvider>
+
       </div>
+
       <Dialog
         open={Boolean(blockDialogMode)}
         onClose={handleCloseBlockDialog}
