@@ -135,7 +135,7 @@ const resolveAvatarUrl = (avatar) => {
         try {
           const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
           const url = new URL(trimmed, origin);
-          const offlineHosts = new Set(['localhost:5000', '127.0.0.1:5000']);
+          const offlineHosts = new Set(['localhost:5000', '127.0.0.1:5000', 'localhost:8000', '127.0.0.1:8000']);
           if (offlineHosts.has(url.host) && url.pathname.startsWith('/images/')) {
             const relative = normalizeProfileImagePath(url.pathname);
             return base ? `${base}${relative}` : relative;

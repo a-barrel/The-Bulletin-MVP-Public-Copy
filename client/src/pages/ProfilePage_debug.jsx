@@ -99,7 +99,7 @@ const resolveFriendAvatarUrl = (avatar) => {
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
       const url = new URL(urlString, origin);
-      const offlineHosts = new Set(['localhost:5000', '127.0.0.1:5000']);
+      const offlineHosts = new Set(['localhost:5000', '127.0.0.1:5000', 'localhost:8000', '127.0.0.1:8000']);
       if (offlineHosts.has(url.host) && url.pathname.startsWith('/images/')) {
         const normalizedPath = normalizeProfileImagePath(url.pathname);
         return base ? `${base}${normalizedPath}` : normalizedPath;

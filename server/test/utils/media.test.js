@@ -10,6 +10,7 @@ describe('server/utils/media', () => {
     expect(normalizeMediaUrl(' https://example.com/img.png ')).toBe('https://example.com/img.png');
     expect(normalizeMediaUrl('path/to.png')).toBe('http://localhost:8000/path/to.png');
     expect(normalizeMediaUrl('http://localhost:5000/assets/demo.png')).toBe('http://localhost:8000/assets/demo.png');
+    expect(normalizeMediaUrl('http://localhost:8000/assets/demo.png')).toBe('http://localhost:8000/assets/demo.png');
     expect(normalizeMediaUrl('')).toBeUndefined();
   });
 

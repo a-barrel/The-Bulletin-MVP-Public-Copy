@@ -7,10 +7,7 @@ const BADGE_SOUND_URL = (() => {
   }
 
   if (typeof window !== 'undefined') {
-    const { protocol, hostname, port, origin } = window.location;
-    if ((hostname === 'localhost' || hostname === '127.0.0.1') && port && port !== '5000') {
-      return `${protocol}//${hostname}:5000/sounds/badge_obtained.mp3`;
-    }
+    const { origin } = window.location;
     return `${origin}/sounds/badge_obtained.mp3`.replace(/([^:]\/)\/+/g, '$1');
   }
 

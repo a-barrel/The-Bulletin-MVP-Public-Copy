@@ -25,7 +25,7 @@ const normalizeProfileImagePath = (value) => {
   return replaced.startsWith('/') ? replaced.slice(1) : replaced;
 };
 
-const OFFLINE_MEDIA_HOSTS = new Set(['localhost:5000', '127.0.0.1:5000']);
+const OFFLINE_MEDIA_HOSTS = new Set(['localhost:5000', '127.0.0.1:5000', 'localhost:8000', '127.0.0.1:8000']);
 
 const normalizeMediaUrl = (value) => {
   if (!value || typeof value !== 'string') {

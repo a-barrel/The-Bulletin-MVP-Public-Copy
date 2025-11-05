@@ -91,7 +91,7 @@ Start both servers from the project root:
 ```bash
 npm run dev
 ```
-This launches the Express backend on port 5000 and the Vite dev server on port 5173. Offline mode proxies API calls to `/api`, connects MongoDB to `mongodb://127.0.0.1:27017/pinpoint`, and uses the Firebase Auth emulator automatically.
+This launches the Express backend on port 8000 and the Vite dev server on 5173. Offline mode proxies API calls to `/api`, connects MongoDB to `mongodb://127.0.0.1:27017/pinpoint`, and uses the Firebase Auth emulator automatically.
 
 ### Additional Commands
 - `npm run server` - backend only (development)
