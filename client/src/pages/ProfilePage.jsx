@@ -21,7 +21,6 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
-import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
@@ -30,7 +29,6 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
 import MenuItem from '@mui/material/MenuItem';
 import Chip from '@mui/material/Chip';
-import Grid from '@mui/material/Grid';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -46,7 +44,6 @@ import {
 } from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
 import { BADGE_METADATA } from '../utils/badges';
-import BackButton from '../components/BackButton';
 import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
 import { routes } from '../routes';
 import './ProfilePage.css';
@@ -63,8 +60,6 @@ import ProfilePageAdditionalDetail from './ProfilePage_debug.jsx';
  * - All underlying fetch/update logic (editing flows, block/unblock, moderation requests, etc.) continues to live in useProfileDetail.
  * - ProfilePage_debug.jsx still surfaces every control if the full debug experience is needed.
  */
-const SECTION_BG_COLOR = '#CDAEF2';
-
 export const pageConfig = {
   id: 'profile',
   label: 'Profile',
@@ -118,6 +113,7 @@ const TF2_AVATAR_MAP = {
   'tf2_sniper': '/images/emulation/avatars/Sniperava.jpg',
   'tf2_spy': '/images/emulation/avatars/Spyava.jpg'
 };
+const FALLBACK_BANNER = null;
 
 const resolveBadgeImageUrl = (value) => {
   if (!value) {
@@ -180,6 +176,56 @@ const resolveAvatarUrl = (avatar) => {
   return toAbsolute(FALLBACK_AVATAR) ?? FALLBACK_AVATAR;
 };
 
+const resolveBannerUrl = (banner) => {
+  const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+
+  const toAbsolute = (value) => {
+    if (!value) {
+      return null;
+    }
+    const trimmed = normalizeProfileImagePath(value.trim());
+    if (!trimmed) {
+      return null;
+    }
+    if (/^(?:[a-z]+:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
+      if (runtimeConfig.isOffline) {
+        try {
+          const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+          const url = new URL(trimmed, origin);
+          const offlineHosts = new Set(['localhost:5000', '127.0.0.1:5000', 'localhost:8000', '127.0.0.1:8000']);
+          if (offlineHosts.has(url.host) && url.pathname.startsWith('/images/')) {
+            const normalizedPath = normalizeProfileImagePath(url.pathname);
+            return base ? `${base}${normalizedPath}` : normalizedPath;
+          }
+        } catch {
+          return trimmed;
+        }
+      }
+      return trimmed;
+    }
+    const normalized = normalizeProfileImagePath(trimmed.startsWith('/') ? trimmed : `/${trimmed}`);
+    return base ? `${base}${normalized}` : normalized;
+  };
+
+  if (!banner) {
+    return FALLBACK_BANNER ? toAbsolute(FALLBACK_BANNER) ?? FALLBACK_BANNER : null;
+  }
+
+  if (typeof banner === 'string') {
+    return toAbsolute(banner) ?? (FALLBACK_BANNER ? toAbsolute(FALLBACK_BANNER) ?? FALLBACK_BANNER : null);
+  }
+
+  if (typeof banner === 'object') {
+    const source = banner.url ?? banner.thumbnailUrl ?? banner.path;
+    const resolved = typeof source === 'string' ? toAbsolute(source) : null;
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return FALLBACK_BANNER ? toAbsolute(FALLBACK_BANNER) ?? FALLBACK_BANNER : null;
+};
+
 const formatDateTime = (value) => {
   if (!value) {
     return 'N/A';
@@ -215,7 +261,6 @@ const Section = ({ title, description, children }) => (
         borderRadius: 2,
         border: '1px solid',
         borderColor: 'divider',
-        backgroundColor: SECTION_BG_COLOR,
         p: { xs: 2, md: 3 }
       }}
     >
@@ -225,27 +270,26 @@ const Section = ({ title, description, children }) => (
 );
 
 function ProfilePage() {
-  const muiTheme = useTheme()
-  
+  const muiTheme = useTheme();
   const legacyProfileTheme = useMemo(
-        () =>
-          createTheme(muiTheme, {
-            palette: {
-              mode: 'light',
-              background: {
-                ...muiTheme.palette.background,
-                default: '#f5f5f5',
-                paper: '#ffffff'
-              },
-              text: {
-                ...muiTheme.palette.text,
-                primary: '#1f1f1f',
-                secondary: '#475467'
-              }
-            }
-          }),
-        [muiTheme]
-      );
+    () =>
+      createTheme(muiTheme, {
+        palette: {
+          mode: 'light',
+          background: {
+            ...muiTheme.palette.background,
+            default: '#f5f5f5',
+            paper: '#ffffff'
+          },
+          text: {
+            ...muiTheme.palette.text,
+            primary: '#1f1f1f',
+            secondary: '#475467'
+          }
+        }
+      }),
+    [muiTheme]
+  );
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -273,15 +317,25 @@ function ProfilePage() {
     theme: 'system',
     avatarFile: null,
     avatarPreviewUrl: null,
-    avatarCleared: true
+    avatarCleared: true,
+    bannerFile: null,
+    bannerPreviewUrl: null,
+    bannerCleared: true
   });
   const avatarPreviewUrlRef = useRef(null);
+  const bannerPreviewUrlRef = useRef(null);
 
   const clearAvatarPreviewUrl = useCallback(() => {
     if (avatarPreviewUrlRef.current && avatarPreviewUrlRef.current.startsWith('blob:')) {
       URL.revokeObjectURL(avatarPreviewUrlRef.current);
     }
     avatarPreviewUrlRef.current = null;
+  }, []);
+  const clearBannerPreviewUrl = useCallback(() => {
+    if (bannerPreviewUrlRef.current && bannerPreviewUrlRef.current.startsWith('blob:')) {
+      URL.revokeObjectURL(bannerPreviewUrlRef.current);
+    }
+    bannerPreviewUrlRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -316,7 +370,10 @@ function ProfilePage() {
       theme: profile?.preferences?.theme ?? 'system',
       avatarFile: null,
       avatarPreviewUrl: profile?.avatar ? resolveAvatarUrl(profile.avatar) : null,
-      avatarCleared: !profile?.avatar
+      avatarCleared: !profile?.avatar,
+      bannerFile: null,
+      bannerPreviewUrl: profile?.banner ? resolveBannerUrl(profile.banner) : null,
+      bannerCleared: !profile?.banner
     }),
     []
   );
@@ -324,8 +381,9 @@ function ProfilePage() {
   useEffect(
     () => () => {
       clearAvatarPreviewUrl();
+      clearBannerPreviewUrl();
     },
-    [clearAvatarPreviewUrl]
+    [clearAvatarPreviewUrl, clearBannerPreviewUrl]
   );
 
   useEffect(() => {
@@ -425,11 +483,11 @@ function ProfilePage() {
     }
     return primary;
   }, [effectiveUser]);
-  const canEditProfile =
-    !userFromState &&
-    (shouldLoadCurrentUser ||
-      (effectiveUser && targetUserId && effectiveUser._id && effectiveUser._id === targetUserId));
+  const bannerUrl = useMemo(() => resolveBannerUrl(effectiveUser?.banner), [effectiveUser]);
   const editingAvatarSrc = formState.avatarCleared ? null : formState.avatarPreviewUrl ?? avatarUrl;
+  const editingBannerSrc = formState.bannerCleared ? null : formState.bannerPreviewUrl ?? bannerUrl;
+  const avatarDisplaySrc = isEditing ? editingAvatarSrc ?? undefined : avatarUrl;
+  const bannerDisplaySrc = isEditing ? editingBannerSrc : bannerUrl;
   const viewerId = viewerProfile?._id ? String(viewerProfile._id) : null;
   const normalizedTargetId = effectiveUser?._id
     ? String(effectiveUser._id)
@@ -445,6 +503,7 @@ function ProfilePage() {
   const isBlocked = Boolean(
     normalizedTargetId && normalizedBlockedIds.includes(String(normalizedTargetId))
   );
+  const canEditProfile = Boolean(isViewingSelf && !userFromState);
   const canManageBlock = Boolean(!isViewingSelf && viewerProfile && normalizedTargetId);
 
   useEffect(() => {
@@ -458,16 +517,18 @@ function ProfilePage() {
       return;
     }
     clearAvatarPreviewUrl();
+    clearBannerPreviewUrl();
     setFormState(initializeFormState(effectiveUser));
     setUpdateStatus(null);
     setIsEditing(true);
-  }, [clearAvatarPreviewUrl, effectiveUser, initializeFormState]);
+  }, [clearAvatarPreviewUrl, clearBannerPreviewUrl, effectiveUser, initializeFormState]);
 
   const handleCancelEditing = useCallback(() => {
     clearAvatarPreviewUrl();
+    clearBannerPreviewUrl();
     setFormState(initializeFormState(effectiveUser));
     setIsEditing(false);
-  }, [clearAvatarPreviewUrl, effectiveUser, initializeFormState]);
+  }, [clearAvatarPreviewUrl, clearBannerPreviewUrl, effectiveUser, initializeFormState]);
 
   const handleAvatarFileChange = useCallback(
     (event) => {
@@ -491,6 +552,28 @@ function ProfilePage() {
     []
   );
 
+  const handleBannerFileChange = useCallback(
+    (event) => {
+      const file = event.target.files?.[0];
+      if (!file) {
+        return;
+      }
+      if (bannerPreviewUrlRef.current && bannerPreviewUrlRef.current.startsWith('blob:')) {
+        URL.revokeObjectURL(bannerPreviewUrlRef.current);
+      }
+      const previewUrl = URL.createObjectURL(file);
+      bannerPreviewUrlRef.current = previewUrl;
+      setFormState((prev) => ({
+        ...prev,
+        bannerFile: file,
+        bannerPreviewUrl: previewUrl,
+        bannerCleared: false
+      }));
+      event.target.value = '';
+    },
+    []
+  );
+
   const handleClearAvatar = useCallback(() => {
     clearAvatarPreviewUrl();
     setFormState((prev) => ({
@@ -500,6 +583,16 @@ function ProfilePage() {
       avatarCleared: true
     }));
   }, [clearAvatarPreviewUrl]);
+
+  const handleClearBanner = useCallback(() => {
+    clearBannerPreviewUrl();
+    setFormState((prev) => ({
+      ...prev,
+      bannerFile: null,
+      bannerPreviewUrl: null,
+      bannerCleared: true
+    }));
+  }, [clearBannerPreviewUrl]);
 
   const handleFieldChange = useCallback((field) => {
     return (event) => {
@@ -586,6 +679,33 @@ function ProfilePage() {
         );
       }
 
+      if (formState.bannerCleared && (effectiveUser?.banner || formState.bannerFile)) {
+        payload.banner = null;
+      } else if (formState.bannerFile) {
+        let uploadedBanner;
+        try {
+          setIsSavingProfile(true);
+          uploadedBanner = await uploadImage(formState.bannerFile);
+        } catch (error) {
+          setIsSavingProfile(false);
+          setUpdateStatus({ type: 'error', message: error?.message || 'Failed to upload banner.' });
+          return;
+        }
+
+        payload.banner = Object.fromEntries(
+          Object.entries({
+            url: uploadedBanner?.url,
+            thumbnailUrl: uploadedBanner?.thumbnailUrl,
+            width: uploadedBanner?.width,
+            height: uploadedBanner?.height,
+            mimeType: uploadedBanner?.mimeType,
+            description: uploadedBanner?.description,
+            uploadedAt: uploadedBanner?.uploadedAt,
+            uploadedBy: effectiveUser?._id
+          }).filter(([, value]) => value !== undefined && value !== null && value !== '')
+        );
+      }
+
       const preferencesPayload = {};
       const currentTheme = effectiveUser?.preferences?.theme ?? 'system';
       if (formState.theme !== currentTheme) {
@@ -608,6 +728,7 @@ function ProfilePage() {
         setUpdateStatus({ type: 'success', message: 'Profile updated successfully.' });
         setIsEditing(false);
         clearAvatarPreviewUrl();
+        clearBannerPreviewUrl();
         setFormState(initializeFormState(updatedProfile));
       } catch (error) {
         setUpdateStatus({ type: 'error', message: error?.message || 'Failed to update profile.' });
@@ -617,12 +738,15 @@ function ProfilePage() {
     },
     [
       clearAvatarPreviewUrl,
+      clearBannerPreviewUrl,
       effectiveUser,
       formState.avatarCleared,
       formState.avatarFile,
       formState.bio,
       formState.displayName,
       formState.locationSharingEnabled,
+      formState.bannerCleared,
+      formState.bannerFile,
       formState.theme,
       initializeFormState,
       updateCurrentUserProfile,
@@ -678,39 +802,6 @@ function ProfilePage() {
 
   const badgeList = effectiveUser?.badges ?? [];
 
-  const activityEntries = useMemo(() => {
-    if (!effectiveUser) {
-      return [];
-    }
-    return [
-      {
-        key: 'pinnedPinIds',
-        label: 'Pinned pins',
-        value: effectiveUser.pinnedPinIds?.length ?? 0
-      },
-      {
-        key: 'ownedPinIds',
-        label: 'Pins created',
-        value: effectiveUser.ownedPinIds?.length ?? 0
-      },
-      {
-        key: 'bookmarkCollectionIds',
-        label: 'Bookmark collections',
-        value: effectiveUser.bookmarkCollectionIds?.length ?? 0
-      },
-      {
-        key: 'proximityChatRoomIds',
-        label: 'Chat rooms joined',
-        value: effectiveUser.proximityChatRoomIds?.length ?? 0
-      },
-      {
-        key: 'recentLocationIds',
-        label: 'Recent locations',
-        value: effectiveUser.recentLocationIds?.length ?? 0
-      }
-    ];
-  }, [effectiveUser]);
-
   const accountTimeline = useMemo(() => {
     if (!effectiveUser) {
       return null;
@@ -725,6 +816,13 @@ function ProfilePage() {
   }, [effectiveUser, targetUserId]);
 
   const joinedDisplay = accountTimeline?.createdAt ?? 'N/A';
+  const handleBack = useCallback(() => {
+    if (originPath) {
+      navigate(originPath);
+      return;
+    }
+    navigate(-1);
+  }, [navigate, originPath]);
 
 
   const handleRequestBlock = useCallback(() => {
@@ -827,48 +925,30 @@ function ProfilePage() {
     };
   }, [relationshipStatus]);
 
-  const headerImageUrl = (() => {
-    const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
-    const path = '/images/background/background-01.jpg';
-    return base ? `${base}${path}` : path;
-  })();
-
   return (
     <div className="profile-page-container">
       <div className="back-nav-bar profile-back-nav">
-      <BackButton 
-        className="profile-back-nav"
-        buttonClassName="back-button"
-        ariaLabel="Go back to previous page"
-        centerText="Profile"
-      />
-      {canEditProfile && !isEditing && (
-                <Button
-                  variant="contained"
-                  onClick={handleBeginEditing}
-                  disabled={!effectiveUser || isFetchingProfile}
-                  sx={{ ml: 'auto' }}
-                >
-                  Edit profile
-                </Button>
-      )}
+        <button
+          type="button"
+          className="back-button"
+          aria-label="Go back to previous page"
+          onClick={handleBack}
+        >
+          <ArrowBackIcon className="back-button__icon" />
+        </button>
+        {canEditProfile && !isEditing && (
+          <Button
+            variant="contained"
+            onClick={handleBeginEditing}
+            disabled={!effectiveUser || isFetchingProfile}
+            sx={{ ml: 'auto' }}
+          >
+            Edit profile
+          </Button>
+        )}
       </div>
 
       <div className="profile-page-frame">
-        <Box
-          component="img"
-          src={headerImageUrl}
-          alt="Profile header"
-          sx={{
-            width: { xs: 'calc(100% + 1rem)', sm: 'calc(100% + 2rem)' },
-            height: '100px',
-            objectFit: 'fill',
-            display: 'block',
-            marginTop: { xs: '-56px', sm: '-60px' },
-            marginLeft: { xs: '-0.5rem', sm: '-1rem' },
-            marginRight: { xs: '-0.5rem', sm: '-1rem' }
-          }}
-        />
         <Stack spacing={3}>
           {isFetchingProfile ? (
             <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
@@ -890,133 +970,110 @@ function ProfilePage() {
               {relationshipStatus.message}
             </Alert>
           ) : null}
-          {/*
-          <Stack spacing={2} alignItems="left" textAlign="left">
-            <Avatar
-              src={avatarUrl}
-              alt={`${displayName} avatar`}
-              sx={{ width: 96, height: 96, bgcolor: 'secondary.main' }}
+
+          <Stack spacing={2} alignItems="center" textAlign="center" sx={{ width: '100%', pt: 1 }}>
+            <Box
+              sx={{
+                position: 'relative',
+                width: '100%',
+                borderRadius: 3,
+                backgroundColor: 'grey.800',
+                overflow: 'visible',
+                minHeight: { xs: 160, sm: 200 },
+                maxWidth: 800,
+                aspectRatio: { xs: '16 / 7', sm: '16 / 5' }
+              }}
             >
-              {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
-            </Avatar>
-            <Box>
-              <Typography variant="h4" component="h1">
-                {displayName}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                User ID: {effectiveUser?._id || targetUserId || 'N/A'}
-              </Typography>
-            </Box>
-            {!hasProfile && !isFetchingProfile && !fetchError ? (
-              <Typography variant="body2" color="text.secondary">
-                No additional user context was provided. Use a pin, reply, or enter a valid user ID
-                to preview available data.
-              </Typography>
-            ) : null}
-          </Stack>
-            <Stack direction="row" spacing={2} alignItems="center">
+              <Box
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: 'inherit',
+                  overflow: 'hidden'
+                }}
+              >
+                {bannerDisplaySrc ? (
+                  <Box
+                    component="img"
+                    src={bannerDisplaySrc}
+                    alt="Profile banner"
+                    sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <Box
+                    aria-hidden="true"
+                    sx={{
+                      width: '100%',
+                      height: '100%',
+                      background: 'linear-gradient(135deg, #4B3F72 0%, #2E2157 100%)'
+                    }}
+                  />
+                )}
+              </Box>
               <Avatar
-                src={avatarUrl}
+                src={avatarDisplaySrc ?? undefined}
                 alt={`${displayName} avatar`}
-                sx={{ width: 96, height: 96, bgcolor: 'secondary.main' }}
+                sx={{
+                  width: 112,
+                  height: 112,
+                  position: 'absolute',
+                  left: '50%',
+                  bottom: -56,
+                  transform: 'translateX(-50%)',
+                  border: '4px solid',
+                  borderColor: 'background.paper',
+                  bgcolor: 'secondary.main',
+                  boxShadow: 3,
+                  zIndex: 1
+                }}
               >
                 {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
               </Avatar>
-                <Box>
-                  <Typography variant="h4" component="h1">
-                    {displayName}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    User ID: {effectiveUser?._id || targetUserId || 'N/A'}
-                  </Typography>
-                </Box>
-          </Stack>
-
-          <Stack className="user-card">
-            <Avatar
-              src={avatarUrl}
-              alt={`${displayName} avatar`}
-              className="user-avatar"
-            >
-              {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
-            </Avatar>
-            <Box className="user-info">
-              <Typography variant="h4" component="h1">
-                {displayName}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                User ID: {effectiveUser?._id || targetUserId || 'N/A'}
-              </Typography>
             </Box>
-          </Stack>
-
-*/}
-          <Stack
-            direction="row"     // horizontal layout
-            spacing={2}
-            alignItems="center" // vertically centers the items
-            sx={{ py: 4 }}
-          >
-            <Avatar
-              src={avatarUrl}
-              alt={`${displayName} avatar`}
-              sx={{ width: 96, height: 96, bgcolor: 'secondary.main' }}
-            >
-              {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
-            </Avatar>
+            <Box sx={{ height: 72 }} aria-hidden="true" />
             <Box>
-              {/*
-              <Typography variant="h4" component="h1">
-                {displayName}
-              </Typography>
-*/}
-              <Typography
-                variant="h4"
-                component="h1"
-                sx={{ fontWeight: 'bold', fontSize: '2rem' }}
-              >
+              <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', fontSize: '2rem' }}>
                 {displayName}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Joined: {joinedDisplay}
               </Typography>
-          </Box>
-        </Stack>
-          {hasProfile ? (
-            <Box sx={{ width: '100%' }}>
-              {statsVisible ? (
-                <>
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    justifyContent="space-between"
-                    alignItems={{ xs: 'stretch', sm: 'center' }}
-                    spacing={1}
-                    sx={{ px: 0.5 }}
-                  >
-                    <Box className="summary-box" sx={{ flex: '0 0 auto' }}>
-                      <Typography variant="body2">Post count: {postCount}</Typography>
-                    </Box>
-                    <Box className="summary-box" sx={{ flex: '0 0 auto', textAlign: 'right' }}>
-                      <Typography variant="body2">Events hosted: {eventsHosted}</Typography>
-                    </Box>
-                  </Stack>
-                  <Stack direction="row" sx={{ px: 0.5 }}>
-                    <Box className="summary-box" sx={{ flex: '0 0 auto' }}>
-                      <Typography variant="body2">Events attended: {eventsAttended}</Typography>
-                    </Box>
-                  </Stack>
-                </>
-              ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ px: 0.5 }}>
-                  This user keeps their stats private.
-                </Typography>
-              )}
             </Box>
-          ) : null}
+            {!hasProfile && !isFetchingProfile && !fetchError ? (
+              <Typography variant="body2" color="text.secondary">
+                This user hasn't filled out their profile yet.
+              </Typography>
+            ) : null}
+          </Stack>
+
           {canEditProfile ? (
             <Stack spacing={2} sx={{ alignSelf: 'stretch' }}>
               {updateStatus ? (
-                <Alert severity={updateStatus.type} onClose={() => setUpdateStatus(null)}>
+                <Alert
+                  severity={updateStatus.type}
+                  onClose={() => setUpdateStatus(null)}
+                  sx={{
+                    backgroundColor:
+                      updateStatus.type === 'success'
+                        ? 'rgba(76, 175, 80, 0.15)'
+                        : updateStatus.type === 'error'
+                          ? 'rgba(244, 67, 54, 0.15)'
+                          : updateStatus.type === 'warning'
+                            ? 'rgba(255, 193, 7, 0.15)'
+                            : 'rgba(33, 150, 243, 0.15)',
+                    color: 'text.primary',
+                    '& .MuiAlert-icon': {
+                      color:
+                        updateStatus.type === 'success'
+                          ? 'success.main'
+                          : updateStatus.type === 'error'
+                            ? 'error.main'
+                            : updateStatus.type === 'warning'
+                              ? 'warning.main'
+                              : 'info.main'
+                    }
+                  }}
+                >
                   {updateStatus.message}
                 </Alert>
               ) : null}
@@ -1026,17 +1083,67 @@ function ProfilePage() {
                   component="form"
                   spacing={2}
                   onSubmit={handleSaveProfile}
-                sx={{
-                  p: 2,
-                  borderRadius: 2,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  backgroundColor: SECTION_BG_COLOR
-                }}
-              >
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: '#000',
+                    backgroundColor: '#f2f2f2'
+                  }}
+                >
+                  <Stack spacing={1.5}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                      Profile banner
+                    </Typography>
+                    <Box
+                      sx={{
+                        width: '100%',
+                        minHeight: 140,
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        backgroundColor: 'grey.800',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {editingBannerSrc ? (
+                        <Box
+                          component="img"
+                          src={editingBannerSrc}
+                          alt="Profile banner preview"
+                          sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          No banner selected.
+                        </Typography>
+                      )}
+                    </Box>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                      <Button component="label" variant="outlined" size="small" disabled={isSavingProfile}>
+                        Upload banner
+                        <input type="file" hidden accept="image/*" onChange={handleBannerFileChange} />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="text"
+                        color="warning"
+                        size="small"
+                        onClick={handleClearBanner}
+                        disabled={
+                          isSavingProfile ||
+                          (formState.bannerCleared && !formState.bannerFile && !effectiveUser?.banner)
+                        }
+                      >
+                        Remove banner
+                      </Button>
+                    </Stack>
+                  </Stack>
+
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
                     <Avatar
-                      src={editingAvatarSrc}
+                      src={editingAvatarSrc || avatarUrl}
                       alt="Profile avatar preview"
                       sx={{ width: 96, height: 96, bgcolor: 'secondary.main' }}
                     >
@@ -1124,17 +1231,40 @@ function ProfilePage() {
                     </Button>
                   </Stack>
                 </Stack>
-              ) : (
-                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-
-                </Box>
-              )}
+              ) : null}
             </Stack>
           ) : null}
 
           {hasProfile ? (
             <>
               <Divider />
+              {statsVisible ? (
+                <>
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    justifyContent="space-between"
+                    alignItems={{ xs: 'stretch', sm: 'center' }}
+                    spacing={1}
+                    sx={{ px: 0.5 }}
+                  >
+                    <Box className="summary-box" sx={{ flex: '0 0 auto' }}>
+                      <Typography variant="body2">Post count: {postCount}</Typography>
+                    </Box>
+                    <Box className="summary-box" sx={{ flex: '0 0 auto', textAlign: 'right' }}>
+                      <Typography variant="body2">Events hosted: {eventsHosted}</Typography>
+                    </Box>
+                  </Stack>
+                  <Stack direction="row" sx={{ px: 0.5 }}>
+                    <Box className="summary-box" sx={{ flex: '0 0 auto' }}>
+                      <Typography variant="body2">Events attended: {eventsAttended}</Typography>
+                    </Box>
+                  </Stack>
+                </>
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ px: 0.5 }}>
+                  This user keeps their stats private.
+                </Typography>
+              )}
               <Stack spacing={3}>
                 <Section
                   title="Bio"
@@ -1191,7 +1321,7 @@ function ProfilePage() {
                     </Stack>
                   ) : (
                     <Typography variant="body2" color="text.secondary">
-                      No badges yet — they’ll appear here once this user starts collecting achievements.
+                      No badges yet. They will appear here once this user starts collecting achievements.
                     </Typography>
                   )}
                 </Section>
@@ -1199,7 +1329,7 @@ function ProfilePage() {
                 <Box
                   sx={{
                     display: 'flex',
-                    flexDirection: { xs: 'column', sm: 'row' },
+                    flexDirection: 'row',
                     gap: 2,
                     width: '100%'
                   }}
@@ -1218,10 +1348,6 @@ function ProfilePage() {
                       gap: 1,
                       cursor: 'pointer'
                     }}
-                    role="button"
-                    aria-disabled="true"
-                    tabIndex={-1}
-                    title="Messaging actions coming soon"
                   >
                     <MessageIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
                     <Typography variant="body2" color="text.secondary">
@@ -1243,10 +1369,6 @@ function ProfilePage() {
                       gap: 1,
                       cursor: 'pointer'
                     }}
-                    role="button"
-                    aria-disabled="true"
-                    tabIndex={-1}
-                    title="Report flow coming soon"
                   >
                     <FlagIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
                     <Typography variant="body2" color="text.secondary">
@@ -1271,17 +1393,6 @@ function ProfilePage() {
                         cursor: isProcessingBlockAction || isFetchingProfile ? 'not-allowed' : 'pointer',
                         opacity: isProcessingBlockAction || isFetchingProfile ? 0.6 : 1
                       }}
-                      role="button"
-                      tabIndex={0}
-                      aria-label={isBlocked ? 'Unblock user' : 'Block user'}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          if (!isProcessingBlockAction && !isFetchingProfile) {
-                            (isBlocked ? handleRequestUnblock : handleRequestBlock)();
-                          }
-                        }
-                      }}
                     >
                       {isBlocked ? (
                         <HowToRegIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
@@ -1294,127 +1405,67 @@ function ProfilePage() {
                     </Box>
                   ) : null}
                 </Box>
-
-                {/*}
-                <Section
-                  title="Highlights"
-                  description="At-a-glance stats across this profile."
-                >
-                  {statsVisible ? (
-                    statsEntries.length ? (
-                      <Grid container spacing={2}>
-                        {statsEntries.map(({ key, label, value }) => (
-                          <Grid item xs={6} sm={4} key={key}>
-                            <Stack spacing={0.5}>
-                              <Typography variant="subtitle2" color="text.secondary">
-                                {label}
-                              </Typography>
-                              <Typography variant="h5">{value}</Typography>
-                            </Stack>
-                          </Grid>
-                        ))}
-                      </Grid>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        Stats will appear here once this user starts hosting events, posting, or connecting with others.
+                <ThemeProvider theme={legacyProfileTheme}>
+                  <Accordion
+                    disableGutters
+                    sx={(theme) => ({
+                      borderRadius: 2,
+                      boxShadow: 'none',
+                      border: '1px solid',
+                      borderColor: theme.palette.divider,
+                      mt: 3,
+                      backgroundColor: theme.palette.background.paper,
+                      color: theme.palette.text.primary
+                    })}
+                  >
+                    <AccordionSummary
+                      expandIcon={<ExpandMoreIcon />}
+                      aria-controls="additional-content-panel"
+                      id="additional-content-header"
+                      sx={(theme) => ({
+                        backgroundColor: theme.palette.background.paper,
+                        color: theme.palette.text.primary,
+                        px: 2,
+                        '& .MuiAccordionSummary-expandIconWrapper svg': {
+                          color: theme.palette.text.secondary
+                        },
+                        '& .MuiTypography-root': {
+                          color: theme.palette.text.primary,
+                          fontWeight: 600
+                        }
+                      })}
+                    >
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                        Additional Content
                       </Typography>
-                    )
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      This user keeps their stats private.
-                    </Typography>
-                  )}
-                </Section>
-
-                <Section
-                  title="Activity & collections"
-                  description="Quick counts for pins, bookmarks, rooms, and locations associated with this user."
-                >
-                  {activityEntries.length ? (
-                    <Grid container spacing={2}>
-                      {activityEntries.map(({ key, label, value }) => (
-                        <Grid item xs={6} sm={4} key={key}>
-                          <Stack spacing={0.25}>
-                            <Typography variant="subtitle2" color="text.secondary">
-                              {label}
-                            </Typography>
-                            <Typography variant="h6">{value}</Typography>
-                          </Stack>
-                        </Grid>
-                      ))}
-                    </Grid>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      Activity counters will populate as soon as this user creates or saves pins, joins chats, or shares check-ins.
-                    </Typography>
-                  )}
-                </Section>
-                */}
+                    </AccordionSummary>
+                    <AccordionDetails
+                      sx={(theme) => ({
+                        px: { xs: 1, sm: 2 },
+                        py: 2,
+                        backgroundColor: theme.palette.background.paper,
+                        color: theme.palette.text.primary,
+                        borderTop: '1px solid',
+                        borderColor: theme.palette.divider
+                      })}
+                    >
+                      <Box
+                        sx={(theme) => ({
+                          width: '100%',
+                          color: theme.palette.text.primary,
+                          backgroundColor: theme.palette.background.paper
+                        })}
+                      >
+                        <ProfilePageAdditionalDetail />
+                      </Box>
+                    </AccordionDetails>
+                  </Accordion>
+                </ThemeProvider>
 
               </Stack>
             </>
           ) : null}
         </Stack>
-
-
-      {/* Additional Content Accordion - Show ProfilePage_debug.jsx */}
-
-      <ThemeProvider theme={legacyProfileTheme}>
-        <Accordion
-          disableGutters
-          sx={(theme) => ({
-            borderRadius: 2,
-            boxShadow: 'none',
-            border: '1px solid',
-            borderColor: theme.palette.divider,
-            mt: 3,
-            backgroundColor: theme.palette.background.paper,
-            color: theme.palette.text.primary
-          })}
-        >
-          <AccordionSummary
-            expandIcon={<ExpandMoreIcon />}
-            aria-controls="additional-content-panel"
-            id="additional-content-header"
-            sx={(theme) => ({
-              backgroundColor: theme.palette.background.paper,
-              color: theme.palette.text.primary,
-              px: 2,
-              '& .MuiAccordionSummary-expandIconWrapper svg': {
-                color: theme.palette.text.secondary
-              },
-              '& .MuiTypography-root': {
-                color: theme.palette.text.primary,
-                fontWeight: 600
-              }
-            })}
-          >
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              Additional Content
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails
-            sx={(theme) => ({
-              px: { xs: 1, sm: 2 },
-              py: 2,
-              backgroundColor: theme.palette.background.paper,
-              color: theme.palette.text.primary,
-              borderTop: '1px solid',
-              borderColor: theme.palette.divider
-            })}
-          >
-            <Box
-              sx={(theme) => ({
-                width: '100%',
-                color: theme.palette.text.primary,
-                backgroundColor: theme.palette.background.paper
-              })}
-            >
-              <ProfilePageAdditionalDetail />
-            </Box>
-          </AccordionDetails>
-        </Accordion>
-      </ThemeProvider>
 
       </div>
 
