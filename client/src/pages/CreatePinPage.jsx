@@ -54,6 +54,11 @@ const FIGMA_TEMPLATE = {
   }
 };
 
+const PIN_TYPE_LABELS = {
+  event: 'Event',
+  discussion: 'Discussion'
+};
+
 function MapClickHandler({ onSelect }) {
   useMapEvents({
     click(event) {
@@ -188,6 +193,7 @@ function CreatePinPage() {
   const approxStateInputId = useId();
   const approxCountryInputId = useId();
   const autoDeleteInputId = useId();
+  const headerTitle = PIN_TYPE_LABELS[pinType] ?? FIGMA_TEMPLATE.header.title;
 
   return (
     <div className="create-pin-page">
@@ -210,10 +216,10 @@ function CreatePinPage() {
             </button>
 
             <div className="header-content">
-              <h1>{FIGMA_TEMPLATE.header.title}</h1>
+              <h1>{headerTitle}</h1>
             </div>
 
-            <form className="cta-form" onSubmit={handleSubmit}>
+            <form id="create-pin-submit-form" className="cta-form" onSubmit={handleSubmit}>
               <button
                 type="submit"
                 className="btn-submit"
@@ -621,7 +627,20 @@ function CreatePinPage() {
             onClick={handleSaveDraft}
             disabled={isSubmitting}
           >
-            Save draft
+            Save Draft
+          </button>
+          <button
+            type="submit"
+            form="create-pin-submit-form"
+            className="btn-submit"
+            disabled={isOffline || isSubmitting}
+            title={isOffline ? 'Reconnect to publish a pin' : undefined}
+            style={{
+              backgroundColor: activeTheme.ctaBackground,
+              color: activeTheme.ctaTextColor
+            }}
+          >
+            {isSubmitting ? 'Posting...' : FIGMA_TEMPLATE.header.cta}
           </button>
         </div>
 
