@@ -32,7 +32,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 firebase-debug.log*
-DEBUG LOGS IGNORE/
+DEV_LOGS/
 
 # Editor directories and files
 .vscode/
@@ -59,11 +59,8 @@ Thumbs.db
 # Keep emulator-data committed so the team shares a consistent Auth seed.
 
 # Personal planning notes
-TODO AND IDEAS/backlog-ideas.md
-TODO AND IDEAS/sprint-2-backlog.md
+TODO-AND-IDEAS/
 
 
 /.vscode/bulletin-app-6548a-firebase-adminsdk-*.json
-TODO AND IDEAS/demo-readiness-checklist.md
-TODO AND IDEAS/moderation-and-friends-roadmap.md
-TODO AND IDEAS/sprint-3-backlog-status.txt
+

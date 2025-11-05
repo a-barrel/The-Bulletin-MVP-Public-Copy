@@ -7,6 +7,7 @@ const Reply = require('../models/Reply');
 const { PinPreviewSchema } = require('../schemas/pin');
 
 const { toIdString } = require('../utils/ids');
+const { logIntegration } = require('../utils/devLogger');
 
 const toObjectId = (value) => {
   if (!value) return undefined;
@@ -195,6 +196,7 @@ const insertUpdates = async (updates, context) => {
     await Update.insertMany(payload, { ordered: false });
   } catch (error) {
     console.error(`Failed to insert updates (${context})`, error);
+    logIntegration(`updateFanout:insert:${context}`, error);
   }
 };
 
@@ -250,6 +252,7 @@ const broadcastPinCreated = async (pinDoc) => {
     await insertUpdates(updates, 'pin-created');
   } catch (error) {
     console.error('Failed to fan out pin creation update', error);
+    logIntegration('updateFanout:pin-created', error);
   }
 };
 
@@ -339,6 +342,7 @@ const broadcastPinUpdated = async ({ previous, updated, editor }) => {
     await insertUpdates(updates, 'pin-updated');
   } catch (error) {
     console.error('Failed to fan out pin updated notification', error);
+    logIntegration('updateFanout:pin-updated', error);
   }
 };
 
@@ -426,6 +430,7 @@ const broadcastEventStartingSoon = async ({ pin }) => {
     await insertUpdates(updates, 'event-starting-soon');
   } catch (error) {
     console.error('Failed to fan out event starting soon update', error);
+    logIntegration('updateFanout:event-starting-soon', error);
   }
 };
 
@@ -515,6 +520,7 @@ const broadcastDiscussionExpiringSoon = async ({ pin }) => {
     await insertUpdates(updates, 'discussion-expiring');
   } catch (error) {
     console.error('Failed to fan out discussion expiration update', error);
+    logIntegration('updateFanout:discussion-expiration', error);
   }
 };
 
@@ -587,6 +593,7 @@ const broadcastPinReply = async ({ pin, reply, author, parentReply }) => {
     await insertUpdates(updates, 'pin-reply');
   } catch (error) {
     console.error('Failed to fan out pin reply update', error);
+    logIntegration('updateFanout:pin-reply', error);
   }
 };
 
@@ -642,6 +649,7 @@ const broadcastAttendanceChange = async ({ pin, attendee, attending }) => {
     await insertUpdates(updates, 'pin-attendance');
   } catch (error) {
     console.error('Failed to fan out attendance update', error);
+    logIntegration('updateFanout:attendance', error);
   }
 };
 
@@ -690,6 +698,7 @@ const broadcastBookmarkCreated = async ({ pin, bookmarker }) => {
     await insertUpdates(updates, 'bookmark-created');
   } catch (error) {
     console.error('Failed to fan out bookmark update', error);
+    logIntegration('updateFanout:bookmark', error);
   }
 };
 
@@ -769,6 +778,7 @@ const broadcastChatMessage = async ({ room, message, author }) => {
     await insertUpdates(updates, 'chat-message');
   } catch (error) {
     console.error('Failed to fan out chat message update', error);
+    logIntegration('updateFanout:chat-message', error);
   }
 };
 
@@ -844,6 +854,7 @@ const broadcastChatRoomTransition = async ({
     await insertUpdates(updates, 'chat-room-transition');
   } catch (error) {
     console.error('Failed to fan out chat room transition update', error);
+    logIntegration('updateFanout:chat-transition', error);
   }
 };
 
@@ -879,6 +890,7 @@ const broadcastBadgeEarned = async ({ userId, badge, sourceUserId }) => {
     await insertUpdates(updates, 'badge-earned');
   } catch (error) {
     console.error('Failed to fan out badge earned update', error);
+    logIntegration('updateFanout:badge-earned', error);
   }
 };
 

@@ -93,6 +93,15 @@ npm run dev
 ```
 This launches the Express backend on port 8000 and the Vite dev server on 5173. Offline mode proxies API calls to `/api`, connects MongoDB to `mongodb://127.0.0.1:27017/pinpoint`, and uses the Firebase Auth emulator automatically.
 
+### Debugging & Telemetry
+- The backend prints `chat:*` and `pins:*` timing labels (via `console.time`) so you can spot slow Mongo queries quickly. Keep an eye on the server console while exercising the UI.
+- Vite proxies `/api`, `/images`, and `/sounds` to `http://localhost:8000`, so browser network tabs only show `http://localhost:5173/...` while you develop.
+- Static icons now ship locally (Material UI icons or files under `client/src/assets`), eliminating noisy external SVG fetches in the logs.
+- When running in offline mode, those timing entries are also mirrored into `DEV_LOGS/` (git ignored) so you can capture and share traces without copy/paste.
+- Offline runs also record any HTTP responses with status ≥ 400 to `DEV_LOGS/http-errors.log`, alongside the console warning.
+- Fatal crashes (`uncaughtException`, `unhandledRejection`) log to `DEV_LOGS/runtime-errors.log` before the process exits, so you keep the stack trace even if the terminal scrolls.
+- External integration failures (Firebase syncs, Tenor, analytics, etc.) append to `DEV_LOGS/integrations.log` in offline mode for easier debugging. When the Firebase emulator produces `firebase-debug.log`, it is automatically moved into `DEV_LOGS/` with a symlink left behind.
+
 ### Additional Commands
 - `npm run server` - backend only (development)
 - `npm run client` - frontend only (development)

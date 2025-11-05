@@ -21,6 +21,7 @@ const { trackEvent } = require('../services/analyticsService');
 const { mapMediaAsset: mapMediaAssetResponse } = require('../utils/media');
 const { toIdString, mapIdList } = require('../utils/ids');
 const { METERS_PER_MILE, milesToMeters } = require('../utils/geo');
+const { timeAsync } = require('../utils/devLogger');
 
 const router = express.Router();
 
@@ -831,9 +832,11 @@ router.get('/nearby', verifyToken, async (req, res) => {
       }
     };
 
-    const pins = await Pin.find(findQuery)
-      .limit(limit)
-      .populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
+    const pins = await timeAsync('pins', `nearby:${toIdString(viewer._id)}`, () =>
+      Pin.find(findQuery)
+        .limit(limit)
+        .populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION })
+    );
 
     const filteredPins = pins.filter((pinDoc) => {
       const creatorDoc = pinDoc.creatorId;
@@ -998,12 +1001,21 @@ router.get('/', verifyToken, async (req, res) => {
       }
 
       const pipeline = [geoNearStage, { $limit: limit }];
-      const aggregated = await Pin.aggregate(pipeline);
+      const aggregated = await timeAsync(
+        'pins',
+        `list:distance:aggregate:${toIdString(viewer._id)}`,
+        () => Pin.aggregate(pipeline)
+      );
       const hydrated = aggregated.map((doc) => Pin.hydrate(doc));
-      const populated = await Pin.populate(hydrated, {
-        path: 'creatorId',
-        select: USER_SUMMARY_PROJECTION
-      });
+      const populated = await timeAsync(
+        'pins',
+        `list:distance:populate:${toIdString(viewer._id)}`,
+        () =>
+          Pin.populate(hydrated, {
+            path: 'creatorId',
+            select: USER_SUMMARY_PROJECTION
+          })
+      );
 
       const distanceLookup = new Map(aggregated.map((doc, index) => [toIdString(doc._id), aggregated[index]?.distanceMeters]));
 
@@ -1039,10 +1051,12 @@ router.get('/', verifyToken, async (req, res) => {
         ? { expiresAt: 1, updatedAt: -1, _id: -1 }
         : { updatedAt: -1, _id: -1 };
 
-    const pins = await Pin.find(matchQuery)
-      .sort(sortSpec)
-      .limit(limit)
-      .populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
+    const pins = await timeAsync('pins', `list:${toIdString(viewer._id)}`, () =>
+      Pin.find(matchQuery)
+        .sort(sortSpec)
+        .limit(limit)
+        .populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION })
+    );
 
     const filteredPins = pins.filter((pin) => {
       const creatorDoc = pin.creatorId;
@@ -1103,7 +1117,9 @@ router.get('/categories', verifyToken, async (req, res) => {
 router.get('/:pinId', verifyToken, async (req, res) => {
   try {
     const { pinId } = PinIdSchema.parse(req.params);
-    const pin = await Pin.findById(pinId).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
+    const pin = await timeAsync('pins', `detail:${pinId}`, () =>
+      Pin.findById(pinId).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION })
+    );
     if (!pin) {
       return res.status(404).json({ message: 'Pin not found' });
     }
@@ -1432,14 +1448,21 @@ router.post('/:pinId/replies', verifyToken, async (req, res) => {
       }
     }
 
-    const reply = await Reply.create({
-      pinId: pin._id,
-      parentReplyId,
-      authorId: viewer._id,
-      message: input.message.trim(),
-      attachments: [],
-      mentionedUserIds: []
-    });
+    const replyTimingLabel = `pins:reply:create:${pinId}:${Date.now()}`;
+    let reply;
+    console.time(replyTimingLabel);
+    try {
+      reply = await Reply.create({
+        pinId: pin._id,
+        parentReplyId,
+        authorId: viewer._id,
+        message: input.message.trim(),
+        attachments: [],
+        mentionedUserIds: []
+      });
+    } finally {
+      console.timeEnd(replyTimingLabel);
+    }
 
     pin.replyCount = (pin.replyCount ?? 0) + 1;
     if (pin.stats) {
@@ -1491,9 +1514,16 @@ router.get('/:pinId/replies', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Replies unavailable.' });
     }
 
-    const replies = await Reply.find({ pinId })
-      .sort({ createdAt: -1, updatedAt: -1, _id: -1 })
-      .populate({ path: 'authorId', select: USER_SUMMARY_PROJECTION });
+    const repliesTimingLabel = `pins:replies:${pinId}:${Date.now()}`;
+    let replies;
+    console.time(repliesTimingLabel);
+    try {
+      replies = await Reply.find({ pinId })
+        .sort({ createdAt: -1, updatedAt: -1, _id: -1 })
+        .populate({ path: 'authorId', select: USER_SUMMARY_PROJECTION });
+    } finally {
+      console.timeEnd(repliesTimingLabel);
+    }
 
     const filteredReplies = replies.filter((reply) => {
       const author = reply.authorId;

@@ -1,4 +1,5 @@
 const AuditLog = require('../models/AuditLog');
+const { logIntegration } = require('../utils/devLogger');
 
 async function recordAuditEntry({ actorId, targetId, action, metadata = {}, context = 'moderation' }) {
   try {
@@ -11,6 +12,7 @@ async function recordAuditEntry({ actorId, targetId, action, metadata = {}, cont
     });
   } catch (error) {
     console.error('Failed to record audit entry', { action, error });
+    logIntegration(`audit:${action}`, error);
   }
 }
 

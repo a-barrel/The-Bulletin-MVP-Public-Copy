@@ -1,4 +1,5 @@
 const runtimeConfig = require('../config/runtime');
+const { logIntegration } = require('../utils/devLogger');
 
 let cachedFetch = null;
 
@@ -132,6 +133,7 @@ async function searchGifAttachments(query, { limit = 12 } = {}) {
     };
   } catch (error) {
     console.error('Failed to fetch Tenor GIF:', error);
+    logIntegration('tenor:search', error);
     return { ok: false, reason: 'unexpected-error', message: error.message };
   }
 }

@@ -1,6 +1,6 @@
 const admin = require('firebase-admin');
-const runtime = require('../config/runtime');
 const { ensureUserForFirebaseAccount } = require('../services/firebaseUserSync');
+const { logIntegration } = require('../utils/devLogger');
 
 module.exports = async function verifyToken(req, res, next) {
   const authorizationHeader = req.headers.authorization;
@@ -39,12 +39,14 @@ module.exports = async function verifyToken(req, res, next) {
       await ensureUserForFirebaseAccount(decodedToken);
     } catch (error) {
       console.error('Failed to sync Firebase user with MongoDB', error);
+      logIntegration('firebase:sync-user', error);
       return res.status(500).json({ message: 'Failed to sync Firebase user' });
     }
 
     next();
   } catch (error) {
     console.error('Error verifying token:', error);
+    logIntegration('firebase:verify-token', error);
     res.status(401).json({ message: 'Invalid token' });
   }
 };

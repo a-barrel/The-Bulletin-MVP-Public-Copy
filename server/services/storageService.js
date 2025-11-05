@@ -2,6 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const admin = require('firebase-admin');
 const runtime = require('../config/runtime');
+const { logIntegration } = require('../utils/devLogger');
 
 const fsPromises = fs.promises;
 
@@ -24,6 +25,7 @@ const resolveBucket = () => {
     return admin.storage().bucket(configured);
   } catch (error) {
     console.error('Failed to resolve Firebase Storage bucket:', error);
+    logIntegration('firebase-storage:resolve-bucket', error);
     return null;
   }
 };

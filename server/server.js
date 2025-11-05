@@ -10,6 +10,7 @@ const fs = require('fs');
 dotenv.config();
 
 const runtime = require('./config/runtime');
+const { logLine, logIntegration } = require('./utils/devLogger');
 
 console.log(`Pinpoint server running in ${runtime.mode} mode`);
 
@@ -59,6 +60,21 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json());
+app.use((req, res, next) => {
+  if (!runtime.isOffline) {
+    return next();
+  }
+  const start = process.hrtime.bigint();
+  res.on('finish', () => {
+    if (res.statusCode >= 400) {
+      const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+      const message = `${res.statusCode} ${req.method} ${req.originalUrl} ${durationMs.toFixed(2)}ms`;
+      console.warn(`[http-error] ${message}`);
+      logLine('http-errors', message);
+    }
+  });
+  next();
+});
 
 const uploadsDir = path.join(__dirname, 'uploads');
 const imagesDir = path.join(uploadsDir, 'images');
@@ -103,6 +119,7 @@ mongoose
       }
     } catch (error) {
       console.error('Failed to synchronize Firebase users with MongoDB:', error);
+      logIntegration('firebase:sync-all', error);
     }
 
     startUpdateScheduler();
@@ -137,6 +154,32 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => {
+const serverInstance = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+});
+
+const logFatal = (label, error) => {
+  const message = `${label}: ${error instanceof Error ? error.stack || error.message : String(error)}`;
+  console.error(message);
+  logLine('runtime-errors', message);
+};
+
+const shutdown = () => {
+  if (serverInstance) {
+    serverInstance.close(() => {
+      process.exit(1);
+    });
+  } else {
+    process.exit(1);
+  }
+};
+
+process.on('unhandledRejection', (reason) => {
+  logFatal('unhandledRejection', reason);
+  shutdown();
+});
+
+process.on('uncaughtException', (error) => {
+  logFatal('uncaughtException', error);
+  shutdown();
 });

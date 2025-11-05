@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const { broadcastBadgeEarned } = require('./updateFanoutService');
+const { logIntegration } = require('../utils/devLogger');
 
 const BADGE_DEFINITIONS = [
   {
@@ -85,6 +86,7 @@ async function grantBadge({ userId, badgeId, sourceUserId } = {}) {
       });
     } catch (error) {
       console.error('Failed to broadcast badge earned update:', error);
+      logIntegration('badge:fanout', error);
     }
   }
 

@@ -44,10 +44,18 @@ function ChatComposer({
     inputRef
   };
 
-  const previewActive = Boolean(isGifPreviewLoading || gifPreview || gifPreviewError);
+  const hasPendingPreview = Boolean(gifPreview || gifPreviewError);
+  const previewActive = Boolean(isGifPreviewLoading) || hasPendingPreview;
   const effectiveSendDisabled = sendDisabled || previewActive;
-  const previewAttachment = gifPreview?.attachment;
-  const previewHasMultipleOptions = (gifPreview?.optionsCount || 0) > 1;
+  const previewOptions = Array.isArray(gifPreview?.options) ? gifPreview.options : [];
+  const previewSelectedIndex =
+    typeof gifPreview?.selectedIndex === 'number' && gifPreview.selectedIndex >= 0
+      ? gifPreview.selectedIndex
+      : 0;
+  const previewAttachment =
+    gifPreview?.attachment ??
+    (previewOptions.length > 0 ? previewOptions[previewSelectedIndex]?.attachment : undefined);
+  const previewHasMultipleOptions = previewOptions.length > 1;
 
   const handleConfirmClick = (event) => {
     event.preventDefault();

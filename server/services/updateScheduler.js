@@ -1,5 +1,6 @@
 const Pin = require('../models/Pin');
 const { broadcastEventStartingSoon, broadcastDiscussionExpiringSoon } = require('./updateFanoutService');
+const { logIntegration } = require('../utils/devLogger');
 
 const INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const EVENT_LEAD_MS = 2 * 60 * 60 * 1000;
@@ -77,6 +78,7 @@ async function runSweep() {
     await sweepDiscussions(now);
   } catch (error) {
     console.error('Update scheduler run failed', error);
+    logIntegration('update-scheduler', error);
   } finally {
     isRunning = false;
   }

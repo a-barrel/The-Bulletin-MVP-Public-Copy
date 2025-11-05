@@ -162,7 +162,7 @@
   justify-content: space-between;
   gap: 4px;
   padding: 8px 12px;
-  overflow-y: hidden;  
+  overflow: visible;
   background: #CDAEF2;
   border-top: 1px solid #ddd;
   margin-bottom: -2px;
