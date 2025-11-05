@@ -802,12 +802,25 @@ function ProfilePage() {
 
   return (
     <div className="profile-page-container">
+      <div className="back-nav-bar profile-back-nav">
       <BackButton 
         className="profile-back-nav"
         buttonClassName="back-button"
         ariaLabel="Go back to previous page"
         centerText="Profile"
       />
+      {canEditProfile && !isEditing && (
+                <Button
+                  variant="contained"
+                  onClick={handleBeginEditing}
+                  disabled={!effectiveUser || isFetchingProfile}
+                  sx={{ ml: 'auto' }}
+                >
+                  Edit profile
+                </Button>
+      )}
+      </div>
+
       <div className="profile-page-frame">
         <Box
           component="img"
@@ -1080,13 +1093,7 @@ function ProfilePage() {
                 </Stack>
               ) : (
                 <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                  <Button
-                    variant="contained"
-                    onClick={handleBeginEditing}
-                    disabled={!effectiveUser || isFetchingProfile}
-                  >
-                    Edit profile
-                  </Button>
+
                 </Box>
               )}
             </Stack>
@@ -1098,7 +1105,6 @@ function ProfilePage() {
               <Stack spacing={3}>
                 <Section
                   title="Bio"
-                  description="Everything they want you to know right now."
                 >
                   {bioText ? (
                     <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
@@ -1113,7 +1119,6 @@ function ProfilePage() {
 
                 <Section
                   title="Badges & achievements"
-                  description="Recognition earned by this community member."
                 >
                   {badgeList.length ? (
                     <Stack direction="row" flexWrap="wrap" gap={1.5}>
