@@ -8,6 +8,7 @@ import Button from '@mui/material/Button';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import HomeIcon from '@mui/icons-material/Home';
+import "./NotFoundPage.css";
 import { routes } from '../routes';
 
 function NotFoundPage({ defaultPath = routes.auth.login, defaultLabel = 'Return to safety' }) {
@@ -27,32 +28,10 @@ function NotFoundPage({ defaultPath = routes.auth.login, defaultLabel = 'Return 
   }, [defaultPath, navigate]);
 
   return (
-    <Box
-      component="section"
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        px: 2,
-        py: 6
-      }}
-    >
-      <Paper
-        elevation={6}
-        sx={{
-          maxWidth: 480,
-          width: '100%',
-          borderRadius: 4,
-          p: 4,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 3,
-          textAlign: 'center'
-        }}
-      >
+    <Box component="section" className="notfound-container">
+      <Paper className="notfound-card">
         <Stack spacing={1.5} alignItems="center">
-          <WarningAmberIcon color="warning" sx={{ fontSize: 48 }} />
+          <WarningAmberIcon color="warning" sx={{ fontSize: 100 }} />
           <Typography variant="h4" component="h1">
             Page Not Found
           </Typography>
@@ -61,25 +40,18 @@ function NotFoundPage({ defaultPath = routes.auth.login, defaultLabel = 'Return 
             moved, been renamed, or is temporarily unavailable.
           </Typography>
         </Stack>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} justifyContent="center">
-          <Button
-            variant="outlined"
-            startIcon={<ArrowBackIcon />}
-            onClick={handleGoBack}
-            fullWidth
-          >
-            Go back
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<HomeIcon />}
-            onClick={handleGoHome}
-            fullWidth
-          >
-            {defaultLabel}
-          </Button>
-        </Stack>
+
+        <div className="notfound-buttons">
+          <button className="btn-back" onClick={handleGoBack}>
+            <ArrowBackIcon style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+            Go Back
+          </button>
+
+          <button className="btn-map" onClick={handleGoHome}>
+            <HomeIcon style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+            Go to Map
+          </button>
+        </div>
       </Paper>
     </Box>
   );
