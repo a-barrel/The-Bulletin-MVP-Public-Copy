@@ -14,6 +14,7 @@ const useFriendsTools = () => {
     refresh,
     isLoading,
     status,
+    hasAccess,
     sendFriendRequest,
     requestStatus,
     respondToRequest,
@@ -103,7 +104,8 @@ const useFriendsTools = () => {
     respondToRequestQueue: respondToRequest,
     queueStatus,
     removeFriend,
-    isUpdatingQueue: isProcessing
+    isUpdatingQueue: isProcessing,
+    hasAccess
   };
 };
 

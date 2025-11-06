@@ -42,7 +42,8 @@ const DirectMessagesTab = () => {
     isSearching,
     searchStatus,
     setComposerStatus,
-    setNewThreadStatus
+    setNewThreadStatus,
+    hasAccess
   } = useDirectMessagesTools();
 
   const threadListAlerts = [];
@@ -81,6 +82,29 @@ const DirectMessagesTab = () => {
       severity: searchStatus.type,
       content: searchStatus.message
     });
+  }
+
+  if (hasAccess === false) {
+    return (
+      <Stack spacing={3}>
+        <DebugPanel
+          title="Direct Message Tools"
+          description="Administrative messaging tools are limited to elevated roles when running against the hosted backend."
+          alerts={[
+            {
+              severity: 'warning',
+              content:
+                'Friend management privileges required. Contact an administrator to be added to the allowlist or continue in offline mode.'
+            }
+          ]}
+        >
+          <Typography variant="body2" color="text.secondary">
+            The service responded with HTTP 403, so this tab is disabled. Production deployments reserve
+            direct-message introspection and mutation for moderator-only accounts to protect member data.
+          </Typography>
+        </DebugPanel>
+      </Stack>
+    );
   }
 
   return (

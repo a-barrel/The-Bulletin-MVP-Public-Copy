@@ -37,7 +37,8 @@ const FriendsTab = () => {
     respondToRequestQueue,
     removeFriend,
     queueStatus,
-    isUpdatingQueue
+    isUpdatingQueue,
+    hasAccess
   } = useFriendsTools();
 
   const overviewAlerts = [];
@@ -70,6 +71,29 @@ const FriendsTab = () => {
       severity: queueStatus.type,
       content: queueStatus.message
     });
+  }
+
+  if (hasAccess === false) {
+    return (
+      <Stack spacing={3}>
+        <DebugPanel
+          title="Friends Admin Tools"
+          description="These controls are restricted to friend-management roles when running online."
+          alerts={[
+            {
+              severity: 'warning',
+              content:
+                'Friend management privileges required. Ask an administrator to grant access or continue using the offline sandbox.'
+            }
+          ]}
+        >
+          <Typography variant="body2" color="text.secondary">
+            The server rejected the latest request with HTTP 403. Debug friend tooling remains available
+            when running locally (offline mode) or once your account is placed on the friend-admin allowlist.
+          </Typography>
+        </DebugPanel>
+      </Stack>
+    );
   }
 
   return (

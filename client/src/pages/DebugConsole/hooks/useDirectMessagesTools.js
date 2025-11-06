@@ -18,6 +18,7 @@ const useDirectMessagesTools = () => {
     refreshThreads,
     isLoadingThreads,
     threadsStatus,
+    hasAccess,
     selectedThreadId,
     selectThread,
     threadDetail,
@@ -181,7 +182,8 @@ const useDirectMessagesTools = () => {
     isSearching,
     searchStatus,
     setComposerStatus: resetSendStatus,
-    setNewThreadStatus: resetCreateStatus
+    setNewThreadStatus: resetCreateStatus,
+    hasAccess
   };
 };
 
