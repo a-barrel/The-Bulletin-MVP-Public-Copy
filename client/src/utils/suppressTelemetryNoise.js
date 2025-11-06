@@ -19,7 +19,7 @@ const shouldBlock = (input) => {
   return BLOCKED_HOSTS.some((host) => parsed.hostname.includes(host));
 };
 
-const noopResponse = new Response('', {
+const noopResponse = new Response(null, {
   status: 204,
   statusText: 'suppressed by Pinpoint telemetry guard',
   headers: {
