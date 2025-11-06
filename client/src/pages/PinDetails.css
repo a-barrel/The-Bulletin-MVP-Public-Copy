@@ -35,6 +35,7 @@
 
 .pin-details .header h2 {
     margin: 0;
+    color: black;
 }
 
 .pin-details .header.event-header {
@@ -59,6 +60,7 @@
 }
 
 .pin-details .back-arrow {
+    color: #5d3889;
     font-size: 30px;
 }
 
@@ -134,6 +136,7 @@
     justify-content: center;
     color: inherit;
     transition: transform 150ms ease, filter 150ms ease;
+    color: #5d3889;
 }
 
 .pin-details .share-button:hover {
@@ -163,7 +166,7 @@
 
 .pin-details .bookmark-icon {
     font-size: 30px;
-    color: #1c1c1c;
+    color: #5d3889;
     transition: color 150ms ease, transform 150ms ease;
 }
 
@@ -428,17 +431,17 @@
 .pin-details .post-location {
     display: flex;
     align-items: center;
-    color: #000000;
+    color: #5d3889;
     font-weight: bold;
     width: 100%;
 }
 
-.pin-details .post-location.event-location .location-text {
+.pin-details .post-location .event-text {
   background-color: #CDAEF2;
   color: #5d3889; 
 }
 
-.pin-details .post-location.discussion-location .location-text {
+.pin-details .post-location .discussion-text {
   background-color: #3EB8F0;
   color: #003f5c; 
 }
@@ -476,12 +479,12 @@
     width: 100%;
 }
 
-.pin-details .post-occurance.event-occurance .occurance-text {
+.pin-details .post-occurance .event-text {
   background-color: #CDAEF2;
   color: #5d3889;
 }
 
-.pin-details .post-occurance.discussion-occurance .occurance-text {
+.pin-details .post-occurance .discussion-text {
   background-color: #3EB8F0;
   color: #003f5c;
 }
@@ -489,15 +492,14 @@
 .pin-details .calendar-icon {
     font-size: 40px;
     margin-right: 0.5rem;
-    color: #5d3889;
 }
 
 .pin-details .calendar-icon.event-icon {
-  color: #5d3889;
+  filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
 }
 
 .pin-details .calendar-icon.discussion-icon {
-  color: #0b4a6e;
+  filter: brightness(0) saturate(100%) invert(45%) sepia(55%) saturate(2100%) hue-rotate(160deg) brightness(95%) contrast(85%);
 }
 
 .pin-details .occurance-text {
@@ -506,6 +508,7 @@
     border: 1px solid black;
     border-radius: 8px;
     flex: 1;
+    color: #5d3889;
 }
 
 /* post-attendance */
@@ -519,12 +522,12 @@
     flex-wrap: wrap;
 }
 
-.pin-details .post-attendance.event-attendance .attendance-text {
+.pin-details .post-attendance .event-text {
   background-color: #CDAEF2;
   color: #5d3889;
 }
 
-.pin-details .post-attendance.discussion-attendance .attendance-text {
+.pin-details .post-attendance .discussion-text {
   background-color: #3EB8F0;
   color: #003f5c;
 }
@@ -532,15 +535,14 @@
 .pin-details .attendance-icon {
     font-size: 40px;
     margin-right: 0.5rem;
-    color: #5d3889;
 }
 
 .pin-details .attendance-icon.event-icon {
-  color: #5d3889;
+    filter: brightness(0) saturate(100%) invert(27%) sepia(11%) saturate(4996%) hue-rotate(232deg) brightness(90%) contrast(92%);
 }
 
 .pin-details .attendance-icon.discussion-icon {
-  color: #0b4a6e;
+  filter: brightness(0) saturate(100%) invert(45%) sepia(55%) saturate(2100%) hue-rotate(160deg) brightness(95%) contrast(85%);
 }
 
 .pin-details .attendance-text {
@@ -864,22 +866,14 @@
     width: 100%;
     box-sizing: border-box;
     border-top: 1px solid black;
-    color: #5d3889;
+    color: black;
     font-weight: bold;
     line-height: 0.80;
     gap: 0.5rem;
 }
 
-.pin-details.discussion-mode .comments-header {
-    color: #0b4a6e;
-}
-
 .pin-details .comment-icon {
     font-size: 25px;
-}
-
-.pin-details.discussion-mode .comment-icon {
-    color: #0b4a6e;
 }
 
 /* comments-section */
