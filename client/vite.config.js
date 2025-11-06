@@ -19,10 +19,6 @@ const manualChunks = (id) => {
     return 'firebase'
   }
 
-  if (id.includes('leaflet') || id.includes('react-leaflet')) {
-    return 'leaflet'
-  }
-
   if (
     id.includes('@mui') ||
     id.includes('@emotion') ||
@@ -39,7 +35,7 @@ const manualChunks = (id) => {
     return 'react-dom'
   }
 
-  if (id.includes('react')) {
+  if (id.includes('/node_modules/react/')) {
     return 'react'
   }
 
