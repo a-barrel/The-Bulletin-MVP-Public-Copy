@@ -38,6 +38,7 @@ function LoginPage() {
   const [message, setMessage] = useState(null);
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [isAuthPopupActive, setIsAuthPopupActive] = useState(false);
 
   const validatePassword = (value) => {
     if (!value) return "Please enter your password.";
@@ -98,39 +99,55 @@ function LoginPage() {
     }
   };
 
+  const withPopupGuard = async (handler) => {
+    if (isAuthPopupActive) {
+      return;
+    }
+    setIsAuthPopupActive(true);
+    try {
+      await handler();
+    } finally {
+      setIsAuthPopupActive(false);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
-      setError(null);
-      try {
-        const provider = new GoogleAuthProvider();
-        const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
-        await applyAuthPersistence(auth, persistenceMode);
-        await signInWithPopup(auth, provider);
-        navigate(routes.map.base);
-      } catch (error) {
-        setError(error.message);
+    setError(null);
+    await withPopupGuard(async () => {
+      const provider = new GoogleAuthProvider();
+      const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
+      await applyAuthPersistence(auth, persistenceMode);
+      await signInWithPopup(auth, provider);
+      navigate(routes.map.base);
+    }).catch((popupError) => {
+      if (popupError?.message) {
+        setError(popupError.message);
+      } else {
+        setError('Google sign-in failed. Please try again.');
       }
-    };
+    });
+  };
 
   const handleAppleSignIn = async () => {
-      setError(null);
-      try {
-        const provider = new OAuthProvider('apple.com');
-        const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
-        await applyAuthPersistence(auth, persistenceMode);
-        await signInWithPopup(auth, provider);
-        navigate(routes.map.base);
-      } catch (error) {
-        if (error?.code === 'auth/operation-not-supported-in-this-environment') {
-          setError('Apple sign-in is not available in this environment.');
-        } else if (error?.code === 'auth/account-exists-with-different-credential') {
-          setError('This email is linked to a different sign-in method. Try logging in with the original provider.');
-        } else if (error?.message) {
-          setError(error.message);
-        } else {
-          setError('Apple sign-in failed. Please try again.');
-        }
+    setError(null);
+    await withPopupGuard(async () => {
+      const provider = new OAuthProvider('apple.com');
+      const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
+      await applyAuthPersistence(auth, persistenceMode);
+      await signInWithPopup(auth, provider);
+      navigate(routes.map.base);
+    }).catch((signupError) => {
+      if (signupError?.code === 'auth/operation-not-supported-in-this-environment') {
+        setError('Apple sign-in is not available in this environment.');
+      } else if (signupError?.code === 'auth/account-exists-with-different-credential') {
+        setError('This email is linked to a different sign-in method. Try logging in with the original provider.');
+      } else if (signupError?.message) {
+        setError(signupError.message);
+      } else {
+        setError('Apple sign-in failed. Please try again.');
       }
-    };
+    });
+  };
 
   const alerts = [];
   if (error) {
@@ -213,6 +230,7 @@ function LoginPage() {
           type="button"
           className="login-page-google-sign-in-btn" 
           onClick={handleGoogleSignIn}
+          disabled={isAuthPopupActive}
         >
           <GoogleIcon className="google-icon" fontSize="small" />
           Sign in with Google
@@ -222,6 +240,7 @@ function LoginPage() {
           type="button"
           className="login-page-apple-sign-in-btn"
           onClick={handleAppleSignIn}
+          disabled={isAuthPopupActive}
         >
           <AppleIcon className="apple-icon" fontSize="small" />
           Sign in with Apple
