@@ -198,7 +198,6 @@ function PinDetails() {
     creatorProfileLink,
     creatorAvatarUrl,
     isLoading,
-    error,
     bookmarked,
     isUpdatingBookmark,
     bookmarkError,
@@ -584,14 +583,6 @@ function PinDetails() {
             {createdAtLabel && updatedAtLabel ? ' | ' : null}
             {updatedAtLabel ? `Updated ${updatedAtLabel}` : null}
           </span>
-        ) : null}
-      </div>
-
-      <div className="status-container">
-        {isLoading ? <div className="status-message">Loading pin details...</div> : null}
-        {error ? <div className="status-message error">{error}</div> : null}
-        {!pin && !isLoading && !error && pinId ? (
-          <div className="status-message">No pin found for ID &ldquo;{pinId}&rdquo;.</div>
         ) : null}
       </div>
 
