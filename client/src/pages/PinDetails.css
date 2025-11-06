@@ -633,7 +633,7 @@
 
 .pin-details .reply-overlay-content {
     position: relative;
-    background-color: #141821;
+    background-color: #9B5DE5;
     border-radius: 16px;
     width: min(480px, 90vw);
     max-height: 80vh;
@@ -659,8 +659,8 @@
 }
 
 .pin-details .reply-overlay-close {
-    background: none;
-    border: 1px solid #9B5DE5;
+    background: #5d3889;
+    border: 1px solid black;
     border-radius: 6px;
     padding: 0.35rem 0.75rem;
     color: #f4f0fc;
@@ -670,7 +670,7 @@
 }
 
 .pin-details .reply-overlay-close:hover:not(:disabled) {
-    background-color: #9B5DE5;
+    background-color: #F15BB5;
     color: #ffffff;
 }
 
@@ -697,8 +697,8 @@
     resize: vertical;
     border-radius: 8px;
     border: 1px solid #2b2c3f;
-    background-color: #1c2231;
-    color: #f4f0fc;
+    background-color: #CDAEF2;
+    color: black`;
     padding: 0.75rem;
     font-size: 0.95rem;
     outline: none;
@@ -727,7 +727,7 @@
 }
 
 .pin-details .reply-overlay-submit {
-    background-color: #9B5DE5;
+    background-color: #5d3889;
     border: 1px solid black;
     border-radius: 8px;
     padding: 0.45rem 1rem;
@@ -738,7 +738,7 @@
 }
 
 .pin-details .reply-overlay-submit:hover:not(:disabled) {
-    background-color: #7f47c3;
+    background-color: #f15bb5;
     transform: translateY(-1px);
 }
 
@@ -767,7 +767,7 @@
 
 .pin-details .attendee-overlay-content {
     position: relative;
-    background-color: #141821;
+    background-color: #9B5DE5;
     border-radius: 16px;
     width: min(480px, 90vw);
     max-height: 80vh;
@@ -793,8 +793,8 @@
 }
 
 .pin-details .attendee-overlay-close {
-    background: none;
-    border: 1px solid #9B5DE5;
+    background: #5d3889;
+    border: 1px solid black;
     border-radius: 6px;
     padding: 0.35rem 0.75rem;
     color: #f4f0fc;
@@ -804,7 +804,7 @@
 }
 
 .pin-details .attendee-overlay-close:hover {
-    background-color: #9B5DE5;
+    background-color: #F15BB5;
     color: #ffffff;
 }
 
@@ -830,17 +830,18 @@
     align-items: center;
     gap: 0.75rem;
     padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #2b2c3f;
     border-radius: 10px;
-    border: 1px solid #2b2c3f;
-    background-color: #1c2231;
+    background-color: none;
     color: inherit;
     text-decoration: none;
     transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .pin-details .attendee-list-item:hover {
-    background-color: #242b3d;
+    background-color: #CDAEF2;
     border-color: #9B5DE5;
+    border-radius: 10px;
 }
 
 .pin-details .attendee-avatar {
