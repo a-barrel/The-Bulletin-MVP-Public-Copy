@@ -39,10 +39,6 @@ const manualChunks = (id) => {
     return 'react-dom'
   }
 
-  if (id.includes('react')) {
-    return 'react'
-  }
-
   return 'vendor'
 }
 
