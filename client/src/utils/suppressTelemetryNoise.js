@@ -6,7 +6,7 @@ const parseUrl = (input) => {
       return new URL(input.url);
     }
     return new URL(String(input), window.location.origin);
-  } catch (_) {
+  } catch {
     return null;
   }
 };
@@ -59,7 +59,7 @@ export const installTelemetryGuards = () => {
 
   if (typeof window.XMLHttpRequest !== 'undefined') {
     const OriginalXHR = window.XMLHttpRequest;
-    function GuardedXHR() {
+    const GuardedXHR = function guardedConstructor() {
       const xhr = new OriginalXHR();
       let targetUrl = null;
       const originalOpen = xhr.open.bind(xhr);
@@ -85,44 +85,46 @@ export const installTelemetryGuards = () => {
       };
 
       return xhr;
-    }
+    };
     GuardedXHR.prototype = OriginalXHR.prototype;
     window.XMLHttpRequest = GuardedXHR;
   }
 
   if (typeof Element !== 'undefined' && typeof Element.prototype.setCapture === 'function') {
-    let lastPointerId = null;
-    window.addEventListener(
-      'pointerdown',
-      (event) => {
-        lastPointerId = event.pointerId;
-      },
-      true
-    );
+    (function attachPointerFallback() {
+      let lastPointerId = null;
+      window.addEventListener(
+        'pointerdown',
+        (event) => {
+          lastPointerId = event.pointerId;
+        },
+        true
+      );
 
-    Element.prototype.setCapture = function setCapture() {
-      if (typeof this.setPointerCapture === 'function' && lastPointerId !== null) {
-        try {
-          this.setPointerCapture(lastPointerId);
-          return;
-        } catch (_) {
-          // fall back to no-op
-        }
-      }
-    };
-
-    if (typeof Element.prototype.releaseCapture === 'function') {
-      Element.prototype.releaseCapture = function releaseCapture() {
-        if (typeof this.releasePointerCapture === 'function' && lastPointerId !== null) {
+      Element.prototype.setCapture = function setCapture() {
+        if (typeof this.setPointerCapture === 'function' && lastPointerId !== null) {
           try {
-            this.releasePointerCapture(lastPointerId);
+            this.setPointerCapture(lastPointerId);
             return;
-          } catch (_) {
+          } catch {
             // fall back to no-op
           }
         }
       };
-    }
+
+      if (typeof Element.prototype.releaseCapture === 'function') {
+        Element.prototype.releaseCapture = function releaseCapture() {
+          if (typeof this.releasePointerCapture === 'function' && lastPointerId !== null) {
+            try {
+              this.releasePointerCapture(lastPointerId);
+              return;
+            } catch {
+              // fall back to no-op
+            }
+          }
+        };
+      }
+    })();
   }
 };
 

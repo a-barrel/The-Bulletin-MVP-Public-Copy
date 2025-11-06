@@ -84,13 +84,14 @@ describe('mongoDataApi.fetchReplies', () => {
 
     expect(global.fetch).toHaveBeenCalledWith(
       'https://api.example.com/api/pins/pin-123/replies',
-      {
+      expect.objectContaining({
         method: 'GET',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         }
-      }
+      })
     );
     expect(result).toEqual([{ _id: 'reply-1' }]);
   });
