@@ -29,7 +29,7 @@
 .friend-header-bar {
   position: fixed;
   top: 0;
-  z-index: 30;
+  z-index: 50;
   background: #d1b4f5;
   width: 100vw;
   box-sizing: border-box;
@@ -108,10 +108,9 @@
 
 /* Tabs */
 .friends-tabs-container {
-  font-family: 'Urbanist', sans-serif !important;
   position: fixed;
   width: 100vw;
-  top: calc(var(--header-h) - 8px);
+  top: calc(var(--header-h) + 2px);
   display: flex;
   justify-content: space-around;
   background-color: white;
@@ -122,6 +121,7 @@
 
 .friend-tab {
   font-family: 'Urbanist', sans-serif !important;
+  text-transform: none !important; 
   flex: 1;
   background: none;
   border: none;
