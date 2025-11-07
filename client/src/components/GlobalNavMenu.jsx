@@ -386,13 +386,13 @@ export default function GlobalNavMenu({
 
       if (!socialNotifications.friendAccessDenied && !existingKeys.has('friend-requests')) {
         filtered.push({
-          key: 'friend-requests',
-          label: 'Friend requests',
+          key: 'friend-menu',
+          label: 'Friends',
           description:
             socialNotifications.friendRequestCount > 0
               ? `${socialNotifications.friendRequestCount} pending`
               : 'No pending invites',
-          to: routes.updates.base,
+          to: routes.friends.base,
           Icon: GroupAddIcon,
           badgeCount: socialNotifications.friendRequestCount
         });

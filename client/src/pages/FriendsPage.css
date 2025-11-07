@@ -1,0 +1,270 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap');
+
+* {
+  font-family: "Urbanist", sans-serif;
+}
+
+/* ===== Outer Shell ===== */
+.friend-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+
+.friend-frame {
+  --header-h: 72px;
+  width: 100vw;
+  height: 100vh;
+  background: white;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* ===== Header (purple) ===== */
+.friend-header-bar {
+  position: fixed;
+  top: 0;
+  z-index: 30;
+  background: #d1b4f5;
+  width: 100vw;
+  box-sizing: border-box;
+  min-height: var(--header-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid #000;
+}
+
+.friend-header-title {
+  color: #5D3889;
+  font-size: 2rem;
+  font-weight: 500;
+  text-align: center;
+  flex: 1;
+}
+
+.friend-header-back-btn {
+  font-family: 'Urbanist', sans-serif !important;
+  color: #4c2670 !important;
+  text-transform: none;
+  font-weight: 600 !important;
+  font-size: 0.95rem;
+  width: 32px !important;
+  height: 32px !important;
+}
+
+.friend-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-right: 1rem;
+}
+
+.chat-room-chip {
+  cursor: pointer;
+}
+
+.chat-room-chip.MuiChip-root {
+  background: rgba(255, 255, 255, 0.45);
+  border-color: rgba(45, 0, 104, 0.3);
+  color: #2d0068;
+  font-weight: 600;
+}
+
+.chat-room-chip .MuiChip-icon {
+  color: inherit;
+}
+
+.chat-friends-btn.MuiButton-root {
+  text-transform: none;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.25rem 0.9rem;
+  border-color: rgba(45, 0, 104, 0.3);
+  color: #2d0068;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.chat-friends-btn.MuiButton-root:hover {
+  background: rgba(255, 255, 255, 0.65);
+  border-color: rgba(45, 0, 104, 0.5);
+}
+
+.chat-friends-btn.MuiButton-contained {
+  background: #9B5DE5;
+  border-color: #9B5DE5;
+  color: #fff;
+}
+
+.chat-friends-btn.MuiButton-contained:hover {
+  background: #7f46c2;
+  border-color: #7f46c2;
+}
+
+/* Tabs */
+.friends-tabs-container {
+  font-family: 'Urbanist', sans-serif !important;
+  position: fixed;
+  width: 100vw;
+  top: calc(var(--header-h) - 8px);
+  display: flex;
+  justify-content: space-around;
+  background-color: white;
+  border-bottom: 2px solid rgb(194, 194, 194);
+  padding: 8px 0;
+  z-index: 40;
+}
+
+.friend-tab {
+  font-family: 'Urbanist', sans-serif !important;
+  flex: 1;
+  background: none;
+  border: none;
+  color: #6b5aa0;
+  gap: 6px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 6px 0;
+  transition: color 0.2s ease;
+}
+
+.friend-tab.active {
+  font-family: 'Urbanist', sans-serif !important;
+  color: black;
+  border-bottom: 4px solid #3EB8F0;
+  margin-bottom: -0.65rem;
+}
+
+.friend-request-badge {
+  font-family: 'Urbanist', sans-serif !important;
+  color: #ff736c;
+  border-radius: 120px;
+  padding: 0px 5px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.friend-requests-container {
+  top: 20rem !important;
+}
+
+.friends-list-field {
+  top: calc(var(--header-h) - 8px) !important;
+  background-color: #F5EFFD;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  width: 100vw;
+  height: 100%;
+  margin-top: 7.5rem;
+  margin-bottom: 0;
+  padding-bottom: calc(81px + env(safe-area-inset-bottom, 0));
+}
+
+.chat-scroll-to-bottom-btn {
+  width: 64px !important;
+  height: 64px !important;
+  right: 0.2rem;
+  z-index: 10;
+}
+
+.scroll-to-bottom-icon {
+  width: 48px !important;
+  height: 48px !important;
+  background-color: #9B5DE5;
+  color: white;
+  border-radius: 60px;
+}
+
+.chat-input-container {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0) + 82px);
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 8px 12px;
+  overflow: visible;
+  background: #CDAEF2;
+  border-top: 1px solid #ddd;
+  margin-bottom: -2px;
+  z-index: 5;
+  box-sizing: border-box;
+  transform: none;
+}
+
+.chat-page .bottom-nav-spacer {
+  display: none;
+  height: 0;
+}
+
+/* ====== Text Field Styling ====== */
+.chat-input {
+  flex: 1;
+}
+
+/* Target the inner textarea within the MUI TextField */
+.chat-input textarea {
+  resize: none;
+  overflow-y: auto;  
+  max-height: 10rem;     
+  transition: all 0.15s ease-in-out;
+}
+
+.chat-input .MuiOutlinedInput-root {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  margin-left: -0.25rem;
+  font-family:'Urbanist', sans-serif;
+  font-weight: 500;
+  border-radius: 45px;
+  background: white;
+  color: black;
+}
+
+/* Button to add an img (no visual) */
+.add-img-btn {
+  position: relative;
+  display: flex;
+  width: 48px;
+  height: 48px;
+  padding: 1rem;
+}
+
+/* Actual visual for add img button */
+.add-img-icon {
+  margin-left: -1rem;
+  height: 52px !important;
+  width: 52px !important;
+  color: #5D3889;
+}
+
+/* Button to send a message (no visual) */
+.send-message-btn {
+  position: relative;
+  bottom: 2px;
+  background-color: #9B5DE5;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-left: 0.25rem;
+}
+
+.send-message-icon {
+  width: 32px !important;
+  height: 32px !important;
+  color: white;
+}

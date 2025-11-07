@@ -24,6 +24,9 @@ export const routes = {
   settings: {
     base: '/settings'
   },
+  friends: {
+    base: '/friends'
+  },
   bookmarks: {
     base: '/bookmarks',
     collection: (collectionId: string | number) =>
