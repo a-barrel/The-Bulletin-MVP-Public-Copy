@@ -198,6 +198,7 @@ function PinDetails() {
     creatorProfileLink,
     creatorAvatarUrl,
     isLoading,
+    error,
     bookmarked,
     isUpdatingBookmark,
     bookmarkError,
@@ -232,6 +233,7 @@ function PinDetails() {
   } = usePinDetails({ pinId, location, isOffline });
 
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
+  const shouldShowStatusMessages = isLoading || error || (!pin && !isLoading && pinId);
   const bookmarkLocked = isOwnPin && bookmarked;
 
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
@@ -819,6 +821,16 @@ function PinDetails() {
             <AddCommentIcon className="create-comment-button" aria-hidden="true" />
           </button>
         </>
+      ) : null}
+
+      {shouldShowStatusMessages ? (
+        <div className="status-container status-container--footer">
+          {isLoading ? <div className="status-message">Loading pin details...</div> : null}
+          {error ? <div className="status-message error">{error}</div> : null}
+          {!pin && !isLoading && !error && pinId ? (
+            <div className="status-message">No pin found for ID &ldquo;{pinId}&rdquo;.</div>
+          ) : null}
+        </div>
       ) : null}
 
       {replyComposerOpen ? (
