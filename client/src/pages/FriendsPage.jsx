@@ -32,6 +32,8 @@ import {
   Tab,
   Snackbar
 } from '@mui/material';
+import InputAdornment from '@mui/material/InputAdornment';
+import SearchIcon from '@mui/icons-material/Search';
 import SmsIcon from '@mui/icons-material/Sms';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -393,39 +395,6 @@ function ChatPage() {
     }
   }, []);
 
-  const scrollMessagesToBottom = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior: 'smooth'
-    });
-  }, []);
-
-  useLayoutEffect(() => {
-    const timer = setTimeout(scrollMessagesToBottom, 100);
-    return () => clearTimeout(timer);
-  }, [selectedRoomId, location.pathname, scrollMessagesToBottom]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-    const handleScroll = () => {
-      const node = containerRef.current;
-      if (!node) {
-        return;
-      }
-      const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
-      setShowScrollButton(distanceFromBottom > 20);
-    };
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, []);
-
   useEffect(() => {
     const inputContainer = inputContainerRef.current;
     if (!inputContainer) {
@@ -465,9 +434,8 @@ function ChatPage() {
     if (!uniqueMessages.length) {
       return;
     }
-    const timer = setTimeout(scrollMessagesToBottom, 75);
     return () => clearTimeout(timer);
-  }, [channelTab, uniqueMessages.length, scrollMessagesToBottom]);
+  }, [channelTab, uniqueMessages.length]);
 
   useEffect(() => {
     if (isOffline || moderationHasAccess === false) {
@@ -1491,9 +1459,8 @@ function ChatPage() {
     if (!directMessageItems.length) {
       return;
     }
-    const timer = setTimeout(scrollMessagesToBottom, 75);
     return () => clearTimeout(timer);
-  }, [channelTab, directMessageItems.length, scrollMessagesToBottom]);
+  }, [channelTab, directMessageItems.length]);
 
   const handleSelectModerationAction = useCallback((actionType) => {
     setModerationForm((prev) => ({
@@ -1789,6 +1756,9 @@ function ChatPage() {
   };
 
   const renderFriendsList = ({ isOverlay = false } = {}) => {
+    const [friendSearchQuery, setFriendSearchQuery] = useState(''); 
+    const friends = Array.isArray(friendGraph?.friends) ? friendGraph.friends : [];
+
     if (friendHasAccess === false) {
       return (
         <Stack
@@ -1811,8 +1781,6 @@ function ChatPage() {
       );
     }
 
-    const friends = Array.isArray(friendGraph?.friends) ? friendGraph.friends : [];
-
     if (isLoadingFriends && friends.length === 0) {
       return (
         <Stack
@@ -1828,6 +1796,11 @@ function ChatPage() {
         </Stack>
       );
     }
+
+    const filteredFriends = friends.filter((friend) => {
+      const name = (friend.displayName || friend.username || '').toLowerCase();
+      return name.includes(friendSearchQuery.toLowerCase());
+    });
 
     return (
       <Box
@@ -1882,6 +1855,34 @@ function ChatPage() {
           </Tooltip>
         </Box>
 
+        <Box
+          sx={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
+            px: 2,
+            py: 1,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            backgroundColor: 'grey',
+          }}
+        >
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Search friends..."
+            value={friendSearchQuery}
+            onChange={(e) => setFriendSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon color="action" />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
+
         {friendStatus && friendStatus.message ? (
           <Box sx={{ px: 2, py: 1.5 }}>
             <Alert severity={friendStatus.type || 'error'}>{friendStatus.message}</Alert>
@@ -1908,9 +1909,16 @@ function ChatPage() {
           </Stack>
         ) : null}
 
-        {friends.length ? (
+        {!isLoadingFriends && friends.length > 0 && filteredFriends.length === 0 && (
+          <Typography variant="body2" align="center" sx={{ py: 4 }}>
+            No friends match your search.
+          </Typography>
+        )}
+
+        {/* Friend list */}
+        {filteredFriends.length ? (
           <List dense sx={{ flexGrow: 1, overflowY: 'auto', px: { xs: 1, sm: 2 } }}>
-            {friends.map((friend) => {
+            {filteredFriends.map((friend) => {
               const displayName = friend.displayName || friend.username || 'Friend';
               const secondaryLabel = friend.username ? `@${friend.username}` : '';
               const avatarSrc = resolveAvatarSrc(friend);
@@ -1929,8 +1937,7 @@ function ChatPage() {
                     position: 'relative',
                     transition: 'background-color 0.2s ease',
                     '&:hover': {
-                      backgroundColor: (theme) =>
-                        theme.palette.action.hover,
+                      backgroundColor: (theme) => theme.palette.action.hover,
                       '& .friend-actions': {
                         opacity: 1,
                         visibility: 'visible',
@@ -2020,12 +2027,12 @@ function ChatPage() {
                 </ListItem>
               );
             })}
-
           </List>
         ) : null}
       </Box>
     );
   };
+
 
   const handleRespondToFriendRequest = async (requestId, decision) => {
     if (!requestId || !decision || typeof socialNotifications.respondToFriendRequest !== 'function') {
@@ -2049,6 +2056,100 @@ function ChatPage() {
       setRespondingRequestId(null);
     }
   };
+
+  // 👇 compute these before return
+const friendsView = renderFriendsList();
+const friendRequestsView = canShowFriendRequests ? (
+  <Box
+    elevation={1}
+    sx={{
+      mt: 30,
+      mb: 2,
+      p: { xs: 2, md: 3 },
+      borderRadius: 3,
+      border: '1px solid',
+      borderColor: 'divider',
+      backgroundColor: 'grey'
+    }}
+  >
+    <Typography variant="h6" component="h2" gutterBottom>
+      Pending friend requests
+    </Typography>
+
+    {friendActionStatus ? (
+      <Alert severity={friendActionStatus.type} sx={{ mb: 2 }}>
+        {friendActionStatus.message}
+      </Alert>
+    ) : null}
+
+    {incomingRequests.length === 0 ? (
+      <Typography variant="body2" color="text.secondary">
+        All caught up! You have no pending friend requests.
+      </Typography>
+    ) : (
+      <Stack spacing={2} sx={{ mt: 2 }}>
+        {incomingRequests.map((request) => {
+          const requesterName =
+            request.requester?.displayName ||
+            request.requester?.username ||
+            request.requester?.id ||
+            'Unknown user';
+          const isUpdating = respondingRequestId === request.id;
+
+          return (
+            <Paper
+              key={request.id}
+              variant="outlined"
+              sx={{
+                p: 2,
+                borderRadius: 3,
+                backgroundColor: 'background.default'
+              }}
+            >
+              <Stack spacing={1}>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                  <Typography variant="subtitle1" fontWeight={600}>
+                    {requesterName}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {request.createdAt
+                      ? formatFriendlyTimestamp(request.createdAt)
+                      : null}
+                  </Typography>
+                </Stack>
+
+                {request.message ? (
+                  <Typography variant="body2" color="text.secondary">
+                    “{request.message}”
+                  </Typography>
+                ) : null}
+
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => handleRespondToFriendRequest(request.id, 'accept')}
+                    disabled={isUpdating}
+                  >
+                    {isUpdating ? 'Updating…' : 'Accept'}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="inherit"
+                    onClick={() => handleRespondToFriendRequest(request.id, 'decline')}
+                    disabled={isUpdating}
+                  >
+                    Decline
+                  </Button>
+                </Stack>
+              </Stack>
+            </Paper>
+          );
+        })}
+      </Stack>
+    )}
+  </Box>
+) : null;
 
   return (
     <>
@@ -2083,103 +2184,10 @@ function ChatPage() {
             ))}
           </Box>
 
-          {/* Show Friend Request paper on 'Friend Requests' tab */}
-          {selectedTab === 'Friend Requests' && canShowFriendRequests ? (
-            <Box
-              elevation={1}
-              sx={{
-                mt: 30,
-                mb: 2,
-                p: { xs: 2, md: 3 },
-                backgroundColor: "#CDAEF2",
-                borderRadius: 3,
-                border: '1px solid',
-                borderColor: 'divider'
-              }}
-            >
-              <Typography variant="h6" component="h2" color="black" gutterBottom>
-                Pending friend requests
-              </Typography>
-
-              {friendActionStatus ? (
-                <Alert severity={friendActionStatus.type} sx={{ mb: 2 }}>
-                  {friendActionStatus.message}
-                </Alert>
-              ) : null}
-
-              {incomingRequests.length === 0 ? (
-                <Typography variant="body2" color="black">
-                  All caught up! You have no pending friend requests.
-                </Typography>
-              ) : (
-                <Stack spacing={2} sx={{ mt: 2 }}>
-                  {incomingRequests.map((request) => {
-                    const requesterName =
-                      request.requester?.displayName ||
-                      request.requester?.username ||
-                      request.requester?.id ||
-                      'Unknown user';
-                    const isUpdating = respondingRequestId === request.id;
-
-                    return (
-                      <Paper
-                        key={request.id}
-                        variant="outlined"
-                        sx={{
-                          p: 2,
-                          borderRadius: 3,
-                          backgroundColor: 'background.default'
-                        }}
-                      >
-                        <Stack spacing={1}>
-                          <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                            <Typography variant="subtitle1" fontWeight={600}>
-                              {requesterName}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {request.createdAt
-                                ? formatFriendlyTimestamp(request.createdAt)
-                                : null}
-                            </Typography>
-                          </Stack>
-
-                          {request.message ? (
-                            <Typography variant="body2" color="text.secondary">
-                              “{request.message}”
-                            </Typography>
-                          ) : null}
-
-                          <Stack direction="row" spacing={1}>
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleRespondToFriendRequest(request.id, 'accept')}
-                              disabled={isUpdating}
-                            >
-                              {isUpdating ? 'Updating…' : 'Accept'}
-                            </Button>
-                            <Button
-                              variant="outlined"
-                              color="inherit"
-                              onClick={() => handleRespondToFriendRequest(request.id, 'decline')}
-                              disabled={isUpdating}
-                            >
-                              Decline
-                            </Button>
-                          </Stack>
-                        </Stack>
-                      </Paper>
-                    );
-                  })}
-                </Stack>
-              )}
-            </Box>
-          ) : null}
+          {selectedTab === 'Friend Requests' && friendRequestsView}
 
           <Box ref={containerRef} className="friends-list-field">
-            {selectedTab === 'Friends' && (
-              renderFriendsList()
-            )}
+            {selectedTab === 'Friends' && friendsView}
           </Box>
 
           <ReportContentDialog
