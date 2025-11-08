@@ -32,11 +32,14 @@ import {
   Tab,
   Snackbar
 } from '@mui/material';
+import FriendRequestIcon from '@mui/icons-material/PersonAddRounded'
 import InputAdornment from '@mui/material/InputAdornment';
 import SearchIcon from '@mui/icons-material/Search';
+import MessageFriend from '@mui/icons-material/ChatBubbleRounded';
+import RemoveFriend from '@mui/icons-material/PersonRemoveRounded'
+import ReportFriend from '@mui/icons-material/FlagRounded'
 import SmsIcon from '@mui/icons-material/Sms';
 import AddCommentIcon from '@mui/icons-material/AddComment';
-import RefreshIcon from '@mui/icons-material/Refresh';
 import RoomIcon from '@mui/icons-material/Room';
 import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
@@ -1201,8 +1204,8 @@ function ChatPage() {
   );
 
   const notificationsLabel =
-    unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
-  const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
+    incomingRequests.length > 0 ? `Notifications (${incomingRequests.length} unread)` : 'Notifications';
+  const displayBadge = incomingRequests.length > 0 ? (incomingRequests.length > 99 ? '99+' : String(incomingRequests.length)) : null;
 
   const canModerateMessages = !isOffline && moderationHasAccess !== false;
 
@@ -1804,79 +1807,58 @@ function ChatPage() {
 
     return (
       <Box
+        className="friends-list"
         sx={{
           flexGrow: 1,
           display: 'flex',
           flexDirection: 'column',
-          color: isOverlay ? 'inherit' : '#111'
+          color: isOverlay ? 'inherit' : '#111',
         }}
       >
         <Box
+          className="friends-list-header"
           sx={{
             px: 2,
             py: 1.5,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 2
           }}
         >
           <Stack direction="row" spacing={1} alignItems="center">
-            <Typography
-              variant="subtitle1"
-              fontWeight={700}
-              sx={!isOverlay ? { color: '#111' } : undefined}
-            >
-              Friends
+            <Typography className="friends-list-title">
+              Friends — {friends.length} 
             </Typography>
-            <Chip label={friends.length} size="small" color="primary" variant="outlined" />
           </Stack>
-          <Tooltip title="Refresh friends">
-            <span>
-              <IconButton
-                onClick={refreshFriendGraph}
-                disabled={isLoadingFriends || isProcessingFriendAction}
-                color="primary"
-                sx={{
-                  '&.Mui-disabled': {
-                    color: (theme) => theme.palette.action.disabled
-                  }
-                }}
-              >
-                {isLoadingFriends ? (
-                  <CircularProgress size={20} color="primary" />
-                ) : (
-                  <RefreshIcon fontSize="small" />
-                )}
-              </IconButton>
-            </span>
-          </Tooltip>
+
+          <FriendRequestIcon
+            className="friend-request-icon"
+            onClick={handleOpenFriendDialog}
+            disabled={isLoadingFriends || isProcessingFriendAction}
+          >
+            {displayBadge ? (
+              <span className="friend-request-icon-badge" aria-hidden="true">
+                {incomingRequests.length}
+              </span>
+            ) : null}
+          </FriendRequestIcon>
+                    
         </Box>
 
-        <Box
-          sx={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 10,
-            px: 2,
-            py: 1,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-            backgroundColor: 'grey',
-          }}
-        >
+        <Box className="friends-list-search-bar">
           <TextField
+            className="friends-list-search-bar-input-container"
             fullWidth
             size="small"
             placeholder="Search friends..."
             value={friendSearchQuery}
-            onChange={(e) => setFriendSearchQuery(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value.length <= 30) {
+                setFriendSearchQuery(value);
+              }
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon color="action" />
+                  <SearchIcon className="friends-search-icon" />
                 </InputAdornment>
               ),
             }}
@@ -1909,8 +1891,9 @@ function ChatPage() {
           </Stack>
         ) : null}
 
+        {/* Handling for if no names match the search query */}
         {!isLoadingFriends && friends.length > 0 && filteredFriends.length === 0 && (
-          <Typography variant="body2" align="center" sx={{ py: 4 }}>
+          <Typography className="friends-search-none-text">
             No friends match your search.
           </Typography>
         )}
@@ -1925,16 +1908,13 @@ function ChatPage() {
 
               return (
                 <ListItem
+                  className="friend-card"
                   key={friend.id}
-                  alignItems="center"
                   sx={{
                     py: 1.5,
                     px: { xs: 1, sm: 0 },
                     gap: { xs: 1.5, sm: 2 },
-                    flexDirection: { xs: 'column', sm: 'row' },
-                    alignItems: { xs: 'flex-start', sm: 'center' },
                     color: isOverlay ? 'inherit' : '#111',
-                    position: 'relative',
                     transition: 'background-color 0.2s ease',
                     '&:hover': {
                       backgroundColor: (theme) => theme.palette.action.hover,
@@ -1947,6 +1927,7 @@ function ChatPage() {
                 >
                   <ListItemAvatar>
                     <Avatar
+                      className="friends-list-friend-avatar"
                       src={avatarSrc}
                       alt={displayName}
                       imgProps={{ referrerPolicy: 'no-referrer' }}
@@ -1955,75 +1936,51 @@ function ChatPage() {
                     </Avatar>
                   </ListItemAvatar>
 
-                  <ListItemText
+                  <ListItemText 
+                    className="friends-list-name-container"
                     primary={
-                      <Typography
-                        variant="subtitle1"
-                        fontWeight={600}
-                        sx={!isOverlay ? { color: '#111' } : undefined}
-                      >
-                        {displayName}
-                      </Typography>
-                    }
-                    secondary={
-                      secondaryLabel ? (
-                        <Typography
-                          variant="caption"
-                          color={isOverlay ? 'text.secondary' : undefined}
-                          sx={!isOverlay ? { color: '#555' } : undefined}
-                        >
-                          {secondaryLabel}
+                      <Box className="friends-list-name-wrapper">
+                        <Typography className="friends-list-display-name">
+                          {displayName}
                         </Typography>
-                      ) : null
+                        {secondaryLabel && (
+                          <Typography className="friends-list-user-name">
+                            {secondaryLabel}
+                          </Typography>
+                        )}
+                      </Box>
                     }
-                    sx={{ flex: 1, minWidth: 0 }}
                   />
 
-                  {/* 👇 Hidden action buttons that appear on hover */}
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    className="friend-actions"
-                    sx={{
-                      width: { xs: '100%', sm: 'auto' },
-                      justifyContent: { xs: 'flex-end', sm: 'flex-start' },
-                      flexWrap: 'wrap',
-                      rowGap: 1,
-                      opacity: 0,
-                      visibility: 'hidden',
-                      transition: 'opacity 0.2s ease, visibility 0.2s ease',
-                    }}
-                  >
-                    <Button
-                      size="small"
-                      variant="contained"
-                      color="primary"
-                      onClick={() => handleMessageFriend(friend)}
-                      disabled={
-                        directMessagesHasAccess === false ||
-                        isProcessingFriendAction ||
-                        isCreatingDirectThread
-                      }
-                    >
-                      Message
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color="secondary"
-                      onClick={() => handleUnfriend(friend)}
-                      disabled={isProcessingFriendAction}
-                    >
-                      Unfriend
-                    </Button>
-                    <Button
-                      size="small"
-                      color="error"
-                      onClick={() => handleReportFriend(friend)}
-                    >
-                      Report
-                    </Button>
-                  </Stack>
+                  <Box className="friend-actions-container">
+                    <Box className="message-friend-container">
+                      <MessageFriend
+                        className="message-friend-icon"
+                        onClick={() => handleMessageFriend(friend)}
+                        disabled={
+                          directMessagesHasAccess === false ||
+                          isProcessingFriendAction ||
+                          isCreatingDirectThread
+                        }
+                      />
+                    </Box>
+                    
+                    <Box className="remove-friend-container">
+                      <RemoveFriend
+                        className="remove-friend-icon"
+                        onClick={() => handleUnfriend(friend)}
+                        disabled={isProcessingFriendAction}
+                      />
+                    </Box>
+
+                    <Box className="report-friend-container">
+                      <ReportFriend
+                        className="report-friend-icon"
+                        onClick={() => handleReportFriend(friend)}
+                      />
+                    </Box>
+                    
+                  </Box>
                 </ListItem>
               );
             })}
@@ -2031,6 +1988,18 @@ function ChatPage() {
         ) : null}
       </Box>
     );
+  };
+
+  const handleOpenFriendDialog = () => {
+    setFriendActionStatus(null);
+    setIsFriendDialogOpen(true);
+  };
+
+  const handleCloseFriendDialog = () => {
+    if (respondingRequestId) {
+      return;
+    }
+    setIsFriendDialogOpen(false);
   };
 
 
@@ -2057,99 +2026,98 @@ function ChatPage() {
     }
   };
 
-  // 👇 compute these before return
-const friendsView = renderFriendsList();
-const friendRequestsView = canShowFriendRequests ? (
-  <Box
-    elevation={1}
-    sx={{
-      mt: 30,
-      mb: 2,
-      p: { xs: 2, md: 3 },
-      borderRadius: 3,
-      border: '1px solid',
-      borderColor: 'divider',
-      backgroundColor: 'grey'
-    }}
-  >
-    <Typography variant="h6" component="h2" gutterBottom>
-      Pending friend requests
-    </Typography>
-
-    {friendActionStatus ? (
-      <Alert severity={friendActionStatus.type} sx={{ mb: 2 }}>
-        {friendActionStatus.message}
-      </Alert>
-    ) : null}
-
-    {incomingRequests.length === 0 ? (
-      <Typography variant="body2" color="text.secondary">
-        All caught up! You have no pending friend requests.
+  const friendsView = renderFriendsList();
+  const friendRequestsView = canShowFriendRequests ? (
+    <Box
+      elevation={1}
+      sx={{
+        mt: 30,
+        mb: 2,
+        p: { xs: 2, md: 3 },
+        borderRadius: 3,
+        border: '1px solid',
+        borderColor: 'divider',
+        backgroundColor: 'grey'
+      }}
+    >
+      <Typography variant="h6" component="h2" gutterBottom>
+        Pending friend requests
       </Typography>
-    ) : (
-      <Stack spacing={2} sx={{ mt: 2 }}>
-        {incomingRequests.map((request) => {
-          const requesterName =
-            request.requester?.displayName ||
-            request.requester?.username ||
-            request.requester?.id ||
-            'Unknown user';
-          const isUpdating = respondingRequestId === request.id;
 
-          return (
-            <Paper
-              key={request.id}
-              variant="outlined"
-              sx={{
-                p: 2,
-                borderRadius: 3,
-                backgroundColor: 'background.default'
-              }}
-            >
-              <Stack spacing={1}>
-                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                  <Typography variant="subtitle1" fontWeight={600}>
-                    {requesterName}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {request.createdAt
-                      ? formatFriendlyTimestamp(request.createdAt)
-                      : null}
-                  </Typography>
+      {friendActionStatus ? (
+        <Alert severity={friendActionStatus.type} sx={{ mb: 2 }}>
+          {friendActionStatus.message}
+        </Alert>
+      ) : null}
+
+      {incomingRequests.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          All caught up! You have no pending friend requests.
+        </Typography>
+      ) : (
+        <Stack spacing={2} sx={{ mt: 2 }}>
+          {incomingRequests.map((request) => {
+            const requesterName =
+              request.requester?.displayName ||
+              request.requester?.username ||
+              request.requester?.id ||
+              'Unknown user';
+            const isUpdating = respondingRequestId === request.id;
+
+            return (
+              <Paper
+                key={request.id}
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  borderRadius: 3,
+                  backgroundColor: 'background.default'
+                }}
+              >
+                <Stack spacing={1}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      {requesterName}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {request.createdAt
+                        ? formatFriendlyTimestamp(request.createdAt)
+                        : null}
+                    </Typography>
+                  </Stack>
+
+                  {request.message ? (
+                    <Typography variant="body2" color="text.secondary">
+                      “{request.message}”
+                    </Typography>
+                  ) : null}
+
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={() => handleRespondToFriendRequest(request.id, 'accept')}
+                      disabled={isUpdating}
+                    >
+                      {isUpdating ? 'Updating…' : 'Accept'}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="inherit"
+                      onClick={() => handleRespondToFriendRequest(request.id, 'decline')}
+                      disabled={isUpdating}
+                    >
+                      Decline
+                    </Button>
+                  </Stack>
                 </Stack>
-
-                {request.message ? (
-                  <Typography variant="body2" color="text.secondary">
-                    “{request.message}”
-                  </Typography>
-                ) : null}
-
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => handleRespondToFriendRequest(request.id, 'accept')}
-                    disabled={isUpdating}
-                  >
-                    {isUpdating ? 'Updating…' : 'Accept'}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="inherit"
-                    onClick={() => handleRespondToFriendRequest(request.id, 'decline')}
-                    disabled={isUpdating}
-                  >
-                    Decline
-                  </Button>
-                </Stack>
-              </Stack>
-            </Paper>
-          );
-        })}
-      </Stack>
-    )}
-  </Box>
-) : null;
+              </Paper>
+            );
+          })}
+        </Stack>
+      )}
+    </Box>
+  ) : null;
 
   return (
     <>
@@ -2168,26 +2136,8 @@ const friendRequestsView = canShowFriendRequests ? (
             </h1>
           </header>
 
-          <Box className="friends-tabs-container">
-            {[
-              { label: 'Friends', count: '6' },
-              { label: 'Friend Requests', count: '7' },
-            ].map((tab) => (
-              <Button
-                key={tab.label}
-                className={`friend-tab ${selectedTab === tab.label ? 'active' : ''}`}
-                onClick={() => setSelectedTab(tab.label)}
-              >
-                {tab.label}
-                {tab.count > 0 && <span className="friend-request-badge">{tab.count}</span>}
-              </Button>
-            ))}
-          </Box>
-
-          {selectedTab === 'Friend Requests' && friendRequestsView}
-
           <Box ref={containerRef} className="friends-list-field">
-            {selectedTab === 'Friends' && friendsView}
+            {friendsView}
           </Box>
 
           <ReportContentDialog
@@ -2425,6 +2375,85 @@ const friendRequestsView = canShowFriendRequests ? (
             </Button>
           </DialogActions>
         </Box>
+      </Dialog>
+
+      <Dialog open={isFriendDialogOpen} onClose={handleCloseFriendDialog} fullWidth maxWidth="sm">
+        <DialogTitle>Pending friend requests</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {friendActionStatus ? (
+              <Alert severity={friendActionStatus.type}>{friendActionStatus.message}</Alert>
+            ) : null}
+
+            {incomingRequests.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                All caught up! You have no pending friend requests.
+              </Typography>
+            ) : null}
+
+            {incomingRequests.map((request) => {
+              const requesterName =
+                request.requester?.displayName ||
+                request.requester?.username ||
+                request.requester?.id ||
+                'Unknown user';
+              const isUpdating = respondingRequestId === request.id;
+
+              return (
+                <Paper
+                  key={request.id}
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    borderRadius: 3,
+                    backgroundColor: 'background.default'
+                  }}
+                >
+                  <Stack spacing={1}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        {requesterName}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {request.createdAt
+                          ? formatFriendlyTimestamp(request.createdAt)
+                          : null}
+                      </Typography>
+                    </Stack>
+                    {request.message ? (
+                      <Typography variant="body2" color="text.secondary">
+                        “{request.message}”
+                      </Typography>
+                    ) : null}
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => handleRespondToFriendRequest(request.id, 'accept')}
+                        disabled={isUpdating}
+                      >
+                        {isUpdating ? 'Updating…' : 'Accept'}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="inherit"
+                        onClick={() => handleRespondToFriendRequest(request.id, 'decline')}
+                        disabled={isUpdating}
+                      >
+                        Decline
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              );
+            })}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseFriendDialog} disabled={respondingRequestId !== null}>
+            Close
+          </Button>
+        </DialogActions>
       </Dialog>
       
       <input
