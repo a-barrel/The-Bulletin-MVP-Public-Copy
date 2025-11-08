@@ -437,7 +437,7 @@ function ChatPage() {
     if (!uniqueMessages.length) {
       return;
     }
-    return () => clearTimeout(timer);
+    return () => clearTimeout();
   }, [channelTab, uniqueMessages.length]);
 
   useEffect(() => {
@@ -680,7 +680,7 @@ function ChatPage() {
       });
 
       if (existingThread?.id) {
-        handleSelectDirectThreadId(existingThread.id);
+        navigate(`/chat?tab=direct&thread=${existingThread.id}`);
         setFriendActionStatus({
           type: 'success',
           message: `Opened conversation with ${friend.displayName || friend.username || 'friend'}.`
@@ -708,7 +708,7 @@ function ChatPage() {
           }
         }
         if (newThreadId) {
-          handleSelectDirectThreadId(newThreadId);
+          navigate(`/chat?tab=direct&thread=${newThreadId}`);
         } else {
           refreshDmThreads().catch(() => {});
         }
@@ -2140,6 +2140,12 @@ function ChatPage() {
             {friendsView}
           </Box>
 
+          {channelTab === 'rooms' && presenceError ? (
+            <Box sx={{ px: 2, py: 1 }}>
+              <Alert severity="error">{presenceError}</Alert>
+            </Box>
+          ) : null}
+
           <ReportContentDialog
             open={reportDialogOpen}
             onClose={handleCloseReportDialog}
@@ -2226,6 +2232,89 @@ function ChatPage() {
 
     </div>
   </Box>
+
+      <Dialog open={isCreateDialogOpen} onClose={handleCloseCreateDialog} fullWidth maxWidth="sm">
+        <DialogTitle>Create chat room</DialogTitle>
+        <Box component="form" onSubmit={handleCreateRoom}>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <TextField
+                label="Name"
+                value={createForm.name}
+                onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
+                required
+                fullWidth
+              />
+              <TextField
+                label="Description"
+                value={createForm.description}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, description: event.target.value }))
+                }
+                multiline
+                minRows={2}
+                fullWidth
+              />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  label="Latitude"
+                  type="number"
+                  value={createForm.latitude}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, latitude: event.target.value }))
+                  }
+                  fullWidth
+                  inputProps={{ step: '0.0001' }}
+                />
+                <TextField
+                  label="Longitude"
+                  type="number"
+                  value={createForm.longitude}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, longitude: event.target.value }))
+                  }
+                  fullWidth
+                  inputProps={{ step: '0.0001' }}
+                />
+              </Stack>
+              <TextField
+                label="Radius (meters)"
+                type="number"
+                value={createForm.radiusMeters}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, radiusMeters: event.target.value }))
+                }
+                fullWidth
+                inputProps={{ min: 50, step: 10 }}
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={createForm.isGlobal}
+                    onChange={(event) =>
+                      setCreateForm((prev) => ({ ...prev, isGlobal: event.target.checked }))
+                    }
+                  />
+                }
+                label="Global room (visible everywhere)"
+              />
+              {createError ? (
+                <Typography variant="body2" color="error">
+                  {createError}
+                </Typography>
+              ) : null}
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseCreateDialog} disabled={isCreatingRoom}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained" disabled={isCreatingRoom}>
+              {isCreatingRoom ? 'Creating…' : 'Create room'}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
 
       <Dialog
         open={isChannelDialogOpen}
