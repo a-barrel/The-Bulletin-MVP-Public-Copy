@@ -233,6 +233,7 @@ function PinDetails() {
   } = usePinDetails({ pinId, location, isOffline });
 
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
+  const shouldShowStatusMessages = isLoading || error || (!pin && !isLoading && pinId);
   const bookmarkLocked = isOwnPin && bookmarked;
 
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
@@ -587,14 +588,6 @@ function PinDetails() {
         ) : null}
       </div>
 
-      <div className="status-container">
-        {isLoading ? <div className="status-message">Loading pin details...</div> : null}
-        {error ? <div className="status-message error">{error}</div> : null}
-        {!pin && !isLoading && !error && pinId ? (
-          <div className="status-message">No pin found for ID &ldquo;{pinId}&rdquo;.</div>
-        ) : null}
-      </div>
-
       {pin ? (
         <>
           <div className="map-section">
@@ -681,13 +674,13 @@ function PinDetails() {
 
           <div className="post-info">
             <div className="post-location">
-              <svg className="pin-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <svg className={`pin-icon ${isEventPin ? 'event-icon' : 'discussion-icon'}`} viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   fill="currentColor"
                   d="M12 2a7 7 0 0 0-7 7c0 4.63 5.48 11.05 6.27 11.93a1 1 0 0 0 1.46 0C13.52 20.05 19 13.63 19 9a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"
                 />
               </svg>
-              <span className="location-text">
+              <span className={`location-text ${isEventPin ? 'event-text' : 'discussion-text'}`}>
                 Location:
                 <br />
                 {addressLabel || approximateAddressLabel || 'No address information available.'}
@@ -705,7 +698,7 @@ function PinDetails() {
                 className={`calendar-icon ${isEventPin ? 'event-icon' : 'discussion-icon'}`}
                 aria-hidden="true"
               />
-              <span className="occurance-text">
+              <span className={`occurance-text ${isEventPin ? 'event-text' : 'discussion-text'}`}>
                 {isEventPin ? 'Occurs:' : 'Expires:'}
                 <br />
                 {isEventPin
@@ -719,7 +712,7 @@ function PinDetails() {
                 className={`attendance-icon ${isEventPin ? 'event-icon' : 'discussion-icon'}`}
                 aria-hidden="true"
               />
-              <span className="attendance-text">
+              <span className={`attendance-text ${isEventPin ? 'event-text' : 'discussion-text'}`}>
                 Bookmarks: {pin.bookmarkCount ?? 0}
                 {isEventPin ? (
                   <>
@@ -828,6 +821,16 @@ function PinDetails() {
             <AddCommentIcon className="create-comment-button" aria-hidden="true" />
           </button>
         </>
+      ) : null}
+
+      {shouldShowStatusMessages ? (
+        <div className="status-container status-container--footer">
+          {isLoading ? <div className="status-message">Loading pin details...</div> : null}
+          {error ? <div className="status-message error">{error}</div> : null}
+          {!pin && !isLoading && !error && pinId ? (
+            <div className="status-message">No pin found for ID &ldquo;{pinId}&rdquo;.</div>
+          ) : null}
+        </div>
       ) : null}
 
       {replyComposerOpen ? (
