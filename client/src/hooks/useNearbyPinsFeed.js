@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { fetchPinsNearby, fetchPinById } from '../api/mongoDataApi';
+import { fetchPinsNearby, fetchPinById, fetchCurrentUserProfile } from '../api/mongoDataApi';
 import resolveAssetUrl from '../utils/media';
 import toIdString from '../utils/ids';
 import { METERS_PER_MILE } from '../utils/geo';
@@ -129,7 +129,7 @@ const resolveImageSources = (pin) => {
   return result;
 };
 
-const mapPinToFeedItem = (pin) => {
+const mapPinToFeedItem = (pin, { viewerProfileId } = {}) => {
   const pinId = toIdString(pin?._id) ?? toIdString(pin?.id);
   const creatorId =
     toIdString(pin?.creatorId) ??
@@ -184,7 +184,11 @@ const mapPinToFeedItem = (pin) => {
       : false;
   const viewerIsAttending =
     typeof pin?.viewerIsAttending === 'boolean' ? pin.viewerIsAttending : false;
-  const viewerOwnsPin = typeof pin?.viewerOwnsPin === 'boolean' ? pin.viewerOwnsPin : false;
+  const normalizedCreatorId = toIdString(pin?.creatorId) ?? toIdString(pin?.creator?._id);
+  const ownsPinFromProfile =
+    viewerProfileId && normalizedCreatorId ? normalizedCreatorId === viewerProfileId : false;
+  const viewerOwnsPin =
+    typeof pin?.viewerOwnsPin === 'boolean' ? pin.viewerOwnsPin : ownsPinFromProfile;
 
   return {
     id: pinId ?? pin?._id ?? pin?.id ?? null,
@@ -239,6 +243,7 @@ export default function useNearbyPinsFeed({
   const [locationNotice, setLocationNotice] = useState(
     hasSharedLocation ? null : 'Showing popular pins near Long Beach until you share your location.'
   );
+  const [viewerProfileId, setViewerProfileId] = useState(null);
 
   useEffect(() => {
     if (hasValidCoordinates(sharedLocation)) {
@@ -269,6 +274,34 @@ export default function useNearbyPinsFeed({
       return FALLBACK_LOCATION;
     });
   }, [sharedLocation]);
+
+  useEffect(() => {
+    if (isOffline) {
+      return;
+    }
+    let isMounted = true;
+    (async () => {
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (!isMounted) {
+          return;
+        }
+        const normalizedId =
+          typeof profile?._id === 'string' && profile._id.trim().length > 0
+            ? profile._id.trim()
+            : null;
+        setViewerProfileId(normalizedId);
+      } catch (profileError) {
+        console.warn('Failed to load viewer profile for nearby feed:', profileError);
+        if (isMounted) {
+          setViewerProfileId(null);
+        }
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [isOffline]);
 
   const loadPins = useCallback(
     async (overrideLocation) => {
@@ -356,7 +389,10 @@ export default function useNearbyPinsFeed({
     loadPins();
   }, [loadPins]);
 
-  const feedItems = useMemo(() => pins.map((pin) => mapPinToFeedItem(pin)), [pins]);
+  const feedItems = useMemo(
+    () => pins.map((pin) => mapPinToFeedItem(pin, { viewerProfileId })),
+    [pins, viewerProfileId]
+  );
 
   return {
     feedItems,
