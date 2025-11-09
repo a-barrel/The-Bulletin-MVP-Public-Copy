@@ -38,6 +38,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import MessageFriend from '@mui/icons-material/ChatBubbleRounded';
 import RemoveFriend from '@mui/icons-material/PersonRemoveRounded'
 import ReportFriend from '@mui/icons-material/FlagRounded'
+import NoFriendRequests from '@mui/icons-material/GroupOffRounded';
 import SmsIcon from '@mui/icons-material/Sms';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import RoomIcon from '@mui/icons-material/Room';
@@ -1822,6 +1823,12 @@ function ChatPage() {
             py: 1.5,
           }}
         >
+          <IconButton 
+              onClick={() => navigate(-1)} 
+              className="friends-list-back-btn"
+            >
+              <ArrowBackIcon className="friend-header-back-icon" />
+            </IconButton>
           <Stack direction="row" spacing={1} alignItems="center">
             <Typography className="friends-list-title">
               Friends — {friends.length} 
@@ -2027,115 +2034,11 @@ function ChatPage() {
   };
 
   const friendsView = renderFriendsList();
-  const friendRequestsView = canShowFriendRequests ? (
-    <Box
-      elevation={1}
-      sx={{
-        mt: 30,
-        mb: 2,
-        p: { xs: 2, md: 3 },
-        borderRadius: 3,
-        border: '1px solid',
-        borderColor: 'divider',
-        backgroundColor: 'grey'
-      }}
-    >
-      <Typography variant="h6" component="h2" gutterBottom>
-        Pending friend requests
-      </Typography>
-
-      {friendActionStatus ? (
-        <Alert severity={friendActionStatus.type} sx={{ mb: 2 }}>
-          {friendActionStatus.message}
-        </Alert>
-      ) : null}
-
-      {incomingRequests.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          All caught up! You have no pending friend requests.
-        </Typography>
-      ) : (
-        <Stack spacing={2} sx={{ mt: 2 }}>
-          {incomingRequests.map((request) => {
-            const requesterName =
-              request.requester?.displayName ||
-              request.requester?.username ||
-              request.requester?.id ||
-              'Unknown user';
-            const isUpdating = respondingRequestId === request.id;
-
-            return (
-              <Paper
-                key={request.id}
-                variant="outlined"
-                sx={{
-                  p: 2,
-                  borderRadius: 3,
-                  backgroundColor: 'background.default'
-                }}
-              >
-                <Stack spacing={1}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      {requesterName}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {request.createdAt
-                        ? formatFriendlyTimestamp(request.createdAt)
-                        : null}
-                    </Typography>
-                  </Stack>
-
-                  {request.message ? (
-                    <Typography variant="body2" color="text.secondary">
-                      “{request.message}”
-                    </Typography>
-                  ) : null}
-
-                  <Stack direction="row" spacing={1}>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={() => handleRespondToFriendRequest(request.id, 'accept')}
-                      disabled={isUpdating}
-                    >
-                      {isUpdating ? 'Updating…' : 'Accept'}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="inherit"
-                      onClick={() => handleRespondToFriendRequest(request.id, 'decline')}
-                      disabled={isUpdating}
-                    >
-                      Decline
-                    </Button>
-                  </Stack>
-                </Stack>
-              </Paper>
-            );
-          })}
-        </Stack>
-      )}
-    </Box>
-  ) : null;
 
   return (
     <>
       <Box className="friend-page">
         <div className="friend-frame">
-          <header className="friend-header-bar">
-            <IconButton 
-              onClick={() => navigate(-1)} 
-              className="friend-header-back-btn"
-            >
-              <ArrowBackIcon className="friend-header-back-icon" />
-            </IconButton>
-
-            <h1 className="friend-header-title">
-              Friends
-            </h1>
-          </header>
-
           <Box ref={containerRef} className="friends-list-field">
             {friendsView}
           </Box>
@@ -2233,150 +2136,6 @@ function ChatPage() {
     </div>
   </Box>
 
-      <Dialog open={isCreateDialogOpen} onClose={handleCloseCreateDialog} fullWidth maxWidth="sm">
-        <DialogTitle>Create chat room</DialogTitle>
-        <Box component="form" onSubmit={handleCreateRoom}>
-          <DialogContent>
-            <Stack spacing={2} sx={{ mt: 1 }}>
-              <TextField
-                label="Name"
-                value={createForm.name}
-                onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
-                required
-                fullWidth
-              />
-              <TextField
-                label="Description"
-                value={createForm.description}
-                onChange={(event) =>
-                  setCreateForm((prev) => ({ ...prev, description: event.target.value }))
-                }
-                multiline
-                minRows={2}
-                fullWidth
-              />
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <TextField
-                  label="Latitude"
-                  type="number"
-                  value={createForm.latitude}
-                  onChange={(event) =>
-                    setCreateForm((prev) => ({ ...prev, latitude: event.target.value }))
-                  }
-                  fullWidth
-                  inputProps={{ step: '0.0001' }}
-                />
-                <TextField
-                  label="Longitude"
-                  type="number"
-                  value={createForm.longitude}
-                  onChange={(event) =>
-                    setCreateForm((prev) => ({ ...prev, longitude: event.target.value }))
-                  }
-                  fullWidth
-                  inputProps={{ step: '0.0001' }}
-                />
-              </Stack>
-              <TextField
-                label="Radius (meters)"
-                type="number"
-                value={createForm.radiusMeters}
-                onChange={(event) =>
-                  setCreateForm((prev) => ({ ...prev, radiusMeters: event.target.value }))
-                }
-                fullWidth
-                inputProps={{ min: 50, step: 10 }}
-              />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={createForm.isGlobal}
-                    onChange={(event) =>
-                      setCreateForm((prev) => ({ ...prev, isGlobal: event.target.checked }))
-                    }
-                  />
-                }
-                label="Global room (visible everywhere)"
-              />
-              {createError ? (
-                <Typography variant="body2" color="error">
-                  {createError}
-                </Typography>
-              ) : null}
-            </Stack>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseCreateDialog} disabled={isCreatingRoom}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="contained" disabled={isCreatingRoom}>
-              {isCreatingRoom ? 'Creating…' : 'Create room'}
-            </Button>
-          </DialogActions>
-        </Box>
-      </Dialog>
-
-      <Dialog
-        open={isChannelDialogOpen}
-        onClose={() => setIsChannelDialogOpen(false)}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Choose a conversation</DialogTitle>
-        <DialogContent dividers sx={{ p: 0 }}>
-          <Tabs
-            value={channelDialogTab}
-            onChange={handleChannelDialogTabChange}
-            variant="fullWidth"
-            indicatorColor="primary"
-            textColor="primary"
-          >
-            <Tab
-              value="rooms"
-              label="Rooms"
-              icon={<GroupIcon fontSize="small" />}
-              iconPosition="start"
-            />
-            <Tab
-              value="direct"
-              label="Direct messages"
-              icon={<MarkUnreadChatAltIcon fontSize="small" />}
-              iconPosition="start"
-              disabled={directMessagesHasAccess === false}
-            />
-            <Tab
-              value="friends"
-              label="Friends"
-              icon={<PeopleAltIcon fontSize="small" />}
-              iconPosition="start"
-            />
-          </Tabs>
-          <Box sx={{ maxHeight: 420, display: 'flex', flexDirection: 'column' }}>
-            {channelDialogTab === 'direct' ? (
-              <DirectThreadList
-                threads={dmThreads}
-                selectedThreadId={selectedDirectThreadId}
-                onSelectThread={handleSelectDirectThreadId}
-                status={dmThreadsStatus}
-                isLoading={isLoadingDmThreads}
-                onRefresh={refreshDmThreads}
-                canAccess={directMessagesHasAccess !== false}
-                viewerId={directViewerId}
-                viewerUsername={dmViewer?.username || null}
-                viewerDisplayName={dmViewer?.displayName || null}
-              />
-            ) : channelDialogTab === 'friends' ? (
-              renderFriendsList({ isOverlay: true })
-            ) : (
-              null
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsChannelDialogOpen(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-
       <Dialog
         open={Boolean(moderationContext)}
         onClose={handleCloseModerationDialog}
@@ -2466,84 +2225,97 @@ function ChatPage() {
         </Box>
       </Dialog>
 
-      <Dialog open={isFriendDialogOpen} onClose={handleCloseFriendDialog} fullWidth maxWidth="sm">
-        <DialogTitle>Pending friend requests</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            {friendActionStatus ? (
-              <Alert severity={friendActionStatus.type}>{friendActionStatus.message}</Alert>
-            ) : null}
+      <Dialog
+        className="friend-dialog-overlay"
+        open={isFriendDialogOpen}
+        onClose={handleCloseFriendDialog}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle className="friend-dialog-title">
+          Pending Friend Requests
+        </DialogTitle>
+
+        <DialogContent dividers={false} className="friend-dialog-content">
+          <Stack spacing={2}>
+            {friendActionStatus && (
+              <Alert severity={friendActionStatus.type} className="friend-dialog-alert">
+                {friendActionStatus.message}
+              </Alert>
+            )}
 
             {incomingRequests.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                All caught up! You have no pending friend requests.
-              </Typography>
-            ) : null}
+              <Box className="friend-dialog-empty-container">
+                <NoFriendRequests className="friend-dialog-empty-icon"/>
+                <Typography className="friend-dialog-empty-desc">
+                  All caught up! You have no pending friend requests.
+                </Typography>
+              </Box>
+            ) : (
+              incomingRequests.map((request) => {
+                const requesterName =
+                  request.requester?.displayName ||
+                  request.requester?.username ||
+                  request.requester?.id ||
+                  'Unknown user';
+                const isUpdating = respondingRequestId === request.id;
 
-            {incomingRequests.map((request) => {
-              const requesterName =
-                request.requester?.displayName ||
-                request.requester?.username ||
-                request.requester?.id ||
-                'Unknown user';
-              const isUpdating = respondingRequestId === request.id;
+                return (
+                  <Paper key={request.id} className="friend-dialog-request-card">
+                    <Stack spacing={1}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Typography variant="subtitle1" className="friend-dialog-request-name">
+                          {requesterName}
+                        </Typography>
+                        <Typography variant="caption" className="friend-dialog-request-time">
+                          {request.createdAt ? formatFriendlyTimestamp(request.createdAt) : ''}
+                        </Typography>
+                      </Stack>
 
-              return (
-                <Paper
-                  key={request.id}
-                  variant="outlined"
-                  sx={{
-                    p: 2,
-                    borderRadius: 3,
-                    backgroundColor: 'background.default'
-                  }}
-                >
-                  <Stack spacing={1}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                      <Typography variant="subtitle1" fontWeight={600}>
-                        {requesterName}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {request.createdAt
-                          ? formatFriendlyTimestamp(request.createdAt)
-                          : null}
-                      </Typography>
+                      {request.message && (
+                        <Typography variant="body2" className="friend-dialog-request-message">
+                          “{request.message}”
+                        </Typography>
+                      )}
+
+                      <Stack direction="row" spacing={1} justifyContent="flex-end">
+                        <Button
+                          variant="contained"
+                          className="friend-dialog-accept-btn"
+                          onClick={() => handleRespondToFriendRequest(request.id, 'accept')}
+                          disabled={isUpdating}
+                        >
+                          {isUpdating ? 'Updating…' : 'Accept'}
+                        </Button>
+
+                        <Button
+                          variant="outlined"
+                          className="friend-dialog-decline-btn"
+                          onClick={() => handleRespondToFriendRequest(request.id, 'decline')}
+                          disabled={isUpdating}
+                        >
+                          Decline
+                        </Button>
+                      </Stack>
                     </Stack>
-                    {request.message ? (
-                      <Typography variant="body2" color="text.secondary">
-                        “{request.message}”
-                      </Typography>
-                    ) : null}
-                    <Stack direction="row" spacing={1}>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => handleRespondToFriendRequest(request.id, 'accept')}
-                        disabled={isUpdating}
-                      >
-                        {isUpdating ? 'Updating…' : 'Accept'}
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="inherit"
-                        onClick={() => handleRespondToFriendRequest(request.id, 'decline')}
-                        disabled={isUpdating}
-                      >
-                        Decline
-                      </Button>
-                    </Stack>
-                  </Stack>
-                </Paper>
-              );
-            })}
+                  </Paper>
+                );
+              })
+            )}
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseFriendDialog} disabled={respondingRequestId !== null}>
+
+        <DialogActions className="friend-dialog-actions-container">
+          <Button
+            className="friend-dialog-close-btn"
+            onClick={handleCloseFriendDialog}
+            disabled={respondingRequestId !== null}
+          >
             Close
           </Button>
         </DialogActions>
       </Dialog>
+
       
       <input
         ref={roomAttachmentInputRef}

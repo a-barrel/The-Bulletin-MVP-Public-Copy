@@ -26,45 +26,6 @@
 }
 
 /* ===== Header (purple) ===== */
-.friend-header-bar {
-  position: fixed;
-  top: 0;
-  z-index: 50;
-  background: #d1b4f5;
-  width: 100vw;
-  box-sizing: border-box;
-  min-height: var(--header-h);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 2px solid #000;
-}
-
-.friend-header-title {
-  color: #5D3889;
-  font-size: 2rem;
-  font-weight: 500;
-  text-align: center;
-  flex: 1;
-}
-
-.friend-header-back-btn {
-  font-family: 'Urbanist', sans-serif !important;
-  color: #4c2670 !important;
-  text-transform: none;
-  font-weight: 600 !important;
-  font-size: 0.95rem;
-  width: 32px !important;
-  height: 32px !important;
-}
-
-.friend-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding-right: 1rem;
-}
-
 .chat-room-chip {
   cursor: pointer;
 }
@@ -228,6 +189,10 @@
 
 /* Render Friends List */
 .friends-list {
+  position: fixed;
+  top: 0;
+  width: 100vw !important;
+  height: 100vh !important;
   background-color: #F5EFFD;
   overflow-y: auto;
 }
@@ -243,10 +208,23 @@
   background-color: #CDAEF2;
 }
 
+.friends-list-back-btn {
+  font-family: 'Urbanist', sans-serif !important;
+  color: #4c2670 !important;
+  text-transform: none;
+  font-weight: 600 !important;
+  font-size: 0.95rem;
+  width: 32px !important;
+  height: 32px !important;
+}
+
 .friends-list-title {
   font-family:'Urbanist', sans-serif !important;
-  font-size: 1.15rem !important;
-  font-weight: 600 !important;
+  font-size: 2rem !important;
+  font-weight: 500 !important;
+  color: #5D3889;
+  text-align: center;
+  flex: 1;
 }
 
 .friend-request-icon {
@@ -273,6 +251,119 @@
   justify-content: center;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
   pointer-events: none;
+}
+
+  /* Friend Request Dialog  */
+.friend-dialog-overlay {
+  overflow: hidden !important;
+}
+
+.friend-dialog-title {
+  font-family: 'Urbanist', sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 1.4rem !important;
+  text-align: center;
+  color: #111 !important;
+  background-color: #CDAEF2 !important;
+  border-bottom: 2px solid black !important;
+}
+
+.friend-dialog-content {
+  font-family: 'Urbanist', sans-serif !important;
+  font-weight: 300 !important;
+  font-size: 1rem !important;
+  background-color: white !important;
+  padding: 1.5rem !important;
+}
+
+.friend-dialog-alert {
+  font-family: 'Urbanist', sans-serif !important;
+  border-radius: 10px !important;
+  background-color: white !important;
+}
+
+.friend-dialog-empty-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.friend-dialog-empty-icon {
+  align-self: center;
+  color: gray;
+}
+
+.friend-dialog-empty-desc {
+  font-family: 'Urbanist', sans-serif !important;
+  font-weight: 500 !important;
+  font-size: 0.95rem !important;
+  text-align: center !important;
+  color: #555 !important;
+  padding: 1rem 0 !important;
+}
+
+.friend-dialog-request-card {
+  padding: 1rem !important;
+  border-radius: 12px !important;
+  background-color: white !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.friend-dialog-request-name {
+  font-weight: 700 !important;
+  font-family: 'Urbanist', sans-serif !important;
+  color: black !important;
+}
+
+.friend-dialog-request-time {
+  color: gray !important;
+}
+
+.friend-dialog-request-message {
+  font-family: 'Urbanist', sans-serif !important;
+  font-style: italic !important;
+  color: gray !important;
+}
+
+.friend-dialog-accept-btn {
+  font-family: 'Urbanist', sans-serif !important;
+  text-transform: none !important;
+  background-color: #3EB8F0 !important;
+  color: #fff !important;
+}
+
+.friend-dialog-accept-btn:hover {
+  background-color: #2EA0D5 !important;
+}
+
+.friend-dialog-decline-btn {
+  font-family: 'Urbanist', sans-serif !important;
+  text-transform: none !important;
+  border-color: #E53935 !important;
+  color: #E53935 !important;
+}
+
+.friend-dialog-decline-btn:hover {
+  background-color: rgba(229, 57, 53, 0.08) !important;
+}
+
+.friend-dialog-actions-container {
+  background-color: #CDAEF2 !important;
+  border-top: 2px solid black !important;
+  justify-content: center !important;
+}
+
+.friend-dialog-close-btn {
+  font-family: 'Urbanist', sans-serif !important;
+  font-size: 0.95rem !important;
+  text-transform: none !important;
+  background-color: white !important;
+  color: black !important;
+  border-radius: 12px !important;
+  padding: 0.5rem 1.5rem !important;
+}
+
+.friend-dialog-close-btn:hover {
+  background-color: #f1f1f1 !important;
 }
 
   /* Search Bar */
@@ -324,9 +415,6 @@
   align-items: center;
   position: relative;
   border-bottom: 1px solid black;
-}
-
-.friends-list-friend-avatar {
 }
 
 .friends-list-name-container {
