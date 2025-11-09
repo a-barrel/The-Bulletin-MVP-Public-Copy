@@ -323,8 +323,15 @@ const loadBlockedUsers = async (userDoc) => {
   return blockedUsers;
 };
 
-const mapPinToListItem = (pinDoc, creator) => {
+const mapPinToListItem = (pinDoc, creator, options = {}) => {
   const doc = pinDoc.toObject();
+  const viewerHasBookmarked =
+    typeof options.viewerHasBookmarked === 'boolean' ? options.viewerHasBookmarked : undefined;
+  const viewerIsAttending =
+    typeof options.viewerIsAttending === 'boolean' ? options.viewerIsAttending : undefined;
+  const viewerOwnsPin =
+    typeof options.viewerOwnsPin === 'boolean' ? options.viewerOwnsPin : undefined;
+
   return PinListItemSchema.parse({
     _id: toIdString(doc._id),
     type: doc.type,
@@ -343,7 +350,10 @@ const mapPinToListItem = (pinDoc, creator) => {
     endDate: doc.endDate ? doc.endDate.toISOString() : undefined,
     expiresAt: doc.expiresAt ? doc.expiresAt.toISOString() : undefined,
     distanceMeters: undefined,
-    isBookmarked: undefined,
+    isBookmarked: viewerHasBookmarked,
+    viewerHasBookmarked,
+    viewerIsAttending,
+    viewerOwnsPin,
     replyCount: doc.replyCount ?? undefined,
     stats: doc.stats || undefined
   });

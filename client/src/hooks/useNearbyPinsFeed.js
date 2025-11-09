@@ -176,6 +176,15 @@ const mapPinToFeedItem = (pin) => {
 
   const type = pin?.type === 'event' ? 'pin' : 'discussion';
   const tagSource = Array.isArray(pin?.tags) && pin.tags.length > 0 ? pin.tags[0] : null;
+  const viewerHasBookmarked =
+    typeof pin?.viewerHasBookmarked === 'boolean'
+      ? pin.viewerHasBookmarked
+      : typeof pin?.isBookmarked === 'boolean'
+      ? pin.isBookmarked
+      : false;
+  const viewerIsAttending =
+    typeof pin?.viewerIsAttending === 'boolean' ? pin.viewerIsAttending : false;
+  const viewerOwnsPin = typeof pin?.viewerOwnsPin === 'boolean' ? pin.viewerOwnsPin : false;
 
   return {
     id: pinId ?? pin?._id ?? pin?.id ?? null,
@@ -199,7 +208,11 @@ const mapPinToFeedItem = (pin) => {
     attendeeIds,
     attendeeVersion,
     distanceMiles,
-    expiresInHours: hoursUntil
+    expiresInHours: hoursUntil,
+    viewerHasBookmarked,
+    isBookmarked: viewerHasBookmarked,
+    viewerIsAttending,
+    viewerOwnsPin
   };
 };
 
