@@ -18,14 +18,13 @@ import {
 } from '@mui/material';
 import PlaceIcon from '@mui/icons-material/Place'; // used only for pageConfig
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
-import BookmarkIcon from '@mui/icons-material/Bookmark';
-import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import ForumIcon from '@mui/icons-material/Forum';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import LeafletMap from '../components/Map';
+import BookmarkButton from '../components/BookmarkButton';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import usePinDetails from '../hooks/usePinDetails';
@@ -236,8 +235,6 @@ function PinDetails() {
 
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
   const shouldShowStatusMessages = isLoading || error || (!pin && !isLoading && pinId);
-  const bookmarkLocked = isOwnPin && bookmarked;
-
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
   const [reportReason, setReportReason] = useState('');
@@ -572,38 +569,15 @@ function PinDetails() {
             </button>
           </div>
           <div className="bookmark-button-wrapper">
-            <button
-              className={`bookmark-button${bookmarkLocked ? ' bookmark-button--locked' : ''}`}
-              type="button"
-              onClick={handleToggleBookmark}
-              disabled={
-                bookmarkLocked || isOffline || isUpdatingBookmark || !pin || isInteractionLocked
-              }
-              aria-pressed={bookmarked ? 'true' : 'false'}
-              aria-label={
-                bookmarkLocked
-                  ? 'This pin stays bookmarked for its creator'
-                  : bookmarked
-                  ? 'Remove bookmark'
-                  : 'Save bookmark'
-              }
-              aria-busy={isUpdatingBookmark ? 'true' : 'false'}
-              title={
-                bookmarkLocked
-                  ? 'Creators keep their pins bookmarked automatically.'
-                  : isOffline
-                  ? 'Reconnect to manage bookmarks'
-                  : undefined
-              }
-            >
-              {bookmarked ? (
-                <BookmarkIcon
-                  className={`bookmark-icon${bookmarkLocked ? ' bookmark-icon--locked' : ''}`}
-                />
-              ) : (
-                <BookmarkBorderIcon className="bookmark-icon" />
-              )}
-            </button>
+            <BookmarkButton
+              bookmarked={bookmarked}
+              pending={isUpdatingBookmark}
+              disabled={isOffline || !pin || isInteractionLocked}
+              ownsPin={isOwnPin}
+              attending={attending}
+              onToggle={handleToggleBookmark}
+              disabledLabel={isOffline ? 'Reconnect to manage bookmarks' : undefined}
+            />
             {bookmarkError ? <span className="error-text bookmark-error">{bookmarkError}</span> : null}
           </div>
         </div>

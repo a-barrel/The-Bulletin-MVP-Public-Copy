@@ -173,6 +173,11 @@
 .pin-details .bookmark-icon--locked {
     color: #ffb347;
 }
+ 
+.pin-details .bookmark-button--owner .bookmark-icon--locked,
+.pin-details .bookmark-button--attending .bookmark-icon--locked {
+    color: #ffbe3c;
+}
 
 /* pin name */
 .pin-details .name {
