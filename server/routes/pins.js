@@ -1700,4 +1700,42 @@ router.put('/:pinId', verifyToken, async (req, res) => {
   }
 });
 
+router.delete('/:pinId', verifyToken, async (req, res) => {
+  try {
+    const { pinId } = PinIdSchema.parse(req.params);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const pin = await Pin.findById(pinId);
+    if (!pin) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    const viewerId = toIdString(viewer._id);
+    const pinCreatorId = toIdString(pin.creatorId);
+    if (!viewerId || viewerId !== pinCreatorId) {
+      return res.status(403).json({ message: 'You do not have permission to delete this pin.' });
+    }
+
+    await Reply.deleteMany({ pinId: pin._id });
+    await Bookmark.deleteMany({ pinId: pin._id });
+    await pin.deleteOne();
+
+    await trackEvent('pin_deleted', {
+      pinId: toIdString(pin._id),
+      userId: viewerId
+    });
+
+    return res.json({ success: true, message: 'Pin deleted successfully.' });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid pin id', issues: error.errors });
+    }
+    console.error('Failed to delete pin:', error);
+    return res.status(500).json({ message: 'Failed to delete pin' });
+  }
+});
+
 module.exports = router;
