@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import './ListFiltersOverlay.css';
 import PropTypes from 'prop-types';
 import {
   Alert,
@@ -196,10 +197,19 @@ export default function ListFiltersOverlay({
   };
 
   return (
-    <Dialog open={open} onClose={handleCancel} fullWidth maxWidth="md">
-      <DialogTitle>Discover pins</DialogTitle>
-      <DialogContent dividers>
+    <Dialog
+      open={open}
+      onClose={handleCancel}
+      fullWidth
+      maxWidth="md"
+      className="filters-dialog"
+      slotProps={{ backdrop: { className: 'filters-backdrop' } }}
+    >
+      <DialogTitle className="filters-title">Discover pins</DialogTitle>
+
+      <DialogContent dividers className="filters-content">
         <Stack spacing={3}>
+          {/* Keyword search */}
           <Stack spacing={1}>
             <Typography variant="subtitle2" color="text.secondary">
               Keyword search
@@ -214,6 +224,7 @@ export default function ListFiltersOverlay({
 
           <Divider />
 
+          {/* Pin types */}
           <Stack spacing={1}>
             <Typography variant="subtitle2" color="text.secondary">
               Pin types
@@ -236,6 +247,7 @@ export default function ListFiltersOverlay({
 
           <Divider />
 
+          {/* Categories */}
           <Stack spacing={1}>
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography variant="subtitle2" color="text.secondary">
@@ -246,20 +258,27 @@ export default function ListFiltersOverlay({
                 onClick={onRefreshCategories}
                 disabled={loadingCategories}
                 aria-label="Refresh categories"
+                aria-busy={loadingCategories ? 'true' : undefined}
+                title={loadingCategories ? 'Refreshing…' : 'Refresh categories'}
               >
-                <RefreshIcon fontSize="inherit" />
+                <RefreshIcon
+                  fontSize="inherit"
+                  className={loadingCategories ? 'filters-refresh-spin' : undefined}
+                />
               </IconButton>
             </Stack>
+
             {categoryError ? (
               <Alert severity="error" variant="outlined">
                 {categoryError}
               </Alert>
             ) : null}
+
             <Stack direction="row" spacing={1} alignItems="center">
               <TextField
                 label="Add category"
                 value={newCategory}
-                onChange={(event) => setNewCategory(event.target.value)}
+                onChange={(e) => setNewCategory(e.target.value)}
                 onKeyDown={handleEnterCategory}
                 size="small"
                 placeholder="e.g. Food, Study Group"
@@ -273,13 +292,14 @@ export default function ListFiltersOverlay({
                 Add
               </Button>
             </Stack>
+
             <Box
               sx={{
                 display: 'flex',
                 flexWrap: 'wrap',
                 gap: 1,
                 minHeight: 40,
-                alignItems: loadingCategories ? 'center' : 'flex-start'
+                alignItems: loadingCategories ? 'center' : 'flex-start',
               }}
             >
               {loadingCategories ? (
@@ -295,16 +315,12 @@ export default function ListFiltersOverlay({
                     <Chip
                       key={option.name}
                       label={
-                        option.count
-                          ? `${option.name} (${option.count})`
-                          : option.name
+                        option.count ? `${option.name} (${option.count})` : option.name
                       }
                       color={selected ? 'primary' : 'default'}
                       variant={selected ? 'filled' : 'outlined'}
                       onClick={() => handleToggleCategory(option.name)}
-                      onDelete={
-                        selected ? () => handleToggleCategory(option.name) : undefined
-                      }
+                      onDelete={selected ? () => handleToggleCategory(option.name) : undefined}
                       deleteIcon={selected ? undefined : null}
                     />
                   );
@@ -313,8 +329,9 @@ export default function ListFiltersOverlay({
             </Box>
           </Stack>
 
-  <Divider />
+          <Divider />
 
+          {/* Date range */}
           <Stack spacing={1}>
             <Typography variant="subtitle2" color="text.secondary">
               Date range
@@ -341,15 +358,12 @@ export default function ListFiltersOverlay({
 
           <Divider />
 
+          {/* Status */}
           <Stack spacing={1}>
             <Typography variant="subtitle2" color="text.secondary">
               Status
             </Typography>
-            <RadioGroup
-              row
-              value={localFilters.status}
-              onChange={handleStatusChange}
-            >
+            <RadioGroup row value={localFilters.status} onChange={handleStatusChange}>
               {STATUS_OPTIONS.map((option) => (
                 <FormControlLabel
                   key={option.value}
@@ -362,7 +376,8 @@ export default function ListFiltersOverlay({
           </Stack>
         </Stack>
       </DialogContent>
-      <DialogActions>
+
+      <DialogActions className="filters-actions">
         <Button onClick={handleCancel}>Cancel</Button>
         <Button onClick={handleClearLocal} color="inherit">
           Clear filters
