@@ -33,21 +33,38 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import Snackbar from '@mui/material/Snackbar';
 import Tooltip from '@mui/material/Tooltip';
 import {
   blockUser,
+  createDirectMessageThread,
   fetchCurrentUserProfile,
   fetchUserProfile,
+  submitModerationAction,
   unblockUser,
   updateCurrentUserProfile,
   uploadImage
 } from '../api/mongoDataApi';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
+import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
 import runtimeConfig from '../config/runtime';
 import { BADGE_METADATA } from '../utils/badges';
 import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
 import { routes } from '../routes';
 import './ProfilePage.css';
 import ProfilePageAdditionalDetail from './ProfilePage_debug.jsx';
+
+const ACTION_CARD_SX = {
+  flex: 1,
+  border: '1px solid',
+  borderColor: 'divider',
+  borderRadius: 2,
+  p: 2,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 1
+};
 
 /*
  * NOTE:
@@ -295,6 +312,8 @@ function ProfilePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { userId } = useParams();
+  const { isOffline } = useNetworkStatusContext();
+  const socialNotifications = useSocialNotificationsContext();
   const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
   const shouldLoadCurrentUser =
     normalizedUserId.length === 0 || normalizedUserId === 'me' || normalizedUserId === ':userId';
@@ -311,6 +330,16 @@ function ProfilePage() {
   const [relationshipStatus, setRelationshipStatus] = useState(null);
   const [blockDialogMode, setBlockDialogMode] = useState(null);
   const [isProcessingBlockAction, setIsProcessingBlockAction] = useState(false);
+  const [isDmDialogOpen, setIsDmDialogOpen] = useState(false);
+  const [dmMessage, setDmMessage] = useState('');
+  const [isCreatingDm, setIsCreatingDm] = useState(false);
+  const [dmStatus, setDmStatus] = useState(null);
+  const [dmSnackbar, setDmSnackbar] = useState(null);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [reportStatus, setReportStatus] = useState(null);
+  const [reportSnackbar, setReportSnackbar] = useState(null);
   const [formState, setFormState] = useState({
     displayName: '',
     bio: '',
@@ -506,6 +535,9 @@ function ProfilePage() {
   );
   const canEditProfile = Boolean(isViewingSelf && !userFromState);
   const canManageBlock = Boolean(!isViewingSelf && viewerProfile && normalizedTargetId);
+  const canMessageUser = Boolean(!isViewingSelf && normalizedTargetId);
+  const canReportUser = Boolean(!isViewingSelf && normalizedTargetId);
+  const blockCardDisabled = Boolean(isProcessingBlockAction || isFetchingProfile);
 
   useEffect(() => {
     if (!isEditing && effectiveUser) {
@@ -913,6 +945,193 @@ function ProfilePage() {
       setIsProcessingBlockAction(false);
     }
   }, [blockDialogMode, displayName, effectiveUser, normalizedTargetId]);
+
+  const handleOpenDmDialog = useCallback(() => {
+    setDmMessage('');
+    setDmStatus(null);
+    setIsDmDialogOpen(true);
+  }, []);
+
+  const handleMessageKeyDown = useCallback(
+    (event) => {
+      if (!canMessageUser) {
+        return;
+      }
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        handleOpenDmDialog();
+      }
+    },
+    [canMessageUser, handleOpenDmDialog]
+  );
+
+  const handleCloseDmDialog = useCallback(() => {
+    if (isCreatingDm) {
+      return;
+    }
+    setIsDmDialogOpen(false);
+    setDmStatus(null);
+  }, [isCreatingDm]);
+
+  const handleSubmitDirectMessage = useCallback(async () => {
+    if (!normalizedTargetId || isViewingSelf) {
+      setDmStatus({
+        type: 'error',
+        message: 'Select another user before starting a conversation.'
+      });
+      return;
+    }
+
+    if (isOffline) {
+      setDmStatus({
+        type: 'error',
+        message: 'Reconnect to the network to send a message.'
+      });
+      return;
+    }
+
+    const trimmed = dmMessage.trim();
+    setIsCreatingDm(true);
+    setDmStatus(null);
+    try {
+      const response = await createDirectMessageThread({
+        participantIds: [normalizedTargetId],
+        initialMessage: trimmed ? trimmed : undefined
+      });
+      if (typeof socialNotifications?.refreshAll === 'function') {
+        await socialNotifications.refreshAll().catch(() => {});
+      }
+      setIsDmDialogOpen(false);
+      setDmSnackbar('Direct message thread created.');
+      setDmMessage('');
+      if (response?.thread?.id) {
+        navigate(routes.directMessages.thread(response.thread.id));
+      } else {
+        navigate(routes.directMessages.base);
+      }
+    } catch (error) {
+      setDmStatus({
+        type: 'error',
+        message: error?.message || 'Failed to start a direct message with this user.'
+      });
+    } finally {
+      setIsCreatingDm(false);
+    }
+  }, [
+    dmMessage,
+    isOffline,
+    isViewingSelf,
+    navigate,
+    normalizedTargetId,
+    socialNotifications
+  ]);
+
+  const handleDmSnackbarClose = useCallback(() => {
+    setDmSnackbar(null);
+  }, []);
+
+  const handleOpenReportDialog = useCallback(() => {
+    setReportReason('');
+    setReportStatus(null);
+    setIsReportDialogOpen(true);
+  }, []);
+
+  const handleReportKeyDown = useCallback(
+    (event) => {
+      if (!canReportUser) {
+        return;
+      }
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        handleOpenReportDialog();
+      }
+    },
+    [canReportUser, handleOpenReportDialog]
+  );
+
+  const handleCloseReportDialog = useCallback(() => {
+    if (isSubmittingReport) {
+      return;
+    }
+    setIsReportDialogOpen(false);
+    setReportStatus(null);
+  }, [isSubmittingReport]);
+
+  const handleSubmitReport = useCallback(async () => {
+    if (!normalizedTargetId || isViewingSelf) {
+      setReportStatus({
+        type: 'error',
+        message: 'Select another user before submitting a report.'
+      });
+      return;
+    }
+
+    if (isOffline) {
+      setReportStatus({
+        type: 'error',
+        message: 'Reconnect to the network to submit a report.'
+      });
+      return;
+    }
+
+    setIsSubmittingReport(true);
+    setReportStatus(null);
+    try {
+      await submitModerationAction({
+        userId: normalizedTargetId,
+        type: 'report',
+        reason: reportReason.trim() || undefined
+      });
+      setIsReportDialogOpen(false);
+      setReportSnackbar('Report submitted. Our moderators will review it shortly.');
+      setReportReason('');
+    } catch (error) {
+      setReportStatus({
+        type: 'error',
+        message: error?.message || 'Failed to submit report.'
+      });
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  }, [isOffline, isViewingSelf, normalizedTargetId, reportReason]);
+
+  const handleReportSnackbarClose = useCallback(() => {
+    setReportSnackbar(null);
+  }, []);
+
+  const buildActionCardProps = useCallback(
+    (canInteract, onActivate, onKeyDownHandler) => ({
+      role: 'button',
+      tabIndex: canInteract ? 0 : -1,
+      'aria-disabled': canInteract ? 'false' : 'true',
+      className: 'section-content-box action-card',
+      onClick: canInteract ? onActivate : undefined,
+      onKeyDown: onKeyDownHandler,
+      sx: {
+        ...ACTION_CARD_SX,
+        cursor: canInteract ? 'pointer' : 'not-allowed',
+        opacity: canInteract ? 1 : 0.6
+      }
+    }),
+    []
+  );
+
+  const handleBlockCardKeyDown = useCallback(
+    (event) => {
+      if (!canManageBlock || blockCardDisabled) {
+        return;
+      }
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        if (isBlocked) {
+          handleRequestUnblock();
+        } else {
+          handleRequestBlock();
+        }
+      }
+    },
+    [blockCardDisabled, canManageBlock, handleRequestBlock, handleRequestUnblock, isBlocked]
+  );
 
   useEffect(() => {
     if (!relationshipStatus) {
@@ -1335,42 +1554,14 @@ function ProfilePage() {
                     width: '100%'
                   }}
                 >
-                  <Box
-                    className="section-content-box"
-                    sx={{
-                      flex: 1,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 2,
-                      p: 2,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 1,
-                      cursor: 'pointer'
-                    }}
-                  >
+                  <Box {...buildActionCardProps(canMessageUser, handleOpenDmDialog, handleMessageKeyDown)}>
                     <MessageIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
                     <Typography variant="body2" color="text.secondary">
                       Message
                     </Typography>
                   </Box>
 
-                  <Box
-                    className="section-content-box"
-                    sx={{
-                      flex: 1,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 2,
-                      p: 2,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 1,
-                      cursor: 'pointer'
-                    }}
-                  >
+                  <Box {...buildActionCardProps(canReportUser, handleOpenReportDialog, handleReportKeyDown)}>
                     <FlagIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
                     <Typography variant="body2" color="text.secondary">
                       Report
@@ -1379,21 +1570,11 @@ function ProfilePage() {
 
                   {canManageBlock ? (
                     <Box
-                      className="section-content-box"
-                      onClick={isBlocked ? handleRequestUnblock : handleRequestBlock}
-                      sx={{
-                        flex: 1,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 2,
-                        p: 2,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: 1,
-                        cursor: isProcessingBlockAction || isFetchingProfile ? 'not-allowed' : 'pointer',
-                        opacity: isProcessingBlockAction || isFetchingProfile ? 0.6 : 1
-                      }}
+                      {...buildActionCardProps(
+                        !blockCardDisabled,
+                        isBlocked ? handleRequestUnblock : handleRequestBlock,
+                        handleBlockCardKeyDown
+                      )}
                     >
                       {isBlocked ? (
                         <HowToRegIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
@@ -1469,6 +1650,95 @@ function ProfilePage() {
         </Stack>
 
       </div>
+
+      <Dialog
+        open={isDmDialogOpen}
+        onClose={handleCloseDmDialog}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Message {displayName}</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Stack spacing={2}>
+            {dmStatus ? <Alert severity={dmStatus.type}>{dmStatus.message}</Alert> : null}
+            <TextField
+              label="Message"
+              value={dmMessage}
+              onChange={(event) => setDmMessage(event.target.value)}
+              placeholder="Say hello or share a quick update."
+              multiline
+              minRows={3}
+              disabled={isCreatingDm || isOffline}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleCloseDmDialog} disabled={isCreatingDm}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmitDirectMessage}
+            variant="contained"
+            color="secondary"
+            disabled={isCreatingDm || isOffline || !canMessageUser}
+          >
+            {isCreatingDm ? 'Sending…' : 'Send message'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={isReportDialogOpen}
+        onClose={handleCloseReportDialog}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Report {displayName}</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Stack spacing={2}>
+            {reportStatus ? <Alert severity={reportStatus.type}>{reportStatus.message}</Alert> : null}
+            <TextField
+              label="Reason"
+              value={reportReason}
+              onChange={(event) => setReportReason(event.target.value)}
+              placeholder="Let moderators know what happened (optional)."
+              multiline
+              minRows={3}
+              disabled={isSubmittingReport || isOffline}
+            />
+            <Typography variant="caption" color="text.secondary">
+              Reports notify moderators. Misuse may result in account action.
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleCloseReportDialog} disabled={isSubmittingReport}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmitReport}
+            variant="contained"
+            color="error"
+            disabled={isSubmittingReport || isOffline || !canReportUser}
+          >
+            {isSubmittingReport ? 'Submitting…' : 'Submit report'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={Boolean(dmSnackbar)}
+        autoHideDuration={4000}
+        onClose={handleDmSnackbarClose}
+        message={dmSnackbar ?? ''}
+      />
+
+      <Snackbar
+        open={Boolean(reportSnackbar)}
+        autoHideDuration={4000}
+        onClose={handleReportSnackbarClose}
+        message={reportSnackbar ?? ''}
+      />
 
       <Dialog
         open={Boolean(blockDialogMode)}

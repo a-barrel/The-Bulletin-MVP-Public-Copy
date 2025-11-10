@@ -118,6 +118,23 @@
 .section-content-box {
   background-color: #CDAEF2;
 }
+
+.section-content-box.action-card {
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.section-content-box.action-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.section-content-box.action-card[aria-disabled='true'],
+.section-content-box.action-card[aria-disabled='true']:hover {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+  box-shadow: none;
+}
 .user-card {
   padding-top: 16px;
   display: flex;
