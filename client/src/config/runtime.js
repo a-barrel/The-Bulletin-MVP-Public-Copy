@@ -70,6 +70,7 @@ const firebaseAuthEmulatorUrl = isOffline
 const firebaseVapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || null;
 
 const troyExperimentEnabled = import.meta.env.VITE_ENABLE_TROY_EXPERIMENT === 'true';
+const suppressStyleWarnings = import.meta.env.VITE_SUPPRESS_STYLE_WARNINGS === 'true';
 
 export const runtimeConfig = {
   mode,
@@ -77,6 +78,7 @@ export const runtimeConfig = {
   isOnline: !isOffline,
   apiBaseUrl,
   fallbackToken,
+  suppressStyleWarnings,
   troyExperimentEnabled,
   firebase: {
     config: firebaseConfig,

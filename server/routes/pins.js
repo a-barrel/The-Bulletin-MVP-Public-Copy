@@ -113,6 +113,19 @@ const mapPinPreview = (pinDoc, creator) => {
   });
 };
 
+const mapPinOptions = (optionsDoc) => {
+  if (!optionsDoc) {
+    return undefined;
+  }
+  if (typeof optionsDoc.toObject === 'function') {
+    return optionsDoc.toObject();
+  }
+  if (typeof optionsDoc === 'object') {
+    return { ...optionsDoc };
+  }
+  return undefined;
+};
+
 const mapPinToListItem = (pinDoc, creator, options = {}) => {
   const preview = mapPinPreview(pinDoc, creator);
   const coverPhoto = pinDoc.coverPhoto
@@ -140,7 +153,7 @@ const mapPinToListItem = (pinDoc, creator, options = {}) => {
     viewerOwnsPin,
     replyCount: pinDoc.replyCount ?? undefined,
     stats: pinDoc.stats || undefined,
-    options: pinDoc.options || undefined,
+    options: mapPinOptions(pinDoc.options),
     coverPhoto,
     photos
   });
@@ -341,7 +354,7 @@ const mapPinToFull = (pinDoc, creator, options = {}) => {
     visibility: doc.visibility,
     isActive: doc.isActive,
     stats: doc.stats || undefined,
-    options: doc.options || undefined,
+    options: mapPinOptions(doc.options),
     bookmarkCount: doc.bookmarkCount ?? 0,
     replyCount: doc.replyCount ?? 0,
     createdAt: pinDoc.createdAt.toISOString(),
