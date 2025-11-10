@@ -505,7 +505,6 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         if (!isMountedRef.current) {
           return null;
         }
-        console.error('Failed to load pin details:', loadError);
         logClientError(loadError, {
           source: 'usePinDetails.reloadPin',
           pinId,
@@ -554,7 +553,6 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         if (ignore) {
           return;
         }
-        console.error('Failed to load replies:', loadError);
         logClientError(loadError, { source: 'usePinDetails.loadReplies', pinId });
         setReplies([]);
         setRepliesError(loadError?.message || 'Failed to load replies.');
@@ -601,7 +599,6 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         if (ignore) {
           return;
         }
-        console.error('Failed to load attendees:', loadError);
         logClientError(loadError, { source: 'usePinDetails.loadAttendees', pinId });
         setAttendees([]);
         setAttendeesError(loadError?.message || 'Failed to load attendees.');
@@ -947,7 +944,6 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         }
       }
     } catch (toggleError) {
-      console.error('Failed to toggle bookmark:', toggleError);
       logClientError(toggleError, {
         source: 'usePinDetails.toggleBookmark',
         pinId: pin?._id,
@@ -1037,7 +1033,6 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         announceBadgeEarned(response.badgeEarnedId);
       }
     } catch (toggleError) {
-      console.error('Failed to update attendance:', toggleError);
       logClientError(toggleError, {
         source: 'usePinDetails.toggleAttendance',
         pinId: pin?._id,
@@ -1099,7 +1094,6 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         };
       });
     } catch (submitError) {
-      console.error('Failed to create reply:', submitError);
       logClientError(submitError, {
         source: 'usePinDetails.submitReply',
         pinId: pin?._id

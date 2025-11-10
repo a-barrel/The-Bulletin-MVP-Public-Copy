@@ -4,6 +4,7 @@ import { fetchPinsNearby, fetchPinById, fetchCurrentUserProfile } from '../api/m
 import resolveAssetUrl from '../utils/media';
 import toIdString from '../utils/ids';
 import { METERS_PER_MILE } from '../utils/geo';
+import reportClientError from '../utils/reportClientError';
 import { resolveAuthorName } from '../utils/feed';
 const DEFAULT_RADIUS_MILES = 10;
 const PIN_FETCH_LIMIT = 50;
@@ -357,7 +358,10 @@ export default function useNearbyPinsFeed({
                 type: detail.type ?? pin.type
               };
             } catch (detailError) {
-              console.error('Failed to load full pin details:', detailError);
+              reportClientError(detailError, 'Failed to load full pin details:', {
+                source: 'useNearbyPinsFeed.detail',
+                pinId: pin?._id
+              });
               return pin;
             }
           })
@@ -365,7 +369,11 @@ export default function useNearbyPinsFeed({
 
         setPins(detailResults);
       } catch (err) {
-        console.error('Failed to load nearby pins:', err);
+        reportClientError(err, 'Failed to load nearby pins:', {
+          source: 'useNearbyPinsFeed.fetchPins',
+          location: targetLocation,
+          filters
+        });
         setPins([]);
         setError(err?.message || 'Failed to load nearby pins.');
       } finally {

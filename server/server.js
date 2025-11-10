@@ -61,6 +61,25 @@ app.use((req, res, next) => {
 });
 app.use(express.json());
 app.use((req, res, next) => {
+  req.logError = (error, context = {}) => {
+    const payload =
+      error instanceof Error
+        ? { message: error.message, stack: error.stack }
+        : { message: String(error) };
+    logLine('server-routes', `${req.method} ${req.originalUrl} ${payload.message}`, {
+      severity: 'error',
+      stack: payload.stack,
+      context: {
+        route: req.originalUrl,
+        method: req.method,
+        userId: req.user?.uid,
+        ...context
+      }
+    });
+  };
+  next();
+});
+app.use((req, res, next) => {
   if (!runtime.isOffline) {
     return next();
   }

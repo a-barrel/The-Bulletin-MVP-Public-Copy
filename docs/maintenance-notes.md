@@ -39,6 +39,7 @@
   - `PINPOINT_LOG_TTL_DAYS=14` to adjust retention.
   - `PINPOINT_ENABLE_FILE_LOGS=true` if you need legacy filesystem logs outside offline mode.
 - Client consoles can get noisy with CSS parser warnings. Set `VITE_SUPPRESS_STYLE_WARNINGS=true` to enable the style warning filter (`client/src/utils/styleWarningFilter.js`), which drops those repetitive “Declaration dropped/Unknown property” messages in dev.
+- See `docs/logging-playbook.md` for mongosh/Compass snippets that help query the new `LogEvent` collection quickly.
 
 ### Dependency Health (audit run 2025‑11‑04)
 - **Root:** `@babel/preset-env`/`@babel/preset-react` (minor bumps available), `concurrently@9`, `eslint@9`, `eslint-plugin-react-hooks@7`.

@@ -755,6 +755,7 @@ router.post('/', verifyToken, async (req, res) => {
     if (error instanceof ZodError) {
       return res.status(400).json({ message: 'Invalid pin payload', issues: error.errors });
     }
+    req.logError?.(error, { handler: 'pins:create' });
     console.error('Failed to create pin:', error);
     res.status(500).json({ message: 'Failed to create pin' });
   }
@@ -948,6 +949,7 @@ router.get('/nearby', verifyToken, async (req, res) => {
     if (error instanceof ZodError) {
       return res.status(400).json({ message: 'Invalid nearby pins query', issues: error.errors });
     }
+    req.logError?.(error, { handler: 'pins:nearby' });
     console.error('Failed to load nearby pins:', error);
     res.status(500).json({ message: 'Failed to load nearby pins' });
   }

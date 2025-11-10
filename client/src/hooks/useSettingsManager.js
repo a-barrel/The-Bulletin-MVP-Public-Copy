@@ -9,6 +9,7 @@ import {
   updateCurrentUserProfile
 } from '../api/mongoDataApi';
 import { auth } from '../firebase';
+import reportClientError from '../utils/reportClientError';
 
 export const RADIUS_MIN = 100;
 export const RADIUS_MAX = 80467; // 50 miles
@@ -378,6 +379,9 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
       setProfile(updated);
       setSaveStatus({ type: 'success', message: 'Settings saved.' });
     } catch (error) {
+      reportClientError(error, 'Failed to update user settings.', {
+        source: 'useSettingsManager.saveSettings'
+      });
       setSaveStatus({
         type: 'error',
         message: error?.message || 'Failed to update settings.'
@@ -392,7 +396,9 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
     try {
       await revokeCurrentSession();
     } catch (error) {
-      console.error('Failed to revoke server session during sign out.', error);
+      reportClientError(error, 'Failed to revoke server session during sign out.', {
+        source: 'useSettingsManager.signOut'
+      });
       revokeError = error;
     }
 
@@ -407,6 +413,9 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
         });
       }
     } catch (error) {
+      reportClientError(error, 'Failed to complete sign out.', {
+        source: 'useSettingsManager.signOut.final'
+      });
       setSaveStatus({
         type: 'error',
         message: error?.message || 'Failed to sign out.'
