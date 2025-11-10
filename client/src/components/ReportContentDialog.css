@@ -2,12 +2,20 @@
   border-radius: 12px;
 }
 
+.report-dialog .MuiPaper-root {
+  border: 2px solid #5D3889;
+  border-radius: 15px !important; 
+  overflow: hidden; 
+}
+
 /* title */
 .report-title {
   font-weight: 600 !important;
   text-align: center;
   color: #000000;
   background-color: #9B5DE5;
+  font-size: x-large !important;
+  border-bottom: solid #5D3889;
 }
 
 /* post content */
@@ -16,13 +24,16 @@
   padding: 1.5rem;
 }
 
-.report-stack {
-  gap: 1rem; 
-}
-
 .report-summary {
   color: #000000;
   font-size: 0.9rem;
+}
+
+.report-summary p {
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: large;
 }
 
 /* report text */
@@ -78,6 +89,7 @@
   justify-content: space-between;
   padding: 0.75rem 1.5rem;
   background-color: #9B5DE5;
+  border-top: solid #5D3889;
 }
 
 .report-cancel {

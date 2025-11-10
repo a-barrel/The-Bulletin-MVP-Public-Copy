@@ -53,6 +53,7 @@ function ReportContentDialog({
         <Stack spacing={2} className="report-stack">
           {contentSummary ? (
             <Typography variant="body2" className="report-summary">
+              <p>Message:</p>
               {truncateSummary(contentSummary)}
             </Typography>
           ) : null}
@@ -61,11 +62,11 @@ function ReportContentDialog({
             multiline
             minRows={3}
             maxRows={6}
-            label="Tell us what happened"
+            label="Optional: Tell us what happened"
             value={reason}
             onChange={(event) => onReasonChange?.(event.target.value)}
             disabled={submitting}
-            placeholder="Optional: share additional details for moderators."
+            placeholder="Share additional details here for moderators."
             helperText={helperText || 'Reports are anonymous. Our moderators review every submission.'}
             className="report-textfield"
           />
