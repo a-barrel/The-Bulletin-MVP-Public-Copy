@@ -33,6 +33,11 @@
 ### Client/Server Error Logging
 - All offline HTTP 4xx/5xx responses are already mirrored to `DEV_LOGS/http-errors.log`. To capture frontend issues too, the SPA now posts structured events to `/api/dev-logs`, which writes to `DEV_LOGS/client-errors.log`.
 - Window-level `error` and `unhandledrejection` listeners plus targeted API catches (starting with `fetchPinsNearby`) ensure console errors aren’t silently lost; extend `client/src/utils/clientLogger.js` for additional sources as needed.
+- Production (Render) now mirrors `logLine` events into MongoDB via `server/models/LogEvent`. Tune with:
+  - `PINPOINT_LOG_TO_MONGO=true|false` (defaults to `true` online).
+  - `PINPOINT_LOG_MONGO_MIN_SEVERITY=warn|error|fatal` (defaults to `warn`).
+  - `PINPOINT_LOG_TTL_DAYS=14` to adjust retention.
+  - `PINPOINT_ENABLE_FILE_LOGS=true` if you need legacy filesystem logs outside offline mode.
 
 ### Dependency Health (audit run 2025‑11‑04)
 - **Root:** `@babel/preset-env`/`@babel/preset-react` (minor bumps available), `concurrently@9`, `eslint@9`, `eslint-plugin-react-hooks@7`.

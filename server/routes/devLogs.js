@@ -26,7 +26,13 @@ router.post('/', verifyToken, (req, res) => {
     const contextSuffix = payload.context ? ` | context=${JSON.stringify(payload.context)}` : '';
     const stackSuffix = payload.stack ? ` | stack=${payload.stack}` : '';
     const line = `[${payload.severity}] ${timestamp.toISOString()} ${payload.message}${stackSuffix}${contextSuffix}`;
-    logLine(payload.category, line);
+    logLine(payload.category, line, {
+      severity: payload.severity,
+      stack: payload.stack,
+      context: payload.context,
+      timestamp,
+      forceMongo: true
+    });
     return res.status(204).send();
   } catch (error) {
     if (error instanceof ZodError) {

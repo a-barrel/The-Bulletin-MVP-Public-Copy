@@ -2,6 +2,10 @@
 import runtimeConfig from '../config/runtime';
 
 const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+const DEFAULT_NEARBY_DISTANCE_MILES = Number.isFinite(runtimeConfig.defaultNearbyRadius)
+  ? runtimeConfig.defaultNearbyRadius
+  : 10;
+const API_ERROR_EXPIRY_MS = 30 * 1000;
 
 function resolveApiBaseUrl() {
   // In dev we rely on Vite's proxy to avoid CORS and absolute origins.
@@ -197,12 +201,36 @@ export async function fetchPinsNearby({
     throw error;
   }
 
+  const numericDistance =
+    typeof distanceMiles === 'number'
+      ? distanceMiles
+      : distanceMiles !== undefined && distanceMiles !== null
+      ? Number(distanceMiles)
+      : null;
+  const effectiveDistance =
+    Number.isFinite(numericDistance) && numericDistance > 0
+      ? numericDistance
+      : DEFAULT_NEARBY_DISTANCE_MILES;
+
+  if (!Number.isFinite(numericDistance) || numericDistance <= 0) {
+    await logClientEvent({
+      category: 'client-api-errors',
+      severity: 'warn',
+      message: 'Using default distance for nearby pins request.',
+      context: {
+        endpoint: '/api/pins/nearby',
+        providedDistance: distanceMiles,
+        fallback: effectiveDistance
+      }
+    });
+  }
+
   try {
     const baseUrl = resolveApiBaseUrl();
     const params = new URLSearchParams({
       latitude: String(latitude),
       longitude: String(longitude),
-      distanceMiles: String(distanceMiles)
+      distanceMiles: String(effectiveDistance)
     });
 
     if (limit !== undefined) {
@@ -245,32 +273,26 @@ export async function fetchPinsNearby({
     const payload = await response.json().catch(() => []);
     if (!response.ok) {
       const message = payload?.message || 'Failed to load nearby pins';
-      await logClientEvent({
-        category: 'client-api-errors',
-        message,
-        context: {
-          endpoint: '/api/pins/nearby',
-          status: response.status,
-          params: Object.fromEntries(params.entries())
-        }
+      const error = new Error(message);
+      await logApiError('/api/pins/nearby', error, {
+        status: response.status,
+        params: Object.fromEntries(params.entries()),
+        issues: payload?.issues
       });
-      throw new Error(message);
+      throw error;
     }
 
     return payload;
   } catch (error) {
-    await logClientEvent({
-      category: 'client-api-errors',
-      message: error?.message || 'fetchPinsNearby failed',
-      stack: error?.stack,
-      context: {
-        endpoint: '/api/pins/nearby',
+    if (!hasApiErrorBeenLogged(error)) {
+      await logApiError('/api/pins/nearby', error, {
         latitude,
         longitude,
         limit,
-        status
-      }
-    });
+        status,
+        distanceMiles: effectiveDistance
+      });
+    }
     throw error;
   }
 }
@@ -694,10 +716,22 @@ export async function logClientEvent({
 }
 
 const API_ERROR_LOG_FLAG = Symbol('clientApiErrorLogged');
+const apiErrorCache = new Map();
 
-function markApiErrorLogged(error) {
+const buildDedupeKey = (endpoint, context = {}) => {
+  try {
+    return `${endpoint}|${JSON.stringify(context)}`;
+  } catch {
+    return `${endpoint}|fallback`;
+  }
+};
+
+function markApiErrorLogged(error, key) {
   if (error && typeof error === 'object') {
     error[API_ERROR_LOG_FLAG] = true;
+  }
+  if (key) {
+    apiErrorCache.set(key, Date.now());
   }
 }
 
@@ -706,6 +740,13 @@ function hasApiErrorBeenLogged(error) {
 }
 
 async function logApiError(endpoint, error, context = {}) {
+  const key = buildDedupeKey(endpoint, context);
+  const now = Date.now();
+  const lastLogged = apiErrorCache.get(key);
+  if (lastLogged && now - lastLogged < API_ERROR_EXPIRY_MS) {
+    markApiErrorLogged(error, key);
+    return;
+  }
   try {
     await logClientEvent({
       category: 'client-api-errors',
@@ -713,7 +754,7 @@ async function logApiError(endpoint, error, context = {}) {
       stack: error?.stack,
       context: { endpoint, ...context }
     });
-    markApiErrorLogged(error);
+    markApiErrorLogged(error, key);
   } catch {
     // noop – logging failures should never surface to callers
   }

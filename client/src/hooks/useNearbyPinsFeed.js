@@ -365,6 +365,7 @@ export default function useNearbyPinsFeed({
 
         setPins(detailResults);
       } catch (err) {
+        console.error('Failed to load nearby pins:', err);
         setPins([]);
         setError(err?.message || 'Failed to load nearby pins.');
       } finally {
