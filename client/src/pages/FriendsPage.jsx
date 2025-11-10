@@ -79,6 +79,11 @@ import {
 import normalizeObjectId from '../utils/normalizeObjectId';
 
 import './FriendsPage.css';
+import {
+  formatFriendlyTimestamp,
+  formatAbsoluteDateTime,
+  formatRelativeTime
+} from '../utils/dates';
 import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
 
 export const pageConfig = {
@@ -1835,17 +1840,20 @@ function ChatPage() {
             </Typography>
           </Stack>
 
-          <FriendRequestIcon
-            className="friend-request-icon"
+          <Button
+            className="friend-request-btn"
+            type="button"
+            aria-label={notificationsLabel}
             onClick={handleOpenFriendDialog}
             disabled={isLoadingFriends || isProcessingFriendAction}
           >
+            <FriendRequestIcon className="friend-request-icon" aria-hidden="true"/>
             {displayBadge ? (
               <span className="friend-request-icon-badge" aria-hidden="true">
-                {incomingRequests.length}
+                {displayBadge}
               </span>
             ) : null}
-          </FriendRequestIcon>
+          </Button>
                     
         </Box>
 

@@ -227,6 +227,15 @@
   flex: 1;
 }
 
+.friend-request-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  margin-right: -2rem;
+  cursor: pointer;
+  transition: transform .2s ease;
+}
+
 .friend-request-icon {
   width: 32px !important;
   height: 32px !important;
@@ -236,8 +245,8 @@
 
 .friend-request-icon-badge {
   position: relative;
-  bottom: 25px;
-  right: 2rem;
+  bottom: 15px;
+  right: 0.75rem;
   min-width: 20px;
   height: 20px;
   padding: 0 6px;
@@ -309,12 +318,14 @@
 }
 
 .friend-dialog-request-name {
-  font-weight: 700 !important;
   font-family: 'Urbanist', sans-serif !important;
+  font-weight: 700 !important;
   color: black !important;
 }
 
 .friend-dialog-request-time {
+  font-family: 'Urbanist', sans-serif !important;
+  font-size: 0.85rem !important;
   color: gray !important;
 }
 
