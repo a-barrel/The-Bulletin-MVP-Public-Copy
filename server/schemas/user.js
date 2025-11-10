@@ -41,6 +41,9 @@ const DataPreferencesSchema = z
 const UserPreferencesSchema = z.object({
   theme: z.enum(['system', 'light', 'dark']).default('system'),
   notifications: NotificationPreferencesSchema.optional(),
+  notificationsMutedUntil: z
+    .union([z.string().datetime(), z.null()])
+    .optional(),
   radiusPreferenceMeters: z.number().int().positive().default(16093).optional(),
   statsPublic: z.boolean().default(true).optional(),
   filterCussWords: z.boolean().default(false).optional(),

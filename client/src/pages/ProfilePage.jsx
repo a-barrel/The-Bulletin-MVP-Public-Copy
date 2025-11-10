@@ -354,6 +354,10 @@ function ProfilePage() {
   });
   const avatarPreviewUrlRef = useRef(null);
   const bannerPreviewUrlRef = useRef(null);
+  const showEditPanel = canEditProfile;
+  const layoutClassName = showEditPanel
+    ? 'profile-content-grid profile-content-grid--with-edit'
+    : 'profile-content-grid';
 
   const clearAvatarPreviewUrl = useCallback(() => {
     if (avatarPreviewUrlRef.current && avatarPreviewUrlRef.current.startsWith('blob:')) {
@@ -1191,83 +1195,91 @@ function ProfilePage() {
             </Alert>
           ) : null}
 
-          <Stack spacing={2} alignItems="center" textAlign="center" sx={{ width: '100%', pt: 1 }}>
-            <Box
-              sx={{
-                position: 'relative',
-                width: '100%',
-                borderRadius: 3,
-                backgroundColor: 'grey.800',
-                overflow: 'visible',
-                minHeight: { xs: 160, sm: 200 },
-                maxWidth: 800,
-                aspectRatio: { xs: '16 / 7', sm: '16 / 5' }
-              }}
+          <Box className={layoutClassName} component="section">
+            <Stack
+              spacing={2}
+              alignItems="center"
+              textAlign="center"
+              sx={{ width: '100%', pt: 1 }}
+              className="profile-content-grid__primary"
             >
               <Box
                 sx={{
-                  position: 'absolute',
-                  inset: 0,
-                  borderRadius: 'inherit',
-                  overflow: 'hidden'
+                  position: 'relative',
+                  width: '100%',
+                  borderRadius: 3,
+                  backgroundColor: 'grey.800',
+                  overflow: 'visible',
+                  minHeight: { xs: 160, sm: 200 },
+                  maxWidth: 800,
+                  aspectRatio: { xs: '16 / 7', sm: '16 / 5' }
                 }}
               >
-                {bannerDisplaySrc ? (
-                  <Box
-                    component="img"
-                    src={bannerDisplaySrc}
-                    alt="Profile banner"
-                    sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <Box
-                    aria-hidden="true"
-                    sx={{
-                      width: '100%',
-                      height: '100%',
-                      background: 'linear-gradient(135deg, #4B3F72 0%, #2E2157 100%)'
-                    }}
-                  />
-                )}
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: 'inherit',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {bannerDisplaySrc ? (
+                    <Box
+                      component="img"
+                      src={bannerDisplaySrc}
+                      alt="Profile banner"
+                      sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <Box
+                      aria-hidden="true"
+                      sx={{
+                        width: '100%',
+                        height: '100%',
+                        background: 'linear-gradient(135deg, #4B3F72 0%, #2E2157 100%)'
+                      }}
+                    />
+                  )}
+                </Box>
+                <Avatar
+                  src={avatarDisplaySrc ?? undefined}
+                  alt={`${displayName} avatar`}
+                  sx={{
+                    width: 112,
+                    height: 112,
+                    position: 'absolute',
+                    left: '50%',
+                    bottom: -56,
+                    transform: 'translateX(-50%)',
+                    border: '4px solid',
+                    borderColor: 'background.paper',
+                    bgcolor: 'secondary.main',
+                    boxShadow: 3,
+                    zIndex: 1
+                  }}
+                >
+                  {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
+                </Avatar>
               </Box>
-              <Avatar
-                src={avatarDisplaySrc ?? undefined}
-                alt={`${displayName} avatar`}
-                sx={{
-                  width: 112,
-                  height: 112,
-                  position: 'absolute',
-                  left: '50%',
-                  bottom: -56,
-                  transform: 'translateX(-50%)',
-                  border: '4px solid',
-                  borderColor: 'background.paper',
-                  bgcolor: 'secondary.main',
-                  boxShadow: 3,
-                  zIndex: 1
-                }}
-              >
-                {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
-              </Avatar>
-            </Box>
-            <Box sx={{ height: 72 }} aria-hidden="true" />
-            <Box>
-              <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', fontSize: '2rem' }}>
-                {displayName}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Joined: {joinedDisplay}
-              </Typography>
-            </Box>
-            {!hasProfile && !isFetchingProfile && !fetchError ? (
-              <Typography variant="body2" color="text.secondary">
-                This user hasn't filled out their profile yet.
-              </Typography>
-            ) : null}
-          </Stack>
+              <Box sx={{ height: 72 }} aria-hidden="true" />
+              <Box>
+                <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', fontSize: '2rem' }}>
+                  {displayName}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Joined: {joinedDisplay}
+                </Typography>
+              </Box>
+              {!hasProfile && !isFetchingProfile && !fetchError ? (
+                <Typography variant="body2" color="text.secondary">
+                  This user hasn't filled out their profile yet.
+                </Typography>
+              ) : null}
+            </Stack>
 
-          {canEditProfile ? (
-            <Stack spacing={2} sx={{ alignSelf: 'stretch' }}>
+            {canEditProfile ? (
+              <Box component="aside" className="profile-edit-panel">
+                <Stack spacing={2} sx={{ alignSelf: 'stretch' }}>
               {updateStatus ? (
                 <Alert
                   severity={updateStatus.type}
@@ -1451,9 +1463,32 @@ function ProfilePage() {
                     </Button>
                   </Stack>
                 </Stack>
-              ) : null}
-            </Stack>
-          ) : null}
+              ) : (
+                <Stack spacing={2}>
+                  <Typography variant="body1" fontWeight={600}>
+                    Ready to refresh your profile?
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Use the editor to update your photos, bio, and preferences without leaving this page.
+                  </Typography>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                    <Button
+                      variant="contained"
+                      onClick={handleBeginEditing}
+                      disabled={!effectiveUser || isFetchingProfile}
+                    >
+                      Start editing
+                    </Button>
+                    <Button variant="outlined" color="inherit" onClick={handleCancelEditing}>
+                      Clear changes
+                    </Button>
+                  </Stack>
+                </Stack>
+              )}
+                </Stack>
+              </Box>
+            ) : null}
+          </Box>
 
           {hasProfile ? (
             <>

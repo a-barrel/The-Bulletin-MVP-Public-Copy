@@ -34,6 +34,7 @@ export const DEFAULT_SETTINGS = {
     dmMentions: true,
     emailDigests: false
   },
+  notificationsMutedUntil: null,
   display: {
     textScale: 1,
     reduceMotion: false,
@@ -103,6 +104,7 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
           digestFrequency: result?.preferences?.digestFrequency ?? DEFAULT_SETTINGS.digestFrequency,
           autoExportReminders:
             result?.preferences?.data?.autoExportReminders ?? DEFAULT_SETTINGS.autoExportReminders,
+          notificationsMutedUntil: result?.preferences?.notificationsMutedUntil ?? null,
           notifications: {
             proximity:
               result?.preferences?.notifications?.proximity ?? DEFAULT_SETTINGS.notifications.proximity,
@@ -250,6 +252,7 @@ const baselineSettings = useMemo(() => {
       digestFrequency: profile?.preferences?.digestFrequency ?? DEFAULT_SETTINGS.digestFrequency,
       autoExportReminders:
         profile?.preferences?.data?.autoExportReminders ?? DEFAULT_SETTINGS.autoExportReminders,
+      notificationsMutedUntil: profile?.preferences?.notificationsMutedUntil ?? null,
       notifications: {
         proximity:
           profile?.preferences?.notifications?.proximity ?? DEFAULT_SETTINGS.notifications.proximity,
@@ -316,6 +319,31 @@ const baselineSettings = useMemo(() => {
       }
     }));
   }, []);
+
+  const handleQuickMuteNotifications = useCallback((hours = 4) => {
+    const duration = Math.max(0.5, Number(hours) || 4);
+    const expiresAt = new Date(Date.now() + duration * 60 * 60 * 1000).toISOString();
+    setSettings((prev) => ({
+      ...prev,
+      notificationsMutedUntil: expiresAt
+    }));
+    setSaveStatus({
+      type: 'info',
+      message: `Notifications muted until ${new Date(expiresAt).toLocaleString()}. Save to apply.`
+    });
+  }, [setSaveStatus]);
+
+  const handleClearNotificationMute = useCallback(() => {
+    setSettings((prev) => ({
+      ...prev,
+      notificationsMutedUntil: null
+    }));
+    setSaveStatus((prev) =>
+      prev?.type === 'info'
+        ? prev
+        : { type: 'info', message: 'Notification mute cleared. Save to apply.' }
+    );
+  }, [setSaveStatus]);
 
   const handleTextScaleChange = useCallback((event, value) => {
     const next = Array.isArray(value) ? value[0] : value;
@@ -501,6 +529,7 @@ const baselineSettings = useMemo(() => {
             dmMentions: settings.notifications.dmMentions,
             emailDigests: settings.notifications.emailDigests
           },
+          notificationsMutedUntil: settings.notificationsMutedUntil ?? null,
           display: {
             textScale: settings.display.textScale,
             reduceMotion: settings.display.reduceMotion,
@@ -584,6 +613,8 @@ const baselineSettings = useMemo(() => {
     handleThemeChange,
     handleRadiusChange,
     handleNotificationToggle,
+    handleQuickMuteNotifications,
+    handleClearNotificationMute,
     handleTextScaleChange,
     handleDisplayToggle,
     handleMapDensityChange,

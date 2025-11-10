@@ -22,6 +22,7 @@ import DialogActions from '@mui/material/DialogActions';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import UpdateIcon from '@mui/icons-material/Update';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -108,6 +109,7 @@ function UpdatesPage() {
     updatesError,
     showUnreadOnly,
     pendingUpdateIds,
+    deletingUpdateIds,
     isMarkingAllRead,
     unreadCount,
     containerRef,
@@ -117,7 +119,8 @@ function UpdatesPage() {
     handleToggleUnreadOnly,
     handleRefresh,
     handleMarkRead,
-    handleMarkAllRead
+    handleMarkAllRead,
+    handleDeleteUpdate
   } = useUpdatesFeed();
 
   const isLoading = isProfileLoading || isLoadingUpdates;
@@ -417,6 +420,7 @@ function UpdatesPage() {
               {tabFilteredUpdates.map((update) => {
                 const read = Boolean(update.readAt);
                 const pending = pendingUpdateIds.includes(update._id);
+                const isDeleting = deletingUpdateIds.includes(update._id);
                 const message = update.payload?.body;
                 const pinTitle = update.payload?.pin?.title;
                 const pinId = update.payload?.pin?._id;
@@ -470,6 +474,14 @@ function UpdatesPage() {
                       </Typography>
                     ) : null}
 
+                    {typeKey === 'pin-update' && Array.isArray(update.payload?.metadata?.changedFields) ? (
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                        {update.payload.metadata.changedFields.map((field) => (
+                          <Chip key={field} size="small" variant="outlined" label={`Changed: ${field}`} />
+                        ))}
+                      </Stack>
+                    ) : null}
+
                     {update.payload?.avatars?.length ? (
                       <Box className="avatar-row" sx={{ mt: 1 }}>
                         {update.payload.avatars.map((src, idx) => (
@@ -514,6 +526,17 @@ function UpdatesPage() {
                         </Button>
                       ) : null}
 
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        startIcon={<DeleteOutlineIcon fontSize="small" />}
+                        onClick={() => handleDeleteUpdate(update._id)}
+                        disabled={isDeleting || pending}
+                      >
+                        {isDeleting ? 'Deleting...' : 'Delete'}
+                      </Button>
+
                       {read ? (
                         <Chip
                           label="Read"
@@ -528,7 +551,7 @@ function UpdatesPage() {
                           color="secondary"
                           startIcon={<CheckCircleOutlineIcon fontSize="small" />}
                           onClick={() => handleMarkRead(update._id)}
-                          disabled={pending}
+                          disabled={pending || isDeleting}
                         >
                           {pending ? 'Marking...' : 'Mark as read'}
                         </Button>

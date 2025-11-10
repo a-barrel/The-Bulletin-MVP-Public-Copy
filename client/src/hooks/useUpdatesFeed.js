@@ -5,7 +5,8 @@ import {
   fetchCurrentUserProfile,
   fetchUpdates,
   markAllUpdatesRead,
-  markUpdateRead
+  markUpdateRead,
+  deleteUpdate
 } from '../api/mongoDataApi';
 import { auth } from '../firebase';
 import { useUpdates } from '../contexts/UpdatesContext';
@@ -52,6 +53,7 @@ export default function useUpdatesFeed() {
   const [updatesError, setUpdatesError] = useState(null);
 
   const [pendingUpdateIds, setPendingUpdateIds] = useState([]);
+  const [deletingUpdateIds, setDeletingUpdateIds] = useState([]);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
   const [showUnreadOnly, setShowUnreadOnly] = useState(true);
   const pendingRefreshRef = useRef(false);
@@ -244,6 +246,22 @@ export default function useUpdatesFeed() {
     setUpdatesError(null);
   }, []);
 
+  const handleDeleteUpdate = useCallback(async (updateId) => {
+    if (!updateId) {
+      return;
+    }
+    setDeletingUpdateIds((prev) => (prev.includes(updateId) ? prev : [...prev, updateId]));
+    try {
+      await deleteUpdate(updateId);
+      setUpdates((prev) => prev.filter((item) => item._id !== updateId));
+    } catch (error) {
+      setUpdatesError(error?.message || 'Failed to delete update.');
+    } finally {
+      setDeletingUpdateIds((prev) => prev.filter((id) => id !== updateId));
+      setPendingUpdateIds((prev) => prev.filter((id) => id !== updateId));
+    }
+  }, []);
+
   const filteredUpdates = useMemo(() => {
     if (!showUnreadOnly) {
       return updates;
@@ -263,6 +281,7 @@ export default function useUpdatesFeed() {
     updatesError,
     showUnreadOnly,
     pendingUpdateIds,
+    deletingUpdateIds,
     isMarkingAllRead,
     unreadCount,
     containerRef,
@@ -272,6 +291,7 @@ export default function useUpdatesFeed() {
     handleRefresh,
     handleMarkRead,
     handleMarkAllRead,
-    handleDismissUpdatesError
+    handleDismissUpdatesError,
+    handleDeleteUpdate
   };
 }

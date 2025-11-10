@@ -117,6 +117,7 @@ const UserPreferencesUpdateSchema = z
     dmPermission: z.enum(['everyone', 'friends', 'nobody']).optional(),
     digestFrequency: z.enum(['immediate', 'daily', 'weekly', 'never']).optional(),
     notifications: NotificationPreferencesUpdateSchema,
+    notificationsMutedUntil: z.union([z.string().datetime(), z.null()]).optional(),
     display: DisplayPreferencesUpdateSchema,
     data: DataPreferencesUpdateSchema
   })
@@ -297,6 +298,13 @@ const mapUserToPublic = (userDoc) => {
 
 const mapUserToProfile = (userDoc) => {
   const doc = userDoc.toObject();
+  const preferences = doc.preferences ? { ...doc.preferences } : undefined;
+  if (preferences?.notificationsMutedUntil) {
+    const mutedDate = new Date(preferences.notificationsMutedUntil);
+    preferences.notificationsMutedUntil = Number.isNaN(mutedDate.getTime())
+      ? undefined
+      : mutedDate.toISOString();
+  }
   const createdAt = toIsoDateString(userDoc.createdAt) ?? toIsoDateString(userDoc._id?.getTimestamp?.());
   const updatedAt = toIsoDateString(userDoc.updatedAt) ?? createdAt ?? new Date().toISOString();
   const result = UserProfileSchema.safeParse({
@@ -311,7 +319,7 @@ const mapUserToProfile = (userDoc) => {
     email: doc.email || undefined,
     bio: doc.bio || undefined,
     banner: mapMediaAssetResponse(doc.banner),
-    preferences: doc.preferences || undefined,
+    preferences: preferences || undefined,
     relationships: mapRelationships(doc.relationships),
     locationSharingEnabled: Boolean(doc.locationSharingEnabled),
     pinnedPinIds: mapIdList(doc.pinnedPinIds),
@@ -637,6 +645,18 @@ router.patch('/me', verifyToken, async (req, res) => {
         }
         if (notifications.emailDigests !== undefined) {
           setDoc['preferences.notifications.emailDigests'] = notifications.emailDigests;
+        }
+      }
+      if (input.preferences.notificationsMutedUntil !== undefined) {
+        const muteValue = input.preferences.notificationsMutedUntil;
+        if (muteValue === null) {
+          unsetDoc['preferences.notificationsMutedUntil'] = '';
+        } else {
+          const muteDate = new Date(muteValue);
+          if (Number.isNaN(muteDate.getTime())) {
+            return res.status(400).json({ message: 'Invalid notificationsMutedUntil timestamp' });
+          }
+          setDoc['preferences.notificationsMutedUntil'] = muteDate;
         }
       }
       if (input.preferences.display && typeof input.preferences.display === 'object') {

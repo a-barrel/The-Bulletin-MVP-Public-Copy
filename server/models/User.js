@@ -38,6 +38,7 @@ const userSchema = new mongoose.Schema(
         dmMentions: { type: Boolean, default: true },
         emailDigests: { type: Boolean, default: false }
       },
+      notificationsMutedUntil: { type: Date, default: null },
       radiusPreferenceMeters: { type: Number, default: 16093 },
       statsPublic: { type: Boolean, default: true },
       filterCussWords: { type: Boolean, default: false },

@@ -40,6 +40,9 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import SaveIcon from '@mui/icons-material/Save';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import FeedbackIcon from '@mui/icons-material/FeedbackOutlined';
+import DoNotDisturbOnIcon from '@mui/icons-material/DoNotDisturbOn';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import RestoreIcon from '@mui/icons-material/Restore';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import BlockIcon from '@mui/icons-material/Block';
@@ -64,6 +67,7 @@ import {
   revokeApiToken
 } from '../api/mongoDataApi';
 import reportClientError from '../utils/reportClientError';
+import { formatFriendlyTimestamp } from '../utils/dates';
 
 export const pageConfig = {
   id: 'settings',
@@ -111,6 +115,8 @@ function SettingsPage() {
     handleThemeChange,
     handleRadiusChange,
     handleNotificationToggle,
+    handleQuickMuteNotifications,
+    handleClearNotificationMute,
     handleTextScaleChange,
     handleDisplayToggle,
     handleMapDensityChange,
@@ -176,6 +182,13 @@ function SettingsPage() {
     { key: 'chatTransitions', label: 'Chatroom join/leave events', helper: 'Heads-up when friends enter or leave rooms.' },
     { key: 'emailDigests', label: 'Email digests', helper: 'Allow digests outside the app.' }
   ];
+
+  const notificationsMutedUntil = settings.notificationsMutedUntil;
+  const muteUntilDate = notificationsMutedUntil ? new Date(notificationsMutedUntil) : null;
+  const isMuteActive = Boolean(muteUntilDate && muteUntilDate.getTime() > Date.now());
+  const muteStatusLabel = isMuteActive
+    ? `Muted until ${formatFriendlyTimestamp(notificationsMutedUntil)}`
+    : 'Notifications active';
 
   const loadApiTokens = useCallback(async () => {
     setIsLoadingTokens(true);
@@ -536,6 +549,53 @@ function SettingsPage() {
                   Choose which updates reach you. Changes apply to both push and in-app alerts.
                 </Typography>
               </Stack>
+              <Paper variant="outlined" sx={{ p: 2, backgroundColor: 'grey.50' }}>
+                <Stack spacing={1.5}>
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    alignItems={{ xs: 'flex-start', sm: 'center' }}
+                    justifyContent="space-between"
+                  >
+                    <Typography variant="subtitle2" fontWeight={600}>Quick actions</Typography>
+                    <Chip
+                      icon={<AccessTimeIcon fontSize="small" />}
+                      color={isMuteActive ? 'warning' : 'success'}
+                      label={muteStatusLabel}
+                      size="small"
+                    />
+                  </Stack>
+                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<DoNotDisturbOnIcon />}
+                      onClick={() => handleQuickMuteNotifications(2)}
+                      disabled={isOffline || isFetchingProfile}
+                    >
+                      Mute 2h
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<DoNotDisturbOnIcon />}
+                      onClick={() => handleQuickMuteNotifications(8)}
+                      disabled={isOffline || isFetchingProfile}
+                    >
+                      Mute 8h
+                    </Button>
+                    <Button
+                      variant="text"
+                      color="inherit"
+                      startIcon={<RestoreIcon />}
+                      onClick={handleClearNotificationMute}
+                      disabled={!notificationsMutedUntil}
+                    >
+                      Clear mute
+                    </Button>
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary">
+                    Muting pauses delivery without changing the toggles below. Save after applying changes.
+                  </Typography>
+                </Stack>
+              </Paper>
               <Stack spacing={1.5}>
                 {notificationToggleConfig.map((item) => (
                   <FormControlLabel

@@ -2052,6 +2052,25 @@ export async function markAllUpdatesRead() {
   return payload;
 }
 
+export async function deleteUpdate(updateId) {
+  if (!updateId) {
+    throw new Error('Update id is required to delete an update');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/updates/${encodeURIComponent(updateId)}`, {
+    method: 'DELETE',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to delete update');
+  }
+
+  return payload;
+}
+
 export async function createReply(input) {
   const baseUrl = resolveApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/debug/replies`, {

@@ -1,4 +1,15 @@
-﻿const mongoose = require('mongoose');
+﻿/**
+ * Update payload types emitted by this service (see `payload.type` on each record):
+ * - new-pin: creator + followers are told a fresh pin went live.
+ * - pin-update: bookmarkers learn the pin they saved was edited (fields summarized in metadata).
+ * - event-starting-soon: attendees get a heads-up shortly before an event begins.
+ * - discussion-expiring-soon: watchers are reminded that a discussion or poll is about to close.
+ * - bookmark-update: users who bookmarked a pin receive status nudges (e.g., reminders, follow-ups).
+ * - chat-message: subscribers are pinged for high-signal chat messages or DM highlights.
+ * - chat-room-transition: presence changes (join/leave/hand-off) for shared rooms.
+ * - badge-earned: celebratory unlock notice when someone hits a milestone.
+ */
+const mongoose = require('mongoose');
 const Update = require('../models/Update');
 const User = require('../models/User');
 const Pin = require('../models/Pin');
@@ -173,6 +184,13 @@ const filterRecipientsByPreference = async (recipientIds, options = {}) => {
         }
         if (requireChatTransitions && preferences.chatTransitions === false) {
           return false;
+        }
+        const mutedUntil = user?.preferences?.notificationsMutedUntil;
+        if (mutedUntil) {
+          const muteDate = new Date(mutedUntil);
+          if (!Number.isNaN(muteDate.getTime()) && muteDate.getTime() > Date.now()) {
+            return false;
+          }
         }
         return true;
       })
