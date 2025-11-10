@@ -354,10 +354,6 @@ function ProfilePage() {
   });
   const avatarPreviewUrlRef = useRef(null);
   const bannerPreviewUrlRef = useRef(null);
-  const showEditPanel = canEditProfile;
-  const layoutClassName = showEditPanel
-    ? 'profile-content-grid profile-content-grid--with-edit'
-    : 'profile-content-grid';
 
   const clearAvatarPreviewUrl = useCallback(() => {
     if (avatarPreviewUrlRef.current && avatarPreviewUrlRef.current.startsWith('blob:')) {
@@ -1165,7 +1161,8 @@ function ProfilePage() {
             variant="contained"
             onClick={handleBeginEditing}
             disabled={!effectiveUser || isFetchingProfile}
-            sx={{ ml: 'auto' }}
+            className="profile-edit-button"
+            sx={{ marginLeft: 'auto' }}
           >
             Edit profile
           </Button>
@@ -1195,14 +1192,7 @@ function ProfilePage() {
             </Alert>
           ) : null}
 
-          <Box className={layoutClassName} component="section">
-            <Stack
-              spacing={2}
-              alignItems="center"
-              textAlign="center"
-              sx={{ width: '100%', pt: 1 }}
-              className="profile-content-grid__primary"
-            >
+          <Stack spacing={2} alignItems="center" textAlign="center" sx={{ width: '100%', pt: 1 }}>
               <Box
                 sx={{
                   position: 'relative',
@@ -1275,11 +1265,10 @@ function ProfilePage() {
                   This user hasn't filled out their profile yet.
                 </Typography>
               ) : null}
-            </Stack>
+          </Stack>
 
-            {canEditProfile ? (
-              <Box component="aside" className="profile-edit-panel">
-                <Stack spacing={2} sx={{ alignSelf: 'stretch' }}>
+          {canEditProfile ? (
+            <Stack spacing={2} sx={{ alignSelf: 'stretch', maxWidth: 720, width: '100%', margin: '1.5rem auto 0' }}>
               {updateStatus ? (
                 <Alert
                   severity={updateStatus.type}
@@ -1463,32 +1452,9 @@ function ProfilePage() {
                     </Button>
                   </Stack>
                 </Stack>
-              ) : (
-                <Stack spacing={2}>
-                  <Typography variant="body1" fontWeight={600}>
-                    Ready to refresh your profile?
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Use the editor to update your photos, bio, and preferences without leaving this page.
-                  </Typography>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                    <Button
-                      variant="contained"
-                      onClick={handleBeginEditing}
-                      disabled={!effectiveUser || isFetchingProfile}
-                    >
-                      Start editing
-                    </Button>
-                    <Button variant="outlined" color="inherit" onClick={handleCancelEditing}>
-                      Clear changes
-                    </Button>
-                  </Stack>
-                </Stack>
-              )}
-                </Stack>
-              </Box>
-            ) : null}
-          </Box>
+              ) : null}
+            </Stack>
+          ) : null}
 
           {hasProfile ? (
             <>
