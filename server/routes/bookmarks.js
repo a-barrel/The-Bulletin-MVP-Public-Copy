@@ -439,7 +439,31 @@ router.delete('/:pinId', verifyToken, async (req, res) => {
     }
 
     const userObjectId = viewer._id;
+    const viewerId = toIdString(viewer._id);
     const pinObjectId = new mongoose.Types.ObjectId(pinId);
+
+    const pin = await Pin.findById(pinObjectId, { creatorId: 1, attendingUserIds: 1, bookmarkCount: 1, stats: 1 });
+    if (pin) {
+      const pinCreatorId = toIdString(pin.creatorId);
+      const ownsPin = Boolean(pinCreatorId && viewerId && pinCreatorId === viewerId);
+      const isAttending =
+        Array.isArray(pin.attendingUserIds) &&
+        pin.attendingUserIds.some((attendeeId) => {
+          try {
+            return toIdString(attendeeId) === viewerId;
+          } catch {
+            return false;
+          }
+        });
+
+      if (ownsPin) {
+        return res.status(403).json({ message: 'Creators keep their pins bookmarked automatically.' });
+      }
+
+      if (isAttending) {
+        return res.status(403).json({ message: 'Attendees keep these pins bookmarked automatically.' });
+      }
+    }
 
     const bookmark = await Bookmark.findOneAndDelete({
       userId: userObjectId,
@@ -450,9 +474,7 @@ router.delete('/:pinId', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Bookmark not found for this pin' });
     }
 
-    const pin = await Pin.findById(pinObjectId);
     let bookmarkCount = 0;
-
     if (pin) {
       const currentCount = pin.bookmarkCount ?? 0;
       pin.bookmarkCount = Math.max(0, currentCount - 1);

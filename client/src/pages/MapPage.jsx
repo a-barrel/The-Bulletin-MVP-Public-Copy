@@ -9,11 +9,13 @@ import GlobalNavMenu from '../components/GlobalNavMenu';
 import Navbar from '../components/Navbar';
 import updatesIcon from '../assets/UpdateIcon.svg';
 import addIcon from '../assets/AddIcon.svg';
+import filterIcon from '../assets/FilterIcon.svg';
 import { routes } from '../routes';
 import { useLocationContext } from '../contexts/LocationContext';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import { useUpdates } from '../contexts/UpdatesContext';
 import useMapExplorer, { DEFAULT_MAX_DISTANCE_METERS } from '../hooks/useMapExplorer';
+
 
 export const pageConfig = {
   id: 'map',
@@ -33,6 +35,8 @@ const PERSONAL_MARKER_ICON =
   'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png';
 
 function MapPage() {
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const toggleFilters = () => setFiltersOpen(v => !v);
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
   const { unreadCount, refreshUnreadCount } = useUpdates();
@@ -205,6 +209,7 @@ function MapPage() {
           />
         </Box>
 
+        {/* Floating Add Button (always visible) */}
         <button
           className="map-add-btn"
           type="button"
@@ -216,9 +221,31 @@ function MapPage() {
           <img src={addIcon} alt="" aria-hidden="true" />
         </button>
 
-        <div className="map-filter-panel" role="group" aria-label="Pin visibility filters">
+        {/* NEW: Filter FAB (mobile-only) */}
+        <button
+          className="map-filter-fab"
+          type="button"
+          aria-label="Open filters"
+          aria-expanded={filtersOpen}
+          onClick={toggleFilters}
+        >
+          <img src={filterIcon} alt="" className="map-filter-fab__img" aria-hidden="true" />
+        </button>
+
+        {/* Filter Panel (collapsible on mobile, always visible on desktop) */}
+        <div
+          className={`map-filter-panel ${filtersOpen ? 'is-open' : ''}`}
+          role="group"
+          aria-label="Pin visibility filters"
+        >
+          {/* ===== Filter: Events ===== */}
           <label className="map-filter-toggle">
-            <img src={EVENT_MARKER_ICON} alt="" className="map-filter-icon" aria-hidden="true" />
+            <img
+              src={EVENT_MARKER_ICON}
+              alt=""
+              className="map-filter-icon"
+              aria-hidden="true"
+            />
             <span className="map-filter-label">Events</span>
             <input
               type="checkbox"
@@ -229,6 +256,7 @@ function MapPage() {
             <span className="map-filter-slider" aria-hidden="true" />
           </label>
 
+          {/* ===== Filter: Discussions ===== */}
           <label className="map-filter-toggle">
             <img
               src={DISCUSSION_MARKER_ICON}
@@ -246,6 +274,7 @@ function MapPage() {
             <span className="map-filter-slider" aria-hidden="true" />
           </label>
 
+          {/* ===== Filter: Personal Pins ===== */}
           <label className="map-filter-toggle">
             <img
               src={PERSONAL_MARKER_ICON}
@@ -264,7 +293,8 @@ function MapPage() {
           </label>
         </div>
 
-        <Navbar />
+        {/* Bottom Navigation */}
+      <Navbar />
       </div>
     </div>
   );

@@ -4,9 +4,12 @@ import PinTagIcon from "../assets/Event_Pin.svg";
 import DiscussionTagIcon from "../assets/chat-filled.svg";
 import CommentsIcon from "../assets/Comments.png";
 import InterestedIcon from "../assets/AttendanceIcon.png";
+import { createPinBookmark, deletePinBookmark } from "../api/mongoDataApi";
+import BookmarkButton from "./BookmarkButton";
 import resolveAssetUrl from "../utils/media";
 import toIdString from "../utils/ids";
 import usePinAttendees from "../hooks/usePinAttendees";
+import { useNetworkStatusContext } from "../contexts/NetworkStatusContext";
 import {
   DEFAULT_AVATAR,
   FALLBACK_NAMES,
@@ -64,6 +67,7 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
     typeof pinId === "string" && /^[0-9a-fA-F]{24}$/.test(pinId);
   const participantCount =
     typeof item?.participantCount === "number" ? item.participantCount : null;
+  const { isOffline } = useNetworkStatusContext();
 
   const attendeeIds = useMemo(
     () =>
@@ -72,6 +76,25 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
         : [],
     [item?.attendeeIds]
   );
+
+  const derivedBookmark = useMemo(() => {
+    if (typeof item?.viewerHasBookmarked === "boolean") {
+      return item.viewerHasBookmarked;
+    }
+    if (typeof item?.isBookmarked === "boolean") {
+      return item.isBookmarked;
+    }
+    return false;
+  }, [item?.viewerHasBookmarked, item?.isBookmarked, pinId]);
+  const [isBookmarked, setIsBookmarked] = useState(derivedBookmark);
+  const [isUpdatingBookmark, setIsUpdatingBookmark] = useState(false);
+  const [bookmarkError, setBookmarkError] = useState(null);
+  const viewerOwnsPin = Boolean(item?.viewerOwnsPin);
+  const viewerIsAttending = Boolean(item?.viewerIsAttending);
+
+  useEffect(() => {
+    setIsBookmarked(derivedBookmark);
+  }, [derivedBookmark]);
 
   const attendeeSignature = useMemo(() => {
     if (typeof item?.attendeeVersion === "string") {
@@ -198,9 +221,35 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
     },
     [authorId, item, onSelectAuthor]
   );
-  const handleBookmarkClick = useCallback((event) => {
-    event.stopPropagation();
-  }, []);
+  const handleBookmarkClick = useCallback(
+    async (event) => {
+      event.stopPropagation();
+      if (!pinId || isUpdatingBookmark || viewerOwnsPin || viewerIsAttending) {
+        return;
+      }
+      if (isOffline) {
+        setBookmarkError("Reconnect to manage bookmarks.");
+        return;
+      }
+
+      setIsUpdatingBookmark(true);
+      setBookmarkError(null);
+      const nextIsBookmarked = !isBookmarked;
+      try {
+        if (nextIsBookmarked) {
+          await createPinBookmark(pinId);
+        } else {
+          await deletePinBookmark(pinId);
+        }
+        setIsBookmarked(nextIsBookmarked);
+      } catch (error) {
+        setBookmarkError(error?.message || "Failed to update bookmark.");
+      } finally {
+        setIsUpdatingBookmark(false);
+      }
+    },
+    [pinId, isBookmarked, isOffline, isUpdatingBookmark, viewerIsAttending, viewerOwnsPin]
+  );
   const handleAttendeeClick = useCallback(
     (event, attendee) => {
       event.stopPropagation();
@@ -250,7 +299,6 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
 
   const attendeesRequireScroll =
     shouldShowAttendees && attendeesScrollable;
-
   return (
     <article
       className={cardClassName}
@@ -274,16 +322,20 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
           {item?.distance && <span className="distance">{item.distance}</span>}
           {item?.distance && item?.timeLabel && <span className="dot">|</span>}
           {item?.timeLabel && <span className="time">{item.timeLabel}</span>}
-          <button
-            type="button"
-            className="bookmark-btn"
-            aria-label="Bookmark pin"
-            onClick={handleBookmarkClick}
-          >
-            <span className="bookmark-emoji" role="img" aria-hidden="true">
-              [*]
-            </span>
-          </button>
+          <BookmarkButton
+            variant="card"
+            bookmarked={isBookmarked}
+            pending={isUpdatingBookmark}
+            disabled={!pinId || isOffline}
+            ownsPin={viewerOwnsPin}
+            attending={viewerIsAttending}
+            onToggle={handleBookmarkClick}
+            stopPropagation
+            tooltip={bookmarkError || undefined}
+            disabledLabel={isOffline ? "Reconnect to manage bookmarks" : undefined}
+            addLabel="Save bookmark"
+            removeLabel="Remove bookmark"
+          />
         </div>
       </header>
 

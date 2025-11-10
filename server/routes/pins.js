@@ -113,7 +113,7 @@ const mapPinPreview = (pinDoc, creator) => {
   });
 };
 
-const mapPinToListItem = (pinDoc, creator) => {
+const mapPinToListItem = (pinDoc, creator, options = {}) => {
   const preview = mapPinPreview(pinDoc, creator);
   const coverPhoto = pinDoc.coverPhoto
     ? mapMediaAssetResponse(pinDoc.coverPhoto, { toIdString })
@@ -124,10 +124,20 @@ const mapPinToListItem = (pinDoc, creator) => {
         .filter(Boolean)
     : undefined;
 
+  const viewerHasBookmarked =
+    typeof options.viewerHasBookmarked === 'boolean' ? options.viewerHasBookmarked : undefined;
+  const viewerIsAttending =
+    typeof options.viewerIsAttending === 'boolean' ? options.viewerIsAttending : undefined;
+  const viewerOwnsPin =
+    typeof options.viewerOwnsPin === 'boolean' ? options.viewerOwnsPin : undefined;
+
   return PinListItemSchema.parse({
     ...preview,
     distanceMeters: undefined,
-    isBookmarked: undefined,
+    isBookmarked: viewerHasBookmarked,
+    viewerHasBookmarked,
+    viewerIsAttending,
+    viewerOwnsPin,
     replyCount: pinDoc.replyCount ?? undefined,
     stats: pinDoc.stats || undefined,
     coverPhoto,
@@ -737,6 +747,7 @@ router.get('/nearby', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     const viewerBlockedSet = buildBlockedSet(viewer);
+    const viewerId = toIdString(viewer._id);
 
     const now = new Date();
     const filters = [];
@@ -853,14 +864,47 @@ router.get('/nearby', verifyToken, async (req, res) => {
       return true;
     });
 
+    const pinObjectIds = filteredPins.map((pinDoc) => pinDoc._id).filter(Boolean);
+    let viewerBookmarkSet = new Set();
+    if (pinObjectIds.length > 0) {
+      const bookmarks = await Bookmark.find(
+        { userId: viewer._id, pinId: { $in: pinObjectIds } },
+        { pinId: 1 }
+      ).lean();
+      viewerBookmarkSet = new Set(bookmarks.map((bookmark) => toIdString(bookmark.pinId)).filter(Boolean));
+    }
+
     const payload = filteredPins.map((pinDoc) => {
+      const pinIdString = toIdString(pinDoc._id);
+      let viewerHasBookmarked = pinIdString ? viewerBookmarkSet.has(pinIdString) : false;
       const creatorPublic = mapUserToPublic(pinDoc.creatorId);
-      const listItem = mapPinToListItem(pinDoc, creatorPublic);
+      const pinCreatorId = toIdString(pinDoc.creatorId?._id ?? pinDoc.creatorId);
+      const viewerOwnsPin = Boolean(viewerId && pinCreatorId && viewerId === pinCreatorId);
+      let viewerIsAttending = false;
+      if (Array.isArray(pinDoc.attendingUserIds) && viewerId) {
+        viewerIsAttending = pinDoc.attendingUserIds.some((attendeeId) => {
+          try {
+            return toIdString(attendeeId) === viewerId;
+          } catch {
+            return false;
+          }
+        });
+      }
+      if (viewerOwnsPin || viewerIsAttending) {
+        viewerHasBookmarked = true;
+      }
+      const listItem = mapPinToListItem(pinDoc, creatorPublic, {
+        viewerHasBookmarked,
+        viewerIsAttending,
+        viewerOwnsPin
+      });
       const [pinLongitude, pinLatitude] = pinDoc.coordinates.coordinates;
       const distanceMeters = haversineDistanceMeters(latitude, longitude, pinLatitude, pinLongitude);
       return {
         ...listItem,
-        distanceMeters
+        distanceMeters,
+        isBookmarked: viewerHasBookmarked,
+        viewerHasBookmarked
       };
     });
 
@@ -1697,6 +1741,44 @@ router.put('/:pinId', verifyToken, async (req, res) => {
     }
     console.error('Failed to update pin:', error);
     res.status(500).json({ message: 'Failed to update pin' });
+  }
+});
+
+router.delete('/:pinId', verifyToken, async (req, res) => {
+  try {
+    const { pinId } = PinIdSchema.parse(req.params);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const pin = await Pin.findById(pinId);
+    if (!pin) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    const viewerId = toIdString(viewer._id);
+    const pinCreatorId = toIdString(pin.creatorId);
+    if (!viewerId || viewerId !== pinCreatorId) {
+      return res.status(403).json({ message: 'You do not have permission to delete this pin.' });
+    }
+
+    await Reply.deleteMany({ pinId: pin._id });
+    await Bookmark.deleteMany({ pinId: pin._id });
+    await pin.deleteOne();
+
+    await trackEvent('pin_deleted', {
+      pinId: toIdString(pin._id),
+      userId: viewerId
+    });
+
+    return res.json({ success: true, message: 'Pin deleted successfully.' });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid pin id', issues: error.errors });
+    }
+    console.error('Failed to delete pin:', error);
+    return res.status(500).json({ message: 'Failed to delete pin' });
   }
 });
 

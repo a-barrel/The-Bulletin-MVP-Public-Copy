@@ -586,6 +586,25 @@ export async function updatePin(pinId, input) {
   return payload;
 }
 
+export async function deletePin(pinId) {
+  if (!pinId) {
+    throw new Error('Pin id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}`, {
+    method: 'DELETE',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to delete pin');
+  }
+
+  return payload;
+}
+
 async function uploadImageInternal(file) {
   if (!file) {
     throw new Error('Image file is required');

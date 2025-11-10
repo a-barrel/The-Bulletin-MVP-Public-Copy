@@ -1,6 +1,6 @@
 /* NOTE: Page exports configuration alongside the component. */
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import './PinDetails.css';
 import {
   Alert,
@@ -13,23 +13,23 @@ import {
   Stack,
   Button,
   FormControlLabel,
-  Switch
+  Switch,
+  Box
 } from '@mui/material';
 import PlaceIcon from '@mui/icons-material/Place'; // used only for pageConfig
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
-import BookmarkIcon from '@mui/icons-material/Bookmark';
-import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import ForumIcon from '@mui/icons-material/Forum';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import LeafletMap from '../components/Map';
+import BookmarkButton from '../components/BookmarkButton';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import usePinDetails from '../hooks/usePinDetails';
 import ReportContentDialog from '../components/ReportContentDialog';
-import { createContentReport, updatePin } from '../api/mongoDataApi';
+import { createContentReport, deletePin, updatePin } from '../api/mongoDataApi';
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
@@ -173,6 +173,7 @@ const buildInitialEditForm = (pin) => {
 function PinDetails() {
   const { pinId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
 
   const {
@@ -234,8 +235,6 @@ function PinDetails() {
 
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
   const shouldShowStatusMessages = isLoading || error || (!pin && !isLoading && pinId);
-  const bookmarkLocked = isOwnPin && bookmarked;
-
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
   const [reportReason, setReportReason] = useState('');
@@ -247,6 +246,7 @@ function PinDetails() {
   const [editError, setEditError] = useState(null);
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
   const [editStatus, setEditStatus] = useState(null);
+  const [isDeletingPin, setIsDeletingPin] = useState(false);
 
   useEffect(() => {
     if (pin && !isEditDialogOpen) {
@@ -264,12 +264,12 @@ function PinDetails() {
   }, [pin]);
 
   const handleCloseEditDialog = useCallback(() => {
-    if (isSubmittingEdit) {
+    if (isSubmittingEdit || isDeletingPin) {
       return;
     }
     setIsEditDialogOpen(false);
     setEditError(null);
-  }, [isSubmittingEdit]);
+  }, [isDeletingPin, isSubmittingEdit]);
 
   const handleEditFieldChange = useCallback(
     (field) => (event) => {
@@ -297,6 +297,9 @@ function PinDetails() {
   const handleSubmitEdit = useCallback(
     async (event) => {
       event.preventDefault();
+      if (isDeletingPin) {
+        return;
+      }
       if (!pin || !editForm) {
         return;
       }
@@ -417,8 +420,37 @@ function PinDetails() {
         setIsSubmittingEdit(false);
       }
     },
-    [editForm, isOffline, pin, reloadPin]
+    [editForm, isDeletingPin, isOffline, pin, reloadPin]
   );
+
+  const handleDeletePin = useCallback(async () => {
+    if (!pin?._id || !isOwnPin) {
+      return;
+    }
+    if (isOffline) {
+      setEditError('Reconnect to delete this pin.');
+      return;
+    }
+    const confirmed =
+      typeof window === 'undefined' || typeof window.confirm !== 'function'
+        ? true
+        : window.confirm('Delete this pin? This cannot be undone.');
+    if (!confirmed) {
+      return;
+    }
+
+    setIsDeletingPin(true);
+    setEditError(null);
+    try {
+      await deletePin(pin._id);
+      setIsEditDialogOpen(false);
+      navigate(routes.list.base, { replace: true });
+    } catch (error) {
+      setEditError(error?.message || 'Failed to delete pin.');
+    } finally {
+      setIsDeletingPin(false);
+    }
+  }, [isOffline, isOwnPin, navigate, pin]);
 
   const handleOpenReportReply = useCallback((reply) => {
     if (!reply || !reply._id) {
@@ -484,6 +516,8 @@ function PinDetails() {
     setReportStatus(null);
   }, []);
 
+  const editDialogBusy = isSubmittingEdit || isDeletingPin;
+
   return (
     <div className={`pin-details ${themeClass}`}>
       {interactionOverlay ? (
@@ -514,7 +548,7 @@ function PinDetails() {
                 className="edit-pin-button"
                 type="button"
                 onClick={handleOpenEditDialog}
-                disabled={isOffline || !pin || isLoading || isSubmittingEdit}
+                disabled={isOffline || !pin || isLoading || isSubmittingEdit || isDeletingPin}
                 title={isOffline ? 'Reconnect to edit your pin' : 'Edit this pin'}
               >
                 Edit
@@ -535,38 +569,15 @@ function PinDetails() {
             </button>
           </div>
           <div className="bookmark-button-wrapper">
-            <button
-              className={`bookmark-button${bookmarkLocked ? ' bookmark-button--locked' : ''}`}
-              type="button"
-              onClick={handleToggleBookmark}
-              disabled={
-                bookmarkLocked || isOffline || isUpdatingBookmark || !pin || isInteractionLocked
-              }
-              aria-pressed={bookmarked ? 'true' : 'false'}
-              aria-label={
-                bookmarkLocked
-                  ? 'This pin stays bookmarked for its creator'
-                  : bookmarked
-                  ? 'Remove bookmark'
-                  : 'Save bookmark'
-              }
-              aria-busy={isUpdatingBookmark ? 'true' : 'false'}
-              title={
-                bookmarkLocked
-                  ? 'Creators keep their pins bookmarked automatically.'
-                  : isOffline
-                  ? 'Reconnect to manage bookmarks'
-                  : undefined
-              }
-            >
-              {bookmarked ? (
-                <BookmarkIcon
-                  className={`bookmark-icon${bookmarkLocked ? ' bookmark-icon--locked' : ''}`}
-                />
-              ) : (
-                <BookmarkBorderIcon className="bookmark-icon" />
-              )}
-            </button>
+            <BookmarkButton
+              bookmarked={bookmarked}
+              pending={isUpdatingBookmark}
+              disabled={isOffline || !pin || isInteractionLocked}
+              ownsPin={isOwnPin}
+              attending={attending}
+              onToggle={handleToggleBookmark}
+              disabledLabel={isOffline ? 'Reconnect to manage bookmarks' : undefined}
+            />
             {bookmarkError ? <span className="error-text bookmark-error">{bookmarkError}</span> : null}
           </div>
         </div>
@@ -947,7 +958,7 @@ function PinDetails() {
                 value={editForm?.title ?? ''}
                 onChange={handleEditFieldChange('title')}
                 required
-                disabled={isSubmittingEdit}
+                disabled={editDialogBusy}
               />
               <TextField
                 label="Description"
@@ -956,7 +967,7 @@ function PinDetails() {
                 required
                 multiline
                 minRows={3}
-                disabled={isSubmittingEdit}
+                disabled={editDialogBusy}
               />
               <TextField
                 label="Proximity radius (meters)"
@@ -965,7 +976,7 @@ function PinDetails() {
                 onChange={handleEditFieldChange('proximityRadiusMeters')}
                 inputProps={{ min: 1, step: 1 }}
                 required
-                disabled={isSubmittingEdit}
+                disabled={editDialogBusy}
               />
               {isEventPin ? (
                 <>
@@ -976,7 +987,7 @@ function PinDetails() {
                     onChange={handleEditFieldChange('startDate')}
                     InputLabelProps={{ shrink: true }}
                     required
-                    disabled={isSubmittingEdit}
+                    disabled={editDialogBusy}
                   />
                   <TextField
                     label="End time"
@@ -985,7 +996,7 @@ function PinDetails() {
                     onChange={handleEditFieldChange('endDate')}
                     InputLabelProps={{ shrink: true }}
                     required
-                    disabled={isSubmittingEdit}
+                    disabled={editDialogBusy}
                   />
                 </>
               ) : (
@@ -997,14 +1008,14 @@ function PinDetails() {
                     onChange={handleEditFieldChange('expiresAt')}
                     InputLabelProps={{ shrink: true }}
                     required
-                    disabled={isSubmittingEdit}
+                    disabled={editDialogBusy}
                   />
                   <FormControlLabel
                     control={
                       <Switch
                         checked={Boolean(editForm?.autoDelete)}
                         onChange={handleToggleAutoDelete}
-                        disabled={isSubmittingEdit}
+                        disabled={editDialogBusy}
                       />
                     }
                     label="Automatically remove when expired"
@@ -1014,10 +1025,18 @@ function PinDetails() {
             </Stack>
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleCloseEditDialog} disabled={isSubmittingEdit}>
+            {isOwnPin ? (
+              <>
+                <Button color="error" onClick={handleDeletePin} disabled={editDialogBusy}>
+                  {isDeletingPin ? 'Deleting…' : 'Delete pin'}
+                </Button>
+                <Box sx={{ flexGrow: 1 }} />
+              </>
+            ) : null}
+            <Button onClick={handleCloseEditDialog} disabled={editDialogBusy}>
               Cancel
             </Button>
-            <Button type="submit" variant="contained" disabled={isSubmittingEdit}>
+            <Button type="submit" variant="contained" disabled={editDialogBusy}>
               {isSubmittingEdit ? 'Saving…' : 'Save changes'}
             </Button>
           </DialogActions>

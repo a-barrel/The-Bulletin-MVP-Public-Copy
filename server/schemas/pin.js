@@ -107,6 +107,9 @@ const PinPreviewSchema = z.object({
 const PinListItemSchema = PinPreviewSchema.extend({
   distanceMeters: z.number().nonnegative().optional(),
   isBookmarked: z.boolean().optional(),
+  viewerHasBookmarked: z.boolean().optional(),
+  viewerIsAttending: z.boolean().optional(),
+  viewerOwnsPin: z.boolean().optional(),
   replyCount: z.number().int().nonnegative().optional(),
   stats: PinStatsSchema.optional(),
   coverPhoto: MediaAssetSchema.optional(),

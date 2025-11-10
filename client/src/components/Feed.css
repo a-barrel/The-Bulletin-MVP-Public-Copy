@@ -374,8 +374,8 @@
   }
 }
 
-/* Bookmark button (unchanged) */
-.bookmark-btn {
+/* Bookmark button */
+.card .bookmark-button--card {
   border: none;
   background: transparent;
   display: inline-flex;
@@ -383,9 +383,27 @@
   justify-content: center;
   padding: 0;
   cursor: pointer;
+  color: #8a8a8a;
+  transition: transform 0.1s ease, color 0.15s ease;
 }
-.bookmark-emoji { font-size: 18px; line-height: 1; }
-.bookmark-btn:hover { transform: translateY(-1px); }
+.card .bookmark-button--card .bookmark-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+.card .bookmark-button--card.bookmark-button--locked,
+.card .bookmark-button--card:focus-visible,
+.card .bookmark-button--card.bookmark-button--owner,
+.card .bookmark-button--card.bookmark-button--attending {
+  color: #ffbe3c;
+}
+.card .bookmark-button--card:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.card .bookmark-button--card:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
 
 
 
