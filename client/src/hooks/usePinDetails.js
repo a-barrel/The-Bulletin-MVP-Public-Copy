@@ -18,6 +18,7 @@ import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { metersToMiles, METERS_PER_MILE } from '../utils/geo';
 import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
+import { logClientError } from '../utils/clientLogger';
 
 const DEFAULT_AVATAR_PATH = '/images/profile/profile-01.jpg';
 const DEFAULT_COVER_PATH = '/images/background/background-01.jpg';
@@ -438,6 +439,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
       } catch (loadError) {
         if (!ignore) {
           console.warn('Failed to load viewer profile for pin details:', loadError);
+          logClientError(loadError, { source: 'usePinDetails.viewerProfile', pinId });
           setViewerProfileId(null);
         }
       }
@@ -503,7 +505,11 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         if (!isMountedRef.current) {
           return null;
         }
-        console.error('Failed to load pin details:', loadError);
+        logClientError(loadError, {
+          source: 'usePinDetails.reloadPin',
+          pinId,
+          previewMode
+        });
         setError(loadError?.message || 'Failed to load pin details.');
         return null;
       } finally {
@@ -547,7 +553,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         if (ignore) {
           return;
         }
-        console.error('Failed to load replies:', loadError);
+        logClientError(loadError, { source: 'usePinDetails.loadReplies', pinId });
         setReplies([]);
         setRepliesError(loadError?.message || 'Failed to load replies.');
       } finally {
@@ -593,7 +599,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         if (ignore) {
           return;
         }
-        console.error('Failed to load attendees:', loadError);
+        logClientError(loadError, { source: 'usePinDetails.loadAttendees', pinId });
         setAttendees([]);
         setAttendeesError(loadError?.message || 'Failed to load attendees.');
       } finally {
@@ -938,7 +944,11 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         }
       }
     } catch (toggleError) {
-      console.error('Failed to toggle bookmark:', toggleError);
+      logClientError(toggleError, {
+        source: 'usePinDetails.toggleBookmark',
+        pinId: pin?._id,
+        bookmarkedTarget: !bookmarked
+      });
       setBookmarkError(toggleError?.message || 'Failed to toggle bookmark.');
     } finally {
       setIsUpdatingBookmark(false);
@@ -1023,7 +1033,11 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         announceBadgeEarned(response.badgeEarnedId);
       }
     } catch (toggleError) {
-      console.error('Failed to update attendance:', toggleError);
+      logClientError(toggleError, {
+        source: 'usePinDetails.toggleAttendance',
+        pinId: pin?._id,
+        attendingTarget: !attending
+      });
       setAttendanceError(toggleError?.message || 'Failed to update attendance.');
     } finally {
       setIsUpdatingAttendance(false);
@@ -1080,7 +1094,10 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         };
       });
     } catch (submitError) {
-      console.error('Failed to create reply:', submitError);
+      logClientError(submitError, {
+        source: 'usePinDetails.submitReply',
+        pinId: pin?._id
+      });
       setSubmitReplyError(submitError?.message || 'Failed to create reply.');
     } finally {
       setIsSubmittingReply(false);
@@ -1145,6 +1162,10 @@ export default function usePinDetails({ pinId, location, isOffline }) {
           });
         }
       } catch (error) {
+        logClientError(error, {
+          source: 'usePinDetails.sharePin',
+          pinId
+        });
         if (error?.name === 'AbortError') {
           setShareStatus({
             type: 'info',

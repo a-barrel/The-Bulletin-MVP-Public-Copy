@@ -1,0 +1,110 @@
+.report-dialog {
+  border-radius: 12px;
+}
+
+.report-dialog .MuiPaper-root {
+  border: 2px solid #5D3889;
+  border-radius: 15px !important; 
+  overflow: hidden; 
+}
+
+/* title */
+.report-title {
+  font-weight: 600 !important;
+  text-align: center;
+  color: #000000;
+  background-color: #9B5DE5;
+  font-size: x-large !important;
+  border-bottom: solid #5D3889;
+}
+
+/* post content */
+.report-content {
+  background-color: #CDAEF2;
+  padding: 1.5rem;
+}
+
+.report-summary {
+  color: #000000;
+  font-size: 0.9rem;
+}
+
+.report-summary p {
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: large;
+}
+
+/* report text */
+.report-textfield {
+  background-color: transparent; 
+  color: #000000;
+  border-radius: 8px;
+}
+
+.report-textfield .MuiOutlinedInput-root {
+  background-color: #ffffff;
+  border-radius: 8px; 
+  border: 1px solid #CDAEF2;
+  transition: border-color 0.2s ease;
+}
+
+.report-textfield .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: #999;
+}
+.report-textfield .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #6a1b9a; 
+}
+
+.report-textfield input,
+.report-textfield textarea {
+  color: #000000;
+  font-size: 0.95rem;
+}
+
+.report-textfield label,
+.report-textfield .MuiInputLabel-root {
+  color: #5D3889 !important;
+  font-weight: 500;
+}
+
+.report-textfield .MuiFormHelperText-root {
+  background-color: #cdaef2;
+  color: #000000;
+  border-radius: 0 0 8px 8px; 
+  padding: 4px 8px;
+  margin-top: 6px;
+  font-size: 0.85rem;
+}
+
+/* error */
+.report-error {
+  border-color: #f44336;
+}
+
+/* report actions */
+.report-actions {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  background-color: #9B5DE5;
+  border-top: solid #5D3889;
+}
+
+.report-cancel {
+  color: #555 !important;
+}
+
+.report-cancel:hover {
+    background-color: #7b3fc1;
+}
+
+.report-submit {
+  background-color: #d32f2f !important;
+  color: white;
+}
+
+.report-submit:hover {
+  background-color: #b71c1c !important;
+}

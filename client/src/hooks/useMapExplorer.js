@@ -18,6 +18,7 @@ import {
   normalizeLongitude,
   METERS_PER_MILE
 } from '../utils/geo';
+import reportClientError from '../utils/reportClientError';
 
 const DEMO_USER_ID = 'demo-user';
 export const DEFAULT_RADIUS_MILES = 25;
@@ -174,7 +175,9 @@ export default function useMapExplorer({
           setCurrentProfileId(profile?._id ? String(profile._id) : null);
         }
       } catch (fetchError) {
-        console.error('Failed to load current user profile on MapPage:', fetchError);
+        reportClientError(fetchError, 'Failed to load current user profile on MapPage:', {
+          source: 'useMapExplorer.profile'
+        });
         if (isMounted) {
           setCurrentProfileId(null);
         }
@@ -285,7 +288,10 @@ export default function useMapExplorer({
           prev && prev.toLowerCase().includes('failed to load nearby pins') ? null : prev
         );
       } catch (err) {
-        console.error('Error fetching nearby pins:', err);
+        reportClientError(err, 'Error fetching nearby pins:', {
+          source: 'useMapExplorer.fetchPins',
+          location
+        });
         setError(err.message || 'Failed to load nearby pins.');
       } finally {
         setIsLoadingPins(false);
@@ -316,7 +322,10 @@ export default function useMapExplorer({
           prev && prev.toLowerCase().includes('failed to load nearby users') ? null : prev
         );
       } catch (err) {
-        console.error('Error fetching nearby users:', err);
+        reportClientError(err, 'Error fetching nearby users:', {
+          source: 'useMapExplorer.fetchNearbyUsers',
+          location
+        });
         setError(err.message || 'Failed to load nearby users.');
       } finally {
         setIsLoadingNearby(false);
@@ -369,7 +378,9 @@ export default function useMapExplorer({
       }
       setError(null);
     } catch (geoError) {
-      console.error('Error getting browser location:', geoError);
+      reportClientError(geoError, 'Error getting browser location:', {
+        source: 'useMapExplorer.browserLocation'
+      });
       if (geoError?.code === 1) {
         setError('Location permission denied. Enable location access to share.');
       } else if (geoError?.code === 2) {
@@ -394,7 +405,10 @@ export default function useMapExplorer({
       lastSharedLocationRef.current = locationToShare;
       await Promise.all([refreshNearby(locationToShare), refreshPins(locationToShare)]);
     } catch (err) {
-      console.error('Error sharing location:', err);
+      reportClientError(err, 'Error sharing location:', {
+        source: 'useMapExplorer.shareLocation',
+        location: locationToShare
+      });
       setError(err.message || 'Failed to share your location.');
       lastSharedLocationRef.current = null;
       setIsSharing(false);
@@ -445,7 +459,11 @@ export default function useMapExplorer({
       })
       .catch((err) => {
         if (!cancelled) {
-          console.error('Failed to load chat rooms:', err);
+          reportClientError(err, 'Failed to load chat rooms:', {
+            source: 'useMapExplorer.chatRooms',
+            latitude,
+            longitude
+          });
           setChatRooms([]);
           setChatRoomsError(err?.message || 'Failed to load chat rooms.');
         }
@@ -485,7 +503,10 @@ export default function useMapExplorer({
         }
       } catch (err) {
         if (!cancelled) {
-          console.error('Failed to sync shared location:', err);
+          reportClientError(err, 'Failed to sync shared location:', {
+            source: 'useMapExplorer.syncSharedLocation',
+            userLocation
+          });
           setError(err.message || 'Failed to share your location.');
           lastSharedLocationRef.current = null;
           setIsSharing(false);

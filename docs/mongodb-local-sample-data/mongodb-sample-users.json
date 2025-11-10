@@ -8,13 +8,23 @@
     "email": "alex@pinpoint.dev",
     "bio": "CSULB senior focused on coastal conservation and community building.",
     "avatar": {
-      "url": "/images/profile/profile-01.jpg",
-      "thumbnailUrl": "/images/profile/profile-01.jpg",
+      "url": "/images/profile/profile-01",
+      "thumbnailUrl": "/images/profile/profile-01",
       "width": 128,
       "height": 128,
       "mimeType": "image/jpeg",
       "uploadedAt": {
         "$date": "2026-08-01T18:12:00.000Z"
+      }
+    },
+    "banner": {
+      "url": "/images/background/background-06",
+      "thumbnailUrl": "/images/background/background-06",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-05T18:12:00.000Z"
       }
     },
     "roles": [
@@ -133,8 +143,8 @@
     "email": "priya@pinpoint.dev",
     "bio": "Urban design enthusiast organizing weekly study circles.",
     "avatar": {
-      "url": "/images/profile/profile-02.jpg",
-      "thumbnailUrl": "/images/profile/profile-02.jpg",
+      "url": "/images/profile/profile-02",
+      "thumbnailUrl": "/images/profile/profile-02",
       "width": 128,
       "height": 128,
       "mimeType": "image/jpeg",
@@ -143,14 +153,14 @@
       }
     },
     "banner": {
-      "url": "/images/background/background-02.jpg",
+      "url": "/images/background/background-02",
       "width": 512,
       "height": 512,
       "mimeType": "image/jpeg",
       "uploadedAt": {
         "$date": "2026-09-01T18:12:00.000Z"
       },
-      "thumbnailUrl": "/images/background/background-02.jpg"
+      "thumbnailUrl": "/images/background/background-02"
     },
     "roles": [
       "user"
@@ -264,13 +274,23 @@
     "email": "marcus@pinpoint.dev",
     "bio": "Bringing together food trucks and night markets around Long Beach.",
     "avatar": {
-      "url": "/images/profile/profile-03.jpg",
-      "thumbnailUrl": "/images/profile/profile-03.jpg",
+      "url": "/images/profile/profile-03",
+      "thumbnailUrl": "/images/profile/profile-03",
       "width": 128,
       "height": 128,
       "mimeType": "image/jpeg",
       "uploadedAt": {
         "$date": "2026-08-01T18:13:00.000Z"
+      }
+    },
+    "banner": {
+      "url": "/images/background/background-07",
+      "thumbnailUrl": "/images/background/background-07",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-07T18:12:00.000Z"
       }
     },
     "roles": [
@@ -367,8 +387,8 @@
     "email": "sofia@pinpoint.dev",
     "bio": "Engineering student mapping zero-waste resources around campus.",
     "avatar": {
-      "url": "/images/profile/profile-04.jpg",
-      "thumbnailUrl": "/images/profile/profile-04.jpg",
+      "url": "/images/profile/profile-04",
+      "thumbnailUrl": "/images/profile/profile-04",
       "width": 128,
       "height": 128,
       "mimeType": "image/jpeg",
@@ -377,14 +397,14 @@
       }
     },
     "banner": {
-      "url": "/images/background/background-04.jpg",
+      "url": "/images/background/background-04",
       "width": 512,
       "height": 512,
       "mimeType": "image/jpeg",
       "uploadedAt": {
         "$date": "2026-09-20T03:45:00.000Z"
       },
-      "thumbnailUrl": "/images/background/background-04.jpg"
+      "thumbnailUrl": "/images/background/background-04"
     },
     "roles": [
       "user"
@@ -487,13 +507,23 @@
     "email": "jamal@pinpoint.dev",
     "bio": "Public health advocate rallying students to stay active every weekend.",
     "avatar": {
-      "url": "/images/profile/profile-05.jpg",
-      "thumbnailUrl": "/images/profile/profile-05.jpg",
+      "url": "/images/profile/profile-05",
+      "thumbnailUrl": "/images/profile/profile-05",
       "width": 128,
       "height": 128,
       "mimeType": "image/jpeg",
       "uploadedAt": {
         "$date": "2026-09-06T19:05:00.000Z"
+      }
+    },
+    "banner": {
+      "url": "/images/background/background-08",
+      "thumbnailUrl": "/images/background/background-08",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-09T18:12:00.000Z"
       }
     },
     "roles": [
@@ -600,13 +630,23 @@
     "email": "tf2_demoman@pinpoint.dev",
     "bio": "Team Fortress 2 member: Demoman.",
     "avatar": {
-      "url": "/images/emulation/avatars/Demomanava.jpg",
-      "thumbnailUrl": "/images/emulation/avatars/Demomanava.jpg",
+      "url": "/images/emulation/avatars/Demomanava",
+      "thumbnailUrl": "/images/emulation/avatars/Demomanava",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
       "uploadedAt": {
         "$date": "2026-10-21T03:51:19Z"
+      }
+    },
+    "banner": {
+      "url": "/images/background/background-09",
+      "thumbnailUrl": "/images/background/background-09",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-10T18:12:00.000Z"
       }
     },
     "roles": [
@@ -685,13 +725,23 @@
     "email": "tf2_spy@pinpoint.dev",
     "bio": "Team Fortress 2 member: Spy.",
     "avatar": {
-      "url": "/images/emulation/avatars/Spyava.jpg",
-      "thumbnailUrl": "/images/emulation/avatars/Spyava.jpg",
+      "url": "/images/emulation/avatars/Spyava",
+      "thumbnailUrl": "/images/emulation/avatars/Spyava",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
       "uploadedAt": {
         "$date": "2026-10-21T03:51:19Z"
+      }
+    },
+    "banner": {
+      "url": "/images/background/background-10",
+      "thumbnailUrl": "/images/background/background-10",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-11T18:12:00.000Z"
       }
     },
     "roles": [
@@ -770,13 +820,23 @@
     "email": "tf2_engineer@pinpoint.dev",
     "bio": "Team Fortress 2 member: Engineer.",
     "avatar": {
-      "url": "/images/emulation/avatars/Engineerava.jpg",
-      "thumbnailUrl": "/images/emulation/avatars/Engineerava.jpg",
+      "url": "/images/emulation/avatars/Engineerava",
+      "thumbnailUrl": "/images/emulation/avatars/Engineerava",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
       "uploadedAt": {
         "$date": "2026-10-21T03:51:19Z"
+      }
+    },
+    "banner": {
+      "url": "/images/background/background-11",
+      "thumbnailUrl": "/images/background/background-11",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-12T18:12:00.000Z"
       }
     },
     "roles": [
@@ -855,13 +915,23 @@
     "email": "tf2_heavy@pinpoint.dev",
     "bio": "Team Fortress 2 member: Heavy.",
     "avatar": {
-      "url": "/images/emulation/avatars/Heavyava.jpg",
-      "thumbnailUrl": "/images/emulation/avatars/Heavyava.jpg",
+      "url": "/images/emulation/avatars/Heavyava",
+      "thumbnailUrl": "/images/emulation/avatars/Heavyava",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
       "uploadedAt": {
         "$date": "2026-10-21T03:51:19Z"
+      }
+    },
+    "banner": {
+      "url": "/images/background/background-12",
+      "thumbnailUrl": "/images/background/background-12",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-13T18:12:00.000Z"
       }
     },
     "roles": [
@@ -940,13 +1010,23 @@
     "email": "tf2_medic@pinpoint.dev",
     "bio": "Team Fortress 2 member: Medic.",
     "avatar": {
-      "url": "/images/emulation/avatars/Medicava.jpg",
-      "thumbnailUrl": "/images/emulation/avatars/Medicava.jpg",
+      "url": "/images/emulation/avatars/Medicava",
+      "thumbnailUrl": "/images/emulation/avatars/Medicava",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
       "uploadedAt": {
         "$date": "2026-10-21T03:51:19Z"
+      }
+    },
+    "banner": {
+      "url": "/images/background/background-13",
+      "thumbnailUrl": "/images/background/background-13",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-14T18:12:00.000Z"
       }
     },
     "roles": [
@@ -1025,13 +1105,23 @@
     "email": "tf2_pyro@pinpoint.dev",
     "bio": "Team Fortress 2 member: Pyro.",
     "avatar": {
-      "url": "/images/emulation/avatars/Pyroava.jpg",
-      "thumbnailUrl": "/images/emulation/avatars/Pyroava.jpg",
+      "url": "/images/emulation/avatars/Pyroava",
+      "thumbnailUrl": "/images/emulation/avatars/Pyroava",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
       "uploadedAt": {
         "$date": "2026-10-21T03:51:19Z"
+      }
+    },
+    "banner": {
+      "url": "/images/background/background-14",
+      "thumbnailUrl": "/images/background/background-14",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-15T18:12:00.000Z"
       }
     },
     "roles": [
@@ -1110,13 +1200,23 @@
     "email": "tf2_scout@pinpoint.dev",
     "bio": "Team Fortress 2 member: Scout.",
     "avatar": {
-      "url": "/images/emulation/avatars/Scoutava.jpg",
-      "thumbnailUrl": "/images/emulation/avatars/Scoutava.jpg",
+      "url": "/images/emulation/avatars/Scoutava",
+      "thumbnailUrl": "/images/emulation/avatars/Scoutava",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
       "uploadedAt": {
         "$date": "2026-10-21T03:51:19Z"
+      }
+    },
+    "banner": {
+      "url": "/images/background/background-15",
+      "thumbnailUrl": "/images/background/background-15",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-16T18:12:00.000Z"
       }
     },
     "roles": [
@@ -1195,13 +1295,23 @@
     "email": "tf2_sniper@pinpoint.dev",
     "bio": "Team Fortress 2 member: Sniper.",
     "avatar": {
-      "url": "/images/emulation/avatars/Sniperava.jpg",
-      "thumbnailUrl": "/images/emulation/avatars/Sniperava.jpg",
+      "url": "/images/emulation/avatars/Sniperava",
+      "thumbnailUrl": "/images/emulation/avatars/Sniperava",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
       "uploadedAt": {
         "$date": "2026-10-21T03:51:19Z"
+      }
+    },
+    "banner": {
+      "url": "/images/background/background-16",
+      "thumbnailUrl": "/images/background/background-16",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-17T18:12:00.000Z"
       }
     },
     "roles": [
@@ -1280,13 +1390,23 @@
     "email": "tf2_soldier@pinpoint.dev",
     "bio": "Team Fortress 2 member: Soldier.",
     "avatar": {
-      "url": "/images/emulation/avatars/Soldierava.jpg",
-      "thumbnailUrl": "/images/emulation/avatars/Soldierava.jpg",
+      "url": "/images/emulation/avatars/Soldierava",
+      "thumbnailUrl": "/images/emulation/avatars/Soldierava",
       "width": 184,
       "height": 184,
       "mimeType": "image/jpeg",
       "uploadedAt": {
         "$date": "2026-10-21T03:51:19Z"
+      }
+    },
+    "banner": {
+      "url": "/images/background/background-17",
+      "thumbnailUrl": "/images/background/background-17",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-18T18:12:00.000Z"
       }
     },
     "roles": [

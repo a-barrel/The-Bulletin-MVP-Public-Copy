@@ -34,6 +34,7 @@ import {
   shiftLocationByDirection,
   toIdString
 } from '../utils';
+import reportClientError from '../../../utils/reportClientError';
 
 const formatMilesLabel = (value) => {
   if (!Number.isFinite(value) || value <= 0) {
@@ -158,7 +159,9 @@ const useChatRoomVisualizationTools = () => {
       const profile = await fetchCurrentUserProfile();
       setCurrentProfile(profile);
     } catch (error) {
-      console.error('Failed to load current user profile for visualization tab:', error);
+      reportClientError(error, 'Failed to load current user profile for visualization tab:', {
+        source: 'useChatRoomVisualization.loadProfile'
+      });
       setProfileStatus({ type: 'error', message: error.message || 'Failed to load current user profile.' });
       setCurrentProfile(null);
     }
@@ -239,7 +242,9 @@ const useChatRoomVisualizationTools = () => {
         }
       }
     } catch (error) {
-      console.error('Failed to load chat rooms for visualization tab:', error);
+      reportClientError(error, 'Failed to load chat rooms for visualization tab:', {
+        source: 'useChatRoomVisualization.fetchRooms'
+      });
       setRooms([]);
       setRoomsStatus({ type: 'error', message: error.message || 'Failed to load chat rooms.' });
     } finally {
@@ -307,7 +312,10 @@ const useChatRoomVisualizationTools = () => {
         });
         hasUserMovedRef.current = true;
       } catch (error) {
-        console.error('Failed to spoof location from visualization tab:', error);
+        reportClientError(error, 'Failed to spoof location from visualization tab:', {
+          source: 'useChatRoomVisualization.teleport',
+          presetKey: preset.key
+        });
         setTeleportStatus({ type: 'error', message: error.message || 'Failed to spoof location.' });
       } finally {
         setIsTeleporting(false);
@@ -387,7 +395,10 @@ const useChatRoomVisualizationTools = () => {
         });
         hasUserMovedRef.current = true;
       } catch (error) {
-        console.error('Failed to adjust spoofed location:', error);
+        reportClientError(error, 'Failed to adjust spoofed location:', {
+          source: 'useChatRoomVisualization.nudge',
+          direction
+        });
         setTeleportStatus({ type: 'error', message: error.message || 'Failed to adjust location.' });
       } finally {
         setIsTeleporting(false);

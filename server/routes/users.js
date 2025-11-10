@@ -323,6 +323,19 @@ const loadBlockedUsers = async (userDoc) => {
   return blockedUsers;
 };
 
+const mapPinOptions = (optionsDoc) => {
+  if (!optionsDoc) {
+    return undefined;
+  }
+  if (typeof optionsDoc.toObject === 'function') {
+    return optionsDoc.toObject();
+  }
+  if (typeof optionsDoc === 'object') {
+    return { ...optionsDoc };
+  }
+  return undefined;
+};
+
 const mapPinToListItem = (pinDoc, creator, options = {}) => {
   const doc = pinDoc.toObject();
   const viewerHasBookmarked =
@@ -355,7 +368,8 @@ const mapPinToListItem = (pinDoc, creator, options = {}) => {
     viewerIsAttending,
     viewerOwnsPin,
     replyCount: doc.replyCount ?? undefined,
-    stats: doc.stats || undefined
+    stats: doc.stats || undefined,
+    options: mapPinOptions(doc.options)
   });
 };
 

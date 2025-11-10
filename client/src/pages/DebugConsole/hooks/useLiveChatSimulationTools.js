@@ -27,6 +27,7 @@ import {
   resolveMediaUrl,
   toIdString
 } from '../utils';
+import reportClientError from '../../../utils/reportClientError';
 
 const useLiveChatSimulationTools = () => {
   const [currentUser] = useAuthState(auth);
@@ -180,7 +181,9 @@ const useLiveChatSimulationTools = () => {
       const profile = await fetchCurrentUserProfile();
       setCurrentProfile(profile);
     } catch (error) {
-      console.error('Failed to load current user profile:', error);
+      reportClientError(error, 'Failed to load current user profile:', {
+        source: 'useLiveChatSimulation.loadProfile'
+      });
       setStatus({ type: 'error', message: error.message || 'Failed to load current user profile.' });
       setCurrentProfile(null);
     }
@@ -213,7 +216,10 @@ const useLiveChatSimulationTools = () => {
       const list = await fetchChatMessages(roomId);
       setMessages(list);
     } catch (error) {
-      console.error('Failed to refresh chat messages:', error);
+      reportClientError(error, 'Failed to refresh chat messages:', {
+        source: 'useLiveChatSimulation.loadMessages',
+        roomId
+      });
       setStatus({ type: 'error', message: error.message || 'Failed to refresh messages.' });
     } finally {
       setIsRefreshingMessages(false);
@@ -345,7 +351,11 @@ const useLiveChatSimulationTools = () => {
           setStatus(null);
         }
       } catch (error) {
-        console.error('Failed to ensure chat rooms:', error);
+        reportClientError(error, 'Failed to ensure chat rooms:', {
+          source: 'useLiveChatSimulation.ensureRooms',
+          preferredKey,
+          location: lastSpoofedLocation
+        });
         setRoomsByKey({});
         setActiveRoom(null);
         setMessages([]);
@@ -461,7 +471,10 @@ const useLiveChatSimulationTools = () => {
           message: preset.statusMessage
         });
       } catch (error) {
-        console.error('Failed to spoof location:', error);
+        reportClientError(error, 'Failed to spoof location:', {
+          source: 'useLiveChatSimulation.teleport',
+          presetKey: preset.key
+        });
         setLocationStatus({ type: 'error', message: error.message || 'Failed to spoof location.' });
       } finally {
         setIsTeleporting(false);
@@ -569,7 +582,10 @@ const useLiveChatSimulationTools = () => {
           console.warn('Failed to update chat presence after sending message:', presenceError);
         }
       } catch (error) {
-        console.error('Failed to send chat message:', error);
+        reportClientError(error, 'Failed to send chat message:', {
+          source: 'useLiveChatSimulation.sendMessage',
+          roomId
+        });
         setStatus({ type: 'error', message: error.message || 'Failed to send message.' });
       } finally {
         setIsSending(false);

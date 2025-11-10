@@ -11,6 +11,7 @@ import {
   Typography,
   Alert
 } from '@mui/material';
+import './ReportContentDialog.css';
 
 const truncateSummary = (value) => {
   if (!value || typeof value !== 'string') {
@@ -45,35 +46,41 @@ function ReportContentDialog({
   }, [contentSummary, context]);
 
   return (
-    <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Report Content</DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={2}>
+    <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth="sm" fullWidth className="report-dialog">
+      <DialogTitle className="report-title">Report Content</DialogTitle>
+
+      <DialogContent dividers className="report-content">
+        <Stack spacing={2} className="report-stack">
           {contentSummary ? (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" className="report-summary">
+              <p>Message:</p>
               {truncateSummary(contentSummary)}
             </Typography>
           ) : null}
+
           <TextField
             multiline
             minRows={3}
             maxRows={6}
-            label="Tell us what happened"
+            label="Optional: Tell us what happened"
             value={reason}
             onChange={(event) => onReasonChange?.(event.target.value)}
             disabled={submitting}
-            placeholder="Optional: share additional details for moderators."
+            placeholder="Share additional details here for moderators."
             helperText={helperText || 'Reports are anonymous. Our moderators review every submission.'}
+            className="report-textfield"
           />
+
           {error ? (
-            <Alert severity="error" variant="outlined">
+            <Alert severity="error" variant="outlined" className="report-error">
               {error}
             </Alert>
           ) : null}
         </Stack>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={submitting}>
+
+      <DialogActions className="report-actions">
+        <Button onClick={onClose} disabled={submitting} className="report-cancel">
           Cancel
         </Button>
         <Button
@@ -81,6 +88,7 @@ function ReportContentDialog({
           disabled={submitting}
           variant="contained"
           color="error"
+          className="report-submit"
         >
           {submitting ? 'Sending…' : 'Submit report'}
         </Button>
