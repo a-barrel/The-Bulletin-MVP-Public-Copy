@@ -26,6 +26,12 @@ export const DEFAULT_SETTINGS = {
   notifications: {
     proximity: true,
     updates: true,
+    pinCreated: true,
+    pinUpdates: true,
+    eventReminders: true,
+    discussionReminders: true,
+    bookmarkReminders: true,
+    chatMessages: true,
     marketing: false,
     chatTransitions: true,
     friendRequests: true,
@@ -110,6 +116,22 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
               result?.preferences?.notifications?.proximity ?? DEFAULT_SETTINGS.notifications.proximity,
             updates:
               result?.preferences?.notifications?.updates ?? DEFAULT_SETTINGS.notifications.updates,
+            pinCreated:
+              result?.preferences?.notifications?.pinCreated ?? DEFAULT_SETTINGS.notifications.pinCreated,
+            pinUpdates:
+              result?.preferences?.notifications?.pinUpdates ?? DEFAULT_SETTINGS.notifications.pinUpdates,
+            eventReminders:
+              result?.preferences?.notifications?.eventReminders ??
+              DEFAULT_SETTINGS.notifications.eventReminders,
+            discussionReminders:
+              result?.preferences?.notifications?.discussionReminders ??
+              DEFAULT_SETTINGS.notifications.discussionReminders,
+            bookmarkReminders:
+              result?.preferences?.notifications?.bookmarkReminders ??
+              DEFAULT_SETTINGS.notifications.bookmarkReminders,
+            chatMessages:
+              result?.preferences?.notifications?.chatMessages ??
+              DEFAULT_SETTINGS.notifications.chatMessages,
             marketing:
               result?.preferences?.notifications?.marketing ?? DEFAULT_SETTINGS.notifications.marketing,
             chatTransitions:
@@ -258,6 +280,21 @@ const baselineSettings = useMemo(() => {
           profile?.preferences?.notifications?.proximity ?? DEFAULT_SETTINGS.notifications.proximity,
         updates:
           profile?.preferences?.notifications?.updates ?? DEFAULT_SETTINGS.notifications.updates,
+        pinCreated:
+          profile?.preferences?.notifications?.pinCreated ?? DEFAULT_SETTINGS.notifications.pinCreated,
+        pinUpdates:
+          profile?.preferences?.notifications?.pinUpdates ?? DEFAULT_SETTINGS.notifications.pinUpdates,
+        eventReminders:
+          profile?.preferences?.notifications?.eventReminders ??
+          DEFAULT_SETTINGS.notifications.eventReminders,
+        discussionReminders:
+          profile?.preferences?.notifications?.discussionReminders ??
+          DEFAULT_SETTINGS.notifications.discussionReminders,
+        bookmarkReminders:
+          profile?.preferences?.notifications?.bookmarkReminders ??
+          DEFAULT_SETTINGS.notifications.bookmarkReminders,
+        chatMessages:
+          profile?.preferences?.notifications?.chatMessages ?? DEFAULT_SETTINGS.notifications.chatMessages,
         marketing:
           profile?.preferences?.notifications?.marketing ?? DEFAULT_SETTINGS.notifications.marketing,
         chatTransitions:
@@ -521,6 +558,12 @@ const baselineSettings = useMemo(() => {
           notifications: {
             proximity: settings.notifications.proximity,
             updates: settings.notifications.updates,
+            pinCreated: settings.notifications.pinCreated,
+            pinUpdates: settings.notifications.pinUpdates,
+            eventReminders: settings.notifications.eventReminders,
+            discussionReminders: settings.notifications.discussionReminders,
+            bookmarkReminders: settings.notifications.bookmarkReminders,
+            chatMessages: settings.notifications.chatMessages,
             marketing: settings.notifications.marketing,
             chatTransitions: settings.notifications.chatTransitions,
             friendRequests: settings.notifications.friendRequests,

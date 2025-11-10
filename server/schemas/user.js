@@ -12,6 +12,12 @@ const NotificationPreferencesSchema = z
   .object({
     proximity: z.boolean().default(true),
     updates: z.boolean().default(true),
+    pinCreated: z.boolean().default(true),
+    pinUpdates: z.boolean().default(true),
+    eventReminders: z.boolean().default(true),
+    discussionReminders: z.boolean().default(true),
+    bookmarkReminders: z.boolean().default(true),
+    chatMessages: z.boolean().default(true),
     marketing: z.boolean().default(false),
     chatTransitions: z.boolean().default(true),
     friendRequests: z.boolean().default(true),

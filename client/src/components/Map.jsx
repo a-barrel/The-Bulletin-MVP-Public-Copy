@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, Fragment } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import '../styles/leaflet.css';
 import './Map.css';
 import { formatDistanceMiles, haversineDistanceMeters } from '../utils/geo';
 import runtimeConfig from '../config/runtime';

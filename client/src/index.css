@@ -16,7 +16,6 @@ body, input, button, textarea, select, input::placeholder {
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 a {

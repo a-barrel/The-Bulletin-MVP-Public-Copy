@@ -30,6 +30,12 @@ const userSchema = new mongoose.Schema(
       notifications: {
         proximity: { type: Boolean, default: true },
         updates: { type: Boolean, default: true },
+        pinCreated: { type: Boolean, default: true },
+        pinUpdates: { type: Boolean, default: true },
+        eventReminders: { type: Boolean, default: true },
+        discussionReminders: { type: Boolean, default: true },
+        bookmarkReminders: { type: Boolean, default: true },
+        chatMessages: { type: Boolean, default: true },
         marketing: { type: Boolean, default: false },
         chatTransitions: { type: Boolean, default: true },
         friendRequests: { type: Boolean, default: true },

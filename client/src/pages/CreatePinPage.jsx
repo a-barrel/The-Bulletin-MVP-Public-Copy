@@ -7,7 +7,7 @@ import EventNoteIcon from '@mui/icons-material/EventNote';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import '../styles/leaflet.css';
 
 import { routes } from '../routes';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';

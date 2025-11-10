@@ -77,6 +77,12 @@ const NotificationPreferencesUpdateSchema = z
   .object({
     proximity: z.boolean().optional(),
     updates: z.boolean().optional(),
+    pinCreated: z.boolean().optional(),
+    pinUpdates: z.boolean().optional(),
+    eventReminders: z.boolean().optional(),
+    discussionReminders: z.boolean().optional(),
+    bookmarkReminders: z.boolean().optional(),
+    chatMessages: z.boolean().optional(),
     marketing: z.boolean().optional(),
     chatTransitions: z.boolean().optional(),
     friendRequests: z.boolean().optional(),
@@ -624,6 +630,24 @@ router.patch('/me', verifyToken, async (req, res) => {
         }
         if (notifications.updates !== undefined) {
           setDoc['preferences.notifications.updates'] = notifications.updates;
+        }
+        if (notifications.pinCreated !== undefined) {
+          setDoc['preferences.notifications.pinCreated'] = notifications.pinCreated;
+        }
+        if (notifications.pinUpdates !== undefined) {
+          setDoc['preferences.notifications.pinUpdates'] = notifications.pinUpdates;
+        }
+        if (notifications.eventReminders !== undefined) {
+          setDoc['preferences.notifications.eventReminders'] = notifications.eventReminders;
+        }
+        if (notifications.discussionReminders !== undefined) {
+          setDoc['preferences.notifications.discussionReminders'] = notifications.discussionReminders;
+        }
+        if (notifications.bookmarkReminders !== undefined) {
+          setDoc['preferences.notifications.bookmarkReminders'] = notifications.bookmarkReminders;
+        }
+        if (notifications.chatMessages !== undefined) {
+          setDoc['preferences.notifications.chatMessages'] = notifications.chatMessages;
         }
         if (notifications.marketing !== undefined) {
           setDoc['preferences.notifications.marketing'] = notifications.marketing;
