@@ -355,7 +355,8 @@ const mapPinToListItem = (pinDoc, creator, options = {}) => {
     viewerIsAttending,
     viewerOwnsPin,
     replyCount: doc.replyCount ?? undefined,
-    stats: doc.stats || undefined
+    stats: doc.stats || undefined,
+    options: doc.options || undefined
   });
 };
 

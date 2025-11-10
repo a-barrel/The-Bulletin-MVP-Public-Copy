@@ -145,11 +145,16 @@ app.use('/api/reports', verifyToken, require('./routes/reports'));
 app.use('/api/feedback', verifyToken, require('./routes/feedback'));
 app.use('/api/storage', require('./routes/storage'));
 app.use('/api/debug', require('./routes/debug'));
+app.use('/api/dev-logs', require('./routes/devLogs'));
 app.use('/api/auth', require('./routes/auth'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
+  logLine(
+    'runtime-errors',
+    `${req.method} ${req.originalUrl} ${err.stack || err.message || 'Unknown error'}`
+  );
   res.status(500).json({ message: 'Something went wrong!' });
 });
 

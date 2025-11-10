@@ -140,6 +140,7 @@ const mapPinToListItem = (pinDoc, creator, options = {}) => {
     viewerOwnsPin,
     replyCount: pinDoc.replyCount ?? undefined,
     stats: pinDoc.stats || undefined,
+    options: pinDoc.options || undefined,
     coverPhoto,
     photos
   });
@@ -340,6 +341,7 @@ const mapPinToFull = (pinDoc, creator, options = {}) => {
     visibility: doc.visibility,
     isActive: doc.isActive,
     stats: doc.stats || undefined,
+    options: doc.options || undefined,
     bookmarkCount: doc.bookmarkCount ?? 0,
     replyCount: doc.replyCount ?? 0,
     createdAt: pinDoc.createdAt.toISOString(),
@@ -438,6 +440,24 @@ const MediaAssetInputSchema = z.object({
   description: z.string().optional()
 });
 
+const PinOptionsInputSchema = z
+  .object({
+    allowBookmarks: z.boolean().optional(),
+    allowShares: z.boolean().optional(),
+    allowReplies: z.boolean().optional(),
+    showAttendeeList: z.boolean().optional(),
+    featured: z.boolean().optional(),
+    visibilityMode: z.enum(['map-only', 'list-only', 'map-and-list']).optional(),
+    reminderMinutesBefore: z.number().int().nonnegative().max(10080).optional(),
+    contentAdvisory: z.string().trim().max(140).optional(),
+    highlightColor: z
+      .string()
+      .trim()
+      .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
+      .optional()
+  })
+  .strict();
+
 const normaliseMediaAsset = (asset, uploadedBy) => ({
   url: asset.url,
   width: asset.width,
@@ -482,7 +502,8 @@ const BaseCreatePinSchema = z.object({
   proximityRadiusMeters: z.number().int().positive().max(50000).optional(),
   creatorId: z.string().optional(),
   photos: z.array(MediaAssetInputSchema).max(10).optional(),
-  coverPhoto: MediaAssetInputSchema.optional()
+  coverPhoto: MediaAssetInputSchema.optional(),
+  options: PinOptionsInputSchema.optional()
 });
 
 const EventAddressComponentsSchema = z
@@ -602,15 +623,16 @@ router.post('/', verifyToken, async (req, res) => {
       coordinates: [input.coordinates.longitude, input.coordinates.latitude]
     };
 
-    const pinData = {
-      type: input.type,
-      creatorId: creatorObjectId,
-      title: input.title,
-      description: input.description,
-      coordinates,
-      proximityRadiusMeters: input.proximityRadiusMeters ?? 1609,
-      visibility: 'public'
-    };
+  const pinData = {
+    type: input.type,
+    creatorId: creatorObjectId,
+    title: input.title,
+    description: input.description,
+    coordinates,
+    proximityRadiusMeters: input.proximityRadiusMeters ?? 1609,
+    visibility: 'public',
+    options: input.options ?? undefined
+  };
 
     if (input.type === 'event') {
       pinData.startDate = input.startDate;

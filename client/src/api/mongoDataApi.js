@@ -187,59 +187,92 @@ export async function fetchPinsNearby({
   endDate
 }) {
   if (latitude === undefined || longitude === undefined) {
-    throw new Error('Latitude and longitude are required');
+    const error = new Error('Latitude and longitude are required');
+    await logClientEvent({
+      category: 'client-api-errors',
+      message: error.message,
+      severity: 'warn',
+      context: { endpoint: '/api/pins/nearby', missingCoordinates: true }
+    });
+    throw error;
   }
 
-  const baseUrl = resolveApiBaseUrl();
-  const params = new URLSearchParams({
-    latitude: String(latitude),
-    longitude: String(longitude),
-    distanceMiles: String(distanceMiles)
-  });
+  try {
+    const baseUrl = resolveApiBaseUrl();
+    const params = new URLSearchParams({
+      latitude: String(latitude),
+      longitude: String(longitude),
+      distanceMiles: String(distanceMiles)
+    });
 
-  if (limit !== undefined) {
-    params.set('limit', String(limit));
+    if (limit !== undefined) {
+      params.set('limit', String(limit));
+    }
+    if (typeof search === 'string' && search.trim()) {
+      params.set('search', search.trim());
+    }
+
+    const serializeArray = (value) =>
+      Array.isArray(value) ? value.map((entry) => String(entry).trim()).filter(Boolean) : [];
+
+    const typeList = serializeArray(types);
+    if (typeList.length) {
+      params.set('types', typeList.join(','));
+    }
+
+    const categoryList = serializeArray(categories);
+    if (categoryList.length) {
+      params.set('categories', categoryList.join(','));
+    }
+
+    if (status) {
+      params.set('status', status);
+    }
+
+    if (startDate) {
+      params.set('startDate', startDate);
+    }
+
+    if (endDate) {
+      params.set('endDate', endDate);
+    }
+
+    const response = await fetch(`${baseUrl}/api/pins/nearby?${params.toString()}`, {
+      method: 'GET',
+      headers: await buildHeaders()
+    });
+
+    const payload = await response.json().catch(() => []);
+    if (!response.ok) {
+      const message = payload?.message || 'Failed to load nearby pins';
+      await logClientEvent({
+        category: 'client-api-errors',
+        message,
+        context: {
+          endpoint: '/api/pins/nearby',
+          status: response.status,
+          params: Object.fromEntries(params.entries())
+        }
+      });
+      throw new Error(message);
+    }
+
+    return payload;
+  } catch (error) {
+    await logClientEvent({
+      category: 'client-api-errors',
+      message: error?.message || 'fetchPinsNearby failed',
+      stack: error?.stack,
+      context: {
+        endpoint: '/api/pins/nearby',
+        latitude,
+        longitude,
+        limit,
+        status
+      }
+    });
+    throw error;
   }
-  if (typeof search === 'string' && search.trim()) {
-    params.set('search', search.trim());
-  }
-
-  const serializeArray = (value) =>
-    Array.isArray(value) ? value.map((entry) => String(entry).trim()).filter(Boolean) : [];
-
-  const typeList = serializeArray(types);
-  if (typeList.length) {
-    params.set('types', typeList.join(','));
-  }
-
-  const categoryList = serializeArray(categories);
-  if (categoryList.length) {
-    params.set('categories', categoryList.join(','));
-  }
-
-  if (status) {
-    params.set('status', status);
-  }
-
-  if (startDate) {
-    params.set('startDate', startDate);
-  }
-
-  if (endDate) {
-    params.set('endDate', endDate);
-  }
-
-  const response = await fetch(`${baseUrl}/api/pins/nearby?${params.toString()}`, {
-    method: 'GET',
-    headers: await buildHeaders()
-  });
-
-  const payload = await response.json().catch(() => []);
-  if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load nearby pins');
-  }
-
-  return payload;
 }
 
 export async function listPins(query = {}) {
@@ -299,17 +332,29 @@ export async function listPins(query = {}) {
   const queryString = params.toString();
   const url = queryString ? `${baseUrl}/api/pins?${queryString}` : `${baseUrl}/api/pins`;
 
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: await buildHeaders()
-  });
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: await buildHeaders()
+    });
 
-  const payload = await response.json().catch(() => []);
-  if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load pins');
+    const payload = await response.json().catch(() => []);
+    if (!response.ok) {
+      const error = new Error(payload?.message || 'Failed to load pins');
+      await logApiError('/api/pins', error, {
+        status: response.status,
+        params: Object.fromEntries(params.entries())
+      });
+      throw error;
+    }
+
+    return payload;
+  } catch (error) {
+    if (!hasApiErrorBeenLogged(error)) {
+      await logApiError('/api/pins', error, { query });
+    }
+    throw error;
   }
-
-  return payload;
 }
 
 export async function fetchPinsSortedByExpiration({ limit = 20, status = 'active' } = {}) {
@@ -357,22 +402,33 @@ export async function fetchExpiredPins({ limit = 20 } = {}) {
 
 export async function createPin(input) {
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/pins`, {
-    method: 'POST',
-    headers: await buildHeaders(),
-    body: JSON.stringify(input)
-  });
+  try {
+    const response = await fetch(`${baseUrl}/api/pins`, {
+      method: 'POST',
+      headers: await buildHeaders(),
+      body: JSON.stringify(input)
+    });
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const fallbackBase = 'Failed to create pin';
-    const details = Array.isArray(payload?.issues)
-      ? `: ${payload.issues.map((issue) => `${issue.path?.join('.') ?? ''} ${issue.message}`.trim()).join('; ')}`
-      : '';
-    throw createApiError(response, payload, `${fallbackBase}${details}`);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const fallbackBase = 'Failed to create pin';
+      const details = Array.isArray(payload?.issues)
+        ? `: ${payload.issues
+            .map((issue) => `${issue.path?.join('.') ?? ''} ${issue.message}`.trim())
+            .join('; ')}`
+        : '';
+      const error = createApiError(response, payload, `${fallbackBase}${details}`);
+      await logApiError('/api/pins', error, { status: response.status });
+      throw error;
+    }
+
+    return payload;
+  } catch (error) {
+    if (!hasApiErrorBeenLogged(error)) {
+      await logApiError('/api/pins', error, { inputSummary: { type: input?.type, title: input?.title } });
+    }
+    throw error;
   }
-
-  return payload;
 }
 
 export async function revokeCurrentSession(options = {}) {
@@ -410,19 +466,32 @@ export async function fetchPinById(pinId, options = {}) {
     ? `${baseUrl}/api/pins/${encodeURIComponent(pinId)}?${query}`
     : `${baseUrl}/api/pins/${encodeURIComponent(pinId)}`;
 
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: await buildHeaders(),
-    signal,
-    cache: 'no-store'
-  });
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: await buildHeaders(),
+      signal,
+      cache: 'no-store'
+    });
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw createApiError(response, payload, 'Failed to load pin');
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = createApiError(response, payload, 'Failed to load pin');
+      await logApiError('/api/pins/:pinId', error, {
+        status: response.status,
+        pinId,
+        previewMode: previewMode ?? null
+      });
+      throw error;
+    }
+
+    return payload;
+  } catch (error) {
+    if (!hasApiErrorBeenLogged(error)) {
+      await logApiError('/api/pins/:pinId', error, { pinId, previewMode: previewMode ?? null });
+    }
+    throw error;
   }
-
-  return payload;
 }
 
 export async function fetchPinAttendees(pinId) {
@@ -431,18 +500,30 @@ export async function fetchPinAttendees(pinId) {
   }
 
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/attendees`, {
-    method: 'GET',
-    headers: await buildHeaders(),
-    cache: 'no-store'
-  });
+  try {
+    const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/attendees`, {
+      method: 'GET',
+      headers: await buildHeaders(),
+      cache: 'no-store'
+    });
 
-  const payload = await response.json().catch(() => []);
-  if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load attendees');
+    const payload = await response.json().catch(() => []);
+    if (!response.ok) {
+      const error = new Error(payload?.message || 'Failed to load attendees');
+      await logApiError('/api/pins/:pinId/attendees', error, {
+        status: response.status,
+        pinId
+      });
+      throw error;
+    }
+
+    return payload;
+  } catch (error) {
+    if (!hasApiErrorBeenLogged(error)) {
+      await logApiError('/api/pins/:pinId/attendees', error, { pinId });
+    }
+    throw error;
   }
-
-  return payload;
 }
 
 export async function updatePinAttendance(pinId, { attending }) {
@@ -454,18 +535,31 @@ export async function updatePinAttendance(pinId, { attending }) {
   }
 
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/attendance`, {
-    method: 'POST',
-    headers: await buildHeaders(),
-    body: JSON.stringify({ attending })
-  });
+  try {
+    const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/attendance`, {
+      method: 'POST',
+      headers: await buildHeaders(),
+      body: JSON.stringify({ attending })
+    });
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to update attendance');
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(payload?.message || 'Failed to update attendance');
+      await logApiError('/api/pins/:pinId/attendance', error, {
+        status: response.status,
+        pinId,
+        attending
+      });
+      throw error;
+    }
+
+    return payload;
+  } catch (error) {
+    if (!hasApiErrorBeenLogged(error)) {
+      await logApiError('/api/pins/:pinId/attendance', error, { pinId, attending });
+    }
+    throw error;
   }
-
-  return payload;
 }
 
 export async function createPinBookmark(pinId) {
@@ -474,18 +568,27 @@ export async function createPinBookmark(pinId) {
   }
 
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/bookmarks`, {
-    method: 'POST',
-    headers: await buildHeaders(),
-    body: JSON.stringify({ pinId })
-  });
+  try {
+    const response = await fetch(`${baseUrl}/api/bookmarks`, {
+      method: 'POST',
+      headers: await buildHeaders(),
+      body: JSON.stringify({ pinId })
+    });
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to create bookmark');
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(payload?.message || 'Failed to create bookmark');
+      await logApiError('/api/bookmarks', error, { status: response.status, pinId });
+      throw error;
+    }
+
+    return payload;
+  } catch (error) {
+    if (!hasApiErrorBeenLogged(error)) {
+      await logApiError('/api/bookmarks', error, { pinId });
+    }
+    throw error;
   }
-
-  return payload;
 }
 
 export async function sharePin(pinId, { platform, method } = {}) {
@@ -494,21 +597,39 @@ export async function sharePin(pinId, { platform, method } = {}) {
   }
 
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/share`, {
-    method: 'POST',
-    headers: await buildHeaders(),
-    body: JSON.stringify({
-      platform: platform ?? undefined,
-      method: method ?? undefined
-    })
-  });
+  try {
+    const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/share`, {
+      method: 'POST',
+      headers: await buildHeaders(),
+      body: JSON.stringify({
+        platform: platform ?? undefined,
+        method: method ?? undefined
+      })
+    });
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw createApiError(response, payload, payload?.message || 'Failed to share pin');
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = createApiError(response, payload, payload?.message || 'Failed to share pin');
+      await logApiError('/api/pins/:pinId/share', error, {
+        status: response.status,
+        pinId,
+        platform: platform ?? null,
+        method: method ?? null
+      });
+      throw error;
+    }
+
+    return payload;
+  } catch (error) {
+    if (!hasApiErrorBeenLogged(error)) {
+      await logApiError('/api/pins/:pinId/share', error, {
+        pinId,
+        platform: platform ?? null,
+        method: method ?? null
+      });
+    }
+    throw error;
   }
-
-  return payload;
 }
 
 export async function deletePinBookmark(pinId) {
@@ -517,17 +638,85 @@ export async function deletePinBookmark(pinId) {
   }
 
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/bookmarks/${encodeURIComponent(pinId)}`, {
-    method: 'DELETE',
-    headers: await buildHeaders()
-  });
+  try {
+    const response = await fetch(`${baseUrl}/api/bookmarks/${encodeURIComponent(pinId)}`, {
+      method: 'DELETE',
+      headers: await buildHeaders()
+    });
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to remove bookmark');
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(payload?.message || 'Failed to remove bookmark');
+      await logApiError('/api/bookmarks/:pinId', error, { status: response.status, pinId });
+      throw error;
+    }
+
+    return payload;
+  } catch (error) {
+    if (!hasApiErrorBeenLogged(error)) {
+      await logApiError('/api/bookmarks/:pinId', error, { pinId });
+    }
+    throw error;
   }
+}
 
-  return payload;
+export async function logClientEvent({
+  category = 'client-errors',
+  severity = 'error',
+  message,
+  stack,
+  context,
+  timestamp
+} = {}) {
+  if (!message) {
+    return;
+  }
+  try {
+    const baseUrl = resolveApiBaseUrl();
+    await fetch(`${baseUrl}/api/dev-logs`, {
+      method: 'POST',
+      headers: await buildHeaders(),
+      body: JSON.stringify({
+        category,
+        severity,
+        message,
+        stack,
+        context,
+        timestamp: timestamp ?? new Date().toISOString()
+      })
+    });
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.warn('Failed to send client log event', error);
+    }
+  }
+}
+
+const API_ERROR_LOG_FLAG = Symbol('clientApiErrorLogged');
+
+function markApiErrorLogged(error) {
+  if (error && typeof error === 'object') {
+    error[API_ERROR_LOG_FLAG] = true;
+  }
+}
+
+function hasApiErrorBeenLogged(error) {
+  return Boolean(error && error[API_ERROR_LOG_FLAG]);
+}
+
+async function logApiError(endpoint, error, context = {}) {
+  try {
+    await logClientEvent({
+      category: 'client-api-errors',
+      message: error?.message || `Request failed: ${endpoint}`,
+      stack: error?.stack,
+      context: { endpoint, ...context }
+    });
+    markApiErrorLogged(error);
+  } catch {
+    // noop – logging failures should never surface to callers
+  }
 }
 
 export async function createPinReply(pinId, { message, parentReplyId } = {}) {
@@ -544,23 +733,36 @@ export async function createPinReply(pinId, { message, parentReplyId } = {}) {
     ...(parentReplyId ? { parentReplyId } : {})
   };
 
-  const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/replies`, {
-    method: 'POST',
-    headers: await buildHeaders(),
-    body: JSON.stringify(body)
-  });
+  try {
+    const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/replies`, {
+      method: 'POST',
+      headers: await buildHeaders(),
+      body: JSON.stringify(body)
+    });
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const details = Array.isArray(payload?.issues)
-      ? `: ${payload.issues
-          .map((issue) => `${issue.path?.join('.') ?? ''} ${issue.message}`.trim())
-          .join('; ')}`
-      : '';
-    throw new Error((payload?.message || 'Failed to create reply') + details);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const details = Array.isArray(payload?.issues)
+        ? `: ${payload.issues
+            .map((issue) => `${issue.path?.join('.') ?? ''} ${issue.message}`.trim())
+            .join('; ')}`
+        : '';
+      const error = new Error((payload?.message || 'Failed to create reply') + details);
+      await logApiError('/api/pins/:pinId/replies', error, {
+        status: response.status,
+        pinId,
+        hasParent: Boolean(parentReplyId)
+      });
+      throw error;
+    }
+
+    return payload;
+  } catch (error) {
+    if (!hasApiErrorBeenLogged(error)) {
+      await logApiError('/api/pins/:pinId/replies', error, { pinId, hasParent: Boolean(parentReplyId) });
+    }
+    throw error;
   }
-
-  return payload;
 }
 
 export async function updatePin(pinId, input) {

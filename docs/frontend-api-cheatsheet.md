@@ -19,6 +19,7 @@ Fetch a pin with `GET /api/pins/:pinId`, run it through `DebugPin.fromApi(payloa
 | `tagIds` | `string[]` | ObjectId references to tag records (if any). |
 | `tags` | `string[]` | Denormalised tag labels. |
 | `relatedPinIds` | `string[]` | Other pins linked to this one. |
+| `options` | `PinOptions` | Config toggles for reminders, feed placement, and moderation (see [Pin Options](#pin-options-payloadoptions)). |
 | `linkedLocationId` | `string` \| `undefined` | Attached `Location` entity. |
 | `linkedChatRoomId` | `string` \| `undefined` | Associated proximity chat room. |
 | `visibility` | `'public' \| 'friends' \| 'private'` | Sharing scope. |
@@ -83,6 +84,22 @@ Fetch a pin with `GET /api/pins/:pinId`, run it through `DebugPin.fromApi(payloa
 | `replyCount` | `number` | Replies (including threads). |
 | `shareCount` | `number` | Shares recorded. |
 | `viewCount` | `number` | Unique view counter. |
+
+## Pin Options (`payload.options`)
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `allowBookmarks` | `boolean` | Toggles whether viewers can bookmark the pin. Defaults to `true`. |
+| `allowShares` | `boolean` | Enables `/share` tracking + share buttons. Defaults to `true`. |
+| `allowReplies` | `boolean` | Hides reply UI when `false`. Defaults to `true`. |
+| `showAttendeeList` | `boolean` | Controls attendee visibility (events default to `true`). |
+| `featured` | `boolean` | Marks the pin for elevated placement/styling. |
+| `visibilityMode` | `'map-only' \| 'list-only' \| 'map-and-list'` | Signals which surfaces should render the pin. |
+| `reminderMinutesBefore` | `number` \| `undefined` | Optional reminder lead time (0–10,080 minutes). |
+| `contentAdvisory` | `string` \| `undefined` | Short warning/caution string the UI can display inline. |
+| `highlightColor` | `string` \| `undefined` | Hex color for accent badges or borders. |
+
+When the backend omits `options`, assume the defaults above (bookmarks/shares/replies enabled, attendee lists visible for events, `visibilityMode = 'map-and-list'`).
 
 ## Media Asset Shape
 
