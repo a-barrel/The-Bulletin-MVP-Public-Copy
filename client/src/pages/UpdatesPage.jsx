@@ -3,41 +3,27 @@ import runtimeConfig from '../config/runtime';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Snackbar from '@mui/material/Snackbar';
 import IconButton from '@mui/material/IconButton';
 import Chip from '@mui/material/Chip';
-import Paper from '@mui/material/Paper';
-import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
-import Switch from '@mui/material/Switch';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import DoneAllIcon from '@mui/icons-material/DoneAll';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import CloseIcon from '@mui/icons-material/CancelRounded';
 import UpdateIcon from '@mui/icons-material/Update';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
+import DropDownArrow from '@mui/icons-material/ArrowForwardIosRounded';
 import './UpdatesPage.css';
 import {
-  formatFriendlyTimestamp,
-  formatAbsoluteDateTime,
   formatRelativeTime
 } from '../utils/dates';
 import useUpdatesFeed from '../hooks/useUpdatesFeed';
 import { routes } from '../routes';
-import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
 import usePushNotifications from '../hooks/usePushNotifications';
-import FriendBadge from '../components/FriendBadge';
 
 export const pageConfig = {
   id: 'updates',
@@ -67,8 +53,11 @@ const resolveBadgeImageUrl = (value) => {
 function UpdatesPage() {
   const navigate = useNavigate();
   const [selectedTab, setSelectedTab] = useState('All');
-  const socialNotifications = useSocialNotificationsContext();
   const pushNotifications = usePushNotifications();
+  const [expandedUpdateId, setExpandedUpdateId] = useState(null);
+  const handleToggleExpand = (id) => {
+    setExpandedUpdateId((prev) => (prev === id ? null : id));
+  };
   const [pushPromptDismissed, setPushPromptDismissed] = useState(() => {
     if (typeof window === 'undefined') {
       return false;
@@ -79,14 +68,6 @@ function UpdatesPage() {
       return false;
     }
   });
-  const incomingRequests = socialNotifications.friendData?.incomingRequests || [];
-  const canShowFriendRequests = !socialNotifications.friendAccessDenied;
-  const hasFriendRequests = canShowFriendRequests && incomingRequests.length > 0;
-  const friendRequestsPreview = incomingRequests.slice(0, 3);
-  const remainingFriendRequests = Math.max(0, incomingRequests.length - friendRequestsPreview.length);
-  const [isFriendDialogOpen, setIsFriendDialogOpen] = useState(false);
-  const [respondingRequestId, setRespondingRequestId] = useState(null);
-  const [friendActionStatus, setFriendActionStatus] = useState(null);
 
   useEffect(() => {
     if (pushNotifications.permission === 'granted') {
@@ -108,7 +89,6 @@ function UpdatesPage() {
     updates,
     isLoadingUpdates,
     updatesError,
-    showUnreadOnly,
     pendingUpdateIds,
     deletingUpdateIds,
     isMarkingAllRead,
@@ -117,14 +97,14 @@ function UpdatesPage() {
     pullDistance,
     isPullRefreshing,
     handleDismissUpdatesError,
-    handleToggleUnreadOnly,
-    handleRefresh,
     handleMarkRead,
     handleMarkAllRead,
-    handleDeleteUpdate
+    handleDeleteUpdate,
+    handleClearAllUpdates
   } = useUpdatesFeed();
 
   const isLoading = isProfileLoading || isLoadingUpdates;
+  const isAnyDeletePending = deletingUpdateIds.length > 0;
 
   const { unreadDiscussionsCount, unreadEventsCount } = useMemo(() => {
     const counts = {
@@ -165,41 +145,6 @@ function UpdatesPage() {
     });
   }, [filteredUpdates, selectedTab]);
 
-  const handleOpenFriendDialog = () => {
-    setFriendActionStatus(null);
-    setIsFriendDialogOpen(true);
-  };
-
-  const handleCloseFriendDialog = () => {
-    if (respondingRequestId) {
-      return;
-    }
-    setIsFriendDialogOpen(false);
-  };
-
-  const handleRespondToFriendRequest = async (requestId, decision) => {
-    if (!requestId || !decision || typeof socialNotifications.respondToFriendRequest !== 'function') {
-      return;
-    }
-    setRespondingRequestId(requestId);
-    setFriendActionStatus(null);
-    try {
-      await socialNotifications.respondToFriendRequest({ requestId, decision });
-      setFriendActionStatus({
-        type: 'success',
-        message: decision === 'accept' ? 'Friend request accepted.' : 'Friend request declined.'
-      });
-      await socialNotifications.refreshAll();
-    } catch (error) {
-      setFriendActionStatus({
-        type: 'error',
-        message: error?.message || 'Failed to update friend request.'
-      });
-    } finally {
-      setRespondingRequestId(null);
-    }
-  };
-
   return (
     <Box className="updates-page">
       <Box ref={containerRef} className="updates-frame">
@@ -210,23 +155,10 @@ function UpdatesPage() {
 
           <h1 className="updates-header-title">Updates</h1>
 
-          <IconButton className="refresh-btn" onClick={handleRefresh} disabled={isLoading}>
-            {isLoading ? <CircularProgress size={20} /> : <RefreshIcon />}
-          </IconButton>
-
-          <FormControlLabel
-            className="show-unread-toggle"
-            control={
-              <Switch checked={showUnreadOnly} onChange={handleToggleUnreadOnly} color="primary" />
-            }
-            label="Show unread only"
-          />
-
           <Button
             className="updates-header-clear-btn"
-            onClick={handleMarkAllRead}
-            startIcon={<DoneAllIcon fontSize="small" />}
-            disabled={isMarkingAllRead || unreadCount === 0}
+            onClick={handleClearAllUpdates}
+            disabled={isMarkingAllRead || unreadCount === 0 || isAnyDeletePending}
           >
             Clear
           </Button>
@@ -251,14 +183,15 @@ function UpdatesPage() {
           </Box>
 
           {pushNotifications.isSupported &&
-           pushNotifications.permission !== 'granted' &&
-           !pushPromptDismissed ? (
+            pushNotifications.permission !== 'granted' &&
+            !pushPromptDismissed ? (
             <Alert
+              className="push-notifs-container"
               severity="info"
               variant="outlined"
               sx={{ mb: 3 }}
               action={
-                <Stack direction="row" spacing={1}>
+                <Box className="push-notifs-info">
                   <Button
                     size="small"
                     variant="contained"
@@ -283,85 +216,13 @@ function UpdatesPage() {
                   >
                     Dismiss
                   </Button>
-                </Stack>
+                </Box>
               }
             >
-              Enable push notifications to get updates even when you're away.
-            </Alert>
-          ) : null}
-
-          {canShowFriendRequests ? (
-            <Paper
-              elevation={1}
-              sx={{
-                mt: 2,
-                mb: 2,
-                p: { xs: 2, md: 3 },
-                borderRadius: 3,
-                border: '1px solid',
-                borderColor: 'divider'
-              }}
-          >
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }}>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="h6" component="h2">
-                  Pending friend requests
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {hasFriendRequests
-                    ? incomingRequests.length === 1
-                      ? '1 person is waiting for your response.'
-                      : `${incomingRequests.length} people are waiting for your response.`
-                    : 'All caught up — new friend requests will appear here.'}
-                </Typography>
-                {hasFriendRequests ? (
-                  <Stack direction="row" spacing={1} mt={1} flexWrap="wrap" useFlexGap>
-                    {friendRequestsPreview.map((request) => {
-                      const requesterId =
-                        request.requester?._id || request.requester?.id || request.requester?.userId;
-                      const requesterName =
-                        request.requester?.displayName ||
-                        request.requester?.username ||
-                        request.requester?.id ||
-                        'Unknown user';
-                      return (
-                        <Chip
-                          key={request.id}
-                          label={
-                            <span className="friend-chip-label">
-                              {requesterName}
-                              <FriendBadge userId={requesterId} size="0.8em" />
-                            </span>
-                          }
-                          color="secondary"
-                          variant="outlined"
-                        />
-                      );
-                    })}
-                    {remainingFriendRequests > 0 ? (
-                      <Chip label={`+${remainingFriendRequests} more`} variant="outlined" />
-                    ) : null}
-                  </Stack>
-                ) : (
-                  <Stack direction="row" spacing={1} mt={2}>
-                    <Chip label="No pending requests" color="default" variant="outlined" />
-                  </Stack>
-                )}
+              <Box className="push-notifs-description">
+                Enable push notifications to get updates even when you're away.
               </Box>
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={handleOpenFriendDialog}
-                disabled={
-                  socialNotifications.friendIsLoading ||
-                  respondingRequestId !== null
-                }
-                sx={{ alignSelf: { xs: 'flex-start', md: 'center' } }}
-              >
-                Review requests
-              </Button>
-            </Stack>
-          </Paper>
+            </Alert>
           ) : null}
 
           {profileError ? (
@@ -379,28 +240,31 @@ function UpdatesPage() {
           {isLoading ? (
             <Box className="loading-bar-container">
               <CircularProgress />
-              <Typography className="loading-bar-label">Loading updates...</Typography>
+              <Typography className="loading-bar-label"> 
+                Loading updates... 
+              </Typography>
             </Box>
           ) : tabFilteredUpdates.length === 0 ? (
-            <Paper
-              className="empty-updates-msg"
-              elevation={0}
-              sx={{
-                p: 4,
-                borderRadius: 3,
-                borderColor: 'divider'
-              }}
-            >
-              <NotificationsActiveIcon className="notification-icon" color="disabled" fontSize="large" />
-
-              <Typography className="empty-updates-msg-title" variant="h6" sx={{ mt: 2 }}>
-                Nothing new yet
+            <div className="empty-updates-msg-container"> 
+              <NotificationsActiveIcon 
+                className="notification-icon"
+                fontSize="large" 
+              />
+  
+              <Typography 
+                className="empty-updates-msg-title"
+                variant="h6" 
+              >
+                Nothing new yet.
               </Typography>
-
-              <Typography className="empty-updates-msg-body" variant="body2" color="text.secondary">
+  
+              <Typography 
+                className="empty-updates-msg-body"
+                variant="body2" 
+              >
                 Stay tuned — new activity on your pins and chats will show up here.
               </Typography>
-            </Paper>
+            </div>     
           ) : (
             <Box className="updates-list">
               <Box
@@ -442,64 +306,62 @@ function UpdatesPage() {
                 const createdAt = update.createdAt;
 
                 return (
-                  <Paper
+                  <Box
                     className="update-card"
                     key={update._id}
-                    sx={{
-                      borderColor: read ? 'divider' : 'secondary.main',
-                      backgroundColor: read ? 'background.paper' : 'rgba(144, 202, 249, 0.04)',
-                      mb: 2
-                    }}
+                    onClick={() => handleToggleExpand(update._id)}
                   >
-                    <Stack direction="row" spacing={1} alignItems="center" className="update-header">
+                    {/* Header of the update card, consisting of a pinTitle and time of update */}
+                    <Box className="update-header">
                       <Chip
                         label={displayTypeLabel}
                         size="small"
-                        color={read ? 'default' : 'secondary'}
+                        color={read ? 'secondary' : 'secondary'}
                       />
-
-                      {pinTitle ? (
-                        <Chip label={pinTitle} size="small" className="pin-title-chip" variant="outlined" />
+  
+                      {pinTitle ? 
+                        <Typography 
+                          className="pin-title"
+                          size="small" 
+                          color="black" 
+                          variant="outlined" 
+                        >
+                          {pinTitle} 
+                        </Typography>
+                      : null}
+  
+                      {/* Time Label */}
+                      <Typography className="update-time">
+                        {formatRelativeTime(createdAt) || ''}
+                      </Typography>
+  
+                      {!read && (
+                      <span className="unread-dot"/>
+                      )}
+                    </Box>
+  
+                    <Typography className="update-title">
+                      {update.payload?.title}
+                    </Typography>
+                    
+                    {/* Text body of the update card */}
+                    <Box>
+                      {message ? (
+                        <Typography className="update-message">
+                          {message}
+                        </Typography>
                       ) : null}
-
-                      <Typography
-                        className="update-time"
-                        variant="body2"
-                        sx={{ marginLeft: 'auto' }}
-                        title={formatAbsoluteDateTime(createdAt) || undefined}
-                      >
-                        {formatFriendlyTimestamp(createdAt) || formatRelativeTime(createdAt) || ''}
-                      </Typography>
-                    </Stack>
-
-                    {update.payload?.title ? (
-                      <Typography className="update-title" variant="h6" sx={{ mt: 1 }}>
-                        {update.payload.title}
-                      </Typography>
-                    ) : null}
-
-                    {message ? (
-                      <Typography className="update-message" sx={{ mt: 1 }}>
-                        {message}
-                      </Typography>
-                    ) : null}
-
-                    {typeKey === 'pin-update' && Array.isArray(update.payload?.metadata?.changedFields) ? (
-                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
-                        {update.payload.metadata.changedFields.map((field) => (
-                          <Chip key={field} size="small" variant="outlined" label={`Changed: ${field}`} />
-                        ))}
-                      </Stack>
-                    ) : null}
-
-                    {update.payload?.avatars?.length ? (
-                      <Box className="avatar-row" sx={{ mt: 1 }}>
+                    </Box>
+                    
+                    {update.payload?.avatars?.length > 0 && (
+                      <Box className="avatar-row">
                         {update.payload.avatars.map((src, idx) => (
                           <img key={idx} src={src} alt="participant" className="avatar" />
                         ))}
                       </Box>
-                    ) : null}
-
+                    )}
+  
+                    {/* Achievement Badge handling */}
                     {isBadgeUpdate && badgeImageUrl ? (
                       <Box
                         component="img"
@@ -521,139 +383,65 @@ function UpdatesPage() {
                       />
                     ) : null}
 
-                    <Divider sx={{ my: 2 }} />
+                    <Box className="drop-down-arrow-container">
+                      <DropDownArrow
+                        className="update-action-drop-down-indicator-arrow"
+                        sx={{
+                          transform: expandedUpdateId === update._id ? 'rotate(90deg)' : 'rotate(0deg)'
+                        }}
+                      />
+                    </Box>
+  
+                    <Box 
+                      className="update-action-container"
+                      sx={{
+                        maxHeight: expandedUpdateId === update._id ? 200 : 0,
+                        overflow: 'hidden',
+                        transition: 'max-height 0.3s ease, opacity 0.3s ease',
+                        opacity: expandedUpdateId === update._id ? 1 : 0,
+                        mt: expandedUpdateId === update._id ? 1.5 : 0
+                      }}
+                      onClick={(e) => e.stopPropagation()} // prevent collapsing when clicking buttons
+                    >
 
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                       {pinId ? (
                         <Button
                           component={Link}
                           to={routes.pin.byId(pinId)}
-                          size="small"
                           className="view-pin-btn"
-                          variant="contained"
                         >
-                          View pin
+                          View
                         </Button>
                       ) : null}
-
+    
+                      {/* Currently there is no way to 'hide' the notifications as before with the toggle, so...
+                          TODO: create a way to actually clear updates 
+                      */}
+                      {!read && (
                       <Button
-                        size="small"
-                        variant="outlined"
-                        color="error"
-                        startIcon={<DeleteOutlineIcon fontSize="small" />}
+                        className="mark-as-read-btn"
+                        startIcon={<CheckCircleOutlineIcon classname="read-icon" fontSize="small" />}
+                        onClick={() => handleMarkRead(update._id)}
+                        disabled={pending || isDeleting}
+                      >
+                        {pending ? 'Marking...' : 'Mark as read'}
+                      </Button>
+                      )}
+                      <Button
+                        className="delete-update-btn"
+                        startIcon={<CloseIcon className="delete-icon" fontSize="small" />}
                         onClick={() => handleDeleteUpdate(update._id)}
-                        disabled={isDeleting || pending}
+                        disabled={pending || isDeleting}
                       >
                         {isDeleting ? 'Deleting...' : 'Delete'}
                       </Button>
-
-                      {read ? (
-                        <Chip
-                          label="Read"
-                          size="small"
-                          icon={<CheckCircleOutlineIcon fontSize="small" />}
-                          variant="outlined"
-                        />
-                      ) : (
-                        <Button
-                          size="small"
-                          variant="contained"
-                          color="secondary"
-                          startIcon={<CheckCircleOutlineIcon fontSize="small" />}
-                          onClick={() => handleMarkRead(update._id)}
-                          disabled={pending || isDeleting}
-                        >
-                          {pending ? 'Marking...' : 'Mark as read'}
-                        </Button>
-                      )}
-                    </Stack>
-                  </Paper>
+                    </Box>
+                  </Box>
                 );
               })}
           </Box>
         )}
       </Box>
-      <Dialog open={isFriendDialogOpen} onClose={handleCloseFriendDialog} fullWidth maxWidth="sm">
-        <DialogTitle>Pending friend requests</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            {friendActionStatus ? (
-              <Alert severity={friendActionStatus.type}>{friendActionStatus.message}</Alert>
-            ) : null}
-
-            {incomingRequests.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                All caught up! You have no pending friend requests.
-              </Typography>
-            ) : null}
-
-            {incomingRequests.map((request) => {
-              const requesterId =
-                request.requester?._id || request.requester?.id || request.requester?.userId;
-              const requesterName =
-                request.requester?.displayName ||
-                request.requester?.username ||
-                request.requester?.id ||
-                'Unknown user';
-              const isUpdating = respondingRequestId === request.id;
-
-              return (
-                <Paper
-                  key={request.id}
-                  variant="outlined"
-                  sx={{
-                    p: 2,
-                    borderRadius: 3,
-                    backgroundColor: 'background.default'
-                  }}
-                >
-                  <Stack spacing={1}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                      <Typography variant="subtitle1" fontWeight={600}>
-                        {requesterName}
-                        <FriendBadge userId={requesterId} size="0.85em" />
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {request.createdAt
-                          ? formatFriendlyTimestamp(request.createdAt)
-                          : null}
-                      </Typography>
-                    </Stack>
-                    {request.message ? (
-                      <Typography variant="body2" color="text.secondary">
-                        “{request.message}”
-                      </Typography>
-                    ) : null}
-                    <Stack direction="row" spacing={1}>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => handleRespondToFriendRequest(request.id, 'accept')}
-                        disabled={isUpdating}
-                      >
-                        {isUpdating ? 'Updating…' : 'Accept'}
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="inherit"
-                        onClick={() => handleRespondToFriendRequest(request.id, 'decline')}
-                        disabled={isUpdating}
-                      >
-                        Decline
-                      </Button>
-                    </Stack>
-                  </Stack>
-                </Paper>
-              );
-            })}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseFriendDialog} disabled={respondingRequestId !== null}>
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       <Snackbar
         open={Boolean(pushNotifications.status)}

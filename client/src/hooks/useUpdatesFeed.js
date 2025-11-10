@@ -262,12 +262,37 @@ export default function useUpdatesFeed() {
     }
   }, []);
 
-  const filteredUpdates = useMemo(() => {
-    if (!showUnreadOnly) {
-      return updates;
+  const handleClearAllUpdates = useCallback(async () => {
+    const ids = updates.map((update) => update?._id).filter(Boolean);
+    if (!ids.length) {
+      return;
     }
-    return updates.filter((update) => !update.readAt);
-  }, [showUnreadOnly, updates]);
+    setDeletingUpdateIds((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.add(id));
+      return Array.from(next);
+    });
+    const deletedIds = [];
+    try {
+      for (const id of ids) {
+        await deleteUpdate(id);
+        deletedIds.push(id);
+      }
+    } catch (error) {
+      setUpdatesError(error?.message || 'Failed to clear updates.');
+    } finally {
+      if (deletedIds.length) {
+        setUpdates((prev) => prev.filter((item) => !deletedIds.includes(item._id)));
+      }
+      setDeletingUpdateIds((prev) => prev.filter((id) => !ids.includes(id)));
+      setPendingUpdateIds((prev) => prev.filter((id) => !ids.includes(id)));
+    }
+  }, [updates]);
+
+  const filteredUpdates = useMemo(() => {
+    // TODO: reintroduce unread-only filtering once ui exposes that toggle again.
+    return updates;
+  }, [updates]);
 
   return {
     firebaseLoading,
@@ -291,7 +316,8 @@ export default function useUpdatesFeed() {
     handleRefresh,
     handleMarkRead,
     handleMarkAllRead,
-    handleDismissUpdatesError,
-    handleDeleteUpdate
+    handleDeleteUpdate,
+    handleClearAllUpdates,
+    handleDismissUpdatesError
   };
 }
