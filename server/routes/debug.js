@@ -57,6 +57,50 @@ const BadgeMutationSchema = z.object({
 
 const toObjectId = (value) => (value ? new mongoose.Types.ObjectId(value) : undefined);
 
+const resolveDmPreference = (user) =>
+  typeof user?.preferences?.dmPermission === 'string'
+    ? user.preferences.dmPermission
+    : 'everyone';
+
+const canViewerMessageTarget = (viewer, target) => {
+  if (!viewer || !target) {
+    return false;
+  }
+  const preference = resolveDmPreference(target);
+  if (preference === 'nobody') {
+    return false;
+  }
+  if (preference === 'everyone') {
+    return true;
+  }
+  const viewerId = toIdString(viewer._id);
+  const targetId = toIdString(target._id);
+  if (!viewerId || !targetId) {
+    return false;
+  }
+  const targetFriendIds = new Set(mapIdList(target.relationships?.friendIds));
+  if (targetFriendIds.has(viewerId)) {
+    return true;
+  }
+  const targetFollowerIds = new Set(mapIdList(target.relationships?.followerIds));
+  if (targetFollowerIds.has(viewerId)) {
+    return true;
+  }
+  const viewerFriendIds = new Set(mapIdList(viewer.relationships?.friendIds));
+  return viewerFriendIds.has(targetId);
+};
+
+const describeDmRestriction = (user) => {
+  const preference = resolveDmPreference(user);
+  if (preference === 'nobody') {
+    return 'This user has DMs disabled.';
+  }
+  if (preference === 'friends') {
+    return 'This user only accepts DMs from friends or followers.';
+  }
+  return 'This user is not accepting direct messages right now.';
+};
+
 const resolveViewerUser = async (req) => {
   if (!req?.user?.uid) {
     return null;
@@ -1796,7 +1840,8 @@ router.get('/direct-messages/threads', async (req, res) => {
         accountStatus: 1,
         avatar: 1,
         stats: 1,
-        relationships: 1
+        relationships: 1,
+        preferences: 1
       })
       .lean();
 
@@ -1875,7 +1920,8 @@ router.get('/direct-messages/threads/:threadId', async (req, res) => {
         accountStatus: 1,
         avatar: 1,
         stats: 1,
-        relationships: 1
+        relationships: 1,
+        preferences: 1
       })
       .lean();
 
@@ -1948,7 +1994,8 @@ router.post('/direct-messages/threads', async (req, res) => {
         accountStatus: 1,
         avatar: 1,
         stats: 1,
-        relationships: 1
+        relationships: 1,
+        preferences: 1
       })
       .lean();
 
@@ -1970,6 +2017,9 @@ router.post('/direct-messages/threads', async (req, res) => {
       const participantBlocked = new Set(mapIdList(userDoc.relationships?.blockedUserIds));
       if (participantBlocked.has(viewerIdString)) {
         return res.status(403).json({ message: 'One or more participants has blocked you.' });
+      }
+      if (!canViewerMessageTarget(viewer, userDoc)) {
+        return res.status(403).json({ message: describeDmRestriction(userDoc) });
       }
     }
 
@@ -2036,7 +2086,7 @@ router.post('/direct-messages/threads/:threadId/messages', async (req, res) => {
     }
 
     const participants = await User.find({ _id: { $in: thread.participants } })
-      .select({ relationships: 1 })
+      .select({ relationships: 1, preferences: 1 })
       .lean();
     const viewerIdString = toIdString(viewer._id);
     const viewerBlockedSet = new Set(mapIdList(viewer?.relationships?.blockedUserIds));
@@ -2052,6 +2102,9 @@ router.post('/direct-messages/threads/:threadId/messages', async (req, res) => {
       const participantBlocked = new Set(mapIdList(participant.relationships?.blockedUserIds));
       if (participantBlocked.has(viewerIdString)) {
         return res.status(403).json({ message: 'One or more participants has blocked you.' });
+      }
+      if (!canViewerMessageTarget(viewer, participant)) {
+        return res.status(403).json({ message: describeDmRestriction(participant) });
       }
     }
 

@@ -1,8 +1,11 @@
 ﻿const express = require('express');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 const { z, ZodError } = require('zod');
 const User = require('../models/User');
 const Pin = require('../models/Pin');
+const DataExportRequest = require('../models/DataExportRequest');
+const ApiToken = require('../models/ApiToken');
 const { PublicUserSchema, UserProfileSchema } = require('../schemas/user');
 const { PinListItemSchema } = require('../schemas/pin');
 const verifyToken = require('../middleware/verifyToken');
@@ -12,6 +15,9 @@ const { toIdString, mapIdList } = require('../utils/ids');
 const { toIsoDateString } = require('../utils/dates');
 
 const router = express.Router();
+
+const DATA_EXPORT_COOLDOWN_MS = 5 * 60 * 1000;
+const MAX_ACTIVE_API_TOKENS = 10;
 
 const UsersQuerySchema = z.object({
   search: z.string().trim().optional(),
@@ -42,22 +48,80 @@ const PushTokenSchema = z.object({
   platform: z.string().trim().max(64).optional()
 });
 
+const DataExportRequestSchema = z
+  .object({
+    reason: z.string().trim().max(240, 'Reason must be 240 characters or fewer').optional()
+  })
+  .optional();
+
+const ApiTokenCreateSchema = z
+  .object({
+    label: z.string().trim().max(120, 'Label must be 120 characters or fewer').optional()
+  })
+  .optional();
+
+const hasDefinedValue = (value) => {
+  if (value === undefined) {
+    return false;
+  }
+  if (value === null) {
+    return true;
+  }
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    return Object.values(value).some((field) => hasDefinedValue(field));
+  }
+  return true;
+};
+
+const NotificationPreferencesUpdateSchema = z
+  .object({
+    proximity: z.boolean().optional(),
+    updates: z.boolean().optional(),
+    marketing: z.boolean().optional(),
+    chatTransitions: z.boolean().optional(),
+    friendRequests: z.boolean().optional(),
+    badgeUnlocks: z.boolean().optional(),
+    moderationAlerts: z.boolean().optional(),
+    dmMentions: z.boolean().optional(),
+    emailDigests: z.boolean().optional()
+  })
+  .optional();
+
+const DisplayPreferencesUpdateSchema = z
+  .object({
+    textScale: z.number().min(0.8).max(1.4).optional(),
+    reduceMotion: z.boolean().optional(),
+    highContrast: z.boolean().optional(),
+    mapDensity: z.enum(['compact', 'balanced', 'detailed']).optional(),
+    celebrationSounds: z.boolean().optional()
+  })
+  .optional();
+
+const DataPreferencesUpdateSchema = z
+  .object({
+    autoExportReminders: z.boolean().optional()
+  })
+  .optional();
+
 const UserPreferencesUpdateSchema = z
   .object({
     theme: z.enum(['system', 'light', 'dark']).optional(),
-    radiusPreferenceMeters: z.number().int().positive().max(160934, 'Radius must be under 100 miles').optional(),
+    radiusPreferenceMeters: z
+      .number()
+      .int()
+      .positive()
+      .max(160934, 'Radius must be under 100 miles')
+      .optional(),
     statsPublic: z.boolean().optional(),
     filterCussWords: z.boolean().optional(),
-    notifications: z
-      .object({
-        proximity: z.boolean().optional(),
-        updates: z.boolean().optional(),
-        marketing: z.boolean().optional()
-      })
-      .optional()
+    dmPermission: z.enum(['everyone', 'friends', 'nobody']).optional(),
+    digestFrequency: z.enum(['immediate', 'daily', 'weekly', 'never']).optional(),
+    notifications: NotificationPreferencesUpdateSchema,
+    display: DisplayPreferencesUpdateSchema,
+    data: DataPreferencesUpdateSchema
   })
   .refine(
-    (value) => Object.values(value).some((field) => field !== undefined),
+    (value) => hasDefinedValue(value),
     'Provide at least one preference field to update.'
   )
   .optional();
@@ -336,6 +400,37 @@ const mapPinOptions = (optionsDoc) => {
   return undefined;
 };
 
+const mapDataExportRequest = (doc) => {
+  if (!doc) {
+    return null;
+  }
+  const payload = doc.toObject ? doc.toObject() : doc;
+  return {
+    id: toIdString(payload._id),
+    status: payload.status,
+    requestedAt: toIsoDateString(payload.requestedAt) ?? toIsoDateString(payload.createdAt),
+    completedAt: toIsoDateString(payload.completedAt),
+    expiresAt: toIsoDateString(payload.expiresAt),
+    downloadUrl: payload.downloadUrl || undefined,
+    failureReason: payload.failureReason || undefined
+  };
+};
+
+const mapApiToken = (doc) => {
+  if (!doc) {
+    return null;
+  }
+  const payload = doc.toObject ? doc.toObject() : doc;
+  return {
+    id: toIdString(payload._id),
+    label: payload.label || 'Personal access token',
+    preview: payload.preview,
+    createdAt: toIsoDateString(payload.createdAt) ?? new Date().toISOString(),
+    lastUsedAt: toIsoDateString(payload.lastUsedAt),
+    revokedAt: toIsoDateString(payload.revokedAt)
+  };
+};
+
 const mapPinToListItem = (pinDoc, creator, options = {}) => {
   const doc = pinDoc.toObject();
   const viewerHasBookmarked =
@@ -508,6 +603,12 @@ router.patch('/me', verifyToken, async (req, res) => {
       if (input.preferences.filterCussWords !== undefined) {
         setDoc['preferences.filterCussWords'] = input.preferences.filterCussWords;
       }
+      if (input.preferences.dmPermission !== undefined) {
+        setDoc['preferences.dmPermission'] = input.preferences.dmPermission;
+      }
+      if (input.preferences.digestFrequency !== undefined) {
+        setDoc['preferences.digestFrequency'] = input.preferences.digestFrequency;
+      }
       if (input.preferences.notifications && typeof input.preferences.notifications === 'object') {
         const notifications = input.preferences.notifications;
         if (notifications.proximity !== undefined) {
@@ -521,6 +622,45 @@ router.patch('/me', verifyToken, async (req, res) => {
         }
         if (notifications.chatTransitions !== undefined) {
           setDoc['preferences.notifications.chatTransitions'] = notifications.chatTransitions;
+        }
+        if (notifications.friendRequests !== undefined) {
+          setDoc['preferences.notifications.friendRequests'] = notifications.friendRequests;
+        }
+        if (notifications.badgeUnlocks !== undefined) {
+          setDoc['preferences.notifications.badgeUnlocks'] = notifications.badgeUnlocks;
+        }
+        if (notifications.moderationAlerts !== undefined) {
+          setDoc['preferences.notifications.moderationAlerts'] = notifications.moderationAlerts;
+        }
+        if (notifications.dmMentions !== undefined) {
+          setDoc['preferences.notifications.dmMentions'] = notifications.dmMentions;
+        }
+        if (notifications.emailDigests !== undefined) {
+          setDoc['preferences.notifications.emailDigests'] = notifications.emailDigests;
+        }
+      }
+      if (input.preferences.display && typeof input.preferences.display === 'object') {
+        const display = input.preferences.display;
+        if (display.textScale !== undefined) {
+          setDoc['preferences.display.textScale'] = display.textScale;
+        }
+        if (display.reduceMotion !== undefined) {
+          setDoc['preferences.display.reduceMotion'] = display.reduceMotion;
+        }
+        if (display.highContrast !== undefined) {
+          setDoc['preferences.display.highContrast'] = display.highContrast;
+        }
+        if (display.mapDensity !== undefined) {
+          setDoc['preferences.display.mapDensity'] = display.mapDensity;
+        }
+        if (display.celebrationSounds !== undefined) {
+          setDoc['preferences.display.celebrationSounds'] = display.celebrationSounds;
+        }
+      }
+      if (input.preferences.data && typeof input.preferences.data === 'object') {
+        const dataPrefs = input.preferences.data;
+        if (dataPrefs.autoExportReminders !== undefined) {
+          setDoc['preferences.data.autoExportReminders'] = dataPrefs.autoExportReminders;
         }
       }
     }
@@ -755,6 +895,147 @@ router.post('/me/push-tokens', verifyToken, async (req, res) => {
     }
     console.error('Failed to register push token:', error);
     res.status(500).json({ message: 'Failed to register push token' });
+  }
+});
+
+router.post('/me/data-export', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const input = DataExportRequestSchema.parse(req.body ?? {});
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - DATA_EXPORT_COOLDOWN_MS);
+
+    const existing = await DataExportRequest.findOne({
+      userId: viewer._id,
+      requestedAt: { $gte: cutoff },
+      status: { $in: ['queued', 'processing'] }
+    }).sort({ requestedAt: -1 });
+
+    if (existing) {
+      return res.status(202).json({
+        request: mapDataExportRequest(existing),
+        duplicate: true
+      });
+    }
+
+    const requestDoc = await DataExportRequest.create({
+      userId: viewer._id,
+      status: 'queued',
+      requestedAt: now,
+      metadata: {
+        reason: input?.reason || undefined,
+        requestedFrom: req.headers['user-agent'] || 'settings-page'
+      }
+    });
+
+    res.status(202).json({ request: mapDataExportRequest(requestDoc) });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid export payload', issues: error.errors });
+    }
+    console.error('Failed to request data export:', error);
+    if (typeof req.logError === 'function') {
+      req.logError(error, { route: 'users:data-export' });
+    }
+    res.status(500).json({ message: 'Failed to request data export' });
+  }
+});
+
+router.get('/me/api-tokens', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const tokens = await ApiToken.find({ userId: viewer._id, revokedAt: null })
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json({ tokens: tokens.map((token) => mapApiToken(token)) });
+  } catch (error) {
+    console.error('Failed to load API tokens:', error);
+    if (typeof req.logError === 'function') {
+      req.logError(error, { route: 'users:list-api-tokens' });
+    }
+    res.status(500).json({ message: 'Failed to load API tokens' });
+  }
+});
+
+router.post('/me/api-tokens', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const input = ApiTokenCreateSchema.parse(req.body ?? {});
+    const activeCount = await ApiToken.countDocuments({ userId: viewer._id, revokedAt: null });
+    if (activeCount >= MAX_ACTIVE_API_TOKENS) {
+      return res
+        .status(400)
+        .json({ message: `You can only keep ${MAX_ACTIVE_API_TOKENS} active tokens.` });
+    }
+
+    const secret = crypto.randomBytes(32).toString('hex');
+    const hash = crypto.createHash('sha256').update(secret).digest('hex');
+    const preview = secret.slice(0, 6);
+
+    const tokenDoc = await ApiToken.create({
+      userId: viewer._id,
+      label: input?.label?.trim() || `Token ${activeCount + 1}`,
+      hash,
+      preview
+    });
+
+    res.status(201).json({
+      token: mapApiToken(tokenDoc),
+      secret
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid token payload', issues: error.errors });
+    }
+    console.error('Failed to create API token:', error);
+    if (typeof req.logError === 'function') {
+      req.logError(error, { route: 'users:create-api-token' });
+    }
+    res.status(500).json({ message: 'Failed to create API token' });
+  }
+});
+
+router.delete('/me/api-tokens/:tokenId', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { tokenId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(tokenId)) {
+      return res.status(400).json({ message: 'Invalid token id' });
+    }
+
+    const token = await ApiToken.findOne({ _id: tokenId, userId: viewer._id });
+    if (!token) {
+      return res.status(404).json({ message: 'Token not found' });
+    }
+
+    if (!token.revokedAt) {
+      token.revokedAt = new Date();
+      await token.save();
+    }
+
+    res.json({ token: mapApiToken(token) });
+  } catch (error) {
+    console.error('Failed to revoke API token:', error);
+    if (typeof req.logError === 'function') {
+      req.logError(error, { route: 'users:revoke-api-token' });
+    }
+    res.status(500).json({ message: 'Failed to revoke API token' });
   }
 });
 
