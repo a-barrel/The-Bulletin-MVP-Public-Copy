@@ -1,0 +1,179 @@
+/* ===== Scope ===== */
+.admin-dashboard {
+  font-family: 'Urbanist', sans-serif;
+  color: black;
+  background: white;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Desktop+ */
+@media (min-width: 1024px) {
+  .admin-dashboard {
+    max-width: none !important;       
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: clamp(24px, 4vw, 56px) !important;
+    padding-right: clamp(24px, 4vw, 56px) !important;
+  }
+}
+
+/* Ensure the page background fills behind everything */
+html, body, #root { background: #fff; }
+
+/* Page title row */
+.admin-dashboard .MuiTypography-h4 {
+  font-family: 'Urbanist', sans-serif;
+  font-weight: 800;
+  letter-spacing: .01em;
+}
+
+/* Refresh button (outlined, no drop shadow) */
+.admin-dashboard .MuiButton-outlined {
+  font-family: 'Urbanist', sans-serif;
+  text-transform: none;
+  font-weight: 700;
+  border: 1.5px solid #000 !important;
+  color: #000 !important;
+  background: #2abcff;                 
+  box-shadow: none !important;
+}
+.admin-dashboard .MuiButton-outlined:hover {
+  background: #1cacef !important;
+  color: black !important;
+  transform: translateY(-1px);
+}
+
+/* Top snackbars keep our font */
+.admin-dashboard .MuiSnackbar-root,
+.admin-dashboard .MuiAlert-root {
+  font-family: 'Urbanist', sans-serif;
+}
+
+/* ===== Cards / Papers ===== */
+.admin-dashboard .MuiPaper-outlined {
+  background: #CDAEF2;
+  border: 2px solid #000 !important;   
+  color: black;
+  border-radius: 16px !important;
+}
+
+/* Small stat cards inside the overview rows */
+.admin-dashboard .MuiPaper-elevation0 {
+  background: #fff;
+  color: black;
+  border: 1.5px solid #000 !important;
+  border-radius: 14px !important;
+}
+
+/* Section headings */
+.admin-dashboard .MuiTypography-h6 {
+  font-family: 'Urbanist', sans-serif;
+  font-weight: 800;
+  letter-spacing: .01em;
+}
+
+/* Subtitles and captions readable black and add fonts */
+.admin-dashboard .MuiTypography-subtitle2,
+.admin-dashboard .MuiTypography-caption,
+.admin-dashboard .MuiTypography-body2 {
+  font-family: 'Urbanist', sans-serif;
+  color: #000 !important;
+}
+
+/* Alerts use black text where possible */
+.admin-dashboard .MuiAlert-outlined {
+  border-width: 1.5px;
+  color: #000;
+}
+
+/* ===== Chips ===== */
+.admin-dashboard .MuiChip-root {
+  font-family: 'Urbanist', sans-serif;
+  font-weight: 700;
+  border-radius: 999px;
+}
+.admin-dashboard .MuiChip-outlined {
+  border: 1.5px solid #000 !important;
+  color: #000 !important;
+  background: #feabdd !important;
+}
+.admin-dashboard .MuiChip-colorWarning { background: #a9ff9e !important; }
+.admin-dashboard .MuiChip-colorSuccess { background: #fbffb2 !important; }
+
+/* ===== Tabs ===== */
+.admin-dashboard .MuiTabs-root {
+  border-bottom: 2px solid #000;
+}
+.admin-dashboard .MuiTab-root {
+  text-transform: none;
+  font-weight: 700;
+  color: #000 !important;
+  min-height: 44px;
+}
+.admin-dashboard .MuiTab-root.Mui-selected {
+  color: #000 !important;
+}
+.admin-dashboard .MuiTabs-indicator {
+  background: #000;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+}
+
+/* ===== Table ===== */
+.admin-dashboard .MuiTable-root {
+  background: #fff;
+  border: 1.5px solid #000;
+  border-radius: 12px;
+}
+.admin-dashboard .MuiTableHead-root .MuiTableCell-root {
+  font-weight: 800;
+  border-bottom: 1.5px solid #000;
+  color: #000;
+}
+
+/* ===== Action buttons in table ===== */
+.admin-dashboard .MuiButton-outlined.MuiButton-colorInherit {
+  text-transform: none;
+  font-weight: 700;
+  color: #000 !important;
+  border: 1.5px solid #000 !important;
+  background: #FDE7F2 !important;     
+}
+.admin-dashboard .MuiButton-outlined.MuiButton-colorInherit:hover {
+  background: #FCD0E6 !important;
+}
+
+
+
+/* ===== Utility: make icons black by default ===== */
+.admin-dashboard .MuiSvgIcon-root {
+  color: #000;
+}
+
+/* ===== Responsive niceties ===== */
+@media (max-width: 600px) {
+  .admin-dashboard .MuiTypography-h4 { font-size: 1.5rem; }
+  .admin-dashboard .MuiTypography-h6 { font-size: 1.05rem; }
+}
+
+/* ===== Summary Chips (top-right colored buttons) ===== */
+.admin-dashboard .MuiChip-root {
+  transition: border 0.15s ease, transform 0.15s ease;
+}
+
+/* Normal border thickness */
+.admin-dashboard .MuiChip-outlined {
+  border: 1.5px solid #000 !important;
+}
+
+/* Thicker border when selected (filled variant) */
+.admin-dashboard .MuiChip-filled {
+  border: 2px solid #000 !important;
+}
+
+/* Keep "Dismissed" chip pink when selected since it was using the default*/
+.admin-dashboard .MuiChip-colorDefault.MuiChip-filledDefault {
+  background: #feabdd !important;
+  color: #000 !important;
+}
