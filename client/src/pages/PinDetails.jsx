@@ -674,7 +674,6 @@ function PinDetails() {
                       className="pin-photo"
                       loading="lazy"
                     />
-                    {photo.label ? <figcaption>{photo.label}</figcaption> : null}
                   </figure>
                 ))}
               </div>
