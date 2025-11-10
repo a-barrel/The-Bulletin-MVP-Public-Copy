@@ -4,6 +4,7 @@ import { fetchLocationHistory } from '../../../api/mongoDataApi';
 import { useLocationContext } from '../../../contexts/LocationContext';
 import { DEFAULT_LOCATION_COORDINATES } from '../constants';
 import { coordinatesEqual, mongooseObjectIdLike } from '../utils';
+import reportClientError from '../../../utils/reportClientError';
 
 function useViewerLocation({
   currentProfileId,
@@ -70,7 +71,10 @@ function useViewerLocation({
         }
       }
     } catch (error) {
-      console.error('Failed to refresh viewer location:', error);
+      reportClientError(error, 'Failed to refresh viewer location:', {
+        source: 'useViewerLocation.refresh',
+        currentProfileId
+      });
       setLocationStatus?.((prev) =>
         prev ?? { type: 'error', message: 'Failed to refresh viewer location.' }
       );

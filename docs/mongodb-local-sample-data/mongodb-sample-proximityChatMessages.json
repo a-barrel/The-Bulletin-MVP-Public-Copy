@@ -41,8 +41,8 @@
       "displayName": "Priya Desai",
       "username": "priyadesai",
       "avatar": {
-        "url": "images/profile/profile-02.jpg",
-        "thumbnailUrl": "/images/profile/profile-02.jpg",
+        "url": "/images/profile/profile-02",
+        "thumbnailUrl": "/images/profile/profile-02",
         "width": 128,
         "height": 128,
         "mimeType": "image/jpeg",
@@ -52,8 +52,8 @@
       }
     },
     "authorAvatar": {
-      "url": "/images/profile/profile-02.jpg",
-      "thumbnailUrl": "/images/profile/profile-02.jpg",
+      "url": "/images/profile/profile-02",
+      "thumbnailUrl": "/images/profile/profile-02",
       "width": 128,
       "height": 128,
       "mimeType": "image/jpeg",
@@ -104,8 +104,8 @@
       "displayName": "Sofia Nguyen",
       "username": "sofianguyen",
       "avatar": {
-        "url": "images/profile/profile-04.jpg",
-        "thumbnailUrl": "/images/profile/profile-04.jpg",
+        "url": "/images/profile/profile-04",
+        "thumbnailUrl": "/images/profile/profile-04",
         "width": 128,
         "height": 128,
         "mimeType": "image/jpeg",
@@ -115,8 +115,8 @@
       }
     },
     "authorAvatar": {
-      "url": "/images/profile/profile-04.jpg",
-      "thumbnailUrl": "/images/profile/profile-04.jpg",
+      "url": "/images/profile/profile-04",
+      "thumbnailUrl": "/images/profile/profile-04",
       "width": 128,
       "height": 128,
       "mimeType": "image/jpeg",
@@ -169,8 +169,8 @@
       "displayName": "Alex Rivera",
       "username": "alexrivera",
       "avatar": {
-        "url": "images/profile/profile-01.jpg",
-        "thumbnailUrl": "/images/profile/profile-01.jpg",
+        "url": "/images/profile/profile-01",
+        "thumbnailUrl": "/images/profile/profile-01",
         "width": 128,
         "height": 128,
         "mimeType": "image/jpeg",
@@ -180,8 +180,8 @@
       }
     },
     "authorAvatar": {
-      "url": "/images/profile/profile-01.jpg",
-      "thumbnailUrl": "/images/profile/profile-01.jpg",
+      "url": "/images/profile/profile-01",
+      "thumbnailUrl": "/images/profile/profile-01",
       "width": 128,
       "height": 128,
       "mimeType": "image/jpeg",
@@ -229,8 +229,8 @@
       "displayName": "Alex Rivera",
       "username": "alexrivera",
       "avatar": {
-        "url": "images/profile/profile-01.jpg",
-        "thumbnailUrl": "/images/profile/profile-01.jpg",
+        "url": "/images/profile/profile-01",
+        "thumbnailUrl": "/images/profile/profile-01",
         "width": 128,
         "height": 128,
         "mimeType": "image/jpeg",
@@ -240,8 +240,8 @@
       }
     },
     "authorAvatar": {
-      "url": "/images/profile/profile-01.jpg",
-      "thumbnailUrl": "/images/profile/profile-01.jpg",
+      "url": "/images/profile/profile-01",
+      "thumbnailUrl": "/images/profile/profile-01",
       "width": 128,
       "height": 128,
       "mimeType": "image/jpeg",
@@ -289,8 +289,8 @@
       "displayName": "Priya Desai",
       "username": "priyadesai",
       "avatar": {
-        "url": "images/profile/profile-02.jpg",
-        "thumbnailUrl": "/images/profile/profile-02.jpg",
+        "url": "/images/profile/profile-02",
+        "thumbnailUrl": "/images/profile/profile-02",
         "width": 128,
         "height": 128,
         "mimeType": "image/jpeg",
@@ -300,8 +300,8 @@
       }
     },
     "authorAvatar": {
-      "url": "/images/profile/profile-02.jpg",
-      "thumbnailUrl": "/images/profile/profile-02.jpg",
+      "url": "/images/profile/profile-02",
+      "thumbnailUrl": "/images/profile/profile-02",
       "width": 128,
       "height": 128,
       "mimeType": "image/jpeg",
@@ -349,8 +349,8 @@
       "displayName": "Marcus Soto",
       "username": "marcussoto",
       "avatar": {
-        "url": "images/profile/profile-03.jpg",
-        "thumbnailUrl": "/images/profile/profile-03.jpg",
+        "url": "/images/profile/profile-03",
+        "thumbnailUrl": "/images/profile/profile-03",
         "width": 128,
         "height": 128,
         "mimeType": "image/jpeg",
@@ -360,8 +360,8 @@
       }
     },
     "authorAvatar": {
-      "url": "/images/profile/profile-03.jpg",
-      "thumbnailUrl": "/images/profile/profile-03.jpg",
+      "url": "/images/profile/profile-03",
+      "thumbnailUrl": "/images/profile/profile-03",
       "width": 128,
       "height": 128,
       "mimeType": "image/jpeg",
@@ -409,8 +409,8 @@
       "displayName": "Priya Desai",
       "username": "priyadesai",
       "avatar": {
-        "url": "images/profile/profile-02.jpg",
-        "thumbnailUrl": "/images/profile/profile-02.jpg",
+        "url": "/images/profile/profile-02",
+        "thumbnailUrl": "/images/profile/profile-02",
         "width": 128,
         "height": 128,
         "mimeType": "image/jpeg",
@@ -420,8 +420,8 @@
       }
     },
     "authorAvatar": {
-      "url": "/images/profile/profile-02.jpg",
-      "thumbnailUrl": "/images/profile/profile-02.jpg",
+      "url": "/images/profile/profile-02",
+      "thumbnailUrl": "/images/profile/profile-02",
       "width": 128,
       "height": 128,
       "mimeType": "image/jpeg",

@@ -7,6 +7,7 @@ import {
   removeBookmark
 } from '../api/mongoDataApi';
 import { formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
+import reportClientError from '../utils/reportClientError';
 
 const EMPTY_GROUP = 'Unsorted';
 
@@ -94,7 +95,9 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
       setBookmarks(Array.isArray(bookmarkPayload) ? bookmarkPayload : []);
       setCollections(Array.isArray(collectionPayload) ? collectionPayload : []);
     } catch (err) {
-      console.error('Failed to load bookmarks:', err);
+      reportClientError(err, 'Failed to load bookmarks:', {
+        source: 'useBookmarksManager.loadData'
+      });
       setBookmarks([]);
       setCollections([]);
       setError(err?.message || 'Failed to load bookmarks.');
@@ -143,10 +146,13 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
           })
         );
         setRemovalStatus({ type: 'success', message: 'Bookmark removed.' });
-      } catch (err) {
-        console.error('Failed to remove bookmark:', err);
-        setRemovalStatus({ type: 'error', message: err?.message || 'Failed to remove bookmark.' });
-      } finally {
+        } catch (err) {
+          reportClientError(err, 'Failed to remove bookmark:', {
+            source: 'useBookmarksManager.remove',
+            pinId
+          });
+          setRemovalStatus({ type: 'error', message: err?.message || 'Failed to remove bookmark.' });
+        } finally {
         setRemovingPinId(null);
       }
     },
@@ -187,7 +193,9 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
             : `Export ready. ${filename || 'bookmarks.csv'} downloaded.`
       });
     } catch (err) {
-      console.error('Failed to export bookmarks:', err);
+      reportClientError(err, 'Failed to export bookmarks:', {
+        source: 'useBookmarksManager.export'
+      });
       setExportStatus({ type: 'error', message: err?.message || 'Failed to export bookmarks.' });
     } finally {
       setIsExporting(false);

@@ -24,6 +24,25 @@ const pinStatsSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const pinOptionsSchema = new mongoose.Schema(
+  {
+    allowBookmarks: { type: Boolean, default: true },
+    allowShares: { type: Boolean, default: true },
+    allowReplies: { type: Boolean, default: true },
+    showAttendeeList: { type: Boolean, default: true },
+    featured: { type: Boolean, default: false },
+    contentAdvisory: { type: String, default: undefined },
+    reminderMinutesBefore: { type: Number, default: undefined },
+    highlightColor: { type: String, default: undefined },
+    visibilityMode: {
+      type: String,
+      enum: ['map-only', 'list-only', 'map-and-list'],
+      default: 'map-and-list'
+    }
+  },
+  { _id: false }
+);
+
 const pinSchema = new mongoose.Schema(
   {
     type: { type: String, enum: ['event', 'discussion'], required: true },
@@ -53,6 +72,7 @@ const pinSchema = new mongoose.Schema(
     visibility: { type: String, enum: ['public', 'friends', 'private'], default: 'public' },
     isActive: { type: Boolean, default: true },
     stats: { type: pinStatsSchema, default: () => ({}) },
+    options: { type: pinOptionsSchema, default: () => ({}) },
     bookmarkCount: { type: Number, default: 0 },
     replyCount: { type: Number, default: 0 },
     startDate: Date,

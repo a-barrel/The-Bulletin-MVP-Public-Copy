@@ -1,4 +1,10 @@
-/* NOTE: Page exports navigation config alongside the component. */
+/* NOTE: Page exports navigation config alongside the component.
+ *
+ * Logging status: This page still uses the legacy chat hooks while a refactor is underway.
+ * Don’t wire `reportClientError` / `logClientError` into the DM/chat flows until that
+ * work settles, otherwise we’ll fight merge conflicts. Once the new hook/utilities land,
+ * revisit logging coverage (see TODO-AND-IDEAS/logging-coverage-roadmap.md).
+ */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';

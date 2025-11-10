@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPin, uploadPinImage } from '../api/mongoDataApi';
 import { haversineDistanceMeters, metersToMiles, METERS_PER_MILE } from '../utils/geo';
 import { playBadgeSound } from '../utils/badgeSound';
+import reportClientError from '../utils/reportClientError';
 
 const MAX_PIN_DISTANCE_MILES = 50;
 const MAX_PIN_DISTANCE_METERS = MAX_PIN_DISTANCE_MILES * METERS_PER_MILE;
@@ -229,7 +230,9 @@ export default function useCreatePinForm({
       window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftPayload));
       return true;
     } catch (error) {
-      console.error('Failed to save pin draft', error);
+      reportClientError(error, 'Failed to save pin draft', {
+        source: 'useCreatePinForm.saveDraft'
+      });
       return false;
     }
   }, [autoDelete, coverPhotoId, formState, photoAssets, pinType]);

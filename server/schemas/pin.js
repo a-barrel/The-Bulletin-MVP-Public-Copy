@@ -17,6 +17,36 @@ const PinStatsSchema = z.object({
   viewCount: z.number().int().nonnegative().default(0)
 });
 
+const RawPinOptionsSchema = z
+  .object({
+    allowBookmarks: z.boolean().optional(),
+    allowShares: z.boolean().optional(),
+    allowReplies: z.boolean().optional(),
+    showAttendeeList: z.boolean().optional(),
+    featured: z.boolean().optional(),
+    visibilityMode: z.enum(['map-only', 'list-only', 'map-and-list']).optional(),
+    reminderMinutesBefore: z.number().int().nonnegative().max(10080).optional(),
+    contentAdvisory: z.string().trim().max(140).optional(),
+    highlightColor: z
+      .string()
+      .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
+      .optional()
+  })
+  .strict()
+  .default({});
+
+const PinOptionsSchema = RawPinOptionsSchema.transform((value) => ({
+  allowBookmarks: value.allowBookmarks ?? true,
+  allowShares: value.allowShares ?? true,
+  allowReplies: value.allowReplies ?? true,
+  showAttendeeList: value.showAttendeeList ?? true,
+  featured: value.featured ?? false,
+  visibilityMode: value.visibilityMode ?? 'map-and-list',
+  reminderMinutesBefore: value.reminderMinutesBefore,
+  contentAdvisory: value.contentAdvisory,
+  highlightColor: value.highlightColor
+}));
+
 const BasePinSchema = z.object({
   _id: ObjectIdSchema,
   creatorId: ObjectIdSchema,
@@ -29,6 +59,7 @@ const BasePinSchema = z.object({
   coverPhoto: MediaAssetSchema.optional(),
   tagIds: z.array(ObjectIdSchema).default([]),
   tags: z.array(z.string()).default([]),
+  options: PinOptionsSchema.optional(),
   relatedPinIds: z.array(ObjectIdSchema).default([]),
   linkedLocationId: ObjectIdSchema.optional(),
   linkedChatRoomId: ObjectIdSchema.optional(),
@@ -112,12 +143,14 @@ const PinListItemSchema = PinPreviewSchema.extend({
   viewerOwnsPin: z.boolean().optional(),
   replyCount: z.number().int().nonnegative().optional(),
   stats: PinStatsSchema.optional(),
+  options: PinOptionsSchema.optional(),
   coverPhoto: MediaAssetSchema.optional(),
   photos: z.array(MediaAssetSchema).optional()
 });
 
 module.exports = {
   PinStatsSchema,
+  PinOptionsSchema,
   BasePinSchema,
   EventPinSchema,
   DiscussionPinSchema,

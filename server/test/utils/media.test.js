@@ -14,6 +14,15 @@ describe('server/utils/media', () => {
     expect(normalizeMediaUrl('')).toBeUndefined();
   });
 
+  test('normalizeMediaUrl resolves local image extensions when missing or mismatched', () => {
+    expect(normalizeMediaUrl('/images/background/background-06')).toBe(
+      'http://localhost:8000/images/background/background-06.jpg'
+    );
+    expect(normalizeMediaUrl('http://localhost:5000/images/background/background-06.png')).toBe(
+      'http://localhost:8000/images/background/background-06.jpg'
+    );
+  });
+
   test('normalizeProfileImagePath promotes legacy png profile paths to jpg', () => {
     expect(normalizeProfileImagePath('/images/profile/profile-01.png')).toBe('/images/profile/profile-01.jpg');
     expect(normalizeProfileImagePath('images/profile/profile-02.png')).toBe('images/profile/profile-02.jpg');

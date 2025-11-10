@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const { toIdString: defaultToIdString } = require('./ids');
 const { toIsoDateString } = require('./dates');
 const runtime = require('../config/runtime');
@@ -6,6 +8,9 @@ const LEGACY_PROFILE_IMAGE_REGEX = /(\/images\/profile\/profile-\d+)\.png$/i;
 const DEFAULT_PROFILE_IMAGE_REGEX = /\/images\/profile\/profile-\d+\.(?:png|jpg)$/i;
 
 const isAbsoluteUrl = (value) => /^(?:[a-z]+:)?\/\//i.test(value);
+
+const IMAGES_ROOT = path.join(__dirname, '..', 'uploads', 'images');
+const SUPPORTED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
 
 const normalizeProfileImagePath = (value) => {
   if (typeof value !== 'string' || value.length === 0) {
@@ -27,6 +32,57 @@ const normalizeProfileImagePath = (value) => {
 
 const OFFLINE_MEDIA_HOSTS = new Set(['localhost:5000', '127.0.0.1:5000', 'localhost:8000', '127.0.0.1:8000']);
 
+const isSafePath = (value) => {
+  const normalized = value.replace(/\\/g, '/');
+  return !normalized.split('/').some((segment) => segment === '..' || segment === '');
+};
+
+const resolveStaticImagePath = (value) => {
+  if (typeof value !== 'string' || !value.startsWith('/images/')) {
+    return value;
+  }
+
+  const parsed = path.posix.parse(value);
+  const relativeDir = parsed.dir.replace(/^\/images/, '').replace(/^\/+/, '');
+  const searchExts = [];
+
+  if (parsed.ext) {
+    const normalizedExt = parsed.ext.toLowerCase();
+    searchExts.push(normalizedExt);
+    if (normalizedExt === '.jpg') {
+      searchExts.push('.jpeg', '.png', '.webp');
+    } else if (normalizedExt === '.png') {
+      searchExts.push('.jpg', '.jpeg', '.webp');
+    } else {
+      searchExts.push('.jpg', '.png');
+    }
+  } else {
+    searchExts.push(...SUPPORTED_IMAGE_EXTENSIONS);
+  }
+
+  for (const candidateExt of searchExts) {
+    const normalizedExt = candidateExt.startsWith('.') ? candidateExt : `.${candidateExt}`;
+    const relativeSegments = [];
+    if (relativeDir) {
+      relativeSegments.push(relativeDir);
+    }
+    relativeSegments.push(`${parsed.name}${normalizedExt}`);
+    const relativePath = path.join(...relativeSegments);
+    if (!isSafePath(relativePath)) {
+      continue;
+    }
+    const absolutePath = path.join(IMAGES_ROOT, relativePath);
+    if (!absolutePath.startsWith(IMAGES_ROOT)) {
+      continue;
+    }
+    if (fs.existsSync(absolutePath)) {
+      return path.posix.join('/images', relativeDir || '', `${parsed.name}${normalizedExt}`).replace(/\/{2,}/g, '/');
+    }
+  }
+
+  return value;
+};
+
 const normalizeMediaUrl = (value) => {
   if (!value || typeof value !== 'string') {
     return undefined;
@@ -42,7 +98,7 @@ const normalizeMediaUrl = (value) => {
     try {
       const parsed = new URL(trimmed);
       if (OFFLINE_MEDIA_HOSTS.has(parsed.host)) {
-        const normalizedPath = normalizeProfileImagePath(parsed.pathname);
+        const normalizedPath = resolveStaticImagePath(normalizeProfileImagePath(parsed.pathname));
         if (runtime?.publicBaseUrl) {
           return `${runtime.publicBaseUrl}${normalizedPath}`;
         }
@@ -54,7 +110,7 @@ const normalizeMediaUrl = (value) => {
     return trimmed;
   }
   const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  const resolvedPath = normalizeProfileImagePath(normalized);
+  const resolvedPath = resolveStaticImagePath(normalizeProfileImagePath(normalized));
   if (runtime?.publicBaseUrl) {
     return `${runtime.publicBaseUrl}${resolvedPath}`;
   }
