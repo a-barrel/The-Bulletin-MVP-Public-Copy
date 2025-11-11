@@ -1773,9 +1773,21 @@ function ChatPage() {
 
     if (uniqueMessages.length === 0) {
       return (
-        <Stack spacing={1} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-          <Typography variant="h6">No messages yet</Typography>
-          <Typography variant="body2" color="text.primary">
+        <Stack
+          spacing={1}
+          alignItems="center"
+          justifyContent="center"
+          sx={{
+            flexGrow: 1,
+            py: 6,
+            textAlign: 'center',
+            color: '#1f1336'
+          }}
+        >
+          <Typography variant="h6" color="inherit">
+            No messages yet
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#3d2d63' }}>
             Start the conversation with everyone in this room.
           </Typography>
         </Stack>

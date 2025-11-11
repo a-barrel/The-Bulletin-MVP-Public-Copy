@@ -248,11 +248,14 @@
 /* Add button (right side of topbar) */
 .add-btn {
   position: absolute;
-  right:0.1rem;  /* ⬅️ adjust this value to move it right or left */
-  top: 10px;
-  width: 50px;
-  height: 50px;
-  background: transparent;
+  right: 0.35rem;  /* ⬅️ adjust this value to move it right or left */
+  top: 6px;
+  width: 64px;
+  height: 64px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(93, 56, 137, 0.1);
+  border: 1px solid rgba(93, 56, 137, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -263,8 +266,8 @@
 .add-btn:hover { transform: scale(1.08); border: none; }
 
 .add-btn img {
-  width: 70px;
-  height: 70px;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 
@@ -304,12 +307,13 @@ button:focus-visible {
   .toggle-container.active .toggle-circle { left: 22px; }
 
   .add-btn {
-    width: 52px; height: 52px;
-    margin-left: auto;
-    margin-right: 0.25rem;
-    margin-top: -7px;
+    width: 58px;
+    height: 58px;
+    top: 4px;
+    right: 0.25rem;
+    padding: 5px;
   }
-  .add-btn img { width: 64px; height: 54px; }
+  .add-btn img { width: 100%; height: 100%; }
 }
 
 /* Tablet tweaks */
