@@ -37,11 +37,11 @@ export default function useProfileInteractions({
   }, [effectiveUser?._id, targetUserId]);
 
   const normalizedBlockedIds = useMemo(() => {
-    if (!Array.isArray(viewerProfile?.relationships?.blockedUserIds)) {
-      return [];
+    if (Array.isArray(viewerProfile?.relationships?.blockedUserIds)) {
+      return viewerProfile.relationships.blockedUserIds.map((id) => String(id));
     }
-    return viewerProfile.relationships.blockedUserIds.map((id) => String(id));
-  }, [viewerProfile?.relationships?.blockedUserIds, viewerProfile]);
+    return [];
+  }, [viewerProfile]);
 
   useEffect(() => {
     setHasPendingFriendRequest(false);
@@ -52,7 +52,7 @@ export default function useProfileInteractions({
       return viewerProfile.relationships.friendIds.map((id) => String(id));
     }
     return [];
-  }, [viewerProfile?.relationships?.friendIds, viewerProfile]);
+  }, [viewerProfile]);
 
   const isViewingSelf =
     shouldLoadCurrentUser || Boolean(viewerId && normalizedTargetId && viewerId === normalizedTargetId);

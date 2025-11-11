@@ -11,7 +11,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import "./NotFoundPage.css";
 import { routes } from '../routes';
 
-function NotFoundPage({ defaultPath = routes.auth.login, defaultLabel = 'Return to safety' }) {
+function NotFoundPage({ defaultPath = routes.auth.login, defaultLabel = 'Go to Map' }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -49,7 +49,7 @@ function NotFoundPage({ defaultPath = routes.auth.login, defaultLabel = 'Return 
 
           <button className="btn-map" onClick={handleGoHome}>
             <HomeIcon style={{ verticalAlign: 'middle', marginRight: '6px' }} />
-            Go to Map
+            {defaultLabel}
           </button>
         </div>
       </Paper>

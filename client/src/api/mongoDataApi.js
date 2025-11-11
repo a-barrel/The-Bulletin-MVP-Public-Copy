@@ -709,7 +709,6 @@ export async function logClientEvent({
     });
   } catch (error) {
     if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
       console.warn('Failed to send client log event', error);
     }
   }
