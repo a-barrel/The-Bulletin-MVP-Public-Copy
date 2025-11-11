@@ -30,6 +30,7 @@ import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import usePinDetails from '../hooks/usePinDetails';
 import ReportContentDialog from '../components/ReportContentDialog';
 import { createContentReport, deletePin, updatePin } from '../api/mongoDataApi';
+import ImageOverlay from '../components/ImageOverlay.jsx'
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
@@ -247,6 +248,7 @@ function PinDetails() {
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
   const [editStatus, setEditStatus] = useState(null);
   const [isDeletingPin, setIsDeletingPin] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   useEffect(() => {
     if (pin && !isEditDialogOpen) {
@@ -673,8 +675,9 @@ function PinDetails() {
                       alt={photo.label ? `${photo.label}` : `Pin photo ${index + 1}`}
                       className="pin-photo"
                       loading="lazy"
+                      onClick={() => setSelectedImage(photo.url)}
+                      style={{ cursor: 'pointer' }}
                     />
-                    {photo.label ? <figcaption>{photo.label}</figcaption> : null}
                   </figure>
                 ))}
               </div>
@@ -682,6 +685,12 @@ function PinDetails() {
               <div className="muted">No photos uploaded for this pin.</div>
             )}
           </div>
+
+          <ImageOverlay
+            open={Boolean(selectedImage)}
+            onClose={() => setSelectedImage(null)}
+            imageSrc={selectedImage}
+          />
 
           <div className="post-info">
             <div className="post-location">
