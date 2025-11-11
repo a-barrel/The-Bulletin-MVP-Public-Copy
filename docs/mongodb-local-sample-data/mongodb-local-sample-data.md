@@ -53,7 +53,18 @@ mongoimport --db pinpoint --collection updates --file docs/mongodb-local-sample-
 - **Bookmarks**: three collections and bookmarks aligned to the expanded pin set.
 - **Replies**: threaded comments across cleanup, expo, and photo walk pins with varied reactions.
 - **Locations**: recent location pings for all five users tied back to their pins.
-- **Proximity Chat**: three rooms (including the isGlobal "Global Debug Lounge" for QA), four chat messages, and presence records linked to discussion, planning, and debug scenarios.
+- **Proximity Chat**: seven rooms (global lounges + the four-piece CSULB overlap grid), four chat messages, and presence records linked to discussion, planning, and debug scenarios.
 - **Updates**: four notification payloads covering new pin launches and reminders.
 
 Feel free to tweak values or add additional documents - the IDs in this dataset match the examples referenced throughout `frontend-api-cheatsheet.md`, so the UI and API playground will line up with the docs out of the box.
+
+### CSULB Proximity Grid
+- The `mongodb-sample-proximityChatRooms.json` fixture now includes a 2‑mile overlapping grid around CSULB (Northwest, Northeast, Southwest, Southeast hubs). This keeps proximity chats populated even when you walk away from the Pyramid during demos.
+- Each hub uses an existing sample user as the owner/moderator and references one of the base pins so bookmarks + notifications stay linked.
+- To regenerate or adjust the grid when refreshing fixtures, drop the following helper into a shell and tweak the `CENTER`/`DELTA` constants as needed. The script prints JSON blocks you can paste back into the proximity chat rooms file:
+
+```bash
+node scripts/generate-proximity-grid.js > docs/mongodb-local-sample-data/mongodb-sample-proximityChatRooms.json
+```
+
+The generator emits a 5×5 overlap grid (approx 2 mile spacing with 2.6 km radius) centered on CSULB. Tweak the script constants if you ever need a different center, spacing, or radius.

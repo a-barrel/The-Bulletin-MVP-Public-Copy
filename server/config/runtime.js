@@ -64,6 +64,21 @@ const parseCsv = (value) =>
         .filter(Boolean)
     : [];
 
+const TENOR_CONTENT_FILTERS = new Set(['off', 'low', 'medium', 'high']);
+const resolveTenorContentFilter = (value) => {
+  if (!value) {
+    return 'high';
+  }
+  const normalized = value.trim().toLowerCase();
+  if (!TENOR_CONTENT_FILTERS.has(normalized)) {
+    console.warn(
+      `Unknown TENOR_CONTENT_FILTER value "${value}". Falling back to "high".`
+    );
+    return 'high';
+  }
+  return normalized;
+};
+
 const firebase = {
   serviceAccountJson: process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
   emulatorHost: process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099',
@@ -75,7 +90,8 @@ const integrations = {
     apiKey: process.env.TENOR_API_KEY ? process.env.TENOR_API_KEY.trim() : undefined,
     clientKey: process.env.TENOR_CLIENT_KEY
       ? process.env.TENOR_CLIENT_KEY.trim()
-      : 'pinpoint-app'
+      : 'pinpoint-app',
+    contentFilter: resolveTenorContentFilter(process.env.TENOR_CONTENT_FILTER)
   }
 };
 

@@ -1,4 +1,15 @@
-﻿const mongoose = require('mongoose');
+﻿/**
+ * Update payload types emitted by this service (see `payload.type` on each record):
+ * - new-pin: creator + followers are told a fresh pin went live.
+ * - pin-update: bookmarkers learn the pin they saved was edited (fields summarized in metadata).
+ * - event-starting-soon: attendees get a heads-up shortly before an event begins.
+ * - discussion-expiring-soon: watchers are reminded that a discussion or poll is about to close.
+ * - bookmark-update: users who bookmarked a pin receive status nudges (e.g., reminders, follow-ups).
+ * - chat-message: subscribers are pinged for high-signal chat messages or DM highlights.
+ * - chat-room-transition: presence changes (join/leave/hand-off) for shared rooms.
+ * - badge-earned: celebratory unlock notice when someone hits a milestone.
+ */
+const mongoose = require('mongoose');
 const Update = require('../models/Update');
 const User = require('../models/User');
 const Pin = require('../models/Pin');
@@ -150,7 +161,11 @@ const createRelatedEntity = (id, type, label, summary) => {
 };
 
 const filterRecipientsByPreference = async (recipientIds, options = {}) => {
-  const { requireUpdates = true, requireChatTransitions = false } = options;
+  const {
+    requireUpdates = true,
+    requireChatTransitions = false,
+    notificationKeys = []
+  } = options;
   const unique = Array.from(
     new Set(recipientIds.map((id) => toIdString(id)).filter(Boolean))
   );
@@ -173,6 +188,23 @@ const filterRecipientsByPreference = async (recipientIds, options = {}) => {
         }
         if (requireChatTransitions && preferences.chatTransitions === false) {
           return false;
+        }
+        const requiredKeys = Array.isArray(notificationKeys)
+          ? notificationKeys.filter(Boolean)
+          : notificationKeys
+          ? [notificationKeys]
+          : [];
+        for (const key of requiredKeys) {
+          if (preferences[key] === false) {
+            return false;
+          }
+        }
+        const mutedUntil = user?.preferences?.notificationsMutedUntil;
+        if (mutedUntil) {
+          const muteDate = new Date(mutedUntil);
+          if (!Number.isNaN(muteDate.getTime()) && muteDate.getTime() > Date.now()) {
+            return false;
+          }
         }
         return true;
       })
@@ -224,7 +256,8 @@ const broadcastPinCreated = async (pinDoc) => {
     const baseBody = doc.description ? truncate(doc.description, 280) : undefined;
 
     const filteredRecipients = await filterRecipientsByPreference(
-      Array.from(recipientIds)
+      Array.from(recipientIds),
+      { notificationKeys: ['pinCreated'] }
     );
     if (!filteredRecipients.length) {
       return;
@@ -298,7 +331,9 @@ const broadcastPinUpdated = async ({ previous, updated, editor }) => {
       return;
     }
 
-    const filteredRecipients = await filterRecipientsByPreference(Array.from(candidateRecipients));
+    const filteredRecipients = await filterRecipientsByPreference(Array.from(candidateRecipients), {
+      notificationKeys: ['pinUpdates']
+    });
     if (!filteredRecipients.length) {
       return;
     }
@@ -397,7 +432,9 @@ const broadcastEventStartingSoon = async ({ pin }) => {
       return;
     }
 
-    const filteredRecipients = await filterRecipientsByPreference(pendingRecipients);
+    const filteredRecipients = await filterRecipientsByPreference(pendingRecipients, {
+      notificationKeys: ['eventReminders']
+    });
     if (!filteredRecipients.length) {
       return;
     }
@@ -487,7 +524,9 @@ const broadcastDiscussionExpiringSoon = async ({ pin }) => {
       return;
     }
 
-    const filteredRecipients = await filterRecipientsByPreference(pendingRecipients);
+    const filteredRecipients = await filterRecipientsByPreference(pendingRecipients, {
+      notificationKeys: ['discussionReminders']
+    });
     if (!filteredRecipients.length) {
       return;
     }
@@ -563,7 +602,8 @@ const broadcastPinReply = async ({ pin, reply, author, parentReply }) => {
     const replySnippet = truncate(replyDoc.message, 240);
 
     const filteredRecipients = await filterRecipientsByPreference(
-      Array.from(recipientIds)
+      Array.from(recipientIds),
+      { notificationKeys: ['pinUpdates'] }
     );
     if (!filteredRecipients.length) {
       return;
@@ -621,7 +661,8 @@ const broadcastAttendanceChange = async ({ pin, attendee, attending }) => {
     const title = `${attendeeName} ${verb} "${pinDoc.title}"`;
 
     const filteredRecipients = await filterRecipientsByPreference(
-      Array.from(recipientIds)
+      Array.from(recipientIds),
+      { notificationKeys: ['pinUpdates'] }
     );
     if (!filteredRecipients.length) {
       return;
@@ -672,7 +713,9 @@ const broadcastBookmarkCreated = async ({ pin, bookmarker }) => {
       return;
     }
 
-    const recipients = await filterRecipientsByPreference([creatorId]);
+    const recipients = await filterRecipientsByPreference([creatorId], {
+      notificationKeys: ['bookmarkReminders']
+    });
     if (!recipients.length) {
       return;
     }
@@ -733,7 +776,9 @@ const broadcastChatMessage = async ({ room, message, author }) => {
       recipients.add(ownerId);
     }
 
-    const filteredRecipients = await filterRecipientsByPreference(Array.from(recipients));
+    const filteredRecipients = await filterRecipientsByPreference(Array.from(recipients), {
+      notificationKeys: ['chatMessages']
+    });
     if (!filteredRecipients.length) {
       return;
     }
@@ -865,7 +910,9 @@ const broadcastBadgeEarned = async ({ userId, badge, sourceUserId }) => {
       return;
     }
 
-    const filteredRecipients = await filterRecipientsByPreference([recipientId]);
+    const filteredRecipients = await filterRecipientsByPreference([recipientId], {
+      notificationKeys: ['badgeUnlocks']
+    });
     if (!filteredRecipients.length) {
       return;
     }

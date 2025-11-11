@@ -85,7 +85,7 @@ function FeedCard({ item, onSelectItem, onSelectAuthor }) {
       return item.isBookmarked;
     }
     return false;
-  }, [item?.viewerHasBookmarked, item?.isBookmarked, pinId]);
+  }, [item?.viewerHasBookmarked, item?.isBookmarked]);
   const [isBookmarked, setIsBookmarked] = useState(derivedBookmark);
   const [isUpdatingBookmark, setIsUpdatingBookmark] = useState(false);
   const [bookmarkError, setBookmarkError] = useState(null);

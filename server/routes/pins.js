@@ -514,7 +514,7 @@ const BaseCreatePinSchema = z.object({
   coordinates: CoordinatesSchema,
   proximityRadiusMeters: z.number().int().positive().max(50000).optional(),
   creatorId: z.string().optional(),
-  photos: z.array(MediaAssetInputSchema).max(10).optional(),
+  photos: z.array(MediaAssetInputSchema).max(3).optional(),
   coverPhoto: MediaAssetInputSchema.optional(),
   options: PinOptionsInputSchema.optional()
 });

@@ -1005,6 +1005,12 @@
     padding: 0rem 0.75rem;
 }
 
+.pin-details .comment-body p {
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0.25rem 0 0.5rem;
+}
+
 /* create-comment */
 .pin-details .create-comment {
     position: fixed;

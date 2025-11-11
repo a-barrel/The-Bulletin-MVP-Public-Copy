@@ -709,7 +709,6 @@ export async function logClientEvent({
     });
   } catch (error) {
     if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
       console.warn('Failed to send client log event', error);
     }
   }
@@ -1034,6 +1033,72 @@ export async function registerPushToken(token, options = {}) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw createApiError(response, payload, payload?.message || 'Failed to register push token');
+  }
+
+  return payload;
+}
+
+export async function requestDataExport({ reason } = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/data-export`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify(reason ? { reason } : {})
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, payload?.message || 'Failed to request data export');
+  }
+
+  return payload;
+}
+
+export async function fetchApiTokens() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/api-tokens`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, payload?.message || 'Failed to load API tokens');
+  }
+
+  return payload;
+}
+
+export async function createApiToken({ label } = {}) {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/api-tokens`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify(label ? { label } : {})
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, payload?.message || 'Failed to create API token');
+  }
+
+  return payload;
+}
+
+export async function revokeApiToken(tokenId) {
+  if (!tokenId) {
+    throw new Error('Token id is required to revoke a token');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/users/me/api-tokens/${encodeURIComponent(tokenId)}`, {
+    method: 'DELETE',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, payload?.message || 'Failed to revoke API token');
   }
 
   return payload;
@@ -1981,6 +2046,25 @@ export async function markAllUpdatesRead() {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(payload?.message || 'Failed to mark all updates as read');
+  }
+
+  return payload;
+}
+
+export async function deleteUpdate(updateId) {
+  if (!updateId) {
+    throw new Error('Update id is required to delete an update');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/updates/${encodeURIComponent(updateId)}`, {
+    method: 'DELETE',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to delete update');
   }
 
   return payload;

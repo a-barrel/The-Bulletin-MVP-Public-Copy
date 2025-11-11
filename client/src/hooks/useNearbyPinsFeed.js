@@ -380,18 +380,7 @@ export default function useNearbyPinsFeed({
         setLoading(false);
       }
     },
-    [
-      distanceMiles,
-      filters.categories,
-      filters.endDate,
-      filters.search,
-      filters.startDate,
-      filters.status,
-      filters.types,
-      isOffline,
-      limit,
-      userLocation
-    ]
+    [distanceMiles, filters, isOffline, limit, userLocation]
   );
 
   useEffect(() => {

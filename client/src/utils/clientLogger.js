@@ -24,7 +24,6 @@ export async function logClientError(error, context = {}, overrides = {}) {
     });
   } catch (logError) {
     if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
       console.warn('Failed to send client log event', logError);
     }
   }

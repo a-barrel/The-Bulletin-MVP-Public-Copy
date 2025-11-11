@@ -24,6 +24,7 @@ const DEFAULT_AVATAR_PATH = '/images/profile/profile-01.jpg';
 const DEFAULT_COVER_PATH = '/images/background/background-01.jpg';
 const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
 const FUTURE_SKEW_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const IS_DEV = import.meta.env.DEV;
 
 const TF2_AVATAR_MAP = {
   tf2_scout: '/images/emulation/avatars/Scoutava.jpg',
@@ -95,7 +96,7 @@ const resolveMediaAssetUrl = (asset, fallback) => {
             }
             return parsed.pathname;
           }
-        } catch (error) {
+        } catch {
           // fall back to original absolute value
         }
       }
@@ -402,8 +403,10 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     if (pinFromState) {
       setPin(pinFromState);
       setIsLoading(false);
-      if (process.env.NODE_ENV !== 'production') {
-        console.debug('[usePinDetails] pinFromState applied', { pinId, pinFromState });
+      if (IS_DEV) {
+        console.debug('[usePinDetails] pinFromState applied', {
+          pinFromStateId: pinFromState?._id ?? 'unknown'
+        });
       }
     }
   }, [pinFromState]);
@@ -413,12 +416,14 @@ export default function usePinDetails({ pinId, location, isOffline }) {
       return;
     }
     const candidate = extractViewerProfileIdFromState(locationState);
-    if (candidate) {
-      setViewerProfileId(candidate);
-      if (process.env.NODE_ENV !== 'production') {
-        console.debug('[usePinDetails] viewerProfileId from state', { pinId, viewerProfileId: candidate });
+      if (candidate) {
+        setViewerProfileId(candidate);
+        if (IS_DEV) {
+          console.debug('[usePinDetails] viewerProfileId from state', {
+            viewerProfileId: candidate
+          });
+        }
       }
-    }
   }, [locationState, viewerProfileId]);
 
   useEffect(() => {
@@ -448,7 +453,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     return () => {
       ignore = true;
     };
-  }, [viewerProfileId, isOffline]);
+  }, [viewerProfileId, isOffline, pinId]);
 
   const previewMode = useMemo(() => {
     const params = new URLSearchParams(location?.search ?? '');
@@ -457,7 +462,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
 
   const reloadPin = useCallback(
     async ({ silent } = {}) => {
-      if (process.env.NODE_ENV !== 'production') {
+      if (IS_DEV) {
         console.debug('[usePinDetails] reload start', { pinId, silent });
       }
       if (!pinId) {
@@ -489,7 +494,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
       try {
         const payload = await fetchPinById(pinId, { previewMode });
         if (!isMountedRef.current) {
-          if (process.env.NODE_ENV !== 'production') {
+          if (IS_DEV) {
             console.debug('[usePinDetails] reload ignored - unmounted', { pinId });
           }
           return payload;
@@ -497,7 +502,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         setPin(payload);
         setBookmarked(Boolean(payload?.viewerHasBookmarked));
         setAttending(Boolean(payload?.viewerIsAttending));
-        if (process.env.NODE_ENV !== 'production') {
+        if (IS_DEV) {
           console.debug('[usePinDetails] reload success', { pinId, title: payload?.title });
         }
         return payload;
@@ -946,7 +951,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     } catch (toggleError) {
       logClientError(toggleError, {
         source: 'usePinDetails.toggleBookmark',
-        pinId: pin?._id,
+        pinId,
         bookmarkedTarget: !bookmarked
       });
       setBookmarkError(toggleError?.message || 'Failed to toggle bookmark.');
@@ -962,7 +967,8 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     isOffline,
     isUpdatingBookmark,
     pin,
-    pinExpired
+    pinExpired,
+    pinId
   ]);
 
   const handleToggleAttendance = useCallback(async () => {
@@ -1035,7 +1041,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     } catch (toggleError) {
       logClientError(toggleError, {
         source: 'usePinDetails.toggleAttendance',
-        pinId: pin?._id,
+        pinId,
         attendingTarget: !attending
       });
       setAttendanceError(toggleError?.message || 'Failed to update attendance.');
@@ -1050,7 +1056,8 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     isOffline,
     isUpdatingAttendance,
     pin,
-    pinExpired
+    pinExpired,
+    pinId
   ]);
 
   const handleSubmitReply = useCallback(async () => {
@@ -1096,7 +1103,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     } catch (submitError) {
       logClientError(submitError, {
         source: 'usePinDetails.submitReply',
-        pinId: pin?._id
+        pinId
       });
       setSubmitReplyError(submitError?.message || 'Failed to create reply.');
     } finally {

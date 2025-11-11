@@ -38,6 +38,7 @@ import {
   Snackbar
 } from '@mui/material';
 import SmsIcon from '@mui/icons-material/Sms';
+import runtimeConfig from '../config/runtime';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import RoomIcon from '@mui/icons-material/Room';
@@ -313,6 +314,7 @@ function ChatPage() {
 
   const [moderationInitAttempted, setModerationInitAttempted] = useState(false);
   const [moderationContext, setModerationContext] = useState(null);
+  const debugModerationEnabled = runtimeConfig.debugApi?.enableRequests !== false;
   const [moderationForm, setModerationForm] = useState({
     type: 'warn',
     reason: '',
@@ -467,7 +469,7 @@ function ChatPage() {
   }, [channelTab, uniqueMessages.length, scrollMessagesToBottom]);
 
   useEffect(() => {
-    if (isOffline || moderationHasAccess === false) {
+    if (!debugModerationEnabled || isOffline || moderationHasAccess === false) {
       return;
     }
     if (moderationInitAttempted || isLoadingModerationOverview) {
@@ -476,6 +478,7 @@ function ChatPage() {
     setModerationInitAttempted(true);
     loadModerationOverview().catch(() => {});
   }, [
+    debugModerationEnabled,
     isOffline,
     moderationHasAccess,
     moderationInitAttempted,
@@ -1247,7 +1250,7 @@ function ChatPage() {
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
   const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
 
-  const canModerateMessages = !isOffline && moderationHasAccess !== false;
+  const canModerateMessages = !isOffline && debugModerationEnabled && moderationHasAccess !== false;
 
   const getDisplayMessageText = useCallback((msg) => {
     if (!msg || typeof msg.message !== 'string') {

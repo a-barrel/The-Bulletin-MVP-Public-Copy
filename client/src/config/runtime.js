@@ -22,6 +22,20 @@ function resolveMode() {
 const mode = resolveMode();
 const isOffline = mode === 'offline';
 
+const parseBooleanEnv = (value, defaultValue) => {
+  if (value === undefined) {
+    return defaultValue;
+  }
+  const normalized = String(value).trim().toLowerCase();
+  if (['true', '1', 'yes', 'y', 'on'].includes(normalized)) {
+    return true;
+  }
+  if (['false', '0', 'no', 'n', 'off'].includes(normalized)) {
+    return false;
+  }
+  return defaultValue;
+};
+
 function parseJson(value, fallback = null) {
   if (!value) {
     return fallback;
@@ -70,7 +84,14 @@ const firebaseAuthEmulatorUrl = isOffline
 const firebaseVapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || null;
 
 const troyExperimentEnabled = import.meta.env.VITE_ENABLE_TROY_EXPERIMENT === 'true';
-const suppressStyleWarnings = import.meta.env.VITE_SUPPRESS_STYLE_WARNINGS === 'true';
+const suppressStyleWarnings = parseBooleanEnv(
+  import.meta.env.VITE_SUPPRESS_STYLE_WARNINGS,
+  true
+);
+const enableDebugApiCalls = parseBooleanEnv(
+  import.meta.env.VITE_ENABLE_DEBUG_API_CALLS,
+  isOffline
+);
 
 export const runtimeConfig = {
   mode,
@@ -79,6 +100,9 @@ export const runtimeConfig = {
   apiBaseUrl,
   fallbackToken,
   suppressStyleWarnings,
+  debugApi: {
+    enableRequests: enableDebugApiCalls
+  },
   troyExperimentEnabled,
   firebase: {
     config: firebaseConfig,

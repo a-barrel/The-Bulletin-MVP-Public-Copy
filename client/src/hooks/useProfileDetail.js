@@ -49,7 +49,7 @@ const resolveAvatarUrl = (avatar) => {
             const relative = normalizeProfileImagePath(url.pathname);
             return base ? `${base}${relative}` : relative;
           }
-        } catch (error) {
+        } catch {
           return trimmed;
         }
       }
@@ -599,9 +599,7 @@ const clearBannerPreviewUrl = useCallback(() => {
       isOffline,
       setFetchedUser,
       setIsEditing,
-      setUpdateStatus,
-      updateCurrentUserProfile,
-      uploadImage
+      setUpdateStatus
     ]
   );
 

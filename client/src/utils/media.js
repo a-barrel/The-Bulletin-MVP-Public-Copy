@@ -1,6 +1,7 @@
 import runtimeConfig from '../config/runtime';
 
 const DEFAULT_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+const FALLBACK_TEXTURE_PATH = '/images/UNKNOWN_TEXTURE.jpg';
 
 const LEGACY_PROFILE_IMAGE_REGEX = /(\/images\/profile\/profile-\d+)\.png$/i;
 
@@ -68,14 +69,16 @@ export function resolveAssetUrl(asset, options = {}) {
     typeof path === 'string' &&
     (path.startsWith('/images/') || path.startsWith('/sounds/'));
 
+  const fallbackSrc = fallback ?? fallbackTextureFallback();
+
   if (!asset && asset !== 0) {
-    return fallback;
+    return fallbackSrc;
   }
 
   if (typeof asset === 'string') {
     const trimmed = normalizeProfileImagePath(asset.trim());
     if (!trimmed) {
-      return fallback;
+      return fallbackSrc;
     }
 
     if (isAbsoluteUrl(trimmed)) {
@@ -86,7 +89,7 @@ export function resolveAssetUrl(asset, options = {}) {
           if (offlineHosts.has(url.host) && shouldReturnRelativeOffline(url.pathname)) {
             return url.pathname;
           }
-        } catch (error) {
+        } catch {
           // noop – fall back to absolute URL behaviour
         }
       }
@@ -100,8 +103,16 @@ export function resolveAssetUrl(asset, options = {}) {
     return baseUrl ? `${baseUrl}${normalized}` : normalized;
   }
 
-  const resolved = resolveFromObject(asset, fallback, { baseUrl, keys });
-  return resolved ?? fallback;
+  const resolved = resolveFromObject(asset, fallbackSrc, { baseUrl, keys });
+  return resolved ?? fallbackSrc;
 }
 
 export default resolveAssetUrl;
+
+function fallbackTextureFallback() {
+  if (runtimeConfig.isOffline) {
+    return FALLBACK_TEXTURE_PATH;
+  }
+  const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
+  return base ? `${base}${FALLBACK_TEXTURE_PATH}` : FALLBACK_TEXTURE_PATH;
+}

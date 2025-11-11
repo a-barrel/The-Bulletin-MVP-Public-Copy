@@ -30,12 +30,40 @@ const userSchema = new mongoose.Schema(
       notifications: {
         proximity: { type: Boolean, default: true },
         updates: { type: Boolean, default: true },
+        pinCreated: { type: Boolean, default: true },
+        pinUpdates: { type: Boolean, default: true },
+        eventReminders: { type: Boolean, default: true },
+        discussionReminders: { type: Boolean, default: true },
+        bookmarkReminders: { type: Boolean, default: true },
+        chatMessages: { type: Boolean, default: true },
         marketing: { type: Boolean, default: false },
-        chatTransitions: { type: Boolean, default: true }
+        chatTransitions: { type: Boolean, default: true },
+        friendRequests: { type: Boolean, default: true },
+        badgeUnlocks: { type: Boolean, default: true },
+        moderationAlerts: { type: Boolean, default: true },
+        dmMentions: { type: Boolean, default: true },
+        emailDigests: { type: Boolean, default: false }
       },
+      notificationsMutedUntil: { type: Date, default: null },
       radiusPreferenceMeters: { type: Number, default: 16093 },
       statsPublic: { type: Boolean, default: true },
-      filterCussWords: { type: Boolean, default: false }
+      filterCussWords: { type: Boolean, default: false },
+      dmPermission: { type: String, enum: ['everyone', 'friends', 'nobody'], default: 'everyone' },
+      digestFrequency: {
+        type: String,
+        enum: ['immediate', 'daily', 'weekly', 'never'],
+        default: 'weekly'
+      },
+      display: {
+        textScale: { type: Number, default: 1 },
+        reduceMotion: { type: Boolean, default: false },
+        highContrast: { type: Boolean, default: false },
+        mapDensity: { type: String, enum: ['compact', 'balanced', 'detailed'], default: 'balanced' },
+        celebrationSounds: { type: Boolean, default: true }
+      },
+      data: {
+        autoExportReminders: { type: Boolean, default: false }
+      }
     },
     stats: {
       eventsHosted: { type: Number, default: 0 },

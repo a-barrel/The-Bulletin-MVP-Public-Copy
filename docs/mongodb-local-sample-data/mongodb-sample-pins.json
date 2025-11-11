@@ -2888,5 +2888,167 @@
     "updatedAt": {
       "$date": "2026-11-09T11:45:00.000Z"
     }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47a00"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "title": "CSULB Photo Walk (Media Stress Test)",
+    "description": "Sample pin used to verify the three-photo upload limit. Snaps of the Pyramid, Japanese Garden, and campus interiors taken during the beta photo walk.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1134,
+        33.7834
+      ],
+      "accuracy": 6
+    },
+    "proximityRadiusMeters": 800,
+    "photos": [
+      {
+        "url": "/images/event/event-08",
+        "thumbnailUrl": "/images/event/event-08",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      },
+      {
+        "url": "/images/event/event-09",
+        "thumbnailUrl": "/images/event/event-09",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      },
+      {
+        "url": "/images/event/event-10",
+        "thumbnailUrl": "/images/event/event-10",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-08",
+      "thumbnailUrl": "/images/event/event-08",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "photography",
+      "campus"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c1"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 4,
+      "replyCount": 6,
+      "shareCount": 2,
+      "viewCount": 88
+    },
+    "bookmarkCount": 4,
+    "replyCount": 6,
+    "startDate": {
+      "$date": "2026-10-12T17:00:00.000Z"
+    },
+    "endDate": {
+      "$date": "2026-10-12T20:00:00.000Z"
+    },
+    "participantCount": 3,
+    "attendable": true,
+    "createdAt": {
+      "$date": "2026-10-05T19:10:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-05T19:10:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47a01"
+    },
+    "type": "discussion",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
+    "title": "Broken Texture QA Lounge",
+    "description": "Intentionally references missing image assets so the UNKNOWN_TEXTURE fallback is easy to test from the debug navigator.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1449,
+        33.7749
+      ],
+      "accuracy": 5
+    },
+    "proximityRadiusMeters": 400,
+    "photos": [
+      {
+        "url": "/images/broken/missing-texture-01",
+        "thumbnailUrl": "/images/broken/missing-texture-01",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/broken/missing-texture-cover",
+      "thumbnailUrl": "/images/broken/missing-texture-cover",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "debug",
+      "qa"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": false
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c2"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 0,
+      "replyCount": 0,
+      "shareCount": 0,
+      "viewCount": 12
+    },
+    "bookmarkCount": 0,
+    "replyCount": 0,
+    "expiresAt": {
+      "$date": "2027-01-01T08:00:00.000Z"
+    },
+    "autoDelete": false,
+    "createdAt": {
+      "$date": "2026-10-05T20:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-05T20:00:00.000Z"
+    }
   }
 ]

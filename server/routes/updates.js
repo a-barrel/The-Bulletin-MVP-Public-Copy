@@ -157,4 +157,27 @@ router.patch('/:updateId/read', verifyToken, async (req, res) => {
   }
 });
 
+router.delete('/:updateId', verifyToken, async (req, res) => {
+  try {
+    const { updateId } = UpdateIdSchema.parse(req.params);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const deleted = await Update.findOneAndDelete({ _id: updateId, userId: viewer._id });
+    if (!deleted) {
+      return res.status(404).json({ message: 'Update not found' });
+    }
+
+    res.json({ deleted: true, updateId: deleted._id.toString() });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid update identifier', issues: error.errors });
+    }
+    console.error('Failed to delete update:', error);
+    res.status(500).json({ message: 'Failed to delete update' });
+  }
+});
+
 module.exports = router;

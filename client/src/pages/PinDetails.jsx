@@ -36,9 +36,12 @@ const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
   '68e061721329566a22d474aa',
   '68e061721329566a22d474ab',
-  '68e061721329566a22d474ac'
+  '68e061721329566a22d474ac',
+  '68e061721329566a22d47a00'
 ];
 const FAR_PIN_ID = SAMPLE_PIN_IDS[0] ?? '68e061721329566a22d474aa';
+const MAX_PHOTO_PIN_ID = '68e061721329566a22d47a00';
+const BROKEN_TEXTURE_PIN_ID = '68e061721329566a22d47a01';
 
 export const pageConfig = {
   id: 'pin-details',
@@ -49,7 +52,7 @@ export const pageConfig = {
   showInNav: true,
   resolveNavTarget: ({ currentPath } = {}) => {
     const input = window.prompt(
-      'Enter a pin ID to view (type "expired" for an expired preview, type "far" to preview a pin outside your interaction radius, leave blank for a random sample, cancel to stay put):'
+      'Enter a pin ID to view. Shortcuts: "expired" loads an expired pin, "far" loads a distant pin, "3" loads the max-photo sample, "broken" loads the UNKNOWN_TEXTURE tester. Leave blank for a random sample or cancel to stay put.'
     );
     if (input === null) {
       return currentPath ?? null;
@@ -61,6 +64,12 @@ export const pageConfig = {
     if (trimmed.toLowerCase() === 'far') {
       const farId = FAR_PIN_ID;
       return `${routes.pin.byId(farId)}?preview=far`;
+    }
+    if (trimmed === '3' || trimmed === 'max') {
+      return routes.pin.byId(MAX_PHOTO_PIN_ID);
+    }
+    if (trimmed === 'broken') {
+      return routes.pin.byId(BROKEN_TEXTURE_PIN_ID);
     }
     if (!trimmed) {
       const randomId =
