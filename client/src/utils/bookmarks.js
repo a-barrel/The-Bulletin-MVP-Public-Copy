@@ -1,3 +1,8 @@
+/**
+ * mapBookmarkToFeedItem: bookmark payloads include a nested pin preview, but PinCard expects the same
+ * shape produced by mapPinToFeedItem (List). This adapter fills the gap so BookmarksPage can reuse the
+ * exact card component without duplicating layout. Keep any bookmark-specific fallbacks here.
+ */
 import toIdString from "./ids";
 import resolveAssetUrl from "./media";
 

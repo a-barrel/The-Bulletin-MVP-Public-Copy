@@ -1,4 +1,18 @@
 /* NOTE: Page exports navigation config alongside the component. */
+/**
+ * Bookmark architecture cheat sheet:
+ *  - Data source: useBookmarksManager fetches bookmark + collection payloads from the API, normalises
+ *    them, and exposes helper actions (refresh, export, remove). Keep API-specific logic there.
+ *  - Presentation: BookmarksPage handles high-level layout, collection navigation, and renders each
+ *    bookmark via PinCard. We never duplicate card markup here — mapBookmarkToFeedItem adapts the
+ *    saved pin record into the exact shape PinCard expects (see PinCard Data Contract in docs).
+ *  - UX helpers: Quick-nav prefs + focus handling live locally in this component so designers can
+ *    iterate on the experience without touching the data hook. Anchors are tracked in ref maps so we
+ *    can auto-scroll to a collection when `?collection=` is present.
+ *  - Editing tips: If you redesign the cards, consider whether the bookmark metadata (saved date,
+ *    remove button) belongs inside PinCard or alongside it. Right now PinCard is intentionally unaware
+ *    of bookmark-only affordances, so those controls live in the list item footer.
+ */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -185,6 +199,7 @@ function BookmarksPage() {
     };
   }, [groupedBookmarks, highlightedCollectionKey, resolvedFocus]);
 
+  // Persist which collections should appear in the quick-nav rail (a lightweight pinned list).
   const handleQuickNavPreferenceChange = useCallback((collectionKey, enabled) => {
     setQuickNavPrefs((prev) => {
       const hiddenSet = new Set(prev.hidden);
@@ -213,6 +228,7 @@ function BookmarksPage() {
     });
   }, []);
 
+  // Reuse List feed navigation patterns so deep-linking a bookmark mirrors tapping a card elsewhere.
   const handleViewPin = useCallback(
     (pinId, pin) => {
       const normalized = normalizeObjectId(pinId);
@@ -367,6 +383,7 @@ function BookmarksPage() {
                   <Box key={groupKey}>
                   <ListSubheader
                     component="div"
+                    // Store DOM refs for scroll-to-collection behaviour powered by ?collection= query params.
                     ref={(node) => {
                       const anchors = collectionAnchorsRef.current;
                       const keys = [groupKey, normalizedName, `${groupKey}::header`].filter(Boolean);
@@ -418,6 +435,7 @@ function BookmarksPage() {
                     const pinId = bookmark.pinId || pin?._id;
                     const savedAt = formatSavedDate(bookmark.createdAt);
                     const isRemoving = removingPinId === pinId;
+                    // Adapt the bookmark payload to the PinCard contract so we never duplicate card markup.
                     const cardItem = mapBookmarkToFeedItem(bookmark);
                     const cardKey = bookmark._id || pinId || `bookmark-${bookmarkIndex}`;
                     const canViewPin = Boolean(pinId);
@@ -470,6 +488,7 @@ function BookmarksPage() {
                           alignItems={{ xs: 'flex-start', sm: 'center' }}
                           justifyContent="space-between"
                         >
+                          {/* Bookmark-specific metadata lives outside PinCard so the shared component stays feed-agnostic. */}
                           <Typography variant="body2" color="text.secondary">
                             Saved on {savedAt}
                           </Typography>

@@ -1,3 +1,11 @@
+/**
+ * useBookmarksManager centralises every bookmark-side effect:
+ *  - Fetch bookmarks + collections in parallel and expose grouped data for the page.
+ *  - Handle destructive actions (remove) and exports so views can stay declarative.
+ *  - Provide derived helpers (formatSavedDate, groupedBookmarks) to keep BookmarksPage lean.
+ * If you touch the bookmark API contract, adjust the transforms here rather than sprinkling logic
+ * across the UI. This hook intentionally mirrors the data responsibilities of useNearbyPinsFeed.
+ */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
