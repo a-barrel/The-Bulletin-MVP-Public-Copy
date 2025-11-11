@@ -382,6 +382,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   const [repliesError, setRepliesError] = useState(null);
   const [attendeeOverlayOpen, setAttendeeOverlayOpen] = useState(false);
   const [attendees, setAttendees] = useState([]);
+  const [shouldPrefetchAttendees, setShouldPrefetchAttendees] = useState(true);
   const [isLoadingAttendees, setIsLoadingAttendees] = useState(false);
   const [attendeesError, setAttendeesError] = useState(null);
   const [replyComposerOpen, setReplyComposerOpen] = useState(false);
@@ -576,24 +577,44 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   }, [isOffline, pinId]);
 
   useEffect(() => {
-    if (!attendeeOverlayOpen) {
+    if (!pinId) {
+      setShouldPrefetchAttendees(true);
+      setAttendees([]);
+      return;
+    }
+    setShouldPrefetchAttendees(true);
+  }, [pinId]);
+
+  useEffect(() => {
+    const shouldLoadAttendees = attendeeOverlayOpen || shouldPrefetchAttendees;
+    if (!shouldLoadAttendees) {
       return;
     }
     if (isOffline) {
-      setIsLoadingAttendees(false);
-      setAttendeesError((prev) => prev ?? 'Attendee list unavailable while offline.');
+      if (attendeeOverlayOpen) {
+        setIsLoadingAttendees(false);
+        setAttendeesError((prev) => prev ?? 'Attendee list unavailable while offline.');
+      }
+      if (shouldPrefetchAttendees) {
+        setShouldPrefetchAttendees(false);
+      }
       return;
     }
     if (!pinId) {
       setAttendees([]);
+      if (shouldPrefetchAttendees) {
+        setShouldPrefetchAttendees(false);
+      }
       return;
     }
 
     let ignore = false;
 
     async function loadAttendees() {
-      setIsLoadingAttendees(true);
-      setAttendeesError(null);
+      if (attendeeOverlayOpen) {
+        setIsLoadingAttendees(true);
+        setAttendeesError(null);
+      }
       try {
         const payload = await fetchPinAttendees(pinId);
         if (ignore) {
@@ -608,8 +629,11 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         setAttendees([]);
         setAttendeesError(loadError?.message || 'Failed to load attendees.');
       } finally {
-        if (!ignore) {
+        if (!ignore && attendeeOverlayOpen) {
           setIsLoadingAttendees(false);
+        }
+        if (!ignore && shouldPrefetchAttendees) {
+          setShouldPrefetchAttendees(false);
         }
       }
     }
@@ -619,7 +643,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     return () => {
       ignore = true;
     };
-  }, [attendeeOverlayOpen, isOffline, pinId]);
+  }, [attendeeOverlayOpen, isOffline, pinId, shouldPrefetchAttendees]);
 
   const pinExpired = useMemo(() => {
     if (!pin) {

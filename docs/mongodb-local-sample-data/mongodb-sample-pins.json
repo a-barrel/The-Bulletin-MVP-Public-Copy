@@ -2957,12 +2957,12 @@
     "visibility": "public",
     "isActive": true,
     "stats": {
-      "bookmarkCount": 4,
+      "bookmarkCount": 14,
       "replyCount": 6,
       "shareCount": 2,
       "viewCount": 88
     },
-    "bookmarkCount": 4,
+    "bookmarkCount": 14,
     "replyCount": 6,
     "startDate": {
       "$date": "2026-10-12T17:00:00.000Z"
@@ -2970,7 +2970,24 @@
     "endDate": {
       "$date": "2026-10-12T20:00:00.000Z"
     },
-    "participantCount": 3,
+    "participantCount": 14,
+    "attendingUserIds": [
+      { "$oid": "68e061721329566a22d474a7" },
+      { "$oid": "68e061721329566a22d474a8" },
+      { "$oid": "68e061721329566a22d474a9" },
+      { "$oid": "68e061721329566a22d47510" },
+      { "$oid": "68e061721329566a22d47511" },
+      { "$oid": "46157fa6da7698fc59105392" },
+      { "$oid": "d7a6491309b83aad8e67f14c" },
+      { "$oid": "9090e547f3b4cf5aa61d19a7" },
+      { "$oid": "934981bc88eca7e088f557c6" },
+      { "$oid": "8184947383c54cde27f6a325" },
+      { "$oid": "1e056a58ce0c08e0e420bca0" },
+      { "$oid": "486e6bdd712130e78538ba6f" },
+      { "$oid": "9bfa44ec70cf17a8086a01e0" },
+      { "$oid": "4d250de16a246c301a52b095" }
+    ],
+    "attendeeWaitlistIds": [],
     "attendable": true,
     "createdAt": {
       "$date": "2026-10-05T19:10:00.000Z"
