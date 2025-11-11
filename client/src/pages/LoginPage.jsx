@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../firebase";
+import { useAuthState } from "react-firebase-hooks/auth";
 import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   OAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
 } from "firebase/auth";
 import "./LoginPage.css";
 import bulletinLogo from "../../uploads/images/PinPoint_Logo.png";
@@ -20,6 +23,7 @@ import AppleIcon from "@mui/icons-material/Apple";
 
 function LoginPage() {
   const navigate = useNavigate();
+  const [authUser] = useAuthState(auth);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(() => {
@@ -59,6 +63,37 @@ function LoginPage() {
     }
     window.localStorage.setItem("bulletin:rememberMe", remember ? "true" : "false");
   }, [remember]);
+
+  useEffect(() => {
+    if (authUser) {
+      navigate(routes.map.base, { replace: true });
+    }
+  }, [authUser, navigate]);
+
+  useEffect(() => {
+    let isMounted = true;
+    getRedirectResult(auth)
+      .then((result) => {
+        if (!isMounted) {
+          return;
+        }
+        if (result?.user) {
+          navigate(routes.map.base, { replace: true });
+        }
+      })
+      .catch((redirectError) => {
+        if (!isMounted) {
+          return;
+        }
+        if (redirectError?.code === "auth/operation-not-supported-in-this-environment") {
+          return;
+        }
+        setError(redirectError?.message || "Sign-in failed. Please try again.");
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate]);
   
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -111,42 +146,73 @@ function LoginPage() {
     }
   };
 
+  const shouldUseRedirectAuth = () => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    const matches = (query) => {
+      if (typeof window.matchMedia !== "function") {
+        return false;
+      }
+      return window.matchMedia(query).matches;
+    };
+    const smallViewport = matches("(max-width: 768px)") || window.innerWidth < 768;
+    const standaloneDisplay =
+      matches("(display-mode: standalone)") || window.navigator?.standalone === true;
+    const mobileAgent = /iPad|iPhone|iPod|Android/i.test(window.navigator?.userAgent || "");
+    return standaloneDisplay || smallViewport || mobileAgent;
+  };
+
   const handleGoogleSignIn = async () => {
     setError(null);
-    await withPopupGuard(async () => {
-      const provider = new GoogleAuthProvider();
-      const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
+    const provider = new GoogleAuthProvider();
+    const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
+    try {
       await applyAuthPersistence(auth, persistenceMode);
-      await signInWithPopup(auth, provider);
-      navigate(routes.map.base);
-    }).catch((popupError) => {
+      if (shouldUseRedirectAuth()) {
+        await signInWithRedirect(auth, provider);
+        return;
+      }
+      await withPopupGuard(async () => {
+        await signInWithPopup(auth, provider);
+        navigate(routes.map.base);
+      });
+    } catch (popupError) {
       if (popupError?.message) {
         setError(popupError.message);
       } else {
-        setError('Google sign-in failed. Please try again.');
+        setError("Google sign-in failed. Please try again.");
       }
-    });
+    }
   };
 
   const handleAppleSignIn = async () => {
     setError(null);
-    await withPopupGuard(async () => {
-      const provider = new OAuthProvider('apple.com');
-      const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
+    const provider = new OAuthProvider("apple.com");
+    const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
+    try {
       await applyAuthPersistence(auth, persistenceMode);
-      await signInWithPopup(auth, provider);
-      navigate(routes.map.base);
-    }).catch((signupError) => {
-      if (signupError?.code === 'auth/operation-not-supported-in-this-environment') {
-        setError('Apple sign-in is not available in this environment.');
-      } else if (signupError?.code === 'auth/account-exists-with-different-credential') {
-        setError('This email is linked to a different sign-in method. Try logging in with the original provider.');
+      if (shouldUseRedirectAuth()) {
+        await signInWithRedirect(auth, provider);
+        return;
+      }
+      await withPopupGuard(async () => {
+        await signInWithPopup(auth, provider);
+        navigate(routes.map.base);
+      });
+    } catch (signupError) {
+      if (signupError?.code === "auth/operation-not-supported-in-this-environment") {
+        setError("Apple sign-in is not available in this environment.");
+      } else if (signupError?.code === "auth/account-exists-with-different-credential") {
+        setError(
+          "This email is linked to a different sign-in method. Try logging in with the original provider."
+        );
       } else if (signupError?.message) {
         setError(signupError.message);
       } else {
-        setError('Apple sign-in failed. Please try again.');
+        setError("Apple sign-in failed. Please try again.");
       }
-    });
+    }
   };
 
   const alerts = [];
