@@ -8,7 +8,7 @@
 .profile-page-container {
   display: flex;
   flex-direction: column;
-  background-color: black;
+  background-color: #f5effd;
   width: 100vw;
   height: 100vh;
   color: #000; /* Ensure text defaults to black inside container */
@@ -39,7 +39,7 @@
   border-radius: 0 #CDAEF2;
 
   /* ⬇ Remove top padding */
-  padding: 60px 1rem 1.5rem; /* Added 60px top padding for fixed BackButton */
+  padding: 48px 1rem 1.5rem; /* Top padding accounts for fixed BackButton */
 
   display: flex;
   flex-direction: column;
@@ -84,7 +84,7 @@
   .profile-page-frame {
     width: 100vw;
     flex: 1;
-    padding: 56px 0.5rem 1rem; /* Added 56px top padding for mobile BackButton height */
+    padding: 44px 0.5rem 1rem; /* Reduced top padding on mobile */
   }
 
   /* Adjust full-bleed compensation for mobile padding (0.5rem each side) */
@@ -112,6 +112,9 @@
   background-color: #CDAEF2;
   padding: 8px 12px;
   border-radius: 8px;
+  min-width: 160px;
+  flex: 1 0 160px;
+  box-shadow: 0 2px 6px rgba(20, 0, 40, 0.12);
 }
 
 /* Section content boxes */
@@ -165,9 +168,11 @@
 }
 
 .profile-back-nav .back-button {
-  color: #ffffff;
+  background: rgba(255, 255, 255, 0.5);
+  color: #4b208c;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .profile-back-nav .back-button__icon {
@@ -175,8 +180,8 @@
 }
 
 .profile-back-nav .back-button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+  background: rgba(255, 255, 255, 0.8);
+  color: #2d0d75;
 }
 
 .profile-edit-button {

@@ -16,9 +16,11 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import FlagIcon from '@mui/icons-material/Flag';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import MessageIcon from '@mui/icons-material/Message';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import ButtonBase from '@mui/material/ButtonBase';
 import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
@@ -538,6 +540,23 @@ function ProfilePage() {
   const canMessageUser = Boolean(!isViewingSelf && normalizedTargetId);
   const canReportUser = Boolean(!isViewingSelf && normalizedTargetId);
   const blockCardDisabled = Boolean(isProcessingBlockAction || isFetchingProfile);
+  const mutualFriends = useMemo(() => {
+    if (!Array.isArray(effectiveUser?.mutualFriends)) {
+      return [];
+    }
+    return effectiveUser.mutualFriends;
+  }, [effectiveUser?.mutualFriends]);
+  const mutualFriendCount = useMemo(() => {
+    if (typeof effectiveUser?.mutualFriendCount === 'number') {
+      return effectiveUser.mutualFriendCount;
+    }
+    return mutualFriends.length;
+  }, [effectiveUser?.mutualFriendCount, mutualFriends.length]);
+  const MUTUAL_FRIEND_PREVIEW_LIMIT = 6;
+  const mutualFriendPreview = useMemo(
+    () => mutualFriends.slice(0, MUTUAL_FRIEND_PREVIEW_LIMIT),
+    [mutualFriends]
+  );
 
   useEffect(() => {
     if (!isEditing && effectiveUser) {
@@ -562,6 +581,20 @@ function ProfilePage() {
     setFormState(initializeFormState(effectiveUser));
     setIsEditing(false);
   }, [clearAvatarPreviewUrl, clearBannerPreviewUrl, effectiveUser, initializeFormState]);
+
+  const handleOpenMutualFriend = useCallback(
+    (friendId) => {
+      if (!friendId) {
+        return;
+      }
+      const sanitized = String(friendId).trim();
+      if (!sanitized) {
+        return;
+      }
+      navigate(`${routes.profile.base}/${sanitized}`, { state: { from: location.pathname } });
+    },
+    [navigate, location.pathname]
+  );
 
   const handleAvatarFileChange = useCallback(
     (event) => {
@@ -1192,7 +1225,7 @@ function ProfilePage() {
             </Alert>
           ) : null}
 
-          <Stack spacing={2} alignItems="center" textAlign="center" sx={{ width: '100%', pt: 1 }}>
+          <Stack spacing={1} alignItems="center" textAlign="center" sx={{ width: '100%' }}>
               <Box
                 sx={{
                   position: 'relative',
@@ -1251,7 +1284,7 @@ function ProfilePage() {
                   {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
                 </Avatar>
               </Box>
-              <Box sx={{ height: 72 }} aria-hidden="true" />
+              <Box sx={{ height: 48 }} aria-hidden="true" />
               <Box>
                 <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', fontSize: '2rem' }}>
                   {displayName}
@@ -1460,32 +1493,77 @@ function ProfilePage() {
             <>
               <Divider />
               {statsVisible ? (
-                <>
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    justifyContent="space-between"
-                    alignItems={{ xs: 'stretch', sm: 'center' }}
-                    spacing={1}
-                    sx={{ px: 0.5 }}
-                  >
-                    <Box className="summary-box" sx={{ flex: '0 0 auto' }}>
-                      <Typography variant="body2">Post count: {postCount}</Typography>
-                    </Box>
-                    <Box className="summary-box" sx={{ flex: '0 0 auto', textAlign: 'right' }}>
-                      <Typography variant="body2">Events hosted: {eventsHosted}</Typography>
-                    </Box>
-                  </Stack>
-                  <Stack direction="row" sx={{ px: 0.5 }}>
-                    <Box className="summary-box" sx={{ flex: '0 0 auto' }}>
-                      <Typography variant="body2">Events attended: {eventsAttended}</Typography>
-                    </Box>
-                  </Stack>
-                </>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  flexWrap="wrap"
+                  sx={{ px: 0.5, rowGap: 1 }}
+                >
+                  <Box className="summary-box" sx={{ flex: '1 0 160px' }}>
+                    <Typography variant="body2">Post count: {postCount}</Typography>
+                  </Box>
+                  <Box className="summary-box" sx={{ flex: '1 0 160px' }}>
+                    <Typography variant="body2">Events hosted: {eventsHosted}</Typography>
+                  </Box>
+                  <Box className="summary-box" sx={{ flex: '1 0 160px' }}>
+                    <Typography variant="body2">Events attended: {eventsAttended}</Typography>
+                  </Box>
+                </Stack>
               ) : (
                 <Typography variant="body2" color="text.secondary" sx={{ px: 0.5 }}>
                   This user keeps their stats private.
                 </Typography>
               )}
+            {!isViewingSelf ? (
+                <Section
+                  title="Mutual friends"
+                >
+                  {mutualFriendCount > 0 ? (
+                    <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={2}>
+                      {mutualFriendPreview.map((friend) => {
+                        const friendId = friend?._id || friend?.id || friend?.userId;
+                        const friendName =
+                          friend?.displayName || friend?.username || friend?.email || 'Friend';
+                        return (
+                          <ButtonBase
+                            key={friendId || friendName}
+                            onClick={() => handleOpenMutualFriend(friendId)}
+                            sx={{
+                              textAlign: 'center',
+                              borderRadius: 3,
+                              p: 1,
+                              width: 96,
+                              flexDirection: 'column'
+                            }}
+                          >
+                            <Avatar
+                              src={resolveAvatarUrl(friend?.avatar) ?? undefined}
+                              alt={friendName}
+                              sx={{ width: 56, height: 56, mb: 0.5 }}
+                            >
+                              {friendName?.charAt(0)?.toUpperCase() || 'F'}
+                            </Avatar>
+                            <Typography variant="caption" noWrap>
+                              {friendName}
+                            </Typography>
+                          </ButtonBase>
+                        );
+                      })}
+                      {mutualFriendCount > mutualFriendPreview.length ? (
+                        <Chip
+                          label={`+${mutualFriendCount - mutualFriendPreview.length} more`}
+                          variant="outlined"
+                          sx={{ alignSelf: 'center' }}
+                        />
+                      ) : null}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      You have no mutual friends yet. Start connecting!
+                    </Typography>
+                  )}
+                </Section>
+              ) : null}
               <Stack spacing={3}>
                 <Section
                   title="Bio"
@@ -1516,26 +1594,34 @@ function ProfilePage() {
                         const badgeImageUrl = resolveBadgeImageUrl(badgeInfo.image);
                         return (
                           <Tooltip key={badgeId} title={badgeInfo.description} arrow enterTouchDelay={0}>
-                            <Chip
-                              label={badgeInfo.label}
-                              color="primary"
-                              variant="outlined"
+                            <Box
                               sx={{
-                                fontSize: '1rem',
-                                px: 1.5,
-                                py: 0.75,
-                                borderWidth: 2
+                                borderRadius: 3,
+                                p: 1.5,
+                                minWidth: 140,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: 1,
+                                textAlign: 'center',
+                                boxShadow: 2
                               }}
-                              avatar={
-                                badgeImageUrl ? (
-                                  <Avatar
-                                    src={badgeImageUrl}
-                                    alt={`${badgeInfo.label} badge`}
-                                    sx={{ width: 56, height: 56 }}
-                                  />
-                                ) : undefined
-                              }
-                            />
+                            >
+                              {badgeImageUrl ? (
+                                <Avatar
+                                  src={badgeImageUrl}
+                                  alt={`${badgeInfo.label} badge`}
+                                  sx={{ width: 72, height: 72 }}
+                                />
+                              ) : (
+                                <Avatar sx={{ width: 72, height: 72 }}>
+                                  {badgeInfo.label.charAt(0)}
+                                </Avatar>
+                              )}
+                              <Typography variant="subtitle1" fontWeight={600}>
+                                {badgeInfo.label}
+                              </Typography>
+                            </Box>
                           </Tooltip>
                         );
                       })}
@@ -1584,6 +1670,29 @@ function ProfilePage() {
                       )}
                       <Typography variant="body2" color="text.secondary">
                         {isBlocked ? 'Unblock' : 'Block'}
+                      </Typography>
+                    </Box>
+                  ) : null}
+
+                  {!isViewingSelf ? (
+                    <Box
+                      className="section-content-box"
+                      sx={{
+                        flex: 1,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                        p: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 1,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <PersonAddIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+                      <Typography variant="body2" color="text.secondary">
+                        Add friend
                       </Typography>
                     </Box>
                   ) : null}
@@ -1778,9 +1887,5 @@ function ProfilePage() {
 }
 
 export default ProfilePage;
-
-
-
-
 
 
