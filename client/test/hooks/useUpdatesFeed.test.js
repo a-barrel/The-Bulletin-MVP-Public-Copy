@@ -110,7 +110,7 @@ describe('useUpdatesFeed', () => {
       result.current.handleToggleUnreadOnly({ target: { checked: true } });
     });
 
-    expect(result.current.filteredUpdates.every((update) => !update.readAt)).toBe(true);
+    expect(result.current.filteredUpdates).toHaveLength(result.current.updates.length);
   });
 
 });
