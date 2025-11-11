@@ -21,6 +21,7 @@ Last updated: 2025‑11‑10
 
 - **Neutrals:** `#000000` (primary text), `#1E1E1E` (body copy variant), `#757575` (secondary copy), `#B3B3B3` (dividers), `#00000080` (overlays/focus scrims).
 - **Rule:** Avoid pure black UI fills—reserve `#000000` for text; lean on washes or dark purple for backgrounds.
+- **Reverse text rule:** Default text color is black (`#000000`) on washes and white backgrounds, but flip to Brand White when it sits on dark fills like Dark Purple (`#5D3889`), destructive banners, or other saturated blocks called out in this guide. Always verify contrast ≥ 4.5:1 when you invert colors.
 - **Alert colors:** `#FF3B30` (destructive), `#3EB8F0` / `#5D3889` (info states) appear in Figma exports—reuse them consistently.
 
 ## 3. Typography
@@ -28,7 +29,7 @@ Last updated: 2025‑11‑10
 - **Fallback stack:** `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`.
 - **Common sizes:** Body 16px (single-line + multi-line), captions 14px, sub-labels 10–12px, headline 24px, hero/title 32px. Occasional jumbo headings (60–70px) appear in marketing contexts.
 - **Line heights:** Aim for 1.4–1.6 on body text; headings can be tighter (1.2–1.3).
-- **Style tips:** Text is almost always black; keep headings friendly/bold and body copy highly legible (no letter-spacing tricks). Use uppercase sparingly.
+- **Style tips:** Text is almost always black; reserve white text for the dark-on-dark combos called out in §2 (e.g., buttons or headers using Dark Purple). Keep headings friendly/bold and body copy highly legible (no letter-spacing tricks). Use uppercase sparingly.
 
 ## 4. Layout & Spacing
 - **Spacing rhythm:** Small increments (mostly 2–4px multiples in Figma). Favor 8px-based padding for larger structures and halve it for tight clusters.
