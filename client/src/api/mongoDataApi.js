@@ -6,6 +6,42 @@ const DEFAULT_NEARBY_DISTANCE_MILES = Number.isFinite(runtimeConfig.defaultNearb
   ? runtimeConfig.defaultNearbyRadius
   : 10;
 const API_ERROR_EXPIRY_MS = 30 * 1000;
+const DEFAULT_RETRY_ATTEMPTS = 1;
+const DEFAULT_RETRY_DELAY_MS = 250;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function isRetriableNetworkError(error) {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  if (error.name === 'AbortError' || error.isApiError) {
+    return false;
+  }
+  const message = typeof error.message === 'string' ? error.message.toLowerCase() : '';
+  if (error.name && error.name.toLowerCase() === 'typeerror') {
+    return true;
+  }
+  return message.includes('failed to fetch') || message.includes('network request failed');
+}
+
+async function withNetworkRetry(fn, { retries = DEFAULT_RETRY_ATTEMPTS, delayMs = DEFAULT_RETRY_DELAY_MS } = {}) {
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      const shouldRetry = attempt < retries && isRetriableNetworkError(error);
+      if (!shouldRetry) {
+        throw error;
+      }
+      const backoff = delayMs * Math.max(1, attempt + 1);
+      await sleep(backoff);
+    }
+  }
+  throw lastError;
+}
 
 function resolveApiBaseUrl() {
   // In dev we rely on Vite's proxy to avoid CORS and absolute origins.
@@ -477,7 +513,8 @@ export async function fetchPinById(pinId, options = {}) {
     throw new Error('Pin id is required');
   }
 
-  const { signal, previewMode } = options;
+  const { signal, previewMode, retryAttempts = DEFAULT_RETRY_ATTEMPTS, retryDelayMs = DEFAULT_RETRY_DELAY_MS } =
+    options;
   const baseUrl = resolveApiBaseUrl();
   const params = new URLSearchParams();
   if (typeof previewMode === 'string' && previewMode.trim().length > 0) {
@@ -488,7 +525,7 @@ export async function fetchPinById(pinId, options = {}) {
     ? `${baseUrl}/api/pins/${encodeURIComponent(pinId)}?${query}`
     : `${baseUrl}/api/pins/${encodeURIComponent(pinId)}`;
 
-  try {
+  const executeRequest = async () => {
     const response = await fetch(url, {
       method: 'GET',
       headers: await buildHeaders(),
@@ -508,6 +545,10 @@ export async function fetchPinById(pinId, options = {}) {
     }
 
     return payload;
+  };
+
+  try {
+    return await withNetworkRetry(executeRequest, { retries: retryAttempts, delayMs: retryDelayMs });
   } catch (error) {
     if (!hasApiErrorBeenLogged(error)) {
       await logApiError('/api/pins/:pinId', error, { pinId, previewMode: previewMode ?? null });

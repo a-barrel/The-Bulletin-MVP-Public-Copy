@@ -24,6 +24,7 @@ import {
 } from '../../utils/chatParticipants';
 import normalizeObjectId from '../../utils/normalizeObjectId';
 import { formatFriendlyTimestamp, formatRelativeTime } from '../../utils/dates';
+import FriendBadge from '../FriendBadge';
 
 function DirectThreadList({
   threads,
@@ -203,6 +204,9 @@ function DirectThreadList({
                 primary={
                   <Typography variant="subtitle1" fontWeight={600}>
                     {displayName}
+                    {!isGroupChat && otherParticipantEntries[0]?.id ? (
+                      <FriendBadge userId={otherParticipantEntries[0].id} size="0.85em" />
+                    ) : null}
                   </Typography>
                 }
                 secondary={

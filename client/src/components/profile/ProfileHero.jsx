@@ -3,8 +3,16 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { ensureImageSrc, withFallbackOnError } from '../../utils/imageFallback';
+import FriendBadge from '../FriendBadge';
 
-function ProfileHero({ avatarSrc, bannerSrc, displayName, joinedDisplay, showEmptyState }) {
+function ProfileHero({
+  avatarSrc,
+  bannerSrc,
+  displayName,
+  joinedDisplay,
+  showEmptyState,
+  userId
+}) {
   return (
     <Stack spacing={1} alignItems="center" textAlign="center" sx={{ width: '100%' }}>
       <Box
@@ -71,6 +79,7 @@ function ProfileHero({ avatarSrc, bannerSrc, displayName, joinedDisplay, showEmp
       <Box>
         <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', fontSize: '2rem' }}>
           {displayName}
+          <FriendBadge userId={userId} />
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Joined: {joinedDisplay}

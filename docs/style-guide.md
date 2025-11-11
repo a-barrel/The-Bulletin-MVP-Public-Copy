@@ -43,6 +43,12 @@ Last updated: 2025‑11‑10
 - **Navigation / bars:** Keep pill indicators and nav buttons away from screen edges. Notification badges use `#F15BB5` or `#FF3B30` depending on urgency.
 - **Overlays:** Use translucent black (`#00000080`) with blur for modals/toasts; keep animation subtle.
 
+### Friend Badge Indicator
+- Purpose: show at-a-glance when the viewer is already friends with the referenced user.
+- Treatment: append the custom filled smiley SVG (circle face with halo) sized ~1.1em by default, tinted via `var(--friend-badge-color, #1BBF72)`, and nudged with `margin-left: 0.35rem`. The component exposes a `size` prop for constrained chips/captions.
+- Accessibility: the SVG lives inside a `role="img"` wrapper with `aria-label="Friend"`; screen readers announce the relationship even if the icon is hidden.
+- Surfaces: profile hero titles, DM thread list rows, chat bubbles, Updates friend-request chips, pin cards, and any shared user-name component. Reuse the `FriendBadge` component rather than recreating ad‑hoc spans.
+
 ## 6. Imagery & Media
 - **Style:** Clean photography or gentle purple ↔ blue gradients. Avoid harsh color clashes.
 - **Icons:** Simple, friendly vectors (outline or duotone). Maintain consistent stroke weight and sizing.
