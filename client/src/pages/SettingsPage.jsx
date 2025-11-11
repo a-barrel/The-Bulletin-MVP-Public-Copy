@@ -52,6 +52,7 @@ import { auth } from '../firebase';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import { routes } from '../routes';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
+import { useFriendBadgePreference } from '../contexts/FriendBadgePreferenceContext';
 import useSettingsManager, {
   DEFAULT_SETTINGS,
   RADIUS_MAX,
@@ -95,6 +96,8 @@ function SettingsPage() {
   const navigate = useNavigate();
   const [authUser, authLoading] = useAuthState(auth);
   const { enabled: badgeSoundEnabled, setEnabled: setBadgeSoundEnabled } = useBadgeSound();
+  const { enabled: friendBadgesEnabled, setEnabled: setFriendBadgesEnabled } =
+    useFriendBadgePreference();
   const { isOffline } = useNetworkStatusContext();
 
   const {
@@ -152,6 +155,8 @@ function SettingsPage() {
   const mapDensity = displaySettings.mapDensity;
   const celebrationSounds =
     displaySettings.celebrationSounds ?? DEFAULT_SETTINGS.display.celebrationSounds;
+  const showFriendBadges =
+    displaySettings.showFriendBadges ?? DEFAULT_SETTINGS.display.showFriendBadges;
   const dmPermission = settings.dmPermission ?? DEFAULT_SETTINGS.dmPermission;
   const digestFrequency = settings.digestFrequency ?? DEFAULT_SETTINGS.digestFrequency;
   const autoExportReminders =
@@ -374,6 +379,13 @@ function SettingsPage() {
   }, [badgeSoundEnabled, celebrationSounds, setBadgeSoundEnabled]);
 
   useEffect(() => {
+    if (showFriendBadges === friendBadgesEnabled) {
+      return;
+    }
+    setFriendBadgesEnabled(showFriendBadges);
+  }, [friendBadgesEnabled, setFriendBadgesEnabled, showFriendBadges]);
+
+  useEffect(() => {
     loadApiTokens().catch(() => {});
   }, [loadApiTokens]);
 
@@ -508,6 +520,18 @@ function SettingsPage() {
                       />
                     }
                     label="Play celebration sounds"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={showFriendBadges}
+                        onChange={(_, value) => {
+                          handleDisplayToggle('showFriendBadges', value);
+                          setFriendBadgesEnabled(value);
+                        }}
+                      />
+                    }
+                    label="Show friend badges next to names"
                   />
                 </Stack>
                 <Typography variant="caption" color="text.secondary">

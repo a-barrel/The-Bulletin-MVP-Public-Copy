@@ -787,6 +787,7 @@ function ProfilePage() {
             displayName={displayName}
             joinedDisplay={joinedDisplay}
             showEmptyState={!hasProfile && !isFetchingProfile && !fetchError}
+            userId={effectiveUser?._id ?? effectiveUser?.id ?? null}
           />
 
           {canEditProfile && isEditing ? (

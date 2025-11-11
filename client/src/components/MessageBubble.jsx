@@ -8,6 +8,7 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblemOutlined';
 import { ATTACHMENT_ONLY_PLACEHOLDER } from '../utils/chatAttachments';
 import { resolveAvatarSrc } from '../utils/chatParticipants';
 import { ensureImageSrc, withFallbackOnError } from '../utils/imageFallback';
+import FriendBadge from './FriendBadge';
 
 
 function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate, onReport }) {
@@ -96,6 +97,7 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
         <div className="chat-text-area-header">
           <Typography className="chat-author">
             {msg.author?.displayName || 'User'}
+            <FriendBadge userId={authorId} />
           </Typography>
           <div className="chat-header-meta">
             <Typography

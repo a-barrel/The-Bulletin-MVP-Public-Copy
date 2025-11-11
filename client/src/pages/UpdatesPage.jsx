@@ -37,6 +37,7 @@ import useUpdatesFeed from '../hooks/useUpdatesFeed';
 import { routes } from '../routes';
 import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
 import usePushNotifications from '../hooks/usePushNotifications';
+import FriendBadge from '../components/FriendBadge';
 
 export const pageConfig = {
   id: 'updates',
@@ -315,19 +316,28 @@ function UpdatesPage() {
                 </Typography>
                 {hasFriendRequests ? (
                   <Stack direction="row" spacing={1} mt={1} flexWrap="wrap" useFlexGap>
-                    {friendRequestsPreview.map((request) => (
-                      <Chip
-                        key={request.id}
-                        label={
-                          request.requester?.displayName ||
-                          request.requester?.username ||
-                          request.requester?.id ||
-                          'Unknown user'
-                        }
-                        color="secondary"
-                        variant="outlined"
-                      />
-                    ))}
+                    {friendRequestsPreview.map((request) => {
+                      const requesterId =
+                        request.requester?._id || request.requester?.id || request.requester?.userId;
+                      const requesterName =
+                        request.requester?.displayName ||
+                        request.requester?.username ||
+                        request.requester?.id ||
+                        'Unknown user';
+                      return (
+                        <Chip
+                          key={request.id}
+                          label={
+                            <span className="friend-chip-label">
+                              {requesterName}
+                              <FriendBadge userId={requesterId} size="0.8em" />
+                            </span>
+                          }
+                          color="secondary"
+                          variant="outlined"
+                        />
+                      );
+                    })}
                     {remainingFriendRequests > 0 ? (
                       <Chip label={`+${remainingFriendRequests} more`} variant="outlined" />
                     ) : null}
@@ -578,6 +588,8 @@ function UpdatesPage() {
             ) : null}
 
             {incomingRequests.map((request) => {
+              const requesterId =
+                request.requester?._id || request.requester?.id || request.requester?.userId;
               const requesterName =
                 request.requester?.displayName ||
                 request.requester?.username ||
@@ -599,6 +611,7 @@ function UpdatesPage() {
                     <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                       <Typography variant="subtitle1" fontWeight={600}>
                         {requesterName}
+                        <FriendBadge userId={requesterId} size="0.85em" />
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {request.createdAt

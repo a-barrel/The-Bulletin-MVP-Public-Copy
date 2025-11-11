@@ -4,6 +4,12 @@
   font-family: "Urbanist", sans-serif;
 }
 
+.friend-chip-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 /* ===== Outer Shell ===== */
 .updates-page {
   display: flex;

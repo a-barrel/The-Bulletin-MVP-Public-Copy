@@ -46,7 +46,8 @@ export const DEFAULT_SETTINGS = {
     reduceMotion: false,
     highContrast: false,
     mapDensity: 'balanced',
-    celebrationSounds: true
+    celebrationSounds: true,
+    showFriendBadges: true
   }
 };
 
@@ -163,7 +164,10 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
               result?.preferences?.display?.mapDensity ?? DEFAULT_SETTINGS.display.mapDensity,
             celebrationSounds:
               result?.preferences?.display?.celebrationSounds ??
-              DEFAULT_SETTINGS.display.celebrationSounds
+              DEFAULT_SETTINGS.display.celebrationSounds,
+            showFriendBadges:
+              result?.preferences?.display?.showFriendBadges ??
+              DEFAULT_SETTINGS.display.showFriendBadges
           }
         });
       } catch (error) {
@@ -323,7 +327,10 @@ const baselineSettings = useMemo(() => {
           profile?.preferences?.display?.highContrast ?? DEFAULT_SETTINGS.display.highContrast,
         mapDensity: profile?.preferences?.display?.mapDensity ?? DEFAULT_SETTINGS.display.mapDensity,
         celebrationSounds:
-          profile?.preferences?.display?.celebrationSounds ?? DEFAULT_SETTINGS.display.celebrationSounds
+          profile?.preferences?.display?.celebrationSounds ?? DEFAULT_SETTINGS.display.celebrationSounds,
+        showFriendBadges:
+          profile?.preferences?.display?.showFriendBadges ??
+          DEFAULT_SETTINGS.display.showFriendBadges
       }
     };
   }, [profile]);
@@ -578,7 +585,8 @@ const baselineSettings = useMemo(() => {
             reduceMotion: settings.display.reduceMotion,
             highContrast: settings.display.highContrast,
             mapDensity: settings.display.mapDensity,
-            celebrationSounds: settings.display.celebrationSounds
+            celebrationSounds: settings.display.celebrationSounds,
+            showFriendBadges: settings.display.showFriendBadges
           },
           data: {
             autoExportReminders: settings.autoExportReminders

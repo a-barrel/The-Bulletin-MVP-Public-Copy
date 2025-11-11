@@ -4,6 +4,7 @@ import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import ProfileSection from './ProfileSection';
+import FriendBadge from '../FriendBadge';
 
 function ProfileMutualFriends({
   mutualFriendCount,
@@ -41,8 +42,13 @@ function ProfileMutualFriends({
                 >
                   {friendName?.charAt(0)?.toUpperCase() || 'F'}
                 </Avatar>
-                <Typography variant="caption" noWrap>
+                <Typography
+                  variant="caption"
+                  noWrap
+                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}
+                >
                   {friendName}
+                  <FriendBadge userId={friendId} size="0.75em" />
                 </Typography>
               </ButtonBase>
             );
