@@ -88,6 +88,35 @@ export function useChatManager({
   const presenceIntervalRef = useRef(null);
   const gifPreviewRequestRef = useRef(null);
 
+  const resolvedLatitude = Number.isFinite(viewerLatitude)
+    ? viewerLatitude
+    : Number.isFinite(DEFAULT_COORDINATES.latitude)
+    ? DEFAULT_COORDINATES.latitude
+    : undefined;
+  const resolvedLongitude = Number.isFinite(viewerLongitude)
+    ? viewerLongitude
+    : Number.isFinite(DEFAULT_COORDINATES.longitude)
+    ? DEFAULT_COORDINATES.longitude
+    : undefined;
+  const locationParams = useMemo(() => {
+    if (!Number.isFinite(resolvedLatitude) || !Number.isFinite(resolvedLongitude)) {
+      return null;
+    }
+    return {
+      latitude: resolvedLatitude,
+      longitude: resolvedLongitude
+    };
+  }, [resolvedLatitude, resolvedLongitude]);
+  const locationPayload = useMemo(() => {
+    if (!locationParams) {
+      return {};
+    }
+    return {
+      latitude: locationParams.latitude,
+      longitude: locationParams.longitude
+    };
+  }, [locationParams]);
+
   useEffect(() => {
     if (typeof refreshUnreadCount === 'function' && !isOffline) {
       refreshUnreadCount({ silent: true });
@@ -115,10 +144,14 @@ export function useChatManager({
     setIsLoadingRooms(true);
     setRoomsError(null);
     try {
-      const data = await fetchChatRooms({
-        latitude: Number.isFinite(viewerLatitude) ? viewerLatitude : undefined,
-        longitude: Number.isFinite(viewerLongitude) ? viewerLongitude : undefined
-      });
+      const data = await fetchChatRooms(
+        locationParams
+          ? {
+              latitude: locationParams.latitude,
+              longitude: locationParams.longitude
+            }
+          : {}
+      );
       setRooms(data);
       if (data.length > 0 && !selectedRoomId) {
         setSelectedRoomId(data[0]._id);
@@ -129,7 +162,7 @@ export function useChatManager({
     } finally {
       setIsLoadingRooms(false);
     }
-  }, [authUser, selectedRoomId, viewerLatitude, viewerLongitude]);
+  }, [authUser, locationParams, selectedRoomId]);
 
   useEffect(() => {
     if (!authLoading && authUser) {
@@ -147,7 +180,15 @@ export function useChatManager({
       }
       setMessagesError(null);
       try {
-        const data = await fetchChatMessages(roomId);
+        const data = await fetchChatMessages(
+          roomId,
+          locationParams
+            ? {
+                latitude: locationParams.latitude,
+                longitude: locationParams.longitude
+              }
+            : {}
+        );
         setMessages(data);
       } catch (error) {
         setMessages([]);
@@ -158,7 +199,7 @@ export function useChatManager({
         }
       }
     },
-    []
+    [locationParams]
   );
 
   const loadPresence = useCallback(async (roomId) => {
@@ -166,14 +207,22 @@ export function useChatManager({
       return;
     }
     try {
-      const data = await fetchChatPresence(roomId);
+      const data = await fetchChatPresence(
+        roomId,
+        locationParams
+          ? {
+              latitude: locationParams.latitude,
+              longitude: locationParams.longitude
+            }
+          : {}
+      );
       setPresence(data);
       setPresenceError(null);
     } catch (error) {
       setPresence([]);
       setPresenceError(error?.message || 'Failed to load room presence.');
     }
-  }, []);
+  }, [locationParams]);
 
   useEffect(() => {
     if (!selectedRoomId) {
@@ -218,7 +267,15 @@ export function useChatManager({
 
     const sendPresenceHeartbeat = async () => {
       try {
-        await upsertChatPresence(selectedRoomId, {});
+        await upsertChatPresence(
+          selectedRoomId,
+          locationParams
+            ? {
+                latitude: locationParams.latitude,
+                longitude: locationParams.longitude
+              }
+            : {}
+        );
       } catch (error) {
         console.warn('Failed to update chat presence', error);
       }
@@ -227,7 +284,7 @@ export function useChatManager({
     sendPresenceHeartbeat();
     const interval = setInterval(sendPresenceHeartbeat, PRESENCE_HEARTBEAT_MS);
     return () => clearInterval(interval);
-  }, [authUser, selectedRoomId]);
+  }, [authUser, locationParams, selectedRoomId]);
 
   const requestGifPreview = useCallback(
     async (query) => {
@@ -385,7 +442,8 @@ export function useChatManager({
       try {
         const payload = await createChatMessage(selectedRoomId, {
           message: `GIF: ${query}`,
-          attachments: [attachment]
+          attachments: [attachment],
+          ...locationPayload
         });
         handleMessageSent(payload);
       } catch (error) {
@@ -394,7 +452,7 @@ export function useChatManager({
         setIsSendingMessage(false);
       }
     },
-    [authUser, handleMessageSent, isSendingMessage, selectedRoomId]
+    [authUser, handleMessageSent, isSendingMessage, locationPayload, selectedRoomId]
   );
 
   const handleSendMessage = useCallback(
@@ -429,7 +487,8 @@ export function useChatManager({
       try {
         const message = await createChatMessage(selectedRoomId, {
           message: messageToSend,
-          attachments
+          attachments,
+          ...locationPayload
         });
         handleMessageSent(message);
         return true;
@@ -446,6 +505,7 @@ export function useChatManager({
       handleMessageSent,
       isSendingMessage,
       messageDraft,
+      locationPayload,
       requestGifPreview,
       selectedRoomId
     ]
