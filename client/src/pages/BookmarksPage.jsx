@@ -444,8 +444,6 @@ function BookmarksPage() {
                             onSelectItem={handleCardSelect}
                             onSelectAuthor={handleViewAuthor}
                             showAttendeeAvatars={false}
-                            showBookmarkButton={false}
-                            enableBookmarkToggle={false}
                             className="pin-card--fluid"
                           />
                         ) : (
