@@ -28,7 +28,19 @@ function ProfileEditForm({
   onToggleLocationSharing
 }) {
   return (
-    <Stack spacing={2} sx={{ alignSelf: 'stretch', maxWidth: 720, width: '100%', margin: '1.5rem auto 0' }}>
+    <Stack
+      spacing={2}
+      sx={{
+        alignSelf: 'center',
+        maxWidth: 720,
+        width: '100%',
+        margin: '1.5rem auto 0',
+        backgroundColor: '#ECF8FE',
+        borderRadius: 3,
+        boxShadow: '0 18px 40px rgba(93, 56, 137, 0.15)',
+        p: { xs: 2, md: 3 }
+      }}
+    >
       {updateStatus ? (
         <Alert severity={updateStatus.type} onClose={onDismissUpdateStatus} sx={{
           backgroundColor:
@@ -62,9 +74,8 @@ function ProfileEditForm({
         sx={{
           p: 2,
           borderRadius: 2,
-          border: '1px solid',
-          borderColor: '#000',
-          backgroundColor: '#f2f2f2'
+          backgroundColor: '#ECF8FE',
+          boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)'
         }}
       >
         <Stack spacing={1.5}>
@@ -96,25 +107,32 @@ function ProfileEditForm({
               </Typography>
             )}
           </Box>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-            <Button component="label" variant="outlined" size="small" disabled={isSaving}>
-              Upload banner
-              <input type="file" hidden accept="image/*" onChange={onBannerFileChange} />
-            </Button>
-            <Button
-              type="button"
-              variant="text"
-              color="warning"
-              size="small"
-              onClick={onClearBanner}
-              disabled={
-                isSaving || (formState.bannerCleared && !formState.bannerFile && !editingBannerSrc)
-              }
-            >
-              Remove banner
-            </Button>
-          </Stack>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+          <Button
+            component="label"
+            variant="outlined"
+            size="small"
+            disabled={isSaving}
+            sx={{ borderWidth: 2, borderColor: '#000', color: '#000' }}
+          >
+            Upload banner
+            <input type="file" hidden accept="image/*" onChange={onBannerFileChange} />
+          </Button>
+          <Button
+            type="button"
+            variant="text"
+            color="warning"
+            size="small"
+            onClick={onClearBanner}
+            disabled={
+              isSaving || (formState.bannerCleared && !formState.bannerFile && !editingBannerSrc)
+            }
+            sx={{ color: '#5D3889' }}
+          >
+            Remove banner
+          </Button>
         </Stack>
+      </Stack>
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
           <Avatar
@@ -125,7 +143,13 @@ function ProfileEditForm({
             {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
           </Avatar>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-            <Button component="label" variant="outlined" size="small" disabled={isSaving}>
+            <Button
+              component="label"
+              variant="outlined"
+              size="small"
+              disabled={isSaving}
+              sx={{ borderWidth: 2, borderColor: '#000', color: '#000' }}
+            >
               Upload avatar
               <input type="file" hidden accept="image/*" onChange={onAvatarFileChange} />
             </Button>
@@ -138,6 +162,7 @@ function ProfileEditForm({
               disabled={
                 isSaving || (formState.avatarCleared && !formState.avatarFile && !editingAvatarSrc)
               }
+              sx={{ color: '#5D3889' }}
             >
               Remove avatar
             </Button>
@@ -151,6 +176,8 @@ function ProfileEditForm({
           required
           disabled={isSaving}
           fullWidth
+          InputProps={{ sx: { '& .MuiOutlinedInput-notchedOutline': { borderWidth: 2, borderColor: '#000' } } }}
+          InputLabelProps={{ sx: { color: '#1f1336' } }}
         />
 
         <TextField
@@ -163,6 +190,8 @@ function ProfileEditForm({
           disabled={isSaving}
           inputProps={{ maxLength: 500 }}
           fullWidth
+          InputProps={{ sx: { '& .MuiOutlinedInput-notchedOutline': { borderWidth: 2, borderColor: '#000' } } }}
+          InputLabelProps={{ sx: { color: '#1f1336' } }}
         />
 
         <TextField
@@ -172,6 +201,8 @@ function ProfileEditForm({
           select
           disabled={isSaving}
           fullWidth
+          InputProps={{ sx: { '& .MuiOutlinedInput-notchedOutline': { borderWidth: 2, borderColor: '#000' } } }}
+          InputLabelProps={{ sx: { color: '#1f1336' } }}
         >
           <MenuItem value="system">System default</MenuItem>
           <MenuItem value="light">Light</MenuItem>
@@ -188,6 +219,7 @@ function ProfileEditForm({
             />
           }
           label="Share location with nearby features"
+          sx={{ color: '#1f1336' }}
         />
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} justifyContent="flex-end">
