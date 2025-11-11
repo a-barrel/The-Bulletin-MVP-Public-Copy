@@ -18,6 +18,7 @@ import {
   Tab,
   Typography
 } from '@mui/material';
+import './AdminDashboard.css';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DoneIcon from '@mui/icons-material/Done';
@@ -260,6 +261,7 @@ function AdminDashboard() {
 
   return (
     <Box
+      className="admin-dashboard"
       sx={{
         width: '100%',
         maxWidth: 1080,
