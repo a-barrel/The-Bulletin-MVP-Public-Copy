@@ -85,6 +85,25 @@ Fetch a pin with `GET /api/pins/:pinId`, run it through `DebugPin.fromApi(payloa
 | `shareCount` | `number` | Shares recorded. |
 | `viewCount` | `number` | Unique view counter. |
 
+## PinCard Data Contract (List + Bookmarks)
+
+`PinCard` is the shared card component for the List feed and the bookmarks page. All endpoints that hydrate these surfaces must provide the following shape so `mapPinToFeedItem` (List) and `mapBookmarkToFeedItem` (Bookmarks) can render without extra fetches.
+
+| Field | Required? | Notes |
+|-------|-----------|-------|
+| `_id` / `pinId` | Yes | Unique pin identifier used for routing and accessibility. |
+| `type` | Yes | `'event'` or `'discussion'`; drives the badge + background styling. |
+| `title` | Yes | Plain-text headline. The card falls back to `Untitled pin` when unset. |
+| `creator` + `creatorId` | Yes | Supplies display name + avatar for the author button. |
+| `viewerHasBookmarked` / `isBookmarked` | Optional (recommended) | Keeps the bookmark toggle in sync without another API call. |
+| `viewerOwnsPin` / `viewerIsAttending` | Optional (recommended) | When provided, the bookmark button auto-locks for owners/attendees. |
+| `stats.replyCount` or `replyCount` | Optional (recommended) | Populates the comments counter. Missing values hide the metric. |
+| `stats.participantCount` or `participantCount` | Optional (recommended) | Powers the attendee pill + count for events. |
+| `attendingUserIds` | Optional | Lets the attendee hook fetch avatars. |
+| `coverPhoto` / `photos` / `images` | Optional | Any media asset array will be normalised into the gallery. |
+
+When bookmarks only expose a preview document, ensure these fields are projected in the payload. The new `mapBookmarkToFeedItem` utility will inject sensible fallbacks, but missing required fields causes the UI to fall back to the “Pin unavailable” empty state for that bookmark.
+
 ## Pin Options (`payload.options`)
 
 | Field | Type | Meaning |
