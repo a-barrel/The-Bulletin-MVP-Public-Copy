@@ -64,27 +64,7 @@ Feel free to tweak values or add additional documents - the IDs in this dataset 
 - To regenerate or adjust the grid when refreshing fixtures, drop the following helper into a shell and tweak the `CENTER`/`DELTA` constants as needed. The script prints JSON blocks you can paste back into the proximity chat rooms file:
 
 ```bash
-node - <<'NODE'
-const CENTER = { lat: 33.7839, lon: -118.1142 };
-const DELTA_LAT = 0.029;    // ~2 miles north/south
-const DELTA_LON = 0.035;    // ~2 miles east/west at CSULB's latitude
-const names = [
-  ['Northwest',  1,  1],
-  ['Northeast',  1, -1],
-  ['Southwest', -1,  1],
-  ['Southeast', -1, -1],
-];
-const radiusMeters = 1600;
-for (const [label, latFlip, lonFlip] of names) {
-  const lat = Number((CENTER.lat + (DELTA_LAT / 2) * latFlip).toFixed(4));
-  const lon = Number((CENTER.lon + (DELTA_LON / 2) * lonFlip).toFixed(4));
-  console.log(JSON.stringify({
-    name: `CSULB Grid — ${label} Hub`,
-    coordinates: { type: 'Point', coordinates: [lon, lat], accuracy: 6 },
-    radiusMeters
-  }, null, 2), ',');
-}
-NODE
+node scripts/generate-proximity-grid.js > docs/mongodb-local-sample-data/mongodb-sample-proximityChatRooms.json
 ```
 
-The helper keeps the math in one place—update the deltas to widen/narrow the overlap or change the center if we ever move beyond CSULB.
+The generator emits a 5×5 overlap grid (approx 2 mile spacing with 2.6 km radius) centered on CSULB. Tweak the script constants if you ever need a different center, spacing, or radius.
