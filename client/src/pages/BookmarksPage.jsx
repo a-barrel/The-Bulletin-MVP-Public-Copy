@@ -52,6 +52,7 @@ export const pageConfig = {
   protected: true
 };
 
+// Bookmarks without a collection drop into this pseudo-collection so the UI stays consistent.
 const UNSORTED_COLLECTION_KEY = '__ungrouped__';
 const UNSORTED_LABEL = 'Unsorted';
 const BOOKMARK_QUICK_NAV_PREFS_KEY = 'pinpoint:bookmarkQuickNavPrefs';
@@ -62,6 +63,7 @@ function BookmarksPage() {
   const [searchParams] = useSearchParams();
   const { isOffline } = useNetworkStatusContext();
   const [authUser, authLoading] = useAuthState(auth);
+  // Pull the bookmark payload plus helper actions from the shared data manager hook.
   const {
     groupedBookmarks,
     totalCount,
@@ -80,6 +82,7 @@ function BookmarksPage() {
     formatSavedDate,
     collections
   } = useBookmarksManager({ authUser, authLoading, isOffline });
+  // Local quick-nav state mirrors localStorage so designers can pin/unpin collections per device.
   const [quickNavPrefs, setQuickNavPrefs] = useState(() => {
     if (typeof window === 'undefined') {
       return { hidden: [] };
@@ -110,13 +113,17 @@ function BookmarksPage() {
     return { hidden: [] };
   });
   const [highlightedCollectionKey, setHighlightedCollectionKey] = useState(null);
+  // Track DOM nodes for each collection header so we can scroll to them later.
   const collectionAnchorsRef = useRef(new Map());
+  // Prevent spamming scrollIntoView when effects rerun with the same target.
   const focusAppliedRef = useRef(null);
   const focusParam = searchParams.get('collection');
+  // Normalize the search param once so we can match either collection IDs or display names.
   const normalizedFocusParam = useMemo(
     () => (focusParam ? focusParam.trim().toLowerCase() : null),
     [focusParam]
   );
+  // Resolve which collection should be highlighted/auto-scrolled, supporting ?collection=id or name.
   const resolvedFocus = useMemo(() => {
     if (!normalizedFocusParam) {
       return null;
@@ -151,6 +158,7 @@ function BookmarksPage() {
     return null;
   }, [collections, focusParam, normalizedFocusParam]);
 
+  // Auto-scroll to a collection whenever ?collection= changes and briefly highlight its header.
   useEffect(() => {
     if (!resolvedFocus) {
       setHighlightedCollectionKey(null);
@@ -240,6 +248,7 @@ function BookmarksPage() {
     [navigate]
   );
 
+  // Allow sharing author-profile navigation logic with other feeds.
   const handleViewAuthor = useCallback(
     (authorId) => {
       const normalized = normalizeObjectId(authorId);
@@ -251,6 +260,7 @@ function BookmarksPage() {
     [navigate]
   );
 
+  // Everything below is pure presentation: header actions, alerts, and a grouped list of PinCards.
   return (
     <Box
       sx={{
@@ -378,7 +388,9 @@ function BookmarksPage() {
                 const normalizedName = displayName.trim().toLowerCase();
                 const isHighlighted = highlightedCollectionKey === groupKey;
                 const isPinned = !quickNavPrefs.hidden.includes(groupKey);
+                // Quick-nav shows pinned collections, so the button flips that preference per list.
 
+                // Render one collection header followed by its saved pins.
                 return (
                   <Box key={groupKey}>
                   <ListSubheader
