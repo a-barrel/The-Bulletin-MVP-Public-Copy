@@ -1,3 +1,15 @@
+/**
+ * PinCard is the shared “single pin” presenter used by List feeds and any future
+ * surfaces that need the same card UX. Pass it a pin-like `item` plus optional callbacks:
+ *   - `onSelectItem(pinId, item)` to open the pin when the card is clicked.
+ *   - `onSelectAuthor(authorId, item)` to handle avatar/name clicks.
+ * Use the boolean props (`showAttendeeAvatars`, `showBookmarkButton`, `enableBookmarkToggle`)
+ * to toggle individual features per page, and forward a custom `className` (e.g. `pin-card--fluid`)
+ * if the card needs to stretch inside a different layout.
+ * 
+ * Reference docs/frontend-api-cheatsheet.md (“PinCard Data Contract”) for the payload fields this card expects.
+ */
+
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./PinCard.css";
 import PinTagIcon from "../assets/Event_Pin.svg";
@@ -17,6 +29,7 @@ import {
   resolveAuthorName,
   resolveLibraryAvatar
 } from "../utils/feed";
+// Reference docs/frontend-api-cheatsheet.md (“PinCard Data Contract”) for the payload fields this card expects.
 
 const TAG_ICON_MAP = {
   pin: {

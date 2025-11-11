@@ -3,6 +3,8 @@ import "./Feed.css";
 import PinCard from "./PinCard";
 import { resolveAuthorName } from "../utils/feed";
 
+// Feed only manages the list container and passes each item to PinCard so every surface shares identical card UX.
+
 export default function Feed({ items, onSelectItem, onSelectAuthor }) {
   if (!Array.isArray(items) || items.length === 0) {
     return (
