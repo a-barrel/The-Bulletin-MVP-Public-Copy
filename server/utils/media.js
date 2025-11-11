@@ -6,6 +6,8 @@ const runtime = require('../config/runtime');
 
 const LEGACY_PROFILE_IMAGE_REGEX = /(\/images\/profile\/profile-\d+)\.png$/i;
 const DEFAULT_PROFILE_IMAGE_REGEX = /\/images\/profile\/profile-\d+\.(?:png|jpg)$/i;
+const FALLBACK_TEXTURE_FILENAME = 'UNKNOWN_TEXTURE.jpg';
+const FALLBACK_TEXTURE_PATH = `/images/${FALLBACK_TEXTURE_FILENAME}`;
 
 const isAbsoluteUrl = (value) => /^(?:[a-z]+:)?\/\//i.test(value);
 
@@ -35,6 +37,32 @@ const OFFLINE_MEDIA_HOSTS = new Set(['localhost:5000', '127.0.0.1:5000', 'localh
 const isSafePath = (value) => {
   const normalized = value.replace(/\\/g, '/');
   return !normalized.split('/').some((segment) => segment === '..' || segment === '');
+};
+
+const getFallbackTextureAbsolutePath = () => path.join(IMAGES_ROOT, FALLBACK_TEXTURE_FILENAME);
+
+const fallbackTextureExists = () => {
+  const absolutePath = getFallbackTextureAbsolutePath();
+  try {
+    return fs.existsSync(absolutePath);
+  } catch (error) {
+    console.warn('Failed to check fallback texture existence:', error);
+    return false;
+  }
+};
+
+const getFallbackTextureUrl = () => {
+  if (runtime?.publicBaseUrl) {
+    return `${runtime.publicBaseUrl}${FALLBACK_TEXTURE_PATH}`;
+  }
+  return FALLBACK_TEXTURE_PATH;
+};
+
+const ensureFallbackTexturePath = (defaultValue) => {
+  if (fallbackTextureExists()) {
+    return FALLBACK_TEXTURE_PATH;
+  }
+  return defaultValue;
 };
 
 const resolveStaticImagePath = (value) => {
@@ -80,7 +108,7 @@ const resolveStaticImagePath = (value) => {
     }
   }
 
-  return value;
+  return ensureFallbackTexturePath(value);
 };
 
 const normalizeMediaUrl = (value) => {
@@ -104,7 +132,7 @@ const normalizeMediaUrl = (value) => {
         }
         return normalizedPath;
       }
-    } catch (error) {
+    } catch {
       // fall through to best-effort handling
     }
     return trimmed;
@@ -114,7 +142,7 @@ const normalizeMediaUrl = (value) => {
   if (runtime?.publicBaseUrl) {
     return `${runtime.publicBaseUrl}${resolvedPath}`;
   }
-  return resolvedPath;
+  return resolvedPath || getFallbackTextureUrl();
 };
 
 const normalizeObject = (input) => (input && typeof input.toObject === 'function' ? input.toObject() : input);
@@ -129,10 +157,7 @@ function mapMediaAsset(asset, { toIdString = defaultToIdString } = {}) {
     return undefined;
   }
 
-  const normalizedUrl = normalizeMediaUrl(doc.url) || normalizeMediaUrl(doc.thumbnailUrl) || normalizeMediaUrl(doc.path);
-  if (!normalizedUrl) {
-    return undefined;
-  }
+  const normalizedUrl = normalizeMediaUrl(doc.url) || normalizeMediaUrl(doc.thumbnailUrl) || normalizeMediaUrl(doc.path) || getFallbackTextureUrl();
 
   const normalizedThumb = normalizeMediaUrl(doc.thumbnailUrl);
 

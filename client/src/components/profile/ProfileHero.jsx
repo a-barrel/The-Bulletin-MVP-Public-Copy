@@ -2,6 +2,7 @@ import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { ensureImageSrc, withFallbackOnError } from '../../utils/imageFallback';
 
 function ProfileHero({ avatarSrc, bannerSrc, displayName, joinedDisplay, showEmptyState }) {
   return (
@@ -29,9 +30,10 @@ function ProfileHero({ avatarSrc, bannerSrc, displayName, joinedDisplay, showEmp
           {bannerSrc ? (
             <Box
               component="img"
-              src={bannerSrc}
+              src={ensureImageSrc(bannerSrc)}
               alt="Profile banner"
               sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              onError={withFallbackOnError}
             />
           ) : (
             <Box
@@ -45,7 +47,7 @@ function ProfileHero({ avatarSrc, bannerSrc, displayName, joinedDisplay, showEmp
           )}
         </Box>
         <Avatar
-          src={avatarSrc ?? undefined}
+          src={ensureImageSrc(avatarSrc)}
           alt={`${displayName} avatar`}
           sx={{
             width: 112,
@@ -60,6 +62,7 @@ function ProfileHero({ avatarSrc, bannerSrc, displayName, joinedDisplay, showEmp
             boxShadow: 3,
             zIndex: 1
           }}
+          imgProps={{ onError: withFallbackOnError }}
         >
           {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
         </Avatar>

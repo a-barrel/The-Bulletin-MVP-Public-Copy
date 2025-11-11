@@ -476,5 +476,217 @@
     "updatedAt": {
       "$date": "2026-10-25T18:00:00.000Z"
     }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47710"
+    },
+    "ownerId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
+    "name": "CSULB Grid — Northwest Hub",
+    "description": "Covers the neighborhoods west of the Pyramid so overlapping proximity chats stay active during campus events.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1488,
+        33.8129
+      ],
+      "accuracy": 6
+    },
+    "radiusMeters": 1600,
+    "participantCount": 3,
+    "participantIds": [
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      {
+        "$oid": "68e061721329566a22d47510"
+      }
+    ],
+    "moderatorIds": [
+      {
+        "$oid": "68e061721329566a22d474a8"
+      }
+    ],
+    "pinId": {
+      "$oid": "68e061721329566a22d474aa"
+    },
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      "updatedBy": {
+        "$oid": "68e061721329566a22d474a8"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-18T19:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-18T19:00:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47711"
+    },
+    "ownerId": {
+      "$oid": "68e061721329566a22d47510"
+    },
+    "name": "CSULB Grid — Northeast Hub",
+    "description": "East campus living communities plus the wetlands trailheads. Keeps the 2‑mile overlap intact when students wander toward PCH.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.0796,
+        33.8129
+      ],
+      "accuracy": 6
+    },
+    "radiusMeters": 1600,
+    "participantCount": 3,
+    "participantIds": [
+      {
+        "$oid": "68e061721329566a22d47510"
+      },
+      {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      {
+        "$oid": "68e061721329566a22d47511"
+      }
+    ],
+    "moderatorIds": [
+      {
+        "$oid": "68e061721329566a22d47510"
+      }
+    ],
+    "pinId": {
+      "$oid": "68e061721329566a22d474ab"
+    },
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47510"
+      },
+      "updatedBy": {
+        "$oid": "68e061721329566a22d47510"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-18T19:30:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-18T19:30:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47712"
+    },
+    "ownerId": {
+      "$oid": "68e061721329566a22d474a9"
+    },
+    "name": "CSULB Grid — Southwest Hub",
+    "description": "Anchors the Retro Row / Belmont Heights overlap so meetup pins stay seeded even when everyone leaves the main quad.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1488,
+        33.7549
+      ],
+      "accuracy": 6
+    },
+    "radiusMeters": 1600,
+    "participantCount": 3,
+    "participantIds": [
+      {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      {
+        "$oid": "68e061721329566a22d47511"
+      }
+    ],
+    "moderatorIds": [
+      {
+        "$oid": "68e061721329566a22d474a9"
+      }
+    ],
+    "pinId": {
+      "$oid": "68e061721329566a22d474ac"
+    },
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      "updatedBy": {
+        "$oid": "68e061721329566a22d474a9"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-18T20:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-18T20:00:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47713"
+    },
+    "ownerId": {
+      "$oid": "68e061721329566a22d47511"
+    },
+    "name": "CSULB Grid — Southeast Hub",
+    "description": "Covers Recreation Park, Atherton corridor, and the south entrances so overlapping rooms stay healthy.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.0796,
+        33.7549
+      ],
+      "accuracy": 6
+    },
+    "radiusMeters": 1600,
+    "participantCount": 3,
+    "participantIds": [
+      {
+        "$oid": "68e061721329566a22d47511"
+      },
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d474a8"
+      }
+    ],
+    "moderatorIds": [
+      {
+        "$oid": "68e061721329566a22d47511"
+      }
+    ],
+    "pinId": {
+      "$oid": "68e061721329566a22d474ad"
+    },
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47511"
+      },
+      "updatedBy": {
+        "$oid": "68e061721329566a22d47511"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-18T20:30:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-18T20:30:00.000Z"
+    }
   }
 ]

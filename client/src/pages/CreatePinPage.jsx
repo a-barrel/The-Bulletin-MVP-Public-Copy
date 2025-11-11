@@ -498,7 +498,7 @@ function CreatePinPage() {
         {/* Uploads */}
         <div className="form-section">
           <h2>Photos</h2>
-          <p>Add up to 10 images to showcase your pin.</p>
+          <p>Add up to 3 images to showcase your pin.</p>
 
           {uploadStatus && (
             <div className={`alert alert-${uploadStatus.type}`}>

@@ -116,7 +116,7 @@ const resolveViewerUser = async (req) => {
 };
 
 const MODERATION_ROLES = new Set(['admin', 'moderator', 'super-admin', 'system-admin']);
-const FRIEND_ADMIN_ROLES = new Set(['admin', 'moderator', 'community-manager', 'super-admin']);
+const FRIEND_ADMIN_ROLES = new Set(['user', 'admin', 'moderator', 'community-manager', 'super-admin']);
 
 const normalizeRoles = (roles) =>
   Array.isArray(roles)

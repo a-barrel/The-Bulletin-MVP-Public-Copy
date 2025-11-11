@@ -92,7 +92,10 @@ async function searchGifAttachments(query, { limit = 12 } = {}) {
     endpoint.searchParams.set('limit', String(size));
     endpoint.searchParams.set('media_filter', 'gif,tinygif,mediumgif');
     endpoint.searchParams.set('random', 'true');
-    endpoint.searchParams.set('contentfilter', 'high');
+    endpoint.searchParams.set(
+      'contentfilter',
+      runtimeConfig.integrations?.tenor?.contentFilter || 'high'
+    );
 
     const response = await fetcher(endpoint.toString(), {
       method: 'GET',

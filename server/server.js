@@ -110,9 +110,47 @@ fs.mkdirSync(soundsDir, { recursive: true });
 app.set('uploadsDir', uploadsDir);
 app.set('imagesDir', imagesDir);
 app.set('soundsDir', soundsDir);
-app.use('/images', express.static(imagesDir));
-app.use('/uploads/images', express.static(imagesDir));
-app.use('/sounds', express.static(soundsDir));
+
+const serveImage = express.static(imagesDir);
+const serveSound = express.static(soundsDir);
+const fallbackTexturePath = path.join(imagesDir, 'UNKNOWN_TEXTURE.jpg');
+const fallbackExists = fs.existsSync(fallbackTexturePath);
+const sendFallbackTexture = (res, next) => {
+  if (fallbackExists) {
+    res.sendFile(fallbackTexturePath, (err) => {
+      if (err) {
+        next(err);
+      }
+    });
+  } else {
+    res.status(404).json({ message: 'Image not found.' });
+  }
+};
+
+const imageHandler = (req, res, next) => {
+  serveImage(req, res, (err) => {
+    if (err && err.status !== 404) {
+      return next(err);
+    }
+    if (res.headersSent) {
+      return;
+    }
+    sendFallbackTexture(res, next);
+  });
+};
+
+app.use('/images', imageHandler);
+app.use('/uploads/images', imageHandler);
+app.use('/sounds', (req, res, next) => {
+  serveSound(req, res, (err) => {
+    if (err) {
+      return next(err);
+    }
+    if (!res.headersSent) {
+      res.status(404).json({ message: 'Sound not found.' });
+    }
+  });
+});
 
 // MongoDB connection
 mongoose

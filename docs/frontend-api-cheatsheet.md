@@ -14,7 +14,7 @@ Fetch a pin with `GET /api/pins/:pinId`, run it through `DebugPin.fromApi(payloa
 | `description` | `string` | Up to 4000 characters of rich text. |
 | `coordinates` | `{ type: 'Point', coordinates: [longitude, latitude], accuracy?: number }` | Long/lat in decimal degrees; `accuracy` is meters. |
 | `proximityRadiusMeters` | `number` | Cluster radius around the pin (default 1609 m / 1 mile). |
-| `photos` | `MediaAsset[]` | Up to 10 uploaded assets (see [Media Asset](#media-asset-shape)). |
+| `photos` | `MediaAsset[]` | Up to 3 uploaded assets (see [Media Asset](#media-asset-shape)). |
 | `coverPhoto` | `MediaAsset` \| `undefined` | Hero image; defaults to first photo if unset. |
 | `tagIds` | `string[]` | ObjectId references to tag records (if any). |
 | `tags` | `string[]` | Denormalised tag labels. |

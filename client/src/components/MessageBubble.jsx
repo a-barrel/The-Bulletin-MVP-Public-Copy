@@ -7,7 +7,7 @@ import GavelIcon from '@mui/icons-material/Gavel';
 import ReportProblemIcon from '@mui/icons-material/ReportProblemOutlined';
 import { ATTACHMENT_ONLY_PLACEHOLDER } from '../utils/chatAttachments';
 import { resolveAvatarSrc } from '../utils/chatParticipants';
-
+import { ensureImageSrc, withFallbackOnError } from '../utils/imageFallback';
 
 
 function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate, onReport }) {
@@ -18,7 +18,7 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
   const imageAssets = attachments
     .map((asset, index) => ({
       key: asset._id || `${asset.url || 'attachment'}-${index}`,
-      url: asset?.url,
+      url: ensureImageSrc(asset?.url),
       alt:
         asset?.description ||
         (isAttachmentOnly
@@ -34,7 +34,7 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
   if (!imageAssets.length && msg?.imageUrl) {
     imageAssets.push({
       key: msg.imageUrl,
-      url: msg.imageUrl,
+      url: ensureImageSrc(msg.imageUrl),
       alt: isAttachmentOnly
         ? 'Chat attachment'
         : strippedMessage
@@ -73,7 +73,7 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
         ? `/profile/${authorId}`
         : '/profile/me';
 
-  const resolvedAvatarSrc = resolveAvatarSrc(msg?.author) || AvatarIcon;
+  const resolvedAvatarSrc = ensureImageSrc(resolveAvatarSrc(msg?.author) || AvatarIcon);
 
   return (
     <Box className={`chat-message ${isSelf ? 'self' : ''}`}>
@@ -87,6 +87,7 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
                 : 'Chat avatar'
             }
             className="profile-icon"
+            onError={withFallbackOnError}
           />
         </NavLink>
       </Box>
@@ -165,6 +166,7 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
             alt={asset.alt}
             className="chat-image"
             loading="lazy"
+            onError={withFallbackOnError}
           />
         ))}
       </Box>

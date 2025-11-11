@@ -5,6 +5,7 @@ import {
   fetchModerationOverview,
   submitModerationAction
 } from '../api/mongoDataApi';
+import runtimeConfig from '../config/runtime';
 
 const initialState = {
   overview: null,
@@ -153,10 +154,26 @@ const buildOptimisticAction = ({ userId, type, reason }) => ({
   optimistic: true
 });
 
+const buildDisabledError = () => {
+  const error = new Error('Debug moderation tools are disabled in this environment.');
+  error.status = 403;
+  return error;
+};
+
 export default function useModerationTools({ autoLoad = true } = {}) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const debugApiEnabled = runtimeConfig.debugApi?.enableRequests !== false;
 
   const loadOverview = useCallback(async () => {
+    if (!debugApiEnabled) {
+      const disabled = buildDisabledError();
+      dispatch({
+        type: 'overview/error',
+        error: disabled.message,
+        status: disabled.status
+      });
+      throw disabled;
+    }
     dispatch({ type: 'overview/pending' });
     try {
       const payload = await fetchModerationOverview();
@@ -170,7 +187,7 @@ export default function useModerationTools({ autoLoad = true } = {}) {
       });
       throw error;
     }
-  }, []);
+  }, [debugApiEnabled]);
 
   const loadHistory = useCallback(
     async (userId) => {
@@ -178,6 +195,15 @@ export default function useModerationTools({ autoLoad = true } = {}) {
         dispatch({
           type: 'history/error',
           error: 'Select a user to load moderation history.'
+        });
+        return null;
+      }
+      if (!debugApiEnabled) {
+        const disabled = buildDisabledError();
+        dispatch({
+          type: 'history/error',
+          error: disabled.message,
+          status: disabled.status
         });
         return null;
       }
@@ -199,7 +225,7 @@ export default function useModerationTools({ autoLoad = true } = {}) {
         throw error;
       }
     },
-    []
+    [debugApiEnabled]
   );
 
   const selectUser = useCallback(
@@ -220,16 +246,16 @@ export default function useModerationTools({ autoLoad = true } = {}) {
         throw error;
       }
 
-      if (state.hasAccess === false) {
-        const error = new Error('Moderator privileges required.');
+      if (state.hasAccess === false || !debugApiEnabled) {
+        const disabled = debugApiEnabled ? new Error('Moderator privileges required.') : buildDisabledError();
         dispatch({
           type: 'action/error',
           userId,
           optimisticId: null,
-          error: error.message,
-          status: 403
+          error: disabled.message,
+          status: disabled.status ?? 403
         });
-        throw error;
+        throw disabled;
       }
 
       const optimisticAction = buildOptimisticAction({ userId, type, reason });
@@ -269,7 +295,7 @@ export default function useModerationTools({ autoLoad = true } = {}) {
         throw error;
       }
     },
-    [loadOverview, loadHistory, state.hasAccess]
+    [debugApiEnabled, loadOverview, loadHistory, state.hasAccess]
   );
 
   const resetActionStatus = useCallback(() => {
@@ -281,10 +307,10 @@ export default function useModerationTools({ autoLoad = true } = {}) {
   }, []);
 
   useEffect(() => {
-    if (autoLoad) {
+    if (autoLoad && debugApiEnabled) {
       loadOverview().catch(() => {});
     }
-  }, [autoLoad, loadOverview]);
+  }, [autoLoad, debugApiEnabled, loadOverview]);
 
   const history = state.selectedUserId ? state.historyByUser[state.selectedUserId] || [] : [];
 
