@@ -36,7 +36,8 @@ const PERSONAL_MARKER_ICON =
 
 function MapPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const toggleFilters = () => setFiltersOpen(v => !v);
+  const toggleFilters = () => setFiltersOpen((prev) => !prev);
+  const closeFilters = () => setFiltersOpen(false);
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
   const { unreadCount, refreshUnreadCount } = useUpdates();
@@ -216,7 +217,7 @@ function MapPage() {
         <button
           className="map-filter-fab"
           type="button"
-          aria-label="Open filters"
+          aria-label={filtersOpen ? 'Close filters' : 'Open filters'}
           aria-expanded={filtersOpen}
           onClick={toggleFilters}
         >
@@ -229,6 +230,14 @@ function MapPage() {
           role="group"
           aria-label="Pin visibility filters"
         >
+          <button
+            type="button"
+            className="map-filter-close"
+            aria-label="Close filters"
+            onClick={closeFilters}
+          >
+            Close ✕
+          </button>
           {/* ===== Filter: Events ===== */}
           <label className="map-filter-toggle">
             <img

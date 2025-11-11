@@ -402,24 +402,46 @@ function SettingsPage() {
       <Stack spacing={3}>
         <Button
           variant="text"
-          color="inherit"
           startIcon={<ArrowBackIcon fontSize="small" />}
           onClick={() => navigate(-1)}
-          sx={{ alignSelf: 'flex-start' }}
+          sx={{
+            alignSelf: 'flex-start',
+            color: '#1f1336',
+            backgroundColor: '#ECF8FE',
+            borderRadius: 999,
+            border: '1px solid #9B5DE5',
+            px: 2,
+            '&:hover': {
+              backgroundColor: '#d1edff'
+            }
+          }}
         >
           Back
         </Button>
 
-        <Stack direction="row" spacing={1.5} alignItems="center">
+        <Stack
+          direction="row"
+          spacing={1.5}
+          alignItems="center"
+          sx={{ color: '#1f1336' }}
+        >
           <SettingsIcon color="primary" />
-          <Typography variant="h4" component="h1">
+          <Typography variant="h4" component="h1" sx={{ color: 'inherit' }}>
             Settings
           </Typography>
           {authUser ? (
             <Chip
+              variant="outlined"
               icon={<ManageAccountsIcon />}
               label={authUser.email ?? 'Authenticated'}
               size="small"
+              sx={{
+                backgroundColor: '#ecf8fe',
+                borderColor: '#9B5DE5',
+                color: '#1f1336',
+                fontWeight: 600,
+                '.MuiChip-icon': { color: '#5D3889' }
+              }}
             />
           ) : null}
         </Stack>

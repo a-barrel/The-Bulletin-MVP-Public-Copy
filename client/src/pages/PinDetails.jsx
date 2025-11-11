@@ -1,5 +1,5 @@
 /* NOTE: Page exports configuration alongside the component. */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import './PinDetails.css';
 import {
@@ -24,9 +24,11 @@ import HowToRegIcon from '@mui/icons-material/HowToReg';
 import ForumIcon from '@mui/icons-material/Forum';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import LeafletMap from '../components/Map';
+import FriendBadge from '../components/FriendBadge';
 import BookmarkButton from '../components/BookmarkButton';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
+import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
 import usePinDetails from '../hooks/usePinDetails';
 import ReportContentDialog from '../components/ReportContentDialog';
 import { createContentReport, deletePin, updatePin } from '../api/mongoDataApi';
@@ -180,6 +182,40 @@ const buildInitialEditForm = (pin) => {
   return base;
 };
 
+const resolveUserId = (user) => {
+  if (!user) {
+    return null;
+  }
+  if (typeof user === 'string') {
+    const trimmed = user.trim();
+    return trimmed.length ? trimmed : null;
+  }
+  if (typeof user === 'object') {
+    if (user.$oid) {
+      return resolveUserId(user.$oid);
+    }
+    if (user._id) {
+      return resolveUserId(user._id);
+    }
+    if (user.id) {
+      return resolveUserId(user.id);
+    }
+    if (user.userId) {
+      return resolveUserId(user.userId);
+    }
+    if (user.uid) {
+      return resolveUserId(user.uid);
+    }
+    if (user.email) {
+      return resolveUserId(user.email);
+    }
+    if (user.username) {
+      return resolveUserId(user.username);
+    }
+  }
+  return String(user);
+};
+
 function PinDetails() {
   const { pinId } = useParams();
   const location = useLocation();
@@ -242,6 +278,43 @@ function PinDetails() {
     isLoadingAttendees,
     attendeesError
   } = usePinDetails({ pinId, location, isOffline });
+  const socialNotifications = useSocialNotificationsContext();
+
+  const friendLookup = useMemo(() => {
+    const entries = Array.isArray(socialNotifications.friendData?.friends)
+      ? socialNotifications.friendData.friends
+      : [];
+    const lookup = new Set();
+    entries.forEach((friend) => {
+      const id = resolveUserId(friend?.id ?? friend?._id ?? friend);
+      if (id) {
+        lookup.add(id);
+      }
+    });
+    return lookup;
+  }, [socialNotifications.friendData?.friends]);
+
+  const attendingFriendItems = useMemo(() => {
+    if (!friendLookup.size || !Array.isArray(attendeeItems)) {
+      return [];
+    }
+    return attendeeItems.filter((attendee) => {
+      const userId =
+        resolveUserId(attendee?._id) ||
+        resolveUserId(attendee?.id) ||
+        resolveUserId(attendee?.userId) ||
+        resolveUserId(attendee?.uid) ||
+        resolveUserId(attendee?.username) ||
+        resolveUserId(attendee?.email);
+      return Boolean(userId && friendLookup.has(userId));
+    });
+  }, [attendeeItems, friendLookup]);
+
+  const attendingFriendPreview = useMemo(
+    () => attendingFriendItems.slice(0, 6),
+    [attendingFriendItems]
+  );
+  const extraFriendCount = Math.max(0, attendingFriendItems.length - attendingFriendPreview.length);
 
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
   const shouldShowStatusMessages = isLoading || error || (!pin && !isLoading && pinId);
@@ -751,6 +824,18 @@ function PinDetails() {
                   </>
                 ) : null}
               </span>
+              {isEventPin && attendingFriendPreview.length > 0 ? (
+                <div className="attending-friends-inline" aria-label="Friends attending this event">
+                  {attendingFriendPreview.map((friend) => (
+                    <AttendingFriendAvatar key={friend.key} attendee={friend} />
+                  ))}
+                  {extraFriendCount > 0 ? (
+                    <span className="attending-friends-more" aria-label={`${extraFriendCount} more friends`}>
+                      +{extraFriendCount}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
               {isEventPin ? (
                 <button
                   type="button"
@@ -799,12 +884,26 @@ function PinDetails() {
             ) : null}
 
             {replyItems.map((reply) => {
-              const { _id, authorName, message, createdLabel, profileLink, avatarUrl } = reply;
+              const { _id, authorName, message, createdLabel, profileLink, avatarUrl, author } = reply;
+              const authorUserId =
+                resolveUserId(author?._id) ||
+                resolveUserId(author?.id) ||
+                resolveUserId(author?.userId) ||
+                resolveUserId(author?.uid) ||
+                resolveUserId(author?.username) ||
+                resolveUserId(author?.email);
               const content = (
                 <>
                   <img src={avatarUrl || undefined} className="commenter-pfp" alt={`${authorName} avatar`} />
                   <span className="commenter-info">
-                    <strong>{authorName}</strong>
+                    <strong>
+                      {authorName}
+                      <FriendBadge
+                        userId={authorUserId}
+                        size="0.9em"
+                        className="comment-friend-badge"
+                      />
+                    </strong>
                     {createdLabel ? <span className="comment-timestamp">{createdLabel}</span> : null}
                   </span>
                 </>
@@ -1141,6 +1240,45 @@ function PinDetails() {
           </Alert>
         ) : null}
       </Snackbar>
+    </div>
+  );
+}
+
+function AttendingFriendAvatar({ attendee }) {
+  const userId =
+    resolveUserId(attendee?._id) ||
+    resolveUserId(attendee?.id) ||
+    resolveUserId(attendee?.userId) ||
+    resolveUserId(attendee?.uid) ||
+    resolveUserId(attendee?.username) ||
+    resolveUserId(attendee?.email);
+
+  if (!userId) {
+    return null;
+  }
+
+  const avatarNode = (
+    <div className="attending-friend-avatar" title={`${attendee.name || 'Friend'} is attending`}>
+      <img src={attendee.avatar || undefined} alt={`${attendee.name || 'Friend'} avatar`} />
+      <FriendBadge userId={userId} size="0.75em" className="attending-friend-avatar__badge" />
+    </div>
+  );
+
+  if (attendee.link) {
+    return (
+      <Link
+        to={attendee.link.pathname}
+        state={attendee.link.state}
+        className="attending-friend-link"
+      >
+        {avatarNode}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="attending-friend-link">
+      {avatarNode}
     </div>
   );
 }

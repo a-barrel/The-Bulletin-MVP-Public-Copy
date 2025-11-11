@@ -113,6 +113,12 @@ export function DebugConsolePage() {
           variant="standard"
           sx={{
             width: '100%',
+            backgroundColor: '#ECF8FE',
+            borderRadius: 2,
+            border: '1px solid #9B5DE5',
+            '& .MuiTabs-indicator': {
+              backgroundColor: '#5D3889'
+            },
             ...(useVerticalTabs
               ? {
                   alignSelf: 'stretch',
@@ -126,7 +132,12 @@ export function DebugConsolePage() {
                     justifyContent: 'flex-start',
                     alignItems: 'flex-start',
                     textAlign: 'left',
-                    minWidth: 'auto'
+                    minWidth: 'auto',
+                    color: '#1F1336',
+                    '&.Mui-selected': {
+                      color: '#5D3889',
+                      fontWeight: 600
+                    }
                   },
                   '& .MuiTabs-indicator': {
                     left: 0
@@ -141,7 +152,12 @@ export function DebugConsolePage() {
                   },
                   '& .MuiTab-root': {
                     minWidth: 'auto',
-                    flex: '0 0 auto'
+                    flex: '0 0 auto',
+                    color: '#1F1336',
+                    '&.Mui-selected': {
+                      color: '#5D3889',
+                      fontWeight: 600
+                    }
                   }
                 })
           }}

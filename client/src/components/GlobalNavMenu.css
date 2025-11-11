@@ -26,8 +26,8 @@
 
 .global-nav-menu__panel {
   position: relative;
-  width: min(360px, 92vw);
-  max-height: 80vh;
+  width: min(400px, 92vw);
+  max-height: min(80vh, 640px);
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -38,6 +38,7 @@
   box-shadow:
     0 24px 60px rgba(0, 0, 0, 0.18),
     0 6px 18px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
 }
 
 .global-nav-menu__panel--anchored {
@@ -76,9 +77,9 @@
 }
 
 .global-nav-menu__close {
-  border: none;
-  background: rgba(17, 17, 17, 0.06);
-  color: inherit;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: #ecf8fe;
+  color: #0f172a;
   font-size: 1.75rem;
   line-height: 1;
   cursor: pointer;
@@ -89,7 +90,7 @@
 
 .global-nav-menu__close:hover,
 .global-nav-menu__close:focus-visible {
-  background: rgba(17, 17, 17, 0.12);
+  background: #d1edff;
   transform: scale(1.05);
 }
 
@@ -113,9 +114,9 @@
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.9rem 1rem;
-  border: 1px solid rgba(17, 17, 17, 0.06);
+  border: 1px solid rgba(93, 56, 137, 0.35);
   border-radius: 14px;
-  background: rgba(17, 17, 17, 0.02);
+  background: #ecf8fe;
   color: inherit;
   cursor: pointer;
   text-align: left;
@@ -124,8 +125,8 @@
 
 .global-nav-menu__action:hover,
 .global-nav-menu__action:focus-visible {
-  background: rgba(17, 17, 17, 0.04);
-  border-color: rgba(17, 17, 17, 0.12);
+  background: #d1edff;
+  border-color: rgba(93, 56, 137, 0.55);
   transform: translateY(-1px);
   box-shadow: 0 12px 22px rgba(15, 23, 42, 0.08);
 }
@@ -207,8 +208,8 @@
   gap: 0.5rem;
   padding: 0.65rem 0.8rem;
   border-radius: 12px;
-  border: 1px solid rgba(17, 17, 17, 0.05);
-  background: rgba(15, 23, 42, 0.02);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  background: rgba(59, 130, 246, 0.08);
   color: inherit;
   cursor: pointer;
   transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
@@ -216,8 +217,8 @@
 
 .global-nav-menu__quick-action:hover,
 .global-nav-menu__quick-action:focus-visible {
-  background: rgba(59, 130, 246, 0.08);
-  border-color: rgba(59, 130, 246, 0.2);
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.4);
   transform: translateY(-1px);
 }
 
