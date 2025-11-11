@@ -1,4 +1,18 @@
 /* NOTE: Page exports navigation config alongside the component. */
+/**
+ * Bookmark architecture cheat sheet:
+ *  - Data source: useBookmarksManager fetches bookmark + collection payloads from the API, normalises
+ *    them, and exposes helper actions (refresh, export, remove). Keep API-specific logic there.
+ *  - Presentation: BookmarksPage handles high-level layout, collection navigation, and renders each
+ *    bookmark via PinCard. We never duplicate card markup here — mapBookmarkToFeedItem adapts the
+ *    saved pin record into the exact shape PinCard expects (see PinCard Data Contract in docs).
+ *  - UX helpers: Quick-nav prefs + focus handling live locally in this component so designers can
+ *    iterate on the experience without touching the data hook. Anchors are tracked in ref maps so we
+ *    can auto-scroll to a collection when `?collection=` is present.
+ *  - Editing tips: If you redesign the cards, consider whether the bookmark metadata (saved date,
+ *    remove button) belongs inside PinCard or alongside it. Right now PinCard is intentionally unaware
+ *    of bookmark-only affordances, so those controls live in the list item footer.
+ */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -10,8 +24,6 @@ import {
   CircularProgress,
   Divider,
   List,
-  ListItemButton,
-  ListItemText,
   ListSubheader,
   Paper,
   Stack,
@@ -26,6 +38,8 @@ import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import useBookmarksManager from '../hooks/useBookmarksManager';
 import normalizeObjectId from '../utils/normalizeObjectId';
+import PinCard from '../components/PinCard';
+import { mapBookmarkToFeedItem } from '../utils/bookmarks';
 
 export const pageConfig = {
   id: 'bookmarks',
@@ -185,6 +199,7 @@ function BookmarksPage() {
     };
   }, [groupedBookmarks, highlightedCollectionKey, resolvedFocus]);
 
+  // Persist which collections should appear in the quick-nav rail (a lightweight pinned list).
   const handleQuickNavPreferenceChange = useCallback((collectionKey, enabled) => {
     setQuickNavPrefs((prev) => {
       const hiddenSet = new Set(prev.hidden);
@@ -213,6 +228,7 @@ function BookmarksPage() {
     });
   }, []);
 
+  // Reuse List feed navigation patterns so deep-linking a bookmark mirrors tapping a card elsewhere.
   const handleViewPin = useCallback(
     (pinId, pin) => {
       const normalized = normalizeObjectId(pinId);
@@ -220,6 +236,17 @@ function BookmarksPage() {
         return;
       }
       navigate(routes.pin.byId(normalized), { state: { pin } });
+    },
+    [navigate]
+  );
+
+  const handleViewAuthor = useCallback(
+    (authorId) => {
+      const normalized = normalizeObjectId(authorId);
+      if (!normalized) {
+        return;
+      }
+      navigate(routes.profile.byId(normalized));
     },
     [navigate]
   );
@@ -356,6 +383,7 @@ function BookmarksPage() {
                   <Box key={groupKey}>
                   <ListSubheader
                     component="div"
+                    // Store DOM refs for scroll-to-collection behaviour powered by ?collection= query params.
                     ref={(node) => {
                       const anchors = collectionAnchorsRef.current;
                       const keys = [groupKey, normalizedName, `${groupKey}::header`].filter(Boolean);
@@ -402,64 +430,92 @@ function BookmarksPage() {
                     </Box>
                   </ListSubheader>
                   <Divider />
-                  {items.map((bookmark) => {
+                  {items.map((bookmark, bookmarkIndex) => {
                     const pin = bookmark.pin;
                     const pinId = bookmark.pinId || pin?._id;
-                    const pinTitle = pin?.title ?? 'Untitled Pin';
-                    const pinType = pin?.type ?? 'pin';
-                    const tagLabel =
-                      pinType === 'event' ? 'Event' : pinType === 'discussion' ? 'Discussion' : 'Pin';
                     const savedAt = formatSavedDate(bookmark.createdAt);
                     const isRemoving = removingPinId === pinId;
+                    // Adapt the bookmark payload to the PinCard contract so we never duplicate card markup.
+                    const cardItem = mapBookmarkToFeedItem(bookmark);
+                    const cardKey = bookmark._id || pinId || `bookmark-${bookmarkIndex}`;
+                    const canViewPin = Boolean(pinId);
+                    const handleCardSelect = (selectedPinId) => {
+                      handleViewPin(selectedPinId, pin);
+                    };
 
                     return (
-                      <ListItemButton
-                        key={bookmark._id || pinId}
-                        alignItems="flex-start"
-                        onClick={() => handleViewPin(pinId, pin)}
-                        sx={{ py: 2, px: { xs: 2, md: 3 }, gap: 1.5 }}
+                      <Box
+                        component="li"
+                        key={cardKey}
+                        sx={{
+                          listStyle: 'none',
+                          py: 2,
+                          px: { xs: 2, md: 3 },
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 1.5
+                        }}
                       >
-                        <ListItemText
-                          primary={
-                            <Stack direction="row" spacing={1} alignItems="center">
-                              <Typography variant="subtitle1" fontWeight={600}>
-                                {pinTitle}
-                              </Typography>
-                              <Chip label={tagLabel} size="small" color="secondary" variant="outlined" />
-                            </Stack>
-                          }
-                          secondary={
-                            <Typography variant="body2" color="text.secondary">
-                              Saved on {savedAt}
+                        {cardItem ? (
+                          <PinCard
+                            item={cardItem}
+                            onSelectItem={handleCardSelect}
+                            onSelectAuthor={handleViewAuthor}
+                            showAttendeeAvatars={false}
+                            className="pin-card--fluid"
+                          />
+                        ) : (
+                          <Paper
+                            variant="outlined"
+                            sx={{
+                              borderStyle: 'dashed',
+                              p: 2,
+                              backgroundColor: 'rgba(0,0,0,0.02)'
+                            }}
+                          >
+                            <Typography variant="subtitle1" fontWeight={600}>
+                              Pin unavailable
                             </Typography>
-                          }
-                        />
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          startIcon={<LaunchIcon fontSize="small" />}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleViewPin(pinId, pin);
-                          }}
+                            <Typography variant="body2" color="text.secondary">
+                              This bookmark no longer has enough pin data to render.
+                            </Typography>
+                          </Paper>
+                        )}
+
+                        <Stack
+                          direction={{ xs: 'column', sm: 'row' }}
+                          spacing={1.5}
+                          alignItems={{ xs: 'flex-start', sm: 'center' }}
+                          justifyContent="space-between"
                         >
-                          View
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="text"
-                          color="error"
-                          startIcon={<DeleteOutlineIcon fontSize="small" />}
-                          disabled={isOffline || isRemoving}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleRemoveBookmark(bookmark);
-                          }}
-                          title={isOffline ? 'Reconnect to remove bookmarks' : undefined}
-                        >
-                          {isRemoving ? 'Removing...' : 'Remove'}
-                        </Button>
-                      </ListItemButton>
+                          {/* Bookmark-specific metadata lives outside PinCard so the shared component stays feed-agnostic. */}
+                          <Typography variant="body2" color="text.secondary">
+                            Saved on {savedAt}
+                          </Typography>
+                          <Stack direction="row" spacing={1} sx={{ ml: { sm: 'auto' } }}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<LaunchIcon fontSize="small" />}
+                              onClick={() => handleViewPin(pinId, pin)}
+                              disabled={!canViewPin}
+                            >
+                              View
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="text"
+                              color="error"
+                              startIcon={<DeleteOutlineIcon fontSize="small" />}
+                              disabled={isOffline || isRemoving}
+                              onClick={() => handleRemoveBookmark(bookmark)}
+                              title={isOffline ? 'Reconnect to remove bookmarks' : undefined}
+                            >
+                              {isRemoving ? 'Removing...' : 'Remove'}
+                            </Button>
+                          </Stack>
+                        </Stack>
+                      </Box>
                     );
                   })}
                   <Divider />
