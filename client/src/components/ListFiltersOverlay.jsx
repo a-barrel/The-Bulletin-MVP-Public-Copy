@@ -35,6 +35,16 @@ const STATUS_OPTIONS = [
   { value: 'all', label: 'All pins' }
 ];
 
+export const FRIEND_ENGAGEMENT_OPTIONS = [
+  { value: 'created', label: 'Created by my friends', chipLabel: 'Friends created it' },
+  { value: 'replied', label: 'Friends replied', chipLabel: 'Friends replied' },
+  { value: 'attending', label: 'Friends are attending', chipLabel: 'Friends attending' }
+];
+
+const FRIEND_ENGAGEMENT_VALUE_SET = new Set(
+  FRIEND_ENGAGEMENT_OPTIONS.map((option) => option.value)
+);
+
 const normalizeFilters = (filters, defaults) => ({
   search: filters.search ?? defaults.search ?? '',
   status: filters.status ?? defaults.status ?? 'active',
@@ -43,7 +53,10 @@ const normalizeFilters = (filters, defaults) => ({
   types: Array.isArray(filters.types) ? filters.types : [...(defaults.types ?? [])],
   categories: Array.isArray(filters.categories)
     ? filters.categories
-    : [...(defaults.categories ?? [])]
+    : [...(defaults.categories ?? [])],
+  friendEngagements: Array.isArray(filters.friendEngagements)
+    ? filters.friendEngagements.filter((entry) => FRIEND_ENGAGEMENT_VALUE_SET.has(entry))
+    : [...(defaults.friendEngagements ?? [])]
 });
 
 function uniqueMerge(list = [], additions = []) {
@@ -119,6 +132,24 @@ export default function ListFiltersOverlay({
     });
   };
 
+  const handleToggleFriendEngagement = (value) => {
+    if (!FRIEND_ENGAGEMENT_VALUE_SET.has(value)) {
+      return;
+    }
+    setLocalFilters((prev) => {
+      const current = new Set(prev.friendEngagements || []);
+      if (current.has(value)) {
+        current.delete(value);
+      } else {
+        current.add(value);
+      }
+      return {
+        ...prev,
+        friendEngagements: Array.from(current)
+      };
+    });
+  };
+
   const handleToggleCategory = (category) => {
     setLocalFilters((prev) => {
       const categories = new Set(prev.categories);
@@ -185,7 +216,8 @@ export default function ListFiltersOverlay({
     onApply({
       ...normalized,
       types: [...normalized.types],
-      categories: [...normalized.categories]
+      categories: [...normalized.categories],
+      friendEngagements: [...(normalized.friendEngagements || [])]
     });
     onClose();
   };
@@ -237,6 +269,29 @@ export default function ListFiltersOverlay({
                     <Checkbox
                       checked={localFilters.types.includes(option.value)}
                       onChange={() => handleToggleType(option.value)}
+                    />
+                  }
+                  label={option.label}
+                />
+              ))}
+            </FormGroup>
+          </Stack>
+
+          <Divider />
+
+          {/* Friend activity */}
+          <Stack spacing={1}>
+            <Typography variant="subtitle2" color="text.secondary">
+              Friend activity
+            </Typography>
+            <FormGroup row>
+              {FRIEND_ENGAGEMENT_OPTIONS.map((option) => (
+                <FormControlLabel
+                  key={option.value}
+                  control={
+                    <Checkbox
+                      checked={localFilters.friendEngagements.includes(option.value)}
+                      onChange={() => handleToggleFriendEngagement(option.value)}
                     />
                   }
                   label={option.label}
@@ -401,7 +456,8 @@ ListFiltersOverlay.propTypes = {
     startDate: PropTypes.string,
     endDate: PropTypes.string,
     types: PropTypes.arrayOf(PropTypes.string),
-    categories: PropTypes.arrayOf(PropTypes.string)
+    categories: PropTypes.arrayOf(PropTypes.string),
+    friendEngagements: PropTypes.arrayOf(PropTypes.string)
   }),
   initialFilters: PropTypes.shape({
     search: PropTypes.string,
@@ -409,7 +465,8 @@ ListFiltersOverlay.propTypes = {
     startDate: PropTypes.string,
     endDate: PropTypes.string,
     types: PropTypes.arrayOf(PropTypes.string),
-    categories: PropTypes.arrayOf(PropTypes.string)
+    categories: PropTypes.arrayOf(PropTypes.string),
+    friendEngagements: PropTypes.arrayOf(PropTypes.string)
   }),
   categories: PropTypes.arrayOf(
     PropTypes.oneOfType([
@@ -433,7 +490,8 @@ ListFiltersOverlay.defaultProps = {
     startDate: '',
     endDate: '',
     types: [],
-    categories: []
+    categories: [],
+    friendEngagements: []
   },
   initialFilters: {
     search: '',
@@ -441,7 +499,8 @@ ListFiltersOverlay.defaultProps = {
     startDate: '',
     endDate: '',
     types: [],
-    categories: []
+    categories: [],
+    friendEngagements: []
   },
   categories: [],
   loadingCategories: false,

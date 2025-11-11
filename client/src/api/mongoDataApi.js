@@ -224,7 +224,8 @@ export async function fetchPinsNearby({
   categories,
   status,
   startDate,
-  endDate
+  endDate,
+  friendEngagements
 }) {
   if (latitude === undefined || longitude === undefined) {
     const error = new Error('Latitude and longitude are required');
@@ -261,6 +262,12 @@ export async function fetchPinsNearby({
     });
   }
 
+  const serializeArray = (value) =>
+    Array.isArray(value) ? value.map((entry) => String(entry).trim()).filter(Boolean) : [];
+  const typeList = serializeArray(types);
+  const categoryList = serializeArray(categories);
+  const friendEngagementList = serializeArray(friendEngagements);
+
   try {
     const baseUrl = resolveApiBaseUrl();
     const params = new URLSearchParams({
@@ -276,17 +283,16 @@ export async function fetchPinsNearby({
       params.set('search', search.trim());
     }
 
-    const serializeArray = (value) =>
-      Array.isArray(value) ? value.map((entry) => String(entry).trim()).filter(Boolean) : [];
-
-    const typeList = serializeArray(types);
     if (typeList.length) {
       params.set('types', typeList.join(','));
     }
 
-    const categoryList = serializeArray(categories);
     if (categoryList.length) {
       params.set('categories', categoryList.join(','));
+    }
+
+    if (friendEngagementList.length) {
+      params.set('friendEngagements', friendEngagementList.join(','));
     }
 
     if (status) {
@@ -313,6 +319,7 @@ export async function fetchPinsNearby({
       await logApiError('/api/pins/nearby', error, {
         status: response.status,
         params: Object.fromEntries(params.entries()),
+        friendEngagements: friendEngagementList,
         issues: payload?.issues
       });
       throw error;
@@ -326,6 +333,7 @@ export async function fetchPinsNearby({
         longitude,
         limit,
         status,
+        friendEngagements: friendEngagementList,
         distanceMiles: effectiveDistance
       });
     }

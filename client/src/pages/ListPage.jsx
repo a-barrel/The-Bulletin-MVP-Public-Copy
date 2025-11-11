@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import './ListPage.css';
 import Navbar from '../components/Navbar';
 import SortToggle from '../components/SortToggle';
-import ListFiltersOverlay from '../components/ListFiltersOverlay';
+import ListFiltersOverlay, { FRIEND_ENGAGEMENT_OPTIONS } from '../components/ListFiltersOverlay';
 import settingsIcon from '../assets/GearIcon.svg';
 import addIcon from '../assets/AddIcon.svg';
 import updatesIcon from '../assets/UpdateIcon.svg';
@@ -30,6 +30,30 @@ export const pageConfig = {
   protected: true,
 };
 
+const FRIEND_ENGAGEMENT_VALUE_SET = new Set(
+  FRIEND_ENGAGEMENT_OPTIONS.map((option) => option.value)
+);
+
+const FRIEND_ENGAGEMENT_LABEL_LOOKUP = FRIEND_ENGAGEMENT_OPTIONS.reduce((acc, option) => {
+  acc[option.value] = option.chipLabel || option.label;
+  return acc;
+}, {});
+
+const sanitizeFriendEngagements = (input) => {
+  if (!Array.isArray(input) || input.length === 0) {
+    return [];
+  }
+  const ordered = [];
+  const seen = new Set();
+  input.forEach((value) => {
+    if (FRIEND_ENGAGEMENT_VALUE_SET.has(value) && !seen.has(value)) {
+      ordered.push(value);
+      seen.add(value);
+    }
+  });
+  return ordered;
+};
+
 export default function ListPage() {
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
@@ -42,7 +66,8 @@ export default function ListPage() {
       startDate: '',
       endDate: '',
       types: [],
-      categories: []
+      categories: [],
+      friendEngagements: []
     }),
     []
   );
@@ -95,7 +120,10 @@ export default function ListPage() {
     startDate: value.startDate || '',
     endDate: value.endDate || '',
     types: Array.isArray(value.types) ? [...value.types].sort() : [],
-    categories: Array.isArray(value.categories) ? [...value.categories].sort() : []
+    categories: Array.isArray(value.categories) ? [...value.categories].sort() : [],
+    friendEngagements: Array.isArray(value.friendEngagements)
+      ? [...value.friendEngagements].sort()
+      : []
   }), []);
 
   const hasActiveFilters = useMemo(() => {
@@ -107,7 +135,8 @@ export default function ListPage() {
       current.startDate !== baseline.startDate ||
       current.endDate !== baseline.endDate ||
       current.types.join('|') !== baseline.types.join('|') ||
-      current.categories.join('|') !== baseline.categories.join('|')
+      current.categories.join('|') !== baseline.categories.join('|') ||
+      current.friendEngagements.join('|') !== baseline.friendEngagements.join('|')
     );
   }, [defaultFilters, filters, normalizeForCompare]);
 
@@ -157,7 +186,8 @@ export default function ListPage() {
                 .filter(Boolean)
             )
           )
-        : []
+        : [],
+      friendEngagements: sanitizeFriendEngagements(nextFilters.friendEngagements)
     });
     setFiltersDialogOpen(false);
   }, []);
@@ -169,7 +199,8 @@ export default function ListPage() {
       startDate: '',
       endDate: '',
       types: [],
-      categories: []
+      categories: [],
+      friendEngagements: []
     });
   }, [defaultFilters.status]);
 
@@ -191,6 +222,13 @@ export default function ListPage() {
     setFilters((prev) => ({
       ...prev,
       categories: prev.categories.filter((entry) => entry !== category)
+    }));
+  }, []);
+
+  const handleRemoveFriendEngagement = useCallback((engagement) => {
+    setFilters((prev) => ({
+      ...prev,
+      friendEngagements: prev.friendEngagements.filter((entry) => entry !== engagement)
     }));
   }, []);
 
@@ -256,6 +294,15 @@ export default function ListPage() {
         onDelete: () => handleRemoveCategory(category)
       });
     });
+    filters.friendEngagements.forEach((engagement) => {
+      const label =
+        FRIEND_ENGAGEMENT_LABEL_LOOKUP[engagement] || `Friends: ${engagement}`;
+      chips.push({
+        key: `friend-${engagement}`,
+        label,
+        onDelete: () => handleRemoveFriendEngagement(engagement)
+      });
+    });
     if (filters.status && filters.status !== defaultFilters.status) {
       chips.push({
         key: `status-${filters.status}`,
@@ -279,7 +326,16 @@ export default function ListPage() {
       });
     }
     return chips;
-  }, [filters, defaultFilters.status, handleClearSearch, handleRemoveCategory, handleRemoveType, handleResetDates, handleResetStatus]);
+  }, [
+    filters,
+    defaultFilters.status,
+    handleClearSearch,
+    handleRemoveCategory,
+    handleRemoveType,
+    handleRemoveFriendEngagement,
+    handleResetDates,
+    handleResetStatus
+  ]);
 
   const filteredAndSortedFeed = useMemo(() => {
     const statusFiltered = feedItems.filter((item) => {

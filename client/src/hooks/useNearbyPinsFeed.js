@@ -331,7 +331,10 @@ export default function useNearbyPinsFeed({
           categories: Array.isArray(filters.categories) ? filters.categories : undefined,
           status: filters.status,
           startDate: filters.startDate || undefined,
-          endDate: filters.endDate || undefined
+          endDate: filters.endDate || undefined,
+          friendEngagements: Array.isArray(filters.friendEngagements)
+            ? filters.friendEngagements
+            : undefined
         });
 
         if (!Array.isArray(results) || results.length === 0) {

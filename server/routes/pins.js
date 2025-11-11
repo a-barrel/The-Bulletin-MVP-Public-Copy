@@ -492,7 +492,8 @@ const NearbyPinsQuerySchema = z.object({
   categories: z.string().trim().optional(),
   status: z.enum(['active', 'expired', 'all']).optional(),
   startDate: z.string().trim().optional(),
-  endDate: z.string().trim().optional()
+  endDate: z.string().trim().optional(),
+  friendEngagements: z.string().trim().optional()
 });
 
 const haversineDistanceMeters = (lat1, lon1, lat2, lon2) => {
@@ -774,7 +775,8 @@ router.get('/nearby', verifyToken, async (req, res) => {
       categories: categoriesParam,
       status: statusParam,
       startDate: startDateParam,
-      endDate: endDateParam
+      endDate: endDateParam,
+      friendEngagements: friendEngagementsParam
     } = NearbyPinsQuerySchema.parse(req.query);
 
     const maxDistanceMeters = milesToMeters(distanceMiles) ?? distanceMiles * METERS_PER_MILE;
@@ -784,9 +786,44 @@ router.get('/nearby', verifyToken, async (req, res) => {
     }
     const viewerBlockedSet = buildBlockedSet(viewer);
     const viewerId = toIdString(viewer._id);
+    const viewerFriendObjectIds = mapIdList(viewer.relationships?.friendIds)
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+    const normalizedFriendEngagements = parseCsvParam(friendEngagementsParam)
+      .map((entry) => entry.toLowerCase())
+      .filter((entry) => entry === 'created' || entry === 'replied' || entry === 'attending');
+    const friendFilterActive = normalizedFriendEngagements.length > 0;
+
+    if (friendFilterActive && viewerFriendObjectIds.length === 0) {
+      return res.json([]);
+    }
+
+    let friendReplyPinIds = [];
+    if (friendFilterActive && normalizedFriendEngagements.includes('replied')) {
+      friendReplyPinIds = await Reply.distinct('pinId', {
+        authorId: { $in: viewerFriendObjectIds }
+      });
+    }
+    const friendFilterClauses = [];
+    if (normalizedFriendEngagements.includes('created') && viewerFriendObjectIds.length) {
+      friendFilterClauses.push({ creatorId: { $in: viewerFriendObjectIds } });
+    }
+    if (normalizedFriendEngagements.includes('attending') && viewerFriendObjectIds.length) {
+      friendFilterClauses.push({ attendingUserIds: { $in: viewerFriendObjectIds } });
+    }
+    if (normalizedFriendEngagements.includes('replied') && friendReplyPinIds.length) {
+      friendFilterClauses.push({ _id: { $in: friendReplyPinIds } });
+    }
 
     const now = new Date();
     const filters = [];
+
+    if (friendFilterActive) {
+      if (!friendFilterClauses.length) {
+        return res.json([]);
+      }
+      filters.push({ $or: friendFilterClauses });
+    }
 
     // Status filters
     const effectiveStatus = statusParam || 'active';
