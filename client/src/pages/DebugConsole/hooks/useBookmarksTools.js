@@ -13,7 +13,13 @@ import {
   parseOptionalNumber
 } from '../utils';
 
+/**
+ * Small state machine that powers the Debug Console tab.
+ * Each handler wraps the raw API helper with just enough validation so teammates can
+ * create/fetch/export bookmarks without wiring up extra forms.
+ */
 const useBookmarksTools = () => {
+  // --- Bookmark creation form state -------------------------------------------------------------
   const [bookmarkForm, setBookmarkForm] = useState({
     userId: '',
     pinId: '',
@@ -26,6 +32,7 @@ const useBookmarksTools = () => {
   const [bookmarkResult, setBookmarkResult] = useState(null);
   const [isCreatingBookmark, setIsCreatingBookmark] = useState(false);
 
+  // --- Collection creation form state -----------------------------------------------------------
   const [collectionForm, setCollectionForm] = useState({
     userId: '',
     name: '',
@@ -36,6 +43,7 @@ const useBookmarksTools = () => {
   const [collectionResult, setCollectionResult] = useState(null);
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
 
+  // --- Fetch/export bookmarks state -------------------------------------------------------------
   const [bookmarksQuery, setBookmarksQuery] = useState({ userId: '', limit: '20' });
   const [bookmarksStatus, setBookmarksStatus] = useState(null);
   const [bookmarksResult, setBookmarksResult] = useState(null);
@@ -43,11 +51,13 @@ const useBookmarksTools = () => {
   const [exportBookmarksStatus, setExportBookmarksStatus] = useState(null);
   const [isExportingBookmarks, setIsExportingBookmarks] = useState(false);
 
+  // --- Fetch collections state -----------------------------------------------------------------
   const [collectionsUserId, setCollectionsUserId] = useState('');
   const [collectionsStatus, setCollectionsStatus] = useState(null);
   const [collectionsResult, setCollectionsResult] = useState(null);
   const [isFetchingCollections, setIsFetchingCollections] = useState(false);
 
+  // Build a bookmark payload from the debug form, then call the API helper.
   const handleCreateBookmark = useCallback(
     async (event) => {
       event.preventDefault();
@@ -94,6 +104,7 @@ const useBookmarksTools = () => {
     [bookmarkForm]
   );
 
+  // Create a collection and optionally associate bookmark ids immediately.
   const handleCreateCollection = useCallback(
     async (event) => {
       event.preventDefault();
@@ -134,6 +145,7 @@ const useBookmarksTools = () => {
     [collectionForm]
   );
 
+  // Fetch bookmarks for a user so the Debug Console can display raw payloads.
   const handleFetchBookmarks = useCallback(
     async (event) => {
       event.preventDefault();
@@ -175,6 +187,7 @@ const useBookmarksTools = () => {
     [bookmarksQuery]
   );
 
+  // Trigger an export straight from the console for quick CSV spot checks.
   const handleExportBookmarksCsv = useCallback(async () => {
     setExportBookmarksStatus(null);
     const userId = bookmarksQuery.userId.trim();
@@ -209,6 +222,7 @@ const useBookmarksTools = () => {
     }
   }, [bookmarksQuery]);
 
+  // Pull down collections for a user to inspect grouping metadata.
   const handleFetchCollections = useCallback(
     async (event) => {
       event.preventDefault();
@@ -240,6 +254,7 @@ const useBookmarksTools = () => {
     [collectionsUserId]
   );
 
+  // Input helpers keep the form components tiny.
   const updateBookmarkFormField = useCallback((field) => (event) => {
     const value = event.target.value;
     setBookmarkForm((prev) => ({ ...prev, [field]: value }));
@@ -252,6 +267,7 @@ const useBookmarksTools = () => {
     setCollectionStatus(null);
   }, []);
 
+  // Expose both the raw form state and the handlers so the tab can wire them into widgets.
   return {
     bookmarkForm,
     setBookmarkForm,

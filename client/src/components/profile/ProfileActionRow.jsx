@@ -19,7 +19,14 @@ function ProfileActionRow({
   isFriend,
   hasPendingFriendRequest,
   isSendingFriendRequest,
-  onSendFriendRequest
+  onSendFriendRequest,
+  onMessage,
+  messageDisabled = false,
+  messageTooltip,
+  onReport,
+  reportDisabled = false,
+  reportTooltip,
+  isReporting = false
 }) {
   const blockDisabled = isProcessingBlockAction || isFetchingProfile;
   const blockCursor = blockDisabled ? 'not-allowed' : 'pointer';
@@ -41,6 +48,7 @@ function ProfileActionRow({
     >
       <Box
         className="section-content-box"
+        onClick={messageDisabled ? undefined : onMessage}
         sx={{
           flex: 1,
           border: '1px solid',
@@ -51,8 +59,12 @@ function ProfileActionRow({
           flexDirection: 'column',
           alignItems: 'center',
           gap: 1,
-          cursor: 'pointer'
+          cursor: messageDisabled ? 'not-allowed' : 'pointer',
+          opacity: messageDisabled ? 0.6 : 1
         }}
+        role="button"
+        aria-disabled={messageDisabled ? 'true' : 'false'}
+        title={messageTooltip}
       >
         <MessageIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
         <Typography variant="body2" color="text.secondary">
@@ -62,6 +74,7 @@ function ProfileActionRow({
 
       <Box
         className="section-content-box"
+        onClick={reportDisabled ? undefined : onReport}
         sx={{
           flex: 1,
           border: '1px solid',
@@ -72,10 +85,18 @@ function ProfileActionRow({
           flexDirection: 'column',
           alignItems: 'center',
           gap: 1,
-          cursor: 'pointer'
+          cursor: reportDisabled ? 'not-allowed' : 'pointer',
+          opacity: reportDisabled ? 0.6 : 1
         }}
+        role="button"
+        aria-disabled={reportDisabled ? 'true' : 'false'}
+        title={reportTooltip}
       >
-        <FlagIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+        {isReporting ? (
+          <CircularProgress size={28} thickness={5} />
+        ) : (
+          <FlagIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+        )}
         <Typography variant="body2" color="text.secondary">
           Report
         </Typography>
