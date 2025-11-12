@@ -1,4 +1,18 @@
 /* NOTE: Page exports navigation config alongside the component. */
+/**
+ * Bookmark architecture cheat sheet:
+ *  - Data source: useBookmarksManager fetches bookmark + collection payloads from the API, normalises
+ *    them, and exposes helper actions (refresh, export, remove). Keep API-specific logic there.
+ *  - Presentation: BookmarksPage handles high-level layout, collection navigation, and renders each
+ *    bookmark via PinCard. We never duplicate card markup here — mapBookmarkToFeedItem adapts the
+ *    saved pin record into the exact shape PinCard expects (see PinCard Data Contract in docs).
+ *  - UX helpers: Quick-nav prefs + focus handling live locally in this component so designers can
+ *    iterate on the experience without touching the data hook. Anchors are tracked in ref maps so we
+ *    can auto-scroll to a collection when `?collection=` is present.
+ *  - Editing tips: If you redesign the cards, consider whether the bookmark metadata (saved date,
+ *    remove button) belongs inside PinCard or alongside it. Right now PinCard is intentionally unaware
+ *    of bookmark-only affordances, so those controls live in the list item footer.
+ */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
