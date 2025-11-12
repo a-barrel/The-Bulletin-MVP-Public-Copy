@@ -1,8 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap');
-
-* {
-  font-family: "Urbanist", sans-serif;
-}
+/*
+ * WARNING: Do not import fonts or override global app typography/backgrounds from this page.
+ * Page-level @import + wildcard font rules leak into every route that loads this chunk and
+ * instantly break the shared theme (see docs/style-guide.md). Keep bookmarks styles scoped.
+ */
 
 body {
   background-color: #ffffff;
