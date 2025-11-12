@@ -614,6 +614,8 @@
     border: 1px solid black;
     border-radius: 8px;
     flex: 1;
+    display: inline-block;
+    line-height: 1.5;
 }
 
 .pin-details .attending-icons {
@@ -651,8 +653,11 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     margin-top: 0.4rem;
+    overflow: hidden;
+    max-width: 100%;
+    position: relative;
 }
 
 .pin-details .attending-friend-link {
@@ -661,6 +666,7 @@
     border: none;
     padding: 0;
     background: transparent;
+    flex: 0 0 auto;
 }
 
 .pin-details .attending-friend-link:focus-visible {
@@ -670,9 +676,9 @@
 
 .pin-details .attending-friend-avatar {
     position: relative;
-    width: 44px;
-    height: 44px;
-    border-radius: 999px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
     border: 2px solid #5d3889;
     overflow: hidden;
     background: #fff;
@@ -684,12 +690,6 @@
     object-fit: cover;
 }
 
-.pin-details .attending-friend-avatar__badge {
-    position: absolute;
-    bottom: -2px;
-    right: -2px;
-}
-
 .pin-details .attending-friends-more {
     font-weight: 600;
     color: #5d3889;
@@ -697,6 +697,7 @@
     border-radius: 999px;
     border: 1px solid #5d3889;
     padding: 0.15rem 0.45rem;
+    flex: 0 0 auto;
 }
 
 /* attendance button */

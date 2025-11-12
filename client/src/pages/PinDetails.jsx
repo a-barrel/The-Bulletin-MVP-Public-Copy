@@ -830,21 +830,23 @@ function PinDetails() {
                     <br />
                     Attending: {pin.participantCount ?? 0}
                     {pin.participantLimit ? ` / ${pin.participantLimit}` : ''}
+                    <br />
+                    {isEventPin && attendingFriendPreview.length > 0 ? (
+                      <div className="attending-friends-inline" aria-label="Friends attending this event">
+                        Friends: 
+                        {attendingFriendPreview.map((friend) => (
+                          <AttendingFriendAvatar key={friend.key} attendee={friend} />
+                        ))}
+                        {extraFriendCount > 0 ? (
+                          <span className="attending-friends-more" aria-label={`${extraFriendCount} more friends`}>
+                            +{extraFriendCount}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </>
                 ) : null}
               </span>
-              {isEventPin && attendingFriendPreview.length > 0 ? (
-                <div className="attending-friends-inline" aria-label="Friends attending this event">
-                  {attendingFriendPreview.map((friend) => (
-                    <AttendingFriendAvatar key={friend.key} attendee={friend} />
-                  ))}
-                  {extraFriendCount > 0 ? (
-                    <span className="attending-friends-more" aria-label={`${extraFriendCount} more friends`}>
-                      +{extraFriendCount}
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
               {isEventPin ? (
                 <button
                   type="button"
