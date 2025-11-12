@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap');
+
+* {
+  font-family: "Urbanist", sans-serif;
+}
+
+body {
+  background-color: #ffffff;
+}
+
+/* Center "Bookmarks" title in back button */
+.bookmarks-back-button.back-nav-bar {
+  justify-content: space-between;
+  position: relative;
+}
+
+.bookmarks-back-button.back-nav-bar::after {
+  content: 'Bookmarks';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #4b208c;
+  pointer-events: none;
+}
