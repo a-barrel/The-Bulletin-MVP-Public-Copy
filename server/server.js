@@ -14,6 +14,34 @@ const { logLine, logIntegration } = require('./utils/devLogger');
 
 console.log(`Pinpoint server running in ${runtime.mode} mode`);
 
+const normalizedAllowedOrigins = Array.isArray(runtime.cors?.allowedOrigins)
+  ? runtime.cors.allowedOrigins
+  : [];
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin) {
+      return callback(null, true);
+    }
+    if (runtime.isOffline || normalizedAllowedOrigins.length === 0) {
+      return callback(null, true);
+    }
+    const normalized = origin.toLowerCase();
+    if (normalizedAllowedOrigins.includes(normalized)) {
+      return callback(null, true);
+    }
+    const error = new Error(`CORS: Origin "${origin}" is not allowed`);
+    error.status = 403;
+    return callback(error);
+  },
+  credentials: true,
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'Origin', 'X-Requested-With'],
+  exposedHeaders: ['Content-Length'],
+  maxAge: 60 * 60 * 24,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
+
 if (runtime.isOffline) {
   // Default to the local emulator host unless one is already set.
   if (!process.env.FIREBASE_AUTH_EMULATOR_HOST) {
@@ -52,7 +80,8 @@ app.enable('trust proxy');
 app.set('etag', false);
 
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.set('Pragma', 'no-cache');
