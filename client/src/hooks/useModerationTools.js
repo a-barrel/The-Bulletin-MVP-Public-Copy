@@ -5,7 +5,6 @@ import {
   fetchModerationOverview,
   submitModerationAction
 } from '../api/mongoDataApi';
-import runtimeConfig from '../config/runtime';
 
 const initialState = {
   overview: null,
@@ -154,26 +153,16 @@ const buildOptimisticAction = ({ userId, type, reason }) => ({
   optimistic: true
 });
 
-const buildDisabledError = () => {
-  const error = new Error('Debug moderation tools are disabled in this environment.');
+const buildAccessDeniedError = () => {
+  const error = new Error('Moderator privileges required.');
   error.status = 403;
   return error;
 };
 
 export default function useModerationTools({ autoLoad = true } = {}) {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const debugApiEnabled = runtimeConfig.debugApi?.enableRequests !== false;
 
   const loadOverview = useCallback(async () => {
-    if (!debugApiEnabled) {
-      const disabled = buildDisabledError();
-      dispatch({
-        type: 'overview/error',
-        error: disabled.message,
-        status: disabled.status
-      });
-      throw disabled;
-    }
     dispatch({ type: 'overview/pending' });
     try {
       const payload = await fetchModerationOverview();
@@ -182,12 +171,15 @@ export default function useModerationTools({ autoLoad = true } = {}) {
     } catch (error) {
       dispatch({
         type: 'overview/error',
-        error: error?.message || 'Failed to load moderation overview.',
+        error:
+          error?.status === 403
+            ? 'Moderator privileges required.'
+            : error?.message || 'Failed to load moderation overview.',
         status: error?.status ?? null
       });
       throw error;
     }
-  }, [debugApiEnabled]);
+  }, []);
 
   const loadHistory = useCallback(
     async (userId) => {
@@ -195,15 +187,6 @@ export default function useModerationTools({ autoLoad = true } = {}) {
         dispatch({
           type: 'history/error',
           error: 'Select a user to load moderation history.'
-        });
-        return null;
-      }
-      if (!debugApiEnabled) {
-        const disabled = buildDisabledError();
-        dispatch({
-          type: 'history/error',
-          error: disabled.message,
-          status: disabled.status
         });
         return null;
       }
@@ -225,7 +208,7 @@ export default function useModerationTools({ autoLoad = true } = {}) {
         throw error;
       }
     },
-    [debugApiEnabled]
+    []
   );
 
   const selectUser = useCallback(
@@ -246,8 +229,8 @@ export default function useModerationTools({ autoLoad = true } = {}) {
         throw error;
       }
 
-      if (state.hasAccess === false || !debugApiEnabled) {
-        const disabled = debugApiEnabled ? new Error('Moderator privileges required.') : buildDisabledError();
+      if (state.hasAccess === false) {
+        const disabled = buildAccessDeniedError();
         dispatch({
           type: 'action/error',
           userId,
@@ -295,7 +278,7 @@ export default function useModerationTools({ autoLoad = true } = {}) {
         throw error;
       }
     },
-    [debugApiEnabled, loadOverview, loadHistory, state.hasAccess]
+    [loadOverview, loadHistory, state.hasAccess]
   );
 
   const resetActionStatus = useCallback(() => {
@@ -307,10 +290,10 @@ export default function useModerationTools({ autoLoad = true } = {}) {
   }, []);
 
   useEffect(() => {
-    if (autoLoad && debugApiEnabled) {
+    if (autoLoad) {
       loadOverview().catch(() => {});
     }
-  }, [autoLoad, debugApiEnabled, loadOverview]);
+  }, [autoLoad, loadOverview]);
 
   const history = state.selectedUserId ? state.historyByUser[state.selectedUserId] || [] : [];
 

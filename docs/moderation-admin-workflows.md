@@ -6,7 +6,7 @@ This guide summarizes the flows that ship in Sprint 3 for moderators and communi
 
 - Moderator privileges are required for moderation controls (`admin`, `moderator`, `super-admin`, `system-admin`).
 - Friend request and direct message dashboards require `admin`, `moderator`, or `community-manager` access.
-- In offline emulation every signed-in user is treated as an admin so you can explore flows without setting custom claims.
+- In offline emulation (or whenever `VITE_ENABLE_MODERATION_ROLE_CHECKS=false`) every signed-in user is treated as an admin so you can explore flows without setting custom claims.
 
 ## Profile-Level Moderation
 
