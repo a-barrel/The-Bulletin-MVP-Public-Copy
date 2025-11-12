@@ -186,6 +186,26 @@
   color: white;
 }
 
+.friends-page-text-container {
+  margin-top: 15rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.loading-friends-circle {
+  color: #F15BB5 !important;
+}
+
+.friends-page-title-text,
+.friends-page-body-text {
+  font-family: 'Urbanist', sans-serif !important;
+  font-weight: 500 !important;
+  font-size: 1.15rem !important;
+  color: black !important;
+  margin-top: 1rem !important;
+}
 
 /* Render Friends List */
 .friends-list {

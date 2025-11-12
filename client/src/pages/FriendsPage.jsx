@@ -220,7 +220,7 @@ const getGifCommandQuery = (value) => {
   return query.length ? query : null;
 };
 
-function ChatPage() {
+function FriendsPage() {
   const navigate = useNavigate();
   const [selectedTab, setSelectedTab] = useState('Friends');
   const socialNotifications = useSocialNotificationsContext();
@@ -1601,208 +1601,40 @@ function ChatPage() {
     [authUser, directMessageItems, directViewerId, getMessageKey, handleOpenReportForDirectMessage]
   );
 
-  const renderRoomMessagesMobile = () => {
-    if (!selectedRoom) {
-      return (
-        <Stack
-          spacing={2}
-          alignItems="center"
-          justifyContent="center"
-          sx={{ flexGrow: 1, py: 6, textAlign: 'center', color: 'text.secondary' }}
-        >
-          <SmsIcon color="primary" sx={{ fontSize: 48 }} />
-          <Typography variant="h6">Choose a chat room to start talking</Typography>
-          <Typography variant="body2">
-            Pick a room from the selector in the header or create a new one.
-          </Typography>
-        </Stack>
-      );
-    }
-
-    if (messagesError) {
-      return (
-        <Alert severity="error" sx={{ mx: { xs: 2, md: 4 }, my: 2 }}>
-          {messagesError}
-        </Alert>
-      );
-    }
-
-    if (isLoadingMessages && uniqueMessages.length === 0) {
-      return (
-        <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-          <CircularProgress />
-          <Typography variant="body2" color="text.primary">
-            Loading messages…
-          </Typography>
-        </Stack>
-      );
-    }
-
-    if (uniqueMessages.length === 0) {
-      return (
-        <Stack spacing={1} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-          <Typography variant="h6">No messages yet</Typography>
-          <Typography variant="body2" color="text.primary">
-            Start the conversation with everyone in this room.
-          </Typography>
-        </Stack>
-      );
-    }
-
-    return (
-      <>
-        {roomMessageBubbles}
-        <AttachmentPreview
-          attachments={roomAttachments}
-          onRemove={removeRoomAttachment}
-          status={roomAttachmentStatus}
-          isUploading={isUploadingRoomAttachment}
-          uploadProgress={roomUploadProgress}
-          onRetry={retryRoomFailedUploads}
-          canRetry={canRetryRoomUploads}
-          padding={{ xs: 2, md: 3 }}
-        />
-        <div ref={messagesEndRef} />
-      </>
-    );
-  };
-
-  const renderDirectMessagesMobile = () => {
-    if (directMessagesHasAccess === false) {
-      return (
-        <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-          <Typography variant="body2" color="text.secondary" align="center">
-            Direct messages are disabled for your account.
-          </Typography>
-        </Stack>
-      );
-    }
-
-    if (!selectedDirectThreadId) {
-      if (dmThreads.length === 0 && !isLoadingDmThreads) {
-        return (
-          <Stack spacing={1.5} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-            <Typography variant="h6">Start a new conversation</Typography>
-            <Typography variant="body2" color="text.secondary" align="center">
-              Visit a profile and choose “Message user” to invite them to chat.
-            </Typography>
-          </Stack>
-        );
-      }
-      if (isLoadingDmThreads) {
-        return (
-          <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-            <CircularProgress />
-            <Typography variant="body2" color="text.secondary">
-              Loading conversations…
-            </Typography>
-          </Stack>
-        );
-      }
-      return (
-        <Stack spacing={1.5} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-          <Typography variant="h6">Select a direct message</Typography>
-          <Typography variant="body2" color="text.secondary" align="center">
-            Open the channel picker above and choose a conversation.
-          </Typography>
-        </Stack>
-      );
-    }
-
-    if (directThreadStatus && directThreadStatus.message) {
-      return (
-        <Alert severity={directThreadStatus.type} sx={{ mx: { xs: 2, md: 4 }, my: 2 }}>
-          {directThreadStatus.message}
-        </Alert>
-      );
-    }
-
-    if (isLoadingDirectThread && directMessageItems.length === 0) {
-      return (
-        <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-          <CircularProgress />
-          <Typography variant="body2" color="text.primary">
-            Loading messages…
-          </Typography>
-        </Stack>
-      );
-    }
-
-    if (directMessageItems.length === 0) {
-      return (
-        <Stack
-          spacing={1.5}
-          alignItems="center"
-          justifyContent="center"
-          sx={{ flexGrow: 1, py: 6, color: '#111' }}
-        >
-          <Typography variant="h6" sx={{ color: '#111' }}>
-            Say hello
-          </Typography>
-          <Typography variant="body2" align="center" sx={{ color: '#333' }}>
-            Send the first message to keep the conversation going.
-          </Typography>
-        </Stack>
-      );
-    }
-
-    return (
-      <>
-        {directMessageBubbles}
-        <AttachmentPreview
-          attachments={dmAttachments}
-          onRemove={removeDmAttachment}
-          status={dmAttachmentStatus}
-          isUploading={isUploadingDmAttachment}
-          uploadProgress={dmUploadProgress}
-          onRetry={retryDmFailedUploads}
-          canRetry={canRetryDmUploads}
-          padding={{ xs: 2, md: 3 }}
-        />
-        <div ref={messagesEndRef} />
-      </>
-    );
-  };
-
   const renderFriendsList = ({ isOverlay = false } = {}) => {
     const [friendSearchQuery, setFriendSearchQuery] = useState(''); 
     const friends = Array.isArray(friendGraph?.friends) ? friendGraph.friends : [];
 
     if (friendHasAccess === false) {
       return (
-        <Stack
-          spacing={1.5}
-          alignItems="center"
-          justifyContent="center"
-          sx={{ flexGrow: 1, py: 6, color: isOverlay ? 'inherit' : '#111' }}
-        >
-          <Typography variant="h6" align="center" sx={!isOverlay ? { color: '#111' } : undefined}>
+        <Box className="friends-page-text-container">
+          <Typography
+            className="friends-page-title-text" 
+            variant="h6" 
+          >
             Friend access required
           </Typography>
           <Typography
+            className="friends-page-body-text"
             variant="body2"
-            align="center"
-            sx={!isOverlay ? { color: '#555' } : undefined}
           >
             You need additional privileges to view or manage friends.
           </Typography>
-        </Stack>
+        </Box>
       );
     }
 
     if (isLoadingFriends && friends.length === 0) {
       return (
-        <Stack
-          spacing={2}
-          alignItems="center"
-          justifyContent="center"
-          sx={{ flexGrow: 1, py: 6, color: isOverlay ? 'inherit' : '#111' }}
-        >
-          <CircularProgress />
-          <Typography variant="body2" sx={!isOverlay ? { color: '#111' } : undefined}>
+        <Box className="friends-page-text-container">
+          <CircularProgress className="loading-friends-circle"/>
+          <Typography
+            className="friends-page-body-text" 
+            variant="body2"
+          >
             Loading friends…
           </Typography>
-        </Stack>
+        </Box>
       );
     }
 
@@ -2345,4 +2177,4 @@ function ChatPage() {
   );
 }
 
-export default ChatPage;
+export default FriendsPage;
