@@ -64,6 +64,9 @@ const parseCsv = (value) =>
         .filter(Boolean)
     : [];
 
+const parseOriginList = (value) =>
+  parseCsv(value).map((entry) => entry.toLowerCase()).filter(Boolean);
+
 const TENOR_CONTENT_FILTERS = new Set(['off', 'low', 'medium', 'high']);
 const resolveTenorContentFilter = (value) => {
   if (!value) {
@@ -118,6 +121,13 @@ const allowAccountSwapOnline = parseBoolean(process.env.PINPOINT_ENABLE_ACCOUNT_
 const accountSwapAllowlist = new Set(
   parseCsv(process.env.PINPOINT_ACCOUNT_SWAP_ALLOWLIST).map((entry) => entry.toLowerCase())
 );
+const cors = {
+  allowedOrigins: isOffline
+    ? []
+    : parseOriginList(
+        process.env.PINPOINT_CORS_ALLOWLIST || process.env.PINPOINT_ALLOWED_ORIGINS
+      )
+};
 
 module.exports = {
   mode,
@@ -131,5 +141,6 @@ module.exports = {
   debugAuth: {
     allowAccountSwapOnline,
     accountSwapAllowlist
-  }
+  },
+  cors
 };
