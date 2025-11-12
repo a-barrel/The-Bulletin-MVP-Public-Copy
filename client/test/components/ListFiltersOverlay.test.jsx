@@ -71,7 +71,7 @@ describe('ListFiltersOverlay', () => {
       endDate: '2025-03-15',
       types: ['discussion'],
       categories: ['Community', 'Outdoors'],
-      friendEngagements: []
+      friendEngagements: [] // temp fix so i can actually push
     });
     expect(onClose).toHaveBeenCalled();
   });
