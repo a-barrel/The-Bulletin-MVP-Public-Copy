@@ -8,19 +8,55 @@ const {
 
 const UserStatusSchema = z.enum(['active', 'inactive', 'suspended', 'deleted']);
 
+const NotificationPreferencesSchema = z
+  .object({
+    proximity: z.boolean().default(true),
+    updates: z.boolean().default(true),
+    pinCreated: z.boolean().default(true),
+    pinUpdates: z.boolean().default(true),
+    eventReminders: z.boolean().default(true),
+    discussionReminders: z.boolean().default(true),
+    bookmarkReminders: z.boolean().default(true),
+    chatMessages: z.boolean().default(true),
+    marketing: z.boolean().default(false),
+    chatTransitions: z.boolean().default(true),
+    friendRequests: z.boolean().default(true),
+    badgeUnlocks: z.boolean().default(true),
+    moderationAlerts: z.boolean().default(true),
+    dmMentions: z.boolean().default(true),
+    emailDigests: z.boolean().default(false)
+  })
+  .partial();
+
+const DisplayPreferencesSchema = z
+  .object({
+    textScale: z.number().min(0.5).max(2).default(1),
+    reduceMotion: z.boolean().default(false),
+    highContrast: z.boolean().default(false),
+    mapDensity: z.enum(['compact', 'balanced', 'detailed']).default('balanced'),
+    celebrationSounds: z.boolean().default(true)
+  })
+  .partial();
+
+const DataPreferencesSchema = z
+  .object({
+    autoExportReminders: z.boolean().default(false)
+  })
+  .partial();
+
 const UserPreferencesSchema = z.object({
   theme: z.enum(['system', 'light', 'dark']).default('system'),
-  notifications: z
-    .object({
-      proximity: z.boolean().default(true),
-      updates: z.boolean().default(true),
-      marketing: z.boolean().default(false),
-      chatTransitions: z.boolean().default(true)
-    })
-    .partial(),
+  notifications: NotificationPreferencesSchema.optional(),
+  notificationsMutedUntil: z
+    .union([z.string().datetime(), z.null()])
+    .optional(),
   radiusPreferenceMeters: z.number().int().positive().default(16093).optional(),
   statsPublic: z.boolean().default(true).optional(),
-  filterCussWords: z.boolean().default(false).optional()
+  filterCussWords: z.boolean().default(false).optional(),
+  dmPermission: z.enum(['everyone', 'friends', 'nobody']).default('everyone').optional(),
+  digestFrequency: z.enum(['immediate', 'daily', 'weekly', 'never']).default('weekly').optional(),
+  display: DisplayPreferencesSchema.optional(),
+  data: DataPreferencesSchema.optional()
 });
 
 const UserStatsSchema = z.object({

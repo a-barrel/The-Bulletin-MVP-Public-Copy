@@ -18,11 +18,13 @@ import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { metersToMiles, METERS_PER_MILE } from '../utils/geo';
 import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
+import { logClientError } from '../utils/clientLogger';
 
 const DEFAULT_AVATAR_PATH = '/images/profile/profile-01.jpg';
 const DEFAULT_COVER_PATH = '/images/background/background-01.jpg';
 const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
 const FUTURE_SKEW_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const IS_DEV = import.meta.env.DEV;
 
 const TF2_AVATAR_MAP = {
   tf2_scout: '/images/emulation/avatars/Scoutava.jpg',
@@ -94,7 +96,7 @@ const resolveMediaAssetUrl = (asset, fallback) => {
             }
             return parsed.pathname;
           }
-        } catch (error) {
+        } catch {
           // fall back to original absolute value
         }
       }
@@ -380,6 +382,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   const [repliesError, setRepliesError] = useState(null);
   const [attendeeOverlayOpen, setAttendeeOverlayOpen] = useState(false);
   const [attendees, setAttendees] = useState([]);
+  const [shouldPrefetchAttendees, setShouldPrefetchAttendees] = useState(true);
   const [isLoadingAttendees, setIsLoadingAttendees] = useState(false);
   const [attendeesError, setAttendeesError] = useState(null);
   const [replyComposerOpen, setReplyComposerOpen] = useState(false);
@@ -401,8 +404,10 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     if (pinFromState) {
       setPin(pinFromState);
       setIsLoading(false);
-      if (process.env.NODE_ENV !== 'production') {
-        console.debug('[usePinDetails] pinFromState applied', { pinId, pinFromState });
+      if (IS_DEV) {
+        console.debug('[usePinDetails] pinFromState applied', {
+          pinFromStateId: pinFromState?._id ?? 'unknown'
+        });
       }
     }
   }, [pinFromState]);
@@ -412,12 +417,14 @@ export default function usePinDetails({ pinId, location, isOffline }) {
       return;
     }
     const candidate = extractViewerProfileIdFromState(locationState);
-    if (candidate) {
-      setViewerProfileId(candidate);
-      if (process.env.NODE_ENV !== 'production') {
-        console.debug('[usePinDetails] viewerProfileId from state', { pinId, viewerProfileId: candidate });
+      if (candidate) {
+        setViewerProfileId(candidate);
+        if (IS_DEV) {
+          console.debug('[usePinDetails] viewerProfileId from state', {
+            viewerProfileId: candidate
+          });
+        }
       }
-    }
   }, [locationState, viewerProfileId]);
 
   useEffect(() => {
@@ -438,6 +445,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
       } catch (loadError) {
         if (!ignore) {
           console.warn('Failed to load viewer profile for pin details:', loadError);
+          logClientError(loadError, { source: 'usePinDetails.viewerProfile', pinId });
           setViewerProfileId(null);
         }
       }
@@ -446,7 +454,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     return () => {
       ignore = true;
     };
-  }, [viewerProfileId, isOffline]);
+  }, [viewerProfileId, isOffline, pinId]);
 
   const previewMode = useMemo(() => {
     const params = new URLSearchParams(location?.search ?? '');
@@ -455,7 +463,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
 
   const reloadPin = useCallback(
     async ({ silent } = {}) => {
-      if (process.env.NODE_ENV !== 'production') {
+      if (IS_DEV) {
         console.debug('[usePinDetails] reload start', { pinId, silent });
       }
       if (!pinId) {
@@ -487,7 +495,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
       try {
         const payload = await fetchPinById(pinId, { previewMode });
         if (!isMountedRef.current) {
-          if (process.env.NODE_ENV !== 'production') {
+          if (IS_DEV) {
             console.debug('[usePinDetails] reload ignored - unmounted', { pinId });
           }
           return payload;
@@ -495,7 +503,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         setPin(payload);
         setBookmarked(Boolean(payload?.viewerHasBookmarked));
         setAttending(Boolean(payload?.viewerIsAttending));
-        if (process.env.NODE_ENV !== 'production') {
+        if (IS_DEV) {
           console.debug('[usePinDetails] reload success', { pinId, title: payload?.title });
         }
         return payload;
@@ -503,7 +511,11 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         if (!isMountedRef.current) {
           return null;
         }
-        console.error('Failed to load pin details:', loadError);
+        logClientError(loadError, {
+          source: 'usePinDetails.reloadPin',
+          pinId,
+          previewMode
+        });
         setError(loadError?.message || 'Failed to load pin details.');
         return null;
       } finally {
@@ -547,7 +559,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         if (ignore) {
           return;
         }
-        console.error('Failed to load replies:', loadError);
+        logClientError(loadError, { source: 'usePinDetails.loadReplies', pinId });
         setReplies([]);
         setRepliesError(loadError?.message || 'Failed to load replies.');
       } finally {
@@ -565,24 +577,44 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   }, [isOffline, pinId]);
 
   useEffect(() => {
-    if (!attendeeOverlayOpen) {
+    if (!pinId) {
+      setShouldPrefetchAttendees(true);
+      setAttendees([]);
+      return;
+    }
+    setShouldPrefetchAttendees(true);
+  }, [pinId]);
+
+  useEffect(() => {
+    const shouldLoadAttendees = attendeeOverlayOpen || shouldPrefetchAttendees;
+    if (!shouldLoadAttendees) {
       return;
     }
     if (isOffline) {
-      setIsLoadingAttendees(false);
-      setAttendeesError((prev) => prev ?? 'Attendee list unavailable while offline.');
+      if (attendeeOverlayOpen) {
+        setIsLoadingAttendees(false);
+        setAttendeesError((prev) => prev ?? 'Attendee list unavailable while offline.');
+      }
+      if (shouldPrefetchAttendees) {
+        setShouldPrefetchAttendees(false);
+      }
       return;
     }
     if (!pinId) {
       setAttendees([]);
+      if (shouldPrefetchAttendees) {
+        setShouldPrefetchAttendees(false);
+      }
       return;
     }
 
     let ignore = false;
 
     async function loadAttendees() {
-      setIsLoadingAttendees(true);
-      setAttendeesError(null);
+      if (attendeeOverlayOpen) {
+        setIsLoadingAttendees(true);
+        setAttendeesError(null);
+      }
       try {
         const payload = await fetchPinAttendees(pinId);
         if (ignore) {
@@ -593,12 +625,15 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         if (ignore) {
           return;
         }
-        console.error('Failed to load attendees:', loadError);
+        logClientError(loadError, { source: 'usePinDetails.loadAttendees', pinId });
         setAttendees([]);
         setAttendeesError(loadError?.message || 'Failed to load attendees.');
       } finally {
-        if (!ignore) {
+        if (!ignore && attendeeOverlayOpen) {
           setIsLoadingAttendees(false);
+        }
+        if (!ignore && shouldPrefetchAttendees) {
+          setShouldPrefetchAttendees(false);
         }
       }
     }
@@ -608,7 +643,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     return () => {
       ignore = true;
     };
-  }, [attendeeOverlayOpen, isOffline, pinId]);
+  }, [attendeeOverlayOpen, isOffline, pinId, shouldPrefetchAttendees]);
 
   const pinExpired = useMemo(() => {
     if (!pin) {
@@ -938,7 +973,11 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         }
       }
     } catch (toggleError) {
-      console.error('Failed to toggle bookmark:', toggleError);
+      logClientError(toggleError, {
+        source: 'usePinDetails.toggleBookmark',
+        pinId,
+        bookmarkedTarget: !bookmarked
+      });
       setBookmarkError(toggleError?.message || 'Failed to toggle bookmark.');
     } finally {
       setIsUpdatingBookmark(false);
@@ -952,7 +991,8 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     isOffline,
     isUpdatingBookmark,
     pin,
-    pinExpired
+    pinExpired,
+    pinId
   ]);
 
   const handleToggleAttendance = useCallback(async () => {
@@ -1023,7 +1063,11 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         announceBadgeEarned(response.badgeEarnedId);
       }
     } catch (toggleError) {
-      console.error('Failed to update attendance:', toggleError);
+      logClientError(toggleError, {
+        source: 'usePinDetails.toggleAttendance',
+        pinId,
+        attendingTarget: !attending
+      });
       setAttendanceError(toggleError?.message || 'Failed to update attendance.');
     } finally {
       setIsUpdatingAttendance(false);
@@ -1036,7 +1080,8 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     isOffline,
     isUpdatingAttendance,
     pin,
-    pinExpired
+    pinExpired,
+    pinId
   ]);
 
   const handleSubmitReply = useCallback(async () => {
@@ -1080,7 +1125,10 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         };
       });
     } catch (submitError) {
-      console.error('Failed to create reply:', submitError);
+      logClientError(submitError, {
+        source: 'usePinDetails.submitReply',
+        pinId
+      });
       setSubmitReplyError(submitError?.message || 'Failed to create reply.');
     } finally {
       setIsSubmittingReply(false);
@@ -1145,6 +1193,10 @@ export default function usePinDetails({ pinId, location, isOffline }) {
           });
         }
       } catch (error) {
+        logClientError(error, {
+          source: 'usePinDetails.sharePin',
+          pinId
+        });
         if (error?.name === 'AbortError') {
           setShareStatus({
             type: 'info',

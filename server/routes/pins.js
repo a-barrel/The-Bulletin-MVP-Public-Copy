@@ -113,7 +113,20 @@ const mapPinPreview = (pinDoc, creator) => {
   });
 };
 
-const mapPinToListItem = (pinDoc, creator) => {
+const mapPinOptions = (optionsDoc) => {
+  if (!optionsDoc) {
+    return undefined;
+  }
+  if (typeof optionsDoc.toObject === 'function') {
+    return optionsDoc.toObject();
+  }
+  if (typeof optionsDoc === 'object') {
+    return { ...optionsDoc };
+  }
+  return undefined;
+};
+
+const mapPinToListItem = (pinDoc, creator, options = {}) => {
   const preview = mapPinPreview(pinDoc, creator);
   const coverPhoto = pinDoc.coverPhoto
     ? mapMediaAssetResponse(pinDoc.coverPhoto, { toIdString })
@@ -124,12 +137,23 @@ const mapPinToListItem = (pinDoc, creator) => {
         .filter(Boolean)
     : undefined;
 
+  const viewerHasBookmarked =
+    typeof options.viewerHasBookmarked === 'boolean' ? options.viewerHasBookmarked : undefined;
+  const viewerIsAttending =
+    typeof options.viewerIsAttending === 'boolean' ? options.viewerIsAttending : undefined;
+  const viewerOwnsPin =
+    typeof options.viewerOwnsPin === 'boolean' ? options.viewerOwnsPin : undefined;
+
   return PinListItemSchema.parse({
     ...preview,
     distanceMeters: undefined,
-    isBookmarked: undefined,
+    isBookmarked: viewerHasBookmarked,
+    viewerHasBookmarked,
+    viewerIsAttending,
+    viewerOwnsPin,
     replyCount: pinDoc.replyCount ?? undefined,
     stats: pinDoc.stats || undefined,
+    options: mapPinOptions(pinDoc.options),
     coverPhoto,
     photos
   });
@@ -330,6 +354,7 @@ const mapPinToFull = (pinDoc, creator, options = {}) => {
     visibility: doc.visibility,
     isActive: doc.isActive,
     stats: doc.stats || undefined,
+    options: mapPinOptions(doc.options),
     bookmarkCount: doc.bookmarkCount ?? 0,
     replyCount: doc.replyCount ?? 0,
     createdAt: pinDoc.createdAt.toISOString(),
@@ -428,6 +453,24 @@ const MediaAssetInputSchema = z.object({
   description: z.string().optional()
 });
 
+const PinOptionsInputSchema = z
+  .object({
+    allowBookmarks: z.boolean().optional(),
+    allowShares: z.boolean().optional(),
+    allowReplies: z.boolean().optional(),
+    showAttendeeList: z.boolean().optional(),
+    featured: z.boolean().optional(),
+    visibilityMode: z.enum(['map-only', 'list-only', 'map-and-list']).optional(),
+    reminderMinutesBefore: z.number().int().nonnegative().max(10080).optional(),
+    contentAdvisory: z.string().trim().max(140).optional(),
+    highlightColor: z
+      .string()
+      .trim()
+      .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
+      .optional()
+  })
+  .strict();
+
 const normaliseMediaAsset = (asset, uploadedBy) => ({
   url: asset.url,
   width: asset.width,
@@ -449,7 +492,8 @@ const NearbyPinsQuerySchema = z.object({
   categories: z.string().trim().optional(),
   status: z.enum(['active', 'expired', 'all']).optional(),
   startDate: z.string().trim().optional(),
-  endDate: z.string().trim().optional()
+  endDate: z.string().trim().optional(),
+  friendEngagements: z.string().trim().optional()
 });
 
 const haversineDistanceMeters = (lat1, lon1, lat2, lon2) => {
@@ -471,8 +515,9 @@ const BaseCreatePinSchema = z.object({
   coordinates: CoordinatesSchema,
   proximityRadiusMeters: z.number().int().positive().max(50000).optional(),
   creatorId: z.string().optional(),
-  photos: z.array(MediaAssetInputSchema).max(10).optional(),
-  coverPhoto: MediaAssetInputSchema.optional()
+  photos: z.array(MediaAssetInputSchema).max(3).optional(),
+  coverPhoto: MediaAssetInputSchema.optional(),
+  options: PinOptionsInputSchema.optional()
 });
 
 const EventAddressComponentsSchema = z
@@ -592,15 +637,16 @@ router.post('/', verifyToken, async (req, res) => {
       coordinates: [input.coordinates.longitude, input.coordinates.latitude]
     };
 
-    const pinData = {
-      type: input.type,
-      creatorId: creatorObjectId,
-      title: input.title,
-      description: input.description,
-      coordinates,
-      proximityRadiusMeters: input.proximityRadiusMeters ?? 1609,
-      visibility: 'public'
-    };
+  const pinData = {
+    type: input.type,
+    creatorId: creatorObjectId,
+    title: input.title,
+    description: input.description,
+    coordinates,
+    proximityRadiusMeters: input.proximityRadiusMeters ?? 1609,
+    visibility: 'public',
+    options: input.options ?? undefined
+  };
 
     if (input.type === 'event') {
       pinData.startDate = input.startDate;
@@ -710,6 +756,7 @@ router.post('/', verifyToken, async (req, res) => {
     if (error instanceof ZodError) {
       return res.status(400).json({ message: 'Invalid pin payload', issues: error.errors });
     }
+    req.logError?.(error, { handler: 'pins:create' });
     console.error('Failed to create pin:', error);
     res.status(500).json({ message: 'Failed to create pin' });
   }
@@ -728,7 +775,8 @@ router.get('/nearby', verifyToken, async (req, res) => {
       categories: categoriesParam,
       status: statusParam,
       startDate: startDateParam,
-      endDate: endDateParam
+      endDate: endDateParam,
+      friendEngagements: friendEngagementsParam
     } = NearbyPinsQuerySchema.parse(req.query);
 
     const maxDistanceMeters = milesToMeters(distanceMiles) ?? distanceMiles * METERS_PER_MILE;
@@ -737,9 +785,45 @@ router.get('/nearby', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     const viewerBlockedSet = buildBlockedSet(viewer);
+    const viewerId = toIdString(viewer._id);
+    const viewerFriendObjectIds = mapIdList(viewer.relationships?.friendIds)
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+    const normalizedFriendEngagements = parseCsvParam(friendEngagementsParam)
+      .map((entry) => entry.toLowerCase())
+      .filter((entry) => entry === 'created' || entry === 'replied' || entry === 'attending');
+    const friendFilterActive = normalizedFriendEngagements.length > 0;
+
+    if (friendFilterActive && viewerFriendObjectIds.length === 0) {
+      return res.json([]);
+    }
+
+    let friendReplyPinIds = [];
+    if (friendFilterActive && normalizedFriendEngagements.includes('replied')) {
+      friendReplyPinIds = await Reply.distinct('pinId', {
+        authorId: { $in: viewerFriendObjectIds }
+      });
+    }
+    const friendFilterClauses = [];
+    if (normalizedFriendEngagements.includes('created') && viewerFriendObjectIds.length) {
+      friendFilterClauses.push({ creatorId: { $in: viewerFriendObjectIds } });
+    }
+    if (normalizedFriendEngagements.includes('attending') && viewerFriendObjectIds.length) {
+      friendFilterClauses.push({ attendingUserIds: { $in: viewerFriendObjectIds } });
+    }
+    if (normalizedFriendEngagements.includes('replied') && friendReplyPinIds.length) {
+      friendFilterClauses.push({ _id: { $in: friendReplyPinIds } });
+    }
 
     const now = new Date();
     const filters = [];
+
+    if (friendFilterActive) {
+      if (!friendFilterClauses.length) {
+        return res.json([]);
+      }
+      filters.push({ $or: friendFilterClauses });
+    }
 
     // Status filters
     const effectiveStatus = statusParam || 'active';
@@ -853,14 +937,47 @@ router.get('/nearby', verifyToken, async (req, res) => {
       return true;
     });
 
+    const pinObjectIds = filteredPins.map((pinDoc) => pinDoc._id).filter(Boolean);
+    let viewerBookmarkSet = new Set();
+    if (pinObjectIds.length > 0) {
+      const bookmarks = await Bookmark.find(
+        { userId: viewer._id, pinId: { $in: pinObjectIds } },
+        { pinId: 1 }
+      ).lean();
+      viewerBookmarkSet = new Set(bookmarks.map((bookmark) => toIdString(bookmark.pinId)).filter(Boolean));
+    }
+
     const payload = filteredPins.map((pinDoc) => {
+      const pinIdString = toIdString(pinDoc._id);
+      let viewerHasBookmarked = pinIdString ? viewerBookmarkSet.has(pinIdString) : false;
       const creatorPublic = mapUserToPublic(pinDoc.creatorId);
-      const listItem = mapPinToListItem(pinDoc, creatorPublic);
+      const pinCreatorId = toIdString(pinDoc.creatorId?._id ?? pinDoc.creatorId);
+      const viewerOwnsPin = Boolean(viewerId && pinCreatorId && viewerId === pinCreatorId);
+      let viewerIsAttending = false;
+      if (Array.isArray(pinDoc.attendingUserIds) && viewerId) {
+        viewerIsAttending = pinDoc.attendingUserIds.some((attendeeId) => {
+          try {
+            return toIdString(attendeeId) === viewerId;
+          } catch {
+            return false;
+          }
+        });
+      }
+      if (viewerOwnsPin || viewerIsAttending) {
+        viewerHasBookmarked = true;
+      }
+      const listItem = mapPinToListItem(pinDoc, creatorPublic, {
+        viewerHasBookmarked,
+        viewerIsAttending,
+        viewerOwnsPin
+      });
       const [pinLongitude, pinLatitude] = pinDoc.coordinates.coordinates;
       const distanceMeters = haversineDistanceMeters(latitude, longitude, pinLatitude, pinLongitude);
       return {
         ...listItem,
-        distanceMeters
+        distanceMeters,
+        isBookmarked: viewerHasBookmarked,
+        viewerHasBookmarked
       };
     });
 
@@ -869,6 +986,7 @@ router.get('/nearby', verifyToken, async (req, res) => {
     if (error instanceof ZodError) {
       return res.status(400).json({ message: 'Invalid nearby pins query', issues: error.errors });
     }
+    req.logError?.(error, { handler: 'pins:nearby' });
     console.error('Failed to load nearby pins:', error);
     res.status(500).json({ message: 'Failed to load nearby pins' });
   }
@@ -1697,6 +1815,44 @@ router.put('/:pinId', verifyToken, async (req, res) => {
     }
     console.error('Failed to update pin:', error);
     res.status(500).json({ message: 'Failed to update pin' });
+  }
+});
+
+router.delete('/:pinId', verifyToken, async (req, res) => {
+  try {
+    const { pinId } = PinIdSchema.parse(req.params);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const pin = await Pin.findById(pinId);
+    if (!pin) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    const viewerId = toIdString(viewer._id);
+    const pinCreatorId = toIdString(pin.creatorId);
+    if (!viewerId || viewerId !== pinCreatorId) {
+      return res.status(403).json({ message: 'You do not have permission to delete this pin.' });
+    }
+
+    await Reply.deleteMany({ pinId: pin._id });
+    await Bookmark.deleteMany({ pinId: pin._id });
+    await pin.deleteOne();
+
+    await trackEvent('pin_deleted', {
+      pinId: toIdString(pin._id),
+      userId: viewerId
+    });
+
+    return res.json({ success: true, message: 'Pin deleted successfully.' });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid pin id', issues: error.errors });
+    }
+    console.error('Failed to delete pin:', error);
+    return res.status(500).json({ message: 'Failed to delete pin' });
   }
 });
 

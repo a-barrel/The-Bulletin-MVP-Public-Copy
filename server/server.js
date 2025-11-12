@@ -61,6 +61,25 @@ app.use((req, res, next) => {
 });
 app.use(express.json());
 app.use((req, res, next) => {
+  req.logError = (error, context = {}) => {
+    const payload =
+      error instanceof Error
+        ? { message: error.message, stack: error.stack }
+        : { message: String(error) };
+    logLine('server-routes', `${req.method} ${req.originalUrl} ${payload.message}`, {
+      severity: 'error',
+      stack: payload.stack,
+      context: {
+        route: req.originalUrl,
+        method: req.method,
+        userId: req.user?.uid,
+        ...context
+      }
+    });
+  };
+  next();
+});
+app.use((req, res, next) => {
   if (!runtime.isOffline) {
     return next();
   }
@@ -70,7 +89,14 @@ app.use((req, res, next) => {
       const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
       const message = `${res.statusCode} ${req.method} ${req.originalUrl} ${durationMs.toFixed(2)}ms`;
       console.warn(`[http-error] ${message}`);
-      logLine('http-errors', message);
+      logLine('http-errors', message, {
+        severity: 'error',
+        context: {
+          method: req.method,
+          url: req.originalUrl,
+          status: res.statusCode
+        }
+      });
     }
   });
   next();
@@ -84,9 +110,47 @@ fs.mkdirSync(soundsDir, { recursive: true });
 app.set('uploadsDir', uploadsDir);
 app.set('imagesDir', imagesDir);
 app.set('soundsDir', soundsDir);
-app.use('/images', express.static(imagesDir));
-app.use('/uploads/images', express.static(imagesDir));
-app.use('/sounds', express.static(soundsDir));
+
+const serveImage = express.static(imagesDir);
+const serveSound = express.static(soundsDir);
+const fallbackTexturePath = path.join(imagesDir, 'UNKNOWN_TEXTURE.jpg');
+const fallbackExists = fs.existsSync(fallbackTexturePath);
+const sendFallbackTexture = (res, next) => {
+  if (fallbackExists) {
+    res.sendFile(fallbackTexturePath, (err) => {
+      if (err) {
+        next(err);
+      }
+    });
+  } else {
+    res.status(404).json({ message: 'Image not found.' });
+  }
+};
+
+const imageHandler = (req, res, next) => {
+  serveImage(req, res, (err) => {
+    if (err && err.status !== 404) {
+      return next(err);
+    }
+    if (res.headersSent) {
+      return;
+    }
+    sendFallbackTexture(res, next);
+  });
+};
+
+app.use('/images', imageHandler);
+app.use('/uploads/images', imageHandler);
+app.use('/sounds', (req, res, next) => {
+  serveSound(req, res, (err) => {
+    if (err) {
+      return next(err);
+    }
+    if (!res.headersSent) {
+      res.status(404).json({ message: 'Sound not found.' });
+    }
+  });
+});
 
 // MongoDB connection
 mongoose
@@ -145,11 +209,21 @@ app.use('/api/reports', verifyToken, require('./routes/reports'));
 app.use('/api/feedback', verifyToken, require('./routes/feedback'));
 app.use('/api/storage', require('./routes/storage'));
 app.use('/api/debug', require('./routes/debug'));
+app.use('/api/dev-logs', require('./routes/devLogs'));
 app.use('/api/auth', require('./routes/auth'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
+  logLine('runtime-errors', `${req.method} ${req.originalUrl}`, {
+    severity: 'error',
+    stack: err.stack,
+    context: {
+      method: req.method,
+      url: req.originalUrl,
+      message: err.message
+    }
+  });
   res.status(500).json({ message: 'Something went wrong!' });
 });
 
@@ -161,7 +235,10 @@ const serverInstance = app.listen(PORT, () => {
 const logFatal = (label, error) => {
   const message = `${label}: ${error instanceof Error ? error.stack || error.message : String(error)}`;
   console.error(message);
-  logLine('runtime-errors', message);
+  logLine('runtime-errors', message, {
+    severity: 'fatal',
+    stack: error instanceof Error ? error.stack : undefined
+  });
 };
 
 const shutdown = () => {

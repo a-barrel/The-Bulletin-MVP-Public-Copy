@@ -172,8 +172,7 @@ function LoginPage() {
   return (
     <AuthPageLayout
       shake={shake}
-      title="The Bulletin"
-      titleClassName="page-title"
+      className="login-page-layout"
       alerts={alerts}
     >
       <div className="bulletin-image">

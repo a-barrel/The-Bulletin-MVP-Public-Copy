@@ -1,0 +1,147 @@
+import BlockIcon from '@mui/icons-material/Block';
+import FlagIcon from '@mui/icons-material/Flag';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
+import MessageIcon from '@mui/icons-material/Message';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
+import Typography from '@mui/material/Typography';
+
+function ProfileActionRow({
+  canManageBlock,
+  isBlocked,
+  isProcessingBlockAction,
+  isFetchingProfile,
+  onRequestBlock,
+  onRequestUnblock,
+  showFriendAction,
+  canSendFriendRequest,
+  isFriend,
+  hasPendingFriendRequest,
+  isSendingFriendRequest,
+  onSendFriendRequest
+}) {
+  const blockDisabled = isProcessingBlockAction || isFetchingProfile;
+  const blockCursor = blockDisabled ? 'not-allowed' : 'pointer';
+
+  const friendState = isFriend ? 'friends' : hasPendingFriendRequest ? 'pending' : 'idle';
+  const friendLabel =
+    friendState === 'friends' ? 'Friends' : friendState === 'pending' ? 'Request sent' : 'Add friend';
+  const friendDisabled = !canSendFriendRequest || friendState !== 'idle' || isSendingFriendRequest;
+  const friendCursor = friendDisabled ? 'not-allowed' : 'pointer';
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'row',
+        gap: 2,
+        width: '100%'
+      }}
+    >
+      <Box
+        className="section-content-box"
+        sx={{
+          flex: 1,
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 2,
+          p: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 1,
+          cursor: 'pointer'
+        }}
+      >
+        <MessageIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+        <Typography variant="body2" color="text.secondary">
+          Message
+        </Typography>
+      </Box>
+
+      <Box
+        className="section-content-box"
+        sx={{
+          flex: 1,
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 2,
+          p: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 1,
+          cursor: 'pointer'
+        }}
+      >
+        <FlagIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+        <Typography variant="body2" color="text.secondary">
+          Report
+        </Typography>
+      </Box>
+
+      {canManageBlock ? (
+        <Box
+          className="section-content-box"
+          onClick={isBlocked ? onRequestUnblock : onRequestBlock}
+          sx={{
+            flex: 1,
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 2,
+            p: 2,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 1,
+            cursor: blockCursor,
+            opacity: blockDisabled ? 0.6 : 1,
+            pointerEvents: blockDisabled ? 'none' : undefined
+          }}
+        >
+          {isBlocked ? (
+            <HowToRegIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+          ) : (
+            <BlockIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+          )}
+          <Typography variant="body2" color="text.secondary">
+            {isBlocked ? 'Unblock' : 'Block'}
+          </Typography>
+        </Box>
+      ) : null}
+
+      {showFriendAction ? (
+        <Box
+          className="section-content-box"
+          onClick={friendDisabled ? undefined : onSendFriendRequest}
+          sx={{
+            flex: 1,
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 2,
+            p: 2,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 1,
+            cursor: friendCursor,
+            opacity: friendDisabled ? 0.6 : 1,
+            pointerEvents: friendDisabled ? 'none' : undefined
+          }}
+        >
+          {isSendingFriendRequest ? (
+            <CircularProgress size={28} thickness={5} />
+          ) : (
+            <PersonAddIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+          )}
+          <Typography variant="body2" color="text.secondary">
+            {friendLabel}
+          </Typography>
+        </Box>
+      ) : null}
+    </Box>
+  );
+}
+
+export default ProfileActionRow;

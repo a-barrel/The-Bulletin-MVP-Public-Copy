@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useReducer } from 'react';
+import reportClientError from '../utils/reportClientError';
 
 import {
   createDirectMessageThread,
@@ -189,6 +190,9 @@ export default function useDirectMessages({ autoLoad = true } = {}) {
       dispatch({ type: 'threads/success', payload });
       return payload;
     } catch (error) {
+      reportClientError(error, 'Failed to load direct message threads', {
+        source: 'useDirectMessages.loadThreads'
+      });
       dispatch({
         type: 'threads/error',
         error:
@@ -214,6 +218,10 @@ export default function useDirectMessages({ autoLoad = true } = {}) {
         dispatch({ type: 'thread/success', payload: payload?.thread ?? null });
         return payload?.thread ?? null;
       } catch (error) {
+        reportClientError(error, 'Failed to load direct message thread', {
+          source: 'useDirectMessages.loadThreadDetail',
+          threadId
+        });
         dispatch({
           type: 'thread/error',
           error:
@@ -272,6 +280,10 @@ export default function useDirectMessages({ autoLoad = true } = {}) {
         await loadThreadDetail(threadId);
         return response;
       } catch (error) {
+        reportClientError(error, 'Failed to send direct message', {
+          source: 'useDirectMessages.sendMessage',
+          threadId
+        });
         dispatch({
           type: 'thread/remove-optimistic-message',
           threadId,
@@ -332,6 +344,10 @@ export default function useDirectMessages({ autoLoad = true } = {}) {
 
         return response;
       } catch (error) {
+        reportClientError(error, 'Failed to create direct message thread', {
+          source: 'useDirectMessages.createThread',
+          participantCount: participantIds.length
+        });
         dispatch({
           type: 'create/error',
           error:

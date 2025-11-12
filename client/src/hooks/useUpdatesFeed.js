@@ -5,7 +5,8 @@ import {
   fetchCurrentUserProfile,
   fetchUpdates,
   markAllUpdatesRead,
-  markUpdateRead
+  markUpdateRead,
+  deleteUpdate
 } from '../api/mongoDataApi';
 import { auth } from '../firebase';
 import { useUpdates } from '../contexts/UpdatesContext';
@@ -52,6 +53,7 @@ export default function useUpdatesFeed() {
   const [updatesError, setUpdatesError] = useState(null);
 
   const [pendingUpdateIds, setPendingUpdateIds] = useState([]);
+  const [deletingUpdateIds, setDeletingUpdateIds] = useState([]);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
   const [showUnreadOnly, setShowUnreadOnly] = useState(true);
   const pendingRefreshRef = useRef(false);
@@ -244,12 +246,53 @@ export default function useUpdatesFeed() {
     setUpdatesError(null);
   }, []);
 
-  const filteredUpdates = useMemo(() => {
-    if (!showUnreadOnly) {
-      return updates;
+  const handleDeleteUpdate = useCallback(async (updateId) => {
+    if (!updateId) {
+      return;
     }
-    return updates.filter((update) => !update.readAt);
-  }, [showUnreadOnly, updates]);
+    setDeletingUpdateIds((prev) => (prev.includes(updateId) ? prev : [...prev, updateId]));
+    try {
+      await deleteUpdate(updateId);
+      setUpdates((prev) => prev.filter((item) => item._id !== updateId));
+    } catch (error) {
+      setUpdatesError(error?.message || 'Failed to delete update.');
+    } finally {
+      setDeletingUpdateIds((prev) => prev.filter((id) => id !== updateId));
+      setPendingUpdateIds((prev) => prev.filter((id) => id !== updateId));
+    }
+  }, []);
+
+  const handleClearAllUpdates = useCallback(async () => {
+    const ids = updates.map((update) => update?._id).filter(Boolean);
+    if (!ids.length) {
+      return;
+    }
+    setDeletingUpdateIds((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.add(id));
+      return Array.from(next);
+    });
+    const deletedIds = [];
+    try {
+      for (const id of ids) {
+        await deleteUpdate(id);
+        deletedIds.push(id);
+      }
+    } catch (error) {
+      setUpdatesError(error?.message || 'Failed to clear updates.');
+    } finally {
+      if (deletedIds.length) {
+        setUpdates((prev) => prev.filter((item) => !deletedIds.includes(item._id)));
+      }
+      setDeletingUpdateIds((prev) => prev.filter((id) => !ids.includes(id)));
+      setPendingUpdateIds((prev) => prev.filter((id) => !ids.includes(id)));
+    }
+  }, [updates]);
+
+  const filteredUpdates = useMemo(() => {
+    // TODO: reintroduce unread-only filtering once ui exposes that toggle again.
+    return updates;
+  }, [updates]);
 
   return {
     firebaseLoading,
@@ -263,6 +306,7 @@ export default function useUpdatesFeed() {
     updatesError,
     showUnreadOnly,
     pendingUpdateIds,
+    deletingUpdateIds,
     isMarkingAllRead,
     unreadCount,
     containerRef,
@@ -272,6 +316,8 @@ export default function useUpdatesFeed() {
     handleRefresh,
     handleMarkRead,
     handleMarkAllRead,
+    handleDeleteUpdate,
+    handleClearAllUpdates,
     handleDismissUpdatesError
   };
 }

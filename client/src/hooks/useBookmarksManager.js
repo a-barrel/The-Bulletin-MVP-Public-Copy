@@ -1,3 +1,11 @@
+/**
+ * useBookmarksManager centralises every bookmark-side effect:
+ *  - Fetch bookmarks + collections in parallel and expose grouped data for the page.
+ *  - Handle destructive actions (remove) and exports so views can stay declarative.
+ *  - Provide derived helpers (formatSavedDate, groupedBookmarks) to keep BookmarksPage lean.
+ * If you touch the bookmark API contract, adjust the transforms here rather than sprinkling logic
+ * across the UI. This hook intentionally mirrors the data responsibilities of useNearbyPinsFeed.
+ */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -7,9 +15,11 @@ import {
   removeBookmark
 } from '../api/mongoDataApi';
 import { formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
+import reportClientError from '../utils/reportClientError';
 
 const EMPTY_GROUP = 'Unsorted';
 
+// Helpers stay in this file so both the hook and components can format bookmark metadata consistently.
 const formatSavedDate = (input) => {
   if (!input) {
     return 'Unknown date';
@@ -22,6 +32,7 @@ const formatSavedDate = (input) => {
   return absolute || relative || 'Unknown date';
 };
 
+// Bucket bookmarks by collection id so the UI can iterate over ready-to-render groups.
 const groupBookmarks = (bookmarks, collectionsById) => {
   const groups = new Map();
 
@@ -46,6 +57,7 @@ const groupBookmarks = (bookmarks, collectionsById) => {
 };
 
 export default function useBookmarksManager({ authUser, authLoading, isOffline }) {
+  // Lower-level state (bookmarks + collections) is kept separate from derived helpers (groupedBookmarks).
   const [bookmarks, setBookmarks] = useState([]);
   const [collections, setCollections] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,6 +67,7 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
   const [exportStatus, setExportStatus] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
 
+  // Keep a Map for constant-time lookups when grouping bookmarks by collection.
   const collectionsById = useMemo(() => {
     const map = new Map();
     collections.forEach((collection) => {
@@ -70,6 +83,7 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
 
   const totalCount = bookmarks.length;
 
+  // Fetch bookmarks + collections together so the page can show both the list and the sidebar metadata.
   const loadData = useCallback(async () => {
     if (!authUser) {
       setError('Sign in to view your bookmarks.');
@@ -94,7 +108,9 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
       setBookmarks(Array.isArray(bookmarkPayload) ? bookmarkPayload : []);
       setCollections(Array.isArray(collectionPayload) ? collectionPayload : []);
     } catch (err) {
-      console.error('Failed to load bookmarks:', err);
+      reportClientError(err, 'Failed to load bookmarks:', {
+        source: 'useBookmarksManager.loadData'
+      });
       setBookmarks([]);
       setCollections([]);
       setError(err?.message || 'Failed to load bookmarks.');
@@ -103,6 +119,7 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
     }
   }, [authUser, isOffline]);
 
+  // Auto-refresh whenever auth or offline status changes.
   useEffect(() => {
     if (authLoading) {
       return;
@@ -117,6 +134,7 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
     loadData();
   }, [authLoading, authUser, isOffline, loadData]);
 
+  // Remove a bookmark and optimistically update cached state so the page stays snappy.
   const handleRemoveBookmark = useCallback(
     async (bookmark) => {
       const pinId = bookmark?.pinId || bookmark?.pin?._id;
@@ -143,16 +161,20 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
           })
         );
         setRemovalStatus({ type: 'success', message: 'Bookmark removed.' });
-      } catch (err) {
-        console.error('Failed to remove bookmark:', err);
-        setRemovalStatus({ type: 'error', message: err?.message || 'Failed to remove bookmark.' });
-      } finally {
+        } catch (err) {
+          reportClientError(err, 'Failed to remove bookmark:', {
+            source: 'useBookmarksManager.remove',
+            pinId
+          });
+          setRemovalStatus({ type: 'error', message: err?.message || 'Failed to remove bookmark.' });
+        } finally {
         setRemovingPinId(null);
       }
     },
     [isOffline]
   );
 
+  // Kick off a CSV export and surface simple status objects that the UI can show in alerts.
   const handleExport = useCallback(async () => {
     if (!authUser) {
       setExportStatus({ type: 'error', message: 'Sign in to export your bookmarks.' });
@@ -187,13 +209,16 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
             : `Export ready. ${filename || 'bookmarks.csv'} downloaded.`
       });
     } catch (err) {
-      console.error('Failed to export bookmarks:', err);
+      reportClientError(err, 'Failed to export bookmarks:', {
+        source: 'useBookmarksManager.export'
+      });
       setExportStatus({ type: 'error', message: err?.message || 'Failed to export bookmarks.' });
     } finally {
       setIsExporting(false);
     }
   }, [authUser, isOffline, totalCount]);
 
+  // Expose raw data, derived data, and the helper actions so pages can pick what they need.
   return {
     bookmarks,
     groupedBookmarks,

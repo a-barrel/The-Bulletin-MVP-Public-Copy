@@ -1,14 +1,15 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import FriendBadge from './FriendBadge';
 import './PinListItem.css';
 
 function PinListItem({ pin, onClick }) {
   const navigate = useNavigate();
+  const authorId = pin?.creatorId || pin?.creator?._id || null;
 
   const handleAuthorClick = (e) => {
     e.stopPropagation(); // Prevent triggering the pin click
-    if (pin.creatorId || pin.creator?._id) {
-      const authorId = pin.creatorId || pin.creator._id;
+    if (authorId) {
       navigate(`/user/${authorId}`);
     }
   };
@@ -22,11 +23,12 @@ function PinListItem({ pin, onClick }) {
       <p className="pin-list-item__desc">{pin.description}</p>
       <div className="pin-list-item__footer">
         <span className="pin-list-item__loc">{pin.locationName}</span>
-        <span 
+        <span
           className="pin-list-item__author pin-list-item__author--clickable"
           onClick={handleAuthorClick}
         >
           {pin.creator?.displayName || pin.creator?.username || pin.authorName}
+          <FriendBadge userId={authorId} size="0.8em" />
         </span>
       </div>
     </div>
@@ -34,5 +36,4 @@ function PinListItem({ pin, onClick }) {
 }
 
 export default PinListItem;
-
 

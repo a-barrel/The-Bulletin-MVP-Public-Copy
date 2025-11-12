@@ -64,3 +64,5 @@ TODO-AND-IDEAS/
 
 /.vscode/bulletin-app-6548a-firebase-adminsdk-*.json
 
+server/package-lock.json
+.firebase/logs/vsce-debug.log

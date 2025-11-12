@@ -12,6 +12,7 @@ import formatDateTime from '../utils/dates';
 import runtimeConfig from '../config/runtime';
 import { metersToMiles } from '../utils/geo';
 import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
+import reportClientError from '../utils/reportClientError';
 
 const FALLBACK_AVATAR = '/images/profile/profile-01.jpg';
 const FALLBACK_BANNER = null;
@@ -48,7 +49,7 @@ const resolveAvatarUrl = (avatar) => {
             const relative = normalizeProfileImagePath(url.pathname);
             return base ? `${base}${relative}` : relative;
           }
-        } catch (error) {
+        } catch {
           return trimmed;
         }
       }
@@ -276,7 +277,11 @@ const clearBannerPreviewUrl = useCallback(() => {
         if (ignore) {
           return;
         }
-        console.error('Failed to load user profile:', error);
+        reportClientError(error, 'Failed to load user profile:', {
+          source: 'useProfileDetail.loadProfile',
+          targetUserId,
+          currentViewer: shouldLoadCurrentUser
+        });
         setFetchError(error?.message || 'Failed to load user profile.');
         if (!userFromState) {
           setFetchedUser(null);
@@ -594,9 +599,7 @@ const clearBannerPreviewUrl = useCallback(() => {
       isOffline,
       setFetchedUser,
       setIsEditing,
-      setUpdateStatus,
-      updateCurrentUserProfile,
-      uploadImage
+      setUpdateStatus
     ]
   );
 

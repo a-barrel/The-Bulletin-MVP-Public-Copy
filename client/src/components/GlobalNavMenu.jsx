@@ -518,32 +518,6 @@ export default function GlobalNavMenu({
                 &times;
               </button>
             </div>
-            {bookmarkShortcuts.length ? (
-              <div className="global-nav-menu__section">
-                <h3 className="global-nav-menu__section-title">Saved collections</h3>
-                <ul className="global-nav-menu__quick-list">
-                  {bookmarkShortcuts.map((shortcut) => (
-                    <li key={shortcut.key} className="global-nav-menu__quick-item">
-                      <button
-                        type="button"
-                        className="global-nav-menu__quick-action"
-                        onClick={() => handleNavigate(shortcut.to)}
-                      >
-                        <span className="global-nav-menu__quick-name">{shortcut.label}</span>
-                        {typeof shortcut.count === 'number' ? (
-                          <span className="global-nav-menu__quick-count">{shortcut.count}</span>
-                        ) : null}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {bookmarkStatus ? (
-              <div className="global-nav-menu__section">
-                <p className="global-nav-menu__helper-text">{bookmarkStatus}</p>
-              </div>
-            ) : null}
             <ul className="global-nav-menu__list">
               {menuItems.map(({ key, label, description, to, Icon, badgeCount }) => (
                 <li key={key} className="global-nav-menu__list-item">

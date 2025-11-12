@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPin, uploadPinImage } from '../api/mongoDataApi';
 import { haversineDistanceMeters, metersToMiles, METERS_PER_MILE } from '../utils/geo';
 import { playBadgeSound } from '../utils/badgeSound';
+import reportClientError from '../utils/reportClientError';
 
 const MAX_PIN_DISTANCE_MILES = 50;
 const MAX_PIN_DISTANCE_METERS = MAX_PIN_DISTANCE_MILES * METERS_PER_MILE;
@@ -10,6 +11,7 @@ const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const EVENT_MAX_LEAD_TIME_MS = 14 * MILLISECONDS_PER_DAY;
 const DISCUSSION_MAX_DURATION_MS = 3 * MILLISECONDS_PER_DAY;
 const FUTURE_TOLERANCE_MS = 60 * 1000;
+const MAX_PHOTO_UPLOADS = 3;
 const DRAFT_STORAGE_KEY = 'pinpoint:createPinDraft';
 const AUTOSAVE_DELAY_MS = 1500;
 
@@ -229,7 +231,9 @@ export default function useCreatePinForm({
       window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftPayload));
       return true;
     } catch (error) {
-      console.error('Failed to save pin draft', error);
+      reportClientError(error, 'Failed to save pin draft', {
+        source: 'useCreatePinForm.saveDraft'
+      });
       return false;
     }
   }, [autoDelete, coverPhotoId, formState, photoAssets, pinType]);
@@ -642,9 +646,12 @@ export default function useCreatePinForm({
         return;
       }
 
-      const remainingSlots = 10 - photoAssets.length;
+      const remainingSlots = MAX_PHOTO_UPLOADS - photoAssets.length;
       if (remainingSlots <= 0) {
-        setUploadStatus({ type: 'warning', message: 'You can attach up to 10 images per pin.' });
+        setUploadStatus({
+          type: 'warning',
+          message: `You can attach up to ${MAX_PHOTO_UPLOADS} images per pin.`
+        });
         event.target.value = '';
         return;
       }
@@ -655,7 +662,7 @@ export default function useCreatePinForm({
           type: 'info',
           message: `Only the first ${filesToUpload.length} image${
             filesToUpload.length === 1 ? '' : 's'
-          } were queued (max 10).`
+          } were queued (max ${MAX_PHOTO_UPLOADS}).`
         });
       }
 

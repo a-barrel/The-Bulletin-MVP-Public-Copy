@@ -1,0 +1,181 @@
+/* --- Dialog shell: force white card with black ink --- */
+.filters-dialog .MuiPaper-root {
+  background: #fff !important;
+  color: #000 !important;
+  border: 2px solid #000;
+  border-radius: 15px;
+}
+
+/* Title bar */
+.filters-title {
+  background: #CDAEF2;
+  color: #000 !important;
+  border-bottom: 2px solid #000;
+  font-family: 'Urbanist', sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 1.7rem !important; /* adjust to taste */
+  letter-spacing: 0.02em;
+  padding: 14px 20px !important;
+}
+
+/* Content defaults: force black text */
+.filters-content,
+.filters-content * {
+  --ink: #000;
+}
+
+.filters-content .MuiTypography-root,
+.filters-content .MuiFormControlLabel-label,
+.filters-content .MuiFormLabel-root {
+  color: var(--ink) !important;
+}
+
+/* --- Section titles like 'Keyword search', 'Pin types', etc. --- */
+.filters-content .MuiTypography-subtitle2 {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 1.3rem !important;   
+  font-weight: 700 !important;
+  color: #000 !important;
+  letter-spacing: 0.01em;
+  margin-bottom: 4px;
+}
+
+/* Inputs: black text, white bg, black border */
+.filters-content .MuiOutlinedInput-root {
+  background: #fff !important;
+  color: #000 !important;
+  border-radius: 12px;
+}
+.filters-content .MuiOutlinedInput-notchedOutline {
+  border: 1.5px solid #000 !important;
+}
+.filters-content .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #9B5DE5 !important;
+}
+
+/* Input text + placeholders always dark */
+.filters-content .MuiInputBase-input {
+  color: #000 !important;
+  caret-color: #000;
+}
+.filters-content .MuiInputBase-input::placeholder {
+  color: #333 !important;
+  opacity: 1;
+}
+
+/* Date inputs: make the native calendar icon dark and visible */
+.filters-content input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0) brightness(0) contrast(100%);
+  opacity: 1;
+}
+.filters-content input[type="date"] {
+  color-scheme: light; /* prevents some browsers from styling it dark */
+}
+
+/* Checkbox / radio: unchecked = black, checked = your purple */
+.filters-content .MuiCheckbox-root,
+.filters-content .MuiRadio-root {
+  color: #000 !important;
+}
+
+/* Highlights sections that are clicked on */
+.filters-content .MuiCheckbox-colorPrimary.Mui-checked,
+.filters-content .MuiRadio-colorPrimary.Mui-checked {
+  color: #9B5DE5 !important;
+}
+
+/* Chips */
+.filters-content .MuiChip-root { border-radius: 999px; font-weight: 600; }
+.filters-content .MuiChip-outlined {
+  border: 1.5px solid #000 !important;
+  color: #000 !important;
+  background: #fff !important;
+}
+.filters-content .MuiChip-colorPrimary.MuiChip-filledPrimary {
+  background: #3EB8F0 !important; color: #000 !important; border: 1.5px solid #000;
+}
+
+/* Icon buttons (e.g., refresh) */
+.filters-content .MuiIconButton-root { color: #000 !important; }
+.filters-content .MuiIconButton-root:hover { background: rgba(155,93,229,.12); }
+
+/* Actions */
+.filters-actions {
+  border-top: 1.5px solid rgba(0,0,0,.1);
+  font-family: 'Urbanist', sans-serif !important;
+}
+
+.filters-actions .MuiButton-root {
+  font-family: 'Urbanist', sans-serif !important;
+  font-weight: 600;
+  text-transform: none; /* keeps it title-case instead of uppercase */
+  letter-spacing: 0.01em;
+}
+
+/* Cancel button (text) */
+.filters-actions .MuiButton-text {
+  color: #000 !important;
+}
+
+/* Clear filters — hot pink */
+.filters-actions .MuiButton-colorInherit {
+  color: white !important;
+  border: 1.5px solid #000 !important;
+  background: #F15BB5;
+  box-shadow: none !important;
+}
+.filters-actions .MuiButton-colorInherit:hover {
+  background: #dd389b;
+}
+
+/* Apply filters — purple */
+.filters-actions .MuiButton-contained {
+  background: #9B5DE5 !important;
+  color: #fff !important;
+  border: 1.5px solid #000 !important;
+  box-shadow: none !important;
+}
+.filters-actions .MuiButton-contained:hover {
+  background: #8246e6 !important;
+  box-shadow: none !important;
+}
+
+/* Backdrop stays subtle */
+.filters-backdrop { background: rgba(17,17,17,.35) !important; backdrop-filter: blur(3px); }
+
+/* Mobile */
+@media (max-width:480px){
+  .filters-dialog .MuiPaper-root{ border-radius:16px; }
+  .filters-title{ font-size:1.2rem !important; }
+}
+
+/* "Add" button next to Add category field */
+.filters-content .MuiButton-outlined {
+  color: #000 !important;
+  border: 1.5px solid #3EB8F0 !important;
+  background: #ECF8FE !important;
+  text-transform: none;
+  font-family: 'Urbanist', sans-serif;
+  font-weight: 600;
+}
+
+.filters-content .MuiButton-outlined:hover {
+  background: #3EB8F0 !important;
+  color: #000 !important;
+  transform: scale(1.03);
+}
+
+/* Spin the MUI SVG icon when loading */
+.filters-refresh-spin.MuiSvgIcon-root {
+  animation: spin-refresh 0.9s linear infinite;
+  transform-origin: center;
+}
+
+@keyframes spin-refresh {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* (Optional) keep your existing color/hover rules */
+.filters-content .MuiIconButton-root { color: #000 !important; }
+.filters-content .MuiIconButton-root:hover { background: rgba(155,93,229,.12); }

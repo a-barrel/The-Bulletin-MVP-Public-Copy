@@ -101,6 +101,8 @@
   margin-top: 2px;
   font-size: 0.9rem;
   color: black;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .chat-image {

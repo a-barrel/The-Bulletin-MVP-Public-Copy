@@ -1,4 +1,10 @@
-/* NOTE: Page exports navigation config alongside the component. */
+/* NOTE: Page exports navigation config alongside the component.
+ *
+ * Logging status: This page still uses the legacy chat hooks while a refactor is underway.
+ * Don’t wire `reportClientError` / `logClientError` into the DM/chat flows until that
+ * work settles, otherwise we’ll fight merge conflicts. Once the new hook/utilities land,
+ * revisit logging coverage (see TODO-AND-IDEAS/logging-coverage-roadmap.md).
+ */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -32,6 +38,7 @@ import {
   Snackbar
 } from '@mui/material';
 import SmsIcon from '@mui/icons-material/Sms';
+import runtimeConfig from '../config/runtime';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import RoomIcon from '@mui/icons-material/Room';
@@ -307,6 +314,7 @@ function ChatPage() {
 
   const [moderationInitAttempted, setModerationInitAttempted] = useState(false);
   const [moderationContext, setModerationContext] = useState(null);
+  const debugModerationEnabled = runtimeConfig.debugApi?.enableRequests !== false;
   const [moderationForm, setModerationForm] = useState({
     type: 'warn',
     reason: '',
@@ -461,7 +469,7 @@ function ChatPage() {
   }, [channelTab, uniqueMessages.length, scrollMessagesToBottom]);
 
   useEffect(() => {
-    if (isOffline || moderationHasAccess === false) {
+    if (!debugModerationEnabled || isOffline || moderationHasAccess === false) {
       return;
     }
     if (moderationInitAttempted || isLoadingModerationOverview) {
@@ -470,6 +478,7 @@ function ChatPage() {
     setModerationInitAttempted(true);
     loadModerationOverview().catch(() => {});
   }, [
+    debugModerationEnabled,
     isOffline,
     moderationHasAccess,
     moderationInitAttempted,
@@ -1241,7 +1250,7 @@ function ChatPage() {
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
   const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
 
-  const canModerateMessages = !isOffline && moderationHasAccess !== false;
+  const canModerateMessages = !isOffline && debugModerationEnabled && moderationHasAccess !== false;
 
   const getDisplayMessageText = useCallback((msg) => {
     if (!msg || typeof msg.message !== 'string') {
@@ -1764,9 +1773,21 @@ function ChatPage() {
 
     if (uniqueMessages.length === 0) {
       return (
-        <Stack spacing={1} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-          <Typography variant="h6">No messages yet</Typography>
-          <Typography variant="body2" color="text.primary">
+        <Stack
+          spacing={1}
+          alignItems="center"
+          justifyContent="center"
+          sx={{
+            flexGrow: 1,
+            py: 6,
+            textAlign: 'center',
+            color: '#1f1336'
+          }}
+        >
+          <Typography variant="h6" color="inherit">
+            No messages yet
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#3d2d63' }}>
             Start the conversation with everyone in this room.
           </Typography>
         </Stack>

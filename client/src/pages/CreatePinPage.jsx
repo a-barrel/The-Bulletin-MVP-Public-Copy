@@ -7,7 +7,7 @@ import EventNoteIcon from '@mui/icons-material/EventNote';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import '../styles/leaflet.css';
 
 import { routes } from '../routes';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
@@ -498,7 +498,7 @@ function CreatePinPage() {
         {/* Uploads */}
         <div className="form-section">
           <h2>Photos</h2>
-          <p>Add up to 10 images to showcase your pin.</p>
+          <p>Add up to 3 images to showcase your pin.</p>
 
           {uploadStatus && (
             <div className={`alert alert-${uploadStatus.type}`}>

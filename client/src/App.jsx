@@ -27,6 +27,7 @@ import { NavOverlayProvider } from './contexts/NavOverlayContext';
 import RegistrationPage from './pages/Registration';
 import { UpdatesProvider } from './contexts/UpdatesContext';
 import { BadgeSoundProvider } from './contexts/BadgeSoundContext';
+import { FriendBadgePreferenceProvider } from './contexts/FriendBadgePreferenceContext';
 import { preloadBadgeSound, setBadgeSoundEnabled } from './utils/badgeSound';
 import { LocationProvider } from './contexts/LocationContext';
 import {
@@ -143,6 +144,7 @@ const wrapWithProtection = (page, element) =>
 
 const MAX_HISTORY_ENTRIES = 20;
 const BADGE_SOUND_STORAGE_KEY = 'pinpoint:badgeSoundEnabled';
+const FRIEND_BADGE_STORAGE_KEY = 'pinpoint:friendBadgesEnabled';
 
 const readStoredBadgeSoundPreference = () => {
   if (typeof window === 'undefined') {
@@ -152,6 +154,21 @@ const readStoredBadgeSoundPreference = () => {
     return window.localStorage.getItem(BADGE_SOUND_STORAGE_KEY) === 'true';
   } catch {
     return false;
+  }
+};
+
+const readStoredFriendBadgePreference = () => {
+  if (typeof window === 'undefined') {
+    return true;
+  }
+  try {
+    const raw = window.localStorage.getItem(FRIEND_BADGE_STORAGE_KEY);
+    if (raw === null) {
+      return true;
+    }
+    return raw === 'true';
+  } catch {
+    return true;
   }
 };
 
@@ -168,6 +185,9 @@ function App() {
   const [unreadEventsCount, setUnreadEventsCount] = useState(0);
   const [badgeSoundEnabled, setBadgeSoundEnabledState] = useState(
     () => readStoredBadgeSoundPreference()
+  );
+  const [friendBadgesEnabled, setFriendBadgesEnabled] = useState(
+    () => readStoredFriendBadgePreference()
   );
   const {
     toastState: badgeToast,
@@ -214,6 +234,20 @@ function App() {
       }
     }
   }, [badgeSoundEnabled]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    try {
+      window.localStorage.setItem(
+        FRIEND_BADGE_STORAGE_KEY,
+        friendBadgesEnabled ? 'true' : 'false'
+      );
+    } catch {
+      // ignore storage failures (e.g., private browsing)
+    }
+  }, [friendBadgesEnabled]);
 
   const navPages = useMemo(
     () =>
@@ -436,6 +470,14 @@ function App() {
     [announceBadgeEarned, badgeSoundEnabled]
   );
 
+  const friendBadgePreferenceValue = useMemo(
+    () => ({
+      enabled: friendBadgesEnabled,
+      setEnabled: setFriendBadgesEnabled
+    }),
+    [friendBadgesEnabled]
+  );
+
   useEffect(() => {
     if (isAuthRoute || !isAuthReady) {
       setUnreadCount(0);
@@ -639,11 +681,12 @@ function App() {
 
   return (
     <LocationProvider>
-      <BadgeSoundProvider value={badgeSoundContextValue}>
-        <UpdatesProvider value={updatesContextValue}>
-          <SocialNotificationsProvider value={socialNotificationsContextValue}>
-            <NavOverlayProvider value={navOverlayContextValue}>
-              <ThemeProvider theme={theme}>
+      <FriendBadgePreferenceProvider value={friendBadgePreferenceValue}>
+        <BadgeSoundProvider value={badgeSoundContextValue}>
+          <UpdatesProvider value={updatesContextValue}>
+            <SocialNotificationsProvider value={socialNotificationsContextValue}>
+              <NavOverlayProvider value={navOverlayContextValue}>
+                <ThemeProvider theme={theme}>
                 <CssBaseline />
 
                 <Modal open={navOverlayOpen} onClose={closeOverlay} closeAfterTransition keepMounted>
@@ -790,10 +833,11 @@ function App() {
                 </Routes>
                 <BadgeCelebrationToast toastState={badgeToast} onClose={handleBadgeToastClose} />
               </ThemeProvider>
-            </NavOverlayProvider>
-          </SocialNotificationsProvider>
-        </UpdatesProvider>
-      </BadgeSoundProvider>
+              </NavOverlayProvider>
+            </SocialNotificationsProvider>
+          </UpdatesProvider>
+        </BadgeSoundProvider>
+      </FriendBadgePreferenceProvider>
     </LocationProvider>
   );
 }

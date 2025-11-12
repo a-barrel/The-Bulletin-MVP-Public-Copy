@@ -1,22 +1,7 @@
-// This is a profile page that follows the proposed design guidelines.
-// If you plan to add more features, please do so in ProfilePage_debug.jsx (they still get displayed here)
-// This will help keep the main profile design consistent and give them time to add the features
-// officially later on in a mannor that follows the design guidelines.
-
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import BlockIcon from '@mui/icons-material/Block';
-import { ThemeProvider, createTheme, useTheme } from '@mui/material/styles';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import Accordion from '@mui/material/Accordion';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails';
-import FlagIcon from '@mui/icons-material/Flag';
-import HowToRegIcon from '@mui/icons-material/HowToReg';
-import MessageIcon from '@mui/icons-material/Message';
-import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -24,41 +9,37 @@ import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
-import TextField from '@mui/material/TextField';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Switch from '@mui/material/Switch';
-import MenuItem from '@mui/material/MenuItem';
-import Chip from '@mui/material/Chip';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import Tooltip from '@mui/material/Tooltip';
 import {
-  blockUser,
   fetchCurrentUserProfile,
   fetchUserProfile,
-  unblockUser,
   updateCurrentUserProfile,
   uploadImage
 } from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
-import { BADGE_METADATA } from '../utils/badges';
 import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
 import { routes } from '../routes';
 import './ProfilePage.css';
-import ProfilePageAdditionalDetail from './ProfilePage_debug.jsx';
+import ProfileActionRow from '../components/profile/ProfileActionRow';
+import ProfileBlockDialog from '../components/profile/ProfileBlockDialog';
+import ProfileBadges from '../components/profile/ProfileBadges';
+import ProfileBio from '../components/profile/ProfileBio';
+import ProfileEditForm from '../components/profile/ProfileEditForm';
+import ProfileHero from '../components/profile/ProfileHero';
+import ProfileMutualFriends from '../components/profile/ProfileMutualFriends';
+import ProfileStatsSummary from '../components/profile/ProfileStatsSummary';
+import useProfileBadges from '../hooks/useProfileBadges';
+import useProfileMutualFriends from '../hooks/useProfileMutualFriends';
+import useProfileStats from '../hooks/useProfileStats';
+import useProfileInteractions from '../hooks/useProfileInteractions';
 
 /*
  * NOTE:
- * - This layout intentionally hides several richer views and power tools that still exist in the data layer:
- *   • Preferences & notifications summary
- *   • Account timeline / provisioning metadata
- *   • Raw profile JSON inspector
- *   • Moderation & trust-and-safety controls (reporting, quick actions)
- *   • Messaging/report initiation handlers (UI placeholders remain)
- * - All underlying fetch/update logic (editing flows, block/unblock, moderation requests, etc.) continues to live in useProfileDetail.
- * - ProfilePage_debug.jsx still surfaces every control if the full debug experience is needed.
+ * - This layout intentionally hides richer debug surfaces that still exist behind the scenes:
+ *   • Moderation quick actions + trust-and-safety tooling
+ *   • Raw profile JSON inspector + account timeline metadata
+ *   • Preferences/notification summaries and provisioning audit trails
+ *   • DM/report entry points with auto-logging hooks
+ * - All underlying fetch/update logic (editing flows, block/unblock, moderation requests, etc.) still lives in useProfileDetail/useProfileInteractions.
  */
 
 export const pageConfig = {
@@ -116,18 +97,6 @@ const TF2_AVATAR_MAP = {
 };
 const FALLBACK_BANNER = null;
 
-const resolveBadgeImageUrl = (value) => {
-  if (!value) {
-    return '—';
-  }
-  if (/^(?:https?:)?\/\//i.test(value) || value.startsWith('data:')) {
-    return '—';
-  }
-  const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
-  const normalized = value.startsWith('/') ? value : `/${value}`;
-  return base ? `${base}${normalized}` : normalized;
-};
-
 const resolveAvatarUrl = (avatar) => {
   const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
   const toAbsolute = (value) => {
@@ -148,7 +117,7 @@ const resolveAvatarUrl = (avatar) => {
             const relative = normalizeProfileImagePath(url.pathname);
             return base ? `${base}${relative}` : relative;
           }
-        } catch (error) {
+        } catch {
           return trimmed;
         }
       }
@@ -242,55 +211,7 @@ const formatDateTime = (value) => {
 };
 
 
-const Section = ({ title, description, children }) => (
-  <Stack spacing={1.5}>
-    <Box>
-      <Typography variant="h6" component="h2">
-        {title}
-      </Typography>
-      {description ? (
-        <div className="description-box">
-          <Typography variant="body2" color="text.secondary">
-            {description}
-          </Typography>
-        </div>
-      ) : null}
-    </Box>
-    <Box
-      className="section-content-box"
-      sx={{
-        borderRadius: 2,
-        border: '1px solid',
-        borderColor: 'divider',
-        p: { xs: 2, md: 3 }
-      }}
-    >
-      {children}
-    </Box>
-  </Stack>
-);
-
 function ProfilePage() {
-  const muiTheme = useTheme();
-  const legacyProfileTheme = useMemo(
-    () =>
-      createTheme(muiTheme, {
-        palette: {
-          mode: 'light',
-          background: {
-            ...muiTheme.palette.background,
-            default: '#f5f5f5',
-            paper: '#ffffff'
-          },
-          text: {
-            ...muiTheme.palette.text,
-            primary: '#1f1f1f',
-            secondary: '#475467'
-          }
-        }
-      }),
-    [muiTheme]
-  );
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -308,9 +229,6 @@ function ProfilePage() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [updateStatus, setUpdateStatus] = useState(null);
   const [viewerProfile, setViewerProfile] = useState(null);
-  const [relationshipStatus, setRelationshipStatus] = useState(null);
-  const [blockDialogMode, setBlockDialogMode] = useState(null);
-  const [isProcessingBlockAction, setIsProcessingBlockAction] = useState(false);
   const [formState, setFormState] = useState({
     displayName: '',
     bio: '',
@@ -489,23 +407,36 @@ function ProfilePage() {
   const editingBannerSrc = formState.bannerCleared ? null : formState.bannerPreviewUrl ?? bannerUrl;
   const avatarDisplaySrc = isEditing ? editingAvatarSrc ?? undefined : avatarUrl;
   const bannerDisplaySrc = isEditing ? editingBannerSrc : bannerUrl;
-  const viewerId = viewerProfile?._id ? String(viewerProfile._id) : null;
-  const normalizedTargetId = effectiveUser?._id
-    ? String(effectiveUser._id)
-    : targetUserId && targetUserId !== 'me'
-    ? targetUserId
-    : null;
-  const normalizedBlockedIds = Array.isArray(viewerProfile?.relationships?.blockedUserIds)
-    ? viewerProfile.relationships.blockedUserIds.map((id) => String(id))
-    : [];
-  const isViewingSelf =
-    shouldLoadCurrentUser ||
-    Boolean(viewerId && normalizedTargetId && viewerId === normalizedTargetId);
-  const isBlocked = Boolean(
-    normalizedTargetId && normalizedBlockedIds.includes(String(normalizedTargetId))
-  );
-  const canEditProfile = Boolean(isViewingSelf && !userFromState);
-  const canManageBlock = Boolean(!isViewingSelf && viewerProfile && normalizedTargetId);
+
+  const {
+    isViewingSelf,
+    isBlocked,
+    isFriend,
+    canEditProfile,
+    canManageBlock,
+    canSendFriendRequest,
+    blockDialogMode,
+    isProcessingBlockAction,
+    relationshipStatus,
+    setRelationshipStatus,
+    handleRequestBlock,
+    handleRequestUnblock,
+    handleCloseBlockDialog,
+    handleConfirmBlockDialog,
+    hasPendingFriendRequest,
+    isSendingFriendRequest,
+    handleSendFriendRequest
+  } = useProfileInteractions({
+    viewerProfile,
+    effectiveUser,
+    targetUserId,
+    shouldLoadCurrentUser,
+    userFromState,
+    setViewerProfile,
+    setFetchedUser,
+    displayName
+  });
+  const { mutualFriendCount, mutualFriendPreview } = useProfileMutualFriends(effectiveUser);
 
   useEffect(() => {
     if (!isEditing && effectiveUser) {
@@ -530,6 +461,20 @@ function ProfilePage() {
     setFormState(initializeFormState(effectiveUser));
     setIsEditing(false);
   }, [clearAvatarPreviewUrl, clearBannerPreviewUrl, effectiveUser, initializeFormState]);
+
+  const handleOpenMutualFriend = useCallback(
+    (friendId) => {
+      if (!friendId) {
+        return;
+      }
+      const sanitized = String(friendId).trim();
+      if (!sanitized) {
+        return;
+      }
+      navigate(`${routes.profile.base}/${sanitized}`, { state: { from: location.pathname } });
+    },
+    [navigate, location.pathname]
+  );
 
   const handleAvatarFileChange = useCallback(
     (event) => {
@@ -749,9 +694,7 @@ function ProfilePage() {
       formState.bannerCleared,
       formState.bannerFile,
       formState.theme,
-      initializeFormState,
-      updateCurrentUserProfile,
-      uploadImage
+      initializeFormState
     ]
   );
 
@@ -764,44 +707,8 @@ function ProfilePage() {
     const trimmed = rawBio.trim();
     return trimmed.length > 0 ? trimmed : null;
   }, [effectiveUser?.bio]);
-  const statsVisible = effectiveUser?.preferences?.statsPublic !== false;
-  const statsEntries = useMemo(() => {
-    const stats = effectiveUser?.stats;
-    if (!stats) {
-      return [];
-    }
-    return [
-      { key: 'eventsHosted', label: 'Events hosted', value: stats.eventsHosted ?? 0 },
-      { key: 'eventsAttended', label: 'Events attended', value: stats.eventsAttended ?? 0 },
-      { key: 'posts', label: 'Posts', value: stats.posts ?? 0 },
-      { key: 'bookmarks', label: 'Bookmarks', value: stats.bookmarks ?? 0 },
-      { key: 'followers', label: 'Followers', value: stats.followers ?? 0 },
-      { key: 'following', label: 'Following', value: stats.following ?? 0 },
-      { key: 'cussCount', label: 'Times cussed', value: stats.cussCount ?? 0 }
-    ];
-  }, [effectiveUser]);
-
-  const statValues = useMemo(
-    () =>
-      statsEntries.reduce((accumulator, { key, value }) => {
-        if (typeof value === 'number' && Number.isFinite(value)) {
-          accumulator[key] = value;
-        } else if (value !== undefined && value !== null) {
-          const parsed = Number(value);
-          accumulator[key] = Number.isFinite(parsed) ? parsed : 0;
-        } else {
-          accumulator[key] = 0;
-        }
-        return accumulator;
-      }, {}),
-    [statsEntries]
-  );
-
-  const postCount = statValues.posts ?? 0;
-  const eventsHosted = statValues.eventsHosted ?? 0;
-  const eventsAttended = statValues.eventsAttended ?? 0;
-
-  const badgeList = effectiveUser?.badges ?? [];
+  const { statsVisible, postCount, eventsHosted, eventsAttended } = useProfileStats(effectiveUser);
+  const badgeList = useProfileBadges(effectiveUser);
 
   const accountTimeline = useMemo(() => {
     if (!effectiveUser) {
@@ -826,105 +733,6 @@ function ProfilePage() {
   }, [navigate, originPath]);
 
 
-  const handleRequestBlock = useCallback(() => {
-    if (!canManageBlock) {
-      return;
-    }
-    setRelationshipStatus(null);
-    setBlockDialogMode('block');
-  }, [canManageBlock]);
-
-  const handleRequestUnblock = useCallback(() => {
-    if (!canManageBlock) {
-      return;
-    }
-    setRelationshipStatus(null);
-    setBlockDialogMode('unblock');
-  }, [canManageBlock]);
-
-  const handleCloseBlockDialog = useCallback(() => {
-    if (isProcessingBlockAction) {
-      return;
-    }
-    setBlockDialogMode(null);
-  }, [isProcessingBlockAction]);
-
-  const handleConfirmBlockDialog = useCallback(async () => {
-    if (!blockDialogMode) {
-      return;
-    }
-
-    const targetId = effectiveUser?._id ? String(effectiveUser._id) : normalizedTargetId;
-    if (!targetId) {
-      return;
-    }
-
-    setIsProcessingBlockAction(true);
-    setRelationshipStatus(null);
-    try {
-      const response =
-        blockDialogMode === 'block' ? await blockUser(targetId) : await unblockUser(targetId);
-
-      setViewerProfile((prev) => {
-        if (!prev) {
-          return prev;
-        }
-
-        if (response?.updatedRelationships) {
-          return {
-            ...prev,
-            relationships: response.updatedRelationships
-          };
-        }
-
-        const currentRelationships = prev.relationships ?? {};
-        const currentBlockedIds = Array.isArray(currentRelationships.blockedUserIds)
-          ? currentRelationships.blockedUserIds.map((id) => String(id))
-          : [];
-        const blockedSet = new Set(currentBlockedIds);
-        if (blockDialogMode === 'block') {
-          blockedSet.add(targetId);
-        } else {
-          blockedSet.delete(targetId);
-        }
-        return {
-          ...prev,
-          relationships: {
-            ...currentRelationships,
-            blockedUserIds: Array.from(blockedSet)
-          }
-        };
-      });
-
-      setRelationshipStatus({
-        type: 'success',
-        message:
-          blockDialogMode === 'block'
-            ? `${displayName} has been blocked.`
-            : `${displayName} has been unblocked.`
-      });
-      setBlockDialogMode(null);
-    } catch (error) {
-      setRelationshipStatus({
-        type: 'error',
-        message: error?.message || 'Failed to update block status.'
-      });
-    } finally {
-      setIsProcessingBlockAction(false);
-    }
-  }, [blockDialogMode, displayName, effectiveUser, normalizedTargetId]);
-
-  useEffect(() => {
-    if (!relationshipStatus) {
-      return;
-    }
-    const timeoutId = window.setTimeout(() => {
-      setRelationshipStatus(null);
-    }, 5000);
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [relationshipStatus]);
 
   return (
     <div className="profile-page-container">
@@ -942,7 +750,8 @@ function ProfilePage() {
             variant="contained"
             onClick={handleBeginEditing}
             disabled={!effectiveUser || isFetchingProfile}
-            sx={{ ml: 'auto' }}
+            className="profile-edit-button"
+            sx={{ marginLeft: 'auto' }}
           >
             Edit profile
           </Button>
@@ -972,497 +781,70 @@ function ProfilePage() {
             </Alert>
           ) : null}
 
-          <Stack spacing={2} alignItems="center" textAlign="center" sx={{ width: '100%', pt: 1 }}>
-            <Box
-              sx={{
-                position: 'relative',
-                width: '100%',
-                borderRadius: 3,
-                backgroundColor: 'grey.800',
-                overflow: 'visible',
-                minHeight: { xs: 160, sm: 200 },
-                maxWidth: 800,
-                aspectRatio: { xs: '16 / 7', sm: '16 / 5' }
-              }}
-            >
-              <Box
-                sx={{
-                  position: 'absolute',
-                  inset: 0,
-                  borderRadius: 'inherit',
-                  overflow: 'hidden'
-                }}
-              >
-                {bannerDisplaySrc ? (
-                  <Box
-                    component="img"
-                    src={bannerDisplaySrc}
-                    alt="Profile banner"
-                    sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <Box
-                    aria-hidden="true"
-                    sx={{
-                      width: '100%',
-                      height: '100%',
-                      background: 'linear-gradient(135deg, #4B3F72 0%, #2E2157 100%)'
-                    }}
-                  />
-                )}
-              </Box>
-              <Avatar
-                src={avatarDisplaySrc ?? undefined}
-                alt={`${displayName} avatar`}
-                sx={{
-                  width: 112,
-                  height: 112,
-                  position: 'absolute',
-                  left: '50%',
-                  bottom: -56,
-                  transform: 'translateX(-50%)',
-                  border: '4px solid',
-                  borderColor: 'background.paper',
-                  bgcolor: 'secondary.main',
-                  boxShadow: 3,
-                  zIndex: 1
-                }}
-              >
-                {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
-              </Avatar>
-            </Box>
-            <Box sx={{ height: 72 }} aria-hidden="true" />
-            <Box>
-              <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', fontSize: '2rem' }}>
-                {displayName}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Joined: {joinedDisplay}
-              </Typography>
-            </Box>
-            {!hasProfile && !isFetchingProfile && !fetchError ? (
-              <Typography variant="body2" color="text.secondary">
-                This user hasn't filled out their profile yet.
-              </Typography>
-            ) : null}
-          </Stack>
+          <ProfileHero
+            avatarSrc={avatarDisplaySrc ?? undefined}
+            bannerSrc={bannerDisplaySrc}
+            displayName={displayName}
+            joinedDisplay={joinedDisplay}
+            showEmptyState={!hasProfile && !isFetchingProfile && !fetchError}
+            userId={effectiveUser?._id ?? effectiveUser?.id ?? null}
+          />
 
-          {canEditProfile ? (
-            <Stack spacing={2} sx={{ alignSelf: 'stretch' }}>
-              {updateStatus ? (
-                <Alert
-                  severity={updateStatus.type}
-                  onClose={() => setUpdateStatus(null)}
-                  sx={{
-                    backgroundColor:
-                      updateStatus.type === 'success'
-                        ? 'rgba(76, 175, 80, 0.15)'
-                        : updateStatus.type === 'error'
-                          ? 'rgba(244, 67, 54, 0.15)'
-                          : updateStatus.type === 'warning'
-                            ? 'rgba(255, 193, 7, 0.15)'
-                            : 'rgba(33, 150, 243, 0.15)',
-                    color: 'text.primary',
-                    '& .MuiAlert-icon': {
-                      color:
-                        updateStatus.type === 'success'
-                          ? 'success.main'
-                          : updateStatus.type === 'error'
-                            ? 'error.main'
-                            : updateStatus.type === 'warning'
-                              ? 'warning.main'
-                              : 'info.main'
-                    }
-                  }}
-                >
-                  {updateStatus.message}
-                </Alert>
-              ) : null}
-
-              {isEditing ? (
-                <Stack
-                  component="form"
-                  spacing={2}
-                  onSubmit={handleSaveProfile}
-                  sx={{
-                    p: 2,
-                    borderRadius: 2,
-                    border: '1px solid',
-                    borderColor: '#000',
-                    backgroundColor: '#f2f2f2'
-                  }}
-                >
-                  <Stack spacing={1.5}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                      Profile banner
-                    </Typography>
-                    <Box
-                      sx={{
-                        width: '100%',
-                        minHeight: 140,
-                        borderRadius: 2,
-                        overflow: 'hidden',
-                        backgroundColor: 'grey.800',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      {editingBannerSrc ? (
-                        <Box
-                          component="img"
-                          src={editingBannerSrc}
-                          alt="Profile banner preview"
-                          sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">
-                          No banner selected.
-                        </Typography>
-                      )}
-                    </Box>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                      <Button component="label" variant="outlined" size="small" disabled={isSavingProfile}>
-                        Upload banner
-                        <input type="file" hidden accept="image/*" onChange={handleBannerFileChange} />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="text"
-                        color="warning"
-                        size="small"
-                        onClick={handleClearBanner}
-                        disabled={
-                          isSavingProfile ||
-                          (formState.bannerCleared && !formState.bannerFile && !effectiveUser?.banner)
-                        }
-                      >
-                        Remove banner
-                      </Button>
-                    </Stack>
-                  </Stack>
-
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-                    <Avatar
-                      src={editingAvatarSrc || avatarUrl}
-                      alt="Profile avatar preview"
-                      sx={{ width: 96, height: 96, bgcolor: 'secondary.main' }}
-                    >
-                      {displayName?.charAt(0)?.toUpperCase() ?? 'U'}
-                    </Avatar>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                      <Button component="label" variant="outlined" size="small" disabled={isSavingProfile}>
-                        Upload avatar
-                        <input type="file" hidden accept="image/*" onChange={handleAvatarFileChange} />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="text"
-                        color="warning"
-                        size="small"
-                        onClick={handleClearAvatar}
-                        disabled={
-                          isSavingProfile ||
-                          (formState.avatarCleared && !formState.avatarFile && !effectiveUser?.avatar)
-                        }
-                      >
-                        Remove avatar
-                      </Button>
-                    </Stack>
-                  </Stack>
-
-                  <TextField
-                    label="Display name"
-                    value={formState.displayName}
-                    onChange={handleFieldChange('displayName')}
-                    required
-                    disabled={isSavingProfile}
-                    fullWidth
-                  />
-
-                  <TextField
-                    label="Bio"
-                    value={formState.bio}
-                    onChange={handleFieldChange('bio')}
-                    multiline
-                    minRows={3}
-                    helperText="Share something about yourself (500 characters max)."
-                    disabled={isSavingProfile}
-                    inputProps={{ maxLength: 500 }}
-                    fullWidth
-                  />
-
-                  <TextField
-                    label="Theme preference"
-                    value={formState.theme}
-                    onChange={handleThemeChange}
-                    select
-                    disabled={isSavingProfile}
-                    fullWidth
-                  >
-                    <MenuItem value="system">System default</MenuItem>
-                    <MenuItem value="light">Light</MenuItem>
-                    <MenuItem value="dark">Dark</MenuItem>
-                  </TextField>
-
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={formState.locationSharingEnabled}
-                        onChange={handleToggleLocationSharing}
-                        color="primary"
-                        disabled={isSavingProfile}
-                      />
-                    }
-                    label="Share location with nearby features"
-                  />
-
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} justifyContent="flex-end">
-                    <Button
-                      type="button"
-                      variant="outlined"
-                      color="inherit"
-                      onClick={handleCancelEditing}
-                      disabled={isSavingProfile}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit" variant="contained" disabled={isSavingProfile}>
-                      {isSavingProfile ? 'Saving...' : 'Save changes'}
-                    </Button>
-                  </Stack>
-                </Stack>
-              ) : null}
-            </Stack>
+          {canEditProfile && isEditing ? (
+            <ProfileEditForm
+              displayName={displayName}
+              formState={formState}
+              isSaving={isSavingProfile}
+              editingAvatarSrc={editingAvatarSrc || avatarUrl}
+              editingBannerSrc={editingBannerSrc}
+              updateStatus={updateStatus}
+              onDismissUpdateStatus={() => setUpdateStatus(null)}
+              onSubmit={handleSaveProfile}
+              onCancel={handleCancelEditing}
+              onAvatarFileChange={handleAvatarFileChange}
+              onBannerFileChange={handleBannerFileChange}
+              onClearAvatar={handleClearAvatar}
+              onClearBanner={handleClearBanner}
+              onFieldChange={handleFieldChange}
+              onThemeChange={handleThemeChange}
+              onToggleLocationSharing={handleToggleLocationSharing}
+            />
           ) : null}
 
           {hasProfile ? (
             <>
               <Divider />
-              {statsVisible ? (
-                <>
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    justifyContent="space-between"
-                    alignItems={{ xs: 'stretch', sm: 'center' }}
-                    spacing={1}
-                    sx={{ px: 0.5 }}
-                  >
-                    <Box className="summary-box" sx={{ flex: '0 0 auto' }}>
-                      <Typography variant="body2">Post count: {postCount}</Typography>
-                    </Box>
-                    <Box className="summary-box" sx={{ flex: '0 0 auto', textAlign: 'right' }}>
-                      <Typography variant="body2">Events hosted: {eventsHosted}</Typography>
-                    </Box>
-                  </Stack>
-                  <Stack direction="row" sx={{ px: 0.5 }}>
-                    <Box className="summary-box" sx={{ flex: '0 0 auto' }}>
-                      <Typography variant="body2">Events attended: {eventsAttended}</Typography>
-                    </Box>
-                  </Stack>
-                </>
-              ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ px: 0.5 }}>
-                  This user keeps their stats private.
-                </Typography>
-              )}
+              <ProfileStatsSummary
+                statsVisible={statsVisible}
+                postCount={postCount}
+                eventsHosted={eventsHosted}
+                eventsAttended={eventsAttended}
+              />
+              {!isViewingSelf ? (
+                <ProfileMutualFriends
+                  mutualFriendCount={mutualFriendCount}
+                  mutualFriendPreview={mutualFriendPreview}
+                  onSelectFriend={handleOpenMutualFriend}
+                  resolveAvatarUrl={resolveAvatarUrl}
+                />
+              ) : null}
               <Stack spacing={3}>
-                <Section
-                  title="Bio"
-                >
-                  {bioText ? (
-                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                      {bioText}
-                    </Typography>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      This user hasn't added a bio yet.
-                    </Typography>
-                  )}
-                </Section>
-
-                <Section
-                  title="Badges & achievements"
-                >
-                  {badgeList.length ? (
-                    <Stack direction="row" flexWrap="wrap" gap={1.5}>
-                      {badgeList.map((badgeId) => {
-                        const badgeInfo =
-                          BADGE_METADATA[badgeId] ?? {
-                            label: badgeId,
-                            description: 'Earn this badge to uncover its story.',
-                            image: undefined
-                          };
-                        const badgeImageUrl = resolveBadgeImageUrl(badgeInfo.image);
-                        return (
-                          <Tooltip key={badgeId} title={badgeInfo.description} arrow enterTouchDelay={0}>
-                            <Chip
-                              label={badgeInfo.label}
-                              color="primary"
-                              variant="outlined"
-                              sx={{
-                                fontSize: '1rem',
-                                px: 1.5,
-                                py: 0.75,
-                                borderWidth: 2
-                              }}
-                              avatar={
-                                badgeImageUrl ? (
-                                  <Avatar
-                                    src={badgeImageUrl}
-                                    alt={`${badgeInfo.label} badge`}
-                                    sx={{ width: 56, height: 56 }}
-                                  />
-                                ) : undefined
-                              }
-                            />
-                          </Tooltip>
-                        );
-                      })}
-                    </Stack>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      No badges yet. They will appear here once this user starts collecting achievements.
-                    </Typography>
-                  )}
-                </Section>
-
-                <Box
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'row',
-                    gap: 2,
-                    width: '100%'
-                  }}
-                >
-                  <Box
-                    className="section-content-box"
-                    sx={{
-                      flex: 1,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 2,
-                      p: 2,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 1,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <MessageIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary">
-                      Message
-                    </Typography>
-                  </Box>
-
-                  <Box
-                    className="section-content-box"
-                    sx={{
-                      flex: 1,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 2,
-                      p: 2,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 1,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <FlagIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary">
-                      Report
-                    </Typography>
-                  </Box>
-
-                  {canManageBlock ? (
-                    <Box
-                      className="section-content-box"
-                      onClick={isBlocked ? handleRequestUnblock : handleRequestBlock}
-                      sx={{
-                        flex: 1,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 2,
-                        p: 2,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: 1,
-                        cursor: isProcessingBlockAction || isFetchingProfile ? 'not-allowed' : 'pointer',
-                        opacity: isProcessingBlockAction || isFetchingProfile ? 0.6 : 1
-                      }}
-                    >
-                      {isBlocked ? (
-                        <HowToRegIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
-                      ) : (
-                        <BlockIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
-                      )}
-                      <Typography variant="body2" color="text.secondary">
-                        {isBlocked ? 'Unblock' : 'Block'}
-                      </Typography>
-                    </Box>
-                  ) : null}
-                </Box>
-                <ThemeProvider theme={legacyProfileTheme}>
-                  <Accordion
-                    disableGutters
-                    sx={(theme) => ({
-                      borderRadius: 2,
-                      boxShadow: 'none',
-                      border: '1px solid',
-                      borderColor: theme.palette.divider,
-                      mt: 3,
-                      backgroundColor: theme.palette.background.paper,
-                      color: theme.palette.text.primary
-                    })}
-                  >
-                    <AccordionSummary
-                      expandIcon={<ExpandMoreIcon />}
-                      aria-controls="additional-content-panel"
-                      id="additional-content-header"
-                      sx={(theme) => ({
-                        backgroundColor: theme.palette.background.paper,
-                        color: theme.palette.text.primary,
-                        px: 2,
-                        '& .MuiAccordionSummary-expandIconWrapper svg': {
-                          color: theme.palette.text.secondary
-                        },
-                        '& .MuiTypography-root': {
-                          color: theme.palette.text.primary,
-                          fontWeight: 600
-                        }
-                      })}
-                    >
-                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                        Additional Content
-                      </Typography>
-                    </AccordionSummary>
-                    <AccordionDetails
-                      sx={(theme) => ({
-                        px: { xs: 1, sm: 2 },
-                        py: 2,
-                        backgroundColor: theme.palette.background.paper,
-                        color: theme.palette.text.primary,
-                        borderTop: '1px solid',
-                        borderColor: theme.palette.divider
-                      })}
-                    >
-                      <Box
-                        sx={(theme) => ({
-                          width: '100%',
-                          color: theme.palette.text.primary,
-                          backgroundColor: theme.palette.background.paper
-                        })}
-                      >
-                        <ProfilePageAdditionalDetail />
-                      </Box>
-                    </AccordionDetails>
-                  </Accordion>
-                </ThemeProvider>
-
+                <ProfileBio bioText={bioText} />
+                <ProfileBadges badgeList={badgeList} />
+                <ProfileActionRow
+                  canManageBlock={canManageBlock}
+                  isBlocked={isBlocked}
+                  isProcessingBlockAction={isProcessingBlockAction}
+                  isFetchingProfile={isFetchingProfile}
+                  onRequestBlock={handleRequestBlock}
+                  onRequestUnblock={handleRequestUnblock}
+                  showFriendAction={!isViewingSelf}
+                  canSendFriendRequest={canSendFriendRequest}
+                  isFriend={isFriend}
+                  hasPendingFriendRequest={hasPendingFriendRequest}
+                  isSendingFriendRequest={isSendingFriendRequest}
+                  onSendFriendRequest={handleSendFriendRequest}
+                />
               </Stack>
             </>
           ) : null}
@@ -1470,46 +852,14 @@ function ProfilePage() {
 
       </div>
 
-      <Dialog
-        open={Boolean(blockDialogMode)}
+      <ProfileBlockDialog
+        mode={blockDialogMode}
         onClose={handleCloseBlockDialog}
-        fullWidth
-        maxWidth="xs"
-      >
-        <DialogTitle>{blockDialogMode === 'block' ? 'Block this user?' : 'Unblock this user?'}</DialogTitle>
-        <DialogContent sx={{ pt: 1, pb: 0 }}>
-          <Typography variant="body2" color="text.secondary">
-            {blockDialogMode === 'block'
-              ? 'Blocked users cannot interact with you and their activity is hidden. You can review blocked users in Settings whenever you change your mind.'
-              : 'Unblocking lets this user interact with you again and restores their activity in your feeds.'}
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleCloseBlockDialog} disabled={isProcessingBlockAction}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleConfirmBlockDialog}
-            color={blockDialogMode === 'block' ? 'error' : 'primary'}
-            variant="contained"
-            disabled={isProcessingBlockAction}
-          >
-            {isProcessingBlockAction
-              ? 'Updating...'
-              : blockDialogMode === 'block'
-              ? 'Block user'
-              : 'Unblock user'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onConfirm={handleConfirmBlockDialog}
+        isProcessing={isProcessingBlockAction}
+      />
     </div>
   );
 }
 
 export default ProfilePage;
-
-
-
-
-
-

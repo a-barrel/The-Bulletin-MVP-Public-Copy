@@ -23,6 +23,8 @@ const EMPTY_COLLECTION_FORM = {
   bookmarkIds: ''
 };
 
+// Render-only component that wires the shared hook into the Debug Console panels.
+// Each panel is deliberately verbose so non-product teammates can poke at the API.
 function BookmarksTab() {
   const {
     bookmarkForm,
@@ -61,6 +63,7 @@ function BookmarksTab() {
     handleFetchCollections
   } = useBookmarksTools();
 
+  // Transform hook status objects into the structure DebugPanel expects.
   const bookmarkAlerts = [
     bookmarkStatus
       ? {
@@ -125,6 +128,7 @@ function BookmarksTab() {
 
   return (
     <Stack spacing={2}>
+      {/* 1. Create a bookmark ------------------------------------------------------------- */}
       <DebugPanel
         component="form"
         onSubmit={handleCreateBookmark}
@@ -188,6 +192,7 @@ function BookmarksTab() {
         <JsonPreview data={bookmarkResult} />
       </DebugPanel>
 
+      {/* 2. Create a collection ----------------------------------------------------------- */}
       <DebugPanel
         component="form"
         onSubmit={handleCreateCollection}
@@ -238,6 +243,7 @@ function BookmarksTab() {
         <JsonPreview data={collectionResult} />
       </DebugPanel>
 
+      {/* 3. Fetch/export bookmarks -------------------------------------------------------- */}
       <DebugPanel
         component="form"
         onSubmit={handleFetchBookmarks}
@@ -281,6 +287,7 @@ function BookmarksTab() {
         <JsonPreview data={bookmarksResult} />
       </DebugPanel>
 
+      {/* 4. Fetch collections ------------------------------------------------------------- */}
       <DebugPanel
         component="form"
         onSubmit={handleFetchCollections}

@@ -20,16 +20,16 @@
     "proximityRadiusMeters": 1200,
     "photos": [
       {
-        "url": "/images/event/event-01.jpg",
-        "thumbnailUrl": "/images/event/event-01.jpg",
+        "url": "/images/event/event-01",
+        "thumbnailUrl": "/images/event/event-01",
         "width": 512,
         "height": 512,
         "mimeType": "image/jpeg"
       }
     ],
     "coverPhoto": {
-      "url": "/images/event/event-01.jpg",
-      "thumbnailUrl": "/images/event/event-01.jpg",
+      "url": "/images/event/event-01",
+      "thumbnailUrl": "/images/event/event-01",
       "width": 512,
       "height": 512,
       "mimeType": "image/jpeg"
@@ -40,6 +40,15 @@
       "volunteer",
       "outdoors"
     ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": false,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 60
+    },
     "relatedPinIds": [
       {
         "$oid": "68e061721329566a22d474ab"
@@ -115,16 +124,16 @@
     "proximityRadiusMeters": 600,
     "photos": [
       {
-        "url": "/images/discussion/discussion-01.jpg",
-        "thumbnailUrl": "/images/discussion/discussion-01.jpg",
+        "url": "/images/discussion/discussion-01",
+        "thumbnailUrl": "/images/discussion/discussion-01",
         "width": 512,
         "height": 512,
         "mimeType": "image/jpeg"
       }
     ],
     "coverPhoto": {
-      "url": "/images/discussion/discussion-01.jpg",
-      "thumbnailUrl": "/images/discussion/discussion-01.jpg",
+      "url": "/images/discussion/discussion-01",
+      "thumbnailUrl": "/images/discussion/discussion-01",
       "width": 512,
       "height": 512,
       "mimeType": "image/jpeg"
@@ -134,6 +143,14 @@
       "study",
       "coffee"
     ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": false,
+      "featured": false,
+      "visibilityMode": "map-and-list"
+    },
     "relatedPinIds": [
       {
         "$oid": "68e061721329566a22d474ac"
@@ -194,16 +211,16 @@
     "proximityRadiusMeters": 1500,
     "photos": [
       {
-        "url": "/images/event/event-02.jpg",
-        "thumbnailUrl": "/images/event/event-02.jpg",
+        "url": "/images/event/event-02",
+        "thumbnailUrl": "/images/event/event-02",
         "width": 512,
         "height": 512,
         "mimeType": "image/jpeg"
       }
     ],
     "coverPhoto": {
-      "url": "/images/event/event-02.jpg",
-      "thumbnailUrl": "/images/event/event-02.jpg",
+      "url": "/images/event/event-02",
+      "thumbnailUrl": "/images/event/event-02",
       "width": 512,
       "height": 512,
       "mimeType": "image/jpeg"
@@ -214,6 +231,15 @@
       "food",
       "music"
     ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": false,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 60
+    },
     "relatedPinIds": [
       {
         "$oid": "68e061721329566a22d474aa"
@@ -287,16 +313,16 @@
     "proximityRadiusMeters": 804,
     "photos": [
       {
-        "url": "/images/event/event-03.jpg",
-        "thumbnailUrl": "/images/event/event-03.jpg",
+        "url": "/images/event/event-03",
+        "thumbnailUrl": "/images/event/event-03",
         "width": 512,
         "height": 512,
         "mimeType": "image/jpeg"
       }
     ],
     "coverPhoto": {
-      "url": "/images/event/event-03.jpg",
-      "thumbnailUrl": "/images/event/event-03.jpg",
+      "url": "/images/event/event-03",
+      "thumbnailUrl": "/images/event/event-03",
       "width": 512,
       "height": 512,
       "mimeType": "image/jpeg"
@@ -306,6 +332,15 @@
       "cycling",
       "outdoors"
     ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": false,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 60
+    },
     "relatedPinIds": [],
     "linkedLocationId": null,
     "linkedChatRoomId": null,
@@ -370,16 +405,16 @@
     "proximityRadiusMeters": 1000,
     "photos": [
       {
-        "url": "/images/discussion/discussion-02.jpg",
-        "thumbnailUrl": "/images/discussion/discussion-02.jpg",
+        "url": "/images/discussion/discussion-02",
+        "thumbnailUrl": "/images/discussion/discussion-02",
         "width": 512,
         "height": 512,
         "mimeType": "image/jpeg"
       }
     ],
     "coverPhoto": {
-      "url": "/images/discussion/discussion-02.jpg",
-      "thumbnailUrl": "/images/discussion/discussion-02.jpg",
+      "url": "/images/discussion/discussion-02",
+      "thumbnailUrl": "/images/discussion/discussion-02",
       "width": 512,
       "height": 512,
       "mimeType": "image/jpeg"
@@ -389,6 +424,14 @@
       "art",
       "community"
     ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": false,
+      "featured": false,
+      "visibilityMode": "map-and-list"
+    },
     "relatedPinIds": [],
     "linkedLocationId": null,
     "linkedChatRoomId": null,
@@ -441,16 +484,16 @@
     "proximityRadiusMeters": 1609,
     "photos": [
       {
-        "url": "/images/event/event-04.jpg",
-        "thumbnailUrl": "/images/event/event-04.jpg",
+        "url": "/images/event/event-04",
+        "thumbnailUrl": "/images/event/event-04",
         "width": 512,
         "height": 512,
         "mimeType": "image/jpeg"
       }
     ],
     "coverPhoto": {
-      "url": "/images/event/event-04.jpg",
-      "thumbnailUrl": "/images/event/event-04.jpg",
+      "url": "/images/event/event-04",
+      "thumbnailUrl": "/images/event/event-04",
       "width": 512,
       "height": 512,
       "mimeType": "image/jpeg"
@@ -460,6 +503,15 @@
       "running",
       "fitness"
     ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": false,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 60
+    },
     "relatedPinIds": [],
     "linkedLocationId": null,
     "linkedChatRoomId": null,
@@ -528,16 +580,16 @@
     "proximityRadiusMeters": 800,
     "photos": [
       {
-        "url": "/images/event/event-05.jpg",
-        "thumbnailUrl": "/images/event/event-05.jpg",
+        "url": "/images/event/event-05",
+        "thumbnailUrl": "/images/event/event-05",
         "width": 512,
         "height": 512,
         "mimeType": "image/jpeg"
       }
     ],
     "coverPhoto": {
-      "url": "/images/event/event-05.jpg",
-      "thumbnailUrl": "/images/event/event-05.jpg",
+      "url": "/images/event/event-05",
+      "thumbnailUrl": "/images/event/event-05",
       "width": 512,
       "height": 512,
       "mimeType": "image/jpeg"
@@ -548,6 +600,15 @@
       "expo",
       "innovation"
     ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": false,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 60
+    },
     "relatedPinIds": [
       {
         "$oid": "68e061721329566a22d474aa"
@@ -635,16 +696,16 @@
     "proximityRadiusMeters": 1000,
     "photos": [
       {
-        "url": "/images/event/event-01.jpg",
-        "thumbnailUrl": "/images/event/event-01.jpg",
+        "url": "/images/event/event-01",
+        "thumbnailUrl": "/images/event/event-01",
         "width": 512,
         "height": 512,
         "mimeType": "image/jpeg"
       }
     ],
     "coverPhoto": {
-      "url": "/images/event/event-01.jpg",
-      "thumbnailUrl": "/images/event/event-01.jpg",
+      "url": "/images/event/event-01",
+      "thumbnailUrl": "/images/event/event-01",
       "width": 512,
       "height": 512,
       "mimeType": "image/jpeg"
@@ -654,6 +715,15 @@
       "sports",
       "outdoors"
     ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": false,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 60
+    },
     "relatedPinIds": [
       {
         "$oid": "68e061721329566a22d474c7"
@@ -736,16 +806,16 @@
     "proximityRadiusMeters": 400,
     "photos": [
       {
-        "url": "/images/discussion/discussion-03.jpg",
-        "thumbnailUrl": "/images/discussion/discussion-03.jpg",
+        "url": "/images/discussion/discussion-03",
+        "thumbnailUrl": "/images/discussion/discussion-03",
         "width": 512,
         "height": 512,
         "mimeType": "image/jpeg"
       }
     ],
     "coverPhoto": {
-      "url": "/images/discussion/discussion-03.jpg",
-      "thumbnailUrl": "/images/discussion/discussion-03.jpg",
+      "url": "/images/discussion/discussion-03",
+      "thumbnailUrl": "/images/discussion/discussion-03",
       "width": 512,
       "height": 512,
       "mimeType": "image/jpeg"
@@ -756,6 +826,14 @@
       "sunrise",
       "community"
     ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": false,
+      "featured": false,
+      "visibilityMode": "map-and-list"
+    },
     "relatedPinIds": [
       {
         "$oid": "68e061721329566a22d47530"
@@ -814,8 +892,8 @@
     "proximityRadiusMeters": 800,
     "photos": [],
     "coverPhoto": {
-      "url": "/images/event/event-02.jpg",
-      "thumbnailUrl": "/images/event/event-02.jpg",
+      "url": "/images/event/event-02",
+      "thumbnailUrl": "/images/event/event-02",
       "width": 512,
       "height": 512,
       "mimeType": "image/jpeg"
@@ -825,6 +903,15 @@
       "throwback",
       "party"
     ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": false,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 60
+    },
     "relatedPinIds": [],
     "linkedLocationId": null,
     "linkedChatRoomId": null,
@@ -856,6 +943,2129 @@
     },
     "updatedAt": {
       "$date": "2000-01-02T12:00:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d48010"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "title": "Sunrise Switchback Trek",
+    "description": "Tempo hike up Signal Hill with mobility and breathing drills at each lookout.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1682,
+        33.7982
+      ],
+      "accuracy": 9
+    },
+    "proximityRadiusMeters": 900,
+    "photos": [
+      {
+        "url": "/images/event/event-06",
+        "thumbnailUrl": "/images/event/event-06",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-06",
+      "thumbnailUrl": "/images/event/event-06",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "hiking",
+      "sunrise",
+      "strength"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": true,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 90,
+      "highlightColor": "#0f766e"
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c1"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 6,
+      "replyCount": 3,
+      "shareCount": 2,
+      "viewCount": 214
+    },
+    "bookmarkCount": 6,
+    "replyCount": 3,
+    "startDate": {
+      "$date": "2026-10-12T14:45:00.000Z"
+    },
+    "endDate": {
+      "$date": "2026-10-12T17:00:00.000Z"
+    },
+    "address": {
+      "precise": "Signal Hill Trailhead",
+      "components": {
+        "line1": "2350 Dawson Ave",
+        "city": "Signal Hill",
+        "state": "CA",
+        "postalCode": "90755",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 30,
+    "participantCount": 4,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      {
+        "$oid": "68e061721329566a22d47511"
+      }
+    ],
+    "attendeeWaitlistIds": [
+      {
+        "$oid": "68e061721329566a22d47510"
+      }
+    ],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2026-10-05T18:45:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-08T12:15:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d48011"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
+    "title": "Harbor Tempo Paddle",
+    "description": "Stand-up paddle relay along Shoreline Marina. Includes drills for balance and cadence.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1902,
+        33.7605
+      ],
+      "accuracy": 7
+    },
+    "proximityRadiusMeters": 750,
+    "photos": [
+      {
+        "url": "/images/event/event-07",
+        "thumbnailUrl": "/images/event/event-07",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-07",
+      "thumbnailUrl": "/images/event/event-07",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "paddle",
+      "relay",
+      "water"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": false,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 60
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c2"
+    },
+    "linkedChatRoomId": {
+      "$oid": "68e061721329566a22d474b3"
+    },
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 4,
+      "replyCount": 2,
+      "shareCount": 1,
+      "viewCount": 180
+    },
+    "bookmarkCount": 4,
+    "replyCount": 2,
+    "startDate": {
+      "$date": "2026-10-15T16:00:00.000Z"
+    },
+    "endDate": {
+      "$date": "2026-10-15T18:30:00.000Z"
+    },
+    "address": {
+      "precise": "Shoreline Marina Docks",
+      "components": {
+        "line1": "200 Aquarium Way",
+        "city": "Long Beach",
+        "state": "CA",
+        "postalCode": "90802",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 24,
+    "participantCount": 3,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d47510"
+      }
+    ],
+    "attendeeWaitlistIds": [],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2026-10-07T21:15:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-09T19:00:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d48012"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a9"
+    },
+    "title": "Catalina View Trail Run",
+    "description": "4-mile rolling trail with negative split pacing and parachute sprints at the finish.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1425,
+        33.8042
+      ],
+      "accuracy": 10
+    },
+    "proximityRadiusMeters": 1100,
+    "photos": [
+      {
+        "url": "/images/event/event-08",
+        "thumbnailUrl": "/images/event/event-08",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-08",
+      "thumbnailUrl": "/images/event/event-08",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "trail-run",
+      "conditioning"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": false,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 75,
+      "highlightColor": "#2563eb"
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c3"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 5,
+      "replyCount": 4,
+      "shareCount": 2,
+      "viewCount": 240
+    },
+    "bookmarkCount": 5,
+    "replyCount": 4,
+    "startDate": {
+      "$date": "2026-10-18T15:30:00.000Z"
+    },
+    "endDate": {
+      "$date": "2026-10-18T17:00:00.000Z"
+    },
+    "address": {
+      "precise": "Hilltop Park Loops",
+      "components": {
+        "line1": "2351 Dawson Ave",
+        "city": "Signal Hill",
+        "state": "CA",
+        "postalCode": "90755",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 40,
+    "participantCount": 5,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      {
+        "$oid": "68e061721329566a22d47510"
+      },
+      {
+        "$oid": "68e061721329566a22d47511"
+      }
+    ],
+    "attendeeWaitlistIds": [],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2026-10-09T20:05:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-11T11:45:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d48013"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d47510"
+    },
+    "title": "Signal Hill Stair Circuit",
+    "description": "90-minute stair intervals alternating with resistance band stations.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1671,
+        33.7911
+      ],
+      "accuracy": 8
+    },
+    "proximityRadiusMeters": 500,
+    "photos": [
+      {
+        "url": "/images/event/event-09",
+        "thumbnailUrl": "/images/event/event-09",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-09",
+      "thumbnailUrl": "/images/event/event-09",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "stairs",
+      "strength"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": false,
+      "visibilityMode": "map-only",
+      "reminderMinutesBefore": 45
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d47520"
+    },
+    "linkedChatRoomId": {
+      "$oid": "68e061721329566a22d47570"
+    },
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 3,
+      "replyCount": 2,
+      "shareCount": 1,
+      "viewCount": 150
+    },
+    "bookmarkCount": 3,
+    "replyCount": 2,
+    "startDate": {
+      "$date": "2026-10-20T01:00:00.000Z"
+    },
+    "endDate": {
+      "$date": "2026-10-20T02:30:00.000Z"
+    },
+    "address": {
+      "precise": "Hilltop Park Steps",
+      "components": {
+        "line1": "2351 Skyline Dr",
+        "city": "Signal Hill",
+        "state": "CA",
+        "postalCode": "90755",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 20,
+    "participantCount": 3,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d47510"
+      },
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d474a9"
+      }
+    ],
+    "attendeeWaitlistIds": [
+      {
+        "$oid": "68e061721329566a22d474a8"
+      }
+    ],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2026-10-11T23:40:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-18T02:20:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d48014"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "title": "Sunset Pickleball Picnic",
+    "description": "Casual doubles ladder plus mobility cooldown and picnic potluck.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.129,
+        33.7581
+      ],
+      "accuracy": 6
+    },
+    "proximityRadiusMeters": 600,
+    "photos": [
+      {
+        "url": "/images/event/event-10",
+        "thumbnailUrl": "/images/event/event-10",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-10",
+      "thumbnailUrl": "/images/event/event-10",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "pickleball",
+      "social"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": true,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 120,
+      "highlightColor": "#f97316"
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c1"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 8,
+      "replyCount": 5,
+      "shareCount": 4,
+      "viewCount": 322
+    },
+    "bookmarkCount": 8,
+    "replyCount": 5,
+    "startDate": {
+      "$date": "2026-10-22T01:30:00.000Z"
+    },
+    "endDate": {
+      "$date": "2026-10-22T04:00:00.000Z"
+    },
+    "address": {
+      "precise": "Marine Stadium Courts",
+      "components": {
+        "line1": "5255 Paoli Way",
+        "city": "Long Beach",
+        "state": "CA",
+        "postalCode": "90803",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 32,
+    "participantCount": 4,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      {
+        "$oid": "68e061721329566a22d47510"
+      }
+    ],
+    "attendeeWaitlistIds": [],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2026-10-13T18:10:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-19T05:05:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d48015"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a9"
+    },
+    "title": "Belmont Beach Interval Ride",
+    "description": "Sunrise bike sprints with sand plyo finishers next to the pier.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1328,
+        33.7622
+      ],
+      "accuracy": 7
+    },
+    "proximityRadiusMeters": 700,
+    "photos": [
+      {
+        "url": "/images/event/event-11",
+        "thumbnailUrl": "/images/event/event-11",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-11",
+      "thumbnailUrl": "/images/event/event-11",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "cycling",
+      "intervals"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": false,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 60
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c3"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 4,
+      "replyCount": 2,
+      "shareCount": 2,
+      "viewCount": 190
+    },
+    "bookmarkCount": 4,
+    "replyCount": 2,
+    "startDate": {
+      "$date": "2026-10-24T13:30:00.000Z"
+    },
+    "endDate": {
+      "$date": "2026-10-24T15:00:00.000Z"
+    },
+    "address": {
+      "precise": "Belmont Pier Lot",
+      "components": {
+        "line1": "15 39th Pl",
+        "city": "Long Beach",
+        "state": "CA",
+        "postalCode": "90803",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 25,
+    "participantCount": 3,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d47511"
+      }
+    ],
+    "attendeeWaitlistIds": [],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2026-10-15T17:25:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T04:10:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d48016"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
+    "title": "Lagoon Recovery Walk",
+    "description": "Low-impact walk + stretch along Colorado Lagoon boardwalk with breathing cues.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1401,
+        33.7704
+      ],
+      "accuracy": 5
+    },
+    "proximityRadiusMeters": 500,
+    "photos": [
+      {
+        "url": "/images/event/event-12",
+        "thumbnailUrl": "/images/event/event-12",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-12",
+      "thumbnailUrl": "/images/event/event-12",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "recovery",
+      "walk"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": false,
+      "visibilityMode": "list-only",
+      "reminderMinutesBefore": 30
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c2"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 3,
+      "replyCount": 1,
+      "shareCount": 1,
+      "viewCount": 105
+    },
+    "bookmarkCount": 3,
+    "replyCount": 1,
+    "startDate": {
+      "$date": "2026-10-25T22:00:00.000Z"
+    },
+    "endDate": {
+      "$date": "2026-10-25T23:15:00.000Z"
+    },
+    "address": {
+      "precise": "Colorado Lagoon Path",
+      "components": {
+        "line1": "5119 E Colorado St",
+        "city": "Long Beach",
+        "state": "CA",
+        "postalCode": "90814",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 40,
+    "participantCount": 4,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d47510"
+      },
+      {
+        "$oid": "68e061721329566a22d47511"
+      }
+    ],
+    "attendeeWaitlistIds": [],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2026-10-17T15:20:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-23T05:40:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d48017"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d47511"
+    },
+    "title": "Alpine Ruck Prep",
+    "description": "Weighted-pack laps at Recreation Park with hill surges and cadence cues.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1461,
+        33.781
+      ],
+      "accuracy": 9
+    },
+    "proximityRadiusMeters": 950,
+    "photos": [
+      {
+        "url": "/images/event/event-13",
+        "thumbnailUrl": "/images/event/event-13",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-13",
+      "thumbnailUrl": "/images/event/event-13",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "ruck",
+      "strength"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": false,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 120,
+      "highlightColor": "#9333ea"
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d47521"
+    },
+    "linkedChatRoomId": {
+      "$oid": "68e061721329566a22d47570"
+    },
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 5,
+      "replyCount": 2,
+      "shareCount": 2,
+      "viewCount": 168
+    },
+    "bookmarkCount": 5,
+    "replyCount": 2,
+    "startDate": {
+      "$date": "2026-10-27T15:00:00.000Z"
+    },
+    "endDate": {
+      "$date": "2026-10-27T17:30:00.000Z"
+    },
+    "address": {
+      "precise": "Recreation Park Loop",
+      "components": {
+        "line1": "4900 E 7th St",
+        "city": "Long Beach",
+        "state": "CA",
+        "postalCode": "90804",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 28,
+    "participantCount": 3,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d47511"
+      },
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d474a9"
+      }
+    ],
+    "attendeeWaitlistIds": [],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2026-10-18T19:10:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-24T13:00:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d48018"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "title": "Bay Kayak Ladders",
+    "description": "Interval kayak sprints across Alamitos Bay with partner spotting and form feedback.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1185,
+        33.7564
+      ],
+      "accuracy": 6
+    },
+    "proximityRadiusMeters": 700,
+    "photos": [
+      {
+        "url": "/images/event/event-14",
+        "thumbnailUrl": "/images/event/event-14",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-14",
+      "thumbnailUrl": "/images/event/event-14",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "kayak",
+      "intervals"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": false,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 50
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c1"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 2,
+      "replyCount": 1,
+      "shareCount": 1,
+      "viewCount": 92
+    },
+    "bookmarkCount": 2,
+    "replyCount": 1,
+    "startDate": {
+      "$date": "2026-10-29T16:30:00.000Z"
+    },
+    "endDate": {
+      "$date": "2026-10-29T18:00:00.000Z"
+    },
+    "address": {
+      "precise": "Alamitos Bay Dock 3",
+      "components": {
+        "line1": "205 N Marina Dr",
+        "city": "Long Beach",
+        "state": "CA",
+        "postalCode": "90803",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 18,
+    "participantCount": 2,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d47510"
+      }
+    ],
+    "attendeeWaitlistIds": [],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2026-10-20T17:55:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-26T04:40:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d48019"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a9"
+    },
+    "title": "Campus Sandbag Relay",
+    "description": "Team relay across upper campus with sled pushes and sandbag carries at each stop.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1148,
+        33.7833
+      ],
+      "accuracy": 6
+    },
+    "proximityRadiusMeters": 650,
+    "photos": [
+      {
+        "url": "/images/event/event-15",
+        "thumbnailUrl": "/images/event/event-15",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-15",
+      "thumbnailUrl": "/images/event/event-15",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "relay",
+      "strength"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": true,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 90,
+      "highlightColor": "#f59e0b"
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c2"
+    },
+    "linkedChatRoomId": {
+      "$oid": "68e061721329566a22d474b3"
+    },
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 7,
+      "replyCount": 4,
+      "shareCount": 3,
+      "viewCount": 301
+    },
+    "bookmarkCount": 7,
+    "replyCount": 4,
+    "startDate": {
+      "$date": "2026-11-01T18:00:00.000Z"
+    },
+    "endDate": {
+      "$date": "2026-11-01T19:30:00.000Z"
+    },
+    "address": {
+      "precise": "CSULB Upper Quad",
+      "components": {
+        "line1": "1250 N Bellflower Blvd",
+        "city": "Long Beach",
+        "state": "CA",
+        "postalCode": "90840",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 36,
+    "participantCount": 4,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      {
+        "$oid": "68e061721329566a22d47510"
+      }
+    ],
+    "attendeeWaitlistIds": [
+      {
+        "$oid": "68e061721329566a22d47511"
+      }
+    ],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2026-10-22T23:10:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-28T20:50:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d4801a"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
+    "title": "Moonbeam Trail Hike",
+    "description": "Night hike with reflective markers, headlamp safety check, and cocoa at the overlook.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1581,
+        33.7995
+      ],
+      "accuracy": 8
+    },
+    "proximityRadiusMeters": 850,
+    "photos": [
+      {
+        "url": "/images/event/event-16",
+        "thumbnailUrl": "/images/event/event-16",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-16",
+      "thumbnailUrl": "/images/event/event-16",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "night-hike",
+      "community"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": false,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 120,
+      "contentAdvisory": "Trail is dark\u2014bring headlamp."
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c2"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 5,
+      "replyCount": 3,
+      "shareCount": 2,
+      "viewCount": 210
+    },
+    "bookmarkCount": 5,
+    "replyCount": 3,
+    "startDate": {
+      "$date": "2026-11-03T03:00:00.000Z"
+    },
+    "endDate": {
+      "$date": "2026-11-03T05:00:00.000Z"
+    },
+    "address": {
+      "precise": "Panorama Promenade",
+      "components": {
+        "line1": "2801 Skyline Dr",
+        "city": "Signal Hill",
+        "state": "CA",
+        "postalCode": "90755",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 22,
+    "participantCount": 3,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d474a9"
+      }
+    ],
+    "attendeeWaitlistIds": [],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2026-10-25T02:15:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-30T06:40:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d4801b"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d47510"
+    },
+    "title": "Aquarium Plaza HIIT Lab",
+    "description": "Bodyweight plus battle-rope intervals next to the aquarium lawn with live DJ mix.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1965,
+        33.7617
+      ],
+      "accuracy": 6
+    },
+    "proximityRadiusMeters": 550,
+    "photos": [
+      {
+        "url": "/images/event/event-17",
+        "thumbnailUrl": "/images/event/event-17",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-17",
+      "thumbnailUrl": "/images/event/event-17",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "hiit",
+      "music"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": true,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 45,
+      "highlightColor": "#ef4444"
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d47520"
+    },
+    "linkedChatRoomId": {
+      "$oid": "68e061721329566a22d47570"
+    },
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 9,
+      "replyCount": 6,
+      "shareCount": 5,
+      "viewCount": 356
+    },
+    "bookmarkCount": 9,
+    "replyCount": 6,
+    "startDate": {
+      "$date": "2026-11-04T18:30:00.000Z"
+    },
+    "endDate": {
+      "$date": "2026-11-04T19:30:00.000Z"
+    },
+    "address": {
+      "precise": "Aquarium Lawn",
+      "components": {
+        "line1": "100 Aquarium Way",
+        "city": "Long Beach",
+        "state": "CA",
+        "postalCode": "90802",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 40,
+    "participantCount": 5,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d47510"
+      },
+      {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      {
+        "$oid": "68e061721329566a22d47511"
+      }
+    ],
+    "attendeeWaitlistIds": [],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2026-10-26T19:05:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-11-01T03:00:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d4801c"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d47511"
+    },
+    "title": "Dune Dash Conditioning",
+    "description": "Soft-sand repeats near the Peninsula roller path with sled drags and agility ladders.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1207,
+        33.7541
+      ],
+      "accuracy": 7
+    },
+    "proximityRadiusMeters": 600,
+    "photos": [
+      {
+        "url": "/images/event/event-18",
+        "thumbnailUrl": "/images/event/event-18",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-18",
+      "thumbnailUrl": "/images/event/event-18",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "sand",
+      "conditioning"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true,
+      "featured": false,
+      "visibilityMode": "map-and-list",
+      "reminderMinutesBefore": 35
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d47521"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 2,
+      "replyCount": 1,
+      "shareCount": 1,
+      "viewCount": 88
+    },
+    "bookmarkCount": 2,
+    "replyCount": 1,
+    "startDate": {
+      "$date": "2026-11-06T16:00:00.000Z"
+    },
+    "endDate": {
+      "$date": "2026-11-06T17:30:00.000Z"
+    },
+    "address": {
+      "precise": "Peninsula Roller Path",
+      "components": {
+        "line1": "6200 E Seaside Walk",
+        "city": "Long Beach",
+        "state": "CA",
+        "postalCode": "90803",
+        "country": "USA"
+      }
+    },
+    "participantLimit": 26,
+    "participantCount": 2,
+    "attendingUserIds": [
+      {
+        "$oid": "68e061721329566a22d47511"
+      },
+      {
+        "$oid": "68e061721329566a22d474a7"
+      }
+    ],
+    "attendeeWaitlistIds": [],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2026-10-29T21:30:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-11-02T09:55:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d4801d"
+    },
+    "type": "discussion",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "title": "Trail Snack Draft Board",
+    "description": "Rank your go-to trail snacks. Winner brings a bulk bag to the next hike.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1502,
+        33.7891
+      ],
+      "accuracy": 9
+    },
+    "proximityRadiusMeters": 800,
+    "photos": [
+      {
+        "url": "/images/discussion/discussion-06",
+        "thumbnailUrl": "/images/discussion/discussion-06",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/discussion/discussion-06",
+      "thumbnailUrl": "/images/discussion/discussion-06",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "discussion",
+      "nutrition",
+      "goofy"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": false,
+      "featured": false,
+      "visibilityMode": "list-only",
+      "highlightColor": "#65a30d"
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c1"
+    },
+    "linkedChatRoomId": {
+      "$oid": "68e061721329566a22d474b3"
+    },
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 4,
+      "replyCount": 9,
+      "shareCount": 1,
+      "viewCount": 260
+    },
+    "bookmarkCount": 4,
+    "replyCount": 9,
+    "approximateAddress": {
+      "city": "Signal Hill",
+      "state": "CA",
+      "country": "USA",
+      "formatted": "Signal Hill Outlook"
+    },
+    "expiresAt": {
+      "$date": "2026-12-15T05:00:00.000Z"
+    },
+    "autoDelete": true,
+    "createdAt": {
+      "$date": "2026-10-20T04:10:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-11-02T02:15:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d4801e"
+    },
+    "type": "discussion",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
+    "title": "Switchback Pace Accountability",
+    "description": "Post screenshots of your hill repeats\u2014no filters, just sweaty honesty.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1677,
+        33.7955
+      ],
+      "accuracy": 8
+    },
+    "proximityRadiusMeters": 700,
+    "photos": [
+      {
+        "url": "/images/discussion/discussion-07",
+        "thumbnailUrl": "/images/discussion/discussion-07",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/discussion/discussion-07",
+      "thumbnailUrl": "/images/discussion/discussion-07",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "motivation",
+      "hiking"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": false,
+      "featured": true,
+      "visibilityMode": "map-and-list",
+      "highlightColor": "#0ea5e9"
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c2"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 8,
+      "replyCount": 14,
+      "shareCount": 3,
+      "viewCount": 402
+    },
+    "bookmarkCount": 8,
+    "replyCount": 14,
+    "approximateAddress": {
+      "city": "Signal Hill",
+      "state": "CA",
+      "country": "USA"
+    },
+    "expiresAt": {
+      "$date": "2026-12-20T05:00:00.000Z"
+    },
+    "autoDelete": true,
+    "createdAt": {
+      "$date": "2026-10-22T07:30:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-11-05T10:05:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d4801f"
+    },
+    "type": "discussion",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a9"
+    },
+    "title": "Foam Roller Emergency Channel",
+    "description": "Drop your sore spots + best mobility clips before the next long run.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1148,
+        33.7831
+      ],
+      "accuracy": 5
+    },
+    "proximityRadiusMeters": 600,
+    "photos": [
+      {
+        "url": "/images/discussion/discussion-08",
+        "thumbnailUrl": "/images/discussion/discussion-08",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/discussion/discussion-08",
+      "thumbnailUrl": "/images/discussion/discussion-08",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "recovery",
+      "mobility"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": false,
+      "featured": false,
+      "visibilityMode": "map-and-list"
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c3"
+    },
+    "linkedChatRoomId": {
+      "$oid": "68e061721329566a22d474b3"
+    },
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 6,
+      "replyCount": 11,
+      "shareCount": 2,
+      "viewCount": 318
+    },
+    "bookmarkCount": 6,
+    "replyCount": 11,
+    "approximateAddress": {
+      "city": "Long Beach",
+      "state": "CA",
+      "country": "USA"
+    },
+    "expiresAt": {
+      "$date": "2026-12-30T05:00:00.000Z"
+    },
+    "autoDelete": true,
+    "createdAt": {
+      "$date": "2026-10-24T06:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-11-04T08:10:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d48020"
+    },
+    "type": "discussion",
+    "creatorId": {
+      "$oid": "68e061721329566a22d47510"
+    },
+    "title": "Peak Photo Thread",
+    "description": "Share your best summit selfies, panoramas, or failed drone shots.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1988,
+        33.7638
+      ],
+      "accuracy": 6
+    },
+    "proximityRadiusMeters": 650,
+    "photos": [
+      {
+        "url": "/images/discussion/discussion-09",
+        "thumbnailUrl": "/images/discussion/discussion-09",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/discussion/discussion-09",
+      "thumbnailUrl": "/images/discussion/discussion-09",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "photos",
+      "community"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": false,
+      "featured": false,
+      "visibilityMode": "map-and-list"
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d47520"
+    },
+    "linkedChatRoomId": {
+      "$oid": "68e061721329566a22d47570"
+    },
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 5,
+      "replyCount": 8,
+      "shareCount": 2,
+      "viewCount": 244
+    },
+    "bookmarkCount": 5,
+    "replyCount": 8,
+    "approximateAddress": {
+      "city": "Long Beach",
+      "state": "CA",
+      "country": "USA",
+      "formatted": "Harbor Steps"
+    },
+    "expiresAt": {
+      "$date": "2026-12-18T05:00:00.000Z"
+    },
+    "autoDelete": true,
+    "createdAt": {
+      "$date": "2026-10-26T05:05:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-11-03T02:35:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d48021"
+    },
+    "type": "discussion",
+    "creatorId": {
+      "$oid": "68e061721329566a22d47511"
+    },
+    "title": "Ridgeline Weather Watch",
+    "description": "Live thread for wind + cloud updates before every dawn workout.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1601,
+        33.8015
+      ],
+      "accuracy": 8
+    },
+    "proximityRadiusMeters": 900,
+    "photos": [
+      {
+        "url": "/images/discussion/discussion-10",
+        "thumbnailUrl": "/images/discussion/discussion-10",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/discussion/discussion-10",
+      "thumbnailUrl": "/images/discussion/discussion-10",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "weather",
+      "alerts"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": false,
+      "featured": false,
+      "visibilityMode": "map-only"
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d47521"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 7,
+      "replyCount": 6,
+      "shareCount": 3,
+      "viewCount": 210
+    },
+    "bookmarkCount": 7,
+    "replyCount": 6,
+    "approximateAddress": {
+      "city": "Signal Hill",
+      "state": "CA",
+      "country": "USA"
+    },
+    "expiresAt": {
+      "$date": "2026-12-31T05:00:00.000Z"
+    },
+    "autoDelete": true,
+    "createdAt": {
+      "$date": "2026-10-28T07:45:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-11-06T12:20:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d48022"
+    },
+    "type": "discussion",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "title": "Portside Rower Swap",
+    "description": "Call dibs on the ergs and share your custom workouts for rainy days.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1955,
+        33.7649
+      ],
+      "accuracy": 6
+    },
+    "proximityRadiusMeters": 600,
+    "photos": [
+      {
+        "url": "/images/discussion/discussion-11",
+        "thumbnailUrl": "/images/discussion/discussion-11",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/discussion/discussion-11",
+      "thumbnailUrl": "/images/discussion/discussion-11",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "rowing",
+      "indoor"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": false,
+      "featured": false,
+      "visibilityMode": "map-and-list"
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c1"
+    },
+    "linkedChatRoomId": {
+      "$oid": "68e061721329566a22d47570"
+    },
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 3,
+      "replyCount": 7,
+      "shareCount": 1,
+      "viewCount": 176
+    },
+    "bookmarkCount": 3,
+    "replyCount": 7,
+    "approximateAddress": {
+      "city": "Long Beach",
+      "state": "CA",
+      "country": "USA"
+    },
+    "expiresAt": {
+      "$date": "2026-12-22T05:00:00.000Z"
+    },
+    "autoDelete": true,
+    "createdAt": {
+      "$date": "2026-10-30T04:40:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-11-08T03:30:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d48023"
+    },
+    "type": "discussion",
+    "creatorId": {
+      "$oid": "68e061721329566a22d47510"
+    },
+    "title": "Llama Pack Logistics",
+    "description": "The goofiest pack list wins bragging rights for the semester showcase.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1702,
+        33.8004
+      ],
+      "accuracy": 8
+    },
+    "proximityRadiusMeters": 750,
+    "photos": [
+      {
+        "url": "/images/discussion/discussion-12",
+        "thumbnailUrl": "/images/discussion/discussion-12",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/discussion/discussion-12",
+      "thumbnailUrl": "/images/discussion/discussion-12",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "goofy",
+      "planning"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": false,
+      "featured": true,
+      "visibilityMode": "list-only",
+      "highlightColor": "#db2777"
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d47520"
+    },
+    "linkedChatRoomId": {
+      "$oid": "68e061721329566a22d474b3"
+    },
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 6,
+      "replyCount": 10,
+      "shareCount": 4,
+      "viewCount": 298
+    },
+    "bookmarkCount": 6,
+    "replyCount": 10,
+    "approximateAddress": {
+      "city": "Signal Hill",
+      "state": "CA",
+      "country": "USA"
+    },
+    "expiresAt": {
+      "$date": "2026-12-28T05:00:00.000Z"
+    },
+    "autoDelete": true,
+    "createdAt": {
+      "$date": "2026-11-01T02:20:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-11-09T11:45:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47a00"
+    },
+    "type": "event",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "title": "CSULB Photo Walk (Media Stress Test)",
+    "description": "Sample pin used to verify the three-photo upload limit. Snaps of the Pyramid, Japanese Garden, and campus interiors taken during the beta photo walk.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1134,
+        33.7834
+      ],
+      "accuracy": 6
+    },
+    "proximityRadiusMeters": 800,
+    "photos": [
+      {
+        "url": "/images/event/event-08",
+        "thumbnailUrl": "/images/event/event-08",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      },
+      {
+        "url": "/images/event/event-09",
+        "thumbnailUrl": "/images/event/event-09",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      },
+      {
+        "url": "/images/event/event-10",
+        "thumbnailUrl": "/images/event/event-10",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/event/event-08",
+      "thumbnailUrl": "/images/event/event-08",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "photography",
+      "campus"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": true
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c1"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 14,
+      "replyCount": 6,
+      "shareCount": 2,
+      "viewCount": 88
+    },
+    "bookmarkCount": 14,
+    "replyCount": 6,
+    "startDate": {
+      "$date": "2026-10-12T17:00:00.000Z"
+    },
+    "endDate": {
+      "$date": "2026-10-12T20:00:00.000Z"
+    },
+    "participantCount": 14,
+    "attendingUserIds": [
+      { "$oid": "68e061721329566a22d474a7" },
+      { "$oid": "68e061721329566a22d474a8" },
+      { "$oid": "68e061721329566a22d474a9" },
+      { "$oid": "68e061721329566a22d47510" },
+      { "$oid": "68e061721329566a22d47511" },
+      { "$oid": "46157fa6da7698fc59105392" },
+      { "$oid": "d7a6491309b83aad8e67f14c" },
+      { "$oid": "9090e547f3b4cf5aa61d19a7" },
+      { "$oid": "934981bc88eca7e088f557c6" },
+      { "$oid": "8184947383c54cde27f6a325" },
+      { "$oid": "1e056a58ce0c08e0e420bca0" },
+      { "$oid": "486e6bdd712130e78538ba6f" },
+      { "$oid": "9bfa44ec70cf17a8086a01e0" },
+      { "$oid": "4d250de16a246c301a52b095" }
+    ],
+    "attendeeWaitlistIds": [],
+    "attendable": true,
+    "createdAt": {
+      "$date": "2026-10-05T19:10:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-05T19:10:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47a01"
+    },
+    "type": "discussion",
+    "creatorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
+    "title": "Broken Texture QA Lounge",
+    "description": "Intentionally references missing image assets so the UNKNOWN_TEXTURE fallback is easy to test from the debug navigator.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1449,
+        33.7749
+      ],
+      "accuracy": 5
+    },
+    "proximityRadiusMeters": 400,
+    "photos": [
+      {
+        "url": "/images/broken/missing-texture-01",
+        "thumbnailUrl": "/images/broken/missing-texture-01",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "coverPhoto": {
+      "url": "/images/broken/missing-texture-cover",
+      "thumbnailUrl": "/images/broken/missing-texture-cover",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg"
+    },
+    "tagIds": [],
+    "tags": [
+      "debug",
+      "qa"
+    ],
+    "options": {
+      "allowBookmarks": true,
+      "allowShares": true,
+      "allowReplies": true,
+      "showAttendeeList": false
+    },
+    "relatedPinIds": [],
+    "linkedLocationId": {
+      "$oid": "68e061721329566a22d474c2"
+    },
+    "linkedChatRoomId": null,
+    "visibility": "public",
+    "isActive": true,
+    "stats": {
+      "bookmarkCount": 0,
+      "replyCount": 0,
+      "shareCount": 0,
+      "viewCount": 12
+    },
+    "bookmarkCount": 0,
+    "replyCount": 0,
+    "expiresAt": {
+      "$date": "2027-01-01T08:00:00.000Z"
+    },
+    "autoDelete": false,
+    "createdAt": {
+      "$date": "2026-10-05T20:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-05T20:00:00.000Z"
     }
   }
 ]

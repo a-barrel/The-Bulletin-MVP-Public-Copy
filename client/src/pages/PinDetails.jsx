@@ -1,6 +1,6 @@
 /* NOTE: Page exports configuration alongside the component. */
-import React, { useCallback, useEffect, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import './PinDetails.css';
 import {
   Alert,
@@ -13,31 +13,37 @@ import {
   Stack,
   Button,
   FormControlLabel,
-  Switch
+  Switch,
+  Box
 } from '@mui/material';
 import PlaceIcon from '@mui/icons-material/Place'; // used only for pageConfig
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
-import BookmarkIcon from '@mui/icons-material/Bookmark';
-import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import ForumIcon from '@mui/icons-material/Forum';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import LeafletMap from '../components/Map';
+import FriendBadge from '../components/FriendBadge';
+import BookmarkButton from '../components/BookmarkButton';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
+import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
 import usePinDetails from '../hooks/usePinDetails';
 import ReportContentDialog from '../components/ReportContentDialog';
-import { createContentReport, updatePin } from '../api/mongoDataApi';
+import { createContentReport, deletePin, updatePin } from '../api/mongoDataApi';
+import ImageOverlay from '../components/ImageOverlay.jsx'
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
   '68e061721329566a22d474aa',
   '68e061721329566a22d474ab',
-  '68e061721329566a22d474ac'
+  '68e061721329566a22d474ac',
+  '68e061721329566a22d47a00'
 ];
 const FAR_PIN_ID = SAMPLE_PIN_IDS[0] ?? '68e061721329566a22d474aa';
+const MAX_PHOTO_PIN_ID = '68e061721329566a22d47a00';
+const BROKEN_TEXTURE_PIN_ID = '68e061721329566a22d47a01';
 
 export const pageConfig = {
   id: 'pin-details',
@@ -48,7 +54,7 @@ export const pageConfig = {
   showInNav: true,
   resolveNavTarget: ({ currentPath } = {}) => {
     const input = window.prompt(
-      'Enter a pin ID to view (type "expired" for an expired preview, type "far" to preview a pin outside your interaction radius, leave blank for a random sample, cancel to stay put):'
+      'Enter a pin ID to view. Shortcuts: "expired" loads an expired pin, "far" loads a distant pin, "3" loads the max-photo sample, "broken" loads the UNKNOWN_TEXTURE tester. Leave blank for a random sample or cancel to stay put.'
     );
     if (input === null) {
       return currentPath ?? null;
@@ -60,6 +66,12 @@ export const pageConfig = {
     if (trimmed.toLowerCase() === 'far') {
       const farId = FAR_PIN_ID;
       return `${routes.pin.byId(farId)}?preview=far`;
+    }
+    if (trimmed === '3' || trimmed === 'max') {
+      return routes.pin.byId(MAX_PHOTO_PIN_ID);
+    }
+    if (trimmed === 'broken') {
+      return routes.pin.byId(BROKEN_TEXTURE_PIN_ID);
     }
     if (!trimmed) {
       const randomId =
@@ -170,9 +182,44 @@ const buildInitialEditForm = (pin) => {
   return base;
 };
 
+const resolveUserId = (user) => {
+  if (!user) {
+    return null;
+  }
+  if (typeof user === 'string') {
+    const trimmed = user.trim();
+    return trimmed.length ? trimmed : null;
+  }
+  if (typeof user === 'object') {
+    if (user.$oid) {
+      return resolveUserId(user.$oid);
+    }
+    if (user._id) {
+      return resolveUserId(user._id);
+    }
+    if (user.id) {
+      return resolveUserId(user.id);
+    }
+    if (user.userId) {
+      return resolveUserId(user.userId);
+    }
+    if (user.uid) {
+      return resolveUserId(user.uid);
+    }
+    if (user.email) {
+      return resolveUserId(user.email);
+    }
+    if (user.username) {
+      return resolveUserId(user.username);
+    }
+  }
+  return String(user);
+};
+
 function PinDetails() {
   const { pinId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
 
   const {
@@ -231,10 +278,46 @@ function PinDetails() {
     isLoadingAttendees,
     attendeesError
   } = usePinDetails({ pinId, location, isOffline });
+  const socialNotifications = useSocialNotificationsContext();
+
+  const friendLookup = useMemo(() => {
+    const entries = Array.isArray(socialNotifications.friendData?.friends)
+      ? socialNotifications.friendData.friends
+      : [];
+    const lookup = new Set();
+    entries.forEach((friend) => {
+      const id = resolveUserId(friend?.id ?? friend?._id ?? friend);
+      if (id) {
+        lookup.add(id);
+      }
+    });
+    return lookup;
+  }, [socialNotifications.friendData?.friends]);
+
+  const attendingFriendItems = useMemo(() => {
+    if (!friendLookup.size || !Array.isArray(attendeeItems)) {
+      return [];
+    }
+    return attendeeItems.filter((attendee) => {
+      const userId =
+        resolveUserId(attendee?._id) ||
+        resolveUserId(attendee?.id) ||
+        resolveUserId(attendee?.userId) ||
+        resolveUserId(attendee?.uid) ||
+        resolveUserId(attendee?.username) ||
+        resolveUserId(attendee?.email);
+      return Boolean(userId && friendLookup.has(userId));
+    });
+  }, [attendeeItems, friendLookup]);
+
+  const attendingFriendPreview = useMemo(
+    () => attendingFriendItems.slice(0, 6),
+    [attendingFriendItems]
+  );
+  const extraFriendCount = Math.max(0, attendingFriendItems.length - attendingFriendPreview.length);
 
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
-  const bookmarkLocked = isOwnPin && bookmarked;
-
+  const shouldShowStatusMessages = isLoading || error || (!pin && !isLoading && pinId);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
   const [reportReason, setReportReason] = useState('');
@@ -246,6 +329,8 @@ function PinDetails() {
   const [editError, setEditError] = useState(null);
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
   const [editStatus, setEditStatus] = useState(null);
+  const [isDeletingPin, setIsDeletingPin] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   useEffect(() => {
     if (pin && !isEditDialogOpen) {
@@ -263,12 +348,12 @@ function PinDetails() {
   }, [pin]);
 
   const handleCloseEditDialog = useCallback(() => {
-    if (isSubmittingEdit) {
+    if (isSubmittingEdit || isDeletingPin) {
       return;
     }
     setIsEditDialogOpen(false);
     setEditError(null);
-  }, [isSubmittingEdit]);
+  }, [isDeletingPin, isSubmittingEdit]);
 
   const handleEditFieldChange = useCallback(
     (field) => (event) => {
@@ -296,6 +381,9 @@ function PinDetails() {
   const handleSubmitEdit = useCallback(
     async (event) => {
       event.preventDefault();
+      if (isDeletingPin) {
+        return;
+      }
       if (!pin || !editForm) {
         return;
       }
@@ -416,8 +504,37 @@ function PinDetails() {
         setIsSubmittingEdit(false);
       }
     },
-    [editForm, isOffline, pin, reloadPin]
+    [editForm, isDeletingPin, isOffline, pin, reloadPin]
   );
+
+  const handleDeletePin = useCallback(async () => {
+    if (!pin?._id || !isOwnPin) {
+      return;
+    }
+    if (isOffline) {
+      setEditError('Reconnect to delete this pin.');
+      return;
+    }
+    const confirmed =
+      typeof window === 'undefined' || typeof window.confirm !== 'function'
+        ? true
+        : window.confirm('Delete this pin? This cannot be undone.');
+    if (!confirmed) {
+      return;
+    }
+
+    setIsDeletingPin(true);
+    setEditError(null);
+    try {
+      await deletePin(pin._id);
+      setIsEditDialogOpen(false);
+      navigate(routes.list.base, { replace: true });
+    } catch (error) {
+      setEditError(error?.message || 'Failed to delete pin.');
+    } finally {
+      setIsDeletingPin(false);
+    }
+  }, [isOffline, isOwnPin, navigate, pin]);
 
   const handleOpenReportReply = useCallback((reply) => {
     if (!reply || !reply._id) {
@@ -483,6 +600,8 @@ function PinDetails() {
     setReportStatus(null);
   }, []);
 
+  const editDialogBusy = isSubmittingEdit || isDeletingPin;
+
   return (
     <div className={`pin-details ${themeClass}`}>
       {interactionOverlay ? (
@@ -513,7 +632,7 @@ function PinDetails() {
                 className="edit-pin-button"
                 type="button"
                 onClick={handleOpenEditDialog}
-                disabled={isOffline || !pin || isLoading || isSubmittingEdit}
+                disabled={isOffline || !pin || isLoading || isSubmittingEdit || isDeletingPin}
                 title={isOffline ? 'Reconnect to edit your pin' : 'Edit this pin'}
               >
                 Edit
@@ -534,38 +653,15 @@ function PinDetails() {
             </button>
           </div>
           <div className="bookmark-button-wrapper">
-            <button
-              className={`bookmark-button${bookmarkLocked ? ' bookmark-button--locked' : ''}`}
-              type="button"
-              onClick={handleToggleBookmark}
-              disabled={
-                bookmarkLocked || isOffline || isUpdatingBookmark || !pin || isInteractionLocked
-              }
-              aria-pressed={bookmarked ? 'true' : 'false'}
-              aria-label={
-                bookmarkLocked
-                  ? 'This pin stays bookmarked for its creator'
-                  : bookmarked
-                  ? 'Remove bookmark'
-                  : 'Save bookmark'
-              }
-              aria-busy={isUpdatingBookmark ? 'true' : 'false'}
-              title={
-                bookmarkLocked
-                  ? 'Creators keep their pins bookmarked automatically.'
-                  : isOffline
-                  ? 'Reconnect to manage bookmarks'
-                  : undefined
-              }
-            >
-              {bookmarked ? (
-                <BookmarkIcon
-                  className={`bookmark-icon${bookmarkLocked ? ' bookmark-icon--locked' : ''}`}
-                />
-              ) : (
-                <BookmarkBorderIcon className="bookmark-icon" />
-              )}
-            </button>
+            <BookmarkButton
+              bookmarked={bookmarked}
+              pending={isUpdatingBookmark}
+              disabled={isOffline || !pin || isInteractionLocked}
+              ownsPin={isOwnPin}
+              attending={attending}
+              onToggle={handleToggleBookmark}
+              disabledLabel={isOffline ? 'Reconnect to manage bookmarks' : undefined}
+            />
             {bookmarkError ? <span className="error-text bookmark-error">{bookmarkError}</span> : null}
           </div>
         </div>
@@ -584,14 +680,6 @@ function PinDetails() {
             {createdAtLabel && updatedAtLabel ? ' | ' : null}
             {updatedAtLabel ? `Updated ${updatedAtLabel}` : null}
           </span>
-        ) : null}
-      </div>
-
-      <div className="status-container">
-        {isLoading ? <div className="status-message">Loading pin details...</div> : null}
-        {error ? <div className="status-message error">{error}</div> : null}
-        {!pin && !isLoading && !error && pinId ? (
-          <div className="status-message">No pin found for ID &ldquo;{pinId}&rdquo;.</div>
         ) : null}
       </div>
 
@@ -669,8 +757,9 @@ function PinDetails() {
                       alt={photo.label ? `${photo.label}` : `Pin photo ${index + 1}`}
                       className="pin-photo"
                       loading="lazy"
+                      onClick={() => setSelectedImage(photo.url)}
+                      style={{ cursor: 'pointer' }}
                     />
-                    {photo.label ? <figcaption>{photo.label}</figcaption> : null}
                   </figure>
                 ))}
               </div>
@@ -679,15 +768,21 @@ function PinDetails() {
             )}
           </div>
 
+          <ImageOverlay
+            open={Boolean(selectedImage)}
+            onClose={() => setSelectedImage(null)}
+            imageSrc={selectedImage}
+          />
+
           <div className="post-info">
             <div className="post-location">
-              <svg className="pin-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <svg className={`pin-icon ${isEventPin ? 'event-icon' : 'discussion-icon'}`} viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   fill="currentColor"
                   d="M12 2a7 7 0 0 0-7 7c0 4.63 5.48 11.05 6.27 11.93a1 1 0 0 0 1.46 0C13.52 20.05 19 13.63 19 9a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"
                 />
               </svg>
-              <span className="location-text">
+              <span className={`location-text ${isEventPin ? 'event-text' : 'discussion-text'}`}>
                 Location:
                 <br />
                 {addressLabel || approximateAddressLabel || 'No address information available.'}
@@ -705,7 +800,7 @@ function PinDetails() {
                 className={`calendar-icon ${isEventPin ? 'event-icon' : 'discussion-icon'}`}
                 aria-hidden="true"
               />
-              <span className="occurance-text">
+              <span className={`occurance-text ${isEventPin ? 'event-text' : 'discussion-text'}`}>
                 {isEventPin ? 'Occurs:' : 'Expires:'}
                 <br />
                 {isEventPin
@@ -719,7 +814,7 @@ function PinDetails() {
                 className={`attendance-icon ${isEventPin ? 'event-icon' : 'discussion-icon'}`}
                 aria-hidden="true"
               />
-              <span className="attendance-text">
+              <span className={`attendance-text ${isEventPin ? 'event-text' : 'discussion-text'}`}>
                 Bookmarks: {pin.bookmarkCount ?? 0}
                 {isEventPin ? (
                   <>
@@ -729,6 +824,18 @@ function PinDetails() {
                   </>
                 ) : null}
               </span>
+              {isEventPin && attendingFriendPreview.length > 0 ? (
+                <div className="attending-friends-inline" aria-label="Friends attending this event">
+                  {attendingFriendPreview.map((friend) => (
+                    <AttendingFriendAvatar key={friend.key} attendee={friend} />
+                  ))}
+                  {extraFriendCount > 0 ? (
+                    <span className="attending-friends-more" aria-label={`${extraFriendCount} more friends`}>
+                      +{extraFriendCount}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
               {isEventPin ? (
                 <button
                   type="button"
@@ -777,12 +884,26 @@ function PinDetails() {
             ) : null}
 
             {replyItems.map((reply) => {
-              const { _id, authorName, message, createdLabel, profileLink, avatarUrl } = reply;
+              const { _id, authorName, message, createdLabel, profileLink, avatarUrl, author } = reply;
+              const authorUserId =
+                resolveUserId(author?._id) ||
+                resolveUserId(author?.id) ||
+                resolveUserId(author?.userId) ||
+                resolveUserId(author?.uid) ||
+                resolveUserId(author?.username) ||
+                resolveUserId(author?.email);
               const content = (
                 <>
                   <img src={avatarUrl || undefined} className="commenter-pfp" alt={`${authorName} avatar`} />
                   <span className="commenter-info">
-                    <strong>{authorName}</strong>
+                    <strong>
+                      {authorName}
+                      <FriendBadge
+                        userId={authorUserId}
+                        size="0.9em"
+                        className="comment-friend-badge"
+                      />
+                    </strong>
                     {createdLabel ? <span className="comment-timestamp">{createdLabel}</span> : null}
                   </span>
                 </>
@@ -828,6 +949,16 @@ function PinDetails() {
             <AddCommentIcon className="create-comment-button" aria-hidden="true" />
           </button>
         </>
+      ) : null}
+
+      {shouldShowStatusMessages ? (
+        <div className="status-container status-container--footer">
+          {isLoading ? <div className="status-message">Loading pin details...</div> : null}
+          {error ? <div className="status-message error">{error}</div> : null}
+          {!pin && !isLoading && !error && pinId ? (
+            <div className="status-message">No pin found for ID &ldquo;{pinId}&rdquo;.</div>
+          ) : null}
+        </div>
       ) : null}
 
       {replyComposerOpen ? (
@@ -944,7 +1075,7 @@ function PinDetails() {
                 value={editForm?.title ?? ''}
                 onChange={handleEditFieldChange('title')}
                 required
-                disabled={isSubmittingEdit}
+                disabled={editDialogBusy}
               />
               <TextField
                 label="Description"
@@ -953,7 +1084,7 @@ function PinDetails() {
                 required
                 multiline
                 minRows={3}
-                disabled={isSubmittingEdit}
+                disabled={editDialogBusy}
               />
               <TextField
                 label="Proximity radius (meters)"
@@ -962,7 +1093,7 @@ function PinDetails() {
                 onChange={handleEditFieldChange('proximityRadiusMeters')}
                 inputProps={{ min: 1, step: 1 }}
                 required
-                disabled={isSubmittingEdit}
+                disabled={editDialogBusy}
               />
               {isEventPin ? (
                 <>
@@ -973,7 +1104,7 @@ function PinDetails() {
                     onChange={handleEditFieldChange('startDate')}
                     InputLabelProps={{ shrink: true }}
                     required
-                    disabled={isSubmittingEdit}
+                    disabled={editDialogBusy}
                   />
                   <TextField
                     label="End time"
@@ -982,7 +1113,7 @@ function PinDetails() {
                     onChange={handleEditFieldChange('endDate')}
                     InputLabelProps={{ shrink: true }}
                     required
-                    disabled={isSubmittingEdit}
+                    disabled={editDialogBusy}
                   />
                 </>
               ) : (
@@ -994,14 +1125,14 @@ function PinDetails() {
                     onChange={handleEditFieldChange('expiresAt')}
                     InputLabelProps={{ shrink: true }}
                     required
-                    disabled={isSubmittingEdit}
+                    disabled={editDialogBusy}
                   />
                   <FormControlLabel
                     control={
                       <Switch
                         checked={Boolean(editForm?.autoDelete)}
                         onChange={handleToggleAutoDelete}
-                        disabled={isSubmittingEdit}
+                        disabled={editDialogBusy}
                       />
                     }
                     label="Automatically remove when expired"
@@ -1011,10 +1142,18 @@ function PinDetails() {
             </Stack>
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleCloseEditDialog} disabled={isSubmittingEdit}>
+            {isOwnPin ? (
+              <>
+                <Button color="error" onClick={handleDeletePin} disabled={editDialogBusy}>
+                  {isDeletingPin ? 'Deleting…' : 'Delete pin'}
+                </Button>
+                <Box sx={{ flexGrow: 1 }} />
+              </>
+            ) : null}
+            <Button onClick={handleCloseEditDialog} disabled={editDialogBusy}>
               Cancel
             </Button>
-            <Button type="submit" variant="contained" disabled={isSubmittingEdit}>
+            <Button type="submit" variant="contained" disabled={editDialogBusy}>
               {isSubmittingEdit ? 'Saving…' : 'Save changes'}
             </Button>
           </DialogActions>
@@ -1101,6 +1240,45 @@ function PinDetails() {
           </Alert>
         ) : null}
       </Snackbar>
+    </div>
+  );
+}
+
+function AttendingFriendAvatar({ attendee }) {
+  const userId =
+    resolveUserId(attendee?._id) ||
+    resolveUserId(attendee?.id) ||
+    resolveUserId(attendee?.userId) ||
+    resolveUserId(attendee?.uid) ||
+    resolveUserId(attendee?.username) ||
+    resolveUserId(attendee?.email);
+
+  if (!userId) {
+    return null;
+  }
+
+  const avatarNode = (
+    <div className="attending-friend-avatar" title={`${attendee.name || 'Friend'} is attending`}>
+      <img src={attendee.avatar || undefined} alt={`${attendee.name || 'Friend'} avatar`} />
+      <FriendBadge userId={userId} size="0.75em" className="attending-friend-avatar__badge" />
+    </div>
+  );
+
+  if (attendee.link) {
+    return (
+      <Link
+        to={attendee.link.pathname}
+        state={attendee.link.state}
+        className="attending-friend-link"
+      >
+        {avatarNode}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="attending-friend-link">
+      {avatarNode}
     </div>
   );
 }
