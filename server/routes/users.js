@@ -1083,14 +1083,41 @@ router.delete('/me/api-tokens/:tokenId', verifyToken, async (req, res) => {
   }
 });
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const findUserByIdentifier = async (identifier) => {
+  if (!identifier || typeof identifier !== 'string') {
+    return null;
+  }
+  const trimmed = identifier.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (mongoose.Types.ObjectId.isValid(trimmed)) {
+    const byId = await User.findById(trimmed);
+    if (byId) {
+      return byId;
+    }
+  }
+
+  const orQueries = [{ username: trimmed }];
+  if (trimmed.toLowerCase() !== trimmed) {
+    orQueries.push({ username: trimmed.toLowerCase() });
+  }
+  if (trimmed.includes('@')) {
+    orQueries.push({ email: trimmed.toLowerCase() });
+  }
+  orQueries.push({ username: new RegExp(`^${escapeRegex(trimmed)}$`, 'i') });
+
+  return User.findOne({ $or: orQueries });
+};
+
 router.get('/:userId', verifyToken, async (req, res) => {
   try {
     const { userId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: 'Invalid user id' });
-    }
 
-    const user = await User.findById(userId);
+    const user = await findUserByIdentifier(userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
