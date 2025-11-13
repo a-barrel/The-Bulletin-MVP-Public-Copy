@@ -7,7 +7,8 @@ const defaultFilters = {
   startDate: '',
   endDate: '',
   types: [],
-  categories: []
+  categories: [],
+  friendEngagements: []
 };
 
 const initialFilters = {
@@ -16,7 +17,8 @@ const initialFilters = {
   startDate: '2025-01-01',
   endDate: '2025-01-02',
   types: ['event'],
-  categories: ['Community']
+  categories: ['Community'],
+  friendEngagements: []
 };
 
 const renderOverlay = (props = {}) =>
@@ -70,7 +72,8 @@ describe('ListFiltersOverlay', () => {
       startDate: '2025-03-01',
       endDate: '2025-03-15',
       types: ['discussion'],
-      categories: ['Community', 'Outdoors']
+      categories: ['Community', 'Outdoors'],
+      friendEngagements: []
     });
     expect(onClose).toHaveBeenCalled();
   });
