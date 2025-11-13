@@ -314,7 +314,6 @@ function PinDetails() {
     () => attendingFriendItems.slice(0, 6),
     [attendingFriendItems]
   );
-  const extraFriendCount = Math.max(0, attendingFriendItems.length - attendingFriendPreview.length);
 
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
   const pinErrorMessage = typeof error === 'string' ? error : error?.message;
@@ -832,16 +831,13 @@ function PinDetails() {
                     {pin.participantLimit ? ` / ${pin.participantLimit}` : ''}
                     <br />
                     {isEventPin && attendingFriendPreview.length > 0 ? (
-                      <div className="attending-friends-inline" aria-label="Friends attending this event">
-                        Friends: 
-                        {attendingFriendPreview.map((friend) => (
-                          <AttendingFriendAvatar key={friend.key} attendee={friend} />
-                        ))}
-                        {extraFriendCount > 0 ? (
-                          <span className="attending-friends-more" aria-label={`${extraFriendCount} more friends`}>
-                            +{extraFriendCount}
-                          </span>
-                        ) : null}
+                      <div className="attending-friends-container" aria-label="Friends attending this event">
+                        <span className="friends-label">Friends:</span>
+                        <div className="attending-friends-inline scrollable">
+                          {attendingFriendPreview.map((friend) => (
+                            <AttendingFriendAvatar key={friend.key} attendee={friend} />
+                          ))}
+                        </div>
                       </div>
                     ) : null}
                   </>

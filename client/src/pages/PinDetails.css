@@ -583,6 +583,7 @@
     width: 100%;
     gap: 0;
     flex-wrap: wrap;
+    justify-content: space-between;
 }
 
 .pin-details .post-attendance .event-text {
@@ -614,8 +615,12 @@
     border: 1px solid black;
     border-radius: 8px;
     flex: 1;
-    display: inline-block;
+    display: flex;
     line-height: 1.5;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    word-break: break-word;
 }
 
 .pin-details .attending-icons {
@@ -636,6 +641,7 @@
     transition: background-color 0.2s ease, transform 0.2s ease;
     flex-shrink: 0;
     margin-left: 1rem;
+    white-space: nowrap;
 }
 
 .pin-details .view-attendees-button:hover:not(:disabled) {
@@ -649,15 +655,39 @@
     transform: none;
 }
 
-.pin-details .attending-friends-inline {
+.pin-details .attending-friends-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; 
+  flex-wrap: nowrap;
+  overflow: hidden; 
+}
+
+.pin-details .friends-label {
+  flex-shrink: 0; 
+  color: #5d3889;
+  white-space: nowrap; 
+}
+
+.pin-details .attending-friends-inline.scrollable {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    flex-wrap: nowrap;
-    margin-top: 0.4rem;
-    overflow: hidden;
-    max-width: 100%;
-    position: relative;
+    gap: 0.25rem;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.pin-details .attending-friends-inline.scrollable::-webkit-scrollbar {
+  height: 6px;
+}
+
+.pin-details .attending-friends-inline.scrollable::-webkit-scrollbar-thumb {
+  background-color: none;
+  border-radius: 3px;
+}
+
+.pin-details .attending-friends-inline.scrollable::-webkit-scrollbar-track {
+  background-color: none;
 }
 
 .pin-details .attending-friend-link {
@@ -688,16 +718,6 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-}
-
-.pin-details .attending-friends-more {
-    font-weight: 600;
-    color: #5d3889;
-    background: #CDAEF2;
-    border-radius: 999px;
-    border: 1px solid #5d3889;
-    padding: 0.15rem 0.45rem;
-    flex: 0 0 auto;
 }
 
 /* attendance button */
