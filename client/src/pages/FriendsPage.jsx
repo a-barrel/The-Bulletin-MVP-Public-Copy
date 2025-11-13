@@ -88,7 +88,7 @@ import { useSocialNotificationsContext } from '../contexts/SocialNotificationsCo
 
 export const pageConfig = {
   id: 'friends',
-  label: 'friends',
+  label: 'Friends',
   icon: SmsIcon,
   path: '/friends',
   aliases: ['/friends-todo'],
