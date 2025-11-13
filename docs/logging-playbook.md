@@ -29,4 +29,17 @@ db.logevents.find({
 tail -f DEV_LOGS/client-api-errors.log DEV_LOGS/http-errors.log
 ```
 
+### Quick Log Fetch Script
+
+```bash
+# fetch the 10 latest hosted logevents (uses server/.env MONGODB_URI_ONLINE)
+npm --prefix server run logs:events -- --limit=10
+
+# filter to client-api-errors from the past hour
+npm --prefix server run logs:events -- --category=client-api-errors --since-minutes=60
+```
+
+The script lives at `server/scripts/fetch-logevents.js` and accepts `--category`, `--severity`,
+`--since-minutes`, `--limit`, `--uri`, and `--json`. Pass `--help` for the full list of flags.
+
 Add new query snippets whenever we create additional log categories.

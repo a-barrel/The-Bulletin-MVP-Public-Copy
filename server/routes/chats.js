@@ -28,6 +28,7 @@ const { MediaAssetSchema } = require('../schemas/common');
 const { toIdString, mapIdList } = require('../utils/ids');
 
 const router = express.Router();
+const ENABLE_QUERY_TIMERS = process.env.PINPOINT_ENABLE_QUERY_TIMERS === '1';
 
 const toObjectIdList = (ids) =>
   Array.from(ids)
@@ -755,12 +756,16 @@ router.get('/rooms', verifyToken, async (req, res) => {
       query.includeBookmarked === undefined ? true : Boolean(query.includeBookmarked);
 
     const roomsTimingLabel = `chat:rooms:query:${viewer._id}:${Date.now()}`;
-    console.time(roomsTimingLabel);
+    if (ENABLE_QUERY_TIMERS) {
+      console.time(roomsTimingLabel);
+    }
     let rooms;
     try {
       rooms = await ProximityChatRoom.find(criteria).sort({ updatedAt: -1 });
     } finally {
-      console.timeEnd(roomsTimingLabel);
+      if (ENABLE_QUERY_TIMERS) {
+        console.timeEnd(roomsTimingLabel);
+      }
     }
 
     const accessContext = await buildViewerAccessContext({
@@ -814,7 +819,9 @@ router.get('/rooms/:roomId/messages', verifyToken, async (req, res) => {
     const viewerIdString = toIdString(viewer._id);
 
     const messagesTimingLabel = `chat:messages:query:${roomId}:${Date.now()}`;
-    console.time(messagesTimingLabel);
+    if (ENABLE_QUERY_TIMERS) {
+      console.time(messagesTimingLabel);
+    }
     let messages;
     try {
       messages = await ProximityChatMessage.find({ roomId })
@@ -824,7 +831,9 @@ router.get('/rooms/:roomId/messages', verifyToken, async (req, res) => {
           select: 'username displayName roles accountStatus avatar stats relationships.blockedUserIds'
         });
     } finally {
-      console.timeEnd(messagesTimingLabel);
+      if (ENABLE_QUERY_TIMERS) {
+        console.timeEnd(messagesTimingLabel);
+      }
     }
 
     const filteredMessages = messages.filter((message) => {
