@@ -1862,7 +1862,21 @@ function FriendsPage() {
         type: 'success',
         message: decision === 'accept' ? 'Friend request accepted.' : 'Friend request declined.'
       });
-      await socialNotifications.refreshAll();
+
+      const refreshTasks = [];
+      if (typeof socialNotifications.refreshAll === 'function') {
+        refreshTasks.push(socialNotifications.refreshAll());
+      }
+      if (typeof refreshFriendGraph === 'function') {
+        refreshTasks.push(
+          refreshFriendGraph().catch(() => {
+            /* handled via friend graph status UI */
+          })
+        );
+      }
+      if (refreshTasks.length) {
+        await Promise.allSettled(refreshTasks);
+      }
     } catch (error) {
       setFriendActionStatus({
         type: 'error',
