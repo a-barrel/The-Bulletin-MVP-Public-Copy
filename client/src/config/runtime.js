@@ -93,6 +93,12 @@ const enableDebugApiCalls = parseBooleanEnv(
   isOffline
 );
 
+const MODERATION_ROLE_ALLOWLIST = ['admin', 'moderator', 'super-admin', 'system-admin'];
+const enableModerationRoleChecks = parseBooleanEnv(
+  import.meta.env.VITE_ENABLE_MODERATION_ROLE_CHECKS,
+  !isOffline
+);
+
 export const runtimeConfig = {
   mode,
   isOffline,
@@ -102,6 +108,10 @@ export const runtimeConfig = {
   suppressStyleWarnings,
   debugApi: {
     enableRequests: enableDebugApiCalls
+  },
+  moderation: {
+    roleChecksEnabled: enableModerationRoleChecks,
+    allowedRoles: MODERATION_ROLE_ALLOWLIST
   },
   troyExperimentEnabled,
   firebase: {

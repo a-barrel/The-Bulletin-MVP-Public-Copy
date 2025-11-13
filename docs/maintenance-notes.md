@@ -41,7 +41,7 @@
   - `PINPOINT_LOG_TTL_DAYS=14` to adjust retention.
   - `PINPOINT_ENABLE_FILE_LOGS=true` if you need legacy filesystem logs outside offline mode.
 - Client consoles can get noisy with CSS parser warnings. The filter in `client/src/utils/styleWarningFilter.js` now runs by default; set `VITE_SUPPRESS_STYLE_WARNINGS=false` if you explicitly need to see those “Declaration dropped/Unknown property” messages while debugging browser quirks.
-- Debug-only APIs (`/api/debug/moderation/*`, `/api/debug/bad-users/*`, etc.) no longer fire in production builds unless `VITE_ENABLE_DEBUG_API_CALLS=true`. Flip that flag when you’re actively using the Debug Console online—otherwise the app skips those requests so Render logs stay clean.
+- Admin/moderation tooling now honors `VITE_ENABLE_MODERATION_ROLE_CHECKS` (defaults to `false` offline and `true` online). Keep it enabled in production so only `admin`, `moderator`, `super-admin`, or `system-admin` accounts can reach `/admin` and the chat moderation controls; flip it to `false` when you want every signed-in user to see those flows (e.g., local demos or QA sandboxes).
 - See `docs/logging-playbook.md` for mongosh/Compass snippets that help query the new `LogEvent` collection quickly.
 
 ### Dependency Health (audit run 2025‑11‑04)
