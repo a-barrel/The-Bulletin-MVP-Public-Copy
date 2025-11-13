@@ -336,6 +336,7 @@ function FriendsPage() {
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportStatus, setReportStatus] = useState(null);
   const [friendActionStatus, setFriendActionStatus] = useState(null);
+  const [friendSearchQuery, setFriendSearchQuery] = useState('');
   const [dmMessageDraft, setDmMessageDraft] = useState('');
   const dmGifPreviewRequestRef = useRef(null);
   const [dmGifPreview, setDmGifPreview] = useState(null);
@@ -1602,7 +1603,6 @@ function FriendsPage() {
   );
 
   const renderFriendsList = ({ isOverlay = false } = {}) => {
-    const [friendSearchQuery, setFriendSearchQuery] = useState(''); 
     const friends = Array.isArray(friendGraph?.friends) ? friendGraph.friends : [];
 
     if (friendHasAccess === false) {

@@ -19,8 +19,10 @@ const persistenceLayers = [
   inMemoryPersistence
 ];
 
+const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+
 const auth =
-  typeof window === 'undefined'
+  typeof window === 'undefined' || isTestEnv
     ? getAuth(app)
     : initializeAuth(app, {
         persistence: persistenceLayers,
