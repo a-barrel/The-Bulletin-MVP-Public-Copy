@@ -1006,32 +1006,57 @@ export async function fetchUserProfile(userId) {
   }
 
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/users/${encodeURIComponent(userId)}`, {
-    method: 'GET',
-    headers: await buildHeaders()
-  });
+  try {
+    const response = await fetch(`${baseUrl}/api/users/${encodeURIComponent(userId)}`, {
+      method: 'GET',
+      headers: await buildHeaders(),
+      cache: 'no-store'
+    });
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load user profile');
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = createApiError(response, payload, 'Failed to load user profile');
+      await logApiError('/api/users/:id', error, {
+        status: response.status,
+        userId
+      });
+      throw error;
+    }
+
+    return payload;
+  } catch (error) {
+    if (!hasApiErrorBeenLogged(error)) {
+      await logApiError('/api/users/:id', error, { userId });
+    }
+    throw error;
   }
-
-  return payload;
 }
 
 export async function fetchCurrentUserProfile() {
   const baseUrl = resolveApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/users/me`, {
-    method: 'GET',
-    headers: await buildHeaders()
-  });
+  try {
+    const response = await fetch(`${baseUrl}/api/users/me`, {
+      method: 'GET',
+      headers: await buildHeaders(),
+      cache: 'no-store'
+    });
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load current user profile');
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = createApiError(response, payload, 'Failed to load current user profile');
+      await logApiError('/api/users/me', error, {
+        status: response.status
+      });
+      throw error;
+    }
+
+    return payload;
+  } catch (error) {
+    if (!hasApiErrorBeenLogged(error)) {
+      await logApiError('/api/users/me', error);
+    }
+    throw error;
   }
-
-  return payload;
 }
 
 export async function uploadImage(file) {

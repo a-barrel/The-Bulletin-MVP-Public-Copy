@@ -11,6 +11,13 @@
     overflow-x: hidden;
 }
 
+.pin-error-banner {
+    width: 100%;
+    padding: 0 1rem;
+    box-sizing: border-box;
+    margin: 0 0 1rem 0;
+}
+
 /* header */
 .pin-details .header {
     display: flex;
