@@ -18,6 +18,9 @@ server/package-lock.json
 /server/dist
 client/public/images/
 
+# Runtime uploads generated during offline dev
+/server/uploads/images/runtime/
+
 # Environment files
 .env
 .env.local

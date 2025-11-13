@@ -1,0 +1,53 @@
+body .bookmarks-classic-shell {
+  background: #ffffff;
+  color: #111111;
+}
+
+.bookmarks-classic-shell .MuiTypography-root {
+  color: #111111;
+}
+
+.bookmarks-classic-shell .MuiChip-root {
+  color: #111111;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.bookmarks-classic-shell .MuiChip-label {
+  color: inherit;
+}
+
+.bookmarks-classic-shell .MuiAlert-root,
+.bookmarks-classic-shell .MuiAlert-message,
+.bookmarks-classic-shell .MuiAlert-icon {
+  color: #111111;
+}
+
+.bookmarks-classic-shell .bookmarks-classic-list {
+  background-color: #0b0c10;
+  color: #ffffff;
+}
+
+.bookmarks-classic-shell .bookmarks-classic-list .MuiTypography-root,
+.bookmarks-classic-shell .bookmarks-classic-list .MuiListItemText-primary,
+.bookmarks-classic-shell .bookmarks-classic-list .MuiListItemText-secondary {
+  color: #ffffff !important;
+}
+
+.bookmarks-classic-shell .bookmarks-classic-list .MuiListSubheader-root {
+  background-color: #11131d;
+  color: #ffffff;
+}
+
+.bookmarks-classic-shell .bookmarks-classic-list .MuiChip-root {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.bookmarks-classic-shell .bookmarks-classic-list .MuiChip-label {
+  color: inherit;
+}
+
+.bookmarks-classic-shell .bookmarks-classic-list .MuiListItemButton-root {
+  background-color: #151823;
+  color: #ffffff;
+}

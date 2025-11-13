@@ -429,5 +429,904 @@
         "$date": "2026-08-01T18:12:30.000Z"
       }
     }
+  },
+  {
+    "_id": {
+      "$oid": "7d4b7e8b88e140125d724485"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "replyToMessageId": null,
+    "message": "Bex quin quin zetazor quinmalo zor!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.131562,
+        33.773982
+      ],
+      "accuracy": 11
+    },
+    "attachments": [
+      {
+        "type": "image",
+        "url": "/images/event/event-12",
+        "thumbnailUrl": "/images/event/event-12",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a7"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:00:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      "username": "alexrivera",
+      "displayName": "Alex Rivera",
+      "avatar": {
+        "url": "/images/profile/profile-01",
+        "thumbnailUrl": "/images/profile/profile-01",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-01",
+      "thumbnailUrl": "/images/profile/profile-01",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "54557f4f9af580c23597481f"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
+    "replyToMessageId": null,
+    "message": "Riff plomzeta zorvex zor riffplom plom plom!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.131515,
+        33.772781
+      ],
+      "accuracy": 10
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a8"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:02:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:02:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      "username": "priyadesai",
+      "displayName": "Priya Desai",
+      "avatar": {
+        "url": "/images/profile/profile-02",
+        "thumbnailUrl": "/images/profile/profile-02",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:30.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-02",
+      "thumbnailUrl": "/images/profile/profile-02",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:30.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "a5be1e8513c2006f6872b481"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a9"
+    },
+    "replyToMessageId": null,
+    "message": "Riffkyu lumabex maloriff plomplom!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.106842,
+        33.774477
+      ],
+      "accuracy": 7
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a9"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:04:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:04:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      "username": "marcussoto",
+      "displayName": "Marcus Soto",
+      "avatar": {
+        "url": "/images/profile/profile-03",
+        "thumbnailUrl": "/images/profile/profile-03",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:13:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-03",
+      "thumbnailUrl": "/images/profile/profile-03",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:13:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "bb29736b05f1b96cf8c32e40"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47510"
+    },
+    "replyToMessageId": null,
+    "message": "Plomluma quin luma bex zor!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.115769,
+        33.77643
+      ],
+      "accuracy": 6
+    },
+    "attachments": [
+      {
+        "type": "image",
+        "url": "/images/discussion/discussion-33",
+        "thumbnailUrl": "/images/discussion/discussion-33",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47510"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:06:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:06:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47510"
+      },
+      "username": "sofianguyen",
+      "displayName": "Sofia Nguyen",
+      "avatar": {
+        "url": "/images/profile/profile-04",
+        "thumbnailUrl": "/images/profile/profile-04",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-04T16:18:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-04",
+      "thumbnailUrl": "/images/profile/profile-04",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-04T16:18:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "e3e9af073ddea8eeeecb4743"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47511"
+    },
+    "replyToMessageId": null,
+    "message": "Vexluma riff vex!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.116871,
+        33.774868
+      ],
+      "accuracy": 9
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47511"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:08:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:08:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47511"
+      },
+      "username": "jamaldouglas",
+      "displayName": "Jamal Douglas",
+      "avatar": {
+        "url": "/images/profile/profile-05",
+        "thumbnailUrl": "/images/profile/profile-05",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-06T19:05:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-05",
+      "thumbnailUrl": "/images/profile/profile-05",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-06T19:05:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "ff22a30a8b803b95662aca14"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "46157fa6da7698fc59105392"
+    },
+    "replyToMessageId": null,
+    "message": "Plomplom bex kyu maloluma malo luma zeta!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.103571,
+        33.775772
+      ],
+      "accuracy": 11
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "46157fa6da7698fc59105392"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:10:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:10:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "46157fa6da7698fc59105392"
+      },
+      "username": "tf2_demoman",
+      "displayName": "Demoman",
+      "avatar": {
+        "url": "/images/emulation/avatars/Demomanava",
+        "thumbnailUrl": "/images/emulation/avatars/Demomanava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Demomanava",
+      "thumbnailUrl": "/images/emulation/avatars/Demomanava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "1dd9997543044cf93b5f886c"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "d7a6491309b83aad8e67f14c"
+    },
+    "replyToMessageId": null,
+    "message": "Luma malo luma vexkyu riffquin riff!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.131776,
+        33.775907
+      ],
+      "accuracy": 8
+    },
+    "attachments": [
+      {
+        "type": "image",
+        "url": "/images/event/event-27",
+        "thumbnailUrl": "/images/event/event-27",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "audit": {
+      "createdBy": {
+        "$oid": "d7a6491309b83aad8e67f14c"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:12:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:12:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "d7a6491309b83aad8e67f14c"
+      },
+      "username": "tf2_spy",
+      "displayName": "Spy",
+      "avatar": {
+        "url": "/images/emulation/avatars/Spyava",
+        "thumbnailUrl": "/images/emulation/avatars/Spyava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Spyava",
+      "thumbnailUrl": "/images/emulation/avatars/Spyava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "36448a2b78ee247e065612a7"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "9090e547f3b4cf5aa61d19a7"
+    },
+    "replyToMessageId": null,
+    "message": "Zormalo malo quin zorplom plombex!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.117266,
+        33.78913
+      ],
+      "accuracy": 9
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "9090e547f3b4cf5aa61d19a7"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:14:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:14:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "9090e547f3b4cf5aa61d19a7"
+      },
+      "username": "tf2_engineer",
+      "displayName": "Engineer",
+      "avatar": {
+        "url": "/images/emulation/avatars/Engineerava",
+        "thumbnailUrl": "/images/emulation/avatars/Engineerava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Engineerava",
+      "thumbnailUrl": "/images/emulation/avatars/Engineerava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6b530c1f52057823c85a0257"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "934981bc88eca7e088f557c6"
+    },
+    "replyToMessageId": null,
+    "message": "Zorzor quin riff zeta kyuquin!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.110333,
+        33.778251
+      ],
+      "accuracy": 11
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "934981bc88eca7e088f557c6"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:16:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:16:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "934981bc88eca7e088f557c6"
+      },
+      "username": "tf2_heavy",
+      "displayName": "Heavy",
+      "avatar": {
+        "url": "/images/emulation/avatars/Heavyava",
+        "thumbnailUrl": "/images/emulation/avatars/Heavyava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Heavyava",
+      "thumbnailUrl": "/images/emulation/avatars/Heavyava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "1af5f2517fca2f858f4f948b"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "8184947383c54cde27f6a325"
+    },
+    "replyToMessageId": null,
+    "message": "Quinzeta malo kyumalo malo luma riffzor!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.126491,
+        33.77571
+      ],
+      "accuracy": 11
+    },
+    "attachments": [
+      {
+        "type": "image",
+        "url": "/images/event/event-12",
+        "thumbnailUrl": "/images/event/event-12",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "audit": {
+      "createdBy": {
+        "$oid": "8184947383c54cde27f6a325"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:18:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:18:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "8184947383c54cde27f6a325"
+      },
+      "username": "tf2_medic",
+      "displayName": "Medic",
+      "avatar": {
+        "url": "/images/emulation/avatars/Medicava",
+        "thumbnailUrl": "/images/emulation/avatars/Medicava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Medicava",
+      "thumbnailUrl": "/images/emulation/avatars/Medicava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "dd5ec69d646916b4f54ac5b2"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "1e056a58ce0c08e0e420bca0"
+    },
+    "replyToMessageId": null,
+    "message": "Quin bex kyu vex lumabex zeta zor!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.130256,
+        33.77776
+      ],
+      "accuracy": 7
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "1e056a58ce0c08e0e420bca0"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:20:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:20:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "1e056a58ce0c08e0e420bca0"
+      },
+      "username": "tf2_pyro",
+      "displayName": "Pyro",
+      "avatar": {
+        "url": "/images/emulation/avatars/Pyroava",
+        "thumbnailUrl": "/images/emulation/avatars/Pyroava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Pyroava",
+      "thumbnailUrl": "/images/emulation/avatars/Pyroava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "d7c0838d18f67d0a55520805"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "486e6bdd712130e78538ba6f"
+    },
+    "replyToMessageId": null,
+    "message": "Zor vex quinmalo luma riffplom malo vex!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.131819,
+        33.772309
+      ],
+      "accuracy": 9
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "486e6bdd712130e78538ba6f"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:22:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:22:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "486e6bdd712130e78538ba6f"
+      },
+      "username": "tf2_scout",
+      "displayName": "Scout",
+      "avatar": {
+        "url": "/images/emulation/avatars/Scoutava",
+        "thumbnailUrl": "/images/emulation/avatars/Scoutava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Scoutava",
+      "thumbnailUrl": "/images/emulation/avatars/Scoutava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "953912a5839978aedd5fd184"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "9bfa44ec70cf17a8086a01e0"
+    },
+    "replyToMessageId": null,
+    "message": "Zeta quin zeta plom zetabex malo bexriff!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.120251,
+        33.773631
+      ],
+      "accuracy": 10
+    },
+    "attachments": [
+      {
+        "type": "image",
+        "url": "/images/discussion/discussion-05",
+        "thumbnailUrl": "/images/discussion/discussion-05",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/jpeg"
+      }
+    ],
+    "audit": {
+      "createdBy": {
+        "$oid": "9bfa44ec70cf17a8086a01e0"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:24:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:24:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "9bfa44ec70cf17a8086a01e0"
+      },
+      "username": "tf2_sniper",
+      "displayName": "Sniper",
+      "avatar": {
+        "url": "/images/emulation/avatars/Sniperava",
+        "thumbnailUrl": "/images/emulation/avatars/Sniperava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Sniperava",
+      "thumbnailUrl": "/images/emulation/avatars/Sniperava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "c28c0265a0864d71d76e213e"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "4d250de16a246c301a52b095"
+    },
+    "replyToMessageId": null,
+    "message": "Zor malozeta lumamalo!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.106909,
+        33.775405
+      ],
+      "accuracy": 9
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "4d250de16a246c301a52b095"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:26:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:26:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "4d250de16a246c301a52b095"
+      },
+      "username": "tf2_soldier",
+      "displayName": "Soldier",
+      "avatar": {
+        "url": "/images/emulation/avatars/Soldierava",
+        "thumbnailUrl": "/images/emulation/avatars/Soldierava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Soldierava",
+      "thumbnailUrl": "/images/emulation/avatars/Soldierava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19Z"
+      }
+    }
   }
 ]
