@@ -7,7 +7,8 @@ const defaultFilters = {
   startDate: '',
   endDate: '',
   types: [],
-  categories: []
+  categories: [],
+  friendEngagements: []
 };
 
 const initialFilters = {
@@ -17,6 +18,7 @@ const initialFilters = {
   endDate: '2025-01-02',
   types: ['event'],
   categories: ['Community'],
+  friendEngagements: []
 };
 
 const renderOverlay = (props = {}) =>
@@ -71,7 +73,7 @@ describe('ListFiltersOverlay', () => {
       endDate: '2025-03-15',
       types: ['discussion'],
       categories: ['Community', 'Outdoors'],
-      friendEngagements: [] // temp fix so i can actually push
+      friendEngagements: []
     });
     expect(onClose).toHaveBeenCalled();
   });

@@ -317,7 +317,10 @@ function PinDetails() {
   const extraFriendCount = Math.max(0, attendingFriendItems.length - attendingFriendPreview.length);
 
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
-  const shouldShowStatusMessages = isLoading || error || (!pin && !isLoading && pinId);
+  const pinErrorMessage = typeof error === 'string' ? error : error?.message;
+  const pinErrorSeverity = error?.isAuthError ? 'warning' : 'error';
+  const shouldShowStatusMessages =
+    isLoading || Boolean(pinErrorMessage) || (!pin && !isLoading && pinId);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
   const [reportReason, setReportReason] = useState('');
@@ -683,6 +686,14 @@ function PinDetails() {
         ) : null}
       </div>
 
+      {pinErrorMessage ? (
+        <div className="pin-error-banner">
+          <Alert severity={pinErrorSeverity} variant="outlined">
+            {pinErrorMessage}
+          </Alert>
+        </div>
+      ) : null}
+
       {pin ? (
         <>
           <div className="map-section">
@@ -954,8 +965,8 @@ function PinDetails() {
       {shouldShowStatusMessages ? (
         <div className="status-container status-container--footer">
           {isLoading ? <div className="status-message">Loading pin details...</div> : null}
-          {error ? <div className="status-message error">{error}</div> : null}
-          {!pin && !isLoading && !error && pinId ? (
+          {pinErrorMessage ? <div className="status-message error">{pinErrorMessage}</div> : null}
+          {!pin && !isLoading && !pinErrorMessage && pinId ? (
             <div className="status-message">No pin found for ID &ldquo;{pinId}&rdquo;.</div>
           ) : null}
         </div>

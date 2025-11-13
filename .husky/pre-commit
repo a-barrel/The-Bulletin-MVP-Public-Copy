@@ -1,11 +1,83 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+#!/usr/bin/env bash
 
-echo "[husky] Running lint check…"
-if ! npm run lint; then
-  echo "[husky] Lint failed, running test suite instead…"
-  if ! npm test; then
-    echo "[husky] Tests failed; aborting commit." >&2
+set -euo pipefail
+
+REPO_ROOT="$(cd -- "$(dirname -- "$0")/.." && pwd -P)"
+cd "$REPO_ROOT"
+
+uname_str="$(uname -s 2>/dev/null || echo)"
+# GitHub Desktop on Windows runs Git hooks via MSYS bash (MINGW/MSYS/Cygwin).
+# That environment cannot execute "C:\Program Files\nodejs\npm" paths directly,
+# so when WSL is installed we proxy lint/tests through the WSL shell instead.
+case "$uname_str" in
+  MINGW*|MSYS*|CYGWIN*)
+    WSL_EXE=""
+    # Look for wsl.exe in typical System32 paths; if absent we fall back to the normal npm flow.
+    for candidate in /c/Windows/System32/wsl.exe /c/WINDOWS/System32/wsl.exe /C/Windows/System32/wsl.exe /C/WINDOWS/System32/wsl.exe; do
+      if [ -x "$candidate" ]; then
+        WSL_EXE="$candidate"
+        break
+      fi
+    done
+    if [ -n "$WSL_EXE" ]; then
+      repo_win="$PWD"
+      # Translate /c/... paths into /mnt/c/... so WSL can cd into the repo.
+      if printf '%s' "$repo_win" | grep -Eq '^/[A-Za-z]/'; then
+        drive_letter="$(printf '%s' "$repo_win" | cut -c2 | tr 'A-Z' 'a-z')"
+        rest_path="${repo_win:3}"
+        repo_wsl="/mnt/${drive_letter}/${rest_path}"
+      else
+        repo_wsl="$repo_win"
+      fi
+      repo_wsl="${repo_wsl//\\//}"
+      run_in_wsl() {
+        local cmd="$1"
+        shift || true
+        local args="$cmd"
+        for arg in "$@"; do
+          args="$args '$arg'"
+        done
+        # Source ~/.nvm/nvm.sh in WSL so we reuse the Linux Node toolchain.
+        "$WSL_EXE" bash -lc "cd '$repo_wsl' && source ~/.nvm/nvm.sh 2>/dev/null && npm $args"
+      }
+      echo "[husky] Running lint via WSL ($repo_wsl)…"
+      if ! run_in_wsl run lint; then
+        echo "[husky] Lint failed, running test suite instead…"
+        if ! run_in_wsl test; then
+          echo "[husky] Tests failed; aborting commit." >&2
+          exit 1
+        fi
+      fi
+      renamed_files=$(git diff --cached --name-status | awk '$1 ~ /^R/ {printf "  %s -> %s\n", $2, $3}')
+      if [ -n "$renamed_files" ]; then
+        printf '\n[husky] Warning: renamed files detected. Double-check intent before committing:\n%s\n' "$renamed_files" >&2
+      fi
+      exit 0
+    fi
+    ;;
+esac
+
+find_npm() {
+  for candidate in npm npm.cmd npm.exe; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+      command -v "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+NPM_BIN="$(find_npm)" || {
+  echo "[husky] npm is not installed or not on PATH." >&2
+  exit 1
+}
+printf '[husky] Using npm at: %s\n' "$NPM_BIN" >&2
+
+echo '[husky] Running lint check…'
+if ! "$NPM_BIN" run lint; then
+  echo '[husky] Lint failed, running test suite instead…'
+  if ! "$NPM_BIN" test; then
+    echo '[husky] Tests failed; aborting commit.' >&2
     exit 1
   fi
 fi
