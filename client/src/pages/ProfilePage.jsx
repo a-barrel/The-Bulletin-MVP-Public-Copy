@@ -13,7 +13,8 @@ import {
   fetchCurrentUserProfile,
   fetchUserProfile,
   updateCurrentUserProfile,
-  uploadImage
+  uploadImage,
+  createContentReport
 } from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
 import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
@@ -27,10 +28,12 @@ import ProfileEditForm from '../components/profile/ProfileEditForm';
 import ProfileHero from '../components/profile/ProfileHero';
 import ProfileMutualFriends from '../components/profile/ProfileMutualFriends';
 import ProfileStatsSummary from '../components/profile/ProfileStatsSummary';
+import ReportContentDialog from '../components/ReportContentDialog';
 import useProfileBadges from '../hooks/useProfileBadges';
 import useProfileMutualFriends from '../hooks/useProfileMutualFriends';
 import useProfileStats from '../hooks/useProfileStats';
 import useProfileInteractions from '../hooks/useProfileInteractions';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 
 /*
  * NOTE:
@@ -210,6 +213,25 @@ const formatDateTime = (value) => {
   });
 };
 
+const buildProfileFetchErrorState = (error, { hasSeedUser } = {}) => {
+  if (!error) {
+    return null;
+  }
+  const status = typeof error?.status === 'number' ? error.status : null;
+  const isAuthError = status === 401 || status === 403 || Boolean(error?.isAuthError);
+  const normalizedMessage = typeof error?.message === 'string' && error.message.trim().length > 0
+    ? error.message
+    : 'Failed to load user profile.';
+  const cacheHint = hasSeedUser ? ' Cached profile data may be stale.' : '';
+  return {
+    message: isAuthError
+      ? `Session expired. Please sign in again to load the latest profile.${cacheHint}`
+      : `${normalizedMessage}${cacheHint}`,
+    status,
+    isAuthError
+  };
+};
+
 
 function ProfilePage() {
 
@@ -243,6 +265,12 @@ function ProfilePage() {
   });
   const avatarPreviewUrlRef = useRef(null);
   const bannerPreviewUrlRef = useRef(null);
+  const { isOffline } = useNetworkStatusContext();
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportError, setReportError] = useState(null);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [reportStatus, setReportStatus] = useState(null);
 
   const clearAvatarPreviewUrl = useCallback(() => {
     if (avatarPreviewUrlRef.current && avatarPreviewUrlRef.current.startsWith('blob:')) {
@@ -337,12 +365,13 @@ function ProfilePage() {
           return;
         }
         setFetchedUser(profile);
+        setFetchError(null);
       } catch (error) {
         if (ignore) {
           return;
         }
         console.error('Failed to load user profile:', error);
-        setFetchError(error?.message || 'Failed to load user profile.');
+        setFetchError(buildProfileFetchErrorState(error, { hasSeedUser: Boolean(userFromState) }));
         if (!userFromState) {
           setFetchedUser(null);
         }
@@ -360,13 +389,30 @@ function ProfilePage() {
     };
   }, [targetUserId, shouldLoadCurrentUser, userFromState]);
 
-  const effectiveUser = userFromState ?? fetchedUser ?? null;
+  // Always prefer the fetched profile object so Chrome's cache/offline flows
+  // don't leave us stuck rendering the seed `location.state.user` payload (which
+  // lacks mutual friend metadata and PinCard contract fields).
+  const effectiveUser = fetchedUser ?? userFromState ?? null;
 
   useEffect(() => {
     if (shouldLoadCurrentUser && effectiveUser) {
       setViewerProfile(effectiveUser);
     }
   }, [effectiveUser, shouldLoadCurrentUser]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') {
+      return;
+    }
+    if (!effectiveUser && !userFromState && !fetchedUser) {
+      return;
+    }
+    console.debug('[ProfilePage] effectiveUser resolved', {
+      userFromState: userFromState?._id || userFromState?.id || null,
+      fetchedUser: fetchedUser?._id || fetchedUser?.id || null,
+      effectiveUser: effectiveUser?._id || effectiveUser?.id || null
+    });
+  }, [effectiveUser, fetchedUser, userFromState]);
 
   const displayName = useMemo(() => {
     if (effectiveUser) {
@@ -381,6 +427,18 @@ function ProfilePage() {
     }
     return userId || 'Unknown User';
   }, [effectiveUser, userId]);
+  const targetProfileId = useMemo(() => {
+    if (effectiveUser?._id) {
+      return String(effectiveUser._id);
+    }
+    if (effectiveUser?.id) {
+      return String(effectiveUser.id);
+    }
+    if (!shouldLoadCurrentUser && targetUserId) {
+      return targetUserId;
+    }
+    return null;
+  }, [effectiveUser?._id, effectiveUser?.id, shouldLoadCurrentUser, targetUserId]);
 
   const avatarUrl = useMemo(() => {
     const primary = resolveAvatarUrl(effectiveUser?.avatar);
@@ -407,6 +465,8 @@ function ProfilePage() {
   const editingBannerSrc = formState.bannerCleared ? null : formState.bannerPreviewUrl ?? bannerUrl;
   const avatarDisplaySrc = isEditing ? editingAvatarSrc ?? undefined : avatarUrl;
   const bannerDisplaySrc = isEditing ? editingBannerSrc : bannerUrl;
+  const fetchErrorMessage = typeof fetchError === 'string' ? fetchError : fetchError?.message;
+  const fetchErrorSeverity = fetchError?.isAuthError ? 'error' : 'warning';
 
   const {
     isViewingSelf,
@@ -437,6 +497,115 @@ function ProfilePage() {
     displayName
   });
   const { mutualFriendCount, mutualFriendPreview } = useProfileMutualFriends(effectiveUser);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') {
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      window.__PROFILE_MUTUALS_LAST = {
+        count: mutualFriendCount,
+        preview: mutualFriendPreview
+      };
+      window.__PROFILE_EFFECTIVE_USER = effectiveUser;
+    }
+  }, [effectiveUser, mutualFriendCount, mutualFriendPreview]);
+
+  const handleMessageUser = useCallback(() => {
+    if (!targetProfileId || isViewingSelf || isOffline) {
+      return;
+    }
+    navigate(routes.directMessages.base, {
+      state: {
+        fromProfile: true,
+        targetUserId: targetProfileId,
+        displayName
+      }
+    });
+  }, [displayName, isOffline, isViewingSelf, navigate, targetProfileId]);
+
+  const handleOpenReportProfile = useCallback(() => {
+    if (!targetProfileId || isViewingSelf || isOffline) {
+      return;
+    }
+    setReportReason('');
+    setReportError(null);
+    setReportDialogOpen(true);
+  }, [isOffline, isViewingSelf, targetProfileId]);
+
+  const handleCloseReportDialog = useCallback(() => {
+    if (isSubmittingReport) {
+      return;
+    }
+    setReportDialogOpen(false);
+    setReportReason('');
+    setReportError(null);
+  }, [isSubmittingReport]);
+
+  const handleSubmitProfileReport = useCallback(async () => {
+    if (!targetProfileId || isViewingSelf || isSubmittingReport) {
+      return;
+    }
+    setIsSubmittingReport(true);
+    setReportError(null);
+    try {
+      await createContentReport({
+        contentType: 'user',
+        contentId: targetProfileId,
+        reason: reportReason,
+        context: displayName ? `Profile: ${displayName}` : 'Profile report'
+      });
+      setReportDialogOpen(false);
+      setReportReason('');
+      setReportStatus({
+        type: 'success',
+        message: 'Thanks — your report was submitted.'
+      });
+    } catch (error) {
+      setReportError(error?.message || 'Failed to submit report.');
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  }, [displayName, isSubmittingReport, isViewingSelf, reportReason, targetProfileId]);
+
+  const handleReportStatusClose = useCallback(() => {
+    setReportStatus(null);
+  }, []);
+
+  useEffect(() => {
+    if (!reportStatus || typeof window === 'undefined') {
+      return undefined;
+    }
+    const timeout = window.setTimeout(() => {
+      setReportStatus(null);
+    }, 5000);
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [reportStatus]);
+  const canInteractWithProfile = Boolean(targetProfileId && !isViewingSelf);
+  const messageDisabled = !canInteractWithProfile || isOffline;
+  const reportDisabled = !canInteractWithProfile || isOffline || isSubmittingReport;
+  const messageTooltip = messageDisabled
+    ? isViewingSelf
+      ? 'You cannot message yourself.'
+      : isOffline
+      ? 'Reconnect to send messages.'
+      : !targetProfileId
+      ? 'User unavailable.'
+      : undefined
+    : undefined;
+  const reportTooltip = reportDisabled
+    ? isViewingSelf
+      ? 'You cannot report your own profile.'
+      : isOffline
+      ? 'Reconnect to submit reports.'
+      : !targetProfileId
+      ? 'User unavailable.'
+      : isSubmittingReport
+      ? 'Submitting report...'
+      : undefined
+    : undefined;
 
   useEffect(() => {
     if (!isEditing && effectiveUser) {
@@ -769,17 +938,22 @@ function ProfilePage() {
             </Stack>
           ) : null}
 
-          {fetchError ? (
-            <Alert severity="warning" variant="outlined">
-              {fetchError}
+          {fetchErrorMessage ? (
+            <Alert severity={fetchErrorSeverity} variant="outlined">
+              {fetchErrorMessage}
             </Alert>
           ) : null}
 
-          {relationshipStatus ? (
-            <Alert severity={relationshipStatus.type} onClose={() => setRelationshipStatus(null)}>
-              {relationshipStatus.message}
-            </Alert>
-          ) : null}
+        {relationshipStatus ? (
+          <Alert severity={relationshipStatus.type} onClose={() => setRelationshipStatus(null)}>
+            {relationshipStatus.message}
+          </Alert>
+        ) : null}
+        {reportStatus ? (
+          <Alert severity={reportStatus.type} onClose={handleReportStatusClose}>
+            {reportStatus.message}
+          </Alert>
+        ) : null}
 
           <ProfileHero
             avatarSrc={avatarDisplaySrc ?? undefined}
@@ -844,6 +1018,13 @@ function ProfilePage() {
                   hasPendingFriendRequest={hasPendingFriendRequest}
                   isSendingFriendRequest={isSendingFriendRequest}
                   onSendFriendRequest={handleSendFriendRequest}
+                  onMessage={handleMessageUser}
+                  messageDisabled={messageDisabled}
+                  messageTooltip={messageTooltip}
+                  onReport={handleOpenReportProfile}
+                  reportDisabled={reportDisabled}
+                  reportTooltip={reportTooltip}
+                  isReporting={isSubmittingReport}
                 />
               </Stack>
             </>
@@ -857,6 +1038,17 @@ function ProfilePage() {
         onClose={handleCloseBlockDialog}
         onConfirm={handleConfirmBlockDialog}
         isProcessing={isProcessingBlockAction}
+      />
+
+      <ReportContentDialog
+        open={reportDialogOpen}
+        onClose={handleCloseReportDialog}
+        onSubmit={handleSubmitProfileReport}
+        reason={reportReason}
+        onReasonChange={setReportReason}
+        submitting={isSubmittingReport}
+        error={reportError || undefined}
+        context={displayName ? `Profile: ${displayName}` : ''}
       />
     </div>
   );

@@ -316,8 +316,43 @@ function PinDetails() {
   );
   const extraFriendCount = Math.max(0, attendingFriendItems.length - attendingFriendPreview.length);
 
+  const originEntry = location.state?.from;
+  const resolvedOriginPath = useMemo(() => {
+    if (!originEntry) {
+      return null;
+    }
+    if (typeof originEntry === 'string') {
+      return originEntry;
+    }
+    if (typeof originEntry === 'object' && originEntry !== null) {
+      const pathname = originEntry.pathname ?? '';
+      if (!pathname) {
+        return null;
+      }
+      const search = originEntry.search ?? '';
+      const hash = originEntry.hash ?? '';
+      return `${pathname}${search}${hash}`;
+    }
+    return null;
+  }, [originEntry]);
+
+  const handleBackNavigation = useCallback(() => {
+    if (resolvedOriginPath) {
+      navigate(resolvedOriginPath);
+      return;
+    }
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate(routes.list.base);
+  }, [navigate, resolvedOriginPath]);
+
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
-  const shouldShowStatusMessages = isLoading || error || (!pin && !isLoading && pinId);
+  const pinErrorMessage = typeof error === 'string' ? error : error?.message;
+  const pinErrorSeverity = error?.isAuthError ? 'warning' : 'error';
+  const shouldShowStatusMessages =
+    isLoading || Boolean(pinErrorMessage) || (!pin && !isLoading && pinId);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
   const [reportReason, setReportReason] = useState('');
@@ -619,9 +654,14 @@ function PinDetails() {
       ) : null}
 
       <header className="header">
-        <Link to={routes.list.base} className="back-button" aria-label="Back to pin list">
+        <button
+          type="button"
+          className="back-button"
+          aria-label="Go back"
+          onClick={handleBackNavigation}
+        >
           <ArrowBackIosNewIcon className="back-arrow" aria-hidden="true" />
-        </Link>
+        </button>
 
         <h2>{pinTypeHeading}</h2>
 
@@ -682,6 +722,14 @@ function PinDetails() {
           </span>
         ) : null}
       </div>
+
+      {pinErrorMessage ? (
+        <div className="pin-error-banner">
+          <Alert severity={pinErrorSeverity} variant="outlined">
+            {pinErrorMessage}
+          </Alert>
+        </div>
+      ) : null}
 
       {pin ? (
         <>
@@ -954,8 +1002,8 @@ function PinDetails() {
       {shouldShowStatusMessages ? (
         <div className="status-container status-container--footer">
           {isLoading ? <div className="status-message">Loading pin details...</div> : null}
-          {error ? <div className="status-message error">{error}</div> : null}
-          {!pin && !isLoading && !error && pinId ? (
+          {pinErrorMessage ? <div className="status-message error">{pinErrorMessage}</div> : null}
+          {!pin && !isLoading && !pinErrorMessage && pinId ? (
             <div className="status-message">No pin found for ID &ldquo;{pinId}&rdquo;.</div>
           ) : null}
         </div>

@@ -155,7 +155,9 @@ async function timeAsync(category, label, handler, meta = {}) {
     const durationMs = Number(end - start) / 1e6;
     const metaSuffix = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
     const message = `[${category}] ${label} ${durationMs.toFixed(2)}ms${metaSuffix}`;
-    console.log(message);
+    if (process.env.PINPOINT_PERF_LOGS !== 'silent') {
+      console.log(message);
+    }
     writeLogLine(category, `${label} ${durationMs.toFixed(2)}ms${metaSuffix}`, {
       severity: 'debug',
       context: meta
