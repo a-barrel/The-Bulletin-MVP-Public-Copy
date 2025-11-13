@@ -133,11 +133,14 @@ app.use((req, res, next) => {
 
 const uploadsDir = path.join(__dirname, 'uploads');
 const imagesDir = path.join(uploadsDir, 'images');
+const runtimeImagesDir = path.join(imagesDir, 'runtime');
 const soundsDir = path.join(uploadsDir, 'sounds');
 fs.mkdirSync(imagesDir, { recursive: true });
+fs.mkdirSync(runtimeImagesDir, { recursive: true });
 fs.mkdirSync(soundsDir, { recursive: true });
 app.set('uploadsDir', uploadsDir);
 app.set('imagesDir', imagesDir);
+app.set('runtimeImagesDir', runtimeImagesDir);
 app.set('soundsDir', soundsDir);
 
 const serveImage = express.static(imagesDir);

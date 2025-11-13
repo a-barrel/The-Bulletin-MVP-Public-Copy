@@ -12,9 +12,11 @@ import {
   exportBookmarks,
   fetchBookmarks,
   fetchBookmarkCollections,
+  fetchPinById,
   removeBookmark
 } from '../api/mongoDataApi';
 import { formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
+import toIdString from '../utils/ids';
 import reportClientError from '../utils/reportClientError';
 
 const EMPTY_GROUP = 'Unsorted';
@@ -84,6 +86,49 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
   const totalCount = bookmarks.length;
 
   // Fetch bookmarks + collections together so the page can show both the list and the sidebar metadata.
+  const enrichBookmarksWithPins = useCallback(async (bookmarkList) => {
+    if (!Array.isArray(bookmarkList) || bookmarkList.length === 0) {
+      return [];
+    }
+    const uniquePinIds = Array.from(
+      new Set(
+        bookmarkList
+          .map((bookmark) => toIdString(bookmark?.pinId) ?? toIdString(bookmark?.pin?._id))
+          .filter(Boolean)
+      )
+    );
+    if (uniquePinIds.length === 0) {
+      return bookmarkList;
+    }
+    const pinDetails = new Map();
+    await Promise.all(
+      uniquePinIds.map(async (pinId) => {
+        try {
+          const pin = await fetchPinById(pinId, { previewMode: 'bookmark' });
+          pinDetails.set(pinId, pin || null);
+        } catch (err) {
+          reportClientError(err, 'Failed to fetch pin for bookmark:', {
+            source: 'useBookmarksManager.enrichPins',
+            pinId
+          });
+          pinDetails.set(pinId, null);
+        }
+      })
+    );
+    return bookmarkList.map((bookmark) => {
+      const normalizedPinId =
+        toIdString(bookmark?.pinId) ?? toIdString(bookmark?.pin?._id) ?? null;
+      const resolvedPin = normalizedPinId ? pinDetails.get(normalizedPinId) : null;
+      if (!resolvedPin) {
+        return bookmark;
+      }
+      return {
+        ...bookmark,
+        pin: resolvedPin
+      };
+    });
+  }, []);
+
   const loadData = useCallback(async () => {
     if (!authUser) {
       setError('Sign in to view your bookmarks.');
@@ -105,7 +150,9 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
         fetchBookmarks(),
         fetchBookmarkCollections()
       ]);
-      setBookmarks(Array.isArray(bookmarkPayload) ? bookmarkPayload : []);
+      const baseBookmarks = Array.isArray(bookmarkPayload) ? bookmarkPayload : [];
+      const enrichedBookmarks = await enrichBookmarksWithPins(baseBookmarks);
+      setBookmarks(enrichedBookmarks);
       setCollections(Array.isArray(collectionPayload) ? collectionPayload : []);
     } catch (err) {
       reportClientError(err, 'Failed to load bookmarks:', {
@@ -117,7 +164,7 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
     } finally {
       setIsLoading(false);
     }
-  }, [authUser, isOffline]);
+  }, [authUser, enrichBookmarksWithPins, isOffline]);
 
   // Auto-refresh whenever auth or offline status changes.
   useEffect(() => {

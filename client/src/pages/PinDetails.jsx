@@ -316,6 +316,38 @@ function PinDetails() {
   );
   const extraFriendCount = Math.max(0, attendingFriendItems.length - attendingFriendPreview.length);
 
+  const originEntry = location.state?.from;
+  const resolvedOriginPath = useMemo(() => {
+    if (!originEntry) {
+      return null;
+    }
+    if (typeof originEntry === 'string') {
+      return originEntry;
+    }
+    if (typeof originEntry === 'object' && originEntry !== null) {
+      const pathname = originEntry.pathname ?? '';
+      if (!pathname) {
+        return null;
+      }
+      const search = originEntry.search ?? '';
+      const hash = originEntry.hash ?? '';
+      return `${pathname}${search}${hash}`;
+    }
+    return null;
+  }, [originEntry]);
+
+  const handleBackNavigation = useCallback(() => {
+    if (resolvedOriginPath) {
+      navigate(resolvedOriginPath);
+      return;
+    }
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate(routes.list.base);
+  }, [navigate, resolvedOriginPath]);
+
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
   const pinErrorMessage = typeof error === 'string' ? error : error?.message;
   const pinErrorSeverity = error?.isAuthError ? 'warning' : 'error';
@@ -622,9 +654,14 @@ function PinDetails() {
       ) : null}
 
       <header className="header">
-        <Link to={routes.list.base} className="back-button" aria-label="Back to pin list">
+        <button
+          type="button"
+          className="back-button"
+          aria-label="Go back"
+          onClick={handleBackNavigation}
+        >
           <ArrowBackIosNewIcon className="back-arrow" aria-hidden="true" />
-        </Link>
+        </button>
 
         <h2>{pinTypeHeading}</h2>
 
