@@ -6,9 +6,13 @@ REPO_ROOT="$(cd -- "$(dirname -- "$0")/.." && pwd -P)"
 cd "$REPO_ROOT"
 
 uname_str="$(uname -s 2>/dev/null || echo)"
+# GitHub Desktop on Windows runs Git hooks via MSYS bash (MINGW/MSYS/Cygwin).
+# That environment cannot execute "C:\Program Files\nodejs\npm" paths directly,
+# so when WSL is installed we proxy lint/tests through the WSL shell instead.
 case "$uname_str" in
   MINGW*|MSYS*|CYGWIN*)
     WSL_EXE=""
+    # Look for wsl.exe in typical System32 paths; if absent we fall back to the normal npm flow.
     for candidate in /c/Windows/System32/wsl.exe /c/WINDOWS/System32/wsl.exe /C/Windows/System32/wsl.exe /C/WINDOWS/System32/wsl.exe; do
       if [ -x "$candidate" ]; then
         WSL_EXE="$candidate"
@@ -17,6 +21,7 @@ case "$uname_str" in
     done
     if [ -n "$WSL_EXE" ]; then
       repo_win="$PWD"
+      # Translate /c/... paths into /mnt/c/... so WSL can cd into the repo.
       if printf '%s' "$repo_win" | grep -Eq '^/[A-Za-z]/'; then
         drive_letter="$(printf '%s' "$repo_win" | cut -c2 | tr 'A-Z' 'a-z')"
         rest_path="${repo_win:3}"
@@ -32,6 +37,7 @@ case "$uname_str" in
         for arg in "$@"; do
           args="$args '$arg'"
         done
+        # Source ~/.nvm/nvm.sh in WSL so we reuse the Linux Node toolchain.
         "$WSL_EXE" bash -lc "cd '$repo_wsl' && source ~/.nvm/nvm.sh 2>/dev/null && npm $args"
       }
       echo "[husky] Running lint via WSL ($repo_wsl)…"
