@@ -1,0 +1,238 @@
+.bookmarks-shell {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f5effd 0%, #ffffff 100%);
+  padding: 0 0 64px;
+  font-family: "Urbanist", sans-serif;
+}
+
+.bookmarks-nav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  padding: 14px 20px;
+  border-radius: 0;
+  background: rgba(205, 174, 242, 0.95);
+  box-shadow: 0 12px 30px rgba(93, 56, 137, 0.12);
+  backdrop-filter: blur(12px);
+  width: 100%;
+  margin: 0 0 20px;
+}
+
+.bookmarks-nav-left {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.bookmarks-nav-spacer {
+  display: inline-flex;
+}
+
+.bookmarks-back-link .back-button__text {
+  display: none;
+}
+
+.bookmarks-back-link .back-button__icon {
+  margin-right: 0;
+}
+
+.bookmarks-nav .back-nav-bar {
+  position: static;
+  background: transparent;
+  border: none;
+  height: auto;
+  padding: 0;
+  box-shadow: none;
+}
+
+.bookmarks-nav .back-button {
+  padding: 0.5rem;
+}
+
+.bookmarks-nav-title {
+  display: inline-flex;
+  align-items: center;
+  justify-self: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #5d3889;
+}
+
+.bookmarks-content {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 18px;
+}
+
+.bookmarks-main-toolbar {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 18px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 24px rgba(93, 56, 137, 0.08);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@media (max-width: 720px) {
+  .bookmarks-main-toolbar {
+    justify-content: flex-start;
+    gap: 8px;
+  }
+}
+
+.bookmarks-toolbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 320px;
+  min-width: 260px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 720px) {
+  .bookmarks-type-filters,
+  .bookmarks-toolbar-actions {
+    flex: 1 1 100%;
+    min-width: 0;
+    justify-content: flex-start;
+  }
+}
+
+.bookmarks-toolbar-actions .MuiButton-root {
+  text-transform: none;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 8px 18px;
+}
+
+.bookmarks-count {
+  font-weight: 600;
+  color: #5d3889;
+  background: #f3e5ff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  letter-spacing: 0.01em;
+}
+
+.bookmarks-type-filters {
+  display: inline-flex;
+  gap: 8px;
+  flex: 1 1 320px;
+  min-width: 260px;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.bookmark-type-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 18px;
+  min-height: 36px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: #ecf8fe;
+  color: #1e1e1e;
+  border: 1px solid rgba(93, 56, 137, 0.12);
+  box-shadow: 0 4px 12px rgba(93, 56, 137, 0.09);
+  cursor: pointer;
+  transition: all 160ms ease;
+  white-space: nowrap;
+}
+
+.bookmark-type-chip:hover {
+  transform: translateY(-1px);
+}
+
+.bookmark-type-chip.is-active {
+  background: #5d3889;
+  color: #ffffff;
+  border-color: #5d3889;
+  box-shadow: 0 4px 14px rgba(93, 56, 137, 0.25);
+}
+
+.bookmarks-collection-card {
+  border-radius: 24px;
+  padding: 20px 24px;
+  background: #ffffff;
+  box-shadow: 0 15px 36px rgba(93, 56, 137, 0.08);
+  border: 1px solid rgba(93, 56, 137, 0.12);
+}
+
+.MuiPaper-root.bookmarks-collection-card {
+  background: #ffffff !important;
+  color: #1b1133;
+}
+
+.bookmarks-collection-card.is-highlighted {
+  border-color: #3eb8f0;
+  box-shadow: 0 20px 45px rgba(62, 184, 240, 0.25);
+}
+
+.bookmarks-collection-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.bookmarks-collection-title h6 {
+  margin: 0;
+}
+
+.bookmarks-collection-list {
+  padding-bottom: 8px;
+}
+
+.bookmark-item {
+  border-radius: 18px;
+  padding: 16px 18px;
+  background: #fdfbff;
+  border: 1px solid rgba(93, 56, 137, 0.08);
+}
+
+.bookmark-item + .bookmark-item {
+  margin-top: 16px;
+}
+
+.bookmark-item-footer {
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.bookmark-missing-card {
+  border-style: dashed;
+  background: rgba(0, 0, 0, 0.02);
+  padding: 16px;
+}
+
+.bookmarks-empty-card {
+  text-align: center;
+  padding: 48px 32px;
+  border-radius: 20px;
+  background: #f5effd;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.MuiPaper-root.bookmarks-empty-card {
+  background: #ffffff !important;
+  color: #1b1133;
+}
+
+.bookmark-pin-toggle {
+  text-transform: none;
+  font-weight: 600;
+}
