@@ -147,7 +147,13 @@ const MAX_HISTORY_ENTRIES = 20;
 const BADGE_SOUND_STORAGE_KEY = 'pinpoint:badgeSoundEnabled';
 const FRIEND_BADGE_STORAGE_KEY = 'pinpoint:friendBadgesEnabled';
 const MAIN_NAV_STORAGE_KEY = 'pinpoint:lastMainNavPath';
-const MAIN_NAV_PATH_SET = new Set([routes.chat.base, routes.map.base, routes.list.base]);
+const MAIN_NAV_PATH_SET = new Set([
+  routes.chat.base,
+  routes.map.base,
+  routes.list.base,
+  routes.updates.base,
+  routes.bookmarks.base
+]);
 
 const buildFullPathFromLocation = (loc) => {
   if (!loc) {
