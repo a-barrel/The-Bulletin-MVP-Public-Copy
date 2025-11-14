@@ -199,6 +199,39 @@
   background: #f7ecff;
 }
 
+.profile-moderation-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.profile-moderation-actions button {
+  min-width: 140px;
+  font-weight: 600;
+}
+
+.profile-moderation-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.profile-moderation-history__row {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(93, 56, 137, 0.3);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+}
+
+.profile-moderation-history__type {
+  text-transform: capitalize;
+  font-weight: 700 !important;
+}
+
+.profile-moderation-status-chip {
+  font-weight: 600;
+}
+
 .profile-content-grid {
   display: flex;
   flex-direction: column;

@@ -28,6 +28,7 @@ import ProfileEditForm from '../components/profile/ProfileEditForm';
 import ProfileHero from '../components/profile/ProfileHero';
 import ProfileMutualFriends from '../components/profile/ProfileMutualFriends';
 import ProfileStatsSummary from '../components/profile/ProfileStatsSummary';
+import ProfileModerationPanel from '../components/profile/ProfileModerationPanel';
 import ReportContentDialog from '../components/ReportContentDialog';
 import GlobalNavMenu from '../components/GlobalNavMenu';
 import useProfileBadges from '../hooks/useProfileBadges';
@@ -1051,6 +1052,12 @@ function ProfilePage() {
                   isReporting={isSubmittingReport}
                 />
               </Stack>
+              <ProfileModerationPanel
+                targetUserId={targetProfileId}
+                displayName={displayName}
+                accountStatus={effectiveUser?.accountStatus}
+                isViewingSelf={isViewingSelf}
+              />
             </>
           ) : null}
         </Stack>

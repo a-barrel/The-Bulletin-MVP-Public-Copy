@@ -15,6 +15,7 @@ const Update = require('../../models/Update');
 const Location = require('../../models/Location');
 const FriendRequest = require('../../models/FriendRequest');
 const ModerationAction = require('../../models/ModerationAction');
+const ContentReport = require('../../models/ContentReport');
 const DirectMessageThread = require('../../models/DirectMessageThread');
 
 const DEFAULT_DATA_DIR = path.join(__dirname, '..', '..', '..', 'docs', 'mongodb-local-sample-data');
@@ -35,6 +36,11 @@ const COLLECTIONS = [
     name: 'moderationActions',
     model: ModerationAction,
     filename: 'mongodb-sample-moderationActions.json'
+  },
+  {
+    name: 'contentReports',
+    model: ContentReport,
+    filename: 'mongodb-sample-contentReports.json'
   },
   {
     name: 'directMessageThreads',
