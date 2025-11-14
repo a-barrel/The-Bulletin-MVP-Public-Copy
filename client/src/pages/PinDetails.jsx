@@ -18,7 +18,6 @@ import {
 } from '@mui/material';
 import PlaceIcon from '@mui/icons-material/Place'; // used only for pageConfig
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import ForumIcon from '@mui/icons-material/Forum';
@@ -26,6 +25,7 @@ import AddCommentIcon from '@mui/icons-material/AddComment';
 import LeafletMap from '../components/Map';
 import FriendBadge from '../components/FriendBadge';
 import BookmarkButton from '../components/BookmarkButton';
+import MainNavBackButton from '../components/MainNavBackButton';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
@@ -315,38 +315,6 @@ function PinDetails() {
     [attendingFriendItems]
   );
   const extraFriendCount = Math.max(0, attendingFriendItems.length - attendingFriendPreview.length);
-
-  const originEntry = location.state?.from;
-  const resolvedOriginPath = useMemo(() => {
-    if (!originEntry) {
-      return null;
-    }
-    if (typeof originEntry === 'string') {
-      return originEntry;
-    }
-    if (typeof originEntry === 'object' && originEntry !== null) {
-      const pathname = originEntry.pathname ?? '';
-      if (!pathname) {
-        return null;
-      }
-      const search = originEntry.search ?? '';
-      const hash = originEntry.hash ?? '';
-      return `${pathname}${search}${hash}`;
-    }
-    return null;
-  }, [originEntry]);
-
-  const handleBackNavigation = useCallback(() => {
-    if (resolvedOriginPath) {
-      navigate(resolvedOriginPath);
-      return;
-    }
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      navigate(-1);
-      return;
-    }
-    navigate(routes.list.base);
-  }, [navigate, resolvedOriginPath]);
 
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
   const pinErrorMessage = typeof error === 'string' ? error : error?.message;
@@ -654,14 +622,7 @@ function PinDetails() {
       ) : null}
 
       <header className="header">
-        <button
-          type="button"
-          className="back-button"
-          aria-label="Go back"
-          onClick={handleBackNavigation}
-        >
-          <ArrowBackIosNewIcon className="back-arrow" aria-hidden="true" />
-        </button>
+        <MainNavBackButton className="back-button" iconClassName="back-arrow" aria-label="Go back" />
 
         <h2>{pinTypeHeading}</h2>
 

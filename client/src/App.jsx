@@ -24,6 +24,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { NavOverlayProvider } from './contexts/NavOverlayContext';
+import { MainNavigationProvider } from './contexts/MainNavigationContext';
 import RegistrationPage from './pages/Registration';
 import { UpdatesProvider } from './contexts/UpdatesContext';
 import { BadgeSoundProvider } from './contexts/BadgeSoundContext';
@@ -145,6 +146,18 @@ const wrapWithProtection = (page, element) =>
 const MAX_HISTORY_ENTRIES = 20;
 const BADGE_SOUND_STORAGE_KEY = 'pinpoint:badgeSoundEnabled';
 const FRIEND_BADGE_STORAGE_KEY = 'pinpoint:friendBadgesEnabled';
+const MAIN_NAV_STORAGE_KEY = 'pinpoint:lastMainNavPath';
+const MAIN_NAV_PATH_SET = new Set([routes.chat.base, routes.map.base, routes.list.base]);
+
+const buildFullPathFromLocation = (loc) => {
+  if (!loc) {
+    return routes.map.base;
+  }
+  const base = typeof loc.pathname === 'string' && loc.pathname ? loc.pathname : routes.map.base;
+  const search = typeof loc.search === 'string' ? loc.search : '';
+  const hash = typeof loc.hash === 'string' ? loc.hash : '';
+  return `${base}${search}${hash}`;
+};
 
 const readStoredBadgeSoundPreference = () => {
   if (typeof window === 'undefined') {
@@ -189,6 +202,22 @@ function App() {
   const [friendBadgesEnabled, setFriendBadgesEnabled] = useState(
     () => readStoredFriendBadgePreference()
   );
+  const [lastMainNavPath, setLastMainNavPath] = useState(() => {
+    if (MAIN_NAV_PATH_SET.has(location.pathname)) {
+      return buildFullPathFromLocation(location);
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = window.sessionStorage.getItem(MAIN_NAV_STORAGE_KEY);
+        if (stored && typeof stored === 'string' && stored.startsWith('/')) {
+          return stored;
+        }
+      } catch {
+        // ignore storage read errors
+      }
+    }
+    return routes.map.base;
+  });
   const {
     toastState: badgeToast,
     announceBadgeEarned,
@@ -248,6 +277,24 @@ function App() {
       // ignore storage failures (e.g., private browsing)
     }
   }, [friendBadgesEnabled]);
+
+  useEffect(() => {
+    if (!MAIN_NAV_PATH_SET.has(location.pathname)) {
+      return;
+    }
+    const nextPath = buildFullPathFromLocation(location);
+    if (!nextPath || lastMainNavPath === nextPath) {
+      return;
+    }
+    setLastMainNavPath(nextPath);
+    if (typeof window !== 'undefined') {
+      try {
+        window.sessionStorage.setItem(MAIN_NAV_STORAGE_KEY, nextPath);
+      } catch {
+        // ignore storage failures (e.g., private browsing)
+      }
+    }
+  }, [lastMainNavPath, location]);
 
   const navPages = useMemo(
     () =>
@@ -685,155 +732,157 @@ function App() {
         <BadgeSoundProvider value={badgeSoundContextValue}>
           <UpdatesProvider value={updatesContextValue}>
             <SocialNotificationsProvider value={socialNotificationsContextValue}>
-              <NavOverlayProvider value={navOverlayContextValue}>
-                <ThemeProvider theme={theme}>
-                <CssBaseline />
+              <MainNavigationProvider value={{ lastMainPath: lastMainNavPath }}>
+                <NavOverlayProvider value={navOverlayContextValue}>
+                  <ThemeProvider theme={theme}>
+                    <CssBaseline />
 
-                <Modal open={navOverlayOpen} onClose={closeOverlay} closeAfterTransition keepMounted>
-                  <Fade in={navOverlayOpen}>
-                    <Box
-                      sx={{
-                        position: 'fixed',
-                        inset: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        p: 2,
-                        pointerEvents: 'none'
-                      }}
-                    >
-                      <Paper
-                        elevation={16}
-                        sx={(muiTheme) => ({
-                          width: 'min(420px, 90vw)',
-                          maxHeight: '80vh',
-                          overflow: 'hidden',
-                          pointerEvents: 'auto',
-                          outline: 'none',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 2,
-                          p: 3,
-                          borderRadius: 3,
-                          backgroundColor: muiTheme.palette.background.paper
-                        })}
-                      >
-                        <Stack spacing={1.5} sx={{ flex: 1, minHeight: 0 }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Typography variant="h6" component="h2">
-                              Navigation Console
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              Press ` or Esc to close
-                            </Typography>
-                          </Box>
-                          <Divider />
-                          {navPages.length > 0 ? (
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 1,
-                                flex: 1,
-                                minHeight: 0
-                              }}
-                            >
-                              {previousNavPath && (
-                                <Button
-                                  onClick={handleBack}
-                                  variant="contained"
-                                  color="secondary"
-                                  startIcon={<ArrowBackIcon fontSize="small" />}
-                                  sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-                                >
-                                  {previousNavPage ? `Back to ${previousNavPage.label}` : 'Back'}
-                                </Button>
-                              )}
-                              <Box
-                                sx={{
-                                  flex: 1,
-                                  minHeight: 0,
-                                  overflowY: 'auto',
-                                  pr: 0.5,
-                                  scrollbarGutter: 'stable'
-                                }}
-                              >
-                                <Stack spacing={1}>
-                                  {navPages.map((page) => {
-                                    const IconComponent = page.icon ?? ArticleIcon;
-                                    const isActive = page.path === currentNavPath;
-                                    return (
-                                      <Button
-                                        key={page.id}
-                                        onClick={() => handleNavigate(page)}
-                                        variant={isActive ? 'contained' : 'outlined'}
-                                        color={isActive ? 'primary' : 'inherit'}
-                                        startIcon={<IconComponent fontSize="small" />}
-                                        sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-                                      >
-                                        {page.label}
-                                      </Button>
-                                    );
-                                  })}
-                                </Stack>
+                    <Modal open={navOverlayOpen} onClose={closeOverlay} closeAfterTransition keepMounted>
+                      <Fade in={navOverlayOpen}>
+                        <Box
+                          sx={{
+                            position: 'fixed',
+                            inset: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            p: 2,
+                            pointerEvents: 'none'
+                          }}
+                        >
+                          <Paper
+                            elevation={16}
+                            sx={(muiTheme) => ({
+                              width: 'min(420px, 90vw)',
+                              maxHeight: '80vh',
+                              overflow: 'hidden',
+                              pointerEvents: 'auto',
+                              outline: 'none',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 2,
+                              p: 3,
+                              borderRadius: 3,
+                              backgroundColor: muiTheme.palette.background.paper
+                            })}
+                          >
+                            <Stack spacing={1.5} sx={{ flex: 1, minHeight: 0 }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography variant="h6" component="h2">
+                                  Navigation Console
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  Press ` or Esc to close
+                                </Typography>
                               </Box>
-                            </Box>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">
-                              Add a new page under `src/pages` with `showInNav: true` to populate this console.
-                            </Typography>
-                          )}
-                        </Stack>
-                      </Paper>
-                    </Box>
-                  </Fade>
-                </Modal>
+                              <Divider />
+                              {navPages.length > 0 ? (
+                                <Box
+                                  sx={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 1,
+                                    flex: 1,
+                                    minHeight: 0
+                                  }}
+                                >
+                                  {previousNavPath && (
+                                    <Button
+                                      onClick={handleBack}
+                                      variant="contained"
+                                      color="secondary"
+                                      startIcon={<ArrowBackIcon fontSize="small" />}
+                                      sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+                                    >
+                                      {previousNavPage ? `Back to ${previousNavPage.label}` : 'Back'}
+                                    </Button>
+                                  )}
+                                  <Box
+                                    sx={{
+                                      flex: 1,
+                                      minHeight: 0,
+                                      overflowY: 'auto',
+                                      pr: 0.5,
+                                      scrollbarGutter: 'stable'
+                                    }}
+                                  >
+                                    <Stack spacing={1}>
+                                      {navPages.map((page) => {
+                                        const IconComponent = page.icon ?? ArticleIcon;
+                                        const isActive = page.path === currentNavPath;
+                                        return (
+                                          <Button
+                                            key={page.id}
+                                            onClick={() => handleNavigate(page)}
+                                            variant={isActive ? 'contained' : 'outlined'}
+                                            color={isActive ? 'primary' : 'inherit'}
+                                            startIcon={<IconComponent fontSize="small" />}
+                                            sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+                                          >
+                                            {page.label}
+                                          </Button>
+                                        );
+                                      })}
+                                    </Stack>
+                                  </Box>
+                                </Box>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">
+                                  Add a new page under `src/pages` with `showInNav: true` to populate this console.
+                                </Typography>
+                              )}
+                            </Stack>
+                          </Paper>
+                        </Box>
+                      </Fade>
+                    </Modal>
 
-                {isOffline && !AUTH_ROUTES.has(location.pathname) ? (
-                  <OfflineBanner message="You are offline. Data may be stale and actions are temporarily disabled." />
-                ) : null}
-                <Routes>
-                  <Route path={routes.auth.login} element={<LoginPage />} />
-                  <Route path={routes.auth.register} element={<RegistrationPage />} />
-                  <Route path={routes.auth.forgotPassword} element={<ForgotPasswordPage />} />
-                  <Route path={routes.auth.resetPassword} element={<ResetPasswordPage />} />
+                    {isOffline && !AUTH_ROUTES.has(location.pathname) ? (
+                      <OfflineBanner message="You are offline. Data may be stale and actions are temporarily disabled." />
+                    ) : null}
+                    <Routes>
+                      <Route path={routes.auth.login} element={<LoginPage />} />
+                      <Route path={routes.auth.register} element={<RegistrationPage />} />
+                      <Route path={routes.auth.forgotPassword} element={<ForgotPasswordPage />} />
+                      <Route path={routes.auth.resetPassword} element={<ResetPasswordPage />} />
 
-                  {pages.map((page) => (
-                    <Route
-                      key={page.id}
-                      path={page.path}
-                      element={wrapWithProtection(page, <page.Component />)}
-                    />
-                  ))}
+                      {pages.map((page) => (
+                        <Route
+                          key={page.id}
+                          path={page.path}
+                          element={wrapWithProtection(page, <page.Component />)}
+                        />
+                      ))}
 
-                  {pages.map((page) =>
-                    page.aliases.map((alias) => (
+                      {pages.map((page) =>
+                        page.aliases.map((alias) => (
+                          <Route
+                            key={`${page.id}-alias-${alias}`}
+                            path={alias}
+                            element={wrapWithProtection(page, <page.Component />)}
+                          />
+                        ))
+                      )}
+
+                      <Route path={routes.root} element={<Navigate to={routes.auth.login} replace />} />
                       <Route
-                        key={`${page.id}-alias-${alias}`}
-                        path={alias}
-                        element={wrapWithProtection(page, <page.Component />)}
-                      />
-                    ))
-                  )}
-
-                  <Route path={routes.root} element={<Navigate to={routes.auth.login} replace />} />
-                  <Route
-                    path="*"
-                    element={
-                      <NotFoundPage
-                        defaultPath={defaultNavPage?.path ?? routes.auth.login}
-                        defaultLabel={
-                          defaultNavPage?.label
-                            ? `Go to ${defaultNavPage.label}`
-                            : 'Go to login'
+                        path="*"
+                        element={
+                          <NotFoundPage
+                            defaultPath={defaultNavPage?.path ?? routes.auth.login}
+                            defaultLabel={
+                              defaultNavPage?.label
+                                ? `Go to ${defaultNavPage.label}`
+                                : 'Go to login'
+                            }
+                          />
                         }
                       />
-                    }
-                  />
-                </Routes>
-                <BadgeCelebrationToast toastState={badgeToast} onClose={handleBadgeToastClose} />
-              </ThemeProvider>
-              </NavOverlayProvider>
+                    </Routes>
+                    <BadgeCelebrationToast toastState={badgeToast} onClose={handleBadgeToastClose} />
+                  </ThemeProvider>
+                </NavOverlayProvider>
+              </MainNavigationProvider>
             </SocialNotificationsProvider>
           </UpdatesProvider>
         </BadgeSoundProvider>
