@@ -1,20 +1,18 @@
 /* NOTE: Page exports configuration alongside the component. */
 import runtimeConfig from '../config/runtime';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Snackbar from '@mui/material/Snackbar';
-import IconButton from '@mui/material/IconButton';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import CloseIcon from '@mui/icons-material/CancelRounded';
 import UpdateIcon from '@mui/icons-material/Update';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import DropDownArrow from '@mui/icons-material/ArrowForwardIosRounded';
 import './UpdatesPage.css';
@@ -24,6 +22,7 @@ import {
 import useUpdatesFeed from '../hooks/useUpdatesFeed';
 import { routes } from '../routes';
 import usePushNotifications from '../hooks/usePushNotifications';
+import MainNavBackButton from '../components/MainNavBackButton';
 
 export const pageConfig = {
   id: 'updates',
@@ -51,7 +50,6 @@ const resolveBadgeImageUrl = (value) => {
 };
 
 function UpdatesPage() {
-  const navigate = useNavigate();
   const [selectedTab, setSelectedTab] = useState('All');
   const pushNotifications = usePushNotifications();
   const [expandedUpdateId, setExpandedUpdateId] = useState(null);
@@ -149,9 +147,12 @@ function UpdatesPage() {
     <Box className="updates-page">
       <Box ref={containerRef} className="updates-frame">
         <header className="updates-header-bar">
-          <IconButton onClick={() => navigate(-1)} className="updates-header-back-btn">
-            <ArrowBackIcon className="updates-header-back-icon" />
-          </IconButton>
+          <MainNavBackButton
+            className="updates-header-back-btn"
+            iconClassName="updates-header-back-icon"
+            ariaLabel="Back to main view"
+            scope="core"
+          />
 
           <h1 className="updates-header-title">Updates</h1>
 

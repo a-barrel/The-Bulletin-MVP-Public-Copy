@@ -146,14 +146,11 @@ const wrapWithProtection = (page, element) =>
 const MAX_HISTORY_ENTRIES = 20;
 const BADGE_SOUND_STORAGE_KEY = 'pinpoint:badgeSoundEnabled';
 const FRIEND_BADGE_STORAGE_KEY = 'pinpoint:friendBadgesEnabled';
+const CORE_MAIN_PATHS = [routes.chat.base, routes.map.base, routes.list.base];
+const CORE_NAV_STORAGE_KEY = 'pinpoint:lastCoreNavPath';
 const MAIN_NAV_STORAGE_KEY = 'pinpoint:lastMainNavPath';
-const MAIN_NAV_PATH_SET = new Set([
-  routes.chat.base,
-  routes.map.base,
-  routes.list.base,
-  routes.updates.base,
-  routes.bookmarks.base
-]);
+const CORE_MAIN_PATH_SET = new Set(CORE_MAIN_PATHS);
+const EXTENDED_MAIN_PATH_SET = new Set([...CORE_MAIN_PATHS, routes.updates.base, routes.bookmarks.base]);
 
 const buildFullPathFromLocation = (loc) => {
   if (!loc) {
@@ -163,6 +160,23 @@ const buildFullPathFromLocation = (loc) => {
   const search = typeof loc.search === 'string' ? loc.search : '';
   const hash = typeof loc.hash === 'string' ? loc.hash : '';
   return `${base}${search}${hash}`;
+};
+
+const resolveInitialTrackedPath = (storageKey, allowedPathSet, location) => {
+  if (allowedPathSet.has(location.pathname)) {
+    return buildFullPathFromLocation(location);
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = window.sessionStorage.getItem(storageKey);
+      if (stored && typeof stored === 'string' && stored.startsWith('/')) {
+        return stored;
+      }
+    } catch {
+      // ignore storage failures
+    }
+  }
+  return routes.map.base;
 };
 
 const readStoredBadgeSoundPreference = () => {
@@ -208,22 +222,12 @@ function App() {
   const [friendBadgesEnabled, setFriendBadgesEnabled] = useState(
     () => readStoredFriendBadgePreference()
   );
-  const [lastMainNavPath, setLastMainNavPath] = useState(() => {
-    if (MAIN_NAV_PATH_SET.has(location.pathname)) {
-      return buildFullPathFromLocation(location);
-    }
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = window.sessionStorage.getItem(MAIN_NAV_STORAGE_KEY);
-        if (stored && typeof stored === 'string' && stored.startsWith('/')) {
-          return stored;
-        }
-      } catch {
-        // ignore storage read errors
-      }
-    }
-    return routes.map.base;
-  });
+  const [lastMainNavPath, setLastMainNavPath] = useState(() =>
+    resolveInitialTrackedPath(MAIN_NAV_STORAGE_KEY, EXTENDED_MAIN_PATH_SET, location)
+  );
+  const [lastCoreNavPath, setLastCoreNavPath] = useState(() =>
+    resolveInitialTrackedPath(CORE_NAV_STORAGE_KEY, CORE_MAIN_PATH_SET, location)
+  );
   const {
     toastState: badgeToast,
     announceBadgeEarned,
@@ -285,22 +289,36 @@ function App() {
   }, [friendBadgesEnabled]);
 
   useEffect(() => {
-    if (!MAIN_NAV_PATH_SET.has(location.pathname)) {
-      return;
-    }
     const nextPath = buildFullPathFromLocation(location);
-    if (!nextPath || lastMainNavPath === nextPath) {
-      return;
-    }
-    setLastMainNavPath(nextPath);
-    if (typeof window !== 'undefined') {
-      try {
-        window.sessionStorage.setItem(MAIN_NAV_STORAGE_KEY, nextPath);
-      } catch {
-        // ignore storage failures (e.g., private browsing)
+    if (
+      EXTENDED_MAIN_PATH_SET.has(location.pathname) &&
+      nextPath &&
+      lastMainNavPath !== nextPath
+    ) {
+      setLastMainNavPath(nextPath);
+      if (typeof window !== 'undefined') {
+        try {
+          window.sessionStorage.setItem(MAIN_NAV_STORAGE_KEY, nextPath);
+        } catch {
+          // ignore storage failures (e.g., private browsing)
+        }
       }
     }
-  }, [lastMainNavPath, location]);
+    if (
+      CORE_MAIN_PATH_SET.has(location.pathname) &&
+      nextPath &&
+      lastCoreNavPath !== nextPath
+    ) {
+      setLastCoreNavPath(nextPath);
+      if (typeof window !== 'undefined') {
+        try {
+          window.sessionStorage.setItem(CORE_NAV_STORAGE_KEY, nextPath);
+        } catch {
+          // ignore storage failures (e.g., private browsing)
+        }
+      }
+    }
+  }, [lastCoreNavPath, lastMainNavPath, location]);
 
   const navPages = useMemo(
     () =>
@@ -738,7 +756,7 @@ function App() {
         <BadgeSoundProvider value={badgeSoundContextValue}>
           <UpdatesProvider value={updatesContextValue}>
             <SocialNotificationsProvider value={socialNotificationsContextValue}>
-              <MainNavigationProvider value={{ lastMainPath: lastMainNavPath }}>
+              <MainNavigationProvider value={{ lastMainPath: lastMainNavPath, lastCorePath: lastCoreNavPath }}>
                 <NavOverlayProvider value={navOverlayContextValue}>
                   <ThemeProvider theme={theme}>
                     <CssBaseline />

@@ -47,6 +47,38 @@ body .bookmarks-classic-shell {
   color: inherit;
 }
 
+.bookmarks-back-button {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #111;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.bookmarks-back-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.bookmarks-back-button:active {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.bookmarks-back-button:focus-visible {
+  outline: 2px solid rgba(0, 0, 0, 0.4);
+  outline-offset: 2px;
+}
+
+.bookmarks-back-button__icon {
+  font-size: 1rem;
+}
+
 .bookmarks-classic-shell .bookmarks-classic-list .MuiListItemButton-root {
   background-color: #151823;
   color: #ffffff;

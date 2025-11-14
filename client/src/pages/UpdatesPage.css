@@ -69,6 +69,21 @@
   font-size: 0.95rem;
 }
 
+.updates-header-back-btn {
+  background: none;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  cursor: pointer;
+}
+
+.updates-header-back-btn:focus-visible {
+  outline: 2px solid rgba(0, 0, 0, 0.35);
+  outline-offset: 2px;
+}
+
 .updates-header-back-icon {
   width: 32px !important;
   height: 32px !important;

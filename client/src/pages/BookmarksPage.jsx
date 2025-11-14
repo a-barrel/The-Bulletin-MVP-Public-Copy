@@ -19,7 +19,6 @@ import {
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import LaunchIcon from '@mui/icons-material/Launch';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { auth } from '../firebase';
 import {
   exportBookmarks,
@@ -29,6 +28,7 @@ import {
 } from '../api/mongoDataApi';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
+import MainNavBackButton from '../components/MainNavBackButton';
 import './BookmarksPage.css';
 
 export const pageConfig = {
@@ -245,20 +245,14 @@ function BookmarksPage() {
       }}
     >
       <Stack spacing={3}>
-        <Button
-          variant="text"
-          startIcon={<ArrowBackIcon fontSize="small" />}
-          onClick={() => navigate(-1)}
-          sx={{
-            alignSelf: 'flex-start',
-            color: '#111',
-            '&:hover': {
-              backgroundColor: 'rgba(0,0,0,0.05)'
-            }
-          }}
+        <MainNavBackButton
+          className="bookmarks-back-button"
+          iconClassName="bookmarks-back-button__icon"
+          ariaLabel="Back to main view"
+          scope="core"
         >
           Back
-        </Button>
+        </MainNavBackButton>
 
         <Stack direction="row" spacing={1.5} alignItems="center">
           <BookmarkIcon color="primary" />
