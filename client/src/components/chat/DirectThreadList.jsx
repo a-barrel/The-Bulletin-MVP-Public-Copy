@@ -25,6 +25,7 @@ import {
 import normalizeObjectId from '../../utils/normalizeObjectId';
 import { formatFriendlyTimestamp, formatRelativeTime } from '../../utils/dates';
 import FriendBadge from '../FriendBadge';
+import './DirectThreadList.css';
 
 function DirectThreadList({
   threads,
@@ -41,7 +42,7 @@ function DirectThreadList({
   if (canAccess === false) {
     return (
       <Box sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="black">
           Direct messages are disabled for your account.
         </Typography>
       </Box>
@@ -62,34 +63,25 @@ function DirectThreadList({
 
   return (
     <>
-      <Box
-        sx={{
-          px: 2,
-          py: 1.5,
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}
-      >
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Typography variant="subtitle1" fontWeight={700}>
-            Direct messages
-          </Typography>
-          <Chip label={threadCount} size="small" color="secondary" variant="outlined" />
-        </Stack>
-        {typeof onRefresh === 'function' ? (
-          <Tooltip title="Refresh conversations">
-            <span>
-              <IconButton onClick={onRefresh} disabled={isLoading}>
-                {isLoading ? <CircularProgress size={20} /> : <RefreshIcon fontSize="small" />}
-              </IconButton>
-            </span>
-          </Tooltip>
-        ) : null}
-      </Box>
+      <Box className="dm-header">
+        <Typography className="dm-header-title">
+          Select a message thread below
+        </Typography>
 
+        <Box className="dm-header-action-btns">
+          <IconButton
+            onClick={onRefresh}
+            disabled={isLoading}
+            className="dm-refresh-btn"
+          >
+            {isLoading ? (
+                <CircularProgress size={20} />
+              ) : (
+                <RefreshIcon sx={{ fontSize: 18 }} />
+              )}
+          </IconButton>
+        </Box>
+      </Box>
       {status && status.message ? (
         <Box sx={{ p: 2 }}>
           <Alert severity={status.type}>{status.message}</Alert>
@@ -97,14 +89,17 @@ function DirectThreadList({
       ) : null}
 
       {threadCount === 0 && !isLoading ? (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
-          <Typography variant="body2" color="text.secondary">
+        <Box className="has-no-dms-container">
+          <Typography
+            className="has-no-dms-body-text" 
+            variant="body2"
+          >
             You have no conversations yet. Start one from a profile page.
           </Typography>
         </Box>
       ) : null}
 
-      <List dense sx={{ overflowY: 'auto', flexGrow: 1 }}>
+      <List dense sx={{ overflowY: 'auto', flexGrow: 1, backgroundColor: 'white' }}>
         {safeThreads.map((thread) => {
           const isActive = thread.id === selectedThreadId;
           const participantsArray = Array.isArray(thread.participants) ? thread.participants : [];
@@ -186,12 +181,12 @@ function DirectThreadList({
           }
           return (
             <ListItemButton
+              className="dm-card"
               key={thread.id}
               selected={isActive}
               onClick={() => onSelectThread(thread.id)}
-              sx={{ alignItems: 'flex-start', py: 1.5 }}
             >
-              <ListItemAvatar>
+              <ListItemAvatar className="dm-avatar">
                 {isGroupChat ? (
                   <AvatarGroup max={3} sx={{ justifyContent: 'flex-start' }}>
                     {avatarElements}
@@ -202,7 +197,7 @@ function DirectThreadList({
               </ListItemAvatar>
               <ListItemText
                 primary={
-                  <Typography variant="subtitle1" fontWeight={600}>
+                  <Typography className="dm-card-name">
                     {displayName}
                     {!isGroupChat && otherParticipantEntries[0]?.id ? (
                       <FriendBadge userId={otherParticipantEntries[0].id} size="0.85em" />
@@ -210,13 +205,21 @@ function DirectThreadList({
                   </Typography>
                 }
                 secondary={
-                  <Typography variant="caption" color="text.secondary">
-                    {thread.lastMessageAt
-                      ? formatFriendlyTimestamp(thread.lastMessageAt) ||
-                        formatRelativeTime(thread.lastMessageAt) ||
-                        ''
-                      : `${thread.messageCount ?? 0} messages`}
-                  </Typography>
+                  <Box className="dm-card-bottom">
+                    <Typography className="dm-card-timestamp">
+                      {thread.lastMessageAt
+                        ? formatFriendlyTimestamp(thread.lastMessageAt) ||
+                          formatRelativeTime(thread.lastMessageAt) ||
+                          ''
+                        : `${thread.messageCount ?? 0} messages`}
+                    </Typography>
+
+                    {isActive && (
+                      <Typography className="dm-card-active-label">
+                        Chatting
+                      </Typography>
+                    )}
+                  </Box>
                 }
               />
             </ListItemButton>

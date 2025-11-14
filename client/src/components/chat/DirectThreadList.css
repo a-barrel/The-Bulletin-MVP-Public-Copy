@@ -1,0 +1,100 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap');
+
+* {
+  font-family: "Urbanist", sans-serif;
+}
+
+/* For the dms tab-side */
+.dm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: white;
+  padding: 0.2rem 1rem !important;
+}
+
+.dm-header-title {
+  font-family: 'Urbanist', sans-serif !important;
+  font-weight: 600 !important;
+  color: black !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.dm-header-action-btns {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+}
+
+.dm-refresh-btn {
+  width: 34px;
+  height: 34px;
+  color: #5D3889 !important;
+  margin-left: 0.25rem !important;
+}
+
+.dm-card {
+  border-radius: 6px;
+  margin: 4px 8px;
+  padding: 8px 12px !important;
+  transition: background-color 0.2s ease;
+  background-color: white !important;
+}
+
+.dm-avatar {
+  margin-right: -0.5rem !important;
+}
+
+.dm-card.Mui-selected {
+  background-color: #d9f2ffff !important; 
+}
+
+.dm-card .MuiListItemAvatar-root {
+  margin-right: 12px;
+}
+
+.dm-card .MuiTypography-root {
+  font-family: 'Urbanist', sans-serif;
+}
+
+.dm-card-name {
+  font-family: 'Urbanist', sans-serif !important;
+  font-weight: 600 !important;
+  color: black !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.dm-card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dm-card-timestamp {
+  font-size: 0.7rem !important;
+  color: gray !important;
+}
+
+.dm-card-active-label {
+  font-size: 0.7rem !important;
+  font-weight: 600;
+  color: #3EB8F0; 
+}
+
+.has-no-dms-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center !important;
+  text-align: center !important;
+  justify-content: center !important;
+  padding: 12px !important;
+}
+
+.has-no-dms-body-text {
+  font-family: 'Urbanist', sans-serif !important;
+  color: black !important;
+}
