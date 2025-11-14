@@ -1037,7 +1037,20 @@ function PinDetails() {
                     const { key, name, avatar, link } = attendee;
                     const content = (
                       <>
-                        <img src={avatar || undefined} alt={`${name} avatar`} className="attendee-avatar" />
+                        <div className="attendee-avatar-wrapper">
+                          <img
+                            src={avatar || undefined}
+                            alt={`${name} avatar`}
+                            className="attendee-avatar"
+                          />
+
+                          <FriendBadge
+                            userId={attendee.userId || attendee._id || attendee.id}
+                            size="0.9em"
+                            className="attendee-avatar-badge"
+                          />
+                        </div>
+
                         <span className="attendee-name">{name}</span>
                       </>
                     );

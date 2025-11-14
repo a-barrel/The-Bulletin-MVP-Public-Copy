@@ -980,6 +980,11 @@
     border-radius: 10px;
 }
 
+.pin-details .attendee-avatar-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
 .pin-details .attendee-avatar {
     width: 40px;
     height: 40px;
@@ -987,6 +992,12 @@
     object-fit: cover;
     background-color: #FFFFFF;
     border: 1px solid #2b2c3f;
+}
+
+.pin-details .attendee-avatar-badge {
+    position: absolute;
+    bottom: 2px;
+    right: -2px;
 }
 
 .pin-details .attendee-name {
