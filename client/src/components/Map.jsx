@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, Fragment } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import '../styles/leaflet.css';
@@ -27,8 +27,6 @@ const createMarkerIcon = (color, extraClassName) =>
     className: ['leaflet-marker-icon', extraClassName].filter(Boolean).join(' ')
   });
 
-const userIcon = createMarkerIcon('orange', 'user-location-icon');
-
 const nearbyIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
@@ -42,6 +40,46 @@ const defaultPinIcon = createMarkerIcon('green');
 const discussionPinIcon = createMarkerIcon('blue');
 const eventPinIcon = createMarkerIcon('violet');
 const selfPinIcon = createMarkerIcon('orange', 'self-pin-icon');
+
+const AVATAR_FALLBACK = '/images/profile/profile-01.jpg';
+
+const computeInitials = (value) => {
+  if (!value || typeof value !== 'string') {
+    return 'YOU';
+  }
+  const segments = value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+  if (!segments.length) {
+    return 'YOU';
+  }
+  return segments
+    .map((segment) => segment.charAt(0).toUpperCase())
+    .join('')
+    .slice(0, 3);
+};
+
+const createAvatarMarkerIcon = (avatarUrl, initials) =>
+  L.divIcon({
+    className: 'user-avatar-marker',
+    html: `
+      <div class="user-avatar-marker__outer">
+        <div class="user-avatar-marker__ring"></div>
+        <div class="user-avatar-marker__avatar">
+          ${
+            avatarUrl
+              ? `<img src="${avatarUrl}" alt="" />`
+              : `<span>${initials || 'YOU'}</span>`
+          }
+        </div>
+      </div>
+    `,
+    iconSize: [56, 56],
+    iconAnchor: [28, 48],
+    popupAnchor: [0, -44]
+  });
 
 // Component to handle map center updates
 function MapUpdater({ center }) {
@@ -176,11 +214,25 @@ const Map = ({
   selectedPinId,
   centerOverride,
   userRadiusMeters,
-  isOffline = false
+  isOffline = false,
+  currentUserAvatar,
+  currentUserDisplayName
 }) => {
   const tileLayerRef = useRef(null);
   const tileErrorCountRef = useRef(0);
   const [tilesUnavailable, setTilesUnavailable] = useState(false);
+  const userAvatarUrl = useMemo(
+    () => resolveThumbnailUrl(currentUserAvatar) ?? AVATAR_FALLBACK,
+    [currentUserAvatar]
+  );
+  const userInitials = useMemo(
+    () => computeInitials(currentUserDisplayName),
+    [currentUserDisplayName]
+  );
+  const userIcon = useMemo(
+    () => createAvatarMarkerIcon(userAvatarUrl, userInitials),
+    [userAvatarUrl, userInitials]
+  );
   const handleTileError = useCallback(() => {
     const layer = tileLayerRef.current;
     if (!layer || typeof layer.redraw !== 'function') {
@@ -262,7 +314,7 @@ const Map = ({
         />
       
       {userMarkerPosition && (
-        <Marker position={userMarkerPosition} icon={userIcon}>
+        <Marker position={userMarkerPosition} icon={userIcon} zIndexOffset={1800}>
           <Popup>
             <div>
               <h3 style={{ margin: 0 }}>You are here</h3>

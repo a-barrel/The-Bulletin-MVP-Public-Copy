@@ -92,6 +92,10 @@
     gap: 0.75rem;
 }
 
+.pin-details .pin-nav-menu {
+    margin-left: 0.25rem;
+}
+
 .pin-details .edit-button-wrapper {
     display: flex;
 }

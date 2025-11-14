@@ -25,6 +25,7 @@ import AddCommentIcon from '@mui/icons-material/AddComment';
 import LeafletMap from '../components/Map';
 import FriendBadge from '../components/FriendBadge';
 import BookmarkButton from '../components/BookmarkButton';
+import GlobalNavMenu from '../components/GlobalNavMenu';
 import MainNavBackButton from '../components/MainNavBackButton';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
@@ -44,6 +45,7 @@ const SAMPLE_PIN_IDS = [
 const FAR_PIN_ID = SAMPLE_PIN_IDS[0] ?? '68e061721329566a22d474aa';
 const MAX_PHOTO_PIN_ID = '68e061721329566a22d47a00';
 const BROKEN_TEXTURE_PIN_ID = '68e061721329566a22d47a01';
+const NO_IMAGE_PIN_ID = '68e061721329566a22d47a10';
 
 export const pageConfig = {
   id: 'pin-details',
@@ -54,7 +56,7 @@ export const pageConfig = {
   showInNav: true,
   resolveNavTarget: ({ currentPath } = {}) => {
     const input = window.prompt(
-      'Enter a pin ID to view. Shortcuts: "expired" loads an expired pin, "far" loads a distant pin, "3" loads the max-photo sample, "broken" loads the UNKNOWN_TEXTURE tester. Leave blank for a random sample or cancel to stay put.'
+      'Enter a pin ID to view. Shortcuts: "expired" loads an expired pin, "far" loads a distant pin, "3" loads the max-photo sample, "broken" loads the UNKNOWN_TEXTURE tester, "nopicture" loads the imageless pin. Leave blank for a random sample or cancel to stay put.'
     );
     if (input === null) {
       return currentPath ?? null;
@@ -72,6 +74,9 @@ export const pageConfig = {
     }
     if (trimmed === 'broken') {
       return routes.pin.byId(BROKEN_TEXTURE_PIN_ID);
+    }
+    if (trimmed.toLowerCase() === 'nopicture') {
+      return routes.pin.byId(NO_IMAGE_PIN_ID);
     }
     if (!trimmed) {
       const randomId =
@@ -621,7 +626,12 @@ function PinDetails() {
       ) : null}
 
       <header className="header">
-        <MainNavBackButton className="back-button" iconClassName="back-arrow" aria-label="Go back" />
+        <div className="pin-header-nav">
+          <MainNavBackButton className="back-button" iconClassName="back-arrow" aria-label="Go back" />
+          <div className="pin-nav-menu">
+            <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+          </div>
+        </div>
 
         <h2>{pinTypeHeading}</h2>
 

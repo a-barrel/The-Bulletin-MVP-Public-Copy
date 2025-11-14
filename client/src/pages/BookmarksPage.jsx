@@ -30,6 +30,7 @@ import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import MainNavBackButton from '../components/MainNavBackButton';
 import './BookmarksPage.css';
+import GlobalNavMenu from '../components/GlobalNavMenu';
 
 export const pageConfig = {
   id: 'bookmarks',
@@ -245,14 +246,17 @@ function BookmarksPage() {
       }}
     >
       <Stack spacing={3}>
-        <MainNavBackButton
-          className="bookmarks-back-button"
-          iconClassName="bookmarks-back-button__icon"
-          ariaLabel="Back to main view"
-          scope="core"
-        >
-          Back
-        </MainNavBackButton>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1.5}>
+          <MainNavBackButton
+            className="bookmarks-back-button"
+            iconClassName="bookmarks-back-button__icon"
+            ariaLabel="Back to main view"
+            scope="core"
+          >
+            Back
+          </MainNavBackButton>
+          <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+        </Stack>
 
         <Stack direction="row" spacing={1.5} alignItems="center">
           <BookmarkIcon color="primary" />

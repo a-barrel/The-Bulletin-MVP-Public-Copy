@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchPinsNearby, fetchPinById, fetchCurrentUserProfile } from '../api/mongoDataApi';
 import reportClientError from '../utils/reportClientError';
 import { mapPinToFeedItem } from '../utils/pinFeedItem';
+import { resolvePinFetchLimit } from '../utils/pinDensity';
 const DEFAULT_RADIUS_MILES = 10;
 const PIN_FETCH_LIMIT = 50;
 const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
@@ -37,6 +38,9 @@ export default function useNearbyPinsFeed({
     hasSharedLocation ? null : 'Showing popular pins near Long Beach until you share your location.'
   );
   const [viewerProfileId, setViewerProfileId] = useState(null);
+  const fallbackLimit = limit ?? PIN_FETCH_LIMIT;
+  const [pinDisplayLimit, setPinDisplayLimit] = useState(fallbackLimit);
+  const [syncListWithMapLimit, setSyncListWithMapLimit] = useState(true);
 
   useEffect(() => {
     if (hasValidCoordinates(sharedLocation)) {
@@ -84,17 +88,29 @@ export default function useNearbyPinsFeed({
             ? profile._id.trim()
             : null;
         setViewerProfileId(normalizedId);
+        const syncPreference = profile?.preferences?.display?.listSyncsWithMapLimit;
+        const shouldSync = syncPreference !== false;
+        setSyncListWithMapLimit(shouldSync);
+        setPinDisplayLimit(shouldSync ? resolvePinFetchLimit(profile) : fallbackLimit);
       } catch (profileError) {
         console.warn('Failed to load viewer profile for nearby feed:', profileError);
         if (isMounted) {
           setViewerProfileId(null);
+          setSyncListWithMapLimit(true);
+          setPinDisplayLimit(fallbackLimit);
         }
       }
     })();
     return () => {
       isMounted = false;
     };
-  }, [isOffline]);
+  }, [fallbackLimit, isOffline]);
+
+  useEffect(() => {
+    if (!syncListWithMapLimit) {
+      setPinDisplayLimit(fallbackLimit);
+    }
+  }, [fallbackLimit, syncListWithMapLimit]);
 
   const loadPins = useCallback(
     async (overrideLocation) => {
@@ -117,7 +133,7 @@ export default function useNearbyPinsFeed({
           latitude: targetLocation.latitude,
           longitude: targetLocation.longitude,
           distanceMiles,
-          limit,
+          limit: pinDisplayLimit,
           search: typeof filters.search === 'string' ? filters.search : undefined,
           types: Array.isArray(filters.types) ? filters.types : undefined,
           categories: Array.isArray(filters.categories) ? filters.categories : undefined,
@@ -175,7 +191,7 @@ export default function useNearbyPinsFeed({
         setLoading(false);
       }
     },
-    [distanceMiles, filters, isOffline, limit, userLocation]
+    [distanceMiles, filters, isOffline, pinDisplayLimit, userLocation]
   );
 
   useEffect(() => {

@@ -51,6 +51,13 @@
   border-bottom: 2px solid #000;
 }
 
+.updates-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding-left: 0.25rem;
+}
+
 .updates-header-title {
   font-family: 'Urbanist', sans-serif !important;
   color: #5D3889;

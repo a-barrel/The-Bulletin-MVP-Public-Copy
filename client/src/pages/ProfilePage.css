@@ -167,6 +167,10 @@
   padding: 0 1rem;
 }
 
+.profile-back-nav .profile-nav-menu {
+  margin-left: 0.25rem;
+}
+
 .profile-back-nav .back-button {
   background: rgba(255, 255, 255, 0.5);
   color: #4b208c;

@@ -22,6 +22,7 @@ import {
 import useUpdatesFeed from '../hooks/useUpdatesFeed';
 import { routes } from '../routes';
 import usePushNotifications from '../hooks/usePushNotifications';
+import GlobalNavMenu from '../components/GlobalNavMenu';
 import MainNavBackButton from '../components/MainNavBackButton';
 
 export const pageConfig = {
@@ -147,12 +148,15 @@ function UpdatesPage() {
     <Box className="updates-page">
       <Box ref={containerRef} className="updates-frame">
         <header className="updates-header-bar">
-          <MainNavBackButton
-            className="updates-header-back-btn"
-            iconClassName="updates-header-back-icon"
-            ariaLabel="Back to main view"
-            scope="core"
-          />
+          <div className="updates-header-actions">
+            <MainNavBackButton
+              className="updates-header-back-btn"
+              iconClassName="updates-header-back-icon"
+              ariaLabel="Back to main view"
+              scope="core"
+            />
+            <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+          </div>
 
           <h1 className="updates-header-title">Updates</h1>
 

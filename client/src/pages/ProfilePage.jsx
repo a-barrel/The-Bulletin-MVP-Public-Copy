@@ -29,6 +29,7 @@ import ProfileHero from '../components/profile/ProfileHero';
 import ProfileMutualFriends from '../components/profile/ProfileMutualFriends';
 import ProfileStatsSummary from '../components/profile/ProfileStatsSummary';
 import ReportContentDialog from '../components/ReportContentDialog';
+import GlobalNavMenu from '../components/GlobalNavMenu';
 import useProfileBadges from '../hooks/useProfileBadges';
 import useProfileMutualFriends from '../hooks/useProfileMutualFriends';
 import useProfileStats from '../hooks/useProfileStats';
@@ -914,6 +915,9 @@ function ProfilePage() {
         >
           <ArrowBackIcon className="back-button__icon" />
         </button>
+        <div className="profile-nav-menu">
+          <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+        </div>
         {canEditProfile && !isEditing && (
           <Button
             variant="contained"
