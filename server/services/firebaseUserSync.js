@@ -548,7 +548,7 @@ function loadUsersFromExport(exportPath) {
 }
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const DEFAULT_AUTH_FETCH_RETRY_ATTEMPTS = 5;
+const DEFAULT_AUTH_FETCH_RETRY_ATTEMPTS = 7;
 const DEFAULT_AUTH_FETCH_RETRY_DELAY_MS = 500;
 
 async function fetchAllAuthUsersViaAdmin({
