@@ -383,13 +383,17 @@ async function ensureFirebaseAccountForUserDocument(user, { dryRun = false, defa
       return summary;
     }
 
-    authUser = await admin.auth().createUser({
+    const createPayload = {
       email: targetEmail,
       password,
       displayName,
       emailVerified: Boolean(targetEmail),
       disabled: accountDisabled
-    });
+    };
+    if (user.firebaseUid) {
+      createPayload.uid = user.firebaseUid;
+    }
+    authUser = await admin.auth().createUser(createPayload);
     summary.createdAuthUser = true;
 
     if (shouldAssignFirebasePhotos) {
