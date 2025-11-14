@@ -15,6 +15,13 @@ const MAX_PHOTO_UPLOADS = 3;
 const DRAFT_STORAGE_KEY = 'pinpoint:createPinDraft';
 const AUTOSAVE_DELAY_MS = 1500;
 
+const createInitialFormState = () => ({
+  ...INITIAL_FORM_STATE,
+  expiresAt: formatDateTimeLocalInput(
+    new Date(Date.now() + 3 * MILLISECONDS_PER_DAY)
+  )
+});
+
 export const INITIAL_FORM_STATE = {
   title: '',
   description: '',
@@ -185,7 +192,7 @@ export default function useCreatePinForm({
   onPinCreated = noop
 } = {}) {
   const [pinType, setPinType] = useState('discussion');
-  const [formState, setFormState] = useState(INITIAL_FORM_STATE);
+  const [formState, setFormState] = useState(() => createInitialFormState());
   const [autoDelete, setAutoDelete] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState(null);
@@ -211,6 +218,29 @@ export default function useCreatePinForm({
     }
     return null;
   }, [viewerLocation]);
+
+  useEffect(() => {
+    if (!viewerCoordinates) {
+      return;
+    }
+    setFormState((prev) => {
+      const latEmpty = !prev.latitude;
+      const lngEmpty = !prev.longitude;
+      const approxEmpty =
+        !prev.approxFormatted && !prev.approxCity && !prev.approxState && !prev.approxCountry;
+      if (!latEmpty && !lngEmpty && !approxEmpty) {
+        return prev;
+      }
+      const formattedLat = viewerCoordinates.latitude.toFixed(6);
+      const formattedLng = viewerCoordinates.longitude.toFixed(6);
+      return {
+        ...prev,
+        latitude: latEmpty ? formattedLat : prev.latitude,
+        longitude: lngEmpty ? formattedLng : prev.longitude,
+        approxFormatted: approxEmpty ? 'Near your current location' : prev.approxFormatted
+      };
+    });
+  }, [viewerCoordinates]);
 
   const writeDraft = useCallback(() => {
     if (typeof window === 'undefined') {
@@ -599,7 +629,7 @@ export default function useCreatePinForm({
   const resetForm = useCallback(() => {
     clearDraft();
     setPinType('discussion');
-    setFormState(INITIAL_FORM_STATE);
+    setFormState(createInitialFormState());
     setAutoDelete(true);
     setStatus(null);
     setDraftStatus(null);

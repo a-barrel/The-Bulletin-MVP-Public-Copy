@@ -1,11 +1,11 @@
 /* NOTE: Page exports configuration alongside the component. */
-import { useCallback, useEffect, useId } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import MapIcon from '@mui/icons-material/Map';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import '../styles/leaflet.css';
 
@@ -17,6 +17,10 @@ import { useNavOverlay } from '../contexts/NavOverlayContext';
 import useCreatePinForm from '../hooks/useCreatePinForm';
 import normalizeObjectId from '../utils/normalizeObjectId';
 import './CreatePinPage.css';
+import GlobalNavMenu from '../components/GlobalNavMenu';
+import { fetchCurrentUserProfile } from '../api/mongoDataApi';
+import resolveAssetUrl from '../utils/media';
+import { haversineDistanceMeters, formatDistanceMiles, formatDistanceMetersLabel } from '../utils/geo';
 
 export const pageConfig = {
   id: 'create-pin',
@@ -39,6 +43,42 @@ const DEFAULT_MAP_CENTER = {
   lat: 33.7838,
   lng: -118.1136
 };
+
+const DEFAULT_AVATAR_PATH = '/images/profile/profile-01.jpg';
+
+const computeInitials = (value) => {
+  if (!value || typeof value !== 'string') {
+    return 'YOU';
+  }
+  const parts = value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+  if (!parts.length) {
+    return 'YOU';
+  }
+  return parts
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('')
+    .slice(0, 3);
+};
+
+const createAvatarMarkerIcon = (avatarUrl, initials) =>
+  L.divIcon({
+    className: 'create-pin-avatar-marker',
+    html: `
+      <div class="create-pin-avatar-marker__outer">
+        <div class="create-pin-avatar-marker__ring"></div>
+        <div class="create-pin-avatar-marker__avatar">
+          ${avatarUrl ? `<img src="${avatarUrl}" alt="" />` : `<span>${initials}</span>`}
+        </div>
+      </div>
+    `,
+    iconSize: [56, 56],
+    iconAnchor: [28, 48],
+    popupAnchor: [0, -32]
+  });
 
 const FIGMA_TEMPLATE = {
   header: {
@@ -82,9 +122,24 @@ function MapCenterUpdater({ position }) {
   return null;
 }
 
-function SelectableLocationMap({ value, onChange, anchor }) {
+function SelectableLocationMap({ value, onChange, anchor, avatarUrl, viewerName }) {
   const center = value ?? anchor ?? DEFAULT_MAP_CENTER;
   const trackingPosition = value ?? anchor ?? null;
+  const userLatLng =
+    anchor && Number.isFinite(anchor.lat) && Number.isFinite(anchor.lng)
+      ? [anchor.lat, anchor.lng]
+      : null;
+  const draftLatLng =
+    value && Number.isFinite(value.lat) && Number.isFinite(value.lng)
+      ? [value.lat, value.lng]
+      : null;
+  const initials = useMemo(() => computeInitials(viewerName || 'You'), [viewerName]);
+  const userMarkerIcon = useMemo(() => {
+    if (!avatarUrl) {
+      return createAvatarMarkerIcon(DEFAULT_AVATAR_PATH, initials);
+    }
+    return createAvatarMarkerIcon(avatarUrl, initials);
+  }, [avatarUrl, initials]);
 
   return (
     <MapContainer
@@ -99,7 +154,26 @@ function SelectableLocationMap({ value, onChange, anchor }) {
       />
       <MapClickHandler onSelect={onChange} />
       <MapCenterUpdater position={trackingPosition} />
-      {value ? <Marker position={[value.lat, value.lng]} /> : null}
+      {userLatLng ? (
+        <>
+          <Marker
+            position={userLatLng}
+            icon={userMarkerIcon}
+          />
+          {draftLatLng ? (
+            <Polyline
+              positions={[userLatLng, draftLatLng]}
+              pathOptions={{
+                color: '#5d3889',
+                weight: 2,
+                dashArray: '6 8',
+                opacity: 0.85
+              }}
+            />
+          ) : null}
+        </>
+      ) : null}
+      {draftLatLng ? <Marker position={draftLatLng} /> : null}
     </MapContainer>
   );
 }
@@ -110,6 +184,49 @@ function CreatePinPage() {
   const { location: viewerLocation } = useLocationContext();
   const { announceBadgeEarned } = useBadgeSound();
   const { handleBack: overlayBack, previousNavPath, previousNavPage } = useNavOverlay();
+  const [viewerProfile, setViewerProfile] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (isOffline) {
+      setViewerProfile(null);
+      return () => {};
+    }
+    (async () => {
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (!cancelled) {
+          setViewerProfile(profile ?? null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setViewerProfile(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOffline]);
+
+  const viewerDisplayName = useMemo(() => {
+    if (viewerProfile?.displayName) {
+      return viewerProfile.displayName;
+    }
+    if (viewerProfile?.username) {
+      return viewerProfile.username;
+    }
+    return 'You';
+  }, [viewerProfile]);
+
+  const viewerAvatarUrl = useMemo(() => {
+    if (!viewerProfile) {
+      return DEFAULT_AVATAR_PATH;
+    }
+    const avatarSource = viewerProfile.avatar || viewerProfile.profile?.avatar;
+    const resolved = resolveAssetUrl(avatarSource, { fallback: DEFAULT_AVATAR_PATH });
+    return resolved || DEFAULT_AVATAR_PATH;
+  }, [viewerProfile]);
 
   const handlePinCreated = useCallback(
     (pin) => {
@@ -166,6 +283,34 @@ function CreatePinPage() {
     onPinCreated: handlePinCreated
   });
 
+  const pinDistanceMeters = useMemo(() => {
+    if (!viewerMapAnchor || !selectedCoordinates) {
+      return null;
+    }
+    return haversineDistanceMeters(
+      {
+        latitude: viewerMapAnchor.lat,
+        longitude: viewerMapAnchor.lng
+      },
+      {
+        latitude: selectedCoordinates.lat,
+        longitude: selectedCoordinates.lng
+      }
+    );
+  }, [selectedCoordinates, viewerMapAnchor]);
+
+  const pinDistanceLabel = useMemo(() => {
+    if (!Number.isFinite(pinDistanceMeters) || pinDistanceMeters === null) {
+      return null;
+    }
+    const milesLabel = formatDistanceMiles(pinDistanceMeters, { decimals: 2 });
+    const metersLabel = formatDistanceMetersLabel(pinDistanceMeters);
+    if (milesLabel && metersLabel) {
+      return `${milesLabel} mi (${metersLabel})`;
+    }
+    return milesLabel || metersLabel || null;
+  }, [pinDistanceMeters]);
+
   const backButtonLabel = previousNavPage?.label ? `Back to ${previousNavPage.label}` : 'Back';
   const handleHeaderBack = useCallback(() => {
     if (previousNavPath) {
@@ -206,14 +351,20 @@ function CreatePinPage() {
           }}
         >
           <div className="header-row">
-            <button
-              type="button"
-              className="btn-back"
-              onClick={handleHeaderBack}
-              aria-label={backButtonLabel}
-            >
-              <ArrowBackIosNewIcon className="back-arrow" aria-hidden="true" />
-            </button>
+            <div className="header-left">
+              <button
+                type="button"
+                className="btn-back"
+                onClick={handleHeaderBack}
+                aria-label={backButtonLabel}
+              >
+                <ArrowBackIosNewIcon className="back-arrow" aria-hidden="true" />
+              </button>
+              <GlobalNavMenu
+                triggerClassName="gnm-trigger-btn"
+                iconClassName="gnm-trigger-btn__icon"
+              />
+            </div>
 
             <div className="header-content">
               <h1>{headerTitle}</h1>
@@ -575,8 +726,19 @@ function CreatePinPage() {
               value={selectedCoordinates}
               onChange={handleMapLocationSelect}
               anchor={viewerMapAnchor}
+              avatarUrl={viewerAvatarUrl}
+              viewerName={viewerDisplayName}
             />
           </div>
+          {pinDistanceLabel ? (
+            <p className="distance-indicator">
+              Distance from you: <strong>{pinDistanceLabel}</strong>
+            </p>
+          ) : viewerMapAnchor ? (
+            <p className="distance-indicator hint">
+              Tap the map to see how far the new pin is from your location.
+            </p>
+          ) : null}
 
           {isReverseGeocoding && <p className="loading-text">Looking up address details...</p>}
 
@@ -585,34 +747,40 @@ function CreatePinPage() {
           </p>
 
           <div className="map-coords">
-            <label htmlFor={`create-pin-latitude-${latitudeInputId}`}>Latitude</label>
-            <input
-              type="text"
-              id={`create-pin-latitude-${latitudeInputId}`}
-              value={formState.latitude}
-              onChange={handleFieldChange('latitude')}
-              required
-              placeholder="33.783800"
-            />
+            <div className="coord-field">
+              <label htmlFor={`create-pin-latitude-${latitudeInputId}`}>Latitude</label>
+              <input
+                type="text"
+                id={`create-pin-latitude-${latitudeInputId}`}
+                value={formState.latitude}
+                onChange={handleFieldChange('latitude')}
+                required
+                placeholder="33.783800"
+              />
+            </div>
 
-            <label htmlFor={`create-pin-longitude-${longitudeInputId}`}>Longitude</label>
-            <input
-              type="text"
-              id={`create-pin-longitude-${longitudeInputId}`}
-              value={formState.longitude}
-              onChange={handleFieldChange('longitude')}
-              required
-              placeholder="-118.113600"
-            />
+            <div className="coord-field">
+              <label htmlFor={`create-pin-longitude-${longitudeInputId}`}>Longitude</label>
+              <input
+                type="text"
+                id={`create-pin-longitude-${longitudeInputId}`}
+                value={formState.longitude}
+                onChange={handleFieldChange('longitude')}
+                required
+                placeholder="-118.113600"
+              />
+            </div>
 
-            <label htmlFor={`create-pin-radius-${radiusInputId}`}>Proximity Radius (miles)</label>
-            <input
-              type="text"
-              id={`create-pin-radius-${radiusInputId}`}
-              value={formState.proximityRadiusMiles}
-              onChange={handleFieldChange('proximityRadiusMiles')}
-              placeholder="Optional. Defaults to 1 mile."
-            />
+            <div className="coord-field">
+              <label htmlFor={`create-pin-radius-${radiusInputId}`}>Proximity Radius (miles)</label>
+              <input
+                type="text"
+                id={`create-pin-radius-${radiusInputId}`}
+                value={formState.proximityRadiusMiles}
+                onChange={handleFieldChange('proximityRadiusMiles')}
+                placeholder="Optional. Defaults to 1 mile."
+              />
+            </div>
           </div>
         </div>
 

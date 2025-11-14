@@ -612,16 +612,30 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     };
   }, [isOffline, pinId]);
 
+  const isEventPin = Boolean(pin && typeof pin.type === 'string' && pin.type.toLowerCase() === 'event');
+
   useEffect(() => {
-    if (!pinId) {
-      setShouldPrefetchAttendees(true);
+    if (!pinId || !isEventPin) {
+      setShouldPrefetchAttendees(false);
       setAttendees([]);
       return;
     }
     setShouldPrefetchAttendees(true);
-  }, [pinId]);
+  }, [pinId, isEventPin]);
 
   useEffect(() => {
+    if (!isEventPin) {
+      setAttendees([]);
+      if (attendeeOverlayOpen) {
+        setIsLoadingAttendees(false);
+        setAttendeesError(null);
+      }
+      if (shouldPrefetchAttendees) {
+        setShouldPrefetchAttendees(false);
+      }
+      return;
+    }
+
     const shouldLoadAttendees = attendeeOverlayOpen || shouldPrefetchAttendees;
     if (!shouldLoadAttendees) {
       return;
@@ -679,7 +693,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     return () => {
       ignore = true;
     };
-  }, [attendeeOverlayOpen, isOffline, pinId, shouldPrefetchAttendees]);
+  }, [attendeeOverlayOpen, isEventPin, isOffline, pinId, shouldPrefetchAttendees]);
 
   const pinExpired = useMemo(() => {
     if (!pin) {

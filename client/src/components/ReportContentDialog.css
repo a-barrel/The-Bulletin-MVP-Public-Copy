@@ -4,8 +4,11 @@
 
 .report-dialog .MuiPaper-root {
   border: 2px solid #5D3889;
-  border-radius: 15px !important; 
-  overflow: hidden; 
+  border-radius: 14px !important;
+  overflow: hidden;
+  max-height: min(90vh, 640px);
+  display: flex;
+  flex-direction: column;
 }
 
 /* title */
@@ -14,47 +17,108 @@
   text-align: center;
   color: #000000;
   background-color: #9B5DE5;
-  font-size: x-large !important;
+  font-size: 1.45rem !important;
   border-bottom: solid #5D3889;
+  padding: 0.6rem 1rem !important;
 }
 
-/* post content */
+/* dialog body */
 .report-content {
   background-color: #CDAEF2;
-  padding: 1.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.report-stack {
+  gap: 0.65rem;
 }
 
 .report-summary {
   color: #000000;
   font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
-.report-summary p {
-  font-weight: 600;
-  margin-top: 0;
-  margin-bottom: 1rem;
-  font-size: large;
+.report-summary-text {
+  word-break: break-word;
+}
+
+.report-offense-section {
+  background-color: #ffffff;
+  border: 1px solid #7b3fc1;
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  color: #5d3889;
+}
+
+.report-offense-title {
+  color: #5d3889;
+  font-weight: 600 !important;
+  margin-bottom: 0.2rem;
+}
+
+.report-offense-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.15rem 0.3rem;
+  margin: 0;
+}
+
+.report-offense-option {
+  margin: 0;
+  color: #5d3889;
+  font-size: 0.9rem;
+}
+
+.report-offense-option .MuiTypography-root {
+  color: #5d3889;
+  font-weight: 500;
+}
+
+.report-offense-option .MuiCheckbox-root {
+  color: #5d3889;
+  padding: 4px;
+}
+
+.report-offense-option .MuiCheckbox-root.Mui-checked {
+  color: #7b3fc1;
 }
 
 /* report text */
 .report-textfield {
-  background-color: transparent; 
+  background-color: transparent;
   color: #000000;
   border-radius: 8px;
 }
 
 .report-textfield .MuiOutlinedInput-root {
-  background-color: #ffffff;
-  border-radius: 8px; 
-  border: 1px solid #CDAEF2;
-  transition: border-color 0.2s ease;
+  background-color: #f8efff;
+  border-radius: 8px;
+  border: 1px solid #7b3fc1;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.report-textfield .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
+  border-color: #7b3fc1;
 }
 
 .report-textfield .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
-  border-color: #999;
+  border-color: #6a1b9a;
 }
+
+.report-textfield .MuiOutlinedInput-root.Mui-focused {
+  background-color: #f1e4ff;
+}
+
 .report-textfield .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
-  border-color: #6a1b9a; 
+  border-color: #5d3889;
+  box-shadow: 0 0 0 1px rgba(93, 56, 137, 0.25);
+}
+
+.report-textfield textarea {
+  padding-top: 0.35rem;
 }
 
 .report-textfield input,
@@ -70,12 +134,11 @@
 }
 
 .report-textfield .MuiFormHelperText-root {
-  background-color: #cdaef2;
-  color: #000000;
-  border-radius: 0 0 8px 8px; 
-  padding: 4px 8px;
-  margin-top: 6px;
-  font-size: 0.85rem;
+  background-color: transparent;
+  color: #5d3889;
+  padding: 2px 0;
+  margin-top: 4px;
+  font-size: 0.78rem;
 }
 
 /* error */
@@ -87,7 +150,7 @@
 .report-actions {
   display: flex;
   justify-content: space-between;
-  padding: 0.75rem 1.5rem;
+  padding: 0.55rem 1.2rem;
   background-color: #9B5DE5;
   border-top: solid #5D3889;
 }
@@ -97,7 +160,7 @@
 }
 
 .report-cancel:hover {
-    background-color: #7b3fc1;
+  background-color: #7b3fc1;
 }
 
 .report-submit {

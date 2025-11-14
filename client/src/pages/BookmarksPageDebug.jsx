@@ -38,6 +38,7 @@ import normalizeObjectId from '../utils/normalizeObjectId';
 import PinCard from '../components/PinCard';
 import { mapBookmarkToFeedItem } from '../utils/bookmarks';
 import BackButton from '../components/BackButton';
+import GlobalNavMenu from '../components/GlobalNavMenu';
 import runtimeConfig from '../config/runtime';
 import './BookmarksPageDebug.css';
 
@@ -303,6 +304,7 @@ function BookmarksPageDebug() {
       <div className="bookmarks-nav">
         <div className="bookmarks-nav-left">
           <BackButton className="bookmarks-back-link" />
+          <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
         </div>
         <div className="bookmarks-nav-title">
           <BookmarkIcon fontSize="small" />

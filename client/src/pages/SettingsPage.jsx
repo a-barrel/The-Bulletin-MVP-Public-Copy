@@ -413,7 +413,7 @@ function SettingsPage() {
       }}
     >
       <Stack spacing={3}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1.5}>
+        <Stack direction="row" alignItems="center" spacing={1.25}>
           <Button
             variant="text"
             startIcon={<ArrowBackIcon fontSize="small" />}
@@ -432,7 +432,10 @@ function SettingsPage() {
           >
             Back
           </Button>
-          <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+          <GlobalNavMenu
+            triggerClassName="gnm-trigger-btn"
+            iconClassName="gnm-trigger-btn__icon"
+          />
         </Stack>
 
         <Stack

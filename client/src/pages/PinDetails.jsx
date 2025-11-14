@@ -328,6 +328,7 @@ function PinDetails() {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
   const [reportReason, setReportReason] = useState('');
+  const [reportSelectedOffenses, setReportSelectedOffenses] = useState([]);
   const [reportError, setReportError] = useState(null);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportStatus, setReportStatus] = useState(null);
@@ -558,6 +559,7 @@ function PinDetails() {
       context: contextLabel
     });
     setReportReason('');
+    setReportSelectedOffenses([]);
     setReportError(null);
     setReportDialogOpen(true);
   }, [pin]);
@@ -569,8 +571,24 @@ function PinDetails() {
     setReportDialogOpen(false);
     setReportTarget(null);
     setReportReason('');
+    setReportSelectedOffenses([]);
     setReportError(null);
   }, [isSubmittingReport]);
+
+  const handleToggleReportOffense = useCallback((offense, checked) => {
+    if (typeof offense !== 'string') {
+      return;
+    }
+    setReportSelectedOffenses((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(offense);
+      } else {
+        next.delete(offense);
+      }
+      return Array.from(next);
+    });
+  }, []);
 
   const handleSubmitReport = useCallback(async () => {
     if (!reportTarget?.contentType || !reportTarget?.contentId) {
@@ -587,11 +605,13 @@ function PinDetails() {
         contentType: reportTarget.contentType,
         contentId: reportTarget.contentId,
         reason: reportReason.trim(),
-        context: reportTarget.context || ''
+        context: reportTarget.context || '',
+        offenses: reportSelectedOffenses
       });
       setReportDialogOpen(false);
       setReportTarget(null);
       setReportReason('');
+      setReportSelectedOffenses([]);
       setReportStatus({
         type: 'success',
         message: 'Thanks for the report. Our moderators will review it shortly.'
@@ -601,7 +621,7 @@ function PinDetails() {
     } finally {
       setIsSubmittingReport(false);
     }
-  }, [reportReason, reportTarget, isSubmittingReport]);
+  }, [reportReason, reportSelectedOffenses, reportTarget, isSubmittingReport]);
 
   const handleReportStatusClose = useCallback(() => {
     setReportStatus(null);
@@ -1200,6 +1220,8 @@ function PinDetails() {
         error={reportError}
         contentSummary={reportTarget?.summary || ''}
         context={reportTarget?.context || ''}
+        selectedReasons={reportSelectedOffenses}
+        onToggleReason={handleToggleReportOffense}
       />
 
       <Snackbar

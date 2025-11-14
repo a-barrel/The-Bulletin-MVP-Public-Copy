@@ -55,6 +55,12 @@
 
 
 /* back-button */
+.pin-details .header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
 .pin-details .back-button {
     background: none;
     border: none;
