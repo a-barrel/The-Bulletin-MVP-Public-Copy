@@ -11,32 +11,25 @@ import {
   fetchCurrentUserProfile,
   sharePin
 } from '../api/mongoDataApi';
-import runtimeConfig from '../config/runtime';
-import formatDateTime from '../utils/dates';
 import { routes } from '../routes';
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
-import { metersToMiles, METERS_PER_MILE } from '../utils/geo';
-import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
 import { logClientError } from '../utils/clientLogger';
+import reportClientError from '../utils/reportClientError';
+import {
+  resolveMediaAssetUrl,
+  resolveUserAvatarUrl,
+  formatEventRange,
+  formatAddress,
+  formatApproximateAddress,
+  buildUserProfileLink,
+  formatPinDateTime,
+  DEFAULT_COVER_PATH,
+  formatViewerDistanceLabel
+} from '../utils/pinFormatting';
 
-const DEFAULT_AVATAR_PATH = '/images/profile/profile-01.jpg';
-const DEFAULT_COVER_PATH = '/images/background/background-01.jpg';
-const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
 const FUTURE_SKEW_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const IS_DEV = import.meta.env.DEV;
-
-const TF2_AVATAR_MAP = {
-  tf2_scout: '/images/emulation/avatars/Scoutava.jpg',
-  tf2_soldier: '/images/emulation/avatars/Soldierava.jpg',
-  tf2_pyro: '/images/emulation/avatars/Pyroava.jpg',
-  tf2_demoman: '/images/emulation/avatars/Demomanava.jpg',
-  tf2_heavy: '/images/emulation/avatars/Heavyava.jpg',
-  tf2_engineer: '/images/emulation/avatars/Engineerava.jpg',
-  tf2_medic: '/images/emulation/avatars/Medicava.jpg',
-  tf2_sniper: '/images/emulation/avatars/Sniperava.jpg',
-  tf2_spy: '/images/emulation/avatars/Spyava.jpg'
-};
 
 const buildPinFetchErrorState = (error, { seedFallbackActive } = {}) => {
   if (!error) {
@@ -59,180 +52,6 @@ const buildPinFetchErrorState = (error, { seedFallbackActive } = {}) => {
     isAuthError,
     seedFallbackActive
   };
-};
-
-/**
- * Resolve any media pointer (string or object) to a usable URL.
- *
- * Context:
- * - Seed data and older uploads may store absolute URLs pointing at
- *   localhost:5000 (or 8000). In dev we actually serve the API on 8000 and
- *   the front-end on 5173, so hard-coded 5000 URLs fail and leave the page
- *   stuck on "Loading…".
- * - Port 5000 persists in legacy data because our earliest dev server hosted
- *   both the API and static bundle on that port; when we moved to the Node API
- *   (8000) + Vite front-end (5173) split we kept the data but never rewrote the
- *   baked URLs.
- * - We also want a single place to fall back to the bundled profile
- *   avatars/backgrounds (DEFAULT_* constants) when nothing custom is present.
- *
- * Behaviour:
- *   • Objects are unwrapped (url/thumbnail/path).
- *   • Strings are normalised via normalizeProfileImagePath.
- *   • Absolute URLs are returned as-is unless they target our offline hosts,
- *     in which case we rewrite the host to runtimeConfig.apiBaseUrl or to the
- *     current window origin (for the static /images/ bundle assets).
- *   • Fallbacks are resolved recursively so we eventually land on a usable
- *     default image.
- *
- * This logic was introduced after we tracked a “Loading pin…” loop caused by
- * asset URLs pointing at localhost:5000; the page fetched real data but the
- * images 404’d, leaving the UI in a loading state. If you see that again,
- * check this helper first.
- */
-const resolveMediaAssetUrl = (asset, fallback) => {
-  if (asset && typeof asset === 'object') {
-    const source = asset.url ?? asset.thumbnailUrl ?? asset.path;
-    if (typeof source === 'string' && source.trim().length > 0) {
-      return resolveMediaAssetUrl(source.trim(), fallback);
-    }
-  }
-
-  if (typeof asset === 'string' && asset.trim().length > 0) {
-    const value = normalizeProfileImagePath(asset.trim());
-    if (/^(?:[a-z]+:)?\/\//i.test(value) || value.startsWith('data:')) {
-      if (!value.startsWith('data:')) {
-        try {
-          const parsed = new URL(value);
-          const offlineHosts = new Set([
-            'localhost:5000',
-            '127.0.0.1:5000',
-            'localhost:8000',
-            '127.0.0.1:8000'
-          ]);
-          if (offlineHosts.has(parsed.host)) {
-            if (API_BASE_URL) {
-              return `${API_BASE_URL}${parsed.pathname}`;
-            }
-            if (typeof window !== 'undefined' && window.location?.origin) {
-              return `${window.location.origin}${parsed.pathname}`;
-            }
-            return parsed.pathname;
-          }
-        } catch {
-          // fall back to original absolute value
-        }
-      }
-      return value;
-    }
-    const normalized = normalizeProfileImagePath(value.startsWith('/') ? value : `/${value}`);
-    return API_BASE_URL ? `${API_BASE_URL}${normalized}` : normalized;
-  }
-
-  if (fallback) {
-    return resolveMediaAssetUrl(fallback);
-  }
-
-  return null;
-};
-
-export const resolveUserAvatarUrl = (user, fallback = DEFAULT_AVATAR_PATH) => {
-  const candidates = [
-    user?.avatar,
-    user?.avatar?.url,
-    user?.avatarUrl,
-    user?.profile?.avatar,
-    user?.profile?.avatar?.url
-  ];
-
-  for (const candidate of candidates) {
-    const resolved = resolveMediaAssetUrl(candidate);
-    if (resolved) {
-      if (DEFAULT_PROFILE_IMAGE_REGEX.test(resolved ?? '') && user?.username) {
-        const mapKey = String(user.username).trim().toLowerCase();
-        const fallbackPath = TF2_AVATAR_MAP[mapKey];
-        if (fallbackPath) {
-          const mapped = resolveMediaAssetUrl(fallbackPath, fallback);
-          if (mapped) {
-            return mapped;
-          }
-        }
-      }
-      return resolved;
-    }
-  }
-
-  if (user?.username) {
-    const mapKey = String(user.username).trim().toLowerCase();
-    const fallbackPath = TF2_AVATAR_MAP[mapKey];
-    if (fallbackPath) {
-      const mapped = resolveMediaAssetUrl(fallbackPath, fallback);
-      if (mapped) {
-        return mapped;
-      }
-    }
-  }
-
-  return resolveMediaAssetUrl(null, fallback);
-};
-
-const formatPinDateTime = (value) =>
-  formatDateTime(value, {
-    fallback: null,
-    options: {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric'
-    }
-  });
-
-const formatEventRange = (start, end) => {
-  const startLabel = formatPinDateTime(start);
-  const endLabel = formatPinDateTime(end);
-  if (startLabel && endLabel) {
-    return `${startLabel} -> ${endLabel}`;
-  }
-  return startLabel ?? endLabel ?? null;
-};
-
-const formatAddress = (address) => {
-  if (!address) {
-    return null;
-  }
-  const { precise, components } = address;
-  const parts = [];
-  if (precise) {
-    parts.push(precise);
-  }
-  if (components) {
-    const componentParts = [
-      components.line1,
-      components.line2,
-      components.city,
-      components.state,
-      components.postalCode,
-      components.country
-    ].filter(Boolean);
-    parts.push(...componentParts);
-  }
-
-  return parts.length > 0 ? parts.join(', ') : null;
-};
-
-const formatApproximateAddress = (approximateAddress) => {
-  if (!approximateAddress) {
-    return null;
-  }
-  const parts = [
-    approximateAddress.formatted,
-    approximateAddress.city,
-    approximateAddress.state,
-    approximateAddress.country
-  ].filter(Boolean);
-
-  return parts.length > 0 ? parts.join(', ') : null;
 };
 
 const normaliseTimestamp = (value) => {
@@ -308,55 +127,6 @@ const formatMetersToMiles = (meters) => {
   }
   const formatted = miles >= 10 ? miles.toFixed(0) : miles.toFixed(1);
   return `${formatted} mi`;
-};
-
-export const resolveUserIdentifier = (user) => {
-  if (!user || typeof user !== 'object') {
-    return null;
-  }
-
-  const rawIdentifier =
-    user._id ??
-    user.id ??
-    user.uid ??
-    user.userId ??
-    user.username ??
-    user.email ??
-    user.displayName;
-
-  if (rawIdentifier === undefined || rawIdentifier === null) {
-    return null;
-  }
-
-  const identifierString =
-    typeof rawIdentifier === 'string' ? rawIdentifier.trim() : String(rawIdentifier).trim();
-
-  if (!identifierString) {
-    return null;
-  }
-
-  return identifierString;
-};
-
-export const buildUserProfileLink = (user, originPath) => {
-  const identifier = resolveUserIdentifier(user);
-  if (!identifier) {
-    return null;
-  }
-
-  const linkState = user
-    ? {
-        user,
-        ...(originPath ? { from: originPath } : {})
-      }
-    : originPath
-      ? { from: originPath }
-      : undefined;
-
-  return {
-    pathname: routes.profile.byId(identifier),
-    state: linkState
-  };
 };
 
 const extractViewerProfileIdFromState = (state) => {
@@ -745,19 +515,10 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     pinExpired || (distanceLockActive && !bookmarked && !isOwnPin);
   const viewerInteractionLockMessage = pin?.viewerInteractionLockMessage;
 
-  const viewerDistanceLabel = useMemo(() => {
-    if (viewerDistanceMeters === null) {
-      return null;
-    }
-    if (viewerDistanceMeters >= METERS_PER_MILE) {
-      const miles = metersToMiles(viewerDistanceMeters);
-      return miles === null ? null : `${miles.toFixed(1)} miles`;
-    }
-    if (viewerDistanceMeters >= 10) {
-      return `${Math.round(viewerDistanceMeters)} meters`;
-    }
-    return `${viewerDistanceMeters.toFixed(1)} meters`;
-  }, [viewerDistanceMeters]);
+  const viewerDistanceLabel = useMemo(
+    () => formatViewerDistanceLabel(viewerDistanceMeters),
+    [viewerDistanceMeters]
+  );
 
   const interactionOverlay = useMemo(() => {
     if (pinExpired) {
