@@ -6,6 +6,10 @@ import './Map.css';
 import { formatDistanceMiles, haversineDistanceMeters } from '../utils/geo';
 import runtimeConfig from '../config/runtime';
 import resolveAssetUrl from '../utils/media';
+import {
+  MAP_MARKER_ICON_URLS,
+  MAP_MARKER_SHADOW_URL
+} from '../utils/mapMarkers';
 
 // Fix for default marker icons in Leaflet with React
 delete L.Icon.Default.prototype._getIconUrl;
@@ -16,10 +20,10 @@ L.Icon.Default.mergeOptions({
 });
 
 // Custom marker icons
-const createMarkerIcon = (color, extraClassName) =>
+const createMarkerIcon = (key, extraClassName) =>
   new L.Icon({
-    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconUrl: MAP_MARKER_ICON_URLS[key] ?? MAP_MARKER_ICON_URLS.default,
+    shadowUrl: MAP_MARKER_SHADOW_URL,
     iconSize: [25, 41],
     iconAnchor: [12, 41],
     popupAnchor: [1, -34],
@@ -27,19 +31,12 @@ const createMarkerIcon = (color, extraClassName) =>
     className: ['leaflet-marker-icon', extraClassName].filter(Boolean).join(' ')
   });
 
-const nearbyIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+const nearbyIcon = createMarkerIcon('nearby');
 
-const defaultPinIcon = createMarkerIcon('green');
-const discussionPinIcon = createMarkerIcon('blue');
-const eventPinIcon = createMarkerIcon('violet');
-const selfPinIcon = createMarkerIcon('orange', 'self-pin-icon');
+const defaultPinIcon = createMarkerIcon('default');
+const discussionPinIcon = createMarkerIcon('discussion');
+const eventPinIcon = createMarkerIcon('event');
+const selfPinIcon = createMarkerIcon('personal', 'self-pin-icon');
 
 const AVATAR_FALLBACK = '/images/profile/profile-01.jpg';
 

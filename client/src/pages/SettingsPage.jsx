@@ -1,6 +1,6 @@
 /* NOTE: Page exports configuration alongside the component. */
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
   Box,
@@ -12,41 +12,16 @@ import {
   Snackbar,
   Button,
   CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Avatar,
-  FormControl,
-  FormControlLabel,
-  FormLabel,
-  Radio,
-  RadioGroup,
-  Switch,
-  Slider,
-  TextField,
   Chip,
   Tabs,
-  Tab,
-  Select,
-  MenuItem
+  Tab
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SaveIcon from '@mui/icons-material/Save';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import FeedbackIcon from '@mui/icons-material/FeedbackOutlined';
-import DoNotDisturbOnIcon from '@mui/icons-material/DoNotDisturbOn';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import RestoreIcon from '@mui/icons-material/Restore';
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
-import BlockIcon from '@mui/icons-material/Block';
-import HowToRegIcon from '@mui/icons-material/HowToReg';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import GlobalNavMenu from '../components/GlobalNavMenu';
 import { auth } from '../firebase';
@@ -72,8 +47,12 @@ import reportClientError from '../utils/reportClientError';
 import { formatFriendlyTimestamp } from '../utils/dates';
 import { PIN_DENSITY_LEVELS } from '../utils/pinDensity';
 import TabPanel from '../components/settings/TabPanel';
-import NotificationToggleList from '../components/settings/NotificationToggleList';
-import notificationToggleConfig from '../components/settings/notificationToggleConfig';
+import AppearanceSettings from '../components/settings/AppearanceSettings';
+import NotificationSettings from '../components/settings/NotificationSettings';
+import PrivacySettings from '../components/settings/PrivacySettings';
+import DataIntegrationsSettings from '../components/settings/DataIntegrationsSettings';
+import FeedbackDialog from '../components/settings/FeedbackDialog';
+import BlockedUsersDialog from '../components/settings/BlockedUsersDialog';
 
 export const pageConfig = {
   id: 'settings',
@@ -171,6 +150,46 @@ function SettingsPage() {
   const [apiTokens, setApiTokens] = useState([]);
   const [isLoadingTokens, setIsLoadingTokens] = useState(false);
   const [tokenLabel, setTokenLabel] = useState('');
+
+  const handleReduceMotionToggle = useCallback(
+    (value) => handleDisplayToggle('reduceMotion', value),
+    [handleDisplayToggle]
+  );
+  const handleHighContrastToggle = useCallback(
+    (value) => handleDisplayToggle('highContrast', value),
+    [handleDisplayToggle]
+  );
+  const handleCelebrationSoundsPreference = useCallback(
+    (value) => {
+      handleDisplayToggle('celebrationSounds', value);
+      setBadgeSoundEnabled(value);
+    },
+    [handleDisplayToggle, setBadgeSoundEnabled]
+  );
+  const handleFriendBadgesPreference = useCallback(
+    (value) => {
+      handleDisplayToggle('showFriendBadges', value);
+      setFriendBadgesEnabled(value);
+    },
+    [handleDisplayToggle, setFriendBadgesEnabled]
+  );
+  const handleListSyncsToggle = useCallback(
+    (value) => handleDisplayToggle('listSyncsWithMapLimit', value),
+    [handleDisplayToggle]
+  );
+  const handleTokenLabelChange = useCallback(
+    (event) => setTokenLabel(event.target.value),
+    [setTokenLabel]
+  );
+  const handleFeedbackMessageChange = useCallback(
+    (event) => setFeedbackMessage(event.target.value),
+    [setFeedbackMessage]
+  );
+  const handleFeedbackContactChange = useCallback(
+    (event) => setFeedbackContact(event.target.value),
+    [setFeedbackContact]
+  );
+  const handleClearFeedbackError = useCallback(() => setFeedbackError(null), [setFeedbackError]);
 
 
   const notificationsMutedUntil = settings.notificationsMutedUntil;
@@ -480,403 +499,84 @@ function SettingsPage() {
             <Divider />
 
             <TabPanel value="appearance" current={activeTab}>
-              <Stack spacing={1.5}>
-                <Typography variant="h6">Theme & typography</Typography>
-                <FormControl component="fieldset">
-                  <FormLabel component="legend" sx={{ fontSize: '0.875rem' }}>
-                    Theme
-                  </FormLabel>
-                  <RadioGroup row value={theme} onChange={handleThemeChange}>
-                    <FormControlLabel value="system" control={<Radio />} label="Match system" />
-                    <FormControlLabel value="light" control={<Radio />} label="Light" />
-                    <FormControlLabel value="dark" control={<Radio />} label="Dark" />
-                  </RadioGroup>
-                </FormControl>
-                <Stack spacing={1}>
-                  <Typography variant="body2" color="text.secondary">
-                    Adjust text size to improve readability.
-                  </Typography>
-                  <Slider
-                    min={0.8}
-                    max={1.4}
-                    step={0.05}
-                    value={textScale}
-                    valueLabelDisplay="auto"
-                    valueLabelFormat={(value) => `${Math.round(value * 100)}%`}
-                    onChange={handleTextScaleChange}
-                  />
-                </Stack>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={reduceMotion}
-                        onChange={() => handleDisplayToggle('reduceMotion')}
-                      />
-                    }
-                    label="Reduce motion & animations"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={highContrast}
-                        onChange={() => handleDisplayToggle('highContrast')}
-                      />
-                    }
-                    label="High contrast mode"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={celebrationSounds}
-                        onChange={(_, value) => {
-                          handleDisplayToggle('celebrationSounds', value);
-                          setBadgeSoundEnabled(value);
-                        }}
-                      />
-                    }
-                    label="Play celebration sounds"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={showFriendBadges}
-                        onChange={(_, value) => {
-                          handleDisplayToggle('showFriendBadges', value);
-                          setFriendBadgesEnabled(value);
-                        }}
-                      />
-                    }
-                    label="Show friend badges next to names"
-                  />
-                </Stack>
-                <Typography variant="caption" color="text.secondary">
-                  Celebration sounds follow this setting everywhere in the app.
-                </Typography>
-                <FormControl component="fieldset" sx={{ mt: 1 }}>
-                  <FormLabel component="legend" sx={{ fontSize: '0.875rem' }}>
-                    Pin display limit
-                  </FormLabel>
-                  <RadioGroup row value={mapDensity} onChange={handleMapDensityChange}>
-                    {PIN_DENSITY_LEVELS.map((option) => (
-                      <FormControlLabel
-                        key={option.key}
-                        value={option.key}
-                        control={<Radio />}
-                        label={`${option.label} (${option.limit} pins)`}
-                      />
-                    ))}
-                  </RadioGroup>
-                  <Typography variant="caption" color="text.secondary">
-                    Controls how many pins the map loads at once. Detailed mode fetches the most pins but
-                    may use more bandwidth.
-                  </Typography>
-                  <FormControlLabel
-                    sx={{ mt: 1 }}
-                    control={
-                      <Switch
-                        checked={listSyncsWithMapLimit}
-                        onChange={(_, value) => handleDisplayToggle('listSyncsWithMapLimit', value)}
-                      />
-                    }
-                    label="Match List view to this limit"
-                  />
-                  <Typography variant="caption" color="text.secondary">
-                    When enabled, the List page shows the same pin set as the map so both views stay in sync.
-                  </Typography>
-                </FormControl>
-              </Stack>
-              <Divider flexItem />
-              <Stack spacing={2}>
-                <Typography variant="h6">Location radius</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Adjust how far from your location the app should pull nearby pins and updates.
-                </Typography>
-                <Slider
-                  value={radiusMeters}
-                  min={RADIUS_MIN}
-                  max={RADIUS_MAX}
-                  step={500}
-                  valueLabelDisplay="auto"
-                  valueLabelFormat={(value) => {
-                    const miles = metersToMiles(value);
-                    return miles === null ? 'N/A' : `${Math.round(miles * 10) / 10} mi`;
-                  }}
-                  onChange={handleRadiusChange}
-                />
-                <Typography variant="caption" color="text.secondary">
-                  Current radius: {radiusMeters} m ({radiusMiles ?? 'N/A'} mi)
-                </Typography>
-              </Stack>
+              <AppearanceSettings
+                theme={theme}
+                onThemeChange={handleThemeChange}
+                textScale={textScale}
+                onTextScaleChange={handleTextScaleChange}
+                reduceMotion={reduceMotion}
+                onReduceMotionToggle={handleReduceMotionToggle}
+                highContrast={highContrast}
+                onHighContrastToggle={handleHighContrastToggle}
+                celebrationSounds={celebrationSounds}
+                onCelebrationSoundsToggle={handleCelebrationSoundsPreference}
+                showFriendBadges={showFriendBadges}
+                onShowFriendBadgesToggle={handleFriendBadgesPreference}
+                mapDensity={mapDensity}
+                pinDensityOptions={PIN_DENSITY_LEVELS}
+                onMapDensityChange={handleMapDensityChange}
+                listSyncsWithMapLimit={listSyncsWithMapLimit}
+                onListSyncsToggle={handleListSyncsToggle}
+                radiusMeters={radiusMeters}
+                radiusMiles={radiusMiles}
+                onRadiusChange={handleRadiusChange}
+                radiusMin={RADIUS_MIN}
+                radiusMax={RADIUS_MAX}
+                formatMetersToMiles={metersToMiles}
+              />
             </TabPanel>
 
             <TabPanel value="notifications" current={activeTab}>
-              <Stack spacing={1}>
-                <Typography variant="h6">Notification preferences</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Choose which updates reach you. Changes apply to both push and in-app alerts.
-                </Typography>
-              </Stack>
-              <Paper variant="outlined" sx={{ p: 2, backgroundColor: 'grey.50' }}>
-                <Stack spacing={1.5}>
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    alignItems={{ xs: 'flex-start', sm: 'center' }}
-                    justifyContent="space-between"
-                  >
-                    <Typography variant="subtitle2" fontWeight={600}>Quick actions</Typography>
-                    <Chip
-                      icon={<AccessTimeIcon fontSize="small" />}
-                      color={isMuteActive ? 'warning' : 'success'}
-                      label={muteStatusLabel}
-                      size="small"
-                    />
-                  </Stack>
-                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
-                    <Button
-                      variant="outlined"
-                      startIcon={<DoNotDisturbOnIcon />}
-                      onClick={() => handleQuickMuteNotifications(2)}
-                      disabled={isOffline || isFetchingProfile}
-                    >
-                      Mute 2h
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      startIcon={<DoNotDisturbOnIcon />}
-                      onClick={() => handleQuickMuteNotifications(8)}
-                      disabled={isOffline || isFetchingProfile}
-                    >
-                      Mute 8h
-                    </Button>
-                    <Button
-                      variant="text"
-                      color="inherit"
-                      startIcon={<RestoreIcon />}
-                      onClick={handleClearNotificationMute}
-                      disabled={!notificationsMutedUntil}
-                    >
-                      Clear mute
-                    </Button>
-                  </Stack>
-                  <Typography variant="caption" color="text.secondary">
-                    Muting pauses delivery without changing the toggles below. Save after applying changes.
-                  </Typography>
-                </Stack>
-              </Paper>
-              <NotificationToggleList
-                toggles={notificationToggleConfig}
-                values={notifications}
-                onToggle={handleNotificationToggle}
-                disabled={isOffline}
+              <NotificationSettings
+                isOffline={isOffline}
+                isFetchingProfile={isFetchingProfile}
+                isMuteActive={isMuteActive}
+                muteStatusLabel={muteStatusLabel}
+                hasMuteTimer={Boolean(notificationsMutedUntil)}
+                onQuickMute={handleQuickMuteNotifications}
+                onClearMute={handleClearNotificationMute}
+                notifications={notifications}
+                onToggleNotification={handleNotificationToggle}
+                digestFrequency={digestFrequency}
+                onDigestFrequencyChange={handleDigestFrequencyChange}
               />
-              <Stack spacing={1}>
-                <FormControl size="small" sx={{ maxWidth: 320 }}>
-                  <FormLabel component="legend" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
-                    Digest frequency
-                  </FormLabel>
-                  <Select value={digestFrequency} onChange={handleDigestFrequencyChange}>
-                    <MenuItem value="immediate">Send immediately</MenuItem>
-                    <MenuItem value="daily">Daily summary</MenuItem>
-                    <MenuItem value="weekly">Weekly summary</MenuItem>
-                    <MenuItem value="never">Never send digests</MenuItem>
-                  </Select>
-                </FormControl>
-                <Typography variant="caption" color="text.secondary">
-                  Digests bundle less-urgent updates (badges, friend activity, marketing) into a single notification.
-                </Typography>
-              </Stack>
             </TabPanel>
 
             <TabPanel value="privacy" current={activeTab}>
-              <Stack spacing={2}>
-                <Typography variant="h6">Privacy &amp; sharing</Typography>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.locationSharingEnabled}
-                      onChange={handleLocationSharingToggle}
-                    />
-                  }
-                  label="Share my live location with friends"
-                />
-                <FormControlLabel
-                  control={<Switch checked={settings.statsPublic} onChange={handleStatsVisibilityToggle} />}
-                  label="Allow others to view my stats"
-                />
-                <FormControlLabel
-                  control={
-                    <Switch checked={settings.filterCussWords} onChange={handleFilterCussWordsToggle} />
-                  }
-                  label="Filter explicit language in public chats"
-                />
-                <FormControl component="fieldset" sx={{ mt: 1 }}>
-                  <FormLabel component="legend" sx={{ fontSize: '0.875rem' }}>
-                    Who can DM me?
-                  </FormLabel>
-                  <RadioGroup value={dmPermission} onChange={handleDmPermissionChange}>
-                    <FormControlLabel value="everyone" control={<Radio />} label="Everyone" />
-                    <FormControlLabel value="friends" control={<Radio />} label="Friends & followers" />
-                    <FormControlLabel value="nobody" control={<Radio />} label="No one (mute DMs)" />
-                  </RadioGroup>
-                  <Typography variant="caption" color="text.secondary">
-                    Friends-only mode also allows people who follow you. Selecting “No one” hides you from new threads.
-                  </Typography>
-                </FormControl>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-                  <Button
-                    onClick={handleOpenBlockedOverlay}
-                    variant="outlined"
-                    color="warning"
-                    startIcon={<BlockIcon />}
-                    disabled={isOffline || isManagingBlockedUsers}
-                    title={isOffline ? 'Reconnect to manage blocked users' : undefined}
-                  >
-                    Manage blocked users
-                  </Button>
-                  {canAccessAdminDashboard ? (
-                    <Button
-                      component={Link}
-                      to={routes.admin.base}
-                      variant="outlined"
-                      startIcon={<AdminPanelSettingsIcon />}
-                    >
-                      Admin dashboard
-                    </Button>
-                  ) : null}
-                  <Button
-                    component={Link}
-                    to={routes.profile.me}
-                    variant="outlined"
-                    startIcon={<ManageAccountsIcon />}
-                  >
-                    View profile
-                  </Button>
-                </Stack>
-              </Stack>
+              <PrivacySettings
+                settings={settings}
+                onLocationSharingToggle={handleLocationSharingToggle}
+                onStatsVisibilityToggle={handleStatsVisibilityToggle}
+                onFilterCussWordsToggle={handleFilterCussWordsToggle}
+                dmPermission={dmPermission}
+                onDmPermissionChange={handleDmPermissionChange}
+                onManageBlockedUsers={handleOpenBlockedOverlay}
+                canAccessAdminDashboard={canAccessAdminDashboard}
+                adminRoute={routes.admin.base}
+                profileRoute={routes.profile.me}
+                isOffline={isOffline}
+                isManagingBlockedUsers={isManagingBlockedUsers}
+              />
             </TabPanel>
 
             <TabPanel value="data" current={activeTab}>
-              <Stack spacing={2}>
-                <Typography variant="h6">Data &amp; integrations</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Export your account data or generate personal access tokens for scripts. We’ll email you a link
-                  whenever an export finishes.
-                </Typography>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={autoExportReminders}
-                      onChange={handleAutoExportRemindersToggle}
-                    />
-                  }
-                  label="Remind me to export my data each month"
-                />
-                <Typography variant="caption" color="text.secondary">
-                  We’ll send a gentle nudge inside the app when it’s time for your next export.
-                </Typography>
-                <Stack spacing={1}>
-                  <Typography variant="subtitle2">Data export</Typography>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-                    <Button
-                      variant="contained"
-                      onClick={handleDataExport}
-                      disabled={isOffline}
-                      title={isOffline ? 'Reconnect to request an export' : undefined}
-                    >
-                      Request data export
-                    </Button>
-                  </Stack>
-                  {dataStatus ? (
-                    <Alert severity={dataStatus.type} onClose={() => setDataStatus(null)}>
-                      {dataStatus.message}
-                    </Alert>
-                  ) : null}
-                </Stack>
-                <Divider />
-                <Stack spacing={1.5}>
-                  <Typography variant="subtitle2">API tokens</Typography>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-                    <TextField
-                      label="Token label"
-                      value={tokenLabel}
-                      onChange={(event) => setTokenLabel(event.target.value)}
-                      placeholder="e.g., CLI client"
-                      size="small"
-                      sx={{ maxWidth: 320 }}
-                      disabled={isOffline}
-                    />
-                    <Button
-                      variant="outlined"
-                      onClick={handleGenerateToken}
-                      disabled={isOffline}
-                      title={isOffline ? 'Reconnect to generate tokens' : undefined}
-                    >
-                      Generate API token
-                    </Button>
-                  </Stack>
-                  {tokenStatus ? (
-                    <Alert severity={tokenStatus.type} onClose={() => setTokenStatus(null)}>
-                      {tokenStatus.message}
-                      {generatedToken && tokenStatus.type !== 'warning' ? (
-                        <Typography variant="caption" component="div">
-                          Last token: <code>{generatedToken}</code>
-                        </Typography>
-                      ) : null}
-                    </Alert>
-                  ) : null}
-                  <Typography variant="caption" color="text.secondary">
-                    API tokens behave like passwords. Revoke any token you no longer use.
-                  </Typography>
-                  {isLoadingTokens ? (
-                    <Stack alignItems="center" spacing={1}>
-                      <CircularProgress size={20} />
-                      <Typography variant="body2" color="text.secondary">
-                        Loading tokens...
-                      </Typography>
-                    </Stack>
-                  ) : apiTokens.length ? (
-                    <List dense disablePadding>
-                      {apiTokens.map((token) => (
-                        <ListItem
-                          key={token.id}
-                          secondaryAction={
-                            <Button
-                              size="small"
-                              color="error"
-                              onClick={() => handleRevokeToken(token.id)}
-                              disabled={isOffline}
-                              title={isOffline ? 'Reconnect to revoke tokens' : undefined}
-                            >
-                              Revoke
-                            </Button>
-                          }
-                        >
-                          <ListItemText
-                            primary={token.label || 'Untitled token'}
-                            secondary={
-                              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={0.5}>
-                                <Typography component="span" variant="caption" color="text.secondary">
-                                  Preview: {token.preview ? `${token.preview}••••` : '••••••'}
-                                </Typography>
-                                {token.createdAt ? (
-                                  <Typography component="span" variant="caption" color="text.secondary">
-                                    Created {new Date(token.createdAt).toLocaleString()}
-                                  </Typography>
-                                ) : null}
-                              </Stack>
-                            }
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      No active tokens yet.
-                    </Typography>
-                  )}
-                </Stack>
-              </Stack>
+              <DataIntegrationsSettings
+                isOffline={isOffline}
+                autoExportReminders={autoExportReminders}
+                onAutoExportRemindersToggle={handleAutoExportRemindersToggle}
+                onDataExport={handleDataExport}
+                dataStatus={dataStatus}
+                onDismissDataStatus={() => setDataStatus(null)}
+                tokenLabel={tokenLabel}
+                onTokenLabelChange={handleTokenLabelChange}
+                onGenerateToken={handleGenerateToken}
+                tokenStatus={tokenStatus}
+                onDismissTokenStatus={() => setTokenStatus(null)}
+                generatedToken={generatedToken}
+                apiTokens={apiTokens}
+                isLoadingTokens={isLoadingTokens}
+                onRevokeToken={handleRevokeToken}
+              />
             </TabPanel>
           </Stack>
         </Paper>
@@ -942,130 +642,31 @@ function SettingsPage() {
         </Stack>
       </Stack>
 
-      <Dialog
+      <FeedbackDialog
         open={feedbackDialogOpen}
+        message={feedbackMessage}
+        contact={feedbackContact}
+        error={feedbackError}
+        isSubmitting={isSubmittingFeedback}
+        isOffline={isOffline}
         onClose={handleCloseFeedbackDialog}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Send anonymous feedback</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2}>
-            <Typography variant="body2" color="text.secondary">
-              We read every message. Please avoid sharing personal details unless you want us to reach out.
-            </Typography>
-            <TextField
-              label="Your feedback"
-              multiline
-              minRows={4}
-              value={feedbackMessage}
-              onChange={(event) => setFeedbackMessage(event.target.value)}
-              disabled={isSubmittingFeedback}
-              helperText="At least 10 characters."
-            />
-            <TextField
-              label="Contact (optional)"
-              value={feedbackContact}
-              onChange={(event) => setFeedbackContact(event.target.value)}
-              disabled={isSubmittingFeedback}
-              placeholder="Email or @username"
-            />
-            {feedbackError ? (
-              <Alert severity="error" onClose={() => setFeedbackError(null)}>
-                {feedbackError}
-              </Alert>
-            ) : null}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseFeedbackDialog} disabled={isSubmittingFeedback}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmitFeedback}
-            variant="contained"
-            color="secondary"
-            disabled={isSubmittingFeedback || isOffline}
-            title={isOffline ? 'Reconnect to send feedback' : undefined}
-          >
-            {isSubmittingFeedback ? <CircularProgress size={18} color="inherit" sx={{ mr: 1 }} /> : null}
-            {isSubmittingFeedback ? 'Sending...' : 'Send'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onSubmit={handleSubmitFeedback}
+        onMessageChange={handleFeedbackMessageChange}
+        onContactChange={handleFeedbackContactChange}
+        onClearError={handleClearFeedbackError}
+      />
 
-      <Dialog
+      <BlockedUsersDialog
         open={blockedOverlayOpen}
+        status={blockedOverlayStatus}
+        onClearStatus={() => setBlockedOverlayStatus(null)}
+        isLoading={isLoadingBlockedUsers}
+        users={blockedUsers}
+        onUnblock={handleUnblockUser}
+        isOffline={isOffline}
+        isManaging={isManagingBlockedUsers}
         onClose={handleCloseBlockedOverlay}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Blocked users</DialogTitle>
-        <DialogContent dividers>
-          {blockedOverlayStatus ? (
-            <Alert
-              severity={blockedOverlayStatus.type}
-              sx={{ mb: 2 }}
-              onClose={() => setBlockedOverlayStatus(null)}
-            >
-              {blockedOverlayStatus.message}
-            </Alert>
-          ) : null}
-          {isLoadingBlockedUsers ? (
-            <Stack alignItems="center" spacing={2} sx={{ py: 3 }}>
-              <CircularProgress size={24} />
-              <Typography variant="body2" color="text.secondary">
-                Loading blocked users...
-              </Typography>
-            </Stack>
-          ) : blockedUsers.length ? (
-            <List disablePadding sx={{ mt: -1 }}>
-              {blockedUsers.map((user) => {
-                const primary = user.displayName || user.username || user._id;
-                const secondary =
-                  user.username && user.username !== primary
-                    ? `@${user.username}`
-                    : user.email || user._id;
-                const avatarSource =
-                  user?.avatar?.url || user?.avatar?.thumbnailUrl || user?.avatar?.path || null;
-                return (
-                  <ListItem
-                    key={user._id}
-                    secondaryAction={
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<HowToRegIcon />}
-                        onClick={() => handleUnblockUser(user._id)}
-                        disabled={isOffline || isManagingBlockedUsers}
-                        title={isOffline ? 'Reconnect to unblock users' : undefined}
-                      >
-                        Unblock
-                      </Button>
-                    }
-                  >
-                    <ListItemAvatar>
-                      <Avatar src={avatarSource || undefined}>
-                        {primary?.charAt(0)?.toUpperCase() ?? 'U'}
-                      </Avatar>
-                    </ListItemAvatar>
-                    <ListItemText primary={primary} secondary={secondary} />
-                  </ListItem>
-                );
-              })}
-            </List>
-          ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
-              You haven&apos;t blocked any users yet. Block someone from their profile to see them here.
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseBlockedOverlay} disabled={isManagingBlockedUsers}>
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
+      />
 
       <Snackbar
         open={Boolean(feedbackStatus)}
