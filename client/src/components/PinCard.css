@@ -1,5 +1,4 @@
 /* ===== Shared Pin Card Styles ===== */
-
 .card {
   width: 92%;
   margin: 0 auto;
@@ -58,15 +57,26 @@
 /* Body */
 .card-text {
   color: #111;
-  font-size: 1.3rem;
-  line-height: 1.35rem;
+  font-family: 'Urbanist', sans-serif;
+  font-weight: 500;
+  font-size: 1.2rem;
+  line-height: 1.4;
   text-align: left;
-  margin: 0.25rem 0 0.2rem;
+  margin: 0.35rem 0 0.2rem;
   overflow-wrap: anywhere;
   word-break: break-word;
+
+  min-height: 4.2em;          
+
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;      
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  line-clamp: 3;
 }
 
-/* Images */
 /* Images */
 .media-grid {
   display: grid;
@@ -79,53 +89,32 @@
 .media-grid:has(.media:nth-child(1):last-child) {
   grid-template-columns: 1fr;
 }
-
 .media-grid:has(.media:nth-child(1):last-child) .media {
   width: 100%;
-  height: 240px; /* consistent fixed height */
+  height: 240px;
   object-fit: cover;
   border-radius: 8px;
 }
 
-/* 2 images: make each a bit narrower so you see more white space */
+/* --- 2 images (same height/width style as 1 image) --- */
+.media-grid:has(.media:nth-child(2):last-child) {
+  grid-template-columns: 1fr 1fr;
+}
 .media-grid:has(.media:nth-child(2):last-child) .media {
-  width: 80%;
+  width: 100%;
   height: 240px;
-  margin-inline: auto;         /* centers inside each grid cell */
   object-fit: cover;
+  border-radius: 8px;
 }
 
-/* 3 images: slightly narrower again */
+/* --- 3 images (still grid, same height/width style) --- */
 .media-grid:has(.media:nth-child(3):last-child) {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr 1fr 1fr;
 }
 .media-grid:has(.media:nth-child(3):last-child) .media {
-  width: 80%;
-  height: 240px;
-  margin-inline: auto;
-  object-fit: cover;
-}
-
-/* 4+ images: horizontal scroll with a visible "next card" peek */
-.media-grid:has(.media:nth-child(4)) {
-  --peek: 12px;                         /* how much of next image to show */
-  display: flex;
-  gap: 0.5rem;
-  padding: 0  var(--peek) 0.25rem var(--peek);
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-padding-left: var(--peek);
-  -webkit-overflow-scrolling: touch;
-
-  /* soft right-edge fade to hint more content */
-  -webkit-mask-image: linear-gradient(to right, black 92%, transparent);
-  mask-image: linear-gradient(to right, black 92%, transparent);
-}
-.media-grid:has(.media:nth-child(4)) .media {
-  flex: 0 0 clamp(220px, 30%, 320px);   /* narrower than full so next one peeks */
+  width: 100%;
   height: 240px;
   object-fit: cover;
-  scroll-snap-align: start;
   border-radius: 8px;
 }
 
@@ -133,7 +122,7 @@
 .media {
   display: block;
   width: 100%;
-  height: 240px; /* unified fixed height */
+  height: 240px;
   object-fit: cover;
   border-radius: 8px;
   border: none;
@@ -143,7 +132,7 @@
   display: flex;
   gap: 0.5rem;
   margin-top: 0.35rem;
-  padding-bottom: 0.25rem;
+  padding-bottom: 0.3rem;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
@@ -222,7 +211,8 @@
   }
 }
 
-/* Footer layout (author | interested | counts) */
+
+/* Footer anchored to the bottom of the card */
 .card-footer {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -230,6 +220,8 @@
   align-items: center;
   column-gap: 12px;
   row-gap: 6px;
+
+  margin-top: auto;   
 }
 
 .author {
@@ -328,12 +320,14 @@
   align-items: center;
   gap: 8px;
   overflow: hidden;
-  min-height: 28px;
+  min-height: 32px;          
 }
 
+/* when there are lots of avatars */
 .interested-row.scrollable {
   overflow-x: auto;
-  padding-bottom: 0.25rem;
+  overflow-y: hidden;        
+  flex-wrap: nowrap;         
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
 }
@@ -381,6 +375,7 @@
 
 .interest-more {
   flex: 0 0 auto;
+  white-space: nowrap;      
 }
 
 .tag-icon {
