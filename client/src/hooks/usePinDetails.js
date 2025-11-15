@@ -27,6 +27,7 @@ import {
   DEFAULT_COVER_PATH,
   formatViewerDistanceLabel
 } from '../utils/pinFormatting';
+import { metersToMiles } from '../utils/geo';
 
 const FUTURE_SKEW_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const IS_DEV = import.meta.env.DEV;
