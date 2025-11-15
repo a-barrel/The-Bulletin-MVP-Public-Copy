@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import './ForgotPasswordPage.css';
@@ -6,6 +6,7 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import AuthPageLayout from '../components/AuthPageLayout.jsx';
 import AuthEmailField, { validateAuthEmail } from '../components/AuthEmailField.jsx';
 import useShake from '../hooks/useShake.js';
+import useAuthAlerts from '../hooks/useAuthAlerts';
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -15,14 +16,6 @@ function ForgotPasswordPage() {
   const [emailError, setEmailError] = useState("");
   const { shake, triggerShake } = useShake();
   
-  // Clear error pop-up after 3 seconds
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => setError(null), 3000); 
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
- 
   const mapFirebaseError = (code) => {
     switch (code) {
       case 'auth/invalid-email':
@@ -60,25 +53,14 @@ function ForgotPasswordPage() {
     }
   };
 
-  const alerts = [];
-  if (error) {
-    alerts.push({
-      id: 'error',
-      type: 'error',
-      content: error,
-      overlayClassName: 'message-overlay',
-      boxClassName: 'message-box',
-      onClose: () => setError(null)
-    });
-  }
-  if (message) {
-    alerts.push({
-      id: 'message',
-      type: 'info',
-      content: message,
-      onClose: () => setMessage(null)
-    });
-  }
+  const alerts = useAuthAlerts({
+    error,
+    message,
+    onErrorClear: () => setError(null),
+    onMessageClear: () => setMessage(null),
+    errorOverlayClassName: 'message-overlay',
+    errorBoxClassName: 'message-box'
+  });
 
   return (
     <AuthPageLayout

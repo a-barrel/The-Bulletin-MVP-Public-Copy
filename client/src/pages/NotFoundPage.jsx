@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
@@ -10,13 +10,18 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import HomeIcon from '@mui/icons-material/Home';
 import "./NotFoundPage.css";
 import { routes } from '../routes';
+import reportClientError from '../utils/reportClientError';
 
 function NotFoundPage({ defaultPath = routes.auth.login, defaultLabel = 'Go to Map' }) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  useEffect(() => {
+    reportClientError(null, 'Page not found', { path: location?.pathname ?? 'unknown' });
+  }, [location?.pathname]);
+
   const handleGoBack = useCallback(() => {
-    if (window.history.length > 1) {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
       navigate(-1);
       return;
     }
@@ -41,17 +46,25 @@ function NotFoundPage({ defaultPath = routes.auth.login, defaultLabel = 'Go to M
           </Typography>
         </Stack>
 
-        <div className="notfound-buttons">
-          <button className="btn-back" onClick={handleGoBack}>
-            <ArrowBackIcon style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} className="notfound-buttons">
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBackIcon />}
+            onClick={handleGoBack}
+            fullWidth
+          >
             Go Back
-          </button>
+          </Button>
 
-          <button className="btn-map" onClick={handleGoHome}>
-            <HomeIcon style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+          <Button
+            variant="contained"
+            startIcon={<HomeIcon />}
+            onClick={handleGoHome}
+            fullWidth
+          >
             {defaultLabel}
-          </button>
-        </div>
+          </Button>
+        </Stack>
       </Paper>
     </Box>
   );

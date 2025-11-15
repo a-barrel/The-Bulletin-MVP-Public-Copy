@@ -1,5 +1,5 @@
 import { Component } from 'react';
-import ErrorFallback from '../pages/ErrorFallback.jsx';
+import ErrorFallback from './ErrorFallback.jsx';
 
 class AppErrorBoundary extends Component {
   constructor(props) {
@@ -31,6 +31,7 @@ class AppErrorBoundary extends Component {
         <ErrorFallback
           onRetry={this.handleReset}
           onReload={this.handleReload}
+          error={this.state.error}
         />
       );
     }

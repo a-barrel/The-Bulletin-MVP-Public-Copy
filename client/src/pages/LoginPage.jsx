@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../firebase";
 import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   OAuthProvider,
-  signInWithPopup,
 } from "firebase/auth";
 import "./LoginPage.css";
 import bulletinLogo from "../../uploads/images/PinPoint_Logo.png";
@@ -15,6 +14,9 @@ import AuthPageLayout from "../components/AuthPageLayout.jsx";
 import PasswordField from "../components/PasswordField.jsx";
 import AuthEmailField, { validateAuthEmail } from "../components/AuthEmailField.jsx";
 import useShake from "../hooks/useShake.js";
+import useRememberPreference from "../hooks/useRememberPreference";
+import useAuthAlerts from "../hooks/useAuthAlerts";
+import useProviderSignIn from "../hooks/useProviderSignIn";
 import GoogleIcon from "@mui/icons-material/Google";
 import AppleIcon from "@mui/icons-material/Apple";
 
@@ -22,43 +24,20 @@ function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(() => {
-    if (typeof window === "undefined") {
-      return true;
-    }
-    const stored = window.localStorage.getItem("bulletin:rememberMe");
-    if (stored === null) {
-      return true;
-    }
-    return stored === "true";
-  });
+  const [remember, setRemember] = useRememberPreference("bulletin:rememberMe", true);
   const [showPassword, setShowPassword] = useState(false);
   const { shake, triggerShake } = useShake();
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  const [isAuthPopupActive, setIsAuthPopupActive] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { signInWithProvider, isPopupActive } = useProviderSignIn({ remember });
 
   const validatePassword = (value) => {
     if (!value) return "Please enter your password.";
     return "";
   };
-
-  // Clear message pop-up after 3 seconds
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => setMessage(null), 3000);
-      return () => clearTimeout(timer);
-      }
-  }, [message]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    window.localStorage.setItem("bulletin:rememberMe", remember ? "true" : "false");
-  }, [remember]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -70,7 +49,13 @@ function LoginPage() {
     setEmailError(emailErr);
     setPasswordError(passwordErr);
 
+    if (emailErr || passwordErr) {
+      triggerShake();
+      return;
+    }
+
     try {
+      setIsSubmitting(true);
       const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
       await applyAuthPersistence(auth, persistenceMode);
       await signInWithEmailAndPassword(auth, email, password);
@@ -96,31 +81,16 @@ function LoginPage() {
           break;
       }
       triggerShake();
-    }
-  };
-
-  const withPopupGuard = async (handler) => {
-    if (isAuthPopupActive) {
-      return;
-    }
-    setIsAuthPopupActive(true);
-    try {
-      await handler();
     } finally {
-      setIsAuthPopupActive(false);
+      setIsSubmitting(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
     setError(null);
     try {
-      await withPopupGuard(async () => {
-        const provider = new GoogleAuthProvider();
-        const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
-        await applyAuthPersistence(auth, persistenceMode);
-        await signInWithPopup(auth, provider);
-        navigate(routes.map.base);
-      });
+      await signInWithProvider(() => new GoogleAuthProvider());
+      navigate(routes.map.base);
     } catch (popupError) {
       if (popupError?.message) {
         setError(popupError.message);
@@ -133,13 +103,8 @@ function LoginPage() {
   const handleAppleSignIn = async () => {
     setError(null);
     try {
-      await withPopupGuard(async () => {
-        const provider = new OAuthProvider("apple.com");
-        const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
-        await applyAuthPersistence(auth, persistenceMode);
-        await signInWithPopup(auth, provider);
-        navigate(routes.map.base);
-      });
+      await signInWithProvider(() => new OAuthProvider("apple.com"));
+      navigate(routes.map.base);
     } catch (signupError) {
       if (signupError?.code === "auth/operation-not-supported-in-this-environment") {
         setError("Apple sign-in is not available in this environment.");
@@ -155,25 +120,14 @@ function LoginPage() {
     }
   };
 
-  const alerts = [];
-  if (error) {
-    alerts.push({
-      id: "error",
-      type: "error",
-      content: error,
-      overlayClassName: "error-overlay",
-      boxClassName: "error-box",
-      onClose: () => setError(null)
-    });
-  }
-  if (message) {
-    alerts.push({
-      id: "message",
-      type: "info",
-      content: message,
-      onClose: () => setMessage(null)
-    });
-  }
+  const alerts = useAuthAlerts({
+    error,
+    message,
+    onErrorClear: () => setError(null),
+    onMessageClear: () => setMessage(null),
+    errorOverlayClassName: "error-overlay",
+    errorBoxClassName: "error-box"
+  });
 
   return (
     <AuthPageLayout
@@ -214,10 +168,10 @@ function LoginPage() {
             <input
               type="checkbox"
               checked={remember}
-              onChange={() => setRemember(!remember)}
-            />
-            Remember me
-          </label>
+            onChange={() => setRemember((prev) => !prev)}
+          />
+          Remember me
+        </label>
           
           <div className="forgot-password-link">
             <span
@@ -229,13 +183,19 @@ function LoginPage() {
           </div>
         </div>
           
-        <button type="submit" className="login-page-login-btn">Login</button>
+        <button
+          type="submit"
+          className="login-page-login-btn"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Logging in..." : "Login"}
+        </button>
 
         <button 
           type="button"
           className="login-page-google-sign-in-btn" 
           onClick={handleGoogleSignIn}
-          disabled={isAuthPopupActive}
+          disabled={isPopupActive}
         >
           <GoogleIcon className="google-icon" fontSize="small" />
           Sign in with Google
@@ -245,7 +205,7 @@ function LoginPage() {
           type="button"
           className="login-page-apple-sign-in-btn"
           onClick={handleAppleSignIn}
-          disabled={isAuthPopupActive}
+          disabled={isPopupActive}
         >
           <AppleIcon className="apple-icon" fontSize="small" />
           Sign in with Apple

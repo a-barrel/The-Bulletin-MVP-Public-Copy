@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
@@ -13,6 +13,7 @@ import {
   validatePasswordField
 } from "../utils/authForm.js";
 import useShake from "../hooks/useShake.js";
+import useAuthAlerts from "../hooks/useAuthAlerts";
 import "./Registration.css";
 
 function RegistrationPage() {
@@ -20,6 +21,7 @@ function RegistrationPage() {
   const { shake, triggerShake } = useShake();
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [form, setForm] = useState({
     username: "",
@@ -46,7 +48,7 @@ function RegistrationPage() {
   };
 
   // simple validators to mirror your red helper text behavior
-  const validate = () => {
+  const validate = useCallback(() => {
     const er = { username: "", email: "", phone: "", password: "" };
     er.username = validateUsernameField(form.username);
     er.email = validateAuthEmail(form.email);
@@ -55,7 +57,7 @@ function RegistrationPage() {
 
     setErrors(er);
     return Object.values(er).every((v) => v === "");
-  };
+  }, [form.email, form.password, form.phone, form.username]);
 
   const mapFirebaseError = (code) => {
     switch (code) {
@@ -82,6 +84,7 @@ function RegistrationPage() {
     }
 
     try {
+      setIsSubmitting(true);
       await createUserWithEmailAndPassword(auth, form.email.trim(), form.password);
       setMessage("Your account has been created successfully! \nRedirecting to login...");
       setTimeout(() => navigate(routes.auth.login), 2000);
@@ -89,18 +92,15 @@ function RegistrationPage() {
       console.error("Registration failed:", err);
       setMessage(mapFirebaseError(err?.code));
       triggerShake();
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const alerts = [];
-  if (message) {
-    alerts.push({
-      id: "message",
-      type: "info",
-      content: message,
-      onClose: () => setMessage(null)
-    });
-  }
+  const alerts = useAuthAlerts({
+    message,
+    onMessageClear: () => setMessage(null)
+  });
 
   return (
     <AuthPageLayout
@@ -160,8 +160,8 @@ function RegistrationPage() {
           />
 
           {/* Submit */}
-          <button type="submit" className="register-submit">
-            Register
+          <button type="submit" className="register-submit" disabled={isSubmitting}>
+            {isSubmitting ? "Registering..." : "Register"}
           </button>
       </form>
     </AuthPageLayout>

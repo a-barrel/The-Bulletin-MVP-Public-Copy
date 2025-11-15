@@ -1,9 +1,10 @@
 /* NOTE: Page exports configuration alongside the component. */
-import { useEffect, useRef } from 'react';
+import { useMemo } from 'react';
 import Box from '@mui/material/Box';
 import runtimeConfig from '../config/runtime';
-import { playBadgeSound } from '../utils/badgeSound';
-import { awardBadge } from '../api/mongoDataApi';
+import resolveAssetUrl from '../utils/media';
+import useBadgeAwardOnEntry from '../hooks/useBadgeAwardOnEntry';
+import useAutoplayAudio from '../hooks/useAutoplayAudio';
 
 export const pageConfig = {
   id: 'emulation-test',
@@ -14,51 +15,23 @@ export const pageConfig = {
   protected: true
 };
 
-const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
-const BACKGROUND_URL = `${API_BASE_URL || ''}/images/emulation/gifs/kirby-rushing.gif`;
-const OVERLAY_URL = `${API_BASE_URL || ''}/images/emulation/gifs/engine-engineer.gif`;
-const SOUND_URL = `${API_BASE_URL || ''}/images/emulation/sounds/gamestartup23.mp3`;
-
 function EmulationTestPage() {
-  const audioRef = useRef(null);
+  const apiBase = useMemo(() => (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, ''), []);
+  const backgroundUrl = useMemo(
+    () => resolveAssetUrl(`${apiBase}/images/emulation/gifs/kirby-rushing.gif`),
+    [apiBase]
+  );
+  const overlayUrl = useMemo(
+    () => resolveAssetUrl(`${apiBase}/images/emulation/gifs/engine-engineer.gif`),
+    [apiBase]
+  );
+  const soundUrl = useMemo(
+    () => resolveAssetUrl(`${apiBase}/images/emulation/sounds/gamestartup23.mp3`),
+    [apiBase]
+  );
 
-  useEffect(() => {
-    awardBadge('how-badge')
-      .then((result) => {
-        if (result?.granted) {
-          playBadgeSound();
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    const node = audioRef.current;
-    if (!node) {
-      return;
-    }
-
-    const attemptPlay = () => {
-      node.volume = 0.75;
-      node.play().catch(() => {});
-    };
-
-    attemptPlay();
-
-    const resumeOnInteraction = () => {
-      attemptPlay();
-      window.removeEventListener('click', resumeOnInteraction);
-      window.removeEventListener('keydown', resumeOnInteraction);
-    };
-
-    window.addEventListener('click', resumeOnInteraction);
-    window.addEventListener('keydown', resumeOnInteraction);
-
-    return () => {
-      window.removeEventListener('click', resumeOnInteraction);
-      window.removeEventListener('keydown', resumeOnInteraction);
-    };
-  }, []);
+  useBadgeAwardOnEntry('how-badge');
+  const audioRef = useAutoplayAudio({ volume: 0.75 });
 
   return (
     <Box
@@ -68,7 +41,7 @@ function EmulationTestPage() {
         minHeight: '100vh',
         width: '100vw',
         overflow: 'hidden',
-        backgroundImage: `url(${BACKGROUND_URL})`,
+        backgroundImage: `url(${backgroundUrl})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center center',
         backgroundRepeat: 'no-repeat'
@@ -76,7 +49,7 @@ function EmulationTestPage() {
     >
       <Box
         component="img"
-        src={OVERLAY_URL}
+        src={overlayUrl}
         alt="Engineer animation"
         sx={{
           position: 'absolute',
@@ -89,7 +62,7 @@ function EmulationTestPage() {
       />
       <Box
         component="img"
-        src={OVERLAY_URL}
+        src={overlayUrl}
         alt="Engineer animation mirrored"
         sx={{
           position: 'absolute',
@@ -126,7 +99,7 @@ function EmulationTestPage() {
       >
         LMAO GOTTEM
       </Box>
-      <audio ref={audioRef} src={SOUND_URL} autoPlay loop preload="auto" />
+      <audio ref={audioRef} src={soundUrl} autoPlay loop preload="auto" />
     </Box>
   );
 }

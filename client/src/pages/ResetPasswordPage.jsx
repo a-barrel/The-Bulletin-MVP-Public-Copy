@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { auth } from "../firebase";
 import "./ResetPasswordPage.css";
@@ -6,48 +6,21 @@ import { confirmPasswordReset } from "firebase/auth";
 import { routes } from "../routes";
 import AuthPageLayout from "../components/AuthPageLayout.jsx";
 import PasswordField from "../components/PasswordField.jsx";
-
-function getPasswordStrength(password) {
-  let score = 0;
-
-  // Checks password length
-  if (password.length >= 8) score += 1;
-  if (password.length >= 12) score += 1;
-
-  // Checks if password contains lowercase
-  if (/[a-z]/.test(password)) score += 1;
-
-  // Checks if password contains uppercase
-  if (/[A-Z]/.test(password)) score += 1;
-
-  // Checks if password contains numbers
-  if (/\d/.test(password)) score += 1;
-
-  // Checks if password contains special characters
-  if (/[^A-Za-z0-9]/.test(password)) score += 1;
-
-  let label = "Weak";
-  if (score <= 2) label = "Weak";
-  else if (score <= 4) label = "Medium";
-  else label = "Strong";
-
-  return { label, score };
-}
-
-function getPasswordStrengthColor(score) {
-    if (score == 0) return "grey";
-    if (score <= 2) return "red";
-    if (score <= 4) return "orange";
-    return "green";
-  }
+import useShake from "../hooks/useShake.js";
+import useAuthAlerts from "../hooks/useAuthAlerts";
+import {
+  PASSWORD_REQUIREMENTS,
+  getPasswordStrength,
+  getPasswordStrengthColor
+} from "../utils/passwordStrength";
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
-  const [strength, setStrength] = useState({ label: "", score: 0});
-  const [shake, setShake] = useState(false);
+  const strength = useMemo(() => getPasswordStrength(newPassword), [newPassword]);
+  const { shake, triggerShake } = useShake();
   const [error, setError] = useState(null);
   const [passwordError, setPasswordError] = useState(null);
   const [message, setMessage] = useState(null);
@@ -55,40 +28,12 @@ function ResetPasswordPage() {
   const [oobCodeError, setOobCodeError] = useState(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
-  const passwordRequirements = [
-    { label: "Has an uppercase letter", test: (pw) => /[A-Z]/.test(pw) },
-    { label: "Has a lowercase letter", test: (pw) => /[a-z]/.test(pw) },
-    { label: "Has a number", test: (pw) => /\d/.test(pw) },
-    { label: "Has a special character", test: (pw) => /[^A-Za-z0-9]/.test(pw) },
-    { label: "Is at least 8 characters long", test: (pw) => pw.length >= 8 }
-  ];
 
   const validatePassword = (value) => {
     if (!value) return "Please enter your password.";
     return "";
   };
 
-  useEffect(() => {
-    const s = getPasswordStrength(newPassword);
-    setStrength(s);
-  }, [newPassword]);
-
-  // Clear error pop-up after 3 seconds
-  useEffect(() => {
-  if (error) {
-    const timer = setTimeout(() => setError(null), 3000); 
-    return () => clearTimeout(timer);
-    }
-  }, [error]);
-
-  // Clear message pop-up after 3 seconds
-  useEffect(() => {
-  if (message) {
-    const timer = setTimeout(() => setMessage(null), 3000); 
-    return () => clearTimeout(timer);
-    }
-  }, [message]);
-  
   const oobCode = useMemo(() => {
     if (!location?.search) {
       return null;
@@ -103,111 +48,97 @@ function ResetPasswordPage() {
     }
   }, [location?.search]);
 
-  useEffect(() => {
+  useMemo(() => {
     if (!oobCode) {
       setOobCodeError("This reset link is invalid or has already been used.");
     } else {
       setOobCodeError(null);
     }
+    return null;
   }, [oobCode]);
 
   const handlePasswordReset = async (e) => {
-  e.preventDefault();
-  setError(null);
-  setMessage(null);
-  setOobCodeError(null);
+    e.preventDefault();
+    setError(null);
+    setMessage(null);
+    setOobCodeError(null);
 
-  const passwordErr = validatePassword(newPassword);
+    const passwordErr = validatePassword(newPassword);
+    setPasswordError(passwordErr);
 
-  setPasswordError(passwordErr);
-
-  if (!oobCode) {
-    setOobCodeError("This reset link is invalid or has already been used.");
-    setShake(true);
-    setTimeout(() => setShake(false), 300);
-    return;
-  }
-
-  // Call for simple errors before attempting to authenticate 
-  if (!newPassword || !confirmNewPassword) {
-    setPasswordError("Please enter a password and confirm it in the fields.");
-    setShake(true);
-    setTimeout(() => setShake(false), 300);
-    return;
-  }
-
-  if (newPassword != confirmNewPassword) {
-    setPasswordError("Passwords are not matching. Please re-enter them again.");
-    setShake(true);
-    setTimeout(() => setShake(false), 300);
-    return;
-  }
-
-  if (strength.label != "Strong") {
-    setPasswordError("Password is too weak. Make it stronger.");
-    setShake(true);
-    setTimeout(() => setShake(false), 300);
-    return;
-  }
-
-  try {
-    setIsSubmitting(true);
-    await confirmPasswordReset(auth, oobCode, newPassword);
-    setMessage("Your password has been reset successfully! \nRedirecting to login...");
-    setTimeout(() => navigate(routes.auth.login), 2000);
-  } catch (error) {
-    switch (error.code) {
-      case "auth/expired-action-code":
-        setError("This link has expired. Please request a new password reset.");
-        break;
-      case "auth/invalid-action-code":
-        setError("Invalid action code. Please request a new password reset.");
-        break;
-      case "auth/weak-password":
-        setError("Password is too weak. Please choose a stronger password.");
-        break;
-      default:
-        setError("Something went wrong. Please try again.");
-        break;
+    if (!oobCode) {
+      setOobCodeError("This reset link is invalid or has already been used.");
+      triggerShake();
+      return;
     }
-    setShake(true);
-    setTimeout(() => setShake(false), 300);
+
+    if (!newPassword || !confirmNewPassword) {
+      setPasswordError("Please enter a password and confirm it in the fields.");
+      triggerShake();
+      return;
     }
-  finally {
-    setIsSubmitting(false);
-  }
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("Passwords are not matching. Please re-enter them again.");
+      triggerShake();
+      return;
+    }
+
+    if (strength.label !== "Strong") {
+      setPasswordError("Password is too weak. Make it stronger.");
+      triggerShake();
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await confirmPasswordReset(auth, oobCode, newPassword);
+      setMessage("Your password has been reset successfully! \nRedirecting to login...");
+      setTimeout(() => navigate(routes.auth.login), 2000);
+    } catch (err) {
+      switch (err.code) {
+        case "auth/expired-action-code":
+          setError("This link has expired. Please request a new password reset.");
+          break;
+        case "auth/invalid-action-code":
+          setError("Invalid action code. Please request a new password reset.");
+          break;
+        case "auth/weak-password":
+          setError("Password is too weak. Please choose a stronger password.");
+          break;
+        default:
+          setError("Something went wrong. Please try again.");
+          break;
+      }
+      triggerShake();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const fillPercent = (strength.score / 6) * 100;
   const fillColor = getPasswordStrengthColor(strength.score);
 
-  const alerts = [];
+  const alerts = [
+    ...useAuthAlerts({
+      error,
+      message,
+      onErrorClear: () => setError(null),
+      onMessageClear: () => setMessage(null),
+      errorOverlayClassName: 'message-overlay',
+      errorBoxClassName: 'message-box',
+      messageOverlayClassName: 'message-overlay',
+      messageBoxClassName: 'message-box'
+    })
+  ];
   if (oobCodeError) {
-    alerts.push({
+    alerts.unshift({
       id: 'oob-code',
       type: 'error',
       content: oobCodeError,
       overlayClassName: 'message-overlay',
       boxClassName: 'message-box',
       onClose: () => setOobCodeError(null)
-    });
-  }
-  if (error) {
-    alerts.push({
-      id: 'error',
-      type: 'error',
-      content: error,
-      overlayClassName: 'message-overlay',
-      boxClassName: 'message-box',
-      onClose: () => setError(null)
-    });
-  }
-  if (message) {
-    alerts.push({
-      id: 'message',
-      type: 'info',
-      content: message,
-      onClose: () => setMessage(null)
     });
   }
 
@@ -218,77 +149,48 @@ function ResetPasswordPage() {
       alerts={alerts}
     >
       <form onSubmit={handlePasswordReset} className={"page-form"}>
+        <div className="password-strength">
+          <div className="strength-bar">
+            <div
+              className="strength-fill"
+              style={{ width: `${fillPercent}%`, backgroundColor: fillColor }}
+            />
+          </div>
+          <p className="strength-label">Password strength: {strength.label || "Weak"}</p>
+        </div>
+
         <PasswordField
+          label="New Password"
           value={newPassword}
-          onChange={(e) => {
-            setNewPassword(e.target.value);
-            setError(null);
-            setOobCodeError(null);
-          }}
-          placeholder="Enter New Password"
+          onChange={(e) => setNewPassword(e.target.value)}
+          placeholder="Enter new password"
+          error={passwordError}
           showPassword={showNewPassword}
           onToggleVisibility={() => setShowNewPassword((prev) => !prev)}
           autoComplete="new-password"
         />
 
         <PasswordField
+          label="Confirm New Password"
           value={confirmNewPassword}
-          onChange={(e) => {
-            setConfirmNewPassword(e.target.value);
-            setError(null);
-            setOobCodeError(null);
-          }}
-          placeholder="Confirm New Password"
+          onChange={(e) => setConfirmNewPassword(e.target.value)}
+          placeholder="Confirm new password"
           error={passwordError}
           showPassword={showConfirmNewPassword}
           onToggleVisibility={() => setShowConfirmNewPassword((prev) => !prev)}
           autoComplete="new-password"
         />
 
-        <div className="password-strength-container">
-          <small className="password-strength-label">
-            Password strength:{" "}
-            <span 
-              style={{ 
-                className: "password-strength-text",
-                color: newPassword ? fillColor : "grey",
-              }}
-            >
-              {strength.label || "N/A"}
-            </span>
-          </small>
+        <ul className="password-requirements">
+          {PASSWORD_REQUIREMENTS.map((req) => (
+            <li key={req.label} className={req.test(newPassword) ? "met" : "unmet"}>
+              {req.label}
+            </li>
+          ))}
+        </ul>
 
-          <div className="password-strength-bar" aria-hidden>
-            <div 
-            className="password-strength-fill" 
-            style={{ 
-              width: `${fillPercent}%`, 
-              backgroundColor: newPassword ? fillColor : "grey" 
-              }}>
-            </div>
-          </div>
-        </div>
-
-        <div className="password-req">
-          <p className="password-req-title">Make sure your password meets the following:</p>
-          <ul className="password-req-list">
-            {passwordRequirements.map((req, index) => {
-              const passed = req.test(newPassword);
-              return (
-                <li 
-                  key={index} 
-                  className={`password-req-item ${passed ? "passed" : ""}`}
-                >
-                  <span className="req-icon">{passed ? "✔" : "X"}</span>
-                  <span>{req.label}</span>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-        
-        <button type="submit" className="reset-password-page-submit-btn" disabled={isSubmitting}>
-          {isSubmitting ? "Submitting..." : "Submit"}
+        <button type="submit" className="reset-password-btn" disabled={isSubmitting}>
+          {isSubmitting ? "Resetting..." : "Reset Password"}
         </button>
       </form>
     </AuthPageLayout>

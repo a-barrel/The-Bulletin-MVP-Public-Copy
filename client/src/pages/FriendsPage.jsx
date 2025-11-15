@@ -54,6 +54,7 @@ import MessageBubble from '../components/MessageBubble';
 import ChatComposer from '../components/ChatComposer';
 import ReportContentDialog from '../components/ReportContentDialog';
 import DirectThreadList from '../components/chat/DirectThreadList';
+import AttachmentPreview from '../components/chat/AttachmentPreview';
 import useDirectMessages from '../hooks/useDirectMessages';
 import useAttachmentManager, {
   mapDraftAttachmentPayloads,
@@ -95,117 +96,6 @@ export const pageConfig = {
   order: 90,
   showInNav: true,
   protected: true
-};
-
-function AttachmentPreview({
-  attachments,
-  onRemove,
-  status,
-  isUploading,
-  uploadProgress,
-  onRetry,
-  canRetry,
-  padding
-}) {
-  if (!attachments.length && !status && !isUploading) {
-    return null;
-  }
-
-  const progressLabel = (() => {
-    if (!uploadProgress || typeof uploadProgress.total !== 'number' || uploadProgress.total <= 0) {
-      return 'Uploading…';
-    }
-    const completed = Math.min(uploadProgress.completed || 0, uploadProgress.total);
-    return `Uploading ${completed}/${uploadProgress.total}…`;
-  })();
-
-  return (
-    <>
-      {status ? (
-        <Box sx={{ px: padding, pb: 1 }}>
-          <Alert
-            severity={status.type}
-            action={
-              status.type === 'error' && typeof onRetry === 'function' && canRetry ? (
-                <Button color="inherit" size="small" onClick={onRetry}>
-                  Retry
-                </Button>
-              ) : null
-            }
-          >
-            {status.message}
-          </Alert>
-        </Box>
-      ) : null}
-      {attachments.length ? (
-        <Box sx={{ px: padding, pb: 1 }}>
-          <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
-            {attachments.map((item) => (
-              <Box
-                key={item.id}
-                sx={{
-                  position: 'relative',
-                  width: 132,
-                  height: 132,
-                  borderRadius: 1.5,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  overflow: 'hidden',
-                  backgroundColor: 'background.paper',
-                  boxShadow: 3
-                }}
-              >
-                <Box
-                  component="img"
-                  src={item.asset.url}
-                  alt={item.asset.description || 'Chat attachment'}
-                  sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-                {typeof onRemove === 'function' ? (
-                  <IconButton
-                    size="small"
-                    aria-label="Remove attachment"
-                    onClick={() => onRemove(item.id)}
-                    sx={{
-                      position: 'absolute',
-                      top: 4,
-                      right: 4,
-                      backgroundColor: 'rgba(0,0,0,0.55)',
-                      color: '#fff',
-                      '&:hover': {
-                        backgroundColor: 'rgba(0,0,0,0.75)'
-                      }
-                    }}
-                  >
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                ) : null}
-              </Box>
-            ))}
-          </Stack>
-        </Box>
-      ) : null}
-      {isUploading ? (
-        <Box sx={{ px: padding, pb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CircularProgress size={16} />
-          <Typography variant="caption" color="text.secondary">
-            {progressLabel}
-          </Typography>
-        </Box>
-      ) : null}
-    </>
-  );
-}
-
-AttachmentPreview.defaultProps = {
-  attachments: [],
-  onRemove: undefined,
-  status: null,
-  isUploading: false,
-  uploadProgress: null,
-  onRetry: undefined,
-  canRetry: false,
-  padding: { xs: 2, md: 3 }
 };
 
 const getGifCommandQuery = (value) => {
