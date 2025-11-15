@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -eu
+# POSIX sh (used by husky wrappers) doesn't support `pipefail`; ignore errors when unavailable.
+set -o pipefail 2>/dev/null || true
 
 REPO_ROOT="$(cd -- "$(dirname -- "$0")/.." && pwd -P)"
 cd "$REPO_ROOT"
