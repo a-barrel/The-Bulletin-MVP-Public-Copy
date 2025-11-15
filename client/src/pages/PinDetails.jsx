@@ -34,6 +34,7 @@ import usePinDetails from '../hooks/usePinDetails';
 import ReportContentDialog from '../components/ReportContentDialog';
 import { createContentReport, deletePin, updatePin } from '../api/mongoDataApi';
 import ImageOverlay from '../components/ImageOverlay.jsx'
+import reportClientError from '../utils/reportClientError';
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
@@ -618,6 +619,11 @@ function PinDetails() {
       });
     } catch (error) {
       setReportError(error?.message || 'Failed to submit report. Please try again later.');
+      reportClientError(error, 'Failed to submit content report.', {
+        component: 'PinDetails',
+        contentType: reportTarget?.contentType,
+        contentId: reportTarget?.contentId
+      });
     } finally {
       setIsSubmittingReport(false);
     }

@@ -5,6 +5,7 @@ import {
   fetchModerationOverview,
   submitModerationAction
 } from '../api/mongoDataApi';
+import reportClientError from '../utils/reportClientError';
 
 const initialState = {
   overview: null,
@@ -177,6 +178,10 @@ export default function useModerationTools({ autoLoad = true } = {}) {
             : error?.message || 'Failed to load moderation overview.',
         status: error?.status ?? null
       });
+      reportClientError(error, 'Failed to load moderation overview.', {
+        hook: 'useModerationTools',
+        step: 'loadOverview'
+      });
       throw error;
     }
   }, []);
@@ -204,6 +209,11 @@ export default function useModerationTools({ autoLoad = true } = {}) {
               ? 'Moderator privileges required.'
               : error?.message || 'Failed to load moderation history.',
           status: error?.status ?? null
+        });
+        reportClientError(error, 'Failed to load moderation history.', {
+          hook: 'useModerationTools',
+          step: 'loadHistory',
+          userId
         });
         throw error;
       }
@@ -274,6 +284,12 @@ export default function useModerationTools({ autoLoad = true } = {}) {
               ? 'Moderator privileges required.'
               : error?.message || 'Failed to record moderation action.',
           status: error?.status ?? null
+        });
+        reportClientError(error, 'Failed to record moderation action.', {
+          hook: 'useModerationTools',
+          step: 'recordAction',
+          userId,
+          actionType: type
         });
         throw error;
       }

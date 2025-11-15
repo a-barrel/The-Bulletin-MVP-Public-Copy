@@ -14,6 +14,7 @@ import Typography from '@mui/material/Typography';
 import ProfileSection from './ProfileSection';
 import useModerationTools from '../../hooks/useModerationTools';
 import { formatFriendlyTimestamp } from '../../utils/dates';
+import reportClientError from '../../utils/reportClientError';
 
 const QUICK_ACTIONS = [
   {
@@ -122,7 +123,12 @@ function ProfileModerationPanel({ targetUserId, displayName, accountStatus, isVi
       });
       setNotes('');
     } catch (error) {
-      // handled via actionStatus inside useModerationTools
+      reportClientError(error, 'Failed to perform moderation action.', {
+        component: 'ProfileModerationPanel',
+        targetUserId,
+        action: preset?.type
+      });
+      // actionStatus already updated inside useModerationTools
     }
   };
 
