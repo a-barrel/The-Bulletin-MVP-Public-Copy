@@ -407,7 +407,7 @@ function BookmarksPage() {
       }
 
       // Count attending pins
-      if (Boolean(pin.viewerIsAttending)) {
+      if (pin.viewerIsAttending) {
         attendingCount++;
       }
     });
