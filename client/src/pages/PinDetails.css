@@ -98,8 +98,15 @@
     gap: 0.75rem;
 }
 
+.pin-details .pin-header-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 .pin-details .pin-nav-menu {
-    margin-left: 0.25rem;
+    margin-left: 0;
+    line-height: 0;
 }
 
 .pin-details .edit-button-wrapper {
@@ -190,10 +197,17 @@
 .pin-details .bookmark-icon--locked {
     color: #ffb347;
 }
- 
-.pin-details .bookmark-button--owner .bookmark-icon--locked,
-.pin-details .bookmark-button--attending .bookmark-icon--locked {
+
+.pin-details .bookmark-button--owner .bookmark-icon {
     color: #ffbe3c;
+}
+
+.pin-details .bookmark-button--owner .bookmark-icon--locked {
+    color: #ffbe3c;
+}
+
+.pin-details .bookmark-button--attending .bookmark-icon {
+    color: #5d3889;
 }
 
 /* pin name */

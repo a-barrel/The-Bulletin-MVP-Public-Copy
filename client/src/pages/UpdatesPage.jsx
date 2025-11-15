@@ -425,7 +425,7 @@ function UpdatesPage() {
                       {!read && (
                       <Button
                         className="mark-as-read-btn"
-                        startIcon={<CheckCircleOutlineIcon classname="read-icon" fontSize="small" />}
+                        startIcon={<CheckCircleOutlineIcon className="read-icon" fontSize="small" />}
                         onClick={() => handleMarkRead(update._id)}
                         disabled={pending || isDeleting}
                       >

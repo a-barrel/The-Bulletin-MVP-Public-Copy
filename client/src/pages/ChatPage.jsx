@@ -1746,8 +1746,9 @@ function ChatPage() {
                   </Box>
                 }
                 secondary={
-                  <Box className="room-card-bottom">
+                  <span className="room-card-bottom">
                     <Typography 
+                      component="span"
                       className="room-card-member-count" 
                       variant="caption"
                     >
@@ -1755,13 +1756,14 @@ function ChatPage() {
                     </Typography>
                     {isActive && (
                       <Typography 
+                        component="span"
                         className="room-card-joined-label"
                         variant="caption"
                       >
                         Joined
                       </Typography>
                     )}
-                  </Box>
+                  </span>
                 }
               />
             </ListItemButton>

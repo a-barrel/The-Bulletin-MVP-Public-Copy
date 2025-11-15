@@ -246,7 +246,7 @@ function BookmarksPage() {
       }}
     >
       <Stack spacing={3}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1.5}>
+        <Stack direction="row" alignItems="center" spacing={1.5}>
           <MainNavBackButton
             className="bookmarks-back-button"
             iconClassName="bookmarks-back-button__icon"
