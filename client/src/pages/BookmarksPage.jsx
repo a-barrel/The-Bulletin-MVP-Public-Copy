@@ -30,6 +30,7 @@ import {
   ListItemText,
   ListSubheader,
   MenuItem,
+  Pagination,
   Paper,
   Select,
   Stack,
@@ -122,6 +123,8 @@ function BookmarksPage() {
   const [highlightedCollectionKey, setHighlightedCollectionKey] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [viewerMongoId, setViewerMongoId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const collectionAnchorsRef = useRef(new Map());
   const focusAppliedRef = useRef(null);
   const focusParam = searchParams.get('collection');
@@ -314,7 +317,64 @@ function BookmarksPage() {
 
   const handleFilterChange = useCallback((event) => {
     setSelectedFilter(event.target.value);
+    setCurrentPage(1); // Reset to first page when filter changes
   }, []);
+
+  // Flatten all bookmarks from filtered groups for pagination
+  const flattenedBookmarks = useMemo(() => {
+    const allBookmarks = [];
+    filteredBookmarks.forEach((group) => {
+      group.items.forEach((bookmark) => {
+        allBookmarks.push({
+          ...bookmark,
+          collectionId: group.id,
+          collectionName: group.name || UNSORTED_LABEL
+        });
+      });
+    });
+    return allBookmarks;
+  }, [filteredBookmarks]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(flattenedBookmarks.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedBookmarks = flattenedBookmarks.slice(startIndex, endIndex);
+
+  // Group paginated bookmarks back by collection for display
+  const paginatedGroupedBookmarks = useMemo(() => {
+    const grouped = new Map();
+    paginatedBookmarks.forEach((bookmark) => {
+      const groupKey = bookmark.collectionId ?? UNSORTED_COLLECTION_KEY;
+      if (!grouped.has(groupKey)) {
+        const originalGroup = filteredBookmarks.find(
+          (g) => (g.id ?? UNSORTED_COLLECTION_KEY) === groupKey
+        );
+        grouped.set(groupKey, {
+          id: originalGroup?.id,
+          name: originalGroup?.name,
+          description: originalGroup?.description,
+          items: []
+        });
+      }
+      grouped.get(groupKey).items.push(bookmark);
+    });
+    return Array.from(grouped.values());
+  }, [paginatedBookmarks, filteredBookmarks]);
+
+  const handlePageChange = useCallback((event, value) => {
+    setCurrentPage(value);
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  // Reset page if it's out of bounds after filtering
+  useEffect(() => {
+    const maxPage = Math.ceil(flattenedBookmarks.length / itemsPerPage) || 1;
+    if (currentPage > maxPage) {
+      setCurrentPage(1);
+    }
+  }, [flattenedBookmarks.length, currentPage]);
 
   // Calculate counts for each filter option using bookmarks from useBookmarksManager
   const filterCounts = useMemo(() => {
@@ -537,7 +597,7 @@ function BookmarksPage() {
             </FormControl>
             <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden', backgroundColor: 'transparent' }}>
               <List disablePadding>
-                {filteredBookmarks.map((group) => {
+                {paginatedGroupedBookmarks.map((group) => {
                 const { id: collectionId, name, description, items } = group;
                 const groupKey = collectionId ?? UNSORTED_COLLECTION_KEY;
                 const displayName = name || UNSORTED_LABEL;
@@ -619,6 +679,29 @@ function BookmarksPage() {
             })}
             </List>
           </Paper>
+          {totalPages > 1 && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 2 }}>
+              <Pagination
+                count={totalPages}
+                page={currentPage}
+                onChange={handlePageChange}
+                color="primary"
+                sx={{
+                  '& .MuiPaginationItem-root': {
+                    fontFamily: '"Urbanist", sans-serif',
+                    color: 'black'
+                  },
+                  '& .MuiPaginationItem-root.Mui-selected': {
+                    backgroundColor: '#4b208c',
+                    color: 'white',
+                    '&:hover': {
+                      backgroundColor: '#6b2fa8'
+                    }
+                  }
+                }}
+              />
+            </Box>
+          )}
           </>
         )}
       </Stack>
