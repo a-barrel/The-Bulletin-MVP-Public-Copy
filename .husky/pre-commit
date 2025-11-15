@@ -7,6 +7,30 @@ set -o pipefail 2>/dev/null || true
 REPO_ROOT="$(cd -- "$(dirname -- "$0")/.." && pwd -P)"
 cd "$REPO_ROOT"
 
+supports_wsl2_proxy() {
+  local exe="$1"
+  if [ -z "$exe" ]; then
+    return 1
+  fi
+  local output status=0
+  output="$("$exe" -l -v 2>/dev/null)" || status=$?
+  if [ $status -ne 0 ] || [ -z "$output" ]; then
+    return 1
+  fi
+  output="${output//$'\r'/}"
+  local default_line
+  default_line="$(printf '%s\n' "$output" | awk '/^\*/ {print; exit}')"
+  if [ -z "$default_line" ]; then
+    default_line="$(printf '%s\n' "$output" | awk 'NR==2 {print; exit}')"
+  fi
+  if [ -z "$default_line" ]; then
+    return 1
+  fi
+  local version_field
+  version_field="$(printf '%s\n' "$default_line" | awk '{print $NF}')"
+  [ "$version_field" = "2" ]
+}
+
 uname_str="$(uname -s 2>/dev/null || echo)"
 # GitHub Desktop on Windows runs Git hooks via MSYS bash (MINGW/MSYS/Cygwin).
 # That environment cannot execute "C:\Program Files\nodejs\npm" paths directly,
@@ -14,13 +38,20 @@ uname_str="$(uname -s 2>/dev/null || echo)"
 case "$uname_str" in
   MINGW*|MSYS*|CYGWIN*)
     WSL_EXE=""
+    WSL_FOUND=0
     # Look for wsl.exe in typical System32 paths; if absent we fall back to the normal npm flow.
     for candidate in /c/Windows/System32/wsl.exe /c/WINDOWS/System32/wsl.exe /C/Windows/System32/wsl.exe /C/WINDOWS/System32/wsl.exe; do
       if [ -x "$candidate" ]; then
-        WSL_EXE="$candidate"
-        break
+        WSL_FOUND=1
+        if supports_wsl2_proxy "$candidate"; then
+          WSL_EXE="$candidate"
+          break
+        fi
       fi
     done
+    if [ -z "$WSL_EXE" ] && [ "$WSL_FOUND" -eq 1 ]; then
+      echo "[husky] WSL detected but default distro isn't WSL 2; skipping WSL proxy." >&2
+    fi
     if [ -n "$WSL_EXE" ]; then
       repo_win="$PWD"
       # Translate /c/... paths into /mnt/c/... so WSL can cd into the repo.
