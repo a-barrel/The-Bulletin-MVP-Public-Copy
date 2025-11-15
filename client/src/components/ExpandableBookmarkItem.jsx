@@ -11,14 +11,15 @@ import {
   Stack,
   Typography
 } from '@mui/material';
-import LaunchIcon from '@mui/icons-material/Launch';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PlusIcon from '../assets/Plus.svg';
 import MinusIcon from '../assets/Minus.svg';
 import DiscussionBookmarkIcon from '../assets/Discussion_Bookmarks.svg';
 import EventBookmarkIcon from '../assets/Event_Bookmarks.svg';
+import AttendingBookmarksIcon from '../assets/Attending_Bookmarks.svg';
 import resolveAssetUrl from '../utils/media';
 import { fetchPinById } from '../api/mongoDataApi';
+import toIdString from '../utils/ids';
+import BookmarkedIcon from '../assets/Bookmarked.svg';
 
 function ExpandableBookmarkItem({
   bookmark,
@@ -31,7 +32,8 @@ function ExpandableBookmarkItem({
   isRemoving,
   isOffline,
   onViewPin,
-  onRemoveBookmark
+  onRemoveBookmark,
+  authUser
 }) {
   const [expanded, setExpanded] = useState(false);
   const [fullPin, setFullPin] = useState(null);
@@ -71,6 +73,22 @@ function ExpandableBookmarkItem({
   const description = displayPin?.description || '';
   const creator = displayPin?.creator;
   const creatorName = creator?.displayName || creator?.username || 'Unknown';
+
+  // Determine if the current user owns the pin
+  const creatorId = toIdString(displayPin?.creatorId) ?? toIdString(displayPin?.creator?._id);
+  const viewerId = toIdString(authUser?.uid);
+  const ownsPin = Boolean(creatorId && viewerId && creatorId === viewerId);
+
+  // Determine if the user is attending (for event pins)
+  const attending = Boolean(bookmark?.viewerIsAttending);
+
+  // Get participant count for event pins
+  const participantCount =
+    typeof displayPin?.stats?.participantCount === 'number'
+      ? displayPin.stats.participantCount
+      : typeof displayPin?.participantCount === 'number'
+      ? displayPin.participantCount
+      : 0;
 
   const iconSrc =
     pinType === 'discussion'
@@ -114,7 +132,8 @@ function ExpandableBookmarkItem({
         border: '1px solid black',
         borderRadius: 5,
         backgroundColor: '#F5EFFD',
-        color: '#5D3889'
+        color: '#5D3889',
+        fontFamily: '"Urbanist", sans-serif'
       }}
     >
       <ListItemButton
@@ -147,7 +166,7 @@ function ExpandableBookmarkItem({
         <Typography
           variant="subtitle1"
           fontWeight={600}
-          sx={{ color: '#5D3889', textAlign: 'center', justifySelf: 'center' }}
+          sx={{ color: '#5D3889', textAlign: 'center', justifySelf: 'center', fontFamily: '"Urbanist", sans-serif' }}
         >
           {pinTitle}
         </Typography>
@@ -171,26 +190,9 @@ function ExpandableBookmarkItem({
           }}
         >
           <Stack spacing={1.5}>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-              <Chip label={tagLabel} size="small" color="secondary" variant="outlined" />
-              <Typography variant="body2" sx={{ color: '#5D3889' }}>
-                Saved on {savedAt}
-              </Typography>
-            </Stack>
             {isLoadingPin ? (
-              <Typography variant="body2" sx={{ color: '#5D3889' }}>
+              <Typography variant="body2" sx={{ color: '#5D3889', fontFamily: '"Urbanist", sans-serif' }}>
                 Loading...
-              </Typography>
-            ) : description ? (
-              <Typography
-                variant="body2"
-                sx={{
-                  color: '#5D3889',
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word'
-                }}
-              >
-                {description}
               </Typography>
             ) : null}
 
@@ -223,38 +225,120 @@ function ExpandableBookmarkItem({
               )
             )}
 
-            {creator ? (
-              <Typography variant="body2" sx={{ color: '#5D3889' }}>
-                Created by {creatorName}
+            {!isLoadingPin && description ? (
+              <Typography
+                variant="body2"
+                sx={{
+                  color: '#5D3889',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  fontFamily: '"Urbanist", sans-serif'
+                }}
+              >
+                {description}
               </Typography>
             ) : null}
-            <Stack direction="row" spacing={1} sx={{ pt: 1 }}>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<LaunchIcon fontSize="small" />}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onViewPin(pinId, fullPin || pin);
+
+            {/* Attending count, View button, and Bookmark button in one row */}
+            <Box
+              sx={{
+                pt: 1,
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                minHeight: '40px'
+              }}
+            >
+              {/* Left: Attending count (only for event pins) */}
+              <Box sx={{ flex: '1 1 0', display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 0.5 }}>
+                {pinType === 'event' ? (
+                  <>
+                    <Box
+                      component="img"
+                      src={AttendingBookmarksIcon}
+                      alt=""
+                      sx={{ width: 20, height: 20 }}
+                    />
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: '#5D3889',
+                        fontWeight: 500,
+                        fontFamily: '"Urbanist", sans-serif'
+                      }}
+                    >
+                      {participantCount}
+                    </Typography>
+                  </>
+                ) : null}
+              </Box>
+
+              {/* Center: View button */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  display: 'flex',
+                  justifyContent: 'center'
                 }}
               >
-                View
-              </Button>
-              <Button
-                size="small"
-                variant="text"
-                color="error"
-                startIcon={<DeleteOutlineIcon fontSize="small" />}
-                disabled={isOffline || isRemoving}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onRemoveBookmark(bookmark);
-                }}
-                title={isOffline ? 'Reconnect to remove bookmarks' : undefined}
-              >
-                {isRemoving ? 'Removing...' : 'Remove'}
-              </Button>
-            </Stack>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onViewPin(pinId, fullPin || pin);
+                  }}
+                  sx={{
+                    color: 'black',
+                    backgroundColor: '#CDAEF2',
+                    border: '1px solid black',
+                    fontFamily: '"Urbanist", sans-serif',
+                    '&:hover': {
+                      backgroundColor: '#CDAEF2',
+                      border: '1px solid black',
+                      color: 'black'
+                    },
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'black'
+                    },
+                    '&.MuiButton-outlined': {
+                      borderColor: 'black'
+                    }
+                  }}
+                >
+                  View
+                </Button>
+              </Box>
+
+              {/* Right: Bookmark button */}
+              <Box sx={{ flex: '1 1 0', display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  disabled={isOffline || isRemoving}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onRemoveBookmark(bookmark);
+                  }}
+                  title={isOffline ? 'Reconnect to manage bookmarks' : 'Remove bookmark'}
+                  aria-label="Remove bookmark"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: isOffline || isRemoving ? 'not-allowed' : 'pointer',
+                    opacity: isOffline || isRemoving ? 0.5 : 1
+                  }}
+                >
+                  <img
+                    src={BookmarkedIcon}
+                    alt="Remove bookmark"
+                    style={{ width: '24px', height: '24px' }}
+                  />
+                </button>
+              </Box>
+            </Box>
           </Stack>
         </Box>
       </Collapse>
@@ -263,4 +347,5 @@ function ExpandableBookmarkItem({
 }
 
 export default ExpandableBookmarkItem;
+
 

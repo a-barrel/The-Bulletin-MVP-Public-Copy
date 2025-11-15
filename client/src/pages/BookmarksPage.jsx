@@ -44,6 +44,8 @@ import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import useBookmarksManager from '../hooks/useBookmarksManager';
 import normalizeObjectId from '../utils/normalizeObjectId';
+import toIdString from '../utils/ids';
+import { fetchCurrentUserProfile } from '../api/mongoDataApi';
 import ExpandableBookmarkItem from '../components/ExpandableBookmarkItem';
 import BackButton from '../components/BackButton';
 import './BookmarksPage.css';
@@ -70,6 +72,7 @@ function BookmarksPage() {
   const { isOffline } = useNetworkStatusContext();
   const [authUser, authLoading] = useAuthState(auth);
   const {
+    bookmarks,
     groupedBookmarks,
     totalCount,
     isLoading,
@@ -117,7 +120,8 @@ function BookmarksPage() {
     return { hidden: [] };
   });
   const [highlightedCollectionKey, setHighlightedCollectionKey] = useState(null);
-  const [selectedCollection, setSelectedCollection] = useState('all');
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [viewerMongoId, setViewerMongoId] = useState(null);
   const collectionAnchorsRef = useRef(new Map());
   const focusAppliedRef = useRef(null);
   const focusParam = searchParams.get('collection');
@@ -158,6 +162,32 @@ function BookmarksPage() {
     }
     return null;
   }, [collections, focusParam, normalizedFocusParam]);
+
+  // Fetch MongoDB user ID for filtering
+  useEffect(() => {
+    if (!authUser || isOffline) {
+      setViewerMongoId(null);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (!cancelled && profile?._id) {
+          setViewerMongoId(toIdString(profile._id));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Failed to load current user profile for bookmarks filtering:', error);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authUser, isOffline]);
 
   useEffect(() => {
     if (!resolvedFocus) {
@@ -247,40 +277,105 @@ function BookmarksPage() {
   );
 
   const filteredBookmarks = useMemo(() => {
-    if (selectedCollection === 'all') {
+    if (selectedFilter === 'all') {
       return groupedBookmarks;
     }
-    if (selectedCollection === UNSORTED_COLLECTION_KEY) {
-      return groupedBookmarks.filter((group) => group.id === null);
-    }
-    // Filter by collection name (e.g., "Weekend Events")
-    return groupedBookmarks.filter((group) => {
-      return group.name === selectedCollection || group.id === selectedCollection;
-    });
-  }, [groupedBookmarks, selectedCollection]);
 
-  const handleCollectionChange = useCallback((event) => {
-    setSelectedCollection(event.target.value);
+    const filterBookmarks = (bookmarks) => {
+      return bookmarks.filter((bookmark) => {
+        const pin = bookmark.pin;
+        if (!pin) return false;
+
+        switch (selectedFilter) {
+          case 'event':
+            return pin.type === 'event';
+          case 'discussion':
+            return pin.type === 'discussion';
+          case 'my-pins': {
+            const creatorId = toIdString(pin.creatorId) ?? toIdString(pin.creator?._id);
+            return creatorId && viewerMongoId && creatorId === viewerMongoId;
+          }
+          case 'attending':
+            return Boolean(pin.viewerIsAttending);
+          default:
+            return true;
+        }
+      });
+    };
+
+    // Apply filter to each group's items
+    return groupedBookmarks
+      .map((group) => ({
+        ...group,
+        items: filterBookmarks(group.items)
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [groupedBookmarks, selectedFilter, viewerMongoId]);
+
+  const handleFilterChange = useCallback((event) => {
+    setSelectedFilter(event.target.value);
   }, []);
 
-  // Get available collection names for the dropdown
-  const collectionOptions = useMemo(() => {
-    const options = [{ value: 'all', label: 'All Bookmarks' }];
-    groupedBookmarks.forEach((group) => {
-      if (group.id === null) {
-        // Unsorted
-        if (!options.find((opt) => opt.value === UNSORTED_COLLECTION_KEY)) {
-          options.push({ value: UNSORTED_COLLECTION_KEY, label: UNSORTED_LABEL });
-        }
-      } else {
-        // Named collection (e.g., "Weekend Events")
-        if (!options.find((opt) => opt.value === group.name || opt.value === group.id)) {
-          options.push({ value: group.name, label: group.name });
-        }
+  // Calculate counts for each filter option using bookmarks from useBookmarksManager
+  const filterCounts = useMemo(() => {
+    if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
+      return {
+        all: 0,
+        event: 0,
+        discussion: 0,
+        'my-pins': 0,
+        attending: 0
+      };
+    }
+
+    let eventCount = 0;
+    let discussionCount = 0;
+    let myPinsCount = 0;
+    let attendingCount = 0;
+
+    bookmarks.forEach((bookmark) => {
+      const pin = bookmark.pin;
+      if (!pin) return;
+
+      // Count by type
+      if (pin.type === 'event') {
+        eventCount++;
+      } else if (pin.type === 'discussion') {
+        discussionCount++;
+      }
+
+      // Count user's own pins
+      const creatorId = toIdString(pin.creatorId) ?? toIdString(pin.creator?._id);
+      if (creatorId && viewerMongoId && creatorId === viewerMongoId) {
+        myPinsCount++;
+      }
+
+      // Count attending pins
+      if (Boolean(pin.viewerIsAttending)) {
+        attendingCount++;
       }
     });
-    return options;
-  }, [groupedBookmarks]);
+
+    return {
+      all: bookmarks.length,
+      event: eventCount,
+      discussion: discussionCount,
+      'my-pins': myPinsCount,
+      attending: attendingCount
+    };
+  }, [bookmarks, viewerMongoId]);
+
+  // Filter options with counts
+  const filterOptions = useMemo(
+    () => [
+      { value: 'all', label: `All Pins (${filterCounts.all})` },
+      { value: 'event', label: `Event Pins (${filterCounts.event})` },
+      { value: 'discussion', label: `Discussion Pins (${filterCounts.discussion})` },
+      { value: 'my-pins', label: `My Pins (${filterCounts['my-pins']})` },
+      { value: 'attending', label: `I'm Attending (${filterCounts.attending})` }
+    ],
+    [filterCounts]
+  );
 
   return (
     <>
@@ -291,7 +386,8 @@ function BookmarksPage() {
           minHeight: '100vh',
           py: { xs: 3, md: 5 },
           px: { xs: 2, md: 4 },
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          fontFamily: '"Urbanist", sans-serif'
         }}
       >
         <Stack spacing={3}>
@@ -313,6 +409,7 @@ function BookmarksPage() {
             spacing={1}
             sx={{ alignSelf: { xs: 'flex-start', sm: 'flex-end' } }}
           >
+            {/* 
             <Button
               type="button"
               variant="outlined"
@@ -339,26 +436,26 @@ function BookmarksPage() {
         </Stack>
 
         {isOffline ? (
-          <Alert severity="warning">
+          <Alert severity="warning" sx={{ fontFamily: '"Urbanist", sans-serif' }}>
             You are offline. You can browse existing bookmarks, but refresh, removal, and export actions
             require a connection.
           </Alert>
         ) : null}
 
         {exportStatus ? (
-          <Alert severity={exportStatus.type} onClose={() => setExportStatus(null)}>
+          <Alert severity={exportStatus.type} onClose={() => setExportStatus(null)} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
             {exportStatus.message}
           </Alert>
         ) : null}
 
         {removalStatus ? (
-          <Alert severity={removalStatus.type} onClose={() => setRemovalStatus(null)}>
+          <Alert severity={removalStatus.type} onClose={() => setRemovalStatus(null)} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
             {removalStatus.message}
           </Alert>
         ) : null}
 
         {error ? (
-          <Alert severity="error" onClose={() => setError(null)}>
+          <Alert severity="error" onClose={() => setError(null)} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
             {error}
           </Alert>
         ) : null}
@@ -366,7 +463,7 @@ function BookmarksPage() {
         {isLoading ? (
           <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ py: 6 }}>
             <CircularProgress />
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ fontFamily: '"Urbanist", sans-serif' }}>
               Loading bookmarks...
             </Typography>
           </Stack>
@@ -379,8 +476,8 @@ function BookmarksPage() {
               textAlign: 'center'
             }}
           >
-            <Typography variant="h6">No bookmarks yet</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            <Typography variant="h6" sx={{ fontFamily: '"Urbanist", sans-serif' }}>No bookmarks yet</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontFamily: '"Urbanist", sans-serif' }}>
               Tap the bookmark icon on a pin to save it. Your collection of favorites will appear here.
             </Typography>
           </Paper>
@@ -388,20 +485,26 @@ function BookmarksPage() {
           <>
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel
-                id="collection-select-label"
+                id="filter-select-label"
                 sx={{ color: 'black', fontFamily: '"Urbanist", sans-serif' }}
               >
-                Filter by Collection
+                Filter
               </InputLabel>
               <Select
-                labelId="collection-select-label"
-                id="collection-select"
-                value={selectedCollection}
-                label="Filter by Collection"
-                onChange={handleCollectionChange}
+                labelId="filter-select-label"
+                id="filter-select"
+                value={selectedFilter}
+                label="Filter"
+                onChange={handleFilterChange}
                 sx={{
                   color: 'black',
                   fontFamily: '"Urbanist", sans-serif',
+                  '& .MuiSelect-select': {
+                    color: 'black'
+                  },
+                  '&.Mui-focused .MuiSelect-select': {
+                    color: 'black'
+                  },
                   '& .MuiOutlinedInput-notchedOutline': {
                     borderColor: 'black',
                   },
@@ -412,8 +515,16 @@ function BookmarksPage() {
                     borderColor: 'black'
                   }
                 }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      backgroundColor: 'white',
+                      fontFamily: '"Urbanist", sans-serif'
+                    }
+                  }
+                }}
               >
-                {collectionOptions.map((option) => (
+                {filterOptions.map((option) => (
                   <MenuItem
                     key={option.value}
                     value={option.value}
@@ -467,10 +578,10 @@ function BookmarksPage() {
                           borderLeft: isHighlighted ? '3px solid rgba(144, 202, 249, 0.6)' : '3px solid transparent'
                         }}
                       >
-                        <Typography variant="subtitle1" fontWeight={600}>
+                        <Typography variant="subtitle1" fontWeight={600} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
                           {displayName}
                         </Typography>
-                        <Chip label={items.length} size="small" variant="outlined" />
+                        <Chip label={items.length} size="small" variant="outlined" sx={{ fontFamily: '"Urbanist", sans-serif' }} />
                       </ListSubheader>
                       <Divider />
                     </>
@@ -517,3 +628,5 @@ function BookmarksPage() {
 }
 
 export default BookmarksPage;
+
+
