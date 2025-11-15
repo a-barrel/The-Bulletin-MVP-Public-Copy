@@ -129,6 +129,154 @@ const formatMetersToMiles = (meters) => {
   return `${formatted} mi`;
 };
 
+const usePinBookmarkState = ({
+  pin,
+  setPin,
+  pinId,
+  pinExpired,
+  distanceLockActive,
+  isOwnPin,
+  isOffline,
+  announceBadgeEarned
+}) => {
+
+  const syncBookmarkFromPayload = useCallback(
+    (value, { coerce = false } = {}) => {
+      if (typeof value === 'boolean') {
+        setBookmarked(value);
+        return value;
+      }
+      if (coerce) {
+        const normalized = Boolean(value);
+        setBookmarked(normalized);
+        return normalized;
+      }
+      return null;
+    },
+    []
+  );
+
+  const handleToggleBookmark = useCallback(async () => {
+    if (isOffline) {
+      setBookmarkError('Bookmarks are unavailable while offline.');
+      return;
+    }
+    if (isOwnPin && bookmarked) {
+      setBookmarkError('Creators keep their pins bookmarked automatically.');
+      return;
+    }
+
+    const interactionLocked =
+      pinExpired || (distanceLockActive && !bookmarked && !isOwnPin);
+    if (!pin || isUpdatingBookmark || interactionLocked) {
+      if (pinExpired) {
+        setBookmarkError('Expired pins cannot be bookmarked.');
+      } else if (distanceLockActive) {
+        setBookmarkError('Pins outside your interaction radius cannot be bookmarked.');
+      }
+      return;
+    }
+
+    setIsUpdatingBookmark(true);
+    setBookmarkError(null);
+
+    try {
+      if (bookmarked) {
+        const response = await deletePinBookmark(pin._id);
+        setPin((prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentCount = prev.bookmarkCount ?? 0;
+          const nextBookmarkCount =
+            typeof response?.bookmarkCount === 'number'
+              ? response.bookmarkCount
+              : Math.max(0, currentCount - 1);
+          const nextViewerHasBookmarked =
+            typeof response?.viewerHasBookmarked === 'boolean'
+              ? response.viewerHasBookmarked
+              : false;
+          const nextStats = prev.stats
+            ? { ...prev.stats, bookmarkCount: nextBookmarkCount }
+            : prev.stats;
+          return {
+            ...prev,
+            bookmarkCount: nextBookmarkCount,
+            stats: nextStats,
+            viewerHasBookmarked: nextViewerHasBookmarked
+          };
+        });
+        setBookmarked(
+          typeof response?.viewerHasBookmarked === 'boolean'
+            ? response.viewerHasBookmarked
+            : false
+        );
+      } else {
+        const response = await createPinBookmark(pin._id);
+        setPin((prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentCount = prev.bookmarkCount ?? 0;
+          const nextBookmarkCount =
+            typeof response?.bookmarkCount === 'number'
+              ? response.bookmarkCount
+              : currentCount + 1;
+          const nextViewerHasBookmarked =
+            typeof response?.viewerHasBookmarked === 'boolean'
+              ? response.viewerHasBookmarked
+              : true;
+          const nextStats = prev.stats
+            ? { ...prev.stats, bookmarkCount: nextBookmarkCount }
+            : prev.stats;
+          return {
+            ...prev,
+            bookmarkCount: nextBookmarkCount,
+            stats: nextStats,
+            viewerHasBookmarked: nextViewerHasBookmarked
+          };
+        });
+        setBookmarked(
+          typeof response?.viewerHasBookmarked === 'boolean'
+            ? response.viewerHasBookmarked
+            : true
+        );
+        if (response?.badgeEarnedId) {
+          playBadgeSound();
+          announceBadgeEarned(response.badgeEarnedId);
+        }
+      }
+    } catch (toggleError) {
+      logClientError(toggleError, {
+        source: 'usePinDetails.toggleBookmark',
+        pinId,
+        bookmarkedTarget: !bookmarked
+      });
+      setBookmarkError(toggleError?.message || 'Failed to toggle bookmark.');
+    } finally {
+      setIsUpdatingBookmark(false);
+    }
+  }, [
+    announceBadgeEarned,
+    bookmarked,
+    distanceLockActive,
+    isOffline,
+    isOwnPin,
+    pin,
+    pinExpired,
+    pinId,
+    setPin
+  ]);
+
+  return {
+    bookmarked,
+    isUpdatingBookmark,
+    bookmarkError,
+    handleToggleBookmark,
+    syncBookmarkFromPayload
+  };
+};
+
 const extractViewerProfileIdFromState = (state) => {
   if (!state || typeof state !== 'object') {
     return null;
@@ -165,9 +313,6 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   const initialHydrationSource = pinFromState ? 'seed' : 'none';
   const [isLoading, setIsLoading] = useState(!pinFromState);
   const [error, setError] = useState(null);
-  const [bookmarked, setBookmarked] = useState(false);
-  const [isUpdatingBookmark, setIsUpdatingBookmark] = useState(false);
-  const [bookmarkError, setBookmarkError] = useState(null);
   const [attending, setAttending] = useState(false);
   const [isUpdatingAttendance, setIsUpdatingAttendance] = useState(false);
   const [attendanceError, setAttendanceError] = useState(null);
@@ -264,6 +409,73 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     return (params.get('preview') || '').toLowerCase();
   }, [location?.search]);
 
+  const pinExpired = useMemo(() => {
+    if (!pin) {
+      return false;
+    }
+    const expiresSource = pin.expiresAt ?? pin.endDate;
+    if (!expiresSource) {
+      return false;
+    }
+    const expiry = new Date(expiresSource);
+    if (Number.isNaN(expiry.getTime())) {
+      return false;
+    }
+    return expiry.getTime() < Date.now();
+  }, [pin]);
+
+  const pinCreatorId = useMemo(() => {
+    if (!pin) {
+      return null;
+    }
+    if (typeof pin?.creatorId === 'string' && pin.creatorId.trim().length > 0) {
+      return pin.creatorId.trim();
+    }
+    const nestedId = pin?.creator?._id;
+    if (typeof nestedId === 'string' && nestedId.trim().length > 0) {
+      return nestedId.trim();
+    }
+    return null;
+  }, [pin]);
+
+  const isOwnPin = useMemo(() => {
+    if (!pinCreatorId || !viewerProfileId) {
+      return false;
+    }
+    return pinCreatorId === viewerProfileId;
+  }, [pinCreatorId, viewerProfileId]);
+
+  const viewerWithinInteractionRadius =
+    typeof pin?.viewerWithinInteractionRadius === 'boolean'
+      ? pin.viewerWithinInteractionRadius
+      : undefined;
+  const viewerDistanceMeters =
+    typeof pin?.viewerDistanceMeters === 'number' && Number.isFinite(pin.viewerDistanceMeters)
+      ? pin.viewerDistanceMeters
+      : null;
+  const distanceLockActive =
+    !pinExpired && (previewMode === 'far' || viewerWithinInteractionRadius === false);
+  const viewerInteractionLockMessage = pin?.viewerInteractionLockMessage;
+
+  const {
+    bookmarked,
+    isUpdatingBookmark,
+    bookmarkError,
+    handleToggleBookmark,
+    syncBookmarkFromPayload
+  } = usePinBookmarkState({
+    pin,
+    setPin,
+    pinId,
+    pinExpired,
+    distanceLockActive,
+    isOwnPin,
+    isOffline,
+    announceBadgeEarned
+  });
+
+  const isInteractionLocked =
+    pinExpired || (distanceLockActive && !bookmarked && !isOwnPin);
   const reloadPin = useCallback(
     async ({ silent } = {}) => {
       if (IS_DEV) {
@@ -304,7 +516,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
           return payload;
         }
         setPin(payload);
-        setBookmarked(Boolean(payload?.viewerHasBookmarked));
+        syncBookmarkFromPayload(payload?.viewerHasBookmarked, { coerce: true });
         setAttending(Boolean(payload?.viewerIsAttending));
         updatePinHydrationSource('api');
         if (IS_DEV) {
@@ -330,7 +542,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         }
       }
     },
-    [pinId, isOffline, previewMode, updatePinHydrationSource]
+    [pinId, isOffline, previewMode, syncBookmarkFromPayload, updatePinHydrationSource]
   );
 
   useEffect(() => {
@@ -464,56 +676,6 @@ export default function usePinDetails({ pinId, location, isOffline }) {
       ignore = true;
     };
   }, [attendeeOverlayOpen, isEventPin, isOffline, pinId, shouldPrefetchAttendees]);
-
-  const pinExpired = useMemo(() => {
-    if (!pin) {
-      return false;
-    }
-    const expiresSource = pin.expiresAt ?? pin.endDate;
-    if (!expiresSource) {
-      return false;
-    }
-    const expiry = new Date(expiresSource);
-    if (Number.isNaN(expiry.getTime())) {
-      return false;
-    }
-    return expiry.getTime() < Date.now();
-  }, [pin]);
-
-  const pinCreatorId = useMemo(() => {
-    if (!pin) {
-      return null;
-    }
-    if (typeof pin?.creatorId === 'string' && pin.creatorId.trim().length > 0) {
-      return pin.creatorId.trim();
-    }
-    const nestedId = pin?.creator?._id;
-    if (typeof nestedId === 'string' && nestedId.trim().length > 0) {
-      return nestedId.trim();
-    }
-    return null;
-  }, [pin]);
-
-  const isOwnPin = useMemo(() => {
-    if (!pinCreatorId || !viewerProfileId) {
-      return false;
-    }
-    return pinCreatorId === viewerProfileId;
-  }, [pinCreatorId, viewerProfileId]);
-
-  const viewerWithinInteractionRadius =
-    typeof pin?.viewerWithinInteractionRadius === 'boolean'
-      ? pin.viewerWithinInteractionRadius
-      : undefined;
-  const viewerDistanceMeters =
-    typeof pin?.viewerDistanceMeters === 'number' && Number.isFinite(pin.viewerDistanceMeters)
-      ? pin.viewerDistanceMeters
-      : null;
-  const distanceLockActive =
-    !pinExpired && (previewMode === 'far' || viewerWithinInteractionRadius === false);
-  const isInteractionLocked =
-    pinExpired || (distanceLockActive && !bookmarked && !isOwnPin);
-  const viewerInteractionLockMessage = pin?.viewerInteractionLockMessage;
 
   const viewerDistanceLabel = useMemo(
     () => formatViewerDistanceLabel(viewerDistanceMeters),
@@ -696,116 +858,6 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     setSubmitReplyError(null);
   }, [isSubmittingReply]);
 
-  const handleToggleBookmark = useCallback(async () => {
-    if (isOffline) {
-      setBookmarkError('Bookmarks are unavailable while offline.');
-      return;
-    }
-    if (isOwnPin && bookmarked) {
-      setBookmarkError('Creators keep their pins bookmarked automatically.');
-      return;
-    }
-    if (!pin || isUpdatingBookmark || isInteractionLocked) {
-      if (pinExpired) {
-        setBookmarkError('Expired pins cannot be bookmarked.');
-      } else if (distanceLockActive) {
-        setBookmarkError('Pins outside your interaction radius cannot be bookmarked.');
-      }
-      return;
-    }
-
-    setIsUpdatingBookmark(true);
-    setBookmarkError(null);
-
-    try {
-      if (bookmarked) {
-        const response = await deletePinBookmark(pin._id);
-        setPin((prev) => {
-          if (!prev) {
-            return prev;
-          }
-          const currentCount = prev.bookmarkCount ?? 0;
-          const nextBookmarkCount =
-            typeof response?.bookmarkCount === 'number'
-              ? response.bookmarkCount
-              : Math.max(0, currentCount - 1);
-          const nextViewerHasBookmarked =
-            typeof response?.viewerHasBookmarked === 'boolean'
-              ? response.viewerHasBookmarked
-              : false;
-          const nextStats = prev.stats
-            ? { ...prev.stats, bookmarkCount: nextBookmarkCount }
-            : prev.stats;
-          return {
-            ...prev,
-            bookmarkCount: nextBookmarkCount,
-            stats: nextStats,
-            viewerHasBookmarked: nextViewerHasBookmarked
-          };
-        });
-        setBookmarked(
-          typeof response?.viewerHasBookmarked === 'boolean'
-            ? response.viewerHasBookmarked
-            : false
-        );
-      } else {
-        const response = await createPinBookmark(pin._id);
-        setPin((prev) => {
-          if (!prev) {
-            return prev;
-          }
-          const currentCount = prev.bookmarkCount ?? 0;
-          const nextBookmarkCount =
-            typeof response?.bookmarkCount === 'number'
-              ? response.bookmarkCount
-              : currentCount + 1;
-          const nextViewerHasBookmarked =
-            typeof response?.viewerHasBookmarked === 'boolean'
-              ? response.viewerHasBookmarked
-              : true;
-          const nextStats = prev.stats
-            ? { ...prev.stats, bookmarkCount: nextBookmarkCount }
-            : prev.stats;
-          return {
-            ...prev,
-            bookmarkCount: nextBookmarkCount,
-            stats: nextStats,
-            viewerHasBookmarked: nextViewerHasBookmarked
-          };
-        });
-        setBookmarked(
-          typeof response?.viewerHasBookmarked === 'boolean'
-            ? response.viewerHasBookmarked
-            : true
-        );
-        if (response?.badgeEarnedId) {
-          playBadgeSound();
-          announceBadgeEarned(response.badgeEarnedId);
-        }
-      }
-    } catch (toggleError) {
-      logClientError(toggleError, {
-        source: 'usePinDetails.toggleBookmark',
-        pinId,
-        bookmarkedTarget: !bookmarked
-      });
-      setBookmarkError(toggleError?.message || 'Failed to toggle bookmark.');
-    } finally {
-      setIsUpdatingBookmark(false);
-    }
-  }, [
-    announceBadgeEarned,
-    bookmarked,
-    distanceLockActive,
-    isInteractionLocked,
-    isOwnPin,
-    isOffline,
-    isUpdatingBookmark,
-    pin,
-    pinExpired,
-    pinId
-  ]);
-
   const handleToggleAttendance = useCallback(async () => {
     if (!pin || typeof pin?.type !== 'string' || pin.type.toLowerCase() !== 'event') {
       return;
@@ -865,9 +917,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
           : !prev
       );
 
-      if (typeof response?.viewerHasBookmarked === 'boolean') {
-        setBookmarked(response.viewerHasBookmarked);
-      }
+      syncBookmarkFromPayload(response?.viewerHasBookmarked);
 
       if (response?.badgeEarnedId) {
         playBadgeSound();
