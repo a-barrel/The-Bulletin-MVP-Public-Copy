@@ -490,18 +490,39 @@ function BookmarksPage() {
             </Typography>
           </Stack>
         ) : totalCount === 0 ? (
-          <Paper
-            variant="outlined"
-            sx={{
-              borderRadius: 3,
-              p: 4,
-              textAlign: 'center'
-            }}
-          >
-            <Typography variant="h6" sx={{ fontFamily: '"Urbanist", sans-serif' }}>No bookmarks yet</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontFamily: '"Urbanist", sans-serif' }}>
-              Tap the bookmark icon on a pin to save it. Your collection of favorites will appear here.
-            </Typography>
+<Paper
+  variant="outlined"
+  sx={{
+    borderRadius: 3,
+    p: 4,
+    textAlign: 'center',
+    backgroundColor: '#CDAEF2',
+    border: '1px solid black'
+  }}
+>
+<Typography
+  variant="h6"
+  sx={{
+    fontFamily: '"Urbanist", sans-serif',
+    backgroundColor: '#CDAEF2',
+    color: 'black'
+  }}
+>
+  No bookmarks yet
+</Typography>
+
+<Typography
+  variant="body2"
+  sx={{
+    mt: 1,
+    fontFamily: '"Urbanist", sans-serif',
+    backgroundColor: '#CDAEF2',
+    color: 'black'
+  }}
+>
+  Tap the bookmark icon on a pin to save it. Your collection of favorites will appear here.
+</Typography>
+
           </Paper>
         ) : (
           <>
