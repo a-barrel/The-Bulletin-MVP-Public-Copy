@@ -383,13 +383,17 @@ async function ensureFirebaseAccountForUserDocument(user, { dryRun = false, defa
       return summary;
     }
 
-    authUser = await admin.auth().createUser({
+    const createPayload = {
       email: targetEmail,
       password,
       displayName,
       emailVerified: Boolean(targetEmail),
       disabled: accountDisabled
-    });
+    };
+    if (user.firebaseUid) {
+      createPayload.uid = user.firebaseUid;
+    }
+    authUser = await admin.auth().createUser(createPayload);
     summary.createdAuthUser = true;
 
     if (shouldAssignFirebasePhotos) {
@@ -548,7 +552,7 @@ function loadUsersFromExport(exportPath) {
 }
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const DEFAULT_AUTH_FETCH_RETRY_ATTEMPTS = 5;
+const DEFAULT_AUTH_FETCH_RETRY_ATTEMPTS = 7;
 const DEFAULT_AUTH_FETCH_RETRY_DELAY_MS = 500;
 
 async function fetchAllAuthUsersViaAdmin({

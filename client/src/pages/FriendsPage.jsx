@@ -332,6 +332,7 @@ function FriendsPage() {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
   const [reportReason, setReportReason] = useState('');
+  const [reportSelectedOffenses, setReportSelectedOffenses] = useState([]);
   const [reportError, setReportError] = useState(null);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportStatus, setReportStatus] = useState(null);
@@ -1349,6 +1350,7 @@ function FriendsPage() {
         context: contextLabel
       });
       setReportReason('');
+      setReportSelectedOffenses([]);
       setReportError(null);
       setReportDialogOpen(true);
     },
@@ -1374,6 +1376,7 @@ function FriendsPage() {
         threadId: selectedDirectThreadId
       });
       setReportReason('');
+      setReportSelectedOffenses([]);
       setReportError(null);
       setReportDialogOpen(true);
     },
@@ -1387,8 +1390,24 @@ function FriendsPage() {
     setReportDialogOpen(false);
     setReportTarget(null);
     setReportReason('');
+    setReportSelectedOffenses([]);
     setReportError(null);
   }, [isSubmittingReport]);
+
+  const handleToggleReportOffense = useCallback((offense, checked) => {
+    if (typeof offense !== 'string') {
+      return;
+    }
+    setReportSelectedOffenses((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(offense);
+      } else {
+        next.delete(offense);
+      }
+      return Array.from(next);
+    });
+  }, []);
 
   const handleSubmitReport = useCallback(async () => {
     if (!reportTarget?.contentType || !reportTarget?.contentId) {
@@ -1405,11 +1424,13 @@ function FriendsPage() {
         contentType: reportTarget.contentType,
         contentId: reportTarget.contentId,
         reason: reportReason.trim(),
-        context: reportTarget.context || ''
+        context: reportTarget.context || '',
+        offenses: reportSelectedOffenses
       });
       setReportDialogOpen(false);
       setReportTarget(null);
       setReportReason('');
+      setReportSelectedOffenses([]);
       setReportStatus({
         type: 'success',
         message: 'Thanks for the report. Our moderators will review it shortly.'
@@ -1419,7 +1440,7 @@ function FriendsPage() {
     } finally {
       setIsSubmittingReport(false);
     }
-  }, [reportTarget, reportReason, isSubmittingReport]);
+  }, [reportSelectedOffenses, reportTarget, reportReason, isSubmittingReport]);
 
   const handleReportStatusClose = useCallback(() => {
     setReportStatus(null);
@@ -1913,6 +1934,8 @@ function FriendsPage() {
             error={reportError}
             contentSummary={reportTarget?.summary || ''}
             context={reportTarget?.context || ''}
+            selectedReasons={reportSelectedOffenses}
+            onToggleReason={handleToggleReportOffense}
           />
 
           <Snackbar

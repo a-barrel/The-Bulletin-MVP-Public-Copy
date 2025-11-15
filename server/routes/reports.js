@@ -10,14 +10,18 @@ const { ProximityChatMessage } = require('../models/ProximityChat');
 const DirectMessageThread = require('../models/DirectMessageThread');
 const ContentReport = require('../models/ContentReport');
 const { toIdString, mapIdList } = require('../utils/ids');
+const { REPORT_OFFENSE_OPTIONS } = require('../constants/reportOffenseOptions');
 
 const router = express.Router();
+
+const ReportOffenseEnum = z.enum(REPORT_OFFENSE_OPTIONS);
 
 const ReportContentSchema = z.object({
   contentType: z.enum(['pin', 'reply', 'chat-message', 'direct-message']),
   contentId: z.string().trim().min(1),
   reason: z.string().trim().max(500).optional(),
-  context: z.string().trim().max(1000).optional()
+  context: z.string().trim().max(1000).optional(),
+  offenses: z.array(ReportOffenseEnum).max(10).optional()
 });
 
 const toObjectId = (value) =>
@@ -60,6 +64,7 @@ const mapReportResponse = (reportDoc, usersById = new Map()) => ({
   status: reportDoc.status,
   reason: reportDoc.reason || '',
   context: reportDoc.context || '',
+  offenseTags: Array.isArray(reportDoc.offenseTags) ? reportDoc.offenseTags : [],
   latestSnapshot: reportDoc.latestSnapshot || null,
   reporter: usersById.get(toIdString(reportDoc.reporterId)) || null,
   contentAuthor: usersById.get(toIdString(reportDoc.contentAuthorId)) || null,
@@ -77,6 +82,7 @@ const mapReportResponse = (reportDoc, usersById = new Map()) => ({
 router.post('/', verifyToken, async (req, res) => {
   try {
     const input = ReportContentSchema.parse(req.body);
+    const offenseTags = Array.isArray(input.offenses) ? Array.from(new Set(input.offenses)) : [];
     const viewer = await resolveViewerUser(req);
     if (!viewer) {
       return res.status(404).json({ message: 'User account not found.' });
@@ -217,6 +223,7 @@ router.post('/', verifyToken, async (req, res) => {
     if (existing) {
       existing.reason = input.reason?.trim() || existing.reason;
       existing.context = input.context?.trim() || existing.context;
+      existing.offenseTags = offenseTags;
       existing.latestSnapshot = snapshot;
       await existing.save();
 
@@ -239,7 +246,8 @@ router.post('/', verifyToken, async (req, res) => {
       status: 'pending',
       reason: input.reason?.trim() || '',
       context: input.context?.trim() || '',
-      latestSnapshot: snapshot
+      latestSnapshot: snapshot,
+      offenseTags
     });
 
     const referencedUsers = await User.find({

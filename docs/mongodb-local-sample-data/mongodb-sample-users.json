@@ -132,7 +132,7 @@
     "updatedAt": {
       "$date": "2026-10-03T23:20:00.000Z"
     },
-    "firebaseUid": "8tnF8rdd49yTy2i3W1fQQhMOtN6v"
+    "firebaseUid": "alexRiveraUID"
   },
   {
     "_id": {
@@ -263,7 +263,7 @@
     "updatedAt": {
       "$date": "2026-10-03T23:40:00.000Z"
     },
-    "firebaseUid": "dPXPNzqwnlI3R97EtB9yMRP6M1UP"
+    "firebaseUid": "priyaDesaiUID"
   },
   {
     "_id": {
@@ -376,7 +376,7 @@
     "updatedAt": {
       "$date": "2026-10-03T23:45:00.000Z"
     },
-    "firebaseUid": "kC3vOEDKL4091gYlbper1DcMX4EY"
+    "firebaseUid": "marcusSotoUID"
   },
   {
     "_id": {
@@ -496,7 +496,7 @@
     "updatedAt": {
       "$date": "2026-10-09T19:10:00.000Z"
     },
-    "firebaseUid": "pinpointUserC"
+    "firebaseUid": "sofiaNguyenUID"
   },
   {
     "_id": {
@@ -619,7 +619,7 @@
     "updatedAt": {
       "$date": "2026-10-09T18:05:00.000Z"
     },
-    "firebaseUid": "pinpointUserD"
+    "firebaseUid": "jamalDouglasUID"
   },
   {
     "_id": {
@@ -1475,5 +1475,216 @@
       "$date": "2026-10-21T03:51:19Z"
     },
     "firebaseUid": "TF2SOLDIERUID"
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47601"
+    },
+    "username": "pinpointadmin",
+    "displayName": "Pinpoint Admin",
+    "email": "pinpointadmin@gmail.com",
+    "bio": "Offline admin account used for elevated permissions and smoke tests.",
+    "avatar": {
+      "url": "/images/profile/profile-06",
+      "thumbnailUrl": "/images/profile/profile-06",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    },
+    "banner": {
+      "url": "/images/background/background-11",
+      "thumbnailUrl": "/images/background/background-11",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-13T10:45:00.000Z"
+      }
+    },
+    "roles": [
+      "admin",
+      "moderator"
+    ],
+    "accountStatus": "active",
+    "preferences": {
+      "theme": "system",
+      "notifications": {
+        "proximity": true,
+        "updates": true,
+        "marketing": false
+      },
+      "radiusPreferenceMeters": 16093
+    },
+    "stats": {
+      "eventsHosted": 0,
+      "eventsAttended": 0,
+      "posts": 0,
+      "bookmarks": 0,
+      "followers": 0,
+      "following": 0
+    },
+    "relationships": {
+      "followerIds": [],
+      "followingIds": [],
+      "friendIds": [],
+      "mutedUserIds": [],
+      "blockedUserIds": []
+    },
+    "locationSharingEnabled": false,
+    "pinnedPinIds": [],
+    "ownedPinIds": [],
+    "bookmarkCollectionIds": [],
+    "proximityChatRoomIds": [],
+    "recentLocationIds": [],
+    "createdAt": {
+      "$date": "2026-11-14T10:45:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-11-14T10:45:00.000Z"
+    },
+    "firebaseUid": "8tnF8rdd49yTy2i3W1fQQhMOtN6v"
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47602"
+    },
+    "username": "pinpointusera",
+    "displayName": "Pinpoint User A",
+    "email": "pinpointusera@gmail.com",
+    "bio": "Legacy QA account kept for regression scripts.",
+    "avatar": {
+      "url": "/images/profile/profile-07",
+      "thumbnailUrl": "/images/profile/profile-07",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    },
+    "banner": {
+      "url": "/images/background/background-12",
+      "thumbnailUrl": "/images/background/background-12",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-13T10:45:00.000Z"
+      }
+    },
+    "roles": [
+      "user"
+    ],
+    "accountStatus": "active",
+    "preferences": {
+      "theme": "system",
+      "notifications": {
+        "proximity": true,
+        "updates": true,
+        "marketing": false
+      },
+      "radiusPreferenceMeters": 16093
+    },
+    "stats": {
+      "eventsHosted": 0,
+      "eventsAttended": 0,
+      "posts": 0,
+      "bookmarks": 0,
+      "followers": 0,
+      "following": 0
+    },
+    "relationships": {
+      "followerIds": [],
+      "followingIds": [],
+      "friendIds": [],
+      "mutedUserIds": [],
+      "blockedUserIds": []
+    },
+    "locationSharingEnabled": false,
+    "pinnedPinIds": [],
+    "ownedPinIds": [],
+    "bookmarkCollectionIds": [],
+    "proximityChatRoomIds": [],
+    "recentLocationIds": [],
+    "createdAt": {
+      "$date": "2026-11-14T10:45:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-11-14T10:45:00.000Z"
+    },
+    "firebaseUid": "dPXPNzqwnlI3R97EtB9yMRP6M1UP"
+  },
+  {
+    "_id": {
+      "$oid": "68e061721329566a22d47603"
+    },
+    "username": "pinpointuserb",
+    "displayName": "Pinpoint User B",
+    "email": "pinpointuserb@gmail.com",
+    "bio": "Legacy QA account kept for regression scripts.",
+    "avatar": {
+      "url": "/images/profile/profile-08",
+      "thumbnailUrl": "/images/profile/profile-08",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    },
+    "banner": {
+      "url": "/images/background/background-13",
+      "thumbnailUrl": "/images/background/background-13",
+      "width": 512,
+      "height": 512,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-13T10:45:00.000Z"
+      }
+    },
+    "roles": [
+      "user"
+    ],
+    "accountStatus": "active",
+    "preferences": {
+      "theme": "system",
+      "notifications": {
+        "proximity": true,
+        "updates": true,
+        "marketing": false
+      },
+      "radiusPreferenceMeters": 16093
+    },
+    "stats": {
+      "eventsHosted": 0,
+      "eventsAttended": 0,
+      "posts": 0,
+      "bookmarks": 0,
+      "followers": 0,
+      "following": 0
+    },
+    "relationships": {
+      "followerIds": [],
+      "followingIds": [],
+      "friendIds": [],
+      "mutedUserIds": [],
+      "blockedUserIds": []
+    },
+    "locationSharingEnabled": false,
+    "pinnedPinIds": [],
+    "ownedPinIds": [],
+    "bookmarkCollectionIds": [],
+    "proximityChatRoomIds": [],
+    "recentLocationIds": [],
+    "createdAt": {
+      "$date": "2026-11-14T10:45:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-11-14T10:45:00.000Z"
+    },
+    "firebaseUid": "kC3vOEDKL4091gYlbper1DcMX4EY"
   }
 ]

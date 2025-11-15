@@ -37,7 +37,7 @@ const minMongoSeverity =
 let cleaned = false;
 
 const relocateFirebaseDebugLogs = (dir) => {
-  const firebasePrefix = 'firebase-debug.log';
+  const firebasePrefix = 'firebase-debug';
   const entries = fs.readdirSync(PROJECT_ROOT, { withFileTypes: true });
   for (const entry of entries) {
     if (!entry.name.startsWith(firebasePrefix)) {

@@ -55,6 +55,12 @@
 
 
 /* back-button */
+.pin-details .header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
 .pin-details .back-button {
     background: none;
     border: none;
@@ -90,6 +96,17 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+}
+
+.pin-details .pin-header-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pin-details .pin-nav-menu {
+    margin-left: 0;
+    line-height: 0;
 }
 
 .pin-details .edit-button-wrapper {
@@ -180,10 +197,17 @@
 .pin-details .bookmark-icon--locked {
     color: #ffb347;
 }
- 
-.pin-details .bookmark-button--owner .bookmark-icon--locked,
-.pin-details .bookmark-button--attending .bookmark-icon--locked {
+
+.pin-details .bookmark-button--owner .bookmark-icon {
     color: #ffbe3c;
+}
+
+.pin-details .bookmark-button--owner .bookmark-icon--locked {
+    color: #ffbe3c;
+}
+
+.pin-details .bookmark-button--attending .bookmark-icon {
+    color: #5d3889;
 }
 
 /* pin name */
@@ -583,6 +607,7 @@
     width: 100%;
     gap: 0;
     flex-wrap: wrap;
+    justify-content: space-between;
 }
 
 .pin-details .post-attendance .event-text {
@@ -614,6 +639,12 @@
     border: 1px solid black;
     border-radius: 8px;
     flex: 1;
+    display: flex;
+    line-height: 1.5;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    word-break: break-word;
 }
 
 .pin-details .attending-icons {
@@ -634,6 +665,7 @@
     transition: background-color 0.2s ease, transform 0.2s ease;
     flex-shrink: 0;
     margin-left: 1rem;
+    white-space: nowrap;
 }
 
 .pin-details .view-attendees-button:hover:not(:disabled) {
@@ -647,12 +679,39 @@
     transform: none;
 }
 
-.pin-details .attending-friends-inline {
+.pin-details .attending-friends-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; 
+  flex-wrap: nowrap;
+  overflow: hidden; 
+}
+
+.pin-details .friends-label {
+  flex-shrink: 0; 
+  color: #5d3889;
+  white-space: nowrap; 
+}
+
+.pin-details .attending-friends-inline.scrollable {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-    margin-top: 0.4rem;
+    gap: 0.25rem;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.pin-details .attending-friends-inline.scrollable::-webkit-scrollbar {
+  height: 6px;
+}
+
+.pin-details .attending-friends-inline.scrollable::-webkit-scrollbar-thumb {
+  background-color: none;
+  border-radius: 3px;
+}
+
+.pin-details .attending-friends-inline.scrollable::-webkit-scrollbar-track {
+  background-color: none;
 }
 
 .pin-details .attending-friend-link {
@@ -661,6 +720,7 @@
     border: none;
     padding: 0;
     background: transparent;
+    flex: 0 0 auto;
 }
 
 .pin-details .attending-friend-link:focus-visible {
@@ -670,9 +730,9 @@
 
 .pin-details .attending-friend-avatar {
     position: relative;
-    width: 44px;
-    height: 44px;
-    border-radius: 999px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
     border: 2px solid #5d3889;
     overflow: hidden;
     background: #fff;
@@ -682,21 +742,6 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-}
-
-.pin-details .attending-friend-avatar__badge {
-    position: absolute;
-    bottom: -2px;
-    right: -2px;
-}
-
-.pin-details .attending-friends-more {
-    font-weight: 600;
-    color: #5d3889;
-    background: #CDAEF2;
-    border-radius: 999px;
-    border: 1px solid #5d3889;
-    padding: 0.15rem 0.45rem;
 }
 
 /* attendance button */
@@ -959,6 +1004,11 @@
     border-radius: 10px;
 }
 
+.pin-details .attendee-avatar-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
 .pin-details .attendee-avatar {
     width: 40px;
     height: 40px;
@@ -966,6 +1016,12 @@
     object-fit: cover;
     background-color: #FFFFFF;
     border: 1px solid #2b2c3f;
+}
+
+.pin-details .attendee-avatar-badge {
+    position: absolute;
+    bottom: 2px;
+    right: -2px;
 }
 
 .pin-details .attendee-name {

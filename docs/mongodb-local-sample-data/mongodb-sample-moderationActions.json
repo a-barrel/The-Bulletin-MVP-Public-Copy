@@ -26,5 +26,33 @@
     "reason": "Temporary block during investigation of reported harassment.",
     "createdAt": { "$date": "2026-10-23T09:30:00.000Z" },
     "updatedAt": { "$date": "2026-10-23T09:30:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d4a004" },
+    "userId": { "$oid": "9090e547f3b4cf5aa61d19a7" },
+    "moderatorId": { "$oid": "68e061721329566a22d47601" },
+    "type": "warn",
+    "reason": "Warned for repeated gibberish posts in the debug lounge.",
+    "createdAt": { "$date": "2026-10-21T19:05:00.000Z" },
+    "updatedAt": { "$date": "2026-10-21T19:05:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d4a005" },
+    "userId": { "$oid": "1e056a58ce0c08e0e420bca0" },
+    "moderatorId": { "$oid": "68e061721329566a22d47601" },
+    "type": "mute",
+    "reason": "Muted test bot after a burst of load-test spam.",
+    "expiresAt": { "$date": "2026-10-27T20:00:00.000Z" },
+    "createdAt": { "$date": "2026-10-27T18:30:00.000Z" },
+    "updatedAt": { "$date": "2026-10-27T18:30:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d4a006" },
+    "userId": { "$oid": "68e061721329566a22d47511" },
+    "moderatorId": { "$oid": "68e061721329566a22d47601" },
+    "type": "warn",
+    "reason": "Sent a reminder about tone in the study group DM thread.",
+    "createdAt": { "$date": "2026-10-26T16:10:00.000Z" },
+    "updatedAt": { "$date": "2026-10-26T16:10:00.000Z" }
   }
 ]

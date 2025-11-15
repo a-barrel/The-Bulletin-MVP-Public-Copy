@@ -48,6 +48,7 @@ import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import BlockIcon from '@mui/icons-material/Block';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import GlobalNavMenu from '../components/GlobalNavMenu';
 import { auth } from '../firebase';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import { routes } from '../routes';
@@ -69,6 +70,7 @@ import {
 } from '../api/mongoDataApi';
 import reportClientError from '../utils/reportClientError';
 import { formatFriendlyTimestamp } from '../utils/dates';
+import { PIN_DENSITY_LEVELS } from '../utils/pinDensity';
 
 export const pageConfig = {
   id: 'settings',
@@ -157,6 +159,8 @@ function SettingsPage() {
     displaySettings.celebrationSounds ?? DEFAULT_SETTINGS.display.celebrationSounds;
   const showFriendBadges =
     displaySettings.showFriendBadges ?? DEFAULT_SETTINGS.display.showFriendBadges;
+  const listSyncsWithMapLimit =
+    displaySettings.listSyncsWithMapLimit ?? DEFAULT_SETTINGS.display.listSyncsWithMapLimit;
   const dmPermission = settings.dmPermission ?? DEFAULT_SETTINGS.dmPermission;
   const digestFrequency = settings.digestFrequency ?? DEFAULT_SETTINGS.digestFrequency;
   const autoExportReminders =
@@ -409,24 +413,30 @@ function SettingsPage() {
       }}
     >
       <Stack spacing={3}>
-        <Button
-          variant="text"
-          startIcon={<ArrowBackIcon fontSize="small" />}
-          onClick={() => navigate(-1)}
-          sx={{
-            alignSelf: 'flex-start',
-            color: '#1f1336',
-            backgroundColor: '#ECF8FE',
-            borderRadius: 999,
-            border: '1px solid #9B5DE5',
-            px: 2,
-            '&:hover': {
-              backgroundColor: '#d1edff'
-            }
-          }}
-        >
-          Back
-        </Button>
+        <Stack direction="row" alignItems="center" spacing={1.25}>
+          <Button
+            variant="text"
+            startIcon={<ArrowBackIcon fontSize="small" />}
+            onClick={() => navigate(-1)}
+            sx={{
+              alignSelf: 'flex-start',
+              color: '#1f1336',
+              backgroundColor: '#ECF8FE',
+              borderRadius: 999,
+              border: '1px solid #9B5DE5',
+              px: 2,
+              '&:hover': {
+                backgroundColor: '#d1edff'
+              }
+            }}
+          >
+            Back
+          </Button>
+          <GlobalNavMenu
+            triggerClassName="gnm-trigger-btn"
+            iconClassName="gnm-trigger-btn__icon"
+          />
+        </Stack>
 
         <Stack
           direction="row"
@@ -570,13 +580,35 @@ function SettingsPage() {
                 </Typography>
                 <FormControl component="fieldset" sx={{ mt: 1 }}>
                   <FormLabel component="legend" sx={{ fontSize: '0.875rem' }}>
-                    Map density
+                    Pin display limit
                   </FormLabel>
                   <RadioGroup row value={mapDensity} onChange={handleMapDensityChange}>
-                    <FormControlLabel value="compact" control={<Radio />} label="Compact" />
-                    <FormControlLabel value="balanced" control={<Radio />} label="Balanced" />
-                    <FormControlLabel value="detailed" control={<Radio />} label="Detailed" />
+                    {PIN_DENSITY_LEVELS.map((option) => (
+                      <FormControlLabel
+                        key={option.key}
+                        value={option.key}
+                        control={<Radio />}
+                        label={`${option.label} (${option.limit} pins)`}
+                      />
+                    ))}
                   </RadioGroup>
+                  <Typography variant="caption" color="text.secondary">
+                    Controls how many pins the map loads at once. Detailed mode fetches the most pins but
+                    may use more bandwidth.
+                  </Typography>
+                  <FormControlLabel
+                    sx={{ mt: 1 }}
+                    control={
+                      <Switch
+                        checked={listSyncsWithMapLimit}
+                        onChange={(_, value) => handleDisplayToggle('listSyncsWithMapLimit', value)}
+                      />
+                    }
+                    label="Match List view to this limit"
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    When enabled, the List page shows the same pin set as the map so both views stay in sync.
+                  </Typography>
                 </FormControl>
               </Stack>
               <Divider flexItem />

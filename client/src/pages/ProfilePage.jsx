@@ -28,7 +28,9 @@ import ProfileEditForm from '../components/profile/ProfileEditForm';
 import ProfileHero from '../components/profile/ProfileHero';
 import ProfileMutualFriends from '../components/profile/ProfileMutualFriends';
 import ProfileStatsSummary from '../components/profile/ProfileStatsSummary';
+import ProfileModerationPanel from '../components/profile/ProfileModerationPanel';
 import ReportContentDialog from '../components/ReportContentDialog';
+import GlobalNavMenu from '../components/GlobalNavMenu';
 import useProfileBadges from '../hooks/useProfileBadges';
 import useProfileMutualFriends from '../hooks/useProfileMutualFriends';
 import useProfileStats from '../hooks/useProfileStats';
@@ -268,6 +270,7 @@ function ProfilePage() {
   const { isOffline } = useNetworkStatusContext();
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
+  const [reportSelectedOffenses, setReportSelectedOffenses] = useState([]);
   const [reportError, setReportError] = useState(null);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportStatus, setReportStatus] = useState(null);
@@ -529,6 +532,7 @@ function ProfilePage() {
       return;
     }
     setReportReason('');
+    setReportSelectedOffenses([]);
     setReportError(null);
     setReportDialogOpen(true);
   }, [isOffline, isViewingSelf, targetProfileId]);
@@ -539,8 +543,24 @@ function ProfilePage() {
     }
     setReportDialogOpen(false);
     setReportReason('');
+    setReportSelectedOffenses([]);
     setReportError(null);
   }, [isSubmittingReport]);
+
+  const handleToggleReportOffense = useCallback((offense, checked) => {
+    if (typeof offense !== 'string') {
+      return;
+    }
+    setReportSelectedOffenses((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(offense);
+      } else {
+        next.delete(offense);
+      }
+      return Array.from(next);
+    });
+  }, []);
 
   const handleSubmitProfileReport = useCallback(async () => {
     if (!targetProfileId || isViewingSelf || isSubmittingReport) {
@@ -553,10 +573,12 @@ function ProfilePage() {
         contentType: 'user',
         contentId: targetProfileId,
         reason: reportReason,
-        context: displayName ? `Profile: ${displayName}` : 'Profile report'
+        context: displayName ? `Profile: ${displayName}` : 'Profile report',
+        offenses: reportSelectedOffenses
       });
       setReportDialogOpen(false);
       setReportReason('');
+      setReportSelectedOffenses([]);
       setReportStatus({
         type: 'success',
         message: 'Thanks — your report was submitted.'
@@ -566,7 +588,7 @@ function ProfilePage() {
     } finally {
       setIsSubmittingReport(false);
     }
-  }, [displayName, isSubmittingReport, isViewingSelf, reportReason, targetProfileId]);
+  }, [displayName, isSubmittingReport, isViewingSelf, reportReason, reportSelectedOffenses, targetProfileId]);
 
   const handleReportStatusClose = useCallback(() => {
     setReportStatus(null);
@@ -914,6 +936,9 @@ function ProfilePage() {
         >
           <ArrowBackIcon className="back-button__icon" />
         </button>
+        <div className="profile-nav-menu">
+          <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+        </div>
         {canEditProfile && !isEditing && (
           <Button
             variant="contained"
@@ -1027,6 +1052,12 @@ function ProfilePage() {
                   isReporting={isSubmittingReport}
                 />
               </Stack>
+              <ProfileModerationPanel
+                targetUserId={targetProfileId}
+                displayName={displayName}
+                accountStatus={effectiveUser?.accountStatus}
+                isViewingSelf={isViewingSelf}
+              />
             </>
           ) : null}
         </Stack>
@@ -1049,6 +1080,8 @@ function ProfilePage() {
         submitting={isSubmittingReport}
         error={reportError || undefined}
         context={displayName ? `Profile: ${displayName}` : ''}
+        selectedReasons={reportSelectedOffenses}
+        onToggleReason={handleToggleReportOffense}
       />
     </div>
   );

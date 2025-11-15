@@ -7,6 +7,8 @@ import BookmarkIcon from '@mui/icons-material/Bookmark';
 import UpdateIcon from '@mui/icons-material/Update';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import MarkUnreadChatAltIcon from '@mui/icons-material/MarkUnreadChatAlt';
+import MapIcon from '@mui/icons-material/Map';
+import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import './GlobalNavMenu.css';
 import { routes } from '../routes';
 import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
@@ -52,6 +54,45 @@ const QUICK_NAV_MAX_ITEMS = 4;
 const QUICK_NAV_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const BOOKMARK_QUICK_NAV_SCHEMA_VERSION = 2;
 const BOOKMARK_QUICK_NAV_PREFS_VERSION = 1;
+
+const QUICK_TAP_ACTIONS = [
+  {
+    key: 'chat',
+    label: 'Chat',
+    to: routes.chat.base,
+    Icon: MarkUnreadChatAltIcon
+  },
+  {
+    key: 'friends',
+    label: 'Friends',
+    to: routes.friends.base,
+    Icon: GroupAddIcon
+  },
+  {
+    key: 'map',
+    label: 'Map',
+    to: routes.map.base,
+    Icon: MapIcon
+  },
+  {
+    key: 'list',
+    label: 'List',
+    to: routes.list.base,
+    Icon: FormatListBulletedIcon
+  },
+  {
+    key: 'bookmarks',
+    label: 'Bookmarks',
+    to: routes.bookmarks.base,
+    Icon: BookmarkIcon
+  },
+  {
+    key: 'settings',
+    label: 'Settings',
+    to: routes.settings.base,
+    Icon: SettingsIcon
+  }
+];
 
 function areShortcutListsEqual(a, b) {
   if (a === b) {
@@ -517,6 +558,24 @@ export default function GlobalNavMenu({
               >
                 &times;
               </button>
+            </div>
+            <div className="global-nav-menu__quick-panel" role="group" aria-label="Quick navigation shortcuts">
+              {QUICK_TAP_ACTIONS.map((action) => {
+                const ActionIcon = action.Icon;
+                return (
+                  <button
+                    key={action.key}
+                    type="button"
+                    className="global-nav-menu__quick-button"
+                    onClick={() => handleNavigate(action.to)}
+                  >
+                    <span className="global-nav-menu__quick-button-icon" aria-hidden="true">
+                      <ActionIcon fontSize="medium" />
+                    </span>
+                    <span className="global-nav-menu__quick-button-label">{action.label}</span>
+                  </button>
+                );
+              })}
             </div>
             <ul className="global-nav-menu__list">
               {menuItems.map(({ key, label, description, to, Icon, badgeCount }) => (

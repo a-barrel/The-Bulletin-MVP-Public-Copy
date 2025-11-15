@@ -19,11 +19,11 @@ import {
   METERS_PER_MILE
 } from '../utils/geo';
 import reportClientError from '../utils/reportClientError';
+import { resolvePinFetchLimit } from '../utils/pinDensity';
 
 const DEMO_USER_ID = 'demo-user';
 export const DEFAULT_RADIUS_MILES = 25;
 export const DEFAULT_MAX_DISTANCE_METERS = Math.round(DEFAULT_RADIUS_MILES * METERS_PER_MILE);
-const PIN_FETCH_LIMIT = 50;
 const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
 export const DEFAULT_SPOOF_STEP_MILES = 1;
 export const SPOOF_MIN_MILES = 0.25;
@@ -125,6 +125,8 @@ export default function useMapExplorer({
   const [error, setError] = useState(null);
   const lastSharedLocationRef = useRef(null);
   const [currentProfileId, setCurrentProfileId] = useState(null);
+  const [viewerProfile, setViewerProfile] = useState(null);
+  const [pinFetchLimit, setPinFetchLimit] = useState(resolvePinFetchLimit());
   const spoofAnchorRef = useRef(null);
   const [spoofStepMiles, setSpoofStepMiles] = useState(DEFAULT_SPOOF_STEP_MILES);
 
@@ -165,6 +167,8 @@ export default function useMapExplorer({
       if (!authUser || isOffline) {
         if (isMounted) {
           setCurrentProfileId(null);
+          setViewerProfile(null);
+          setPinFetchLimit(resolvePinFetchLimit());
         }
         return;
       }
@@ -173,6 +177,8 @@ export default function useMapExplorer({
         const profile = await fetchCurrentUserProfile();
         if (isMounted) {
           setCurrentProfileId(profile?._id ? String(profile._id) : null);
+          setViewerProfile(profile ?? null);
+          setPinFetchLimit(resolvePinFetchLimit(profile));
         }
       } catch (fetchError) {
         reportClientError(fetchError, 'Failed to load current user profile on MapPage:', {
@@ -180,6 +186,8 @@ export default function useMapExplorer({
         });
         if (isMounted) {
           setCurrentProfileId(null);
+          setViewerProfile(null);
+          setPinFetchLimit(resolvePinFetchLimit());
         }
       }
     };
@@ -265,7 +273,7 @@ export default function useMapExplorer({
           latitude: location.latitude,
           longitude: location.longitude,
           distanceMiles: DEFAULT_RADIUS_MILES,
-          limit: PIN_FETCH_LIMIT
+          limit: pinFetchLimit
         });
 
         const viewerId = normalizeId(currentProfileId);
@@ -297,7 +305,7 @@ export default function useMapExplorer({
         setIsLoadingPins(false);
       }
     },
-    [currentProfileId, isOffline, userLocation]
+    [currentProfileId, isOffline, pinFetchLimit, userLocation]
   );
 
   const refreshNearby = useCallback(
@@ -737,6 +745,7 @@ export default function useMapExplorer({
 
   return {
     authUser,
+    viewerProfile,
     userLocation,
     nearbyUsers,
     pins,

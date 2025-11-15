@@ -49,7 +49,8 @@ function MapPage() {
     combinedPins,
     showChatRooms,
     handleMapPinSelect,
-    selectedChatRoomId
+    selectedChatRoomId,
+    viewerProfile
   } = useMapExplorer({
     sharedLocation,
     setSharedLocation,
@@ -198,6 +199,8 @@ function MapPage() {
             onChatRoomView={handleViewChatRoom}
             onCurrentUserView={handleViewProfile}
             isOffline={isOffline}
+            currentUserAvatar={viewerProfile?.avatar}
+            currentUserDisplayName={viewerProfile?.displayName}
           />
         </Box>
 

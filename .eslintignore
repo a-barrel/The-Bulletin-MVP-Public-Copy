@@ -7,3 +7,6 @@ dist/
 build/
 emulator-data/
 coverage/
+DEV_LOGS/
+firebase-debug*.log
+**/firebase-debug*.log

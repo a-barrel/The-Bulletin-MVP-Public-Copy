@@ -225,6 +225,7 @@ const mapContentReport = (reportDoc, userLookup = new Map()) => {
     status: reportDoc.status,
     reason: reportDoc.reason || '',
     context: reportDoc.context || '',
+    offenseTags: Array.isArray(reportDoc.offenseTags) ? reportDoc.offenseTags : [],
     latestSnapshot: reportDoc.latestSnapshot || null,
     reporter,
     contentAuthor,

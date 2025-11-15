@@ -47,7 +47,8 @@ export const DEFAULT_SETTINGS = {
     highContrast: false,
     mapDensity: 'balanced',
     celebrationSounds: true,
-    showFriendBadges: true
+    showFriendBadges: true,
+    listSyncsWithMapLimit: true
   }
 };
 
@@ -167,7 +168,10 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
               DEFAULT_SETTINGS.display.celebrationSounds,
             showFriendBadges:
               result?.preferences?.display?.showFriendBadges ??
-              DEFAULT_SETTINGS.display.showFriendBadges
+              DEFAULT_SETTINGS.display.showFriendBadges,
+            listSyncsWithMapLimit:
+              result?.preferences?.display?.listSyncsWithMapLimit ??
+              DEFAULT_SETTINGS.display.listSyncsWithMapLimit
           }
         });
       } catch (error) {
@@ -586,7 +590,8 @@ const baselineSettings = useMemo(() => {
             highContrast: settings.display.highContrast,
             mapDensity: settings.display.mapDensity,
             celebrationSounds: settings.display.celebrationSounds,
-            showFriendBadges: settings.display.showFriendBadges
+            showFriendBadges: settings.display.showFriendBadges,
+            listSyncsWithMapLimit: settings.display.listSyncsWithMapLimit
           },
           data: {
             autoExportReminders: settings.autoExportReminders

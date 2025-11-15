@@ -26,6 +26,7 @@ import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb';
 
 import { fetchModerationOverview } from '../api/mongoDataApi';
 import { listContentReports, resolveContentReport } from '../api/mongoDataApi';
+import { REPORT_OFFENSE_LABELS } from '../constants/reportOffenseOptions';
 import { formatFriendlyTimestamp } from '../utils/dates';
 import runtimeConfig from '../config/runtime';
 
@@ -531,6 +532,19 @@ function AdminDashboard() {
                                 <Typography variant="caption" color="text.secondary">
                                   {report.context}
                                 </Typography>
+                              ) : null}
+                              {Array.isArray(report.offenseTags) && report.offenseTags.length ? (
+                                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                  {report.offenseTags.map((offense) => (
+                                    <Chip
+                                      key={`${report.id}-${offense}`}
+                                      size="small"
+                                      color="secondary"
+                                      variant="outlined"
+                                      label={REPORT_OFFENSE_LABELS[offense] || offense}
+                                    />
+                                  ))}
+                                </Stack>
                               ) : null}
                             </Stack>
                           </TableCell>

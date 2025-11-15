@@ -1,5 +1,6 @@
 ﻿import { auth } from '../firebase';
 import runtimeConfig from '../config/runtime';
+import { normalizeReportOffenses } from '../constants/reportOffenseOptions';
 
 const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
 const DEFAULT_NEARBY_DISTANCE_MILES = Number.isFinite(runtimeConfig.defaultNearbyRadius)
@@ -1282,12 +1283,13 @@ export async function submitModerationAction(input) {
   return payload;
 }
 
-export async function createContentReport({ contentType, contentId, reason, context }) {
+export async function createContentReport({ contentType, contentId, reason, context, offenses }) {
   if (!contentType || !contentId) {
     throw new Error('contentType and contentId are required for reporting content');
   }
 
   const baseUrl = resolveApiBaseUrl();
+  const offenseSelections = normalizeReportOffenses(offenses);
   const response = await fetch(`${baseUrl}/api/reports`, {
     method: 'POST',
     headers: await buildHeaders(),
@@ -1295,7 +1297,8 @@ export async function createContentReport({ contentType, contentId, reason, cont
       contentType,
       contentId,
       reason: reason ?? '',
-      context: context ?? ''
+      context: context ?? '',
+      offenses: offenseSelections
     })
   });
 

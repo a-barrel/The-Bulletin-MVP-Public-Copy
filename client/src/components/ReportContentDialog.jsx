@@ -9,8 +9,12 @@ import {
   TextField,
   Stack,
   Typography,
-  Alert
+  Alert,
+  FormGroup,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
+import { REPORT_OFFENSE_OPTIONS } from '../constants/reportOffenseOptions';
 import './ReportContentDialog.css';
 
 const truncateSummary = (value) => {
@@ -33,7 +37,9 @@ function ReportContentDialog({
   submitting = false,
   error = null,
   contentSummary = '',
-  context = ''
+  context = '',
+  selectedReasons = [],
+  onToggleReason
 }) {
   const helperText = useMemo(() => {
     if (context) {
@@ -45,6 +51,8 @@ function ReportContentDialog({
     return '';
   }, [contentSummary, context]);
 
+  const offenseOptions = useMemo(() => REPORT_OFFENSE_OPTIONS, []);
+
   return (
     <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth="sm" fullWidth className="report-dialog">
       <DialogTitle className="report-title">Report Content</DialogTitle>
@@ -52,11 +60,33 @@ function ReportContentDialog({
       <DialogContent dividers className="report-content">
         <Stack spacing={2} className="report-stack">
           {contentSummary ? (
-            <Typography variant="body2" className="report-summary">
-              <p>Message:</p>
-              {truncateSummary(contentSummary)}
+            <Typography variant="body2" className="report-summary" component="div">
+              <strong>Message:</strong>
+              <span className="report-summary-text">{truncateSummary(contentSummary)}</span>
             </Typography>
           ) : null}
+
+          <div className="report-offense-section">
+            <Typography variant="subtitle2" className="report-offense-title">
+              Common issues (select all that apply)
+            </Typography>
+            <FormGroup className="report-offense-group">
+              {offenseOptions.map((option) => (
+                <FormControlLabel
+                  key={option.value}
+                  control={
+                    <Checkbox
+                      checked={selectedReasons.includes(option.value)}
+                      onChange={(event) => onToggleReason?.(option.value, event.target.checked)}
+                      disabled={submitting}
+                    />
+                  }
+                  label={option.label}
+                  className="report-offense-option"
+                />
+              ))}
+            </FormGroup>
+          </div>
 
           <TextField
             multiline
@@ -106,7 +136,9 @@ ReportContentDialog.propTypes = {
   submitting: PropTypes.bool,
   error: PropTypes.string,
   contentSummary: PropTypes.string,
-  context: PropTypes.string
+  context: PropTypes.string,
+  selectedReasons: PropTypes.arrayOf(PropTypes.string),
+  onToggleReason: PropTypes.func
 };
 
 export default ReportContentDialog;

@@ -34,6 +34,10 @@ const contentReportSchema = new mongoose.Schema(
       type: String,
       default: ''
     },
+    offenseTags: {
+      type: [String],
+      default: []
+    },
     latestSnapshot: {
       message: String,
       metadata: mongoose.Schema.Types.Mixed

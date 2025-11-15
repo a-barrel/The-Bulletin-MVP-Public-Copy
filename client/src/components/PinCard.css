@@ -1,5 +1,4 @@
 /* ===== Shared Pin Card Styles ===== */
-
 .card {
   width: 92%;
   margin: 0 auto;
@@ -58,12 +57,24 @@
 /* Body */
 .card-text {
   color: #111;
-  font-size: 1.3rem;
-  line-height: 1.35rem;
+  font-family: 'Urbanist', sans-serif;
+  font-weight: 500;
+  font-size: 1.2rem;
+  line-height: 1.4;
   text-align: left;
-  margin: 0.25rem 0 0.2rem;
+  margin: 0.35rem 0 0.2rem;
   overflow-wrap: anywhere;
   word-break: break-word;
+
+  min-height: 4.2em;          
+
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;      
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  line-clamp: 3;
 }
 
 /* Images */
@@ -71,27 +82,57 @@
   display: grid;
   gap: 0.5rem;
   margin-top: 0.35rem;
-}
-.media-grid.one {
-  grid-template-columns: 1fr;
-}
-.media-grid.two {
-  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 1fr;
 }
 
-.media {
+/* 1 image: full card width */
+.media-grid:has(.media:nth-child(1):last-child) {
+  grid-template-columns: 1fr;
+}
+.media-grid:has(.media:nth-child(1):last-child) .media {
   width: 100%;
-  height: 216px;
-  object-fit: fill;
+  height: 240px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+/* --- 2 images (same height/width style as 1 image) --- */
+.media-grid:has(.media:nth-child(2):last-child) {
+  grid-template-columns: 1fr 1fr;
+}
+.media-grid:has(.media:nth-child(2):last-child) .media {
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+/* --- 3 images (still grid, same height/width style) --- */
+.media-grid:has(.media:nth-child(3):last-child) {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.media-grid:has(.media:nth-child(3):last-child) .media {
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+/* Base fallback */
+.media {
+  display: block;
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+  border-radius: 8px;
   border: none;
-  border-radius: 4px;
 }
 
 .media-scroll {
   display: flex;
   gap: 0.5rem;
   margin-top: 0.35rem;
-  padding-bottom: 0.25rem;
+  padding-bottom: 0.3rem;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
@@ -100,10 +141,9 @@
 }
 
 .media-scroll .media {
-  flex: 0 0 calc(40% - 0.3rem);
-  width: calc(40% - 0.3rem);
-  min-width: calc(40% - 0.3rem);
-  scroll-snap-align: start;
+  flex: 0 0 auto; 
+  height: auto; 
+  max-height: 216px;
 }
 
 .media-scroll::-webkit-scrollbar {
@@ -119,7 +159,60 @@
   background: transparent;
 }
 
-/* Footer layout (author | interested | counts) */
+/* Mobile layout for media grids */
+@media (max-width: 480px) {
+  /* collapse grids into flexible rows */
+  .media-grid {
+    display: grid;
+    gap: 0.4rem;
+    margin-top: 0.35rem;
+  }
+
+  /* --- 1 image: full width --- */
+  .media-grid.one .media {
+    width: 100% !important;
+    max-width: 100%;
+    aspect-ratio: 4 / 3;
+    min-height: 180px;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+
+  /* --- 2 or 3 images: split evenly --- */
+  .media-grid.two .media,
+  .media-grid.three .media {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+  }
+  .media-grid.two {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .media-grid.three {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* --- 4+ images: make a grid that wraps naturally --- */
+  .media-grid.four,
+  .media-grid.five,
+  .media-grid.six,
+  .media-grid.many {
+    grid-template-columns: repeat(auto-fill, minmax(45%, 1fr));
+  }
+
+  .media-grid.four .media,
+  .media-grid.five .media,
+  .media-grid.six .media,
+  .media-grid.many .media {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 6px;
+  }
+}
+
+
+/* Footer anchored to the bottom of the card */
 .card-footer {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -127,6 +220,8 @@
   align-items: center;
   column-gap: 12px;
   row-gap: 6px;
+
+  margin-top: auto;   
 }
 
 .author {
@@ -225,12 +320,14 @@
   align-items: center;
   gap: 8px;
   overflow: hidden;
-  min-height: 28px;
+  min-height: 32px;          
 }
 
+/* when there are lots of avatars */
 .interested-row.scrollable {
   overflow-x: auto;
-  padding-bottom: 0.25rem;
+  overflow-y: hidden;        
+  flex-wrap: nowrap;         
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
 }
@@ -278,6 +375,7 @@
 
 .interest-more {
   flex: 0 0 auto;
+  white-space: nowrap;      
 }
 
 .tag-icon {

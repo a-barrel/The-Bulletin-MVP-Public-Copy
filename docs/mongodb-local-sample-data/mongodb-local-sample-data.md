@@ -42,6 +42,10 @@ mongoimport --db pinpoint --collection proximitychatrooms --file docs/mongodb-lo
 mongoimport --db pinpoint --collection proximitychatmessages --file docs/mongodb-local-sample-data/mongodb-sample-proximityChatMessages.json --jsonArray
 mongoimport --db pinpoint --collection proximitychatpresences --file docs/mongodb-local-sample-data/mongodb-sample-proximityChatPresence.json --jsonArray
 mongoimport --db pinpoint --collection updates --file docs/mongodb-local-sample-data/mongodb-sample-updates.json --jsonArray
+mongoimport --db pinpoint --collection friendrequests --file docs/mongodb-local-sample-data/mongodb-sample-friendRequests.json --jsonArray
+mongoimport --db pinpoint --collection moderationactions --file docs/mongodb-local-sample-data/mongodb-sample-moderationActions.json --jsonArray
+mongoimport --db pinpoint --collection directmessagethreads --file docs/mongodb-local-sample-data/mongodb-sample-directMessageThreads.json --jsonArray
+mongoimport --db pinpoint --collection contentreports --file docs/mongodb-local-sample-data/mongodb-sample-contentReports.json --jsonArray
 ```
 
 > The files use MongoDB Extended JSON (`$oid`, `$date`) so they retain object IDs and timestamps.
@@ -55,6 +59,7 @@ mongoimport --db pinpoint --collection updates --file docs/mongodb-local-sample-
 - **Locations**: recent location pings for all five users tied back to their pins.
 - **Proximity Chat**: seven rooms (global lounges + the four-piece CSULB overlap grid), four chat messages, and presence records linked to discussion, planning, and debug scenarios.
 - **Updates**: four notification payloads covering new pin launches and reminders.
+- **Moderation tooling data**: expanded `moderationActions` history plus ten `contentReports` showcasing pending, resolved, and dismissed cases (pins, replies, chats, and DMs) so the admin dashboard has realistic queues during demos.
 
 Feel free to tweak values or add additional documents - the IDs in this dataset match the examples referenced throughout `frontend-api-cheatsheet.md`, so the UI and API playground will line up with the docs out of the box.
 

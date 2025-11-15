@@ -18,7 +18,6 @@ import {
 } from '@mui/material';
 import PlaceIcon from '@mui/icons-material/Place'; // used only for pageConfig
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import ForumIcon from '@mui/icons-material/Forum';
@@ -26,6 +25,8 @@ import AddCommentIcon from '@mui/icons-material/AddComment';
 import LeafletMap from '../components/Map';
 import FriendBadge from '../components/FriendBadge';
 import BookmarkButton from '../components/BookmarkButton';
+import GlobalNavMenu from '../components/GlobalNavMenu';
+import MainNavBackButton from '../components/MainNavBackButton';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
@@ -33,6 +34,7 @@ import usePinDetails from '../hooks/usePinDetails';
 import ReportContentDialog from '../components/ReportContentDialog';
 import { createContentReport, deletePin, updatePin } from '../api/mongoDataApi';
 import ImageOverlay from '../components/ImageOverlay.jsx'
+import reportClientError from '../utils/reportClientError';
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
@@ -44,6 +46,7 @@ const SAMPLE_PIN_IDS = [
 const FAR_PIN_ID = SAMPLE_PIN_IDS[0] ?? '68e061721329566a22d474aa';
 const MAX_PHOTO_PIN_ID = '68e061721329566a22d47a00';
 const BROKEN_TEXTURE_PIN_ID = '68e061721329566a22d47a01';
+const NO_IMAGE_PIN_ID = '68e061721329566a22d47a10';
 
 export const pageConfig = {
   id: 'pin-details',
@@ -54,7 +57,7 @@ export const pageConfig = {
   showInNav: true,
   resolveNavTarget: ({ currentPath } = {}) => {
     const input = window.prompt(
-      'Enter a pin ID to view. Shortcuts: "expired" loads an expired pin, "far" loads a distant pin, "3" loads the max-photo sample, "broken" loads the UNKNOWN_TEXTURE tester. Leave blank for a random sample or cancel to stay put.'
+      'Enter a pin ID to view. Shortcuts: "expired" loads an expired pin, "far" loads a distant pin, "3" loads the max-photo sample, "broken" loads the UNKNOWN_TEXTURE tester, "nopicture" loads the imageless pin. Leave blank for a random sample or cancel to stay put.'
     );
     if (input === null) {
       return currentPath ?? null;
@@ -72,6 +75,9 @@ export const pageConfig = {
     }
     if (trimmed === 'broken') {
       return routes.pin.byId(BROKEN_TEXTURE_PIN_ID);
+    }
+    if (trimmed.toLowerCase() === 'nopicture') {
+      return routes.pin.byId(NO_IMAGE_PIN_ID);
     }
     if (!trimmed) {
       const randomId =
@@ -314,39 +320,6 @@ function PinDetails() {
     () => attendingFriendItems.slice(0, 6),
     [attendingFriendItems]
   );
-  const extraFriendCount = Math.max(0, attendingFriendItems.length - attendingFriendPreview.length);
-
-  const originEntry = location.state?.from;
-  const resolvedOriginPath = useMemo(() => {
-    if (!originEntry) {
-      return null;
-    }
-    if (typeof originEntry === 'string') {
-      return originEntry;
-    }
-    if (typeof originEntry === 'object' && originEntry !== null) {
-      const pathname = originEntry.pathname ?? '';
-      if (!pathname) {
-        return null;
-      }
-      const search = originEntry.search ?? '';
-      const hash = originEntry.hash ?? '';
-      return `${pathname}${search}${hash}`;
-    }
-    return null;
-  }, [originEntry]);
-
-  const handleBackNavigation = useCallback(() => {
-    if (resolvedOriginPath) {
-      navigate(resolvedOriginPath);
-      return;
-    }
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      navigate(-1);
-      return;
-    }
-    navigate(routes.list.base);
-  }, [navigate, resolvedOriginPath]);
 
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
   const pinErrorMessage = typeof error === 'string' ? error : error?.message;
@@ -356,6 +329,7 @@ function PinDetails() {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
   const [reportReason, setReportReason] = useState('');
+  const [reportSelectedOffenses, setReportSelectedOffenses] = useState([]);
   const [reportError, setReportError] = useState(null);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportStatus, setReportStatus] = useState(null);
@@ -586,6 +560,7 @@ function PinDetails() {
       context: contextLabel
     });
     setReportReason('');
+    setReportSelectedOffenses([]);
     setReportError(null);
     setReportDialogOpen(true);
   }, [pin]);
@@ -597,8 +572,24 @@ function PinDetails() {
     setReportDialogOpen(false);
     setReportTarget(null);
     setReportReason('');
+    setReportSelectedOffenses([]);
     setReportError(null);
   }, [isSubmittingReport]);
+
+  const handleToggleReportOffense = useCallback((offense, checked) => {
+    if (typeof offense !== 'string') {
+      return;
+    }
+    setReportSelectedOffenses((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(offense);
+      } else {
+        next.delete(offense);
+      }
+      return Array.from(next);
+    });
+  }, []);
 
   const handleSubmitReport = useCallback(async () => {
     if (!reportTarget?.contentType || !reportTarget?.contentId) {
@@ -615,21 +606,28 @@ function PinDetails() {
         contentType: reportTarget.contentType,
         contentId: reportTarget.contentId,
         reason: reportReason.trim(),
-        context: reportTarget.context || ''
+        context: reportTarget.context || '',
+        offenses: reportSelectedOffenses
       });
       setReportDialogOpen(false);
       setReportTarget(null);
       setReportReason('');
+      setReportSelectedOffenses([]);
       setReportStatus({
         type: 'success',
         message: 'Thanks for the report. Our moderators will review it shortly.'
       });
     } catch (error) {
       setReportError(error?.message || 'Failed to submit report. Please try again later.');
+      reportClientError(error, 'Failed to submit content report.', {
+        component: 'PinDetails',
+        contentType: reportTarget?.contentType,
+        contentId: reportTarget?.contentId
+      });
     } finally {
       setIsSubmittingReport(false);
     }
-  }, [reportReason, reportTarget, isSubmittingReport]);
+  }, [reportReason, reportSelectedOffenses, reportTarget, isSubmittingReport]);
 
   const handleReportStatusClose = useCallback(() => {
     setReportStatus(null);
@@ -654,14 +652,12 @@ function PinDetails() {
       ) : null}
 
       <header className="header">
-        <button
-          type="button"
-          className="back-button"
-          aria-label="Go back"
-          onClick={handleBackNavigation}
-        >
-          <ArrowBackIosNewIcon className="back-arrow" aria-hidden="true" />
-        </button>
+        <div className="pin-header-nav">
+          <MainNavBackButton className="back-button" iconClassName="back-arrow" aria-label="Go back" />
+          <div className="pin-nav-menu">
+            <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+          </div>
+        </div>
 
         <h2>{pinTypeHeading}</h2>
 
@@ -869,21 +865,20 @@ function PinDetails() {
                     <br />
                     Attending: {pin.participantCount ?? 0}
                     {pin.participantLimit ? ` / ${pin.participantLimit}` : ''}
+                    <br />
+                    {isEventPin && attendingFriendPreview.length > 0 ? (
+                      <div className="attending-friends-container" aria-label="Friends attending this event">
+                        <span className="friends-label">Friends:</span>
+                        <div className="attending-friends-inline scrollable">
+                          {attendingFriendPreview.map((friend) => (
+                            <AttendingFriendAvatar key={friend.key} attendee={friend} />
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </>
                 ) : null}
               </span>
-              {isEventPin && attendingFriendPreview.length > 0 ? (
-                <div className="attending-friends-inline" aria-label="Friends attending this event">
-                  {attendingFriendPreview.map((friend) => (
-                    <AttendingFriendAvatar key={friend.key} attendee={friend} />
-                  ))}
-                  {extraFriendCount > 0 ? (
-                    <span className="attending-friends-more" aria-label={`${extraFriendCount} more friends`}>
-                      +{extraFriendCount}
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
               {isEventPin ? (
                 <button
                   type="button"
@@ -1078,7 +1073,20 @@ function PinDetails() {
                     const { key, name, avatar, link } = attendee;
                     const content = (
                       <>
-                        <img src={avatar || undefined} alt={`${name} avatar`} className="attendee-avatar" />
+                        <div className="attendee-avatar-wrapper">
+                          <img
+                            src={avatar || undefined}
+                            alt={`${name} avatar`}
+                            className="attendee-avatar"
+                          />
+
+                          <FriendBadge
+                            userId={attendee.userId || attendee._id || attendee.id}
+                            size="0.9em"
+                            className="attendee-avatar-badge"
+                          />
+                        </div>
+
                         <span className="attendee-name">{name}</span>
                       </>
                     );
@@ -1218,6 +1226,8 @@ function PinDetails() {
         error={reportError}
         contentSummary={reportTarget?.summary || ''}
         context={reportTarget?.context || ''}
+        selectedReasons={reportSelectedOffenses}
+        onToggleReason={handleToggleReportOffense}
       />
 
       <Snackbar

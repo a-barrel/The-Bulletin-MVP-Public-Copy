@@ -85,7 +85,9 @@ function BookmarkButton({
       {...rest}
     >
       {displayBookmarked ? (
-        <BookmarkIcon className={`bookmark-icon${isLocked ? ' bookmark-icon--locked' : ''}`} />
+        <BookmarkIcon
+          className={`bookmark-icon${isLocked ? ' bookmark-icon--locked' : ''}`}
+        />
       ) : (
         <BookmarkBorderIcon className="bookmark-icon" />
       )}

@@ -52,24 +52,28 @@ const resolveFromObject = (candidate, fallback, options) => {
   return null;
 };
 
-export function resolveAssetUrl(asset, options = {}) {
+export function resolveAssetUrl(asset, options) {
+  const optionProvided = arguments.length >= 2;
   const normalizedOptions =
     options && typeof options === 'object' && !Array.isArray(options)
       ? options
-      : { fallback: options };
+      : optionProvided
+      ? { fallback: options }
+      : {};
 
   const {
-    fallback = null,
+    fallback,
     baseUrl = DEFAULT_BASE_URL,
     keys
   } = normalizedOptions;
+  const hasCustomFallback = Object.prototype.hasOwnProperty.call(normalizedOptions, 'fallback');
 
   const shouldReturnRelativeOffline = (path) =>
     runtimeConfig.isOffline &&
     typeof path === 'string' &&
     (path.startsWith('/images/') || path.startsWith('/sounds/'));
 
-  const fallbackSrc = fallback ?? fallbackTextureFallback();
+  const fallbackSrc = hasCustomFallback ? fallback : fallbackTextureFallback();
 
   if (!asset && asset !== 0) {
     return fallbackSrc;
@@ -103,7 +107,7 @@ export function resolveAssetUrl(asset, options = {}) {
     return baseUrl ? `${baseUrl}${normalized}` : normalized;
   }
 
-  const resolved = resolveFromObject(asset, fallbackSrc, { baseUrl, keys });
+  const resolved = resolveFromObject(asset, fallbackSrc, normalizedOptions);
   return resolved ?? fallbackSrc;
 }
 

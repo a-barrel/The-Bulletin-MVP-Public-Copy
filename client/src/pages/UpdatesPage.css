@@ -51,6 +51,13 @@
   border-bottom: 2px solid #000;
 }
 
+.updates-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding-left: 0.25rem;
+}
+
 .updates-header-title {
   font-family: 'Urbanist', sans-serif !important;
   color: #5D3889;
@@ -67,6 +74,21 @@
   text-transform: none;
   font-weight: 600 !important;
   font-size: 0.95rem;
+}
+
+.updates-header-back-btn {
+  background: none;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  cursor: pointer;
+}
+
+.updates-header-back-btn:focus-visible {
+  outline: 2px solid rgba(0, 0, 0, 0.35);
+  outline-offset: 2px;
 }
 
 .updates-header-back-icon {

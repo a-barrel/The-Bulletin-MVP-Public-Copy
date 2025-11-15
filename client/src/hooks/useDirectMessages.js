@@ -259,11 +259,11 @@ export default function useDirectMessages({ autoLoad = true } = {}) {
         throw error;
       }
 
-       if (state.hasAccess === false) {
-         const error = new Error('Friend management privileges required.');
-         dispatch({ type: 'send/error', error: error.message, status: 403 });
-         throw error;
-       }
+      if (state.hasAccess === false) {
+        const error = new Error('Friend management privileges required.');
+        dispatch({ type: 'send/error', error: error.message, status: 403 });
+        throw error;
+      }
 
       const optimisticMessage = buildOptimisticMessage({ body, sender });
       dispatch({ type: 'thread/optimistic-message', threadId, message: optimisticMessage });

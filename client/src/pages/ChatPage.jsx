@@ -1,10 +1,4 @@
-/* NOTE: Page exports navigation config alongside the component.
- *
- * Logging status: This page still uses the legacy chat hooks while a refactor is underway.
- * Don’t wire `reportClientError` / `logClientError` into the DM/chat flows until that
- * work settles, otherwise we’ll fight merge conflicts. Once the new hook/utilities land,
- * revisit logging coverage (see TODO-AND-IDEAS/logging-coverage-roadmap.md).
- */
+/* NOTE: Page exports navigation config alongside the component. */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -38,17 +32,16 @@ import {
   Snackbar
 } from '@mui/material';
 import SmsIcon from '@mui/icons-material/Sms';
-import runtimeConfig from '../config/runtime';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import RoomIcon from '@mui/icons-material/Room';
 import GroupIcon from '@mui/icons-material/Group';
 import PublicIcon from '@mui/icons-material/Public';
 import MarkUnreadChatAltIcon from '@mui/icons-material/MarkUnreadChatAlt';
-import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import CloseIcon from '@mui/icons-material/Close';
 import updatesIcon from '../assets/UpdateIcon.svg';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
+
 
 import Navbar from '../components/Navbar';
 import GlobalNavMenu from '../components/GlobalNavMenu';
@@ -314,8 +307,6 @@ function ChatPage() {
 
   const [moderationInitAttempted, setModerationInitAttempted] = useState(false);
   const [moderationContext, setModerationContext] = useState(null);
-  const moderationRoleChecksEnabled = runtimeConfig.moderation?.roleChecksEnabled !== false;
-  const bypassModerationRoleChecks = runtimeConfig.isOffline || !moderationRoleChecksEnabled;
   const [moderationForm, setModerationForm] = useState({
     type: 'warn',
     reason: '',
@@ -328,6 +319,7 @@ function ChatPage() {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
   const [reportReason, setReportReason] = useState('');
+  const [reportSelectedOffenses, setReportSelectedOffenses] = useState([]);
   const [reportError, setReportError] = useState(null);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportStatus, setReportStatus] = useState(null);
@@ -470,7 +462,7 @@ function ChatPage() {
   }, [channelTab, uniqueMessages.length, scrollMessagesToBottom]);
 
   useEffect(() => {
-    if (moderationHasAccess === false) {
+    if (isOffline || moderationHasAccess === false) {
       return;
     }
     if (moderationInitAttempted || isLoadingModerationOverview) {
@@ -479,6 +471,7 @@ function ChatPage() {
     setModerationInitAttempted(true);
     loadModerationOverview().catch(() => {});
   }, [
+    isOffline,
     moderationHasAccess,
     moderationInitAttempted,
     isLoadingModerationOverview,
@@ -663,21 +656,23 @@ function ChatPage() {
   const handleChooseRoom = useCallback(
     (roomId) => {
       handleSelectRoom(roomId);
+      selectDirectThread(null); // clears DM selection
       setChannelTab('rooms');
       setChannelDialogTab('rooms');
       setIsChannelDialogOpen(false);
     },
-    [handleSelectRoom]
+    [handleSelectRoom, selectDirectThread]
   );
 
   const handleSelectDirectThreadId = useCallback(
     (threadId) => {
       selectDirectThread(threadId);
+      handleSelectRoom(null); // clears room selection
       setChannelTab('direct');
       setChannelDialogTab('direct');
       setIsChannelDialogOpen(false);
     },
-    [selectDirectThread]
+    [selectDirectThread, handleSelectRoom]
   );
 
   const handleActivateFriendsView = useCallback(() => {
@@ -1249,8 +1244,7 @@ function ChatPage() {
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
   const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
 
-  const canModerateMessages =
-    bypassModerationRoleChecks || moderationHasAccess !== false;
+  const canModerateMessages = !isOffline && moderationHasAccess !== false;
 
   const getDisplayMessageText = useCallback((msg) => {
     if (!msg || typeof msg.message !== 'string') {
@@ -1385,6 +1379,7 @@ function ChatPage() {
         context: contextLabel
       });
       setReportReason('');
+      setReportSelectedOffenses([]);
       setReportError(null);
       setReportDialogOpen(true);
     },
@@ -1410,6 +1405,7 @@ function ChatPage() {
         threadId: selectedDirectThreadId
       });
       setReportReason('');
+      setReportSelectedOffenses([]);
       setReportError(null);
       setReportDialogOpen(true);
     },
@@ -1423,8 +1419,24 @@ function ChatPage() {
     setReportDialogOpen(false);
     setReportTarget(null);
     setReportReason('');
+    setReportSelectedOffenses([]);
     setReportError(null);
   }, [isSubmittingReport]);
+
+  const handleToggleReportOffense = useCallback((offense, checked) => {
+    if (typeof offense !== 'string') {
+      return;
+    }
+    setReportSelectedOffenses((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(offense);
+      } else {
+        next.delete(offense);
+      }
+      return Array.from(next);
+    });
+  }, []);
 
   const handleSubmitReport = useCallback(async () => {
     if (!reportTarget?.contentType || !reportTarget?.contentId) {
@@ -1441,11 +1453,13 @@ function ChatPage() {
         contentType: reportTarget.contentType,
         contentId: reportTarget.contentId,
         reason: reportReason.trim(),
-        context: reportTarget.context || ''
+        context: reportTarget.context || '',
+        offenses: reportSelectedOffenses
       });
       setReportDialogOpen(false);
       setReportTarget(null);
       setReportReason('');
+      setReportSelectedOffenses([]);
       setReportStatus({
         type: 'success',
         message: 'Thanks for the report. Our moderators will review it shortly.'
@@ -1455,7 +1469,7 @@ function ChatPage() {
     } finally {
       setIsSubmittingReport(false);
     }
-  }, [reportTarget, reportReason, isSubmittingReport]);
+  }, [reportSelectedOffenses, reportTarget, reportReason, isSubmittingReport]);
 
   const handleReportStatusClose = useCallback(() => {
     setReportStatus(null);
@@ -1640,115 +1654,145 @@ function ChatPage() {
   );
 
   const RoomListContent = () => (
-    <>
-      <Box
-        sx={{
-          px: 2,
-          py: 1.5,
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}
-      >
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Typography variant="subtitle1" fontWeight={700}>
-            Rooms
-          </Typography>
-          <Chip label={rooms.length} size="small" color="primary" variant="outlined" />
-        </Stack>
-        <Stack direction="row" spacing={1}>
-          <Tooltip title="Refresh rooms">
-            <span>
-              <IconButton onClick={loadRooms} disabled={isLoadingRooms}>
-                {isLoadingRooms ? <CircularProgress size={20} /> : <RefreshIcon fontSize="small" />}
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title="Create room">
-            <IconButton color="primary" onClick={handleOpenCreateDialog}>
-              <AddCommentIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-      </Box>
+  <Box className="room-list-container">
+    <Box className="room-list-header">
+      <Typography className="room-list-title">
+        Select a room below
+      </Typography>
 
-      {roomsError ? (
-        <Box sx={{ p: 2 }}>
-          <Typography variant="body2" color="error">
-            {roomsError}
-          </Typography>
-        </Box>
-      ) : rooms.length === 0 ? (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
-          <Typography variant="body2" color="text.secondary">
-            {isLoadingRooms ? 'Loading rooms...' : 'No rooms yet. Create one to get started!'}
-          </Typography>
-        </Box>
-      ) : (
-        <List dense sx={{ overflowY: 'auto', flexGrow: 1 }}>
-          {rooms.map((room) => {
-            const isActive = room._id === selectedRoomId;
-            const participantLabel = room.participantCount
-              ? `${room.participantCount} members`
-              : 'No members yet';
-            return (
-              <ListItemButton
-                key={room._id}
-                selected={isActive}
-                onClick={() => handleChooseRoom(room._id)}
-                sx={{ alignItems: 'flex-start', py: 1.5 }}
-              >
-                <ListItemText
-                  primary={
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Typography variant="subtitle1" fontWeight={600}>
+      <Box className="room-list-header-action-btns">
+        <IconButton
+          onClick={loadRooms}
+          disabled={isLoadingRooms}
+          className="room-refresh-btn"
+        >
+          {isLoadingRooms ? (
+              <CircularProgress size={18} />
+            ) : (
+              <RefreshIcon sx={{ fontSize: 18, color: '#5C48A8' }} />
+            )}
+        </IconButton>
+
+        <IconButton
+          onClick={handleOpenCreateDialog}
+          className="room-create-btn"
+        >
+          <AddCommentIcon sx={{ fontSize: 18 }} />
+        </IconButton>
+      </Box>
+    </Box>
+
+    {roomsError ? (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="error">{roomsError}</Alert>
+      </Box>
+    ) : rooms.length === 0 ? (
+      <Stack
+        sx={{ flexGrow: 1, py: 6, alignItems: 'center', justifyContent: 'center' }}
+        spacing={1}
+      >
+        <Typography variant="body2" color="text.secondary">
+          {isLoadingRooms ? 'Loading rooms...' : 'No rooms yet. Create one to get started!'}
+        </Typography>
+      </Stack>
+    ) : (
+      <List className="room-list">
+        {rooms.map((room) => {
+          const isActive = room._id === selectedRoomId;
+          const participantLabel = room.participantCount
+            ? `${room.participantCount} members`
+            : 'No members yet';
+
+          return (
+            <ListItemButton
+              className="room-card"
+              key={room._id}
+              onClick={() => handleChooseRoom(room._id)}
+              selected={isActive}
+              sx={{
+                transition: 'background-color 0.2s ease',
+                backgroundColor: isActive ? '#d9f2ffff !important' : 'white',
+              }}
+            >
+              <ListItemText
+                primary={
+                  <Box className="room-card-header">
+                    <Box className="room-card-header-left">
+                      <Typography
+                        className="room-card-room-title"
+                        variant="subtitle2"
+                      >
                         {room.name}
                       </Typography>
+
                       <Chip
+                        className="room-card-globality-chip"
                         label={room.isGlobal ? 'Global' : 'Local'}
                         size="small"
-                        color={room.isGlobal ? 'secondary' : 'default'}
                       />
-                    </Stack>
-                  }
-                  secondary={
-                    <Typography variant="caption" color="text.secondary">
+                    </Box>
+
+                    <IconButton
+                      className="room-card-pin-icon"
+                      edge="end"
+                      size="small"
+                    >
+                      {room.isGlobal ? (
+                        <PublicIcon sx={{ fontSize: 18 }} />
+                      ) : (
+                        <RoomIcon sx={{ fontSize: 18 }} />
+                      )}
+                    </IconButton>
+                  </Box>
+                }
+                secondary={
+                  <span className="room-card-bottom">
+                    <Typography 
+                      component="span"
+                      className="room-card-member-count" 
+                      variant="caption"
+                    >
                       {participantLabel}
                     </Typography>
-                  }
-                />
-                <ListItemSecondaryAction>
-                  <Tooltip title={room.isGlobal ? 'Global room' : 'Local room'}>
-                    <IconButton edge="end" size="small" onClick={() => handleChooseRoom(room._id)}>
-                      {room.isGlobal ? <PublicIcon fontSize="small" /> : <RoomIcon fontSize="small" />}
-                    </IconButton>
-                  </Tooltip>
-                </ListItemSecondaryAction>
-              </ListItemButton>
-            );
-          })}
-        </List>
-      )}
-    </>
-  );
+                    {isActive && (
+                      <Typography 
+                        component="span"
+                        className="room-card-joined-label"
+                        variant="caption"
+                      >
+                        Joined
+                      </Typography>
+                    )}
+                  </span>
+                }
+              />
+            </ListItemButton>
+          );
+        })}
+      </List>
+    )}
+  </Box>
+);
+
 
   const renderRoomMessagesMobile = () => {
     if (!selectedRoom) {
       return (
-        <Stack
-          spacing={2}
-          alignItems="center"
-          justifyContent="center"
-          sx={{ flexGrow: 1, py: 6, textAlign: 'center', color: 'text.secondary' }}
-        >
+        <Box className="no-room-selected-container">
           <SmsIcon color="primary" sx={{ fontSize: 48 }} />
-          <Typography variant="h6">Choose a chat room to start talking</Typography>
-          <Typography variant="body2">
+          <Typography
+            className="no-room-selected-title" 
+            variant="h6"
+          >
+            Choose a chat room to start talking
+          </Typography>
+          <Typography 
+            className="no-room-selected-body"
+            variant="body2" 
+          >
             Pick a room from the selector in the header or create a new one.
           </Typography>
-        </Stack>
+        </Box>
       );
     }
 
@@ -1762,35 +1806,34 @@ function ChatPage() {
 
     if (isLoadingMessages && uniqueMessages.length === 0) {
       return (
-        <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-          <CircularProgress />
-          <Typography variant="body2" color="text.primary">
+        <Box className="loading-msgs-container">
+          <CircularProgress className="loading-msgs-circle"/>
+          <Typography 
+            className="loading-msgs-body"
+            variant="body2" 
+          >
             Loading messages…
           </Typography>
-        </Stack>
+        </Box>
       );
     }
 
     if (uniqueMessages.length === 0) {
       return (
-        <Stack
-          spacing={1}
-          alignItems="center"
-          justifyContent="center"
-          sx={{
-            flexGrow: 1,
-            py: 6,
-            textAlign: 'center',
-            color: '#1f1336'
-          }}
-        >
-          <Typography variant="h6" color="inherit">
+        <Box className="empty-msgs-container">
+          <Typography
+            className="empty-msgs-title" 
+            variant="h6"
+          >
             No messages yet
           </Typography>
-          <Typography variant="body2" sx={{ color: '#3d2d63' }}>
+          <Typography 
+            className="empty-msgs-body"
+            variant="body2" 
+          >
             Start the conversation with everyone in this room.
           </Typography>
-        </Stack>
+        </Box>
       );
     }
 
@@ -1815,42 +1858,57 @@ function ChatPage() {
   const renderDirectMessagesMobile = () => {
     if (directMessagesHasAccess === false) {
       return (
-        <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-          <Typography variant="body2" color="text.secondary" align="center">
+        <Box className="disabled-dms-container">
+          <Typography className="disabled-dms-body" variant="body2" color="text.secondary" align="center">
             Direct messages are disabled for your account.
           </Typography>
-        </Stack>
+        </Box>
       );
     }
 
     if (!selectedDirectThreadId) {
       if (dmThreads.length === 0 && !isLoadingDmThreads) {
         return (
-          <Stack spacing={1.5} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-            <Typography variant="h6">Start a new conversation</Typography>
-            <Typography variant="body2" color="text.secondary" align="center">
+          <Box className="no-dm-selected-container">
+            <Typography className="no-dm-selected-title" variant="h6" >
+              Start a new conversation
+            </Typography>
+
+            <Typography className="no-dm-selected-body" variant="body2" color="text.secondary" align="center">
               Visit a profile and choose “Message user” to invite them to chat.
             </Typography>
-          </Stack>
+          </Box>
         );
       }
       if (isLoadingDmThreads) {
         return (
-          <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-            <CircularProgress />
-            <Typography variant="body2" color="text.secondary">
-              Loading conversations…
-            </Typography>
-          </Stack>
+          <Box className="loading-dms-container">
+          <CircularProgress className="loading-dms-circle"/>
+          <Typography 
+            className="loading-dms-body"
+            variant="body2" 
+          >
+            Loading messages…
+          </Typography>
+        </Box>
         );
       }
       return (
-        <Stack spacing={1.5} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-          <Typography variant="h6">Select a direct message</Typography>
-          <Typography variant="body2" color="text.secondary" align="center">
+        <Box className="select-dms-container">
+          <Typography 
+            className="select-dms-title"
+            variant="h6" 
+          >
+            Select a direct message
+          </Typography>
+
+          <Typography 
+            className="select-dms-body"
+            variant="body2" 
+          >
             Open the channel picker above and choose a conversation.
           </Typography>
-        </Stack>
+        </Box>
       );
     }
 
@@ -1864,30 +1922,29 @@ function ChatPage() {
 
     if (isLoadingDirectThread && directMessageItems.length === 0) {
       return (
-        <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-          <CircularProgress />
-          <Typography variant="body2" color="text.primary">
+        <Box className="loading-dms-container">
+          <CircularProgress className="loading-dms-circle"/>
+          <Typography 
+            className="loading-dms-body"
+            variant="body2" 
+          >
             Loading messages…
           </Typography>
-        </Stack>
+        </Box>
       );
     }
 
     if (directMessageItems.length === 0) {
       return (
-        <Stack
-          spacing={1.5}
-          alignItems="center"
-          justifyContent="center"
-          sx={{ flexGrow: 1, py: 6, color: '#111' }}
-        >
-          <Typography variant="h6" sx={{ color: '#111' }}>
-            Say hello
+        <Box className="empty-dms-container">
+          <Typography className="empty-dms-title" variant="h6" >
+            Start a new conversation
           </Typography>
-          <Typography variant="body2" align="center" sx={{ color: '#333' }}>
-            Send the first message to keep the conversation going.
+
+          <Typography className="empty-dms-body" variant="body2" color="text.secondary" align="center">
+            Visit a profile and choose “Message user” to invite them to chat.
           </Typography>
-        </Stack>
+        </Box>
       );
     }
 
@@ -2150,39 +2207,18 @@ function ChatPage() {
 
         <div className="chat-frame">
           <header className="chat-header-bar">
-            <GlobalNavMenu />
-
-            <h1 className="chat-header-title">
-              Chat
-            </h1>
+            <GlobalNavMenu className="chat-header-menu-nav" />
             <div className="chat-header-actions">
-              <Chip
-                className="chat-room-chip"
-                icon={
-                  channelTab === 'direct' ? (
-                    <MarkUnreadChatAltIcon fontSize="small" />
-                  ) : (
-                    <GroupIcon fontSize="small" />
-                  )
-                }
-                label={headerChannelLabel}
-                onClick={handleOpenChannelDialog}
-                variant="outlined"
-                color={channelTab === 'direct' ? 'secondary' : 'primary'}
-                aria-label="Choose channel"
-              />
 
               <Button
-                className="chat-friends-btn"
-                variant={channelTab === 'friends' ? 'contained' : 'outlined'}
-                color="secondary"
-                size="small"
-                onClick={handleActivateFriendsView}
+                className={`switch-chat-btn ${isChannelDialogOpen ? 'open' : ''}`}
+                onClick={handleOpenChannelDialog}
+                endIcon={<ArrowDownwardIcon className="switch-chat-arrow" />}
               >
-                Friends
+                {headerChannelLabel}
               </Button>
-
-              <button
+            </div>
+            <button
                 className="updates-icon-btn"
                 type="button"
                 aria-label={notificationsLabel}
@@ -2197,7 +2233,6 @@ function ChatPage() {
                   </span>
                 ) : null}
               </button>
-            </div>
           </header>
 
           <Box ref={containerRef} className="chat-messages-field">
@@ -2292,6 +2327,8 @@ function ChatPage() {
             error={reportError}
             contentSummary={reportTarget?.summary || ''}
             context={reportTarget?.context || ''}
+            selectedReasons={reportSelectedOffenses}
+            onToggleReason={handleToggleReportOffense}
           />
 
           <Snackbar
@@ -2454,39 +2491,90 @@ function ChatPage() {
       </Dialog>
 
       <Dialog
+        className="channel-switch-overlay"
         open={isChannelDialogOpen}
         onClose={() => setIsChannelDialogOpen(false)}
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle>Choose a conversation</DialogTitle>
+        <Box className="channel-switch-header">
+          <DialogTitle className="channel-switch-title">
+            Choose a conversation
+          </DialogTitle>
+
+          <Button 
+              className="close-channel-switch-btn"
+              onClick={() => setIsChannelDialogOpen(false)}
+            >
+              <CloseIcon
+                className="close-channel-switch-icon"
+              ></CloseIcon>
+            </Button>
+        </Box>
+        
         <DialogContent dividers sx={{ p: 0 }}>
           <Tabs
+            className="channel-switch-tabs-background"
             value={channelDialogTab}
             onChange={handleChannelDialogTabChange}
             variant="fullWidth"
-            indicatorColor="primary"
-            textColor="primary"
+            slotProps={{
+              indicator: {
+                className: "channel-switch-tab-indicator"
+              },
+            }}
           >
             <Tab
+              className="channel-switch-rooms-tab"
               value="rooms"
-              label="Rooms"
               icon={<GroupIcon fontSize="small" />}
               iconPosition="start"
-            />
+              label={
+                <Box className="channel-switch-tab-container">                
+                  <span className="channel-switch-tab-title">
+                    Rooms 
+                  </span>
+                  {rooms.length > 0 && (
+                    <Typography
+                      className="channel-switch-tab-badge"
+                    >
+                      {rooms.length}
+                    </Typography>
+                  )}
+                </Box>
+              }
+            >
+            </Tab>
+              
             <Tab
+              className="channel-switch-dm-tab"
               value="direct"
-              label="Direct messages"
               icon={<MarkUnreadChatAltIcon fontSize="small" />}
               iconPosition="start"
               disabled={directMessagesHasAccess === false}
+              label={
+                <Box className="channel-switch-tab-container">
+                  <span className="channel-switch-tab-title">
+                    Messages
+                  </span>
+                  {dmThreads.length > 0 && (
+                    <Typography
+                      className="channel-switch-tab-badge"
+                    >
+                      {dmThreads.length}
+                    </Typography>
+                  )}
+                </Box>
+              }
             />
+            {/* Removed friends tab, since handling of it is now on the friends page
             <Tab
               value="friends"
               label="Friends"
               icon={<PeopleAltIcon fontSize="small" />}
               iconPosition="start"
             />
+            */}
           </Tabs>
           <Box sx={{ maxHeight: 420, display: 'flex', flexDirection: 'column' }}>
             {channelDialogTab === 'direct' ? (
@@ -2509,9 +2597,6 @@ function ChatPage() {
             )}
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsChannelDialogOpen(false)}>Close</Button>
-        </DialogActions>
       </Dialog>
 
       <Dialog

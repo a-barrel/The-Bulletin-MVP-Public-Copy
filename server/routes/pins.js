@@ -28,7 +28,7 @@ const router = express.Router();
 const PinsQuerySchema = z.object({
   type: z.enum(['event', 'discussion']).optional(),
   creatorId: z.string().optional(),
-  limit: z.coerce.number().int().positive().max(50).default(20),
+  limit: z.coerce.number().int().positive().max(150).default(20),
   status: z.enum(['active', 'expired', 'all']).optional(),
   sort: z.enum(['recent', 'distance', 'expiration']).optional(),
   latitude: z.coerce.number().min(-90).max(90).optional(),
@@ -485,7 +485,7 @@ const NearbyPinsQuerySchema = z.object({
   latitude: z.coerce.number().min(-90).max(90),
   longitude: z.coerce.number().min(-180).max(180),
   distanceMiles: z.coerce.number().positive().max(250),
-  limit: z.coerce.number().int().positive().max(50).default(20),
+  limit: z.coerce.number().int().positive().max(150).default(20),
   type: z.enum(['event', 'discussion']).optional(),
   types: z.string().trim().optional(),
   search: z.string().trim().optional(),
@@ -515,7 +515,7 @@ const BaseCreatePinSchema = z.object({
   coordinates: CoordinatesSchema,
   proximityRadiusMeters: z.number().int().positive().max(50000).optional(),
   creatorId: z.string().optional(),
-  photos: z.array(MediaAssetInputSchema).max(3).optional(),
+  photos: z.array(MediaAssetInputSchema).max(3).optional(), // NOTE: This is the only place the photo limit is enforced
   coverPhoto: MediaAssetInputSchema.optional(),
   options: PinOptionsInputSchema.optional()
 });

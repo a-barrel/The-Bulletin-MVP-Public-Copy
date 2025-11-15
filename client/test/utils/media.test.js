@@ -13,6 +13,10 @@ describe('utils/media', () => {
     expect(resolveAssetUrl(null, { fallback: '/placeholder.png' })).toBe('/placeholder.png');
   });
 
+  test('respects explicit null fallback when no asset provided', () => {
+    expect(resolveAssetUrl(null, null)).toBeNull();
+  });
+
   test('returns absolute URLs unchanged', () => {
     const url = 'https://example.com/image.jpg';
     expect(resolveAssetUrl(url)).toBe(url);

@@ -1,0 +1,218 @@
+[
+  {
+    "_id": { "$oid": "68e061721329566a22d4d100" },
+    "contentType": "pin",
+    "contentId": "68e061721329566a22d474ab",
+    "contentAuthorId": { "$oid": "68e061721329566a22d474a8" },
+    "reporterId": { "$oid": "68e061721329566a22d474a9" },
+    "status": "pending",
+    "reason": "Event description still lists last semester's tutoring schedule.",
+    "context": "Pin: Latte Lounge Study Circle",
+    "offenseTags": ["misinfo"],
+    "latestSnapshot": {
+      "message": "Weekly finals prep meetup with caffeine and quiet focus pods.",
+      "metadata": {
+        "pinId": "68e061721329566a22d474ab",
+        "title": "Latte Lounge Study Circle"
+      }
+    },
+    "createdAt": { "$date": "2026-10-27T17:55:00.000Z" },
+    "updatedAt": { "$date": "2026-10-27T17:55:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d4d101" },
+    "contentType": "reply",
+    "contentId": "68e061721329566a22d474b0",
+    "contentAuthorId": { "$oid": "68e061721329566a22d474a8" },
+    "reporterId": { "$oid": "68e061721329566a22d47510" },
+    "status": "pending",
+    "reason": "Keeps pitching her vendor table instead of coordinating volunteers.",
+    "context": "Reply on Community Beach Cleanup",
+    "offenseTags": ["spam"],
+    "latestSnapshot": {
+      "message": "Count me in! I can bring extra gloves and refillable water jugs.",
+      "metadata": {
+        "pinId": "68e061721329566a22d474aa",
+        "replyId": "68e061721329566a22d474b0"
+      }
+    },
+    "createdAt": { "$date": "2026-10-27T01:15:00.000Z" },
+    "updatedAt": { "$date": "2026-10-27T01:15:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d4d102" },
+    "contentType": "chat-message",
+    "contentId": "36448a2b78ee247e065612a7",
+    "contentAuthorId": { "$oid": "9090e547f3b4cf5aa61d19a7" },
+    "reporterId": { "$oid": "68e061721329566a22d47511" },
+    "status": "pending",
+    "reason": "Gibberish spam bot posts every hour in the lounge.",
+    "context": "Room: Global Debug Lounge",
+    "offenseTags": ["spam"],
+    "latestSnapshot": {
+      "message": "Zormalo malo quin zorplom plombex!",
+      "metadata": {
+        "roomId": "68e061721329566a22d40007"
+      }
+    },
+    "createdAt": { "$date": "2026-10-27T18:10:00.000Z" },
+    "updatedAt": { "$date": "2026-10-27T18:10:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d4d103" },
+    "contentType": "direct-message",
+    "contentId": "68e061721329566a22d4c203",
+    "contentAuthorId": { "$oid": "68e061721329566a22d47511" },
+    "reporterId": { "$oid": "68e061721329566a22d474a9" },
+    "status": "pending",
+    "reason": "DM thread keeps veering off topic with aggressive reminders.",
+    "context": "Direct thread: Study Group Highlights",
+    "offenseTags": ["harassment"],
+    "latestSnapshot": {
+      "message": "Working on speaker notes now.",
+      "metadata": {
+        "threadId": "68e061721329566a22d4b002",
+        "messageId": "68e061721329566a22d4c203"
+      }
+    },
+    "createdAt": { "$date": "2026-10-26T16:05:00.000Z" },
+    "updatedAt": { "$date": "2026-10-26T16:05:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d4d104" },
+    "contentType": "pin",
+    "contentId": "68e061721329566a22d474aa",
+    "contentAuthorId": { "$oid": "68e061721329566a22d474a7" },
+    "reporterId": { "$oid": "486e6bdd712130e78538ba6f" },
+    "status": "resolved",
+    "reason": "Multiple duplicate cleanup pins confused volunteers.",
+    "context": "Pin: Community Beach Cleanup",
+    "offenseTags": ["spam"],
+    "latestSnapshot": {
+      "message": "Join fellow students for a shoreline cleanup followed by coffee at the marina.",
+      "metadata": {
+        "pinId": "68e061721329566a22d474aa",
+        "title": "Community Beach Cleanup"
+      }
+    },
+    "resolvedById": { "$oid": "68e061721329566a22d47601" },
+    "resolvedAt": { "$date": "2026-10-25T14:20:00.000Z" },
+    "resolutionNotes": "Merged duplicate pin and left the canonical event in place.",
+    "createdAt": { "$date": "2026-10-24T22:30:00.000Z" },
+    "updatedAt": { "$date": "2026-10-25T14:20:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d4d105" },
+    "contentType": "reply",
+    "contentId": "68e061721329566a22d474b1",
+    "contentAuthorId": { "$oid": "68e061721329566a22d474a7" },
+    "reporterId": { "$oid": "68e061721329566a22d47511" },
+    "status": "resolved",
+    "reason": "Reply escalated into calling out other volunteers.",
+    "context": "Reply on Community Beach Cleanup",
+    "offenseTags": ["harassment"],
+    "latestSnapshot": {
+      "message": "I'll grab pastries from Coffee Drunk to share afterwards.",
+      "metadata": {
+        "pinId": "68e061721329566a22d474aa",
+        "replyId": "68e061721329566a22d474b1"
+      }
+    },
+    "resolvedById": { "$oid": "68e061721329566a22d47601" },
+    "resolvedAt": { "$date": "2026-10-25T09:10:00.000Z" },
+    "resolutionNotes": "Removed heated reply and reminded both parties of conduct guidelines.",
+    "createdAt": { "$date": "2026-10-24T23:40:00.000Z" },
+    "updatedAt": { "$date": "2026-10-25T09:10:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d4d106" },
+    "contentType": "chat-message",
+    "contentId": "dd5ec69d646916b4f54ac5b2",
+    "contentAuthorId": { "$oid": "1e056a58ce0c08e0e420bca0" },
+    "reporterId": { "$oid": "68e061721329566a22d47602" },
+    "status": "dismissed",
+    "reason": "Suspected gibberish spam in the Global Debug Lounge.",
+    "context": "Room: Global Debug Lounge",
+    "offenseTags": ["spam"],
+    "latestSnapshot": {
+      "message": "Quin bex kyu vex lumabex zeta zor!",
+      "metadata": {
+        "roomId": "68e061721329566a22d40007"
+      }
+    },
+    "resolvedById": { "$oid": "68e061721329566a22d47601" },
+    "resolvedAt": { "$date": "2026-10-26T04:30:00.000Z" },
+    "resolutionNotes": "Dismissed after confirming this is a load-test bot account.",
+    "createdAt": { "$date": "2026-10-25T23:58:00.000Z" },
+    "updatedAt": { "$date": "2026-10-26T04:30:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d4d107" },
+    "contentType": "direct-message",
+    "contentId": "68e061721329566a22d4c102",
+    "contentAuthorId": { "$oid": "68e061721329566a22d474a8" },
+    "reporterId": { "$oid": "68e061721329566a22d474a7" },
+    "status": "resolved",
+    "reason": "Wanted a moderator reminder to keep planning threads professional.",
+    "context": "Direct thread: Neighborhood Cleanup Planning",
+    "offenseTags": ["harassment"],
+    "latestSnapshot": {
+      "message": "Yep! Gloves and bags are set. I’ll pick up the water cooler.",
+      "metadata": {
+        "threadId": "68e061721329566a22d4b001",
+        "messageId": "68e061721329566a22d4c102"
+      }
+    },
+    "resolvedById": { "$oid": "68e061721329566a22d47601" },
+    "resolvedAt": { "$date": "2026-10-24T22:00:00.000Z" },
+    "resolutionNotes": "Reached out to both members and logged a courtesy warning.",
+    "createdAt": { "$date": "2026-10-24T21:40:00.000Z" },
+    "updatedAt": { "$date": "2026-10-24T22:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d4d108" },
+    "contentType": "pin",
+    "contentId": "68e061721329566a22d474c5",
+    "contentAuthorId": { "$oid": "68e061721329566a22d474a7" },
+    "reporterId": { "$oid": "68e061721329566a22d47603" },
+    "status": "dismissed",
+    "reason": "Concerned the ride description encouraged unsafe behavior.",
+    "context": "Pin: Shoreline Cycle Loop",
+    "offenseTags": ["violence"],
+    "latestSnapshot": {
+      "message": "Casual coastal bike ride covering Shoreline Village and Cal Heights ramps.",
+      "metadata": {
+        "pinId": "68e061721329566a22d474c5",
+        "title": "Shoreline Cycle Loop"
+      }
+    },
+    "resolvedById": { "$oid": "68e061721329566a22d47601" },
+    "resolvedAt": { "$date": "2026-10-23T12:35:00.000Z" },
+    "resolutionNotes": "No policy violation found; responded with additional safety tips.",
+    "createdAt": { "$date": "2026-10-23T10:02:00.000Z" },
+    "updatedAt": { "$date": "2026-10-23T12:35:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "68e061721329566a22d4d109" },
+    "contentType": "chat-message",
+    "contentId": "68e061721329566a22d47572",
+    "contentAuthorId": { "$oid": "68e061721329566a22d474a7" },
+    "reporterId": { "$oid": "68e061721329566a22d47510" },
+    "status": "resolved",
+    "reason": "Shared internal vendor instructions in the public room.",
+    "context": "Room: Green Tech Expo Operations",
+    "offenseTags": ["misinfo"],
+    "latestSnapshot": {
+      "message": "I'll bring surge protectors and extra gaffer tape for the booth row.",
+      "metadata": {
+        "roomId": "68e061721329566a22d47570",
+        "pinId": "68e061721329566a22d47530"
+      }
+    },
+    "resolvedById": { "$oid": "68e061721329566a22d47601" },
+    "resolvedAt": { "$date": "2026-10-22T20:55:00.000Z" },
+    "resolutionNotes": "Message trimmed and replaced with the staff-only thread.",
+    "createdAt": { "$date": "2026-10-22T20:40:00.000Z" },
+    "updatedAt": { "$date": "2026-10-22T20:55:00.000Z" }
+  }
+]

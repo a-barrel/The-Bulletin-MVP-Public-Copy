@@ -19,15 +19,12 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import {
   Alert,
   Box,
-  Button,
   Chip,
   CircularProgress,
   Divider,
   FormControl,
   InputLabel,
   List,
-  ListItemButton,
-  ListItemText,
   ListSubheader,
   MenuItem,
   Pagination,
@@ -37,9 +34,6 @@ import {
   Typography
 } from '@mui/material';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
-import LaunchIcon from '@mui/icons-material/Launch';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { auth } from '../firebase';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
@@ -48,8 +42,10 @@ import normalizeObjectId from '../utils/normalizeObjectId';
 import toIdString from '../utils/ids';
 import { fetchCurrentUserProfile } from '../api/mongoDataApi';
 import ExpandableBookmarkItem from '../components/ExpandableBookmarkItem';
-import BackButton from '../components/BackButton';
+import MainNavBackButton from '../components/MainNavBackButton';
 import './BookmarksPage.css';
+import '../components/BackButton.css';
+import GlobalNavMenu from '../components/GlobalNavMenu';
 
 export const pageConfig = {
   id: 'bookmarks',
@@ -439,7 +435,17 @@ function BookmarksPage() {
 
   return (
     <>
-      <BackButton className="bookmarks-back-button" />
+      <div className="back-nav-bar bookmarks-back-button">
+        <MainNavBackButton
+          className="back-button"
+          iconClassName="back-button__icon"
+          ariaLabel="Back to main view"
+          scope="core"
+        >
+          <span className="back-button__text">Back</span>
+        </MainNavBackButton>
+        <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+      </div>
       <Box
         sx={{
           width: '100%',
@@ -451,50 +457,6 @@ function BookmarksPage() {
         }}
       >
         <Stack spacing={3}>
-
-
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={1.5}
-          alignItems={{ xs: 'flex-start', sm: 'center' }}
-          justifyContent="space-between"
-        >
-          {/*
-          <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
-            Quickly revisit saved pins. Bookmarks are grouped by collection and can be removed at any time.
-          </Typography>
-          */}
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{ alignSelf: { xs: 'flex-start', sm: 'flex-end' } }}
-          >
-            {/* 
-            <Button
-              type="button"
-              variant="outlined"
-              size="small"
-              onClick={refresh}
-              disabled={isOffline || isLoading || authLoading || !authUser}
-              title={isOffline ? 'Reconnect to refresh bookmarks' : undefined}
-            >
-              {isLoading ? 'Loading...' : 'Refresh'}
-            </Button>
-            {/*
-            <Button
-              type="button"
-              variant="contained"
-              size="small"
-              onClick={handleExport}
-              disabled={isOffline || isExporting || authLoading || !authUser}
-              title={isOffline ? 'Reconnect to export bookmarks' : undefined}
-            >
-              {isExporting ? 'Exporting...' : 'Export CSV'}
-            </Button>
-            */} 
-            </Stack>
-        </Stack>
-
         {isOffline ? (
           <Alert severity="warning" sx={{ fontFamily: '"Urbanist", sans-serif' }}>
             You are offline. You can browse existing bookmarks, but refresh, removal, and export actions
@@ -711,5 +673,3 @@ function BookmarksPage() {
 }
 
 export default BookmarksPage;
-
-
