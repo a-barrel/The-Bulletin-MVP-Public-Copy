@@ -358,12 +358,12 @@ const baselineSettings = useMemo(() => {
     }));
   }, []);
 
-  const handleNotificationToggle = useCallback((key) => {
+  const handleNotificationToggle = useCallback((key, nextValue) => {
     setSettings((prev) => ({
       ...prev,
       notifications: {
         ...prev.notifications,
-        [key]: !prev.notifications[key]
+        [key]: typeof nextValue === 'boolean' ? nextValue : !prev.notifications[key]
       }
     }));
   }, []);

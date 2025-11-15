@@ -1,6 +1,6 @@
 /* NOTE: Page exports configuration alongside the component. */
 import runtimeConfig from '../config/runtime';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -16,14 +16,14 @@ import UpdateIcon from '@mui/icons-material/Update';
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import DropDownArrow from '@mui/icons-material/ArrowForwardIosRounded';
 import './UpdatesPage.css';
-import {
-  formatRelativeTime
-} from '../utils/dates';
+import { formatRelativeTime } from '../utils/dates';
 import useUpdatesFeed from '../hooks/useUpdatesFeed';
 import { routes } from '../routes';
 import usePushNotifications from '../hooks/usePushNotifications';
 import GlobalNavMenu from '../components/GlobalNavMenu';
 import MainNavBackButton from '../components/MainNavBackButton';
+import UpdatesTabs from '../components/updates/UpdatesTabs';
+import PushNotificationPrompt from '../components/updates/PushNotificationPrompt';
 
 export const pageConfig = {
   id: 'updates',
@@ -37,8 +37,6 @@ export const pageConfig = {
 };
 
 const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
-const PUSH_PROMPT_DISMISS_KEY = 'pinpoint:pushPromptDismissed';
-
 const resolveBadgeImageUrl = (value) => {
   if (!value) {
     return null;
@@ -57,30 +55,6 @@ function UpdatesPage() {
   const handleToggleExpand = (id) => {
     setExpandedUpdateId((prev) => (prev === id ? null : id));
   };
-  const [pushPromptDismissed, setPushPromptDismissed] = useState(() => {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    try {
-      return window.localStorage.getItem(PUSH_PROMPT_DISMISS_KEY) === 'true';
-    } catch {
-      return false;
-    }
-  });
-
-  useEffect(() => {
-    if (pushNotifications.permission === 'granted') {
-      setPushPromptDismissed(true);
-      if (typeof window !== 'undefined') {
-        try {
-          window.localStorage.setItem(PUSH_PROMPT_DISMISS_KEY, 'true');
-        } catch {
-          // ignore
-        }
-      }
-    }
-  }, [pushNotifications.permission]);
-
   const {
     profileError,
     isProfileLoading,
@@ -170,65 +144,25 @@ function UpdatesPage() {
         </header>
 
         <Box className="updates-content">
-          <Box className="updates-tabs-container">
-            {[
-              { label: 'All', count: unreadCount },
-              { label: 'Discussions', count: unreadDiscussionsCount },
-              { label: 'Events', count: unreadEventsCount }
-            ].map((tab) => (
-              <Button
-                key={tab.label}
-                className={`update-tab ${selectedTab === tab.label ? 'active' : ''}`}
-                onClick={() => setSelectedTab(tab.label)}
-              >
-                {tab.label}
-                {tab.count > 0 ? <span className="unread-badge">{tab.count}</span> : null}
-              </Button>
-            ))}
-          </Box>
+        <UpdatesTabs
+          tabs={[
+            { label: 'All', count: unreadCount },
+            { label: 'Discussions', count: unreadDiscussionsCount },
+            { label: 'Events', count: unreadEventsCount }
+          ]}
+          selected={selectedTab}
+          onSelect={setSelectedTab}
+        />
 
-          {pushNotifications.isSupported &&
-            pushNotifications.permission !== 'granted' &&
-            !pushPromptDismissed ? (
-            <Alert
-              className="push-notifs-container"
-              severity="info"
-              variant="outlined"
-              sx={{ mb: 3 }}
-              action={
-                <Box className="push-notifs-info">
-                  <Button
-                    size="small"
-                    variant="contained"
-                    onClick={async () => {
-                      try {
-                        await pushNotifications.requestPermission();
-                      } catch {
-                        // status handled by hook
-                      }
-                    }}
-                    disabled={pushNotifications.isEnabling}
-                  >
-                    {pushNotifications.isEnabling ? 'Enabling…' : 'Enable'}
-                  </Button>
-                  <Button
-                    size="small"
-                    color="inherit"
-                    onClick={() => {
-                      pushNotifications.dismissPrompt();
-                      setPushPromptDismissed(true);
-                    }}
-                  >
-                    Dismiss
-                  </Button>
-                </Box>
-              }
-            >
-              <Box className="push-notifs-description">
-                Enable push notifications to get updates even when you're away.
-              </Box>
-            </Alert>
-          ) : null}
+        {pushNotifications.isSupported &&
+        pushNotifications.permission !== 'granted' &&
+        !pushNotifications.promptDismissed ? (
+          <PushNotificationPrompt
+            onEnable={pushNotifications.requestPermission}
+            onDismiss={pushNotifications.dismissPrompt}
+            disabled={pushNotifications.isEnabling}
+          />
+        ) : null}
 
           {profileError ? (
             <Alert severity="warning" variant="outlined">

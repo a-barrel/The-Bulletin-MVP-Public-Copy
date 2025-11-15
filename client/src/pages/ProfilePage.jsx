@@ -17,7 +17,7 @@ import {
   createContentReport
 } from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
-import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
+import { DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
 import { routes } from '../routes';
 import './ProfilePage.css';
 import ProfileActionRow from '../components/profile/ProfileActionRow';
@@ -36,6 +36,11 @@ import useProfileMutualFriends from '../hooks/useProfileMutualFriends';
 import useProfileStats from '../hooks/useProfileStats';
 import useProfileInteractions from '../hooks/useProfileInteractions';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
+import {
+  resolveProfileAvatarUrl,
+  resolveProfileBannerUrl,
+  TF2_AVATAR_MAP
+} from '../utils/profileAssets';
 
 /*
  * NOTE:
@@ -88,118 +93,6 @@ export const pageConfig = {
   }
 };
 
-const FALLBACK_AVATAR = '/images/profile/profile-01.jpg';
-const TF2_AVATAR_MAP = {
-  'tf2_scout': '/images/emulation/avatars/Scoutava.jpg',
-  'tf2_soldier': '/images/emulation/avatars/Soldierava.jpg',
-  'tf2_pyro': '/images/emulation/avatars/Pyroava.jpg',
-  'tf2_demoman': '/images/emulation/avatars/Demomanava.jpg',
-  'tf2_heavy': '/images/emulation/avatars/Heavyava.jpg',
-  'tf2_engineer': '/images/emulation/avatars/Engineerava.jpg',
-  'tf2_medic': '/images/emulation/avatars/Medicava.jpg',
-  'tf2_sniper': '/images/emulation/avatars/Sniperava.jpg',
-  'tf2_spy': '/images/emulation/avatars/Spyava.jpg'
-};
-const FALLBACK_BANNER = null;
-
-const resolveAvatarUrl = (avatar) => {
-  const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
-  const toAbsolute = (value) => {
-    if (!value) {
-      return null;
-    }
-    const trimmed = normalizeProfileImagePath(value.trim());
-    if (!trimmed) {
-      return null;
-    }
-    if (/^(?:[a-z]+:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
-      if (runtimeConfig.isOffline) {
-        try {
-          const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
-          const url = new URL(trimmed, origin);
-          const offlineHosts = new Set(['localhost:5000', '127.0.0.1:5000', 'localhost:8000', '127.0.0.1:8000']);
-          if (offlineHosts.has(url.host) && url.pathname.startsWith('/images/')) {
-            const relative = normalizeProfileImagePath(url.pathname);
-            return base ? `${base}${relative}` : relative;
-          }
-        } catch {
-          return trimmed;
-        }
-      }
-      return trimmed;
-    }
-    const normalized = normalizeProfileImagePath(trimmed.startsWith('/') ? trimmed : `/${trimmed}`);
-    return base ? `${base}${normalized}` : normalized;
-  };
-
-  if (!avatar) {
-    return toAbsolute(FALLBACK_AVATAR) ?? FALLBACK_AVATAR;
-  }
-
-  if (typeof avatar === 'string') {
-    return toAbsolute(avatar) ?? toAbsolute(FALLBACK_AVATAR) ?? FALLBACK_AVATAR;
-  }
-
-  if (typeof avatar === 'object') {
-    const source = avatar.url ?? avatar.thumbnailUrl ?? avatar.path;
-    const resolved = typeof source === 'string' ? toAbsolute(source) : null;
-    if (resolved) {
-      return resolved;
-    }
-  }
-
-  return toAbsolute(FALLBACK_AVATAR) ?? FALLBACK_AVATAR;
-};
-
-const resolveBannerUrl = (banner) => {
-  const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
-
-  const toAbsolute = (value) => {
-    if (!value) {
-      return null;
-    }
-    const trimmed = normalizeProfileImagePath(value.trim());
-    if (!trimmed) {
-      return null;
-    }
-    if (/^(?:[a-z]+:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
-      if (runtimeConfig.isOffline) {
-        try {
-          const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
-          const url = new URL(trimmed, origin);
-          const offlineHosts = new Set(['localhost:5000', '127.0.0.1:5000', 'localhost:8000', '127.0.0.1:8000']);
-          if (offlineHosts.has(url.host) && url.pathname.startsWith('/images/')) {
-            const normalizedPath = normalizeProfileImagePath(url.pathname);
-            return base ? `${base}${normalizedPath}` : normalizedPath;
-          }
-        } catch {
-          return trimmed;
-        }
-      }
-      return trimmed;
-    }
-    const normalized = normalizeProfileImagePath(trimmed.startsWith('/') ? trimmed : `/${trimmed}`);
-    return base ? `${base}${normalized}` : normalized;
-  };
-
-  if (!banner) {
-    return FALLBACK_BANNER ? toAbsolute(FALLBACK_BANNER) ?? FALLBACK_BANNER : null;
-  }
-
-  if (typeof banner === 'string') {
-    return toAbsolute(banner) ?? (FALLBACK_BANNER ? toAbsolute(FALLBACK_BANNER) ?? FALLBACK_BANNER : null);
-  }
-
-  if (typeof banner === 'object') {
-    const source = banner.url ?? banner.thumbnailUrl ?? banner.path;
-    const resolved = typeof source === 'string' ? toAbsolute(source) : null;
-    if (resolved) {
-      return resolved;
-    }
-  }
-
-  return FALLBACK_BANNER ? toAbsolute(FALLBACK_BANNER) ?? FALLBACK_BANNER : null;
-};
 
 const formatDateTime = (value) => {
   if (!value) {
@@ -319,10 +212,10 @@ function ProfilePage() {
       locationSharingEnabled: Boolean(profile?.locationSharingEnabled),
       theme: profile?.preferences?.theme ?? 'system',
       avatarFile: null,
-      avatarPreviewUrl: profile?.avatar ? resolveAvatarUrl(profile.avatar) : null,
+      avatarPreviewUrl: profile?.avatar ? resolveProfileAvatarUrl(profile.avatar) : null,
       avatarCleared: !profile?.avatar,
       bannerFile: null,
-      bannerPreviewUrl: profile?.banner ? resolveBannerUrl(profile.banner) : null,
+      bannerPreviewUrl: profile?.banner ? resolveProfileBannerUrl(profile.banner) : null,
       bannerCleared: !profile?.banner
     }),
     []
@@ -444,7 +337,7 @@ function ProfilePage() {
   }, [effectiveUser?._id, effectiveUser?.id, shouldLoadCurrentUser, targetUserId]);
 
   const avatarUrl = useMemo(() => {
-    const primary = resolveAvatarUrl(effectiveUser?.avatar);
+    const primary = resolveProfileAvatarUrl(effectiveUser?.avatar);
     const usernameKey =
       typeof effectiveUser?.username === 'string'
         ? effectiveUser.username.trim().toLowerCase()
@@ -452,18 +345,18 @@ function ProfilePage() {
     if (primary && DEFAULT_PROFILE_IMAGE_REGEX.test(primary) && usernameKey) {
       const fallbackPath = TF2_AVATAR_MAP[usernameKey];
       if (fallbackPath) {
-        return resolveAvatarUrl(fallbackPath);
+        return resolveProfileAvatarUrl(fallbackPath);
       }
     }
     if ((!primary || DEFAULT_PROFILE_IMAGE_REGEX.test(primary)) && usernameKey) {
       const fallbackPath = TF2_AVATAR_MAP[usernameKey];
       if (fallbackPath) {
-        return resolveAvatarUrl(fallbackPath);
+        return resolveProfileAvatarUrl(fallbackPath);
       }
     }
     return primary;
   }, [effectiveUser]);
-  const bannerUrl = useMemo(() => resolveBannerUrl(effectiveUser?.banner), [effectiveUser]);
+  const bannerUrl = useMemo(() => resolveProfileBannerUrl(effectiveUser?.banner), [effectiveUser]);
   const editingAvatarSrc = formState.avatarCleared ? null : formState.avatarPreviewUrl ?? avatarUrl;
   const editingBannerSrc = formState.bannerCleared ? null : formState.bannerPreviewUrl ?? bannerUrl;
   const avatarDisplaySrc = isEditing ? editingAvatarSrc ?? undefined : avatarUrl;
@@ -1024,7 +917,7 @@ function ProfilePage() {
                   mutualFriendCount={mutualFriendCount}
                   mutualFriendPreview={mutualFriendPreview}
                   onSelectFriend={handleOpenMutualFriend}
-                  resolveAvatarUrl={resolveAvatarUrl}
+                  resolveAvatarUrl={resolveProfileAvatarUrl}
                 />
               ) : null}
               <Stack spacing={3}>
