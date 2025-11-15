@@ -13,7 +13,7 @@ supports_wsl2_proxy() {
     return 1
   fi
   local output status=0
-  output="$("$exe" -l -v 2>/dev/null)" || status=$?
+  output="$("$exe" -l -v 2>/dev/null | tr -d '\000')" || status=$?
   if [ $status -ne 0 ] || [ -z "$output" ]; then
     return 1
   fi
@@ -51,6 +51,12 @@ case "$uname_str" in
     done
     if [ -z "$WSL_EXE" ] && [ "$WSL_FOUND" -eq 1 ]; then
       echo "[husky] WSL detected but default distro isn't WSL 2; skipping WSL proxy." >&2
+    fi
+    if [ -n "$WSL_EXE" ]; then
+      if ! "$WSL_EXE" bash -lc "true" >/dev/null 2>&1; then
+        echo "[husky] WSL detected but failed to start shell; skipping WSL proxy." >&2
+        WSL_EXE=""
+      fi
     fi
     if [ -n "$WSL_EXE" ]; then
       repo_win="$PWD"
