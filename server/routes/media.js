@@ -1,5 +1,6 @@
 const express = require('express');
 const { randomUUID, randomBytes } = require('crypto');
+const path = require('path');
 const multer = require('multer');
 const sharp = require('sharp');
 const storageService = require('../services/storageService');
@@ -93,11 +94,13 @@ router.post('/images', processSingleImage, async (req, res) => {
       mimeType = 'image/jpeg';
     }
 
+    const offlineImagesDir =
+      req.app.get('runtimeImagesDir') || path.join(req.app.get('imagesDir'), 'runtime');
     const storageResult = await storageService.saveImageAsset({
       buffer,
       fileName,
       size: info?.size ?? buffer.length,
-      offlineDir: req.app.get('imagesDir'),
+      offlineDir: offlineImagesDir,
       offlinePublicPath: '/uploads/images',
       makePublic: runtime.isOnline
     });

@@ -38,6 +38,29 @@ const TF2_AVATAR_MAP = {
   tf2_spy: '/images/emulation/avatars/Spyava.jpg'
 };
 
+const buildPinFetchErrorState = (error, { seedFallbackActive } = {}) => {
+  if (!error) {
+    return null;
+  }
+  const status = typeof error?.status === 'number' ? error.status : null;
+  const isAuthError = status === 401 || status === 403 || Boolean(error?.isAuthError);
+  const normalizedMessage =
+    typeof error?.message === 'string' && error.message.trim().length > 0
+      ? error.message
+      : 'Failed to load pin details.';
+  const fallbackSuffix = seedFallbackActive
+    ? ' Showing cached pin details from the navigation link.'
+    : '';
+  return {
+    message: isAuthError
+      ? `Session expired. Please sign in again to refresh this pin.${fallbackSuffix}`
+      : `${normalizedMessage}${fallbackSuffix}`,
+    status,
+    isAuthError,
+    seedFallbackActive
+  };
+};
+
 /**
  * Resolve any media pointer (string or object) to a usable URL.
  *
@@ -369,6 +392,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     extractViewerProfileIdFromState(locationState)
   );
   const [pin, setPin] = useState(pinFromState);
+  const initialHydrationSource = pinFromState ? 'seed' : 'none';
   const [isLoading, setIsLoading] = useState(!pinFromState);
   const [error, setError] = useState(null);
   const [bookmarked, setBookmarked] = useState(false);
@@ -392,6 +416,10 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   const [shareStatus, setShareStatus] = useState(null);
   const [isSharing, setIsSharing] = useState(false);
   const isMountedRef = useRef(true);
+  const pinHydrationSourceRef = useRef(initialHydrationSource);
+  const updatePinHydrationSource = useCallback((source) => {
+    pinHydrationSourceRef.current = source;
+  }, []);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -403,14 +431,19 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   useEffect(() => {
     if (pinFromState) {
       setPin(pinFromState);
+      updatePinHydrationSource('seed');
       setIsLoading(false);
       if (IS_DEV) {
         console.debug('[usePinDetails] pinFromState applied', {
           pinFromStateId: pinFromState?._id ?? 'unknown'
         });
       }
+      return;
     }
-  }, [pinFromState]);
+    if (pinHydrationSourceRef.current === 'seed') {
+      updatePinHydrationSource('none');
+    }
+  }, [pinFromState, updatePinHydrationSource]);
 
   useEffect(() => {
     if (viewerProfileId) {
@@ -503,6 +536,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         setPin(payload);
         setBookmarked(Boolean(payload?.viewerHasBookmarked));
         setAttending(Boolean(payload?.viewerIsAttending));
+        updatePinHydrationSource('api');
         if (IS_DEV) {
           console.debug('[usePinDetails] reload success', { pinId, title: payload?.title });
         }
@@ -511,12 +545,14 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         if (!isMountedRef.current) {
           return null;
         }
+        const seedFallbackActive = pinHydrationSourceRef.current === 'seed';
         logClientError(loadError, {
           source: 'usePinDetails.reloadPin',
           pinId,
-          previewMode
+          previewMode,
+          seedFallbackActive
         });
-        setError(loadError?.message || 'Failed to load pin details.');
+        setError(buildPinFetchErrorState(loadError, { seedFallbackActive }));
         return null;
       } finally {
         if (isMountedRef.current && !silent) {
@@ -524,11 +560,11 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         }
       }
     },
-    [pinId, isOffline, previewMode]
+    [pinId, isOffline, previewMode, updatePinHydrationSource]
   );
 
   useEffect(() => {
-    reloadPin({ silent: Boolean(pinFromState) });
+    reloadPin({ silent: pinHydrationSourceRef.current === 'seed' });
   }, [reloadPin, pinFromState]);
 
   useEffect(() => {

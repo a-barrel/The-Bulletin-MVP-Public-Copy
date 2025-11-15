@@ -213,6 +213,25 @@ const formatDateTime = (value) => {
   });
 };
 
+const buildProfileFetchErrorState = (error, { hasSeedUser } = {}) => {
+  if (!error) {
+    return null;
+  }
+  const status = typeof error?.status === 'number' ? error.status : null;
+  const isAuthError = status === 401 || status === 403 || Boolean(error?.isAuthError);
+  const normalizedMessage = typeof error?.message === 'string' && error.message.trim().length > 0
+    ? error.message
+    : 'Failed to load user profile.';
+  const cacheHint = hasSeedUser ? ' Cached profile data may be stale.' : '';
+  return {
+    message: isAuthError
+      ? `Session expired. Please sign in again to load the latest profile.${cacheHint}`
+      : `${normalizedMessage}${cacheHint}`,
+    status,
+    isAuthError
+  };
+};
+
 
 function ProfilePage() {
 
@@ -346,12 +365,13 @@ function ProfilePage() {
           return;
         }
         setFetchedUser(profile);
+        setFetchError(null);
       } catch (error) {
         if (ignore) {
           return;
         }
         console.error('Failed to load user profile:', error);
-        setFetchError(error?.message || 'Failed to load user profile.');
+        setFetchError(buildProfileFetchErrorState(error, { hasSeedUser: Boolean(userFromState) }));
         if (!userFromState) {
           setFetchedUser(null);
         }
@@ -369,13 +389,30 @@ function ProfilePage() {
     };
   }, [targetUserId, shouldLoadCurrentUser, userFromState]);
 
-  const effectiveUser = userFromState ?? fetchedUser ?? null;
+  // Always prefer the fetched profile object so Chrome's cache/offline flows
+  // don't leave us stuck rendering the seed `location.state.user` payload (which
+  // lacks mutual friend metadata and PinCard contract fields).
+  const effectiveUser = fetchedUser ?? userFromState ?? null;
 
   useEffect(() => {
     if (shouldLoadCurrentUser && effectiveUser) {
       setViewerProfile(effectiveUser);
     }
   }, [effectiveUser, shouldLoadCurrentUser]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') {
+      return;
+    }
+    if (!effectiveUser && !userFromState && !fetchedUser) {
+      return;
+    }
+    console.debug('[ProfilePage] effectiveUser resolved', {
+      userFromState: userFromState?._id || userFromState?.id || null,
+      fetchedUser: fetchedUser?._id || fetchedUser?.id || null,
+      effectiveUser: effectiveUser?._id || effectiveUser?.id || null
+    });
+  }, [effectiveUser, fetchedUser, userFromState]);
 
   const displayName = useMemo(() => {
     if (effectiveUser) {
@@ -428,6 +465,8 @@ function ProfilePage() {
   const editingBannerSrc = formState.bannerCleared ? null : formState.bannerPreviewUrl ?? bannerUrl;
   const avatarDisplaySrc = isEditing ? editingAvatarSrc ?? undefined : avatarUrl;
   const bannerDisplaySrc = isEditing ? editingBannerSrc : bannerUrl;
+  const fetchErrorMessage = typeof fetchError === 'string' ? fetchError : fetchError?.message;
+  const fetchErrorSeverity = fetchError?.isAuthError ? 'error' : 'warning';
 
   const {
     isViewingSelf,
@@ -457,6 +496,21 @@ function ProfilePage() {
     setFetchedUser,
     displayName
   });
+  const { mutualFriendCount, mutualFriendPreview } = useProfileMutualFriends(effectiveUser);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') {
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      window.__PROFILE_MUTUALS_LAST = {
+        count: mutualFriendCount,
+        preview: mutualFriendPreview
+      };
+      window.__PROFILE_EFFECTIVE_USER = effectiveUser;
+    }
+  }, [effectiveUser, mutualFriendCount, mutualFriendPreview]);
+
   const handleMessageUser = useCallback(() => {
     if (!targetProfileId || isViewingSelf || isOffline) {
       return;
@@ -529,7 +583,6 @@ function ProfilePage() {
       window.clearTimeout(timeout);
     };
   }, [reportStatus]);
-  const { mutualFriendCount, mutualFriendPreview } = useProfileMutualFriends(effectiveUser);
   const canInteractWithProfile = Boolean(targetProfileId && !isViewingSelf);
   const messageDisabled = !canInteractWithProfile || isOffline;
   const reportDisabled = !canInteractWithProfile || isOffline || isSubmittingReport;
@@ -885,9 +938,9 @@ function ProfilePage() {
             </Stack>
           ) : null}
 
-          {fetchError ? (
-            <Alert severity="warning" variant="outlined">
-              {fetchError}
+          {fetchErrorMessage ? (
+            <Alert severity={fetchErrorSeverity} variant="outlined">
+              {fetchErrorMessage}
             </Alert>
           ) : null}
 

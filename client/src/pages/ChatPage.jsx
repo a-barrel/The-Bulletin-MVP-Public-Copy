@@ -314,7 +314,8 @@ function ChatPage() {
 
   const [moderationInitAttempted, setModerationInitAttempted] = useState(false);
   const [moderationContext, setModerationContext] = useState(null);
-  const debugModerationEnabled = runtimeConfig.debugApi?.enableRequests !== false;
+  const moderationRoleChecksEnabled = runtimeConfig.moderation?.roleChecksEnabled !== false;
+  const bypassModerationRoleChecks = runtimeConfig.isOffline || !moderationRoleChecksEnabled;
   const [moderationForm, setModerationForm] = useState({
     type: 'warn',
     reason: '',
@@ -469,7 +470,7 @@ function ChatPage() {
   }, [channelTab, uniqueMessages.length, scrollMessagesToBottom]);
 
   useEffect(() => {
-    if (!debugModerationEnabled || isOffline || moderationHasAccess === false) {
+    if (moderationHasAccess === false) {
       return;
     }
     if (moderationInitAttempted || isLoadingModerationOverview) {
@@ -478,8 +479,6 @@ function ChatPage() {
     setModerationInitAttempted(true);
     loadModerationOverview().catch(() => {});
   }, [
-    debugModerationEnabled,
-    isOffline,
     moderationHasAccess,
     moderationInitAttempted,
     isLoadingModerationOverview,
@@ -1250,7 +1249,8 @@ function ChatPage() {
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
   const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
 
-  const canModerateMessages = !isOffline && debugModerationEnabled && moderationHasAccess !== false;
+  const canModerateMessages =
+    bypassModerationRoleChecks || moderationHasAccess !== false;
 
   const getDisplayMessageText = useCallback((msg) => {
     if (!msg || typeof msg.message !== 'string') {

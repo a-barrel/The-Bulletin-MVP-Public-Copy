@@ -312,11 +312,20 @@ function SettingsPage() {
     }
   };
 
-  const canAccessAdminDashboard = runtimeConfig.isOffline ||
+  const moderationRoleAllowlist = (runtimeConfig.moderation?.allowedRoles ?? [
+    'admin',
+    'moderator',
+    'super-admin',
+    'system-admin'
+  ]).map((role) => role.toLowerCase());
+  const moderationRoleChecksEnabled = runtimeConfig.moderation?.roleChecksEnabled !== false;
+  const bypassModerationRoleChecks = runtimeConfig.isOffline || !moderationRoleChecksEnabled;
+  const canAccessAdminDashboard =
+    bypassModerationRoleChecks ||
     (Array.isArray(profile?.roles) &&
-      profile.roles.some((role) =>
-        typeof role === 'string' &&
-        ['admin', 'moderator', 'super-admin', 'system-admin'].includes(role.toLowerCase())
+      profile.roles.some(
+        (role) =>
+          typeof role === 'string' && moderationRoleAllowlist.includes(role.trim().toLowerCase())
       ));
 
   const handleOpenFeedbackDialog = () => {

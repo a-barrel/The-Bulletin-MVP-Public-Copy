@@ -27,6 +27,7 @@ import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb';
 import { fetchModerationOverview } from '../api/mongoDataApi';
 import { listContentReports, resolveContentReport } from '../api/mongoDataApi';
 import { formatFriendlyTimestamp } from '../utils/dates';
+import runtimeConfig from '../config/runtime';
 
 export const pageConfig = {
   id: 'admin-dashboard',
@@ -65,6 +66,9 @@ function AdminDashboard() {
   const [isLoadingReports, setIsLoadingReports] = useState(false);
   const [resolvingReportId, setResolvingReportId] = useState(null);
   const [snackbar, setSnackbar] = useState(null);
+  const moderationRoleChecksEnabled = runtimeConfig.moderation?.roleChecksEnabled !== false;
+  const bypassModerationRoleChecks = runtimeConfig.isOffline || !moderationRoleChecksEnabled;
+  const [accessDenied, setAccessDenied] = useState(false);
 
   const loadOverview = useCallback(async () => {
     setIsLoadingOverview(true);
@@ -72,12 +76,19 @@ function AdminDashboard() {
     try {
       const payload = await fetchModerationOverview();
       setOverview(payload);
+      setAccessDenied(false);
     } catch (error) {
-      setOverviewError(error?.message || 'Failed to load moderation overview.');
+      if (error?.status === 403 && moderationRoleChecksEnabled && !bypassModerationRoleChecks) {
+        setAccessDenied(true);
+        setOverview(null);
+        setOverviewError('Moderator privileges required.');
+      } else {
+        setOverviewError(error?.message || 'Failed to load moderation overview.');
+      }
     } finally {
       setIsLoadingOverview(false);
     }
-  }, []);
+  }, [bypassModerationRoleChecks, moderationRoleChecksEnabled]);
 
   const loadReports = useCallback(
     async (status = reportStatus) => {
@@ -87,14 +98,21 @@ function AdminDashboard() {
         const payload = await listContentReports({ status });
         setReports(Array.isArray(payload?.reports) ? payload.reports : []);
         setReportSummary(payload?.summary ?? null);
+        setAccessDenied(false);
       } catch (error) {
-        setReportsError(error?.message || 'Failed to load moderation reports.');
+        if (error?.status === 403 && moderationRoleChecksEnabled && !bypassModerationRoleChecks) {
+          setAccessDenied(true);
+          setReports([]);
+          setReportsError('Moderator privileges required.');
+        } else {
+          setReportsError(error?.message || 'Failed to load moderation reports.');
+        }
         setReports([]);
       } finally {
         setIsLoadingReports(false);
       }
     },
-    [reportStatus]
+    [bypassModerationRoleChecks, moderationRoleChecksEnabled, reportStatus]
   );
 
   useEffect(() => {
@@ -258,6 +276,23 @@ function AdminDashboard() {
     }
     return alerts;
   }, [overview?.metrics, reportSummary?.pendingCount]);
+
+  if (accessDenied && moderationRoleChecksEnabled && !bypassModerationRoleChecks) {
+    return (
+      <Box
+        className="admin-dashboard"
+        sx={{
+          width: '100%',
+          maxWidth: 640,
+          mx: 'auto',
+          py: { xs: 3, md: 5 },
+          px: { xs: 2, md: 4 }
+        }}
+      >
+        <Alert severity="warning">Moderator privileges required to view this dashboard.</Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box

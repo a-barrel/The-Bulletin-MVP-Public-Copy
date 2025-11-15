@@ -19,10 +19,14 @@ export const routes = {
   settings: {
     base: '/settings'
   },
+  friends: {
+    base: '/friends'
+  },
   bookmarks: {
     base: '/bookmarks',
     collection: (collectionId: string | number) =>
-      `/bookmarks?collection=${encodeSegment(collectionId)}`
+      `/bookmarks?collection=${encodeSegment(collectionId)}`,
+    debug: '/bookmarks-debug'
   },
   updates: {
     base: '/updates'
