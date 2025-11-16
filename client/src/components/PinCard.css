@@ -494,6 +494,9 @@
   color: #8a8a8a;
   transition: transform 0.1s ease, color 0.15s ease;
 }
+.card .bookmark-button--card.bookmark-button--active {
+  color: #9b5de5;
+}
 .card .bookmark-button--card .bookmark-icon {
   font-size: 20px;
   line-height: 1;

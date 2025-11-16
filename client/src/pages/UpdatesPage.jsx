@@ -94,12 +94,14 @@ function UpdatesPage() {
     return counts;
   }, [updates]);
 
+  const normalizedFilteredUpdates = Array.isArray(filteredUpdates) ? filteredUpdates : [];
+
   const tabFilteredUpdates = useMemo(() => {
     if (selectedTab === 'All') {
-      return filteredUpdates;
+      return normalizedFilteredUpdates;
     }
 
-    return filteredUpdates.filter((update) => {
+    return normalizedFilteredUpdates.filter((update) => {
       const category = (update.category || '').toLowerCase();
       if (selectedTab === 'Discussions') {
         return category === 'discussion';
@@ -109,7 +111,7 @@ function UpdatesPage() {
       }
       return true;
     });
-  }, [filteredUpdates, selectedTab]);
+  }, [normalizedFilteredUpdates, selectedTab]);
 
   return (
     <Box className="updates-page">

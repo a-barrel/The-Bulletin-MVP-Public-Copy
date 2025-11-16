@@ -13,7 +13,8 @@ import {
   fetchBookmarks,
   fetchBookmarkCollections,
   fetchPinById,
-  removeBookmark
+  removeBookmark,
+  updatePinAttendance
 } from '../api/mongoDataApi';
 import { formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
 import toIdString from '../utils/ids';
@@ -68,6 +69,7 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
   const [removingPinId, setRemovingPinId] = useState(null);
   const [exportStatus, setExportStatus] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [attendancePendingId, setAttendancePendingId] = useState(null);
 
   // Keep a Map for constant-time lookups when grouping bookmarks by collection.
   const collectionsById = useMemo(() => {
@@ -265,8 +267,80 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
     }
   }, [authUser, isOffline, totalCount]);
 
+  const toggleAttendance = useCallback(
+    async (bookmark) => {
+      const pinId = bookmark?.pinId || bookmark?.pin?._id;
+      if (!pinId) {
+        throw new Error('Pin id is required to update attendance.');
+      }
+      if (isOffline) {
+        throw new Error('Reconnect to update attendance.');
+      }
+
+      const nextAttending = !(bookmark?.viewerIsAttending);
+      setAttendancePendingId(pinId);
+      try {
+        await updatePinAttendance(pinId, { attending: nextAttending });
+        setBookmarks((prev) =>
+          prev.map((candidate) => {
+            const matches =
+              (candidate._id && bookmark._id && candidate._id === bookmark._id) ||
+              (candidate.pinId && candidate.pinId === bookmark.pinId);
+            if (!matches) {
+              return candidate;
+            }
+
+            const nextPin = candidate.pin
+              ? {
+                  ...candidate.pin,
+                  viewerIsAttending: nextAttending,
+                  stats:
+                    typeof candidate.pin?.stats?.participantCount === 'number'
+                      ? {
+                          ...candidate.pin.stats,
+                          participantCount: Math.max(
+                            0,
+                            candidate.pin.stats.participantCount + (nextAttending ? 1 : -1)
+                          )
+                        }
+                      : candidate.pin?.stats
+                }
+              : candidate.pin;
+
+            return {
+              ...candidate,
+              viewerIsAttending: nextAttending,
+              pin: nextPin
+            };
+          })
+        );
+
+        return {
+          type: 'success',
+          message: nextAttending
+            ? 'Marked as attending.'
+            : 'You are no longer attending this pin.',
+          toast: true
+        };
+      } catch (error) {
+        reportClientError(error, 'Failed to update pin attendance', {
+          source: 'useBookmarksManager.toggleAttendance',
+          pinId,
+          nextAttending
+        });
+        throw new Error(error?.message || 'Failed to update attendance.');
+      } finally {
+        setAttendancePendingId(null);
+      }
+    },
+    [isOffline]
+  );
+
   const dismissError = useCallback(() => setError(null), []);
   const dismissRemovalStatus = useCallback(() => setRemovalStatus(null), []);
+  const notifyRemovalStatus = useCallback((status) => {
+    setRemovalStatus(status);
+  }, []);
   const dismissExportStatus = useCallback(() => setExportStatus(null), []);
 
   // Expose raw data, derived data, and the helper actions so pages can pick what they need.
@@ -276,15 +350,15 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
     totalCount,
     isLoading,
     error,
-    setError,
     removalStatus,
-    setRemovalStatus,
+    notifyRemovalStatus,
     removingPinId,
+    attendancePendingId,
     isExporting,
     exportStatus,
-    setExportStatus,
     handleRemoveBookmark,
     handleExport,
+    handleToggleAttendance: toggleAttendance,
     refresh: loadData,
     formatSavedDate,
     collections,

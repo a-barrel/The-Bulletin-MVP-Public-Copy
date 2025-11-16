@@ -194,6 +194,10 @@
     transition: color 150ms ease, transform 150ms ease;
 }
 
+.pin-details .bookmark-button.bookmark-button--active .bookmark-icon {
+    color: #9b5de5;
+}
+
 .pin-details .bookmark-icon--locked {
     color: #ffb347;
 }

@@ -25,6 +25,7 @@ import {
   Pagination,
   Paper,
   Select,
+  Snackbar,
   Stack,
   Typography
 } from '@mui/material';
@@ -35,7 +36,7 @@ import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import useBookmarksManager from '../hooks/useBookmarksManager';
 import normalizeObjectId from '../utils/normalizeObjectId';
 import toIdString from '../utils/ids';
-import { fetchCurrentUserProfile } from '../api/mongoDataApi';
+import useBookmarkViewerProfile from '../hooks/bookmarks/useBookmarkViewerProfile';
 import ExpandableBookmarkItem from '../components/ExpandableBookmarkItem';
 import MainNavBackButton from '../components/MainNavBackButton';
 import GlobalNavMenu from '../components/GlobalNavMenu';
@@ -68,15 +69,18 @@ function BookmarksPage() {
     totalCount,
     isLoading,
     error,
-    setError,
+    dismissError,
     removalStatus,
-    setRemovalStatus,
+    notifyRemovalStatus,
+    dismissRemovalStatus,
     removingPinId,
+    attendancePendingId,
     isExporting,
     exportStatus,
-    setExportStatus,
+    dismissExportStatus,
     handleRemoveBookmark,
     handleExport,
+    handleToggleAttendance,
     refresh,
     formatSavedDate,
     collections
@@ -84,7 +88,7 @@ function BookmarksPage() {
 
   const [highlightedCollectionKey, setHighlightedCollectionKey] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState('all');
-  const [viewerMongoId, setViewerMongoId] = useState(null);
+  const viewerMongoId = useBookmarkViewerProfile({ authUser, isOffline });
   const [currentPage, setCurrentPage] = useState(1);
   const collectionAnchorsRef = useRef(new Map());
   const focusAppliedRef = useRef(null);
@@ -120,32 +124,6 @@ function BookmarksPage() {
     }
     return null;
   }, [collections, focusParam, normalizedFocusParam]);
-
-  // Fetch MongoDB user id for filters like "My Pins".
-  useEffect(() => {
-    if (!authUser || isOffline) {
-      setViewerMongoId(null);
-      return;
-    }
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const profile = await fetchCurrentUserProfile();
-        if (!cancelled && profile?._id) {
-          setViewerMongoId(toIdString(profile._id));
-        }
-      } catch (fetchError) {
-        if (!cancelled) {
-          console.warn('Failed to load current user profile for bookmarks filtering:', fetchError);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [authUser, isOffline]);
 
   // Apply focus/scroll when ?collection= is present.
   useEffect(() => {
@@ -242,6 +220,24 @@ function BookmarksPage() {
     setSelectedFilter(event.target.value);
     setCurrentPage(1);
   }, []);
+
+  const handleBookmarkAttendanceToggle = useCallback(
+    async (bookmark) => {
+      try {
+        const status = await handleToggleAttendance(bookmark);
+        if (status) {
+          notifyRemovalStatus(status);
+        }
+      } catch (error) {
+        notifyRemovalStatus({
+          type: 'error',
+          message: error?.message || 'Failed to update attendance.',
+          toast: true
+        });
+      }
+    },
+    [handleToggleAttendance, notifyRemovalStatus]
+  );
 
   // Flatten filtered groups for pagination.
   const flattenedBookmarks = useMemo(() => {
@@ -405,19 +401,19 @@ function BookmarksPage() {
           ) : null}
 
           {exportStatus ? (
-            <Alert severity={exportStatus.type} onClose={() => setExportStatus(null)} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
+            <Alert severity={exportStatus.type} onClose={dismissExportStatus} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
               {exportStatus.message}
             </Alert>
           ) : null}
 
-          {removalStatus ? (
-            <Alert severity={removalStatus.type} onClose={() => setRemovalStatus(null)} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
+          {removalStatus && !removalStatus.toast ? (
+            <Alert severity={removalStatus.type} onClose={dismissRemovalStatus} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
               {removalStatus.message}
             </Alert>
           ) : null}
 
           {error ? (
-            <Alert severity="error" onClose={() => setError(null)} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
+            <Alert severity="error" onClose={dismissError} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
               {error}
             </Alert>
           ) : null}
@@ -465,6 +461,11 @@ function BookmarksPage() {
                     },
                     '& fieldset': {
                       borderColor: 'black'
+                    }
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: { backgroundColor: '#E6F1FF' }
                     }
                   }}
                 >
@@ -558,6 +559,9 @@ function BookmarksPage() {
                               onViewPin={handleViewPin}
                               onRemoveBookmark={handleRemoveBookmark}
                               authUser={authUser}
+                              onShowRemovalStatus={notifyRemovalStatus}
+                              onToggleAttendance={handleBookmarkAttendanceToggle}
+                              isTogglingAttendance={attendancePendingId === pinId}
                             />
                           );
                         })}
@@ -592,10 +596,27 @@ function BookmarksPage() {
               )}
             </>
           )}
-        </Stack>
-      </Box>
-    </>
-  );
+      </Stack>
+      <Snackbar
+        open={Boolean(removalStatus?.toast)}
+        autoHideDuration={4000}
+        onClose={dismissRemovalStatus}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        {removalStatus?.toast ? (
+          <Alert
+            severity={removalStatus?.type || 'info'}
+            variant="filled"
+            onClose={dismissRemovalStatus}
+            sx={{ width: '100%' }}
+          >
+            {removalStatus?.message}
+          </Alert>
+        ) : null}
+      </Snackbar>
+    </Box>
+  </>
+);
 }
 
 export default BookmarksPage;

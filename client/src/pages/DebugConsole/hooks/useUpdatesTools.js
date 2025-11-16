@@ -42,6 +42,30 @@ const ensureObjectId = (value) => {
   return createObjectId();
 };
 
+const normalizeRelatedEntities = (input) => {
+  if (!Array.isArray(input)) {
+    return undefined;
+  }
+  return input.map((entity) => {
+    if (!entity || typeof entity !== 'object') {
+      return entity;
+    }
+    const rawId = entity.id ?? entity._id ?? entity?.id?.$oid ?? entity?.id?.toString?.();
+    const normalizedId =
+      typeof rawId === 'string' && rawId.trim()
+        ? rawId.trim()
+        : typeof rawId === 'object' && rawId !== null && typeof rawId.$oid === 'string'
+        ? rawId.$oid
+        : entity.id != null
+        ? String(entity.id)
+        : ensureObjectId();
+    return {
+      ...entity,
+      id: normalizedId
+    };
+  });
+};
+
 const useUpdatesTools = () => {
   const [updateForm, setUpdateForm] = useState(INITIAL_UPDATE_FORM);
   const [updateStatus, setUpdateStatus] = useState(null);
@@ -135,7 +159,9 @@ const useUpdatesTools = () => {
           payload.payload.metadata = metadata;
         }
 
-        const relatedEntities = parseJsonField(updateForm.relatedEntities, 'related entities');
+        const relatedEntities = normalizeRelatedEntities(
+          parseJsonField(updateForm.relatedEntities, 'related entities')
+        );
         if (relatedEntities !== undefined) {
           payload.payload.relatedEntities = relatedEntities;
         }
@@ -210,9 +236,16 @@ const useUpdatesTools = () => {
 
       try {
         setIsSendingDummy(true);
+        const normalizedPayload = {
+          ...payload,
+          relatedEntities:
+            payload && Array.isArray(payload.relatedEntities)
+              ? normalizeRelatedEntities(payload.relatedEntities)
+              : payload?.relatedEntities
+        };
         await createUpdate({
           userId: currentUserId,
-          payload
+          payload: normalizedPayload
         });
 
         const limitValue = parseOptionalNumber(updatesQuery.limit, 'Limit');

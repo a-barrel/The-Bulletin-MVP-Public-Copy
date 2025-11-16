@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
   Box,
@@ -16,6 +16,7 @@ import DiscussionBookmarkIcon from '../assets/Discussion_Bookmarks.svg';
 import EventBookmarkIcon from '../assets/Event_Bookmarks.svg';
 import AttendingBookmarksIcon from '../assets/Attending_Bookmarks.svg';
 import BookmarkedIcon from '../assets/Bookmarked.svg';
+import BookmarkedOwnerIcon from '../assets/BookmarkedOwner.svg';
 import resolveAssetUrl from '../utils/media';
 import { fetchPinById } from '../api/mongoDataApi';
 import toIdString from '../utils/ids';
@@ -32,32 +33,52 @@ function ExpandableBookmarkItem({
   isOffline,
   onViewPin,
   onRemoveBookmark,
-  authUser
+  authUser,
+  onShowRemovalStatus,
+  onToggleAttendance,
+  isTogglingAttendance
 }) {
   const [expanded, setExpanded] = useState(false);
   const [fullPin, setFullPin] = useState(null);
   const [isLoadingPin, setIsLoadingPin] = useState(false);
+  const requestTokenRef = useRef(0);
 
   const handleTitleClick = () => {
     setExpanded((prev) => !prev);
   };
 
   useEffect(() => {
-    if (expanded && pinId && !fullPin && !isLoadingPin) {
-      if (!pin?.description) {
-        setIsLoadingPin(true);
-        fetchPinById(pinId)
-          .then((fetchedPin) => {
-            setFullPin(fetchedPin);
-          })
-          .catch((error) => {
-            console.error('Failed to fetch full pin data:', error);
-          })
-          .finally(() => {
-            setIsLoadingPin(false);
-          });
-      }
+    if (!expanded || !pinId || fullPin || isLoadingPin || pin?.description) {
+      return undefined;
     }
+
+    const token = requestTokenRef.current + 1;
+    requestTokenRef.current = token;
+    setIsLoadingPin(true);
+    let cancelled = false;
+
+    fetchPinById(pinId)
+      .then((fetchedPin) => {
+        if (!cancelled && requestTokenRef.current === token && fetchedPin) {
+          setFullPin(fetchedPin);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled && requestTokenRef.current === token) {
+          console.error('Failed to fetch full pin data:', error);
+        }
+      })
+      .finally(() => {
+        if (!cancelled && requestTokenRef.current === token) {
+          setIsLoadingPin(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      requestTokenRef.current += 1;
+      setIsLoadingPin(false);
+    };
   }, [expanded, fullPin, isLoadingPin, pin?.description, pinId]);
 
   const displayPin = fullPin || pin;
@@ -149,6 +170,28 @@ function ExpandableBookmarkItem({
     );
   };
 
+  const removalGuardMessage = ownsPin
+    ? 'Creators keep their pins bookmarked automatically.'
+    : attending
+    ? 'Attendees keep these pins bookmarked automatically.'
+    : null;
+  const removeDisabled = Boolean(isOffline || isRemoving || removalGuardMessage);
+  const removeButtonTitle = removalGuardMessage
+    ? removalGuardMessage
+    : isOffline
+    ? 'Reconnect to manage bookmarks'
+    : isRemoving
+    ? 'Removing bookmark...'
+    : 'Remove bookmark';
+
+  const tagChipStyles = {
+    backgroundColor: '#4b208c',
+    color: '#ffffff',
+    fontFamily: '"Urbanist", sans-serif'
+  };
+
+  const cardBackground = pinType === 'discussion' ? '#E6F1FF' : '#F5EFFD';
+
   return (
     <Box
       sx={{
@@ -156,7 +199,7 @@ function ExpandableBookmarkItem({
         mb: 2,
         border: '1px solid black',
         borderRadius: 5,
-        backgroundColor: '#F5EFFD',
+        backgroundColor: cardBackground,
         color: '#5D3889',
         fontFamily: '"Urbanist", sans-serif'
       }}
@@ -195,13 +238,13 @@ function ExpandableBookmarkItem({
           <Stack spacing={1.5}>
             <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
               <Stack direction="row" spacing={1} alignItems="center">
-                {tagLabel ? <Chip size="small" label={tagLabel} sx={{ fontFamily: '"Urbanist", sans-serif' }} /> : null}
+                {tagLabel ? <Chip size="small" label={tagLabel} sx={tagChipStyles} /> : null}
                 {attending ? (
                   <Chip
                     size="small"
                     label="Attending"
                     color="success"
-                    sx={{ fontFamily: '"Urbanist", sans-serif', color: '#ffffff' }}
+                    sx={{ fontFamily: '"Urbanist", sans-serif', backgroundColor: '#3eb8f0', color: '#ffffff' }}
                   />
                 ) : null}
                 {ownsPin ? (
@@ -209,13 +252,23 @@ function ExpandableBookmarkItem({
                     size="small"
                     label="My pin"
                     color="secondary"
-                    sx={{ fontFamily: '"Urbanist", sans-serif', color: '#ffffff' }}
+                    sx={{ fontFamily: '"Urbanist", sans-serif', backgroundColor: '#f15bb5', color: '#ffffff' }}
                   />
                 ) : null}
               </Stack>
-              <Typography variant="body2" color="text.secondary" sx={{ fontFamily: '"Urbanist", sans-serif' }}>
-                Saved {savedAt}
-              </Typography>
+              <Box
+                sx={{
+                  backgroundColor: '#4b208c',
+                  color: '#ffffff',
+                  borderRadius: '999px',
+                  px: 1.5,
+                  py: 0.25
+                }}
+              >
+                <Typography variant="body2" sx={{ fontFamily: '"Urbanist", sans-serif', color: '#ffffff' }}>
+                  Saved {savedAt}
+                </Typography>
+              </Box>
             </Stack>
 
             {isLoadingPin ? (
@@ -286,19 +339,58 @@ function ExpandableBookmarkItem({
                 </Button>
               </Box>
 
-              <Box sx={{ flex: '1 1 0', display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  disabled={isOffline || isRemoving}
+              <Box sx={{ flex: '1 1 0', display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                <Button
+                  size="small"
+                  variant={attending ? 'contained' : 'outlined'}
                   onClick={(event) => {
                     event.stopPropagation();
-                    onRemoveBookmark(bookmark);
+                    onToggleAttendance?.(bookmark);
                   }}
-                  title={isOffline ? 'Reconnect to manage bookmarks' : 'Remove bookmark'}
-                  aria-label="Remove bookmark"
+                  disabled={Boolean(isOffline || isTogglingAttendance)}
+                  sx={{
+                    color: attending ? '#ffffff' : '#4b208c',
+                    backgroundColor: attending ? '#4b208c' : '#ffffff',
+                    borderColor: '#4b208c',
+                    fontFamily: '"Urbanist", sans-serif',
+                    '&:hover': {
+                      backgroundColor: attending ? '#38176c' : '#f5edff'
+                    }
+                  }}
+                >
+                  {isTogglingAttendance
+                    ? 'Updating…'
+                    : attending
+                    ? 'Unattend'
+                    : 'Attend'}
+                </Button>
+                <button
+                  type="button"
+                  disabled={removeDisabled}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (!removeDisabled) {
+                      onRemoveBookmark(bookmark);
+                    } else if (removalGuardMessage) {
+                      onShowRemovalStatus?.({
+                        type: 'info',
+                        message: removalGuardMessage,
+                        toast: true
+                      });
+                    }
+                  }}
+                  title={removeButtonTitle}
+                  aria-label={removeButtonTitle}
                   className="bookmark-remove-btn"
                 >
-                  <img src={BookmarkedIcon} alt="Remove bookmark" />
+                  <img
+                    src={ownsPin ? BookmarkedOwnerIcon : BookmarkedIcon}
+                    alt={
+                      removalGuardMessage
+                        ? removalGuardMessage
+                        : 'Remove bookmark'
+                    }
+                  />
                 </button>
               </Box>
             </Box>
@@ -321,7 +413,10 @@ ExpandableBookmarkItem.propTypes = {
   isOffline: PropTypes.bool,
   onViewPin: PropTypes.func.isRequired,
   onRemoveBookmark: PropTypes.func.isRequired,
-  authUser: PropTypes.object
+  authUser: PropTypes.object,
+  onShowRemovalStatus: PropTypes.func,
+  onToggleAttendance: PropTypes.func,
+  isTogglingAttendance: PropTypes.bool
 };
 
 ExpandableBookmarkItem.defaultProps = {
@@ -331,7 +426,10 @@ ExpandableBookmarkItem.defaultProps = {
   savedAt: 'Recently',
   isRemoving: false,
   isOffline: false,
-  authUser: null
+  authUser: null,
+  onShowRemovalStatus: null,
+  onToggleAttendance: null,
+  isTogglingAttendance: false
 };
 
 export default ExpandableBookmarkItem;
