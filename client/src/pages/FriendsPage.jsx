@@ -1,24 +1,13 @@
 /* NOTE: Page exports navigation config alongside the component. */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
   Box,
-  Paper,
   Stack,
   Typography,
   Button,
   IconButton,
-  Avatar,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemAvatar,
-  ListItemText,
-  ListItemSecondaryAction,
-  Chip,
-  Tooltip,
-  TextField,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -27,34 +16,26 @@ import {
   FormControlLabel,
   CircularProgress,
   Alert,
-  MenuItem,
   Tabs,
   Tab,
   Snackbar
 } from '@mui/material';
-import FriendRequestIcon from '@mui/icons-material/PersonAddRounded'
-import InputAdornment from '@mui/material/InputAdornment';
-import SearchIcon from '@mui/icons-material/Search';
-import MessageFriend from '@mui/icons-material/ChatBubbleRounded';
-import RemoveFriend from '@mui/icons-material/PersonRemoveRounded'
-import ReportFriend from '@mui/icons-material/FlagRounded'
-import NoFriendRequests from '@mui/icons-material/GroupOffRounded';
 import SmsIcon from '@mui/icons-material/Sms';
-import AddCommentIcon from '@mui/icons-material/AddComment';
-import RoomIcon from '@mui/icons-material/Room';
 import GroupIcon from '@mui/icons-material/Group';
-import PublicIcon from '@mui/icons-material/Public';
 import MarkUnreadChatAltIcon from '@mui/icons-material/MarkUnreadChatAlt';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import CloseIcon from '@mui/icons-material/Close';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
 
 import MessageBubble from '../components/MessageBubble';
-import ChatComposer from '../components/ChatComposer';
 import ReportContentDialog from '../components/ReportContentDialog';
 import DirectThreadList from '../components/chat/DirectThreadList';
-import AttachmentPreview from '../components/chat/AttachmentPreview';
+import ChatThreadHeader from '../components/chat/ChatThreadHeader';
+import ChatRoomList from '../components/chat/ChatRoomList';
+import ChatComposerFooter from '../components/chat/ChatComposerFooter';
+import ChatModerationDialog from '../components/chat/ChatModerationDialog';
+import FriendsSidebar from '../components/friends/FriendsSidebar';
+import FriendRequestsDialog from '../components/friends/FriendRequestsDialog';
 import useDirectMessages from '../hooks/useDirectMessages';
 import useAttachmentManager, {
   mapDraftAttachmentPayloads,
@@ -70,22 +51,19 @@ import { useLocationContext } from '../contexts/LocationContext';
 import { useUpdates } from '../contexts/UpdatesContext';
 import useChatTabs from '../hooks/useChatTabs';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
-import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constants/moderationActions';
-import { previewChatGif, createContentReport } from '../api/mongoDataApi';
+import { createContentReport } from '../api/mongoDataApi';
 import { ATTACHMENT_ONLY_PLACEHOLDER, MAX_CHAT_ATTACHMENTS } from '../utils/chatAttachments';
 import {
   getParticipantId,
-  resolveAvatarSrc,
   resolveThreadParticipants
 } from '../utils/chatParticipants';
 import normalizeObjectId from '../utils/normalizeObjectId';
+import useDmGifPreview from '../hooks/useDmGifPreview';
+import useScrollToLatestMessage from '../hooks/useScrollToLatestMessage';
+import updatesIcon from '../assets/UpdateIcon.svg';
 
 import './FriendsPage.css';
-import {
-  formatFriendlyTimestamp,
-  formatAbsoluteDateTime,
-  formatRelativeTime
-} from '../utils/dates';
+import { formatFriendlyTimestamp } from '../utils/dates';
 import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
 
 export const pageConfig = {
@@ -99,21 +77,8 @@ export const pageConfig = {
   protected: true
 };
 
-const getGifCommandQuery = (value) => {
-  if (typeof value !== 'string') {
-    return null;
-  }
-  const trimmed = value.trim();
-  if (!trimmed.toLowerCase().startsWith('/gif')) {
-    return null;
-  }
-  const query = trimmed.slice(4).trim();
-  return query.length ? query : null;
-};
-
 function FriendsPage() {
   const navigate = useNavigate();
-  const [selectedTab, setSelectedTab] = useState('Friends');
   const socialNotifications = useSocialNotificationsContext();
   const location = useLocation();
   const { unreadCount, refreshUnreadCount } = useUpdates();
@@ -208,6 +173,10 @@ function FriendsPage() {
     hasAccess: friendHasAccess,
     isProcessing: isProcessingFriendAction
   } = useFriendGraph();
+  const friends = useMemo(
+    () => (Array.isArray(friendGraph?.friends) ? friendGraph.friends : []),
+    [friendGraph]
+  );
 
   const [moderationInitAttempted, setModerationInitAttempted] = useState(false);
   const [moderationContext, setModerationContext] = useState(null);
@@ -216,12 +185,7 @@ function FriendsPage() {
     reason: '',
     durationMinutes: '15'
   });
-  const {
-    channelTab,
-    channelDialogTab,
-    setChannelDialogTab,
-    toggleChannelTab
-  } = useChatTabs({
+  const { channelTab, channelDialogTab, setChannelDialogTab } = useChatTabs({
     locationSearch: location.search,
     directMessagesHasAccess,
     selectDirectThread,
@@ -241,16 +205,8 @@ function FriendsPage() {
   const [friendActionStatus, setFriendActionStatus] = useState(null);
   const [friendSearchQuery, setFriendSearchQuery] = useState('');
   const [dmMessageDraft, setDmMessageDraft] = useState('');
-  const dmGifPreviewRequestRef = useRef(null);
-  const [dmGifPreview, setDmGifPreview] = useState(null);
-  const [dmGifPreviewError, setDmGifPreviewError] = useState(null);
-  const [isDmGifPreviewLoading, setIsDmGifPreviewLoading] = useState(false);
 
   const incomingRequests = socialNotifications.friendData?.incomingRequests || [];
-  const canShowFriendRequests = !socialNotifications.friendAccessDenied;
-  const hasFriendRequests = canShowFriendRequests && incomingRequests.length > 0;
-  const friendRequestsPreview = incomingRequests.slice(0, 3);
-  const remainingFriendRequests = Math.max(0, incomingRequests.length - friendRequestsPreview.length);
   const [isFriendDialogOpen, setIsFriendDialogOpen] = useState(false);
   const [respondingRequestId, setRespondingRequestId] = useState(null);
 
@@ -282,10 +238,25 @@ function FriendsPage() {
     canAttachMore: canAttachMoreDm
   } = useAttachmentManager();
 
-  const [scrollBtnBottom, setScrollBtnBottom] = useState(0);
-  const containerRef = useRef(null);
-  const inputContainerRef = useRef(null);
-  const messagesEndRef = useRef(null);
+  const directMessageCount = Array.isArray(directThreadDetail?.messages)
+    ? directThreadDetail.messages.length
+    : 0;
+
+  const {
+    containerRef,
+    inputContainerRef,
+    showScrollButton,
+    scrollButtonOffset,
+    scrollToBottom: scrollMessagesToBottom
+  } = useScrollToLatestMessage({
+    activeChannel: channelTab,
+    roomDependency: selectedRoomId,
+    directDependency: selectedDirectThreadId,
+    roomMessageCount: uniqueMessages.length,
+    directMessageCount,
+    locationKey: location.pathname
+  });
+
   const roomAttachmentInputRef = useRef(null);
   const dmAttachmentInputRef = useRef(null);
   const roomComposerInputRef = useRef(null);
@@ -308,47 +279,25 @@ function FriendsPage() {
     }
   }, []);
 
-  useEffect(() => {
-    const inputContainer = inputContainerRef.current;
-    if (!inputContainer) {
-      return;
-    }
-
-    let frameId = null;
-    const resizeObserver = new ResizeObserver(([entry]) => {
-      if (!entry) {
-        return;
-      }
-      const targetBottom = Math.round(entry.contentRect.height) + 8;
-      if (frameId !== null) {
-        cancelAnimationFrame(frameId);
-      }
-      frameId = requestAnimationFrame(() => {
-        setScrollBtnBottom((prev) =>
-          Math.abs(prev - targetBottom) > 0.5 ? targetBottom : prev
-        );
-      });
-    });
-
-    resizeObserver.observe(inputContainer);
-
-    return () => {
-      if (frameId !== null) {
-        cancelAnimationFrame(frameId);
-      }
-      resizeObserver.disconnect();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (channelTab !== 'rooms') {
-      return;
-    }
-    if (!uniqueMessages.length) {
-      return;
-    }
-    return () => clearTimeout();
-  }, [channelTab, uniqueMessages.length]);
+  const {
+    gifPreview: dmGifPreview,
+    gifPreviewError: dmGifPreviewError,
+    isGifPreviewLoading: isDmGifPreviewLoading,
+    composerGifPreview: dmComposerGifPreview,
+    ensureGifPreviewForMessage,
+    confirmGifPreview: handleDmGifPreviewConfirm,
+    cancelGifPreview: handleDmGifPreviewCancel,
+    shuffleGifPreview: handleDmGifPreviewShuffle
+  } = useDmGifPreview({
+    authUser,
+    messageDraft: dmMessageDraft,
+    setMessageDraft: setDmMessageDraft,
+    selectedThreadId: selectedDirectThreadId,
+    sendDirectMessage,
+    resetAttachments: resetDmAttachments,
+    setAttachmentStatus: setDmAttachmentStatus,
+    focusComposerInput: () => focusComposer(dmComposerInputRef)
+  });
 
   useEffect(() => {
     if (isOffline || moderationHasAccess === false) {
@@ -493,25 +442,6 @@ function FriendsPage() {
   }, [dmAttachmentStatus, setDmAttachmentStatus]);
 
   useEffect(() => {
-    const gifQuery = getGifCommandQuery(dmMessageDraft);
-    if (!gifQuery) {
-      if (dmGifPreview || dmGifPreviewError || isDmGifPreviewLoading) {
-        dmGifPreviewRequestRef.current = null;
-        setDmGifPreview(null);
-        setDmGifPreviewError(null);
-        setIsDmGifPreviewLoading(false);
-      }
-      return;
-    }
-
-    if (dmGifPreview && dmGifPreview.query !== gifQuery && !isDmGifPreviewLoading) {
-      dmGifPreviewRequestRef.current = null;
-      setDmGifPreview(null);
-      setDmGifPreviewError(null);
-    }
-  }, [dmGifPreview, dmGifPreviewError, dmMessageDraft, isDmGifPreviewLoading]);
-
-  useEffect(() => {
     if (!moderationContext) {
       return;
     }
@@ -530,10 +460,6 @@ function FriendsPage() {
   }, [moderationContext]);
 
   useEffect(() => {
-    dmGifPreviewRequestRef.current = null;
-    setDmGifPreview(null);
-    setDmGifPreviewError(null);
-    setIsDmGifPreviewLoading(false);
     setDmMessageDraft('');
     resetDmAttachments();
   }, [resetDmAttachments, selectedDirectThreadId]);
@@ -541,30 +467,24 @@ function FriendsPage() {
   const handleSelectDirectThreadId = useCallback(
     (threadId) => {
       selectDirectThread(threadId);
+      handleSelectRoom(null);
       setChannelTab('direct');
       setChannelDialogTab('direct');
       setIsChannelDialogOpen(false);
     },
-    [selectDirectThread]
+    [handleSelectRoom, selectDirectThread]
   );
 
-  const handleActivateFriendsView = useCallback(() => {
-    if (channelTab === 'friends') {
-      let targetTab = lastConversationTab;
-      if (targetTab === 'direct' && directMessagesHasAccess === false) {
-        targetTab = 'rooms';
-      }
-      setChannelTab(targetTab);
-      setChannelDialogTab(
-        targetTab === 'direct' && directMessagesHasAccess !== false ? 'direct' : 'rooms'
-      );
+  const handleChooseRoom = useCallback(
+    (roomId) => {
+      handleSelectRoom(roomId);
+      selectDirectThread(null);
+      setChannelTab('rooms');
+      setChannelDialogTab('rooms');
       setIsChannelDialogOpen(false);
-      return;
-    }
-    setChannelTab('friends');
-    setChannelDialogTab('friends');
-    setIsChannelDialogOpen(false);
-  }, [channelTab, directMessagesHasAccess, lastConversationTab, setChannelDialogTab, setChannelTab, setIsChannelDialogOpen]);
+    },
+    [handleSelectRoom, selectDirectThread]
+  );
 
   const handleMessageFriend = useCallback(
     async (friend) => {
@@ -695,130 +615,6 @@ function FriendsPage() {
     setIsChannelDialogOpen(true);
   }, [channelTab, directMessagesHasAccess]);
 
-  const requestDmGifPreview = useCallback(
-    async (query) => {
-      if (!authUser) {
-        return;
-      }
-      const trimmedQuery = typeof query === 'string' ? query.trim() : '';
-      if (!trimmedQuery) {
-        return;
-      }
-
-      const requestId = Symbol('dm-gif-preview');
-      dmGifPreviewRequestRef.current = requestId;
-      setDmGifPreview({ query: trimmedQuery, options: [], selectedIndex: null });
-      setIsDmGifPreviewLoading(true);
-      setDmGifPreviewError(null);
-
-      try {
-        const payload = await previewChatGif(trimmedQuery, { limit: 12 });
-        if (dmGifPreviewRequestRef.current !== requestId) {
-          return;
-        }
-        const options = Array.isArray(payload?.results) ? payload.results : [];
-        if (!options.length) {
-          setDmGifPreview({ query: trimmedQuery, options: [], selectedIndex: null });
-          setDmGifPreviewError(`No GIFs found for "${trimmedQuery}". Try another search.`);
-          return;
-        }
-        setDmGifPreview({ query: trimmedQuery, options, selectedIndex: 0 });
-      } catch (error) {
-        if (dmGifPreviewRequestRef.current !== requestId) {
-          return;
-        }
-        setDmGifPreviewError(error?.message || 'Failed to load GIF preview.');
-      } finally {
-        if (dmGifPreviewRequestRef.current === requestId) {
-          setIsDmGifPreviewLoading(false);
-        }
-      }
-    },
-    [authUser]
-  );
-
-  const handleDmGifPreviewCancel = useCallback(() => {
-    dmGifPreviewRequestRef.current = null;
-    setDmGifPreview(null);
-    setDmGifPreviewError(null);
-    setIsDmGifPreviewLoading(false);
-  }, []);
-
-  const handleDmGifPreviewShuffle = useCallback(() => {
-    if (isDmGifPreviewLoading) {
-      return;
-    }
-    if (!dmGifPreview) {
-      const query = getGifCommandQuery(dmMessageDraft);
-      if (query) {
-        setDmGifPreviewError(null);
-        requestDmGifPreview(query);
-      }
-      return;
-    }
-    setDmGifPreviewError(null);
-    const options = Array.isArray(dmGifPreview.options) ? dmGifPreview.options : [];
-    if (options.length > 1) {
-      setDmGifPreview((prev) => {
-        if (!prev) {
-          return prev;
-        }
-        const opts = Array.isArray(prev.options) ? prev.options : [];
-        if (opts.length < 2) {
-          return prev;
-        }
-        const nextIndex =
-          typeof prev.selectedIndex === 'number' ? (prev.selectedIndex + 1) % opts.length : 0;
-        return { ...prev, selectedIndex: nextIndex };
-      });
-    } else if (dmGifPreview.query) {
-      requestDmGifPreview(dmGifPreview.query);
-    }
-  }, [dmGifPreview, dmMessageDraft, isDmGifPreviewLoading, requestDmGifPreview]);
-
-  const handleDmGifPreviewConfirm = useCallback(async () => {
-    if (
-      isDmGifPreviewLoading ||
-      isSendingDirectMessage ||
-      !dmGifPreview ||
-      typeof dmGifPreview.selectedIndex !== 'number'
-    ) {
-      return;
-    }
-    const options = Array.isArray(dmGifPreview.options) ? dmGifPreview.options : [];
-    const selected = options[dmGifPreview.selectedIndex];
-    if (!selected?.attachment) {
-      return;
-    }
-    if (!selectedDirectThreadId) {
-      return;
-    }
-    try {
-      await sendDirectMessage({
-        threadId: selectedDirectThreadId,
-        body: `GIF: ${dmGifPreview.query}`,
-        attachments: [selected.attachment]
-      });
-      setDmMessageDraft('');
-      resetDmAttachments();
-      setDmAttachmentStatus(null);
-      handleDmGifPreviewCancel();
-      focusComposer(dmComposerInputRef);
-    } catch {
-      // surfaced via send status
-    }
-  }, [
-    dmGifPreview,
-    focusComposer,
-    handleDmGifPreviewCancel,
-    isDmGifPreviewLoading,
-    isSendingDirectMessage,
-    resetDmAttachments,
-    selectedDirectThreadId,
-    sendDirectMessage,
-    setDmAttachmentStatus,
-    setDmMessageDraft
-  ]);
 
   const handleChannelDialogTabChange = useCallback(
     (event, value) => {
@@ -1019,19 +815,11 @@ function FriendsPage() {
       if (!hasText && !hasAttachments) {
         return;
       }
-      const pendingGifQuery = getGifCommandQuery(dmMessageDraft);
-      if (pendingGifQuery && !dmGifPreview) {
-        setDmGifPreviewError(null);
-        requestDmGifPreview(pendingGifQuery);
+      if (ensureGifPreviewForMessage(dmMessageDraft)) {
         return;
       }
-      if (
-        dmGifPreview &&
-        Array.isArray(dmGifPreview.options) &&
-        typeof dmGifPreview.selectedIndex === 'number' &&
-        dmGifPreview.options[dmGifPreview.selectedIndex]?.attachment
-      ) {
-        handleDmGifPreviewConfirm();
+      const handledGif = await handleDmGifPreviewConfirm();
+      if (handledGif) {
         return;
       }
       try {
@@ -1050,14 +838,13 @@ function FriendsPage() {
     },
     [
       dmAttachments,
-      dmGifPreview,
       dmMessageDraft,
       focusComposer,
       handleDmGifPreviewCancel,
       handleDmGifPreviewConfirm,
+      ensureGifPreviewForMessage,
       isSendingDirectMessage,
       isUploadingDmAttachment,
-      requestDmGifPreview,
       resetDmAttachments,
       selectedDirectThreadId,
       sendDirectMessage,
@@ -1116,6 +903,12 @@ function FriendsPage() {
   const notificationsLabel =
     incomingRequests.length > 0 ? `Notifications (${incomingRequests.length} unread)` : 'Notifications';
   const displayBadge = incomingRequests.length > 0 ? (incomingRequests.length > 99 ? '99+' : String(incomingRequests.length)) : null;
+  const handleNotifications = useCallback(() => {
+    handleOpenFriendDialog();
+  }, [handleOpenFriendDialog]);
+  const handleBackNavigation = useCallback(() => {
+    navigate(-1);
+  }, [navigate]);
 
   const canModerateMessages = !isOffline && moderationHasAccess !== false;
 
@@ -1348,30 +1141,6 @@ function FriendsPage() {
     setReportStatus(null);
   }, []);
 
-  const dmSelectedGifOption = useMemo(() => {
-    if (
-      !dmGifPreview ||
-      !Array.isArray(dmGifPreview.options) ||
-      typeof dmGifPreview.selectedIndex !== 'number'
-    ) {
-      return null;
-    }
-    return dmGifPreview.options[dmGifPreview.selectedIndex] ?? null;
-  }, [dmGifPreview]);
-
-  const dmComposerGifPreview = useMemo(
-    () =>
-      dmGifPreview
-        ? {
-            query: dmGifPreview.query,
-            attachment: dmSelectedGifOption?.attachment || null,
-            sourceUrl: dmSelectedGifOption?.sourceUrl,
-            optionsCount: Array.isArray(dmGifPreview.options) ? dmGifPreview.options.length : 0
-          }
-        : null,
-    [dmGifPreview, dmSelectedGifOption]
-  );
-
   const headerChannelLabel = useMemo(() => {
     if (channelTab === 'direct') {
       if (selectedDirectNames.length) {
@@ -1385,15 +1154,199 @@ function FriendsPage() {
     return selectedRoom ? selectedRoom.name : 'Choose a room';
   }, [channelTab, selectedDirectNames, selectedRoom]);
 
-  useEffect(() => {
-    if (channelTab !== 'direct') {
-      return;
+  const roomMessageBubbles = useMemo(
+    () =>
+      uniqueMessages.map((message, index) => (
+        <MessageBubble
+          key={getMessageKey(message, index)}
+          msg={
+            message.message === ATTACHMENT_ONLY_PLACEHOLDER
+              ? { ...message, message: '' }
+              : message
+          }
+          isSelf={Boolean(authUser && message.authorId === authUser.uid)}
+          authUser={authUser}
+          canModerate={canModerateMessages}
+          onModerate={handleOpenModerationForMessage}
+          onReport={handleOpenReportForRoomMessage}
+        />
+      )),
+    [
+      authUser,
+      canModerateMessages,
+      getMessageKey,
+      handleOpenModerationForMessage,
+      handleOpenReportForRoomMessage,
+      uniqueMessages
+    ]
+  );
+
+  const directMessageBubbles = useMemo(
+    () =>
+      directMessageItems.map((message, index) => (
+        <MessageBubble
+          key={getMessageKey(message, index)}
+          msg={
+            message.message === ATTACHMENT_ONLY_PLACEHOLDER
+              ? { ...message, message: '' }
+              : message
+          }
+          isSelf={Boolean(directViewerId && message.authorId && directViewerId === message.authorId)}
+          authUser={authUser}
+          canModerate={false}
+          onReport={handleOpenReportForDirectMessage}
+        />
+      )),
+    [authUser, directMessageItems, directViewerId, getMessageKey, handleOpenReportForDirectMessage]
+  );
+
+  const renderRoomMessagesContent = () => {
+    if (!selectedRoom) {
+      return (
+        <Box className="friends-page-text-container">
+          <Typography className="no-room-selected-title" variant="h6">
+            Choose a chat room to start talking
+          </Typography>
+          <Typography className="friends-page-body-text" variant="body2">
+            Pick a room from the selector in the header or create a new one.
+          </Typography>
+        </Box>
+      );
     }
-    if (!directMessageItems.length) {
-      return;
+    if (messagesError) {
+      return (
+        <Alert severity="error" sx={{ mx: { xs: 2, md: 4 }, my: 2 }}>
+          {messagesError}
+        </Alert>
+      );
     }
-    return () => clearTimeout(timer);
-  }, [channelTab, directMessageItems.length]);
+    if (isLoadingMessages && uniqueMessages.length === 0) {
+      return (
+        <Box className="friends-page-text-container">
+          <CircularProgress className="loading-msgs-circle" />
+          <Typography className="friends-page-body-text" variant="body2">
+            Loading messages…
+          </Typography>
+        </Box>
+      );
+    }
+    if (uniqueMessages.length === 0) {
+      return (
+        <Box className="friends-page-text-container">
+          <Typography className="friends-page-title-text" variant="h6">
+            No messages yet
+          </Typography>
+          <Typography className="friends-page-body-text" variant="body2">
+            Start the conversation with everyone in this room.
+          </Typography>
+        </Box>
+      );
+    }
+    return (
+      <Stack spacing={1.5} sx={{ px: { xs: 2, md: 3 }, py: 2 }}>
+        {roomMessageBubbles}
+      </Stack>
+    );
+  };
+
+  const renderDirectMessagesContent = () => {
+    if (directMessagesHasAccess === false) {
+      return (
+        <Box className="friends-page-text-container">
+          <Typography className="friends-page-body-text" variant="body2">
+            Direct messages are disabled for your account.
+          </Typography>
+        </Box>
+      );
+    }
+    if (!selectedDirectThreadId) {
+      if (dmThreads.length === 0 && !isLoadingDmThreads) {
+        return (
+          <Box className="friends-page-text-container">
+            <Typography className="friends-page-title-text" variant="h6">
+              Start a new conversation
+            </Typography>
+            <Typography className="friends-page-body-text" variant="body2">
+              Visit a profile and choose “Message user” to invite them to chat.
+            </Typography>
+          </Box>
+        );
+      }
+      if (isLoadingDmThreads) {
+        return (
+          <Box className="friends-page-text-container">
+            <CircularProgress className="loading-dms-circle" />
+            <Typography className="friends-page-body-text" variant="body2">
+              Loading conversations…
+            </Typography>
+          </Box>
+        );
+      }
+      return (
+        <Box className="friends-page-text-container">
+          <Typography className="friends-page-title-text" variant="h6">
+            Select a conversation
+          </Typography>
+          <Typography className="friends-page-body-text" variant="body2">
+            Choose a direct thread to view messages.
+          </Typography>
+        </Box>
+      );
+    }
+    if (directThreadStatus?.message) {
+      return (
+        <Alert severity={directThreadStatus.type || 'error'} sx={{ mx: { xs: 2, md: 4 }, my: 2 }}>
+          {directThreadStatus.message}
+        </Alert>
+      );
+    }
+    if (isLoadingDirectThread && directMessageItems.length === 0) {
+      return (
+        <Box className="friends-page-text-container">
+          <CircularProgress className="loading-dms-circle" />
+          <Typography className="friends-page-body-text" variant="body2">
+            Loading messages…
+          </Typography>
+        </Box>
+      );
+    }
+    if (directMessageItems.length === 0) {
+      return (
+        <Box className="friends-page-text-container">
+          <Typography className="friends-page-title-text" variant="h6">
+            No messages yet
+          </Typography>
+          <Typography className="friends-page-body-text" variant="body2">
+            Say hi to start the conversation.
+          </Typography>
+        </Box>
+      );
+    }
+    return (
+      <Stack spacing={1.5} sx={{ px: { xs: 2, md: 3 }, py: 2 }}>
+        {directMessageBubbles}
+      </Stack>
+    );
+  };
+
+  const friendsSidebarProps = {
+    friends,
+    friendHasAccess,
+    isLoading: isLoadingFriends,
+    friendStatus,
+    searchQuery: friendSearchQuery,
+    onSearchChange: setFriendSearchQuery,
+    onNavigateBack: handleBackNavigation,
+    notificationsLabel,
+    notificationBadge: displayBadge,
+    onOpenRequests: socialNotifications.friendAccessDenied ? undefined : handleOpenFriendDialog,
+    directMessagesHasAccess: directMessagesHasAccess !== false,
+    isProcessingFriendAction,
+    isCreatingDirectThread,
+    onMessageFriend: handleMessageFriend,
+    onUnfriend: handleUnfriend,
+    onReportFriend: handleReportFriend
+  };
 
   const handleSelectModerationAction = useCallback((actionType) => {
     setModerationForm((prev) => ({
@@ -1486,291 +1439,17 @@ function FriendsPage() {
     isOffline ||
     isRecordingModerationAction;
 
-  const roomMessageBubbles = useMemo(
-    () =>
-      uniqueMessages.map((message, index) => (
-        <MessageBubble
-          key={getMessageKey(message, index)}
-          msg={
-            message.message === ATTACHMENT_ONLY_PLACEHOLDER
-              ? { ...message, message: '' }
-              : message
-          }
-          isSelf={Boolean(authUser && message.authorId === authUser.uid)}
-          authUser={authUser}
-          canModerate={canModerateMessages}
-          onModerate={handleOpenModerationForMessage}
-          onReport={handleOpenReportForRoomMessage}
-        />
-      )),
-    [authUser, canModerateMessages, getMessageKey, handleOpenModerationForMessage, handleOpenReportForRoomMessage, uniqueMessages]
-  );
-
-  const directMessageBubbles = useMemo(
-    () =>
-      directMessageItems.map((message, index) => (
-        <MessageBubble
-          key={getMessageKey(message, index)}
-          msg={
-            message.message === ATTACHMENT_ONLY_PLACEHOLDER
-              ? { ...message, message: '' }
-              : message
-          }
-          isSelf={Boolean(directViewerId && message.authorId && directViewerId === message.authorId)}
-          authUser={authUser}
-          canModerate={false}
-          onReport={handleOpenReportForDirectMessage}
-        />
-      )),
-    [authUser, directMessageItems, directViewerId, getMessageKey, handleOpenReportForDirectMessage]
-  );
-
-  const renderFriendsList = ({ isOverlay = false } = {}) => {
-    const friends = Array.isArray(friendGraph?.friends) ? friendGraph.friends : [];
-
-    if (friendHasAccess === false) {
-      return (
-        <Box className="friends-page-text-container">
-          <Typography
-            className="friends-page-title-text" 
-            variant="h6" 
-          >
-            Friend access required
-          </Typography>
-          <Typography
-            className="friends-page-body-text"
-            variant="body2"
-          >
-            You need additional privileges to view or manage friends.
-          </Typography>
-        </Box>
-      );
-    }
-
-    if (isLoadingFriends && friends.length === 0) {
-      return (
-        <Box className="friends-page-text-container">
-          <CircularProgress className="loading-friends-circle"/>
-          <Typography
-            className="friends-page-body-text" 
-            variant="body2"
-          >
-            Loading friends…
-          </Typography>
-        </Box>
-      );
-    }
-
-    const filteredFriends = friends.filter((friend) => {
-      const name = (friend.displayName || friend.username || '').toLowerCase();
-      return name.includes(friendSearchQuery.toLowerCase());
-    });
-
-    return (
-      <Box
-        className="friends-list"
-        sx={{
-          flexGrow: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          color: isOverlay ? 'inherit' : '#111',
-        }}
-      >
-        <Box
-          className="friends-list-header"
-          sx={{
-            px: 2,
-            py: 1.5,
-          }}
-        >
-          <IconButton 
-              onClick={() => navigate(-1)} 
-              className="friends-list-back-btn"
-            >
-              <ArrowBackIcon className="friend-header-back-icon" />
-            </IconButton>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography className="friends-list-title">
-              Friends — {friends.length} 
-            </Typography>
-          </Stack>
-
-          <Button
-            className="friend-request-btn"
-            type="button"
-            aria-label={notificationsLabel}
-            onClick={handleOpenFriendDialog}
-            disabled={isLoadingFriends || isProcessingFriendAction}
-          >
-            <FriendRequestIcon className="friend-request-icon" aria-hidden="true"/>
-            {displayBadge ? (
-              <span className="friend-request-icon-badge" aria-hidden="true">
-                {displayBadge}
-              </span>
-            ) : null}
-          </Button>
-                    
-        </Box>
-
-        <Box className="friends-list-search-bar">
-          <TextField
-            className="friends-list-search-bar-input-container"
-            fullWidth
-            size="small"
-            placeholder="Search friends..."
-            value={friendSearchQuery}
-            onChange={(e) => {
-              const value = e.target.value;
-              if (value.length <= 30) {
-                setFriendSearchQuery(value);
-              }
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon className="friends-search-icon" />
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Box>
-
-        {friendStatus && friendStatus.message ? (
-          <Box sx={{ px: 2, py: 1.5 }}>
-            <Alert severity={friendStatus.type || 'error'}>{friendStatus.message}</Alert>
-          </Box>
-        ) : null}
-
-        {friends.length === 0 && !isLoadingFriends ? (
-          <Stack
-            spacing={1.5}
-            alignItems="center"
-            justifyContent="center"
-            sx={{ flexGrow: 1, py: 6, color: isOverlay ? 'inherit' : '#111' }}
-          >
-            <Typography variant="h6" sx={!isOverlay ? { color: '#111' } : undefined}>
-              No friends yet
-            </Typography>
-            <Typography
-              variant="body2"
-              align="center"
-              sx={!isOverlay ? { color: '#555' } : undefined}
-            >
-              Add some friends to start direct conversations and plan meetups.
-            </Typography>
-          </Stack>
-        ) : null}
-
-        {/* Handling for if no names match the search query */}
-        {!isLoadingFriends && friends.length > 0 && filteredFriends.length === 0 && (
-          <Typography className="friends-search-none-text">
-            No friends match your search.
-          </Typography>
-        )}
-
-        {/* Friend list */}
-        {filteredFriends.length ? (
-          <List dense sx={{ flexGrow: 1, overflowY: 'auto', px: { xs: 1, sm: 2 } }}>
-            {filteredFriends.map((friend) => {
-              const displayName = friend.displayName || friend.username || 'Friend';
-              const secondaryLabel = friend.username ? `@${friend.username}` : '';
-              const avatarSrc = resolveAvatarSrc(friend);
-
-              return (
-                <ListItem
-                  className="friend-card"
-                  key={friend.id}
-                  sx={{
-                    py: 1.5,
-                    px: { xs: 1, sm: 0 },
-                    gap: { xs: 1.5, sm: 2 },
-                    color: isOverlay ? 'inherit' : '#111',
-                    transition: 'background-color 0.2s ease',
-                    '&:hover': {
-                      backgroundColor: (theme) => theme.palette.action.hover,
-                      '& .friend-actions': {
-                        opacity: 1,
-                        visibility: 'visible',
-                      },
-                    },
-                  }}
-                >
-                  <ListItemAvatar>
-                    <Avatar
-                      className="friends-list-friend-avatar"
-                      src={avatarSrc}
-                      alt={displayName}
-                      imgProps={{ referrerPolicy: 'no-referrer' }}
-                    >
-                      {displayName.charAt(0).toUpperCase()}
-                    </Avatar>
-                  </ListItemAvatar>
-
-                  <ListItemText 
-                    className="friends-list-name-container"
-                    primary={
-                      <Box className="friends-list-name-wrapper">
-                        <Typography className="friends-list-display-name">
-                          {displayName}
-                        </Typography>
-                        {secondaryLabel && (
-                          <Typography className="friends-list-user-name">
-                            {secondaryLabel}
-                          </Typography>
-                        )}
-                      </Box>
-                    }
-                  />
-
-                  <Box className="friend-actions-container">
-                    <Box className="message-friend-container">
-                      <MessageFriend
-                        className="message-friend-icon"
-                        onClick={() => handleMessageFriend(friend)}
-                        disabled={
-                          directMessagesHasAccess === false ||
-                          isProcessingFriendAction ||
-                          isCreatingDirectThread
-                        }
-                      />
-                    </Box>
-                    
-                    <Box className="remove-friend-container">
-                      <RemoveFriend
-                        className="remove-friend-icon"
-                        onClick={() => handleUnfriend(friend)}
-                        disabled={isProcessingFriendAction}
-                      />
-                    </Box>
-
-                    <Box className="report-friend-container">
-                      <ReportFriend
-                        className="report-friend-icon"
-                        onClick={() => handleReportFriend(friend)}
-                      />
-                    </Box>
-                    
-                  </Box>
-                </ListItem>
-              );
-            })}
-          </List>
-        ) : null}
-      </Box>
-    );
-  };
-
-  const handleOpenFriendDialog = () => {
+  const handleOpenFriendDialog = useCallback(() => {
     setFriendActionStatus(null);
     setIsFriendDialogOpen(true);
-  };
+  }, [setFriendActionStatus]);
 
-  const handleCloseFriendDialog = () => {
+  const handleCloseFriendDialog = useCallback(() => {
     if (respondingRequestId) {
       return;
     }
     setIsFriendDialogOpen(false);
-  };
+  }, [respondingRequestId]);
 
 
   const handleRespondToFriendRequest = async (requestId, decision) => {
@@ -1810,15 +1489,122 @@ function FriendsPage() {
     }
   };
 
-  const friendsView = renderFriendsList();
+  const friendsOverlayProps = { ...friendsSidebarProps, isOverlay: true };
 
   return (
     <>
       <Box className="friend-page">
+        {showScrollButton && (
+          <IconButton
+            className="chat-scroll-to-bottom-btn"
+            onClick={scrollMessagesToBottom}
+            style={{
+              bottom: `${scrollButtonOffset + 90}px`,
+              position: 'fixed'
+            }}
+            aria-label="Scroll to latest message"
+          >
+            <ArrowDownwardIcon className="scroll-to-bottom-icon" />
+          </IconButton>
+        )}
+
         <div className="friend-frame">
+          <ChatThreadHeader
+            channelLabel={headerChannelLabel}
+            isChannelDialogOpen={isChannelDialogOpen}
+            onOpenChannelDialog={handleOpenChannelDialog}
+            notificationsLabel={notificationsLabel}
+            onNotifications={handleNotifications}
+            isOffline={isOffline}
+            notificationBadge={displayBadge}
+            updatesIconSrc={updatesIcon}
+          />
+
           <Box ref={containerRef} className="friends-list-field">
-            {friendsView}
+            {channelTab === 'direct'
+              ? renderDirectMessagesContent()
+              : channelTab === 'friends'
+              ? <FriendsSidebar {...friendsSidebarProps} />
+              : renderRoomMessagesContent()}
           </Box>
+
+          {channelTab === 'direct' ? (
+            <ChatComposerFooter
+              variant="modern"
+              message={dmMessageDraft}
+              placeholder="Send a message"
+              onMessageChange={(event) => setDmMessageDraft(event.target.value)}
+              onKeyDown={handleDirectMessageKeyDown}
+              onSend={handleSendDirectMessage}
+              disabled={
+                !selectedDirectThreadId ||
+                isSendingDirectMessage ||
+                directMessagesHasAccess === false ||
+                isUploadingDmAttachment
+              }
+              sendDisabled={
+                (!dmMessageDraft.trim() && dmAttachments.length === 0) ||
+                !selectedDirectThreadId ||
+                isSendingDirectMessage ||
+                directMessagesHasAccess === false ||
+                isUploadingDmAttachment
+              }
+              isSending={isSendingDirectMessage}
+              containerRef={inputContainerRef}
+              containerClassName="chat-input-container"
+              onAddAttachment={handleOpenDmAttachmentPicker}
+              addAttachmentTooltip="Upload image or GIF"
+              inputRef={dmComposerInputRef}
+              gifPreview={dmComposerGifPreview}
+              gifPreviewError={dmGifPreviewError}
+              isGifPreviewLoading={isDmGifPreviewLoading}
+              onGifPreviewConfirm={handleDmGifPreviewConfirm}
+              onGifPreviewCancel={handleDmGifPreviewCancel}
+              onGifPreviewShuffle={handleDmGifPreviewShuffle}
+              attachments={dmAttachments}
+              attachmentStatus={dmAttachmentStatus}
+              isUploadingAttachment={isUploadingDmAttachment}
+              attachmentUploadProgress={dmUploadProgress}
+              onRemoveAttachment={removeDmAttachment}
+              onRetryAttachment={retryDmFailedUploads}
+              canRetryAttachment={canRetryDmUploads}
+            />
+          ) : channelTab === 'rooms' ? (
+            <ChatComposerFooter
+              variant="modern"
+              message={messageDraft}
+              placeholder="Send a message"
+              onMessageChange={(event) => setMessageDraft(event.target.value)}
+              onKeyDown={handleRoomMessageKeyDown}
+              onSend={handleRoomSendMessage}
+              disabled={!authUser || isSendingMessage || isUploadingRoomAttachment}
+              sendDisabled={
+                (!messageDraft.trim() && roomAttachments.length === 0) ||
+                !authUser ||
+                isSendingMessage ||
+                isUploadingRoomAttachment
+              }
+              isSending={isSendingMessage}
+              containerRef={inputContainerRef}
+              containerClassName="chat-input-container"
+              onAddAttachment={handleOpenRoomAttachmentPicker}
+              addAttachmentTooltip="Upload image or GIF"
+              inputRef={roomComposerInputRef}
+              gifPreview={composerGifPreview}
+              gifPreviewError={gifPreviewError}
+              isGifPreviewLoading={isGifPreviewLoading}
+              onGifPreviewConfirm={handleGifPreviewConfirm}
+              onGifPreviewCancel={handleGifPreviewCancel}
+              onGifPreviewShuffle={handleGifPreviewShuffle}
+              attachments={roomAttachments}
+              attachmentStatus={roomAttachmentStatus}
+              isUploadingAttachment={isUploadingRoomAttachment}
+              attachmentUploadProgress={roomUploadProgress}
+              onRemoveAttachment={removeRoomAttachment}
+              onRetryAttachment={retryRoomFailedUploads}
+              canRetryAttachment={canRetryRoomUploads}
+            />
+          ) : null}
 
           {channelTab === 'rooms' && presenceError ? (
             <Box sx={{ px: 2, py: 1 }}>
@@ -1841,7 +1627,7 @@ function FriendsPage() {
           />
 
           <Snackbar
-            open={reportStatus}
+            open={Boolean(reportStatus)}
             autoHideDuration={4000}
             onClose={(_, reason) => {
               if (reason === 'clickaway') {
@@ -1850,9 +1636,9 @@ function FriendsPage() {
               handleReportStatusClose();
             }}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            sx={{ bottom: `${scrollBtnBottom + 72}px` }}
+            sx={{ bottom: `${scrollButtonOffset + 72}px` }}
           >
-            {reportStatus && (
+            {reportStatus ? (
               <Alert
                 elevation={6}
                 variant="filled"
@@ -1861,11 +1647,11 @@ function FriendsPage() {
               >
                 {reportStatus.message}
               </Alert>
-            )}
+            ) : null}
           </Snackbar>
 
           <Snackbar
-            open={channelTab === 'direct' && directSendStatus}
+            open={channelTab === 'direct' && Boolean(directSendStatus)}
             autoHideDuration={4000}
             onClose={(_, reason) => {
               if (reason === 'clickaway') {
@@ -1874,9 +1660,9 @@ function FriendsPage() {
               resetDirectSendStatus();
             }}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            sx={{ bottom: `${scrollBtnBottom + 16}px` }}
+            sx={{ bottom: `${scrollButtonOffset + 16}px` }}
           >
-            {directSendStatus && (
+            {directSendStatus ? (
               <Alert
                 elevation={6}
                 variant="filled"
@@ -1885,11 +1671,11 @@ function FriendsPage() {
               >
                 {directSendStatus.message}
               </Alert>
-            )}
+            ) : null}
           </Snackbar>
 
           <Snackbar
-            open={friendActionStatus}
+            open={Boolean(friendActionStatus)}
             autoHideDuration={4000}
             onClose={(_, reason) => {
               if (reason === 'clickaway') {
@@ -1898,9 +1684,9 @@ function FriendsPage() {
               setFriendActionStatus(null);
             }}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            sx={{ bottom: `${scrollBtnBottom + 40}px` }}
+            sx={{ bottom: `${scrollButtonOffset + 40}px` }}
           >
-            {friendActionStatus && (
+            {friendActionStatus ? (
               <Alert
                 elevation={6}
                 variant="filled"
@@ -1909,193 +1695,137 @@ function FriendsPage() {
               >
                 {friendActionStatus.message}
               </Alert>
-            )}
+            ) : null}
           </Snackbar>
-
-    </div>
-  </Box>
-
-      <Dialog
-        open={Boolean(moderationContext)}
-        onClose={handleCloseModerationDialog}
-        fullWidth
-        maxWidth="xs"
-      >
-        <Box component="form" onSubmit={handleModerationSubmit}>
-          <DialogTitle>
-            Moderate {moderationContext?.displayName || 'user'}
-          </DialogTitle>
-          <DialogContent dividers>
-            <Stack spacing={1.5}>
-              {moderationContext?.messagePreview ? (
-                <Alert severity="info" variant="outlined">
-                  {moderationContext.messagePreview}
-                </Alert>
-              ) : null}
-
-              {moderationHasAccess === false ? (
-                <Alert severity="warning">Moderator privileges required to perform actions.</Alert>
-              ) : null}
-
-              {moderationActionStatus ? (
-                <Alert severity={moderationActionStatus.type}>
-                  {moderationActionStatus.message}
-                </Alert>
-              ) : null}
-
-              <Stack direction="row" flexWrap="wrap" gap={1}>
-                {MODERATION_ACTION_OPTIONS.filter((option) =>
-                  QUICK_MODERATION_ACTIONS.includes(option.value)
-                ).map((option) => (
-                  <Chip
-                    key={option.value}
-                    label={option.label}
-                    color={moderationForm.type === option.value ? 'primary' : 'default'}
-                    variant={moderationForm.type === option.value ? 'filled' : 'outlined'}
-                    onClick={() => handleSelectModerationAction(option.value)}
-                    role="button"
-                    aria-pressed={moderationForm.type === option.value}
-                  />
-                ))}
-              </Stack>
-
-              <TextField
-                select
-                label="Moderation action"
-                value={moderationForm.type}
-                onChange={handleModerationFieldChange('type')}
-                fullWidth
-              >
-                {MODERATION_ACTION_OPTIONS.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-
-              {moderationForm.type === 'mute' ? (
-                <TextField
-                  label="Mute duration (minutes)"
-                  type="number"
-                  inputProps={{ min: 1, max: 1440, step: 5 }}
-                  value={moderationForm.durationMinutes}
-                  onChange={handleModerationFieldChange('durationMinutes')}
-                />
-              ) : null}
-
-              <TextField
-                label="Reason (optional)"
-                value={moderationForm.reason}
-                onChange={handleModerationFieldChange('reason')}
-                multiline
-                minRows={2}
-                placeholder="Share context for other moderators."
-              />
-            </Stack>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseModerationDialog} disabled={isRecordingModerationAction}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="contained" disabled={disableModerationSubmit}>
-              {isRecordingModerationAction ? 'Applying…' : 'Apply action'}
-            </Button>
-          </DialogActions>
-        </Box>
-      </Dialog>
+        </div>
+      </Box>
 
       <Dialog
-        className="friend-dialog-overlay"
-        open={isFriendDialogOpen}
-        onClose={handleCloseFriendDialog}
+        className="channel-switch-overlay"
+        open={isChannelDialogOpen}
+        onClose={() => setIsChannelDialogOpen(false)}
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle className="friend-dialog-title">
-          Pending Friend Requests
-        </DialogTitle>
-
-        <DialogContent dividers={false} className="friend-dialog-content">
-          <Stack spacing={2}>
-            {friendActionStatus && (
-              <Alert severity={friendActionStatus.type} className="friend-dialog-alert">
-                {friendActionStatus.message}
-              </Alert>
-            )}
-
-            {incomingRequests.length === 0 ? (
-              <Box className="friend-dialog-empty-container">
-                <NoFriendRequests className="friend-dialog-empty-icon"/>
-                <Typography className="friend-dialog-empty-desc">
-                  All caught up! You have no pending friend requests.
-                </Typography>
-              </Box>
-            ) : (
-              incomingRequests.map((request) => {
-                const requesterName =
-                  request.requester?.displayName ||
-                  request.requester?.username ||
-                  request.requester?.id ||
-                  'Unknown user';
-                const isUpdating = respondingRequestId === request.id;
-
-                return (
-                  <Paper key={request.id} className="friend-dialog-request-card">
-                    <Stack spacing={1}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center">
-                        <Typography variant="subtitle1" className="friend-dialog-request-name">
-                          {requesterName}
-                        </Typography>
-                        <Typography variant="caption" className="friend-dialog-request-time">
-                          {request.createdAt ? formatFriendlyTimestamp(request.createdAt) : ''}
-                        </Typography>
-                      </Stack>
-
-                      {request.message && (
-                        <Typography variant="body2" className="friend-dialog-request-message">
-                          “{request.message}”
-                        </Typography>
-                      )}
-
-                      <Stack direction="row" spacing={1} justifyContent="flex-end">
-                        <Button
-                          variant="contained"
-                          className="friend-dialog-accept-btn"
-                          onClick={() => handleRespondToFriendRequest(request.id, 'accept')}
-                          disabled={isUpdating}
-                        >
-                          {isUpdating ? 'Updating…' : 'Accept'}
-                        </Button>
-
-                        <Button
-                          variant="outlined"
-                          className="friend-dialog-decline-btn"
-                          onClick={() => handleRespondToFriendRequest(request.id, 'decline')}
-                          disabled={isUpdating}
-                        >
-                          Decline
-                        </Button>
-                      </Stack>
-                    </Stack>
-                  </Paper>
-                );
-              })
-            )}
-          </Stack>
-        </DialogContent>
-
-        <DialogActions className="friend-dialog-actions-container">
-          <Button
-            className="friend-dialog-close-btn"
-            onClick={handleCloseFriendDialog}
-            disabled={respondingRequestId !== null}
-          >
-            Close
+        <Box className="channel-switch-header">
+          <DialogTitle className="channel-switch-title">Choose a conversation</DialogTitle>
+          <Button className="close-channel-switch-btn" onClick={() => setIsChannelDialogOpen(false)}>
+            <CloseIcon className="close-channel-switch-icon" />
           </Button>
-        </DialogActions>
+        </Box>
+
+        <DialogContent dividers sx={{ p: 0 }}>
+          <Tabs
+            className="channel-switch-tabs-background"
+            value={channelDialogTab}
+            onChange={handleChannelDialogTabChange}
+            variant="fullWidth"
+            slotProps={{
+              indicator: {
+                className: 'channel-switch-tab-indicator'
+              }
+            }}
+          >
+            <Tab
+              className="channel-switch-rooms-tab"
+              value="rooms"
+              icon={<GroupIcon fontSize="small" />}
+              iconPosition="start"
+              label={
+                <Box className="channel-switch-tab-container">
+                  <span className="channel-switch-tab-title">Rooms</span>
+                  {rooms.length > 0 ? (
+                    <Typography className="channel-switch-tab-badge">{rooms.length}</Typography>
+                  ) : null}
+                </Box>
+              }
+            />
+            <Tab
+              className="channel-switch-dm-tab"
+              value="direct"
+              icon={<MarkUnreadChatAltIcon fontSize="small" />}
+              iconPosition="start"
+              disabled={directMessagesHasAccess === false}
+              label={
+                <Box className="channel-switch-tab-container">
+                  <span className="channel-switch-tab-title">Messages</span>
+                  {dmThreads.length > 0 ? (
+                    <Typography className="channel-switch-tab-badge">{dmThreads.length}</Typography>
+                  ) : null}
+                </Box>
+              }
+            />
+            <Tab
+              className="channel-switch-friends-tab"
+              value="friends"
+              icon={<PeopleAltIcon fontSize="small" />}
+              iconPosition="start"
+              label={
+                <Box className="channel-switch-tab-container">
+                  <span className="channel-switch-tab-title">Friends</span>
+                  {friends.length > 0 ? (
+                    <Typography className="channel-switch-tab-badge">{friends.length}</Typography>
+                  ) : null}
+                </Box>
+              }
+            />
+          </Tabs>
+
+          <Box sx={{ maxHeight: 420, display: 'flex', flexDirection: 'column' }}>
+            {channelDialogTab === 'direct' ? (
+              <DirectThreadList
+                threads={dmThreads}
+                selectedThreadId={selectedDirectThreadId}
+                onSelectThread={handleSelectDirectThreadId}
+                status={dmThreadsStatus}
+                isLoading={isLoadingDmThreads}
+                onRefresh={refreshDmThreads}
+                canAccess={directMessagesHasAccess !== false}
+                viewerId={directViewerId}
+                viewerUsername={dmViewer?.username || null}
+                viewerDisplayName={dmViewer?.displayName || null}
+              />
+            ) : channelDialogTab === 'friends' ? (
+              <FriendsSidebar {...friendsOverlayProps} />
+            ) : (
+              <ChatRoomList
+                rooms={rooms}
+                selectedRoomId={selectedRoomId}
+                isRefreshing={isLoadingRooms}
+                error={roomsError}
+                onRefresh={loadRooms}
+                onCreateRoom={handleOpenCreateDialog}
+                onSelectRoom={handleChooseRoom}
+              />
+            )}
+          </Box>
+        </DialogContent>
       </Dialog>
 
-      
+      <ChatModerationDialog
+        open={Boolean(moderationContext)}
+        context={moderationContext}
+        hasAccess={moderationHasAccess}
+        actionStatus={moderationActionStatus}
+        form={moderationForm}
+        onClose={handleCloseModerationDialog}
+        onSubmit={handleModerationSubmit}
+        onFieldChange={handleModerationFieldChange}
+        onSelectQuickAction={handleSelectModerationAction}
+        disableSubmit={disableModerationSubmit}
+        isSubmitting={isRecordingModerationAction}
+      />
+
+      <FriendRequestsDialog
+        open={isFriendDialogOpen}
+        onClose={handleCloseFriendDialog}
+        requests={incomingRequests}
+        actionStatus={isFriendDialogOpen ? friendActionStatus : null}
+        respondingRequestId={respondingRequestId}
+        onRespond={handleRespondToFriendRequest}
+        formatTimestamp={formatFriendlyTimestamp}
+      />
+
       <input
         ref={roomAttachmentInputRef}
         type="file"
