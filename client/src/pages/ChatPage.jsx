@@ -202,8 +202,19 @@ function ChatPage() {
     reason: '',
     durationMinutes: '15'
   });
-  const [channelTab, setChannelTab] = useState('rooms');
-  const [channelDialogTab, setChannelDialogTab] = useState('rooms');
+  const {
+    channelTab,
+    channelDialogTab,
+    setChannelDialogTab,
+    toggleChannelTab
+  } = useChatTabs({
+    locationSearch: location.search,
+    directMessagesHasAccess,
+    selectDirectThread,
+    refreshDmThreads,
+    refreshFriendGraph,
+    setLastConversationTab
+  });
   const [lastConversationTab, setLastConversationTab] = useState('rooms');
   const [isChannelDialogOpen, setIsChannelDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);

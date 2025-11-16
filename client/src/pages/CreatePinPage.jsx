@@ -5,9 +5,6 @@ import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import MapIcon from '@mui/icons-material/Map';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
-import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import '../styles/leaflet.css';
 
 import { routes } from '../routes';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
@@ -18,9 +15,9 @@ import useCreatePinForm from '../hooks/useCreatePinForm';
 import normalizeObjectId from '../utils/normalizeObjectId';
 import './CreatePinPage.css';
 import GlobalNavMenu from '../components/GlobalNavMenu';
-import { fetchCurrentUserProfile } from '../api/mongoDataApi';
 import resolveAssetUrl from '../utils/media';
 import { haversineDistanceMeters, formatDistanceMiles, formatDistanceMetersLabel } from '../utils/geo';
+import SelectableLocationMap from '../components/create-pin/SelectableLocationMap';
 
 export const pageConfig = {
   id: 'create-pin',
@@ -46,40 +43,6 @@ const DEFAULT_MAP_CENTER = {
 
 const DEFAULT_AVATAR_PATH = '/images/profile/profile-01.jpg';
 
-const computeInitials = (value) => {
-  if (!value || typeof value !== 'string') {
-    return 'YOU';
-  }
-  const parts = value
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2);
-  if (!parts.length) {
-    return 'YOU';
-  }
-  return parts
-    .map((part) => part.charAt(0).toUpperCase())
-    .join('')
-    .slice(0, 3);
-};
-
-const createAvatarMarkerIcon = (avatarUrl, initials) =>
-  L.divIcon({
-    className: 'create-pin-avatar-marker',
-    html: `
-      <div class="create-pin-avatar-marker__outer">
-        <div class="create-pin-avatar-marker__ring"></div>
-        <div class="create-pin-avatar-marker__avatar">
-          ${avatarUrl ? `<img src="${avatarUrl}" alt="" />` : `<span>${initials}</span>`}
-        </div>
-      </div>
-    `,
-    iconSize: [56, 56],
-    iconAnchor: [28, 48],
-    popupAnchor: [0, -32]
-  });
-
 const FIGMA_TEMPLATE = {
   header: {
     title: 'Event',
@@ -98,85 +61,6 @@ const PIN_TYPE_LABELS = {
   event: 'Event',
   discussion: 'Discussion'
 };
-
-function MapClickHandler({ onSelect }) {
-  useMapEvents({
-    click(event) {
-      if (!onSelect) {
-        return;
-      }
-      const { lat, lng } = event.latlng;
-      onSelect({ lat, lng });
-    }
-  });
-  return null;
-}
-
-function MapCenterUpdater({ position }) {
-  const map = useMap();
-  useEffect(() => {
-    if (position && Number.isFinite(position.lat) && Number.isFinite(position.lng)) {
-      map.setView([position.lat, position.lng]);
-    }
-  }, [map, position]);
-  return null;
-}
-
-function SelectableLocationMap({ value, onChange, anchor, avatarUrl, viewerName }) {
-  const center = value ?? anchor ?? DEFAULT_MAP_CENTER;
-  const trackingPosition = value ?? anchor ?? null;
-  const userLatLng =
-    anchor && Number.isFinite(anchor.lat) && Number.isFinite(anchor.lng)
-      ? [anchor.lat, anchor.lng]
-      : null;
-  const draftLatLng =
-    value && Number.isFinite(value.lat) && Number.isFinite(value.lng)
-      ? [value.lat, value.lng]
-      : null;
-  const initials = useMemo(() => computeInitials(viewerName || 'You'), [viewerName]);
-  const userMarkerIcon = useMemo(() => {
-    if (!avatarUrl) {
-      return createAvatarMarkerIcon(DEFAULT_AVATAR_PATH, initials);
-    }
-    return createAvatarMarkerIcon(avatarUrl, initials);
-  }, [avatarUrl, initials]);
-
-  return (
-    <MapContainer
-      center={[center.lat, center.lng]}
-      zoom={14}
-      style={{ width: '100%', height: '100%' }}
-      scrollWheelZoom
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <MapClickHandler onSelect={onChange} />
-      <MapCenterUpdater position={trackingPosition} />
-      {userLatLng ? (
-        <>
-          <Marker
-            position={userLatLng}
-            icon={userMarkerIcon}
-          />
-          {draftLatLng ? (
-            <Polyline
-              positions={[userLatLng, draftLatLng]}
-              pathOptions={{
-                color: '#5d3889',
-                weight: 2,
-                dashArray: '6 8',
-                opacity: 0.85
-              }}
-            />
-          ) : null}
-        </>
-      ) : null}
-      {draftLatLng ? <Marker position={draftLatLng} /> : null}
-    </MapContainer>
-  );
-}
 
 function CreatePinPage() {
   const navigate = useNavigate();

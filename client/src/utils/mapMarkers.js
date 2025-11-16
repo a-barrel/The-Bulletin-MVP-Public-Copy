@@ -1,3 +1,5 @@
+import L from 'leaflet';
+
 const MARKER_BASE_URL =
   'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x';
 export const MAP_MARKER_SHADOW_URL =
@@ -26,5 +28,41 @@ export const MAP_FILTERS = [
     ariaLabel: 'Toggle your pins'
   }
 ];
+
+export const DEFAULT_MAP_CENTER = { lat: 33.7838, lng: -118.1136 };
+
+export const calculateInitials = (value) => {
+  if (!value || typeof value !== 'string') {
+    return 'YOU';
+  }
+  const parts = value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+  if (!parts.length) {
+    return 'YOU';
+  }
+  return parts
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('')
+    .slice(0, 3);
+};
+
+export const createAvatarMarkerIcon = (avatarUrl, viewerName) =>
+  L.divIcon({
+    className: 'create-pin-avatar-marker',
+    html: `
+      <div class="create-pin-avatar-marker__outer">
+        <div class="create-pin-avatar-marker__ring"></div>
+        <div class="create-pin-avatar-marker__avatar">
+          ${avatarUrl ? `<img src="${avatarUrl}" alt="" />` : `<span>${calculateInitials(viewerName)}</span>`}
+        </div>
+      </div>
+    `,
+    iconSize: [56, 56],
+    iconAnchor: [28, 48],
+    popupAnchor: [0, -32]
+  });
 
 export default MAP_MARKER_ICON_URLS;
