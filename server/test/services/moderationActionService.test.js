@@ -1,3 +1,11 @@
+const mockFirebaseUpdateUser = jest.fn().mockResolvedValue(null);
+
+jest.mock('firebase-admin', () => ({
+  auth: () => ({
+    updateUser: mockFirebaseUpdateUser
+  })
+}));
+
 const { applyModerationAction } = require('../../services/moderationActionService');
 
 jest.mock('../../models/User', () => ({
@@ -28,6 +36,7 @@ describe('applyModerationAction', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFirebaseUpdateUser.mockClear();
 
     User.findByIdAndUpdate.mockResolvedValue(null);
     recordAuditEntry.mockResolvedValue(null);
@@ -131,5 +140,27 @@ describe('applyModerationAction', () => {
         type: 'invalid'
       })
     ).rejects.toThrow(/Unsupported moderation action/);
+  });
+
+  it('disables firebase auth users when banning accounts', async () => {
+    const targetWithUid = { ...target, firebaseUid: 'firebase-target' };
+    await applyModerationAction({
+      viewer,
+      target: targetWithUid,
+      type: 'ban'
+    });
+
+    expect(mockFirebaseUpdateUser).toHaveBeenCalledWith('firebase-target', { disabled: true });
+  });
+
+  it('re-enables firebase auth users when unbanning accounts', async () => {
+    const targetWithUid = { ...target, firebaseUid: 'firebase-target' };
+    await applyModerationAction({
+      viewer,
+      target: targetWithUid,
+      type: 'unban'
+    });
+
+    expect(mockFirebaseUpdateUser).toHaveBeenCalledWith('firebase-target', { disabled: false });
   });
 });

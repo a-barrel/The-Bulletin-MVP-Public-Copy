@@ -1,9 +1,11 @@
 const mongoose = require('mongoose');
+const admin = require('firebase-admin');
 
 const ModerationAction = require('../models/ModerationAction');
 const User = require('../models/User');
 const { recordAuditEntry } = require('./auditLogService');
 const { trackModerationEvent } = require('./analyticsService');
+const { logIntegration } = require('../utils/devLogger');
 
 const VIEWER_UPDATE_PROJECTION = {
   username: 1,
@@ -16,6 +18,22 @@ const VIEWER_UPDATE_PROJECTION = {
 
 const toObjectId = (value) =>
   value instanceof mongoose.Types.ObjectId ? value : new mongoose.Types.ObjectId(value);
+
+async function updateFirebaseAccountDisabledState(firebaseUid, disabled) {
+  if (!firebaseUid) {
+    return;
+  }
+
+  try {
+    await admin.auth().updateUser(firebaseUid, { disabled });
+  } catch (error) {
+    if (error?.code === 'auth/user-not-found') {
+      logIntegration('firebase:update-user-status', error);
+      return;
+    }
+    logIntegration('firebase:update-user-status', error);
+  }
+}
 
 async function applyModerationAction({ viewer, target, type, reason = '', durationMinutes }) {
   if (!viewer?._id) {
@@ -72,9 +90,11 @@ async function applyModerationAction({ viewer, target, type, reason = '', durati
       break;
     case 'ban':
       await User.findByIdAndUpdate(targetId, { $set: { accountStatus: 'suspended' } });
+      await updateFirebaseAccountDisabledState(target.firebaseUid, true);
       break;
     case 'unban':
       await User.findByIdAndUpdate(targetId, { $set: { accountStatus: 'active' } });
+      await updateFirebaseAccountDisabledState(target.firebaseUid, false);
       break;
     case 'warn':
     case 'report':
