@@ -1,113 +1,294 @@
-.friends-page-shell {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 32px 16px;
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap');
+
+* {
+  font-family: "Urbanist", sans-serif;
+}
+
+/* ===== Outer Shell ===== */
+.friend-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+
+.friend-frame {
+  --header-h: 72px;
+  width: 100vw;
+  height: 100vh;
+  background: white;
+  border-radius: 0;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  background: linear-gradient(180deg, #F5EFFD 0%, #FDF1F7 100%);
-  border-radius: 24px;
-  border: 1px solid rgba(93, 56, 137, 0.15);
-  box-shadow: 0 12px 32px rgba(93, 56, 137, 0.15);
+  overflow-y: auto;
 }
 
-.friends-page-toolbar {
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 16px 20px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #D1B4F5 0%, #F5B0D5 100%);
-  color: white;
-  border: 2px solid rgba(0, 0, 0, 0.08);
+/* ===== Header (purple) ===== */
+.chat-room-chip {
+  cursor: pointer;
 }
 
-.friends-request-badge {
-  margin-left: 8px;
-  background-color: rgba(255, 255, 255, 0.35);
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 0.75rem;
+.chat-room-chip.MuiChip-root {
+  background: rgba(255, 255, 255, 0.45);
+  border-color: rgba(45, 0, 104, 0.3);
+  color: #2d0068;
   font-weight: 600;
+}
+
+.chat-room-chip .MuiChip-icon {
+  color: inherit;
+}
+
+.chat-friends-btn.MuiButton-root {
+  text-transform: none;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.25rem 0.9rem;
+  border-color: rgba(45, 0, 104, 0.3);
+  color: #2d0068;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.chat-friends-btn.MuiButton-root:hover {
+  background: rgba(255, 255, 255, 0.65);
+  border-color: rgba(45, 0, 104, 0.5);
+}
+
+.chat-friends-btn.MuiButton-contained {
+  background: #9B5DE5;
+  border-color: #9B5DE5;
+  color: #fff;
+}
+
+.chat-friends-btn.MuiButton-contained:hover {
+  background: #7f46c2;
+  border-color: #7f46c2;
+}
+
+.friend-requests-container {
+  top: 20rem !important;
+}
+
+.friends-list-field {
+  top: calc(var(--header-h) - 8px) !important;
+  background-color: #F5EFFD;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  width: 100vw;
+  height: 100%;
+  margin-top: 5rem;
+  margin-bottom: 0;
+}
+
+.chat-scroll-to-bottom-btn {
+  width: 64px !important;
+  height: 64px !important;
+  right: 0.2rem;
+  z-index: 10;
+}
+
+.scroll-to-bottom-icon {
+  width: 48px !important;
+  height: 48px !important;
+  background-color: #9B5DE5;
+  color: white;
+  border-radius: 60px;
+}
+
+.chat-input-container {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0) + 82px);
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 8px 12px;
+  overflow: visible;
+  background: #CDAEF2;
+  border-top: 1px solid #ddd;
+  margin-bottom: -2px;
+  z-index: 5;
+  box-sizing: border-box;
+  transform: none;
+}
+
+.chat-page .bottom-nav-spacer {
+  display: none;
+  height: 0;
+}
+
+/* ====== Text Field Styling ====== */
+.chat-input {
+  flex: 1;
+}
+
+/* Target the inner textarea within the MUI TextField */
+.chat-input textarea {
+  resize: none;
+  overflow-y: auto;  
+  max-height: 10rem;     
+  transition: all 0.15s ease-in-out;
+}
+
+.chat-input .MuiOutlinedInput-root {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  margin-left: -0.25rem;
+  font-family:'Urbanist', sans-serif;
+  font-weight: 500;
+  border-radius: 45px;
+  background: white;
+  color: black;
+}
+
+/* Button to add an img (no visual) */
+.add-img-btn {
+  position: relative;
+  display: flex;
+  width: 48px;
+  height: 48px;
+  padding: 1rem;
+}
+
+/* Actual visual for add img button */
+.add-img-icon {
+  margin-left: -1rem;
+  height: 52px !important;
+  width: 52px !important;
+  color: #5D3889;
+}
+
+/* Button to send a message (no visual) */
+.send-message-btn {
+  position: relative;
+  bottom: 2px;
+  background-color: #9B5DE5;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-left: 0.25rem;
+}
+
+.send-message-icon {
+  width: 32px !important;
+  height: 32px !important;
+  color: white;
 }
 
 .friends-page-text-container {
-  margin-top: 4rem;
+  margin-top: 15rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.friends-page-title-text {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.friends-page-body-text {
-  font-size: 0.95rem;
-  color: #444;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .loading-friends-circle {
   color: #F15BB5 !important;
-  margin-bottom: 8px;
 }
 
+.friends-page-title-text,
+.friends-page-body-text {
+  font-family: 'Urbanist', sans-serif !important;
+  font-weight: 500 !important;
+  font-size: 1.15rem !important;
+  color: black !important;
+  margin-top: 1rem !important;
+}
+
+/* Render Friends List */
 .friends-list {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  position: fixed;
+  top: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  background-color: #F5EFFD;
+  overflow-y: auto;
 }
 
+  /* Header */
 .friends-list-header {
+  position: sticky;
+  border-bottom: 1px solid black;
   display: flex;
   align-items: center;
-  gap: 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  justify-content: space-between;
+  gap: 2;
+  background-color: #CDAEF2;
 }
 
 .friends-list-back-btn {
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.friend-header-back-icon {
-  color: #5D3889;
+  font-family: 'Urbanist', sans-serif !important;
+  color: #4c2670 !important;
+  text-transform: none;
+  font-weight: 600 !important;
+  font-size: 0.95rem;
+  width: 32px !important;
+  height: 32px !important;
 }
 
 .friends-list-title {
-  font-weight: 600;
-  font-size: 1rem;
+  font-family:'Urbanist', sans-serif !important;
+  font-size: 2rem !important;
+  font-weight: 500 !important;
+  color: #5D3889;
+  text-align: center;
+  flex: 1;
 }
 
 .friend-request-btn {
-  position: relative;
-  border-radius: 999px;
-  text-transform: none;
-  font-weight: 600;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  margin-right: -2rem;
+  cursor: pointer;
+  transition: transform .2s ease;
 }
 
 .friend-request-icon {
-  margin-right: 6px;
+  width: 32px !important;
+  height: 32px !important;
+  color: white !important;
+  cursor: pointer;
 }
 
 .friend-request-icon-badge {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  background: #ff4b8b;
-  color: #fff;
-  padding: 2px 6px;
+  position: relative;
+  bottom: 15px;
+  right: 0.75rem;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
   border-radius: 999px;
-  font-size: 0.7rem;
+  background: #9B5DE5;
+  color: #fff;
+  font-size: 0.75rem;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
 }
 
+  /* Friend Request Dialog  */
 .friend-dialog-overlay {
   overflow: hidden !important;
 }
 
 .friend-dialog-title {
+  font-family: 'Urbanist', sans-serif !important;
   font-weight: 700 !important;
   font-size: 1.4rem !important;
   text-align: center;
@@ -117,12 +298,15 @@
 }
 
 .friend-dialog-content {
+  font-family: 'Urbanist', sans-serif !important;
+  font-weight: 300 !important;
   font-size: 1rem !important;
   background-color: white !important;
   padding: 1.5rem !important;
 }
 
 .friend-dialog-alert {
+  font-family: 'Urbanist', sans-serif !important;
   border-radius: 10px !important;
   background-color: white !important;
 }
@@ -138,6 +322,7 @@
 }
 
 .friend-dialog-empty-desc {
+  font-family: 'Urbanist', sans-serif !important;
   font-weight: 500 !important;
   font-size: 0.95rem !important;
   text-align: center !important;
@@ -153,21 +338,25 @@
 }
 
 .friend-dialog-request-name {
+  font-family: 'Urbanist', sans-serif !important;
   font-weight: 700 !important;
   color: black !important;
 }
 
 .friend-dialog-request-time {
+  font-family: 'Urbanist', sans-serif !important;
   font-size: 0.85rem !important;
   color: gray !important;
 }
 
 .friend-dialog-request-message {
+  font-family: 'Urbanist', sans-serif !important;
   font-style: italic !important;
   color: gray !important;
 }
 
 .friend-dialog-accept-btn {
+  font-family: 'Urbanist', sans-serif !important;
   text-transform: none !important;
   background-color: #3EB8F0 !important;
   color: #fff !important;
@@ -178,6 +367,7 @@
 }
 
 .friend-dialog-decline-btn {
+  font-family: 'Urbanist', sans-serif !important;
   text-transform: none !important;
   border-color: #E53935 !important;
   color: #E53935 !important;
@@ -194,6 +384,7 @@
 }
 
 .friend-dialog-close-btn {
+  font-family: 'Urbanist', sans-serif !important;
   font-size: 0.95rem !important;
   text-transform: none !important;
   background-color: white !important;
@@ -206,99 +397,113 @@
   background-color: #f1f1f1 !important;
 }
 
-.friends-page-toolbar .MuiTypography-root {
-  color: white;
-}
-
-.friends-page-toolbar .MuiIconButton-root {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.friends-page-toolbar .MuiButton-contained {
-  background: #5D3889;
-}
-
-.friends-page-toolbar .MuiButton-contained:hover {
-  background: #4a2d6d;
-}
-
+  /* Search Bar */
 .friends-list-search-bar {
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  background: #faf6ff;
+  position: sticky;
+  background-color: #CDAEF2;
+  padding: 12px;
+  margin-top: -1rem;
+  z-index: 10;
 }
 
 .friends-search-icon {
-  color: #5D3889;
+  width: 28px !important;
+  height: 28px !important;
+  margin-left: -0.25rem;
+  margin-right: -0.5rem;
+  color: #F15BB5;
 }
 
 .friends-list-search-bar-input-container {
-  background: #fff;
-  border-radius: 12px;
+  background: white;
+  border-radius: 10px;
+}
+
+.friends-list-search-bar-input-container .MuiInputBase-input {
+  font-family:'Urbanist', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: black;
+  padding: 8px 10px;
+}
+
+.friends-list-search-bar-input-container .MuiInputBase-input::placeholder {
+  font-weight: 600;
 }
 
 .friends-search-none-text {
+  font-family:'Urbanist', sans-serif !important;
+  font-size: 1rem !important;
+  font-weight: 500 !important;
   text-align: center;
-  padding: 16px;
-  font-weight: 600;
-  color: #666;
+  margin-top: 2rem !important;
 }
 
+  /* Friend card */
 .friend-card {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  position: relative;
+  border-bottom: 1px solid black;
 }
 
 .friends-list-name-container {
-  margin-left: 8px;
+  display: flex;
+  margin-left: -1.25rem;
+}
+
+.friends-list-name-wrapper {
+  align-items: flex-end;
 }
 
 .friends-list-display-name {
-  font-weight: 600;
-  font-size: 1rem;
+  font-family:'Urbanist', sans-serif !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  color: black;
 }
 
 .friends-list-user-name {
-  font-size: 0.85rem;
-  color: #777;
+  font-family:'Urbanist', sans-serif !important;
+  font-size: 0.8rem !important;
+  color: gray;
 }
 
+  /* friend action buttons */
 .friend-actions-container {
   display: flex;
-  gap: 8px;
+  justify-content: space-around !important;
+  gap: 0px !important;
 }
 
 .message-friend-container,
 .remove-friend-container,
 .report-friend-container {
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  border-radius: 20px;
   width: 40px;
   height: 40px;
-  border-radius: 12px;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.message-friend-icon,
+.remove-friend-icon,
+.report-friend-icon {
+  cursor: pointer;
+  width: 28px !important;
+  height: 28px !important;
 }
 
 .message-friend-icon {
-  color: #1b6e95;
+  color: #3EB8F0;
 }
 
 .remove-friend-icon {
-  color: #b64a63;
+  color: rgb(209, 118, 133);
 }
 
 .report-friend-icon {
-  color: #c62828;
-}
-
-.message-friend-container {
-  background: #def4ff;
-}
-
-.remove-friend-container {
-  background: #ffe5ef;
-}
-
-.report-friend-container {
-  background: #ffe6e3;
+  color: red;
 }
