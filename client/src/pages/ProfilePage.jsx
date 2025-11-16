@@ -1,46 +1,26 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
-import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
-import {
-  fetchCurrentUserProfile,
-  fetchUserProfile,
-  updateCurrentUserProfile,
-  uploadImage
-} from '../api/mongoDataApi';
 import resolveProfileNavTarget from '../utils/profileNav';
-import { DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
 import { routes } from '../routes';
 import './ProfilePage.css';
-import ProfileActionRow from '../components/profile/ProfileActionRow';
 import ProfileBlockDialog from '../components/profile/ProfileBlockDialog';
-import ProfileBadges from '../components/profile/ProfileBadges';
-import ProfileBio from '../components/profile/ProfileBio';
 import ProfileEditForm from '../components/profile/ProfileEditForm';
 import ProfileHero from '../components/profile/ProfileHero';
-import ProfileMutualFriends from '../components/profile/ProfileMutualFriends';
-import ProfileStatsSummary from '../components/profile/ProfileStatsSummary';
-import ProfileModerationPanel from '../components/profile/ProfileModerationPanel';
 import ReportContentDialog from '../components/ReportContentDialog';
 import GlobalNavMenu from '../components/GlobalNavMenu';
-import useProfileBadges from '../hooks/useProfileBadges';
-import useProfileMutualFriends from '../hooks/useProfileMutualFriends';
-import useProfileStats from '../hooks/useProfileStats';
-import useProfileInteractions from '../hooks/useProfileInteractions';
+import useProfileDetail from '../hooks/useProfileDetail';
+import useProfileFriendActions from '../hooks/useProfileFriendActions';
 import useProfileReporting from '../hooks/useProfileReporting';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
-import {
-  resolveProfileAvatarUrl,
-  resolveProfileBannerUrl,
-  TF2_AVATAR_MAP
-} from '../utils/profileAssets';
+const ProfileOverviewPanel = lazy(() => import('../components/profile/ProfileOverviewPanel'));
+const ProfileModerationPanel = lazy(() => import('../components/profile/ProfileModerationPanel'));
 
 /*
  * NOTE:
@@ -49,7 +29,7 @@ import {
  *   • Raw profile JSON inspector + account timeline metadata
  *   • Preferences/notification summaries and provisioning audit trails
  *   • DM/report entry points with auto-logging hooks
- * - All underlying fetch/update logic (editing flows, block/unblock, moderation requests, etc.) still lives in useProfileDetail/useProfileInteractions.
+ * - All underlying fetch/update logic (editing flows, block/unblock, moderation requests, etc.) lives in the profile hooks.
  */
 
 export const pageConfig = {
@@ -63,299 +43,93 @@ export const pageConfig = {
   resolveNavTarget: resolveProfileNavTarget
 };
 
-
-const formatDateTime = (value) => {
-  if (!value) {
-    return 'N/A';
-  }
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 'N/A';
-  }
-  return date.toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  });
-};
-
-const buildProfileFetchErrorState = (error, { hasSeedUser } = {}) => {
-  if (!error) {
-    return null;
-  }
-  const status = typeof error?.status === 'number' ? error.status : null;
-  const isAuthError = status === 401 || status === 403 || Boolean(error?.isAuthError);
-  const normalizedMessage = typeof error?.message === 'string' && error.message.trim().length > 0
-    ? error.message
-    : 'Failed to load user profile.';
-  const cacheHint = hasSeedUser ? ' Cached profile data may be stale.' : '';
-  return {
-    message: isAuthError
-      ? `Session expired. Please sign in again to load the latest profile.${cacheHint}`
-      : `${normalizedMessage}${cacheHint}`,
-    status,
-    isAuthError
-  };
-};
-
+function PanelFallback({ label }) {
+  return (
+    <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
+      <CircularProgress size={18} thickness={5} />
+      <Typography variant="body2" color="text.secondary">
+        {label}
+      </Typography>
+    </Stack>
+  );
+}
 
 function ProfilePage() {
-
   const location = useLocation();
   const navigate = useNavigate();
   const { userId } = useParams();
-  const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
-  const shouldLoadCurrentUser =
-    normalizedUserId.length === 0 || normalizedUserId === 'me' || normalizedUserId === ':userId';
-  const targetUserId = shouldLoadCurrentUser ? null : normalizedUserId;
-  const userFromState = location.state?.user;
-  const originPath = typeof location.state?.from === 'string' ? location.state.from : null;
-  const [fetchedUser, setFetchedUser] = useState(null);
-  const [isFetchingProfile, setIsFetchingProfile] = useState(false);
-  const [fetchError, setFetchError] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [updateStatus, setUpdateStatus] = useState(null);
-  const [viewerProfile, setViewerProfile] = useState(null);
-  const [formState, setFormState] = useState({
-    displayName: '',
-    bio: '',
-    locationSharingEnabled: false,
-    theme: 'system',
-    avatarFile: null,
-    avatarPreviewUrl: null,
-    avatarCleared: true,
-    bannerFile: null,
-    bannerPreviewUrl: null,
-    bannerCleared: true
-  });
-  const avatarPreviewUrlRef = useRef(null);
-  const bannerPreviewUrlRef = useRef(null);
   const { isOffline } = useNetworkStatusContext();
 
-  const clearAvatarPreviewUrl = useCallback(() => {
-    if (avatarPreviewUrlRef.current && avatarPreviewUrlRef.current.startsWith('blob:')) {
-      URL.revokeObjectURL(avatarPreviewUrlRef.current);
-    }
-    avatarPreviewUrlRef.current = null;
-  }, []);
-  const clearBannerPreviewUrl = useCallback(() => {
-    if (bannerPreviewUrlRef.current && bannerPreviewUrlRef.current.startsWith('blob:')) {
-      URL.revokeObjectURL(bannerPreviewUrlRef.current);
-    }
-    bannerPreviewUrlRef.current = null;
-  }, []);
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadViewerProfile() {
-      try {
-        const profile = await fetchCurrentUserProfile();
-        if (!ignore) {
-          setViewerProfile(profile);
-        }
-      } catch (error) {
-        if (!ignore) {
-          console.warn('Failed to load viewer profile for relationship management', error);
-          setViewerProfile(null);
-        }
-      }
-    }
-
-    loadViewerProfile();
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-  const initializeFormState = useCallback(
-    (profile) => ({
-      displayName: profile?.displayName ?? '',
-      bio: profile?.bio ?? '',
-      locationSharingEnabled: Boolean(profile?.locationSharingEnabled),
-      theme: profile?.preferences?.theme ?? 'system',
-      avatarFile: null,
-      avatarPreviewUrl: profile?.avatar ? resolveProfileAvatarUrl(profile.avatar) : null,
-      avatarCleared: !profile?.avatar,
-      bannerFile: null,
-      bannerPreviewUrl: profile?.banner ? resolveProfileBannerUrl(profile.banner) : null,
-      bannerCleared: !profile?.banner
-    }),
-    []
-  );
-
-  useEffect(
-    () => () => {
-      clearAvatarPreviewUrl();
-      clearBannerPreviewUrl();
-    },
-    [clearAvatarPreviewUrl, clearBannerPreviewUrl]
-  );
-
-  useEffect(() => {
-    let ignore = false;
-
-    if (userFromState) {
-      setFetchedUser(userFromState);
-      setFetchError(null);
-    }
-
-    const shouldFetchProfile = shouldLoadCurrentUser || Boolean(targetUserId);
-
-    if (!shouldFetchProfile) {
-      if (!userFromState) {
-        setFetchedUser(null);
-      }
-      setIsFetchingProfile(false);
-      return () => {
-        ignore = true;
-      };
-    }
-
-    setIsFetchingProfile(true);
-    setFetchError(null);
-
-    async function loadProfile() {
-      try {
-        const profile = shouldLoadCurrentUser
-          ? await fetchCurrentUserProfile()
-          : await fetchUserProfile(targetUserId);
-        if (ignore) {
-          return;
-        }
-        setFetchedUser(profile);
-        setFetchError(null);
-      } catch (error) {
-        if (ignore) {
-          return;
-        }
-        console.error('Failed to load user profile:', error);
-        setFetchError(buildProfileFetchErrorState(error, { hasSeedUser: Boolean(userFromState) }));
-        if (!userFromState) {
-          setFetchedUser(null);
-        }
-      } finally {
-        if (!ignore) {
-          setIsFetchingProfile(false);
-        }
-      }
-    }
-
-    loadProfile();
-
-    return () => {
-      ignore = true;
-    };
-  }, [targetUserId, shouldLoadCurrentUser, userFromState]);
-
-  // Always prefer the fetched profile object so Chrome's cache/offline flows
-  // don't leave us stuck rendering the seed `location.state.user` payload (which
-  // lacks mutual friend metadata and PinCard contract fields).
-  const effectiveUser = fetchedUser ?? userFromState ?? null;
-
-  useEffect(() => {
-    if (shouldLoadCurrentUser && effectiveUser) {
-      setViewerProfile(effectiveUser);
-    }
-  }, [effectiveUser, shouldLoadCurrentUser]);
-
-  useEffect(() => {
-    if (process.env.NODE_ENV !== 'development') {
-      return;
-    }
-    if (!effectiveUser && !userFromState && !fetchedUser) {
-      return;
-    }
-    console.debug('[ProfilePage] effectiveUser resolved', {
-      userFromState: userFromState?._id || userFromState?.id || null,
-      fetchedUser: fetchedUser?._id || fetchedUser?.id || null,
-      effectiveUser: effectiveUser?._id || effectiveUser?.id || null
-    });
-  }, [effectiveUser, fetchedUser, userFromState]);
-
-  const displayName = useMemo(() => {
-    if (effectiveUser) {
-      return (
-        effectiveUser.displayName ||
-        effectiveUser.username ||
-        effectiveUser.fullName ||
-        effectiveUser.email ||
-        userId ||
-        'Unknown User'
-      );
-    }
-    return userId || 'Unknown User';
-  }, [effectiveUser, userId]);
-  const targetProfileId = useMemo(() => {
-    if (effectiveUser?._id) {
-      return String(effectiveUser._id);
-    }
-    if (effectiveUser?.id) {
-      return String(effectiveUser.id);
-    }
-    if (!shouldLoadCurrentUser && targetUserId) {
-      return targetUserId;
-    }
-    return null;
-  }, [effectiveUser?._id, effectiveUser?.id, shouldLoadCurrentUser, targetUserId]);
-
-  const avatarUrl = useMemo(() => {
-    const primary = resolveProfileAvatarUrl(effectiveUser?.avatar);
-    const usernameKey =
-      typeof effectiveUser?.username === 'string'
-        ? effectiveUser.username.trim().toLowerCase()
-        : null;
-    if (primary && DEFAULT_PROFILE_IMAGE_REGEX.test(primary) && usernameKey) {
-      const fallbackPath = TF2_AVATAR_MAP[usernameKey];
-      if (fallbackPath) {
-        return resolveProfileAvatarUrl(fallbackPath);
-      }
-    }
-    if ((!primary || DEFAULT_PROFILE_IMAGE_REGEX.test(primary)) && usernameKey) {
-      const fallbackPath = TF2_AVATAR_MAP[usernameKey];
-      if (fallbackPath) {
-        return resolveProfileAvatarUrl(fallbackPath);
-      }
-    }
-    return primary;
-  }, [effectiveUser]);
-  const bannerUrl = useMemo(() => resolveProfileBannerUrl(effectiveUser?.banner), [effectiveUser]);
-  const editingAvatarSrc = formState.avatarCleared ? null : formState.avatarPreviewUrl ?? avatarUrl;
-  const editingBannerSrc = formState.bannerCleared ? null : formState.bannerPreviewUrl ?? bannerUrl;
-  const avatarDisplaySrc = isEditing ? editingAvatarSrc ?? undefined : avatarUrl;
-  const bannerDisplaySrc = isEditing ? editingBannerSrc : bannerUrl;
-  const fetchErrorMessage = typeof fetchError === 'string' ? fetchError : fetchError?.message;
-  const fetchErrorSeverity = fetchError?.isAuthError ? 'error' : 'warning';
-
   const {
-    isViewingSelf,
-    isBlocked,
-    isFriend,
-    canEditProfile,
-    canManageBlock,
-    canSendFriendRequest,
-    blockDialogMode,
-    isProcessingBlockAction,
+    originPath,
+    effectiveUser,
+    displayName,
+    avatarUrl,
+    bannerUrl,
+    hasProfile,
+    bioText,
+    badgeList,
+    mutualFriendCount,
+    mutualFriendPreview,
+    statsVisible,
+    statsEntries,
+    accountTimeline,
+    isFetchingProfile,
+    fetchError,
     relationshipStatus,
     setRelationshipStatus,
+    isEditing,
+    formState,
+    handleBeginEditing,
+    handleCancelEditing,
+    handleAvatarFileChange,
+    handleBannerFileChange,
+    handleClearAvatar,
+    handleClearBanner,
+    handleFieldChange,
+    handleThemeChange,
+    handleToggleLocationSharing,
+    handleSaveProfile,
+    isSavingProfile,
+    updateStatus,
+    setUpdateStatus,
+    editingAvatarSrc,
+    editingBannerSrc,
+    canEditProfile,
     handleRequestBlock,
     handleRequestUnblock,
     handleCloseBlockDialog,
     handleConfirmBlockDialog,
+    blockDialogMode,
+    isProcessingBlockAction,
+    canManageBlock,
+    isBlocked,
+    isViewingSelf,
+    targetProfileId,
+    viewerProfile,
+    setViewerProfile,
+    setFetchedUser
+  } = useProfileDetail({
+    userIdParam: userId,
+    locationState: location.state ?? {},
+    isOffline
+  });
+
+  const {
+    isFriend,
+    canSendFriendRequest,
     hasPendingFriendRequest,
     isSendingFriendRequest,
     handleSendFriendRequest
-  } = useProfileInteractions({
+  } = useProfileFriendActions({
     viewerProfile,
-    effectiveUser,
-    targetUserId,
-    shouldLoadCurrentUser,
-    userFromState,
     setViewerProfile,
+    effectiveUser,
     setFetchedUser,
-    displayName
+    targetProfileId,
+    isViewingSelf
   });
+
   const {
     dialogOpen: reportDialogOpen,
     openDialog: handleOpenReportProfile,
@@ -367,7 +141,6 @@ function ProfilePage() {
     submitReport: handleSubmitProfileReport,
     isSubmitting: isSubmittingReport,
     error: reportError,
-    setError: setReportError,
     status: reportStatus,
     dismissStatus: handleReportStatusClose
   } = useProfileReporting({
@@ -376,20 +149,36 @@ function ProfilePage() {
     isViewingSelf,
     isOffline
   });
-  const { mutualFriendCount, mutualFriendPreview } = useProfileMutualFriends(effectiveUser);
 
-  useEffect(() => {
-    if (process.env.NODE_ENV !== 'development') {
+  const statsLookup = useMemo(() => {
+    const snapshot = new Map();
+    (statsEntries || []).forEach(({ key, value }) => {
+      const numericValue = typeof value === 'number' ? value : Number(value);
+      snapshot.set(key, Number.isFinite(numericValue) ? numericValue : 0);
+    });
+    return snapshot;
+  }, [statsEntries]);
+
+  const postCount = statsLookup.get('posts') ?? 0;
+  const eventsHosted = statsLookup.get('eventsHosted') ?? 0;
+  const eventsAttended = statsLookup.get('eventsAttended') ?? 0;
+
+  const joinedDisplay = accountTimeline?.createdAt ?? 'N/A';
+  const avatarDisplaySrc = isEditing ? editingAvatarSrc ?? undefined : avatarUrl;
+  const bannerDisplaySrc = isEditing ? editingBannerSrc : bannerUrl;
+
+  const fetchErrorMessage =
+    typeof fetchError === 'string' ? fetchError : fetchError?.message;
+  const fetchErrorSeverity =
+    fetchError?.severity || (fetchError?.isAuthError ? 'error' : 'warning');
+
+  const handleBack = useCallback(() => {
+    if (originPath) {
+      navigate(originPath);
       return;
     }
-    if (typeof window !== 'undefined') {
-      window.__PROFILE_MUTUALS_LAST = {
-        count: mutualFriendCount,
-        preview: mutualFriendPreview
-      };
-      window.__PROFILE_EFFECTIVE_USER = effectiveUser;
-    }
-  }, [effectiveUser, mutualFriendCount, mutualFriendPreview]);
+    navigate(-1);
+  }, [navigate, originPath]);
 
   const handleMessageUser = useCallback(() => {
     if (!targetProfileId || isViewingSelf || isOffline) {
@@ -403,54 +192,6 @@ function ProfilePage() {
       }
     });
   }, [displayName, isOffline, isViewingSelf, navigate, targetProfileId]);
-
-  const canInteractWithProfile = Boolean(targetProfileId && !isViewingSelf);
-  const messageDisabled = !canInteractWithProfile || isOffline;
-  const reportDisabled = !canInteractWithProfile || isOffline || isSubmittingReport;
-  const messageTooltip = messageDisabled
-    ? isViewingSelf
-      ? 'You cannot message yourself.'
-      : isOffline
-      ? 'Reconnect to send messages.'
-      : !targetProfileId
-      ? 'User unavailable.'
-      : undefined
-    : undefined;
-  const reportTooltip = reportDisabled
-    ? isViewingSelf
-      ? 'You cannot report your own profile.'
-      : isOffline
-      ? 'Reconnect to submit reports.'
-      : !targetProfileId
-      ? 'User unavailable.'
-      : isSubmittingReport
-      ? 'Submitting report...'
-      : undefined
-    : undefined;
-
-  useEffect(() => {
-    if (!isEditing && effectiveUser) {
-      setFormState(initializeFormState(effectiveUser));
-    }
-  }, [effectiveUser, initializeFormState, isEditing]);
-
-  const handleBeginEditing = useCallback(() => {
-    if (!effectiveUser) {
-      return;
-    }
-    clearAvatarPreviewUrl();
-    clearBannerPreviewUrl();
-    setFormState(initializeFormState(effectiveUser));
-    setUpdateStatus(null);
-    setIsEditing(true);
-  }, [clearAvatarPreviewUrl, clearBannerPreviewUrl, effectiveUser, initializeFormState]);
-
-  const handleCancelEditing = useCallback(() => {
-    clearAvatarPreviewUrl();
-    clearBannerPreviewUrl();
-    setFormState(initializeFormState(effectiveUser));
-    setIsEditing(false);
-  }, [clearAvatarPreviewUrl, clearBannerPreviewUrl, effectiveUser, initializeFormState]);
 
   const handleOpenMutualFriend = useCallback(
     (friendId) => {
@@ -466,263 +207,76 @@ function ProfilePage() {
     [navigate, location.pathname]
   );
 
-  const handleAvatarFileChange = useCallback(
-    (event) => {
-      const file = event.target.files?.[0];
-      if (!file) {
-        return;
-      }
-      if (avatarPreviewUrlRef.current && avatarPreviewUrlRef.current.startsWith('blob:')) {
-        URL.revokeObjectURL(avatarPreviewUrlRef.current);
-      }
-      const previewUrl = URL.createObjectURL(file);
-      avatarPreviewUrlRef.current = previewUrl;
-      setFormState((prev) => ({
-        ...prev,
-        avatarFile: file,
-        avatarPreviewUrl: previewUrl,
-        avatarCleared: false
-      }));
-      event.target.value = '';
-    },
-    []
-  );
+  const canInteractWithProfile = Boolean(targetProfileId && !isViewingSelf);
+  const messageDisabled = !canInteractWithProfile || isOffline;
+  const reportDisabled = !canInteractWithProfile || isOffline || isSubmittingReport;
 
-  const handleBannerFileChange = useCallback(
-    (event) => {
-      const file = event.target.files?.[0];
-      if (!file) {
-        return;
-      }
-      if (bannerPreviewUrlRef.current && bannerPreviewUrlRef.current.startsWith('blob:')) {
-        URL.revokeObjectURL(bannerPreviewUrlRef.current);
-      }
-      const previewUrl = URL.createObjectURL(file);
-      bannerPreviewUrlRef.current = previewUrl;
-      setFormState((prev) => ({
-        ...prev,
-        bannerFile: file,
-        bannerPreviewUrl: previewUrl,
-        bannerCleared: false
-      }));
-      event.target.value = '';
-    },
-    []
-  );
+  const messageTooltip = messageDisabled
+    ? isViewingSelf
+      ? 'You cannot message yourself.'
+      : isOffline
+      ? 'Reconnect to send messages.'
+      : !targetProfileId
+      ? 'User unavailable.'
+      : undefined
+    : undefined;
 
-  const handleClearAvatar = useCallback(() => {
-    clearAvatarPreviewUrl();
-    setFormState((prev) => ({
-      ...prev,
-      avatarFile: null,
-      avatarPreviewUrl: null,
-      avatarCleared: true
-    }));
-  }, [clearAvatarPreviewUrl]);
+  const reportTooltip = reportDisabled
+    ? isViewingSelf
+      ? 'You cannot report your own profile.'
+      : isOffline
+      ? 'Reconnect to submit reports.'
+      : !targetProfileId
+      ? 'User unavailable.'
+      : isSubmittingReport
+      ? 'Submitting report...'
+      : undefined
+    : undefined;
 
-  const handleClearBanner = useCallback(() => {
-    clearBannerPreviewUrl();
-    setFormState((prev) => ({
-      ...prev,
-      bannerFile: null,
-      bannerPreviewUrl: null,
-      bannerCleared: true
-    }));
-  }, [clearBannerPreviewUrl]);
-
-  const handleFieldChange = useCallback((field) => {
-    return (event) => {
-      const value = typeof event?.target?.value === 'string' ? event.target.value : '';
-      setFormState((prev) => ({
-        ...prev,
-        [field]: value
-      }));
-    };
-  }, []);
-
-  const handleThemeChange = useCallback((event) => {
-    const value = typeof event?.target?.value === 'string' ? event.target.value : 'system';
-    setFormState((prev) => ({
-      ...prev,
-      theme: value
-    }));
-  }, []);
-
-  const handleToggleLocationSharing = useCallback((event) => {
-    setFormState((prev) => ({
-      ...prev,
-      locationSharingEnabled: Boolean(event?.target?.checked)
-    }));
-  }, []);
-
-  const handleSaveProfile = useCallback(
-    async (event) => {
-      event.preventDefault();
-      if (!effectiveUser) {
-        setUpdateStatus({
-          type: 'error',
-          message: 'No profile data is loaded.'
-        });
-        return;
-      }
-
-      const trimmedDisplayName = formState.displayName.trim();
-      if (!trimmedDisplayName) {
-        setUpdateStatus({ type: 'error', message: 'Display name cannot be empty.' });
-        return;
-      }
-
-      const payload = {};
-
-      if (trimmedDisplayName !== (effectiveUser.displayName ?? '')) {
-        payload.displayName = trimmedDisplayName;
-      }
-
-      const normalizedBio = formState.bio.trim();
-      const existingBio = effectiveUser?.bio ?? '';
-      if (normalizedBio !== existingBio) {
-        payload.bio = normalizedBio.length > 0 ? normalizedBio : null;
-      }
-
-      if (formState.locationSharingEnabled !== Boolean(effectiveUser?.locationSharingEnabled)) {
-        payload.locationSharingEnabled = formState.locationSharingEnabled;
-      }
-
-      if (formState.avatarCleared && (effectiveUser?.avatar || formState.avatarFile)) {
-        payload.avatar = null;
-      } else if (formState.avatarFile) {
-        let uploaded;
-        try {
-          setIsSavingProfile(true);
-          uploaded = await uploadImage(formState.avatarFile);
-        } catch (error) {
-          setIsSavingProfile(false);
-          setUpdateStatus({ type: 'error', message: error?.message || 'Failed to upload avatar.' });
-          return;
-        }
-
-        payload.avatar = Object.fromEntries(
-          Object.entries({
-            url: uploaded?.url,
-            thumbnailUrl: uploaded?.thumbnailUrl,
-            width: uploaded?.width,
-            height: uploaded?.height,
-            mimeType: uploaded?.mimeType,
-            description: uploaded?.description,
-            uploadedAt: uploaded?.uploadedAt,
-            uploadedBy: effectiveUser?._id
-          }).filter(([, value]) => value !== undefined && value !== null && value !== '')
-        );
-      }
-
-      if (formState.bannerCleared && (effectiveUser?.banner || formState.bannerFile)) {
-        payload.banner = null;
-      } else if (formState.bannerFile) {
-        let uploadedBanner;
-        try {
-          setIsSavingProfile(true);
-          uploadedBanner = await uploadImage(formState.bannerFile);
-        } catch (error) {
-          setIsSavingProfile(false);
-          setUpdateStatus({ type: 'error', message: error?.message || 'Failed to upload banner.' });
-          return;
-        }
-
-        payload.banner = Object.fromEntries(
-          Object.entries({
-            url: uploadedBanner?.url,
-            thumbnailUrl: uploadedBanner?.thumbnailUrl,
-            width: uploadedBanner?.width,
-            height: uploadedBanner?.height,
-            mimeType: uploadedBanner?.mimeType,
-            description: uploadedBanner?.description,
-            uploadedAt: uploadedBanner?.uploadedAt,
-            uploadedBy: effectiveUser?._id
-          }).filter(([, value]) => value !== undefined && value !== null && value !== '')
-        );
-      }
-
-      const preferencesPayload = {};
-      const currentTheme = effectiveUser?.preferences?.theme ?? 'system';
-      if (formState.theme !== currentTheme) {
-        preferencesPayload.theme = formState.theme;
-      }
-
-      if (Object.keys(preferencesPayload).length > 0) {
-        payload.preferences = preferencesPayload;
-      }
-
-      if (Object.keys(payload).length === 0) {
-        setUpdateStatus({ type: 'info', message: 'No changes to save.' });
-        return;
-      }
-
-      try {
-        setIsSavingProfile(true);
-        const updatedProfile = await updateCurrentUserProfile(payload);
-        setFetchedUser(updatedProfile);
-        setUpdateStatus({ type: 'success', message: 'Profile updated successfully.' });
-        setIsEditing(false);
-        clearAvatarPreviewUrl();
-        clearBannerPreviewUrl();
-        setFormState(initializeFormState(updatedProfile));
-      } catch (error) {
-        setUpdateStatus({ type: 'error', message: error?.message || 'Failed to update profile.' });
-      } finally {
-        setIsSavingProfile(false);
-      }
-    },
+  const actionRowProps = useMemo(
+    () => ({
+      canManageBlock,
+      isBlocked,
+      isProcessingBlockAction,
+      isFetchingProfile,
+      onRequestBlock: handleRequestBlock,
+      onRequestUnblock: handleRequestUnblock,
+      showFriendAction: !isViewingSelf,
+      canSendFriendRequest,
+      isFriend,
+      hasPendingFriendRequest,
+      isSendingFriendRequest,
+      onSendFriendRequest: handleSendFriendRequest,
+      onMessage: handleMessageUser,
+      messageDisabled,
+      messageTooltip,
+      onReport: handleOpenReportProfile,
+      reportDisabled,
+      reportTooltip,
+      isReporting: isSubmittingReport
+    }),
     [
-      clearAvatarPreviewUrl,
-      clearBannerPreviewUrl,
-      effectiveUser,
-      formState.avatarCleared,
-      formState.avatarFile,
-      formState.bio,
-      formState.displayName,
-      formState.locationSharingEnabled,
-      formState.bannerCleared,
-      formState.bannerFile,
-      formState.theme,
-      initializeFormState
+      canManageBlock,
+      handleOpenReportProfile,
+      handleMessageUser,
+      handleRequestBlock,
+      handleRequestUnblock,
+      handleSendFriendRequest,
+      hasPendingFriendRequest,
+      isBlocked,
+      isFetchingProfile,
+      isFriend,
+      isProcessingBlockAction,
+      isSendingFriendRequest,
+      isSubmittingReport,
+      isViewingSelf,
+      messageDisabled,
+      messageTooltip,
+      canSendFriendRequest,
+      reportDisabled,
+      reportTooltip
     ]
   );
-
-  const hasProfile = Boolean(effectiveUser);
-  const bioText = useMemo(() => {
-    const rawBio = effectiveUser?.bio;
-    if (typeof rawBio !== 'string') {
-      return null;
-    }
-    const trimmed = rawBio.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }, [effectiveUser?.bio]);
-  const { statsVisible, postCount, eventsHosted, eventsAttended } = useProfileStats(effectiveUser);
-  const badgeList = useProfileBadges(effectiveUser);
-
-  const accountTimeline = useMemo(() => {
-    if (!effectiveUser) {
-      return null;
-    }
-    return {
-      createdAt: formatDateTime(effectiveUser?.createdAt),
-      updatedAt: formatDateTime(effectiveUser?.updatedAt),
-      status: effectiveUser.accountStatus ?? 'unknown',
-      email: effectiveUser.email ?? 'â€”',
-      userId: effectiveUser._id ?? targetUserId ?? 'â€”'
-    };
-  }, [effectiveUser, targetUserId]);
-
-  const joinedDisplay = accountTimeline?.createdAt ?? 'N/A';
-  const handleBack = useCallback(() => {
-    if (originPath) {
-      navigate(originPath);
-      return;
-    }
-    navigate(-1);
-  }, [navigate, originPath]);
-
-
 
   return (
     <div className="profile-page-container">
@@ -738,7 +292,7 @@ function ProfilePage() {
         <div className="profile-nav-menu">
           <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
         </div>
-        {canEditProfile && !isEditing && (
+        {canEditProfile && !isEditing ? (
           <Button
             variant="contained"
             onClick={handleBeginEditing}
@@ -748,7 +302,7 @@ function ProfilePage() {
           >
             Edit profile
           </Button>
-        )}
+        ) : null}
       </div>
 
       <div className="profile-page-frame">
@@ -768,16 +322,16 @@ function ProfilePage() {
             </Alert>
           ) : null}
 
-        {relationshipStatus ? (
-          <Alert severity={relationshipStatus.type} onClose={() => setRelationshipStatus(null)}>
-            {relationshipStatus.message}
-          </Alert>
-        ) : null}
-        {reportStatus ? (
-          <Alert severity={reportStatus.type} onClose={handleReportStatusClose}>
-            {reportStatus.message}
-          </Alert>
-        ) : null}
+          {relationshipStatus ? (
+            <Alert severity={relationshipStatus.type} onClose={() => setRelationshipStatus(null)}>
+              {relationshipStatus.message}
+            </Alert>
+          ) : null}
+          {reportStatus ? (
+            <Alert severity={reportStatus.type} onClose={handleReportStatusClose}>
+              {reportStatus.message}
+            </Alert>
+          ) : null}
 
           <ProfileHero
             avatarSrc={avatarDisplaySrc ?? undefined}
@@ -811,56 +365,32 @@ function ProfilePage() {
 
           {hasProfile ? (
             <>
-              <Divider />
-              <ProfileStatsSummary
-                statsVisible={statsVisible}
-                postCount={postCount}
-                eventsHosted={eventsHosted}
-                eventsAttended={eventsAttended}
-              />
-              {!isViewingSelf ? (
-                <ProfileMutualFriends
+              <Suspense fallback={<PanelFallback label="Loading profile details..." />}>
+                <ProfileOverviewPanel
+                  statsVisible={statsVisible}
+                  postCount={postCount}
+                  eventsHosted={eventsHosted}
+                  eventsAttended={eventsAttended}
+                  showMutualFriends={!isViewingSelf}
                   mutualFriendCount={mutualFriendCount}
                   mutualFriendPreview={mutualFriendPreview}
                   onSelectFriend={handleOpenMutualFriend}
-                  resolveAvatarUrl={resolveProfileAvatarUrl}
+                  bioText={bioText}
+                  badgeList={badgeList}
+                  actionRowProps={actionRowProps}
                 />
-              ) : null}
-              <Stack spacing={3}>
-                <ProfileBio bioText={bioText} />
-                <ProfileBadges badgeList={badgeList} />
-                <ProfileActionRow
-                  canManageBlock={canManageBlock}
-                  isBlocked={isBlocked}
-                  isProcessingBlockAction={isProcessingBlockAction}
-                  isFetchingProfile={isFetchingProfile}
-                  onRequestBlock={handleRequestBlock}
-                  onRequestUnblock={handleRequestUnblock}
-                  showFriendAction={!isViewingSelf}
-                  canSendFriendRequest={canSendFriendRequest}
-                  isFriend={isFriend}
-                  hasPendingFriendRequest={hasPendingFriendRequest}
-                  isSendingFriendRequest={isSendingFriendRequest}
-                  onSendFriendRequest={handleSendFriendRequest}
-                  onMessage={handleMessageUser}
-                  messageDisabled={messageDisabled}
-                  messageTooltip={messageTooltip}
-                  onReport={handleOpenReportProfile}
-                  reportDisabled={reportDisabled}
-                  reportTooltip={reportTooltip}
-                  isReporting={isSubmittingReport}
+              </Suspense>
+              <Suspense fallback={<PanelFallback label="Loading moderation tools..." />}>
+                <ProfileModerationPanel
+                  targetUserId={targetProfileId}
+                  displayName={displayName}
+                  accountStatus={effectiveUser?.accountStatus}
+                  isViewingSelf={isViewingSelf}
                 />
-              </Stack>
-              <ProfileModerationPanel
-                targetUserId={targetProfileId}
-                displayName={displayName}
-                accountStatus={effectiveUser?.accountStatus}
-                isViewingSelf={isViewingSelf}
-              />
+              </Suspense>
             </>
           ) : null}
         </Stack>
-
       </div>
 
       <ProfileBlockDialog
