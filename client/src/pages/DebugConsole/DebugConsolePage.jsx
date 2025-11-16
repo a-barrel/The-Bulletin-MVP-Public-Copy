@@ -108,7 +108,13 @@ export function DebugConsolePage() {
 
         <Box sx={{ display: 'contents' }}>
           {activeTab ? (
-            <Suspense fallback={<Typography>Loading tab…</Typography>}>
+            <Suspense
+              fallback={
+                <Typography variant="body2" color="text.secondary">
+                  {activeTab.fallback ?? 'Loading tab…'}
+                </Typography>
+              }
+            >
               <activeTab.Component />
             </Suspense>
           ) : null}

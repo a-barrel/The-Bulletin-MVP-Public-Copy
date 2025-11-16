@@ -1,4 +1,5 @@
-import { Alert, CircularProgress, Paper, Stack, Typography } from '@mui/material';
+import { Alert, Paper, Stack, Typography } from '@mui/material';
+import LoadingOverlay from '../LoadingOverlay';
 
 function ModerationSummaryGrid({
   overviewStats,
@@ -14,12 +15,7 @@ function ModerationSummaryGrid({
       ) : null}
 
       {isLoading ? (
-        <Stack direction="row" spacing={2} alignItems="center">
-          <CircularProgress size={20} />
-          <Typography variant="body2" color="text.secondary">
-            Loading overview…
-          </Typography>
-        </Stack>
+        <LoadingOverlay label="Loading overview…" minHeight={220} />
       ) : (
         <>
           {overviewStats.length ? (

@@ -64,6 +64,12 @@
   color: #5d3889;
 }
 
+.bookmarks-nav-summary {
+  max-width: 1040px;
+  margin: 0 auto 16px;
+  padding: 0 18px;
+}
+
 .bookmarks-content {
   max-width: 1040px;
   margin: 0 auto;

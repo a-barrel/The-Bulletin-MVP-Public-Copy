@@ -1,5 +1,5 @@
 /* NOTE: Page exports configuration alongside the component. */
-import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import MapIcon from '@mui/icons-material/Map';
@@ -18,6 +18,9 @@ import GlobalNavMenu from '../components/GlobalNavMenu';
 import resolveAssetUrl from '../utils/media';
 import { haversineDistanceMeters, formatDistanceMiles, formatDistanceMetersLabel } from '../utils/geo';
 import SelectableLocationMap from '../components/create-pin/SelectableLocationMap';
+import useViewerProfile from '../hooks/useViewerProfile';
+import PinPreviewCard from '../components/create-pin/PinPreviewCard';
+import CREATE_PIN_TEMPLATE from '../constants/createPinTemplate';
 
 export const pageConfig = {
   id: 'create-pin',
@@ -43,19 +46,7 @@ const DEFAULT_MAP_CENTER = {
 
 const DEFAULT_AVATAR_PATH = '/images/profile/profile-01.jpg';
 
-const FIGMA_TEMPLATE = {
-  header: {
-    title: 'Event',
-    time: '9:41',
-    cta: 'Post'
-  },
-  fields: {
-    titlePlaceholder: '[Empty] Event Title',
-    descriptionPlaceholder: "[Empty] Event dets - what's cooking?",
-    modeLabel: 'Event',
-    locationPrompt: 'Tap where the event will take place.'
-  }
-};
+const FIGMA_TEMPLATE = CREATE_PIN_TEMPLATE;
 
 const PIN_TYPE_LABELS = {
   event: 'Event',
@@ -68,30 +59,7 @@ function CreatePinPage() {
   const { location: viewerLocation } = useLocationContext();
   const { announceBadgeEarned } = useBadgeSound();
   const { handleBack: overlayBack, previousNavPath, previousNavPage } = useNavOverlay();
-  const [viewerProfile, setViewerProfile] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (isOffline) {
-      setViewerProfile(null);
-      return () => {};
-    }
-    (async () => {
-      try {
-        const profile = await fetchCurrentUserProfile();
-        if (!cancelled) {
-          setViewerProfile(profile ?? null);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setViewerProfile(null);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isOffline]);
+  const { viewer: viewerProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
 
   const viewerDisplayName = useMemo(() => {
     if (viewerProfile?.displayName) {
@@ -296,6 +264,19 @@ function CreatePinPage() {
             </button>
           </div>
         )}
+
+        <div className="form-section preview-section">
+          <PinPreviewCard
+            pinType={pinType}
+            formState={formState}
+            viewerName={viewerDisplayName}
+            viewerAvatarUrl={viewerAvatarUrl}
+            photoAssets={photoAssets}
+            coverPhotoId={coverPhotoId}
+            pinDistanceLabel={pinDistanceLabel}
+            activeTheme={activeTheme}
+          />
+        </div>
 
         {/* Pin type toggle */}
         <div className="field-group">

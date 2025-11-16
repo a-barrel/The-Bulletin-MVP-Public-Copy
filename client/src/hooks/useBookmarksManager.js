@@ -265,6 +265,10 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
     }
   }, [authUser, isOffline, totalCount]);
 
+  const dismissError = useCallback(() => setError(null), []);
+  const dismissRemovalStatus = useCallback(() => setRemovalStatus(null), []);
+  const dismissExportStatus = useCallback(() => setExportStatus(null), []);
+
   // Expose raw data, derived data, and the helper actions so pages can pick what they need.
   return {
     bookmarks,
@@ -272,19 +276,19 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
     totalCount,
     isLoading,
     error,
-    setError,
     removalStatus,
-    setRemovalStatus,
     removingPinId,
     isExporting,
     exportStatus,
-    setExportStatus,
     handleRemoveBookmark,
     handleExport,
     refresh: loadData,
     formatSavedDate,
     collections,
-    collectionsById
+    collectionsById,
+    dismissError,
+    dismissRemovalStatus,
+    dismissExportStatus
   };
 }
 

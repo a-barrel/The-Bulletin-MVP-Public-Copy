@@ -17,7 +17,11 @@ function NotFoundPage({ defaultPath = routes.auth.login, defaultLabel = 'Go to M
   const pathLabel = location?.pathname ?? 'this page';
 
   useEffect(() => {
-    reportClientError(null, 'Page not found', { path: location?.pathname ?? 'unknown' });
+    const path = location?.pathname ?? 'unknown';
+    reportClientError(null, 'Page not found', { path });
+    if (typeof window !== 'undefined' && window.analytics?.track) {
+      window.analytics.track('not_found_view', { path });
+    }
   }, [location?.pathname]);
 
   const handleGoBack = useCallback(() => {

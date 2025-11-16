@@ -4,7 +4,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   Paper,
   Snackbar,
   Stack,
@@ -20,9 +19,11 @@ import { resolveContentReport } from '../api/mongoDataApi';
 import runtimeConfig from '../config/runtime';
 import useModerationOverview from '../hooks/useModerationOverview';
 import useContentReports from '../hooks/useContentReports';
+import LoadingOverlay from '../components/LoadingOverlay';
 import ModerationSummaryGrid from '../components/admin/ModerationSummaryGrid';
 import ReportStatusTabs from '../components/admin/ReportStatusTabs';
 import ReportsTable from '../components/admin/ReportsTable';
+import { deriveSummaryAfterResolution } from '../utils/moderationReports';
 
 export const pageConfig = {
   id: 'admin-dashboard',
@@ -39,12 +40,6 @@ const STATUS_TABS = [
   { value: 'resolved', label: 'Resolved', icon: DoneIcon },
   { value: 'dismissed', label: 'Dismissed', icon: DoNotDisturbIcon }
 ];
-
-const statusToChipColor = {
-  pending: 'warning',
-  resolved: 'success',
-  dismissed: 'default'
-};
 
 const formatSummaryCount = (count) =>
   typeof count === 'number' ? (count > 99 ? '99+' : String(count)) : '0';
@@ -100,9 +95,21 @@ function AdminDashboard() {
       if (!reportId || !nextStatus) {
         return;
       }
+
+      const previousReport = reports.find((report) => report.id === reportId);
+      const previousStatus = previousReport?.status;
+      const previousResolvedAt =
+        previousReport?.resolution?.resolvedAt ?? previousReport?.resolvedAt ?? null;
+
       setResolvingReportId(reportId);
       try {
         const response = await resolveContentReport(reportId, { status: nextStatus });
+        const updatedReport = response?.report;
+        const nextResolvedAt =
+          updatedReport?.resolution?.resolvedAt ??
+          previousReport?.resolution?.resolvedAt ??
+          new Date().toISOString();
+
         setSnackbar({
           type: 'success',
           message:
@@ -110,36 +117,42 @@ function AdminDashboard() {
               ? 'Report marked as resolved.'
               : 'Report dismissed.'
         });
-        setReports((prev) =>
-          prev
-            .map((report) =>
-              report.id === reportId
-                ? {
-                    ...report,
-                    status: nextStatus,
-                    resolution: response?.report?.resolution ?? {
-                      resolvedAt: new Date().toISOString(),
-                      resolvedBy: response?.report?.resolution?.resolvedBy ?? null,
-                      notes: response?.report?.resolution?.notes ?? ''
-                    }
-                  }
-                : report
-            )
-            .filter((report) => (reportStatus === 'pending' ? report.id !== reportId : true))
+
+        setReports((prev) => {
+          const hasTarget = prev.some((report) => report.id === reportId);
+          if (!hasTarget) {
+            return prev;
+          }
+          return prev
+            .map((report) => {
+              if (report.id !== reportId) {
+                return report;
+              }
+              if (updatedReport) {
+                return updatedReport;
+              }
+              return {
+                ...report,
+                status: nextStatus,
+                resolution: {
+                  ...(report.resolution ?? {}),
+                  resolvedAt: nextResolvedAt,
+                  resolvedBy: report.resolution?.resolvedBy ?? null,
+                  notes: report.resolution?.notes ?? ''
+                }
+              };
+            })
+            .filter((report) => report.status === reportStatus);
+        });
+
+        setReportSummary((current) =>
+          deriveSummaryAfterResolution(current, {
+            previousStatus,
+            previousResolvedAt,
+            nextStatus,
+            nextResolvedAt
+          })
         );
-        if (reportSummary) {
-          const updates = { ...reportSummary };
-          if (reportStatus === 'pending' && typeof updates.pendingCount === 'number') {
-            updates.pendingCount = Math.max(0, updates.pendingCount - 1);
-          }
-          if (nextStatus === 'resolved' && typeof updates.resolvedTodayCount === 'number') {
-            updates.resolvedTodayCount += 1;
-          }
-          if (nextStatus === 'dismissed' && typeof updates.dismissedCount === 'number') {
-            updates.dismissedCount += 1;
-          }
-          setReportSummary(updates);
-        }
       } catch (error) {
         setSnackbar({
           type: 'error',
@@ -149,7 +162,7 @@ function AdminDashboard() {
         setResolvingReportId(null);
       }
     },
-    [reportStatus, reportSummary]
+    [reportStatus, reports]
   );
 
   const overviewStats = useMemo(() => {
@@ -337,12 +350,7 @@ function AdminDashboard() {
             ) : null}
 
             {isLoadingReports ? (
-              <Stack direction="row" spacing={2} alignItems="center">
-                <CircularProgress size={20} />
-                <Typography variant="body2" color="text.secondary">
-                  Loading reports…
-                </Typography>
-              </Stack>
+              <LoadingOverlay label="Loading reports…" minHeight={240} />
             ) : (
               <ReportsTable
                 reports={reports}
