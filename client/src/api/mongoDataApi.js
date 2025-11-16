@@ -163,6 +163,20 @@ function createApiError(response, payload, fallbackMessage) {
     }
   }
 
+  const accountSuspended =
+    statusCode === 403 &&
+    (payload?.code === 'ACCOUNT_SUSPENDED' || normalizedMessage.includes('suspend'));
+
+  if (accountSuspended) {
+    error.isAuthError = true;
+    error.code = payload?.code || 'ACCOUNT_SUSPENDED';
+    error.message =
+      payload?.message || 'Your account has been suspended. Please contact support for help.';
+    if (typeof window !== 'undefined') {
+      auth.signOut().catch(() => {});
+    }
+  }
+
   return error;
 }
 
