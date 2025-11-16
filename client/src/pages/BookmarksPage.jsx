@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Box, CircularProgress, Paper, Stack, Typography } from '@mui/material';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
 import { routes } from '../routes';
 import './BookmarksPage.css';
 import useBookmarksData from '../hooks/useBookmarksData';

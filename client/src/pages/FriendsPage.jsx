@@ -185,7 +185,8 @@ function FriendsPage() {
     reason: '',
     durationMinutes: '15'
   });
-  const { channelTab, channelDialogTab, setChannelDialogTab } = useChatTabs({
+  const [lastConversationTab, setLastConversationTab] = useState('rooms');
+  const { channelTab, channelDialogTab, setChannelDialogTab, setChannelTab } = useChatTabs({
     locationSearch: location.search,
     directMessagesHasAccess,
     selectDirectThread,
@@ -193,7 +194,6 @@ function FriendsPage() {
     refreshFriendGraph,
     setLastConversationTab
   });
-  const [lastConversationTab, setLastConversationTab] = useState('rooms');
   const [isChannelDialogOpen, setIsChannelDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
@@ -900,6 +900,18 @@ function FriendsPage() {
     ]
   );
 
+  const handleOpenFriendDialog = useCallback(() => {
+    setFriendActionStatus(null);
+    setIsFriendDialogOpen(true);
+  }, []);
+
+  const handleCloseFriendDialog = useCallback(() => {
+    if (respondingRequestId) {
+      return;
+    }
+    setIsFriendDialogOpen(false);
+  }, [respondingRequestId]);
+
   const notificationsLabel =
     incomingRequests.length > 0 ? `Notifications (${incomingRequests.length} unread)` : 'Notifications';
   const displayBadge = incomingRequests.length > 0 ? (incomingRequests.length > 99 ? '99+' : String(incomingRequests.length)) : null;
@@ -957,7 +969,13 @@ function FriendsPage() {
     if (!message) {
       return null;
     }
-    const candidates = [message._id, message.id, message.messageId, message?._id?.$oid, message?.id?.$oid];
+    const candidates = [
+      message._id,
+      message.id,
+      message.messageId,
+      message?._id?.$oid,
+      message?.id?.$oid
+    ];
     for (const candidate of candidates) {
       const normalized = normalizeObjectId(candidate);
       if (normalized) {
@@ -986,6 +1004,98 @@ function FriendsPage() {
     }
     return 'Message';
   }, [getDisplayMessageText]);
+
+
+  const handleSelectModerationAction = useCallback((actionType) => {
+    setModerationForm((prev) => ({
+      ...prev,
+      type: actionType,
+      durationMinutes: actionType === 'mute' ? prev.durationMinutes || '15' : prev.durationMinutes
+    }));
+  }, []);
+
+  const handleModerationFieldChange = useCallback(
+    (field) => (event) => {
+      const { value } = event.target;
+      setModerationForm((prev) => ({
+        ...prev,
+        [field]: value
+      }));
+    },
+    []
+  );
+
+  const handleOpenModerationForMessage = useCallback(
+    (message) => {
+      if (channelTab !== 'rooms') {
+        return;
+      }
+      if (!canModerateMessages) {
+        return;
+      }
+      const targetId = getMessageAuthorId(message);
+      if (!targetId) {
+        return;
+      }
+      const displayName =
+        message?.author?.displayName || message?.author?.username || message?.author?.id || 'User';
+      const messagePreview = getDisplayMessageText(message);
+      const resolvedKey = getMessageKey(message, 0);
+      setModerationContext({
+        userId: targetId,
+        displayName,
+        messagePreview,
+        messageId: resolvedKey || targetId
+      });
+    },
+    [canModerateMessages, channelTab, getDisplayMessageText, getMessageAuthorId, getMessageKey]
+  );
+
+  const handleCloseModerationDialog = useCallback(() => {
+    setModerationContext(null);
+    resetModerationActionStatus();
+  }, [resetModerationActionStatus]);
+
+  const handleModerationSubmit = useCallback(
+    async (event) => {
+      event.preventDefault();
+      if (!moderationContext?.userId || moderationHasAccess === false) {
+        return;
+      }
+
+      const trimmedReason = moderationForm.reason.trim();
+      const payload = {
+        userId: moderationContext.userId,
+        type: moderationForm.type
+      };
+      if (trimmedReason) {
+        payload.reason = trimmedReason;
+      }
+      if (moderationForm.type === 'mute') {
+        const parsed = Number.parseInt(moderationForm.durationMinutes, 10);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          payload.durationMinutes = Math.min(1440, Math.max(1, parsed));
+        }
+      }
+
+      try {
+        await recordModerationAction(payload);
+        setModerationForm((prev) => ({
+          ...prev,
+          reason: ''
+        }));
+      } catch {
+        // surfaced via action status
+      }
+    },
+    [moderationContext, moderationForm, moderationHasAccess, recordModerationAction]
+  );
+
+  const disableModerationSubmit =
+    !moderationContext?.userId ||
+    moderationHasAccess === false ||
+    isOffline ||
+    isRecordingModerationAction;
 
   const directViewerId = dmViewer?._id ? String(dmViewer._id) : null;
 
@@ -1347,109 +1457,6 @@ function FriendsPage() {
     onUnfriend: handleUnfriend,
     onReportFriend: handleReportFriend
   };
-
-  const handleSelectModerationAction = useCallback((actionType) => {
-    setModerationForm((prev) => ({
-      ...prev,
-      type: actionType,
-      durationMinutes: actionType === 'mute' ? prev.durationMinutes || '15' : prev.durationMinutes
-    }));
-  }, []);
-
-  const handleModerationFieldChange = useCallback(
-    (field) => (event) => {
-      const { value } = event.target;
-      setModerationForm((prev) => ({
-        ...prev,
-        [field]: value
-      }));
-    },
-    []
-  );
-
-  const handleOpenModerationForMessage = useCallback(
-    (message) => {
-      if (channelTab !== 'rooms') {
-        return;
-      }
-      if (!canModerateMessages) {
-        return;
-      }
-      const targetId = getMessageAuthorId(message);
-      if (!targetId) {
-        return;
-      }
-      const displayName =
-        message?.author?.displayName || message?.author?.username || message?.author?.id || 'User';
-      const messagePreview = getDisplayMessageText(message);
-      const resolvedKey = getMessageKey(message, 0);
-      setModerationContext({
-        userId: targetId,
-        displayName,
-        messagePreview,
-        messageId: resolvedKey || targetId
-      });
-    },
-    [channelTab, canModerateMessages, getDisplayMessageText, getMessageAuthorId, getMessageKey]
-  );
-
-  const handleCloseModerationDialog = useCallback(() => {
-    setModerationContext(null);
-    resetModerationActionStatus();
-  }, [resetModerationActionStatus]);
-
-  const handleModerationSubmit = useCallback(
-    async (event) => {
-      event.preventDefault();
-      if (!moderationContext?.userId || moderationHasAccess === false) {
-        return;
-      }
-
-      const trimmedReason = moderationForm.reason.trim();
-      const payload = {
-        userId: moderationContext.userId,
-        type: moderationForm.type
-      };
-      if (trimmedReason) {
-        payload.reason = trimmedReason;
-      }
-      if (moderationForm.type === 'mute') {
-        const parsed = Number.parseInt(moderationForm.durationMinutes, 10);
-        if (Number.isFinite(parsed) && parsed > 0) {
-          payload.durationMinutes = Math.min(1440, Math.max(1, parsed));
-        }
-      }
-
-      try {
-        await recordModerationAction(payload);
-        setModerationForm((prev) => ({
-          ...prev,
-          reason: ''
-        }));
-      } catch {
-        // surfaced via action status
-      }
-    },
-    [moderationContext, moderationForm, moderationHasAccess, recordModerationAction]
-  );
-
-  const disableModerationSubmit =
-    !moderationContext?.userId ||
-    moderationHasAccess === false ||
-    isOffline ||
-    isRecordingModerationAction;
-
-  const handleOpenFriendDialog = useCallback(() => {
-    setFriendActionStatus(null);
-    setIsFriendDialogOpen(true);
-  }, [setFriendActionStatus]);
-
-  const handleCloseFriendDialog = useCallback(() => {
-    if (respondingRequestId) {
-      return;
-    }
-    setIsFriendDialogOpen(false);
-  }, [respondingRequestId]);
 
 
   const handleRespondToFriendRequest = async (requestId, decision) => {

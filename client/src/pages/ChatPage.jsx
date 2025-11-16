@@ -57,6 +57,7 @@ import { auth } from '../firebase';
 import useChatManager from '../hooks/useChatManager';
 import useModerationTools from '../hooks/useModerationTools';
 import useFriendGraph from '../hooks/useFriendGraph';
+import useChatTabs from '../hooks/useChatTabs';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { useLocationContext } from '../contexts/LocationContext';
 import { useUpdates } from '../contexts/UpdatesContext';
@@ -188,11 +189,12 @@ function ChatPage() {
     reason: '',
     durationMinutes: '15'
   });
+  const [lastConversationTab, setLastConversationTab] = useState('rooms');
   const {
     channelTab,
     channelDialogTab,
     setChannelDialogTab,
-    toggleChannelTab
+    setChannelTab
   } = useChatTabs({
     locationSearch: location.search,
     directMessagesHasAccess,
@@ -201,7 +203,6 @@ function ChatPage() {
     refreshFriendGraph,
     setLastConversationTab
   });
-  const [lastConversationTab, setLastConversationTab] = useState('rooms');
   const [isChannelDialogOpen, setIsChannelDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);

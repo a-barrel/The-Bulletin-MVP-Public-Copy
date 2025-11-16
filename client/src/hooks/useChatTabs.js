@@ -57,14 +57,10 @@ export default function useChatTabs({
     }
   }, [channelTab, setLastConversationTab]);
 
-  const toggleChannelTab = useCallback((tab) => {
-    setChannelTab(tab);
-  }, []);
-
   return {
     channelTab,
     channelDialogTab,
     setChannelDialogTab,
-    toggleChannelTab
+    setChannelTab
   };
 }
