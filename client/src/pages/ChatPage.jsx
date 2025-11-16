@@ -8,15 +8,6 @@ import {
   Typography,
   Button,
   IconButton,
-  Avatar,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemAvatar,
-  ListItemText,
-  ListItemSecondaryAction,
-  Chip,
-  Tooltip,
   TextField,
   Dialog,
   DialogTitle,
@@ -36,7 +27,6 @@ import MarkUnreadChatAltIcon from '@mui/icons-material/MarkUnreadChatAlt';
 import CloseIcon from '@mui/icons-material/Close';
 import updatesIcon from '../assets/UpdateIcon.svg';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
-import RefreshIcon from '@mui/icons-material/Refresh';
 
 
 import Navbar from '../components/Navbar';
@@ -47,6 +37,8 @@ import ChatRoomList from '../components/chat/ChatRoomList';
 import ChatComposerFooter from '../components/chat/ChatComposerFooter';
 import ChatModerationDialog from '../components/chat/ChatModerationDialog';
 import DirectThreadList from '../components/chat/DirectThreadList';
+import FriendsListPanel from '../components/friends/FriendsListPanel';
+import FriendRequestsDialog from '../components/friends/FriendRequestsDialog';
 import useDirectMessages from '../hooks/useDirectMessages';
 import useAttachmentManager, {
   mapDraftAttachmentPayloads,
@@ -56,7 +48,7 @@ import useAttachmentManager, {
 import { auth } from '../firebase';
 import useChatManager from '../hooks/useChatManager';
 import useModerationTools from '../hooks/useModerationTools';
-import useFriendGraph from '../hooks/useFriendGraph';
+import useFriendsDirectory from '../hooks/useFriendsDirectory';
 import useChatTabs from '../hooks/useChatTabs';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { useLocationContext } from '../contexts/LocationContext';
@@ -67,11 +59,7 @@ import useScrollToLatestMessage from '../hooks/useScrollToLatestMessage';
 import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constants/moderationActions';
 import { createContentReport } from '../api/mongoDataApi';
 import { ATTACHMENT_ONLY_PLACEHOLDER, MAX_CHAT_ATTACHMENTS } from '../utils/chatAttachments';
-import {
-  getParticipantId,
-  resolveAvatarSrc,
-  resolveThreadParticipants
-} from '../utils/chatParticipants';
+import { getParticipantId, resolveThreadParticipants } from '../utils/chatParticipants';
 import normalizeObjectId from '../utils/normalizeObjectId';
 import './ChatPage.css';
 
@@ -172,15 +160,23 @@ function ChatPage() {
   } = useDirectMessages();
 
   const {
-    graph: friendGraph,
-    refresh: refreshFriendGraph,
-    isLoading: isLoadingFriends,
-    status: friendStatus,
-    queueStatus: friendQueueStatus,
-    removeFriend: removeFriendRelationship,
-    hasAccess: friendHasAccess,
-    isProcessing: isProcessingFriendAction
-  } = useFriendGraph();
+    friends,
+    filteredFriends,
+    searchQuery: friendSearchQuery,
+    setSearchQuery: setFriendSearchQuery,
+    incomingRequests,
+    notificationsLabel: friendNotificationsLabel,
+    requestBadge: friendRequestBadge,
+    isLoadingFriends,
+    friendStatus,
+    friendQueueStatus,
+    friendHasAccess,
+    isProcessingFriendAction,
+    refreshFriendGraph,
+    removeFriendRelationship,
+    respondToFriendRequest,
+    refreshNotifications
+  } = useFriendsDirectory();
 
   const [moderationInitAttempted, setModerationInitAttempted] = useState(false);
   const [moderationContext, setModerationContext] = useState(null);
@@ -212,6 +208,8 @@ function ChatPage() {
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportStatus, setReportStatus] = useState(null);
   const [friendActionStatus, setFriendActionStatus] = useState(null);
+  const [isFriendDialogOpen, setIsFriendDialogOpen] = useState(false);
+  const [respondingRequestId, setRespondingRequestId] = useState(null);
   const [dmMessageDraft, setDmMessageDraft] = useState('');
 
   const {
@@ -506,6 +504,48 @@ function ChatPage() {
     setChannelDialogTab('friends');
     setIsChannelDialogOpen(false);
   }, [channelTab, directMessagesHasAccess, lastConversationTab, setChannelDialogTab, setChannelTab, setIsChannelDialogOpen]);
+
+  const handleOpenFriendDialog = useCallback(() => {
+    setFriendActionStatus(null);
+    setIsFriendDialogOpen(true);
+  }, []);
+
+  const handleCloseFriendDialog = useCallback(() => {
+    if (respondingRequestId) {
+      return;
+    }
+    setIsFriendDialogOpen(false);
+  }, [respondingRequestId]);
+
+  const handleRespondToFriendRequest = useCallback(
+    async (requestId, decision) => {
+      if (!requestId || !decision) {
+        return;
+      }
+      setRespondingRequestId(requestId);
+      setFriendActionStatus(null);
+      try {
+        await respondToFriendRequest({ requestId, decision });
+        setFriendActionStatus({
+          type: 'success',
+          message: decision === 'accept' ? 'Friend request accepted.' : 'Friend request declined.'
+        });
+
+        await Promise.allSettled([
+          refreshNotifications(),
+          refreshFriendGraph().catch(() => {})
+        ]);
+      } catch (error) {
+        setFriendActionStatus({
+          type: 'error',
+          message: error?.message || 'Failed to update friend request.'
+        });
+      } finally {
+        setRespondingRequestId(null);
+      }
+    },
+    [refreshFriendGraph, refreshNotifications, respondToFriendRequest]
+  );
 
   const handleMessageFriend = useCallback(
     async (friend) => {
@@ -1265,6 +1305,26 @@ function ChatPage() {
     isOffline ||
     isRecordingModerationAction;
 
+  const disableMessageAction = directMessagesHasAccess === false || isCreatingDirectThread;
+
+  const friendPanelProps = {
+    friends,
+    filteredFriends,
+    searchQuery: friendSearchQuery,
+    onSearchChange: setFriendSearchQuery,
+    isLoading: isLoadingFriends,
+    friendStatus,
+    hasAccess: friendHasAccess,
+    notificationsLabel: friendNotificationsLabel,
+    requestBadge: friendRequestBadge,
+    onOpenFriendRequests: handleOpenFriendDialog,
+    onMessageFriend: handleMessageFriend,
+    onRemoveFriend: handleUnfriend,
+    onReportFriend: handleReportFriend,
+    disableMessageAction,
+    disableFriendActions: isProcessingFriendAction
+  };
+
   const roomMessageBubbles = useMemo(
     () =>
       uniqueMessages.map((message, index) => (
@@ -1474,225 +1534,12 @@ function ChatPage() {
     );
   };
 
-  const renderFriendsList = ({ isOverlay = false } = {}) => {
-    if (friendHasAccess === false) {
-      return (
-        <Stack
-          spacing={1.5}
-          alignItems="center"
-          justifyContent="center"
-          sx={{ flexGrow: 1, py: 6, color: isOverlay ? 'inherit' : '#111' }}
-        >
-          <Typography variant="h6" align="center" sx={!isOverlay ? { color: '#111' } : undefined}>
-            Friend access required
-          </Typography>
-          <Typography
-            variant="body2"
-            align="center"
-            sx={!isOverlay ? { color: '#555' } : undefined}
-          >
-            You need additional privileges to view or manage friends.
-          </Typography>
-        </Stack>
-      );
-    }
-
-    const friends = Array.isArray(friendGraph?.friends) ? friendGraph.friends : [];
-
-    if (isLoadingFriends && friends.length === 0) {
-      return (
-        <Stack
-          spacing={2}
-          alignItems="center"
-          justifyContent="center"
-          sx={{ flexGrow: 1, py: 6, color: isOverlay ? 'inherit' : '#111' }}
-        >
-          <CircularProgress />
-          <Typography variant="body2" sx={!isOverlay ? { color: '#111' } : undefined}>
-            Loading friends…
-          </Typography>
-        </Stack>
-      );
-    }
-
-    return (
-      <Box
-        sx={{
-          flexGrow: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          color: isOverlay ? 'inherit' : '#111'
-        }}
-      >
-        <Box
-          sx={{
-            px: 2,
-            py: 1.5,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 2
-          }}
-        >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography
-              variant="subtitle1"
-              fontWeight={700}
-              sx={!isOverlay ? { color: '#111' } : undefined}
-            >
-              Friends
-            </Typography>
-            <Chip label={friends.length} size="small" color="primary" variant="outlined" />
-          </Stack>
-          <Tooltip title="Refresh friends">
-            <span>
-              <IconButton
-                onClick={refreshFriendGraph}
-                disabled={isLoadingFriends || isProcessingFriendAction}
-                color="primary"
-                sx={{
-                  '&.Mui-disabled': {
-                    color: (theme) => theme.palette.action.disabled
-                  }
-                }}
-              >
-                {isLoadingFriends ? (
-                  <CircularProgress size={20} color="primary" />
-                ) : (
-                  <RefreshIcon fontSize="small" />
-                )}
-              </IconButton>
-            </span>
-          </Tooltip>
-        </Box>
-
-        {friendStatus && friendStatus.message ? (
-          <Box sx={{ px: 2, py: 1.5 }}>
-            <Alert severity={friendStatus.type || 'error'}>{friendStatus.message}</Alert>
-          </Box>
-        ) : null}
-
-        {friends.length === 0 && !isLoadingFriends ? (
-          <Stack
-            spacing={1.5}
-            alignItems="center"
-            justifyContent="center"
-            sx={{ flexGrow: 1, py: 6, color: isOverlay ? 'inherit' : '#111' }}
-          >
-            <Typography variant="h6" sx={!isOverlay ? { color: '#111' } : undefined}>
-              No friends yet
-            </Typography>
-            <Typography
-              variant="body2"
-              align="center"
-              sx={!isOverlay ? { color: '#555' } : undefined}
-            >
-              Add some friends to start direct conversations and plan meetups.
-            </Typography>
-          </Stack>
-        ) : null}
-
-        {friends.length ? (
-          <List dense sx={{ flexGrow: 1, overflowY: 'auto', px: { xs: 1, sm: 2 } }}>
-            {friends.map((friend) => {
-              const displayName = friend.displayName || friend.username || 'Friend';
-              const secondaryLabel = friend.username ? `@${friend.username}` : '';
-              const avatarSrc = resolveAvatarSrc(friend);
-              return (
-                <ListItem
-                  key={friend.id}
-                  alignItems="center"
-                  sx={{
-                    py: 1.5,
-                    px: { xs: 1, sm: 0 },
-                    gap: { xs: 1.5, sm: 2 },
-                    flexDirection: { xs: 'column', sm: 'row' },
-                    alignItems: { xs: 'flex-start', sm: 'center' },
-                    color: isOverlay ? 'inherit' : '#111'
-                  }}
-                >
-                  <ListItemAvatar>
-                    <Avatar
-                      src={avatarSrc}
-                      alt={displayName}
-                      imgProps={{ referrerPolicy: 'no-referrer' }}
-                    >
-                      {displayName.charAt(0).toUpperCase()}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={
-                      <Typography
-                        variant="subtitle1"
-                        fontWeight={600}
-                        sx={!isOverlay ? { color: '#111' } : undefined}
-                      >
-                        {displayName}
-                      </Typography>
-                    }
-                    secondary={
-                      secondaryLabel ? (
-                        <Typography
-                          variant="caption"
-                          color={isOverlay ? 'text.secondary' : undefined}
-                          sx={!isOverlay ? { color: '#555' } : undefined}
-                        >
-                          {secondaryLabel}
-                        </Typography>
-                      ) : null
-                    }
-                    sx={{ flex: 1, minWidth: 0 }}
-                  />
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{
-                      width: { xs: '100%', sm: 'auto' },
-                      justifyContent: { xs: 'flex-end', sm: 'flex-start' },
-                      flexWrap: 'wrap',
-                      rowGap: 1
-                    }}
-                  >
-                    <Button
-                      size="small"
-                      variant="contained"
-                      color="primary"
-                      onClick={() => handleMessageFriend(friend)}
-                      disabled={
-                        directMessagesHasAccess === false ||
-                        isProcessingFriendAction ||
-                        isCreatingDirectThread
-                      }
-                    >
-                      Message
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color="secondary"
-                      onClick={() => handleUnfriend(friend)}
-                      disabled={isProcessingFriendAction}
-                    >
-                      Unfriend
-                    </Button>
-                    <Button
-                      size="small"
-                      color="error"
-                      onClick={() => handleReportFriend(friend)}
-                    >
-                      Report
-                    </Button>
-                  </Stack>
-                </ListItem>
-              );
-            })}
-          </List>
-        ) : null}
-      </Box>
-    );
-  };
+  const renderFriendsList = ({ variant }) => (
+    <FriendsListPanel
+      {...friendPanelProps}
+      onBack={variant === 'dialog' ? () => setIsChannelDialogOpen(false) : handleActivateFriendsView}
+    />
+  );
 
   return (
     <>
@@ -1729,7 +1576,7 @@ function ChatPage() {
             {channelTab === 'direct'
               ? renderDirectMessagesMobile()
               : channelTab === 'friends'
-              ? renderFriendsList({ isOverlay: false })
+              ? renderFriendsList({ variant: 'page' })
               : renderRoomMessagesMobile()}
           </Box>
 
@@ -1829,6 +1676,15 @@ function ChatPage() {
             context={reportTarget?.context || ''}
             selectedReasons={reportSelectedOffenses}
             onToggleReason={handleToggleReportOffense}
+          />
+
+          <FriendRequestsDialog
+            open={isFriendDialogOpen}
+            onClose={handleCloseFriendDialog}
+            requests={incomingRequests}
+            actionStatus={friendActionStatus}
+            respondingRequestId={respondingRequestId}
+            onRespond={handleRespondToFriendRequest}
           />
 
           <Snackbar
@@ -2091,7 +1947,7 @@ function ChatPage() {
                 viewerDisplayName={dmViewer?.displayName || null}
               />
             ) : channelDialogTab === 'friends' ? (
-              renderFriendsList({ isOverlay: true })
+              renderFriendsList({ variant: 'dialog' })
             ) : (
               <ChatRoomList
                 rooms={rooms}
