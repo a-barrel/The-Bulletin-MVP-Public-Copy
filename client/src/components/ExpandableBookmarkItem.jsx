@@ -1,0 +1,337 @@
+import { useEffect, useMemo, useState } from 'react';
+import PropTypes from 'prop-types';
+import {
+  Box,
+  Button,
+  Chip,
+  Collapse,
+  ListItemButton,
+  Stack,
+  Typography
+} from '@mui/material';
+
+import PlusIcon from '../assets/Plus.svg';
+import MinusIcon from '../assets/Minus.svg';
+import DiscussionBookmarkIcon from '../assets/Discussion_Bookmarks.svg';
+import EventBookmarkIcon from '../assets/Event_Bookmarks.svg';
+import AttendingBookmarksIcon from '../assets/Attending_Bookmarks.svg';
+import BookmarkedIcon from '../assets/Bookmarked.svg';
+import resolveAssetUrl from '../utils/media';
+import { fetchPinById } from '../api/mongoDataApi';
+import toIdString from '../utils/ids';
+
+function ExpandableBookmarkItem({
+  bookmark,
+  pin,
+  pinId,
+  pinTitle,
+  pinType,
+  tagLabel,
+  savedAt,
+  isRemoving,
+  isOffline,
+  onViewPin,
+  onRemoveBookmark,
+  authUser
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [fullPin, setFullPin] = useState(null);
+  const [isLoadingPin, setIsLoadingPin] = useState(false);
+
+  const handleTitleClick = () => {
+    setExpanded((prev) => !prev);
+  };
+
+  useEffect(() => {
+    if (expanded && pinId && !fullPin && !isLoadingPin) {
+      if (!pin?.description) {
+        setIsLoadingPin(true);
+        fetchPinById(pinId)
+          .then((fetchedPin) => {
+            setFullPin(fetchedPin);
+          })
+          .catch((error) => {
+            console.error('Failed to fetch full pin data:', error);
+          })
+          .finally(() => {
+            setIsLoadingPin(false);
+          });
+      }
+    }
+  }, [expanded, fullPin, isLoadingPin, pin?.description, pinId]);
+
+  const displayPin = fullPin || pin;
+  const description = displayPin?.description || '';
+  const creator = displayPin?.creator;
+  const creatorName = creator?.displayName || creator?.username || 'Unknown';
+  const creatorId = toIdString(displayPin?.creatorId) ?? toIdString(displayPin?.creator?._id);
+  const viewerId = toIdString(authUser?.uid);
+  const ownsPin = Boolean(creatorId && viewerId && creatorId === viewerId);
+  const attending = Boolean(bookmark?.viewerIsAttending);
+  const participantCount =
+    typeof displayPin?.stats?.participantCount === 'number'
+      ? displayPin.stats.participantCount
+      : typeof displayPin?.participantCount === 'number'
+      ? displayPin.participantCount
+      : 0;
+
+  const iconSrc =
+    pinType === 'discussion'
+      ? DiscussionBookmarkIcon
+      : pinType === 'event'
+        ? EventBookmarkIcon
+        : null;
+
+  const mediaAssets = useMemo(() => {
+    const list = [];
+    const cover = displayPin?.coverPhoto;
+    if (cover && cover.url) {
+      list.push(cover);
+    }
+    if (Array.isArray(displayPin?.photos)) {
+      for (const photo of displayPin.photos) {
+        if (!photo || !photo.url) {
+          continue;
+        }
+        if (cover && cover.url && photo.url === cover.url) {
+          continue;
+        }
+        list.push(photo);
+      }
+    }
+    return list;
+  }, [displayPin]);
+
+  const images = useMemo(() => {
+    const urls = [];
+    for (const asset of mediaAssets) {
+      const resolved = resolveAssetUrl(asset, { keys: ['thumbnailUrl', 'url', 'path'] });
+      if (resolved && !urls.includes(resolved)) {
+        urls.push(resolved);
+      }
+    }
+    return urls;
+  }, [mediaAssets]);
+
+  const renderMedia = () => {
+    if (!images.length) {
+      return null;
+    }
+    if (images.length >= 3) {
+      return (
+        <div className="media-scroll" aria-label="Pin photos" role="list">
+          {images.map((src, index) => (
+            <img
+              key={`${pinId || bookmark?._id || 'pin'}-media-${index}`}
+              src={src}
+              className="media scroll-item"
+              alt=""
+              loading="lazy"
+              role="listitem"
+            />
+          ))}
+        </div>
+      );
+    }
+    const gridClass = images.length === 1 ? 'one' : 'two';
+    return (
+      <div className={`media-grid ${gridClass}`}>
+        {images.map((src, index) => (
+          <img
+            key={`${pinId || bookmark?._id || 'pin'}-media-${index}`}
+            src={src}
+            className="media"
+            alt=""
+            loading="lazy"
+          />
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <Box
+      sx={{
+        p: '12px',
+        mb: 2,
+        border: '1px solid black',
+        borderRadius: 5,
+        backgroundColor: '#F5EFFD',
+        color: '#5D3889',
+        fontFamily: '"Urbanist", sans-serif'
+      }}
+    >
+      <ListItemButton
+        onClick={handleTitleClick}
+        sx={{
+          py: 1.5,
+          px: { xs: 2, md: 3 },
+          gap: 1.5,
+          borderBottom: expanded ? '1px solid' : 'none',
+          borderColor: 'divider',
+          display: 'grid',
+          gridTemplateColumns: 'auto 1fr auto',
+          alignItems: 'center',
+          columnGap: 1.5,
+          borderRadius: 0
+        }}
+      >
+        <Box sx={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {iconSrc ? <Box component="img" src={iconSrc} alt={`${pinType} bookmark icon`} sx={{ width: 28, height: 28 }} /> : null}
+        </Box>
+        <Typography variant="subtitle1" fontWeight={600} sx={{ color: '#5D3889', textAlign: 'center', fontFamily: '"Urbanist", sans-serif' }}>
+          {pinTitle}
+        </Typography>
+        <Box
+          component="img"
+          src={expanded ? MinusIcon : PlusIcon}
+          alt={expanded ? 'Collapse' : 'Expand'}
+          sx={{ width: 20, height: 20, justifySelf: 'end' }}
+        />
+      </ListItemButton>
+
+      <Collapse in={expanded} timeout="auto" unmountOnExit>
+        <Box sx={{ py: 2, px: { xs: 2, md: 3 }, transition: 'background-color 0.2s' }}>
+          <Stack spacing={1.5}>
+            <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+              <Stack direction="row" spacing={1} alignItems="center">
+                {tagLabel ? <Chip size="small" label={tagLabel} sx={{ fontFamily: '"Urbanist", sans-serif' }} /> : null}
+                {attending ? (
+                  <Chip
+                    size="small"
+                    label="Attending"
+                    color="success"
+                    sx={{ fontFamily: '"Urbanist", sans-serif', color: '#ffffff' }}
+                  />
+                ) : null}
+                {ownsPin ? (
+                  <Chip
+                    size="small"
+                    label="My pin"
+                    color="secondary"
+                    sx={{ fontFamily: '"Urbanist", sans-serif', color: '#ffffff' }}
+                  />
+                ) : null}
+              </Stack>
+              <Typography variant="body2" color="text.secondary" sx={{ fontFamily: '"Urbanist", sans-serif' }}>
+                Saved {savedAt}
+              </Typography>
+            </Stack>
+
+            {isLoadingPin ? (
+              <Typography variant="body2" sx={{ color: '#5D3889', fontFamily: '"Urbanist", sans-serif' }}>
+                Loading...
+              </Typography>
+            ) : null}
+
+            {renderMedia()}
+
+            {!isLoadingPin && description ? (
+              <Typography
+                variant="body2"
+                sx={{ color: '#5D3889', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: '"Urbanist", sans-serif' }}
+              >
+                {description}
+              </Typography>
+            ) : null}
+
+            <Typography variant="body2" sx={{ color: '#5D3889', fontFamily: '"Urbanist", sans-serif' }}>
+              Created by {creatorName}
+            </Typography>
+
+            <Box
+              sx={{
+                pt: 1,
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                minHeight: '40px'
+              }}
+            >
+              <Box sx={{ flex: '1 1 0', display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 0.5 }}>
+                {pinType === 'event' ? (
+                  <>
+                    <Box component="img" src={AttendingBookmarksIcon} alt="" sx={{ width: 20, height: 20 }} />
+                    <Typography variant="body2" sx={{ color: '#5D3889', fontWeight: 500, fontFamily: '"Urbanist", sans-serif' }}>
+                      {participantCount}
+                    </Typography>
+                  </>
+                ) : null}
+              </Box>
+
+              <Box sx={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', justifyContent: 'center' }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onViewPin(pinId, fullPin || pin);
+                  }}
+                  sx={{
+                    color: 'black',
+                    backgroundColor: '#CDAEF2',
+                    border: '1px solid black',
+                    fontFamily: '"Urbanist", sans-serif',
+                    '&:hover': {
+                      backgroundColor: '#CDAEF2',
+                      border: '1px solid black',
+                      color: 'black'
+                    },
+                    '&.MuiButton-outlined': {
+                      borderColor: 'black'
+                    }
+                  }}
+                >
+                  View
+                </Button>
+              </Box>
+
+              <Box sx={{ flex: '1 1 0', display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  disabled={isOffline || isRemoving}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onRemoveBookmark(bookmark);
+                  }}
+                  title={isOffline ? 'Reconnect to manage bookmarks' : 'Remove bookmark'}
+                  aria-label="Remove bookmark"
+                  className="bookmark-remove-btn"
+                >
+                  <img src={BookmarkedIcon} alt="Remove bookmark" />
+                </button>
+              </Box>
+            </Box>
+          </Stack>
+        </Box>
+      </Collapse>
+    </Box>
+  );
+}
+
+ExpandableBookmarkItem.propTypes = {
+  bookmark: PropTypes.object.isRequired,
+  pin: PropTypes.object,
+  pinId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  pinTitle: PropTypes.string.isRequired,
+  pinType: PropTypes.string.isRequired,
+  tagLabel: PropTypes.string,
+  savedAt: PropTypes.string,
+  isRemoving: PropTypes.bool,
+  isOffline: PropTypes.bool,
+  onViewPin: PropTypes.func.isRequired,
+  onRemoveBookmark: PropTypes.func.isRequired,
+  authUser: PropTypes.object
+};
+
+ExpandableBookmarkItem.defaultProps = {
+  pin: null,
+  pinId: null,
+  tagLabel: 'Pin',
+  savedAt: 'Recently',
+  isRemoving: false,
+  isOffline: false,
+  authUser: null
+};
+
+export default ExpandableBookmarkItem;

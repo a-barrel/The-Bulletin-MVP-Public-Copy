@@ -64,14 +64,14 @@ function DirectThreadList({
   return (
     <>
       <Box className="dm-header">
-        <Box>
+        <Stack spacing={0.5}>
           <Typography className="dm-header-title" component="h2">
             Direct messages
           </Typography>
-          <Typography className="dm-header-subtitle" component="p">
+          <Typography variant="body2" color="text.secondary">
             Select a message thread below
           </Typography>
-        </Box>
+        </Stack>
 
         <Box className="dm-header-action-btns">
           <IconButton
@@ -98,7 +98,6 @@ function DirectThreadList({
           <Typography
             className="has-no-dms-body-text"
             variant="body2"
-            component="p"
           >
             You have no conversations yet. Start one from a profile page.
           </Typography>
@@ -202,9 +201,10 @@ function DirectThreadList({
                 )}
               </ListItemAvatar>
               <ListItemText
-                disableTypography
+                primaryTypographyProps={{ component: 'div' }}
+                secondaryTypographyProps={{ component: 'div' }}
                 primary={
-                  <Typography className="dm-card-name" component="div">
+                  <Typography className="dm-card-name">
                     {displayName}
                     {!isGroupChat && otherParticipantEntries[0]?.id ? (
                       <FriendBadge userId={otherParticipantEntries[0].id} size="0.85em" />
@@ -213,7 +213,7 @@ function DirectThreadList({
                 }
                 secondary={
                   <Box className="dm-card-bottom">
-                    <Typography className="dm-card-timestamp" component="div">
+                    <Typography className="dm-card-timestamp">
                       {thread.lastMessageAt
                         ? formatFriendlyTimestamp(thread.lastMessageAt) ||
                           formatRelativeTime(thread.lastMessageAt) ||
@@ -222,7 +222,7 @@ function DirectThreadList({
                     </Typography>
 
                     {isActive && (
-                      <Typography className="dm-card-active-label" component="div">
+                      <Typography className="dm-card-active-label">
                         Chatting
                       </Typography>
                     )}
