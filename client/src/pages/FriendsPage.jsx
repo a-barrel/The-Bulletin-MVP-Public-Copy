@@ -1,36 +1,38 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
   Button,
-  IconButton,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  MenuItem,
   Snackbar,
   Stack,
+  TextField,
   Typography
 } from '@mui/material';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import FriendRequestIcon from '@mui/icons-material/PersonAddRounded';
+import SmsIcon from '@mui/icons-material/Sms';
 
-import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
-import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
-import useFriendGraph from '../hooks/useFriendGraph';
+import FriendsListPanel from '../components/friends/FriendsListPanel';
+import FriendRequestsDialog from '../components/friends/FriendRequestsDialog';
+import useFriendsDirectory from '../hooks/useFriendsDirectory';
 import useDirectMessages from '../hooks/useDirectMessages';
 import useModerationTools from '../hooks/useModerationTools';
-import normalizeObjectId from '../utils/normalizeObjectId';
+import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
+import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constants/moderationActions';
 import { getParticipantId } from '../utils/chatParticipants';
-import { formatFriendlyTimestamp } from '../utils/dates';
-import FriendsSidebar from '../components/friends/FriendsSidebar';
-import FriendRequestsDialog from '../components/friends/FriendRequestsDialog';
-import ChatModerationDialog from '../components/chat/ChatModerationDialog';
+import normalizeObjectId from '../utils/normalizeObjectId';
 
 import './FriendsPage.css';
 
 export const pageConfig = {
   id: 'friends',
   label: 'Friends',
-  icon: FriendRequestIcon,
+  icon: SmsIcon,
   path: '/friends',
   aliases: ['/friends-todo'],
   order: 90,
@@ -40,100 +42,136 @@ export const pageConfig = {
 
 function FriendsPage() {
   const navigate = useNavigate();
-  const { isOffline } = useNetworkStatusContext();
-  const socialNotifications = useSocialNotificationsContext();
-
   const {
-    graph: friendGraph,
-    refresh: refreshFriendGraph,
-    isLoading: isLoadingFriends,
-    status: friendStatus,
-    queueStatus: friendQueueStatus,
-    removeFriend: removeFriendRelationship,
-    hasAccess: friendHasAccess,
-    isProcessing: isProcessingFriendAction
-  } = useFriendGraph();
+    friends,
+    filteredFriends,
+    searchQuery,
+    setSearchQuery,
+    incomingRequests,
+    notificationsLabel,
+    requestBadge,
+    isLoadingFriends,
+    friendStatus,
+    friendQueueStatus,
+    friendHasAccess,
+    isProcessingFriendAction,
+    refreshFriendGraph,
+    removeFriendRelationship,
+    respondToFriendRequest,
+    refreshNotifications
+  } = useFriendsDirectory();
 
   const {
     threads: dmThreads,
     refreshThreads: refreshDmThreads,
     hasAccess: directMessagesHasAccess,
-    createThread: createDirectThread,
-    isCreating: isCreatingDirectThread
+    isCreating: isCreatingDirectThread,
+    createThread: createDirectThread
   } = useDirectMessages();
 
   const {
     hasAccess: moderationHasAccess,
+    loadOverview: loadModerationOverview,
+    isLoadingOverview: isLoadingModerationOverview,
     recordAction: recordModerationAction,
     isSubmitting: isRecordingModerationAction,
     actionStatus: moderationActionStatus,
     resetActionStatus: resetModerationActionStatus
   } = useModerationTools({ autoLoad: false });
 
-  const friends = useMemo(
-    () => (Array.isArray(friendGraph?.friends) ? friendGraph.friends : []),
-    [friendGraph]
-  );
+  const { isOffline } = useNetworkStatusContext();
 
-  const incomingRequests = socialNotifications.friendData?.incomingRequests || [];
-  const [friendSearchQuery, setFriendSearchQuery] = useState('');
-
-  const [friendActionStatus, setFriendActionStatus] = useState(null);
-  const [isFriendDialogOpen, setIsFriendDialogOpen] = useState(false);
-  const [respondingRequestId, setRespondingRequestId] = useState(null);
+  const [moderationInitAttempted, setModerationInitAttempted] = useState(false);
   const [moderationContext, setModerationContext] = useState(null);
   const [moderationForm, setModerationForm] = useState({
     type: 'warn',
     reason: '',
     durationMinutes: '15'
   });
+  const [friendActionStatus, setFriendActionStatus] = useState(null);
+  const [isFriendDialogOpen, setIsFriendDialogOpen] = useState(false);
+  const [respondingRequestId, setRespondingRequestId] = useState(null);
 
-  const handleRefreshFriends = useCallback(() => {
-    refreshFriendGraph().catch(() => {});
-  }, [refreshFriendGraph]);
+  useEffect(() => {
+    if (friendQueueStatus) {
+      setFriendActionStatus(friendQueueStatus);
+    }
+  }, [friendQueueStatus]);
 
-  const handleOpenFriendDialog = useCallback(() => {
-    setFriendActionStatus(null);
-    setIsFriendDialogOpen(true);
-  }, []);
-
-  const handleCloseFriendDialog = useCallback(() => {
-    if (respondingRequestId) {
+  useEffect(() => {
+    if (isOffline || moderationHasAccess === false) {
       return;
     }
-    setIsFriendDialogOpen(false);
-  }, [respondingRequestId]);
+    if (moderationInitAttempted || isLoadingModerationOverview) {
+      return;
+    }
+    setModerationInitAttempted(true);
+    loadModerationOverview().catch(() => {});
+  }, [
+    isOffline,
+    isLoadingModerationOverview,
+    loadModerationOverview,
+    moderationHasAccess,
+    moderationInitAttempted
+  ]);
 
-  const handleRespondToFriendRequest = useCallback(
-    async (requestId, decision) => {
-      if (!requestId || !decision || typeof socialNotifications.respondToFriendRequest !== 'function') {
+  const handleSelectModerationAction = useCallback((actionType) => {
+    setModerationForm((prev) => ({
+      ...prev,
+      type: actionType,
+      durationMinutes: actionType === 'mute' ? prev.durationMinutes || '15' : prev.durationMinutes
+    }));
+  }, []);
+
+  const handleModerationFieldChange = useCallback(
+    (field) => (event) => {
+      const { value } = event.target;
+      setModerationForm((prev) => ({
+        ...prev,
+        [field]: value
+      }));
+    },
+    []
+  );
+
+  const handleCloseModerationDialog = useCallback(() => {
+    setModerationContext(null);
+    resetModerationActionStatus();
+  }, [resetModerationActionStatus]);
+
+  const handleModerationSubmit = useCallback(
+    async (event) => {
+      event.preventDefault();
+      if (!moderationContext?.userId || moderationHasAccess === false) {
         return;
       }
-      setRespondingRequestId(requestId);
-      setFriendActionStatus(null);
-      try {
-        await socialNotifications.respondToFriendRequest({ requestId, decision });
-        setFriendActionStatus({
-          type: 'success',
-          message: decision === 'accept' ? 'Friend request accepted.' : 'Friend request declined.'
-        });
 
-        const refreshTasks = [];
-        if (typeof socialNotifications.refreshAll === 'function') {
-          refreshTasks.push(socialNotifications.refreshAll());
+      const trimmedReason = moderationForm.reason.trim();
+      const payload = {
+        userId: moderationContext.userId,
+        type: moderationForm.type
+      };
+      if (trimmedReason) {
+        payload.reason = trimmedReason;
+      }
+      if (moderationForm.type === 'mute') {
+        const parsed = Number.parseInt(moderationForm.durationMinutes, 10);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          payload.durationMinutes = Math.min(1440, Math.max(1, parsed));
         }
-        refreshTasks.push(refreshFriendGraph());
-        await Promise.allSettled(refreshTasks);
-      } catch (error) {
-        setFriendActionStatus({
-          type: 'error',
-          message: error?.message || 'Failed to update friend request.'
-        });
-      } finally {
-        setRespondingRequestId(null);
+      }
+
+      try {
+        await recordModerationAction(payload);
+        setModerationForm((prev) => ({
+          ...prev,
+          reason: ''
+        }));
+      } catch {
+        // surfaced via moderationActionStatus
       }
     },
-    [refreshFriendGraph, setFriendActionStatus, socialNotifications]
+    [moderationContext, moderationForm, moderationHasAccess, recordModerationAction]
   );
 
   const handleMessageFriend = useCallback(
@@ -175,17 +213,22 @@ function FriendsPage() {
         let newThreadId = result?.thread?.id || '';
         if (!newThreadId) {
           const refreshed = await refreshDmThreads().catch(() => null);
-          const candidateThreads = refreshed?.threads || dmThreads;
-          const fallback = candidateThreads.find((thread) => {
-            const participants = Array.isArray(thread.participants) ? thread.participants : [];
-            return participants.some(
-              (participant) => getParticipantId(participant) === normalizedFriendId
-            );
-          });
-          newThreadId = fallback?.id || '';
+          if (refreshed?.threads) {
+            const fallback = refreshed.threads.find((thread) => {
+              const participants = Array.isArray(thread.participants) ? thread.participants : [];
+              return participants.some(
+                (participant) => getParticipantId(participant) === normalizedFriendId
+              );
+            });
+            if (fallback?.id) {
+              newThreadId = fallback.id;
+            }
+          }
         }
         if (newThreadId) {
           navigate(`/chat?tab=direct&thread=${newThreadId}`);
+        } else {
+          refreshDmThreads().catch(() => {});
         }
         setFriendActionStatus({
           type: 'success',
@@ -214,7 +257,6 @@ function FriendsPage() {
           type: 'success',
           message: `${friend.displayName || friend.username || 'Friend'} removed.`
         });
-        refreshFriendGraph().catch(() => {});
       } catch (error) {
         setFriendActionStatus({
           type: 'error',
@@ -222,7 +264,7 @@ function FriendsPage() {
         });
       }
     },
-    [refreshFriendGraph, removeFriendRelationship]
+    [removeFriendRelationship]
   );
 
   const handleReportFriend = useCallback((friend) => {
@@ -240,58 +282,46 @@ function FriendsPage() {
     });
   }, []);
 
-  const handleSelectModerationAction = useCallback((actionType) => {
-    setModerationForm((prev) => ({
-      ...prev,
-      type: actionType,
-      durationMinutes: actionType === 'mute' ? prev.durationMinutes || '15' : prev.durationMinutes
-    }));
+  const handleOpenFriendDialog = useCallback(() => {
+    setFriendActionStatus(null);
+    setIsFriendDialogOpen(true);
   }, []);
 
-  const handleModerationFieldChange = useCallback(
-    (field) => (event) => {
-      const { value } = event.target;
-      setModerationForm((prev) => ({
-        ...prev,
-        [field]: value
-      }));
-    },
-    []
-  );
+  const handleCloseFriendDialog = useCallback(() => {
+    if (respondingRequestId) {
+      return;
+    }
+    setIsFriendDialogOpen(false);
+  }, [respondingRequestId]);
 
-  const handleModerationSubmit = useCallback(
-    async (event) => {
-      event.preventDefault();
-      if (!moderationContext?.userId || moderationHasAccess === false) {
+  const handleRespondToFriendRequest = useCallback(
+    async (requestId, decision) => {
+      if (!requestId || !decision) {
         return;
       }
-
-      const trimmedReason = moderationForm.reason.trim();
-      const payload = {
-        userId: moderationContext.userId,
-        type: moderationForm.type
-      };
-      if (trimmedReason) {
-        payload.reason = trimmedReason;
-      }
-      if (moderationForm.type === 'mute') {
-        const parsed = Number.parseInt(moderationForm.durationMinutes, 10);
-        if (Number.isFinite(parsed) && parsed > 0) {
-          payload.durationMinutes = Math.min(1440, Math.max(1, parsed));
-        }
-      }
-
+      setRespondingRequestId(requestId);
+      setFriendActionStatus(null);
       try {
-        await recordModerationAction(payload);
-        setModerationForm((prev) => ({
-          ...prev,
-          reason: ''
-        }));
-      } catch {
-        // surfaced via action status
+        await respondToFriendRequest({ requestId, decision });
+        setFriendActionStatus({
+          type: 'success',
+          message: decision === 'accept' ? 'Friend request accepted.' : 'Friend request declined.'
+        });
+
+        await Promise.allSettled([
+          refreshNotifications(),
+          refreshFriendGraph().catch(() => {})
+        ]);
+      } catch (error) {
+        setFriendActionStatus({
+          type: 'error',
+          message: error?.message || 'Failed to update friend request.'
+        });
+      } finally {
+        setRespondingRequestId(null);
       }
     },
-    [moderationContext, moderationForm, moderationHasAccess, recordModerationAction]
+    [refreshFriendGraph, refreshNotifications, respondToFriendRequest]
   );
 
   const disableModerationSubmit =
@@ -300,118 +330,38 @@ function FriendsPage() {
     isOffline ||
     isRecordingModerationAction;
 
-  const handleBackNavigation = useCallback(() => {
+  const disableMessageAction = directMessagesHasAccess === false || isCreatingDirectThread;
+
+  const handleBack = useCallback(() => {
     navigate(-1);
   }, [navigate]);
 
-  const notificationsLabel =
-    incomingRequests.length > 0 ? `Friend requests (${incomingRequests.length} unread)` : 'Friend requests';
-  const displayBadge =
-    incomingRequests.length > 0 ? (incomingRequests.length > 99 ? '99+' : String(incomingRequests.length)) : null;
-
-  const friendsSidebarProps = {
-    friends,
-    friendHasAccess,
-    isLoading: isLoadingFriends,
-    friendStatus,
-    searchQuery: friendSearchQuery,
-    onSearchChange: setFriendSearchQuery,
-    onNavigateBack: handleBackNavigation,
-    notificationsLabel,
-    notificationBadge: displayBadge,
-    onOpenRequests: socialNotifications.friendAccessDenied ? undefined : handleOpenFriendDialog,
-    directMessagesHasAccess: directMessagesHasAccess !== false,
-    isProcessingFriendAction,
-    isCreatingDirectThread,
-    onMessageFriend: handleMessageFriend,
-    onUnfriend: handleUnfriend,
-    onReportFriend: handleReportFriend
-  };
-
-  useEffect(() => {
-    if (friendQueueStatus) {
-      setFriendActionStatus(friendQueueStatus);
-    }
-  }, [friendQueueStatus]);
-
   return (
     <>
-      <Box className="friends-page-shell">
-        <Stack
-          direction="row"
-          alignItems="center"
-          justifyContent="space-between"
-          className="friends-page-toolbar"
-        >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <IconButton onClick={handleBackNavigation} aria-label="Back">
-              <ArrowBackIcon />
-            </IconButton>
-            <Typography variant="h5" fontWeight={700}>
-              Friends
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {friends.length} total
-            </Typography>
-          </Stack>
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="outlined"
-              startIcon={<RefreshIcon />}
-              onClick={handleRefreshFriends}
-              disabled={isLoadingFriends}
-            >
-              Refresh
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<FriendRequestIcon />}
-              onClick={handleOpenFriendDialog}
-              disabled={socialNotifications.friendAccessDenied}
-            >
-              Requests
-              {displayBadge ? <span className="friends-request-badge">{displayBadge}</span> : null}
-            </Button>
-          </Stack>
-        </Stack>
-
-        {isOffline ? (
-          <Alert severity="warning" sx={{ mt: 2 }}>
-            You are offline. Friend list actions may be limited.
-          </Alert>
-        ) : null}
-
-        <Box sx={{ mt: 3 }}>
-          <FriendsSidebar {...friendsSidebarProps} />
-        </Box>
+      <Box className="friend-page">
+        <div className="friend-frame">
+          <Box className="friends-list-field">
+            <FriendsListPanel
+              friends={friends}
+              filteredFriends={filteredFriends}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              isLoading={isLoadingFriends}
+              friendStatus={friendStatus}
+              hasAccess={friendHasAccess}
+              onBack={handleBack}
+              notificationsLabel={notificationsLabel}
+              requestBadge={requestBadge}
+              onOpenFriendRequests={handleOpenFriendDialog}
+              onMessageFriend={handleMessageFriend}
+              onRemoveFriend={handleUnfriend}
+              onReportFriend={handleReportFriend}
+              disableMessageAction={disableMessageAction}
+              disableFriendActions={isProcessingFriendAction}
+            />
+          </Box>
+        </div>
       </Box>
-
-      <FriendRequestsDialog
-        open={isFriendDialogOpen}
-        onClose={handleCloseFriendDialog}
-        requests={incomingRequests}
-        actionStatus={isFriendDialogOpen ? friendActionStatus : null}
-        respondingRequestId={respondingRequestId}
-        onRespond={handleRespondToFriendRequest}
-        formatTimestamp={formatFriendlyTimestamp}
-      />
-
-      <ChatModerationDialog
-        open={Boolean(moderationContext)}
-        context={moderationContext}
-        hasAccess={moderationHasAccess}
-        actionStatus={moderationActionStatus}
-        form={moderationForm}
-        onClose={() => {
-          setModerationContext(null);
-          resetModerationActionStatus();
-        }}
-        onSubmit={handleModerationSubmit}
-        onFieldChange={handleModerationFieldChange}
-        onSelectQuickAction={handleSelectModerationAction}
-        disableSubmit={disableModerationSubmit}
-        isSubmitting={isRecordingModerationAction}
-      />
 
       <Snackbar
         open={Boolean(friendActionStatus)}
@@ -426,14 +376,111 @@ function FriendsPage() {
       >
         {friendActionStatus ? (
           <Alert
-            onClose={() => setFriendActionStatus(null)}
-            severity={friendActionStatus.type || 'info'}
+            elevation={6}
             variant="filled"
+            severity={friendActionStatus.type || 'info'}
+            onClose={() => setFriendActionStatus(null)}
           >
             {friendActionStatus.message}
           </Alert>
         ) : null}
       </Snackbar>
+
+      <FriendRequestsDialog
+        open={isFriendDialogOpen}
+        onClose={handleCloseFriendDialog}
+        requests={incomingRequests}
+        actionStatus={friendActionStatus}
+        respondingRequestId={respondingRequestId}
+        onRespond={handleRespondToFriendRequest}
+      />
+
+      <Dialog
+        open={Boolean(moderationContext)}
+        onClose={handleCloseModerationDialog}
+        fullWidth
+        maxWidth="xs"
+      >
+        <Box component="form" onSubmit={handleModerationSubmit}>
+          <DialogTitle>Moderate {moderationContext?.displayName || 'user'}</DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={1.5}>
+              {moderationContext?.messagePreview ? (
+                <Alert severity="info" variant="outlined">
+                  {moderationContext.messagePreview}
+                </Alert>
+              ) : null}
+
+              {moderationHasAccess === false ? (
+                <Alert severity="warning">Moderator privileges required to perform actions.</Alert>
+              ) : null}
+
+              {moderationActionStatus ? (
+                <Alert severity={moderationActionStatus.type}>
+                  {moderationActionStatus.message}
+                </Alert>
+              ) : null}
+
+              <Stack direction="row" flexWrap="wrap" gap={1}>
+                {MODERATION_ACTION_OPTIONS.filter((option) =>
+                  QUICK_MODERATION_ACTIONS.includes(option.value)
+                ).map((option) => (
+                  <Chip
+                    key={option.value}
+                    label={option.label}
+                    color={moderationForm.type === option.value ? 'primary' : 'default'}
+                    variant={moderationForm.type === option.value ? 'filled' : 'outlined'}
+                    onClick={() => handleSelectModerationAction(option.value)}
+                    role="button"
+                    aria-pressed={moderationForm.type === option.value}
+                  />
+                ))}
+              </Stack>
+
+              <TextField
+                select
+                label="Moderation action"
+                value={moderationForm.type}
+                onChange={handleModerationFieldChange('type')}
+                fullWidth
+              >
+                {MODERATION_ACTION_OPTIONS.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              {moderationForm.type === 'mute' ? (
+                <TextField
+                  label="Mute duration (minutes)"
+                  type="number"
+                  inputProps={{ min: 1, max: 1440, step: 5 }}
+                  value={moderationForm.durationMinutes}
+                  onChange={handleModerationFieldChange('durationMinutes')}
+                />
+              ) : null}
+
+              <TextField
+                label="Reason (optional)"
+                value={moderationForm.reason}
+                onChange={handleModerationFieldChange('reason')}
+                multiline
+                minRows={2}
+                placeholder="Share context for other moderators."
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseModerationDialog} disabled={isRecordingModerationAction}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained" disabled={disableModerationSubmit}>
+              {isRecordingModerationAction ? 'Applying…' : 'Apply action'}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
     </>
   );
 }

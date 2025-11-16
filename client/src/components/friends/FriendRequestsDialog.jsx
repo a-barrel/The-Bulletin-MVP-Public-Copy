@@ -12,24 +12,25 @@ import {
   Typography
 } from '@mui/material';
 import NoFriendRequestsIcon from '@mui/icons-material/GroupOffRounded';
-
+import { formatFriendlyTimestamp } from '../../utils/dates';
 function FriendRequestsDialog({
   open,
   onClose,
   requests,
   actionStatus,
   respondingRequestId,
-  onRespond,
-  formatTimestamp
+  onRespond
 }) {
-  const hasRequests = Array.isArray(requests) && requests.length > 0;
-  const disabledClose = Boolean(respondingRequestId);
-
   return (
     <Dialog
       className="friend-dialog-overlay"
       open={open}
-      onClose={disabledClose ? undefined : onClose}
+      onClose={(_, reason) => {
+        if (respondingRequestId !== null || reason === 'backdropClick') {
+          return;
+        }
+        onClose();
+      }}
       fullWidth
       maxWidth="sm"
     >
@@ -37,12 +38,12 @@ function FriendRequestsDialog({
       <DialogContent dividers={false} className="friend-dialog-content">
         <Stack spacing={2}>
           {actionStatus ? (
-            <Alert severity={actionStatus.type || 'info'} className="friend-dialog-alert">
+            <Alert severity={actionStatus.type} className="friend-dialog-alert">
               {actionStatus.message}
             </Alert>
           ) : null}
 
-          {!hasRequests ? (
+          {requests.length === 0 ? (
             <Box className="friend-dialog-empty-container">
               <NoFriendRequestsIcon className="friend-dialog-empty-icon" />
               <Typography className="friend-dialog-empty-desc">
@@ -66,9 +67,7 @@ function FriendRequestsDialog({
                         {requesterName}
                       </Typography>
                       <Typography variant="caption" className="friend-dialog-request-time">
-                        {request.createdAt && formatTimestamp
-                          ? formatTimestamp(request.createdAt)
-                          : ''}
+                        {request.createdAt ? formatFriendlyTimestamp(request.createdAt) : ''}
                       </Typography>
                     </Stack>
 
@@ -82,7 +81,7 @@ function FriendRequestsDialog({
                       <Button
                         variant="contained"
                         className="friend-dialog-accept-btn"
-                        onClick={() => onRespond?.(request.id, 'accept')}
+                        onClick={() => onRespond(request.id, 'accept')}
                         disabled={isUpdating}
                       >
                         {isUpdating ? 'Updating…' : 'Accept'}
@@ -90,7 +89,7 @@ function FriendRequestsDialog({
                       <Button
                         variant="outlined"
                         className="friend-dialog-decline-btn"
-                        onClick={() => onRespond?.(request.id, 'decline')}
+                        onClick={() => onRespond(request.id, 'decline')}
                         disabled={isUpdating}
                       >
                         Decline
@@ -107,7 +106,7 @@ function FriendRequestsDialog({
         <Button
           className="friend-dialog-close-btn"
           onClick={onClose}
-          disabled={disabledClose}
+          disabled={respondingRequestId !== null}
         >
           Close
         </Button>
@@ -117,26 +116,20 @@ function FriendRequestsDialog({
 }
 
 FriendRequestsDialog.propTypes = {
-  open: PropTypes.bool,
-  onClose: PropTypes.func,
-  requests: PropTypes.arrayOf(PropTypes.object),
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  requests: PropTypes.arrayOf(PropTypes.object).isRequired,
   actionStatus: PropTypes.shape({
     type: PropTypes.string,
     message: PropTypes.string
   }),
   respondingRequestId: PropTypes.string,
-  onRespond: PropTypes.func,
-  formatTimestamp: PropTypes.func
+  onRespond: PropTypes.func.isRequired
 };
 
 FriendRequestsDialog.defaultProps = {
-  open: false,
-  onClose: undefined,
-  requests: [],
   actionStatus: null,
-  respondingRequestId: null,
-  onRespond: undefined,
-  formatTimestamp: undefined
+  respondingRequestId: null
 };
 
 export default FriendRequestsDialog;
