@@ -17,6 +17,7 @@ import useMapExplorer, { DEFAULT_MAX_DISTANCE_METERS } from '../hooks/useMapExpl
 import MapHeader from '../components/map/MapHeader';
 import MapFilterPanel from '../components/map/MapFilterPanel';
 import { MAP_FILTERS } from '../utils/mapMarkers';
+import useOfflineAction from '../hooks/useOfflineAction';
 
 
 export const pageConfig = {
@@ -37,6 +38,7 @@ function MapPage() {
   const { isOffline } = useNetworkStatusContext();
   const { unreadCount, refreshUnreadCount } = useUpdates();
   const { location: sharedLocation, setLocation: setSharedLocation } = useLocationContext();
+  const offlineAction = useOfflineAction(isOffline);
 
   const {
     userLocation,
@@ -125,18 +127,12 @@ function MapPage() {
   }, [navigate]);
 
   const handleNotifications = useCallback(() => {
-    if (isOffline) {
-      return;
-    }
-    navigate(routes.updates.base);
-  }, [isOffline, navigate]);
+    offlineAction(() => navigate(routes.updates.base));
+  }, [offlineAction, navigate]);
 
   const handleCreatePin = useCallback(() => {
-    if (isOffline) {
-      return;
-    }
-    navigate(routes.createPin.base);
-  }, [isOffline, navigate]);
+    offlineAction(() => navigate(routes.createPin.base));
+  }, [offlineAction, navigate]);
 
   const notificationsLabel =
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';

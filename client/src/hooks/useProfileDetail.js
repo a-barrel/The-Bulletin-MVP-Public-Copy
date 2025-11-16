@@ -260,6 +260,7 @@ const initializeFormState = useCallback((profile) => ({
     : targetUserId && targetUserId !== 'me'
     ? targetUserId
     : null;
+  const targetProfileId = normalizedTargetId;
   const normalizedBlockedIds = Array.isArray(viewerProfile?.relationships?.blockedUserIds)
     ? viewerProfile.relationships.blockedUserIds.map((id) => String(id))
     : [];
@@ -770,6 +771,8 @@ const initializeFormState = useCallback((profile) => ({
   return {
     originPath,
     targetUserId,
+    shouldLoadCurrentUser,
+    userFromState,
     effectiveUser,
     displayName,
     avatarUrl,
@@ -819,6 +822,12 @@ const initializeFormState = useCallback((profile) => ({
     blockDialogMode,
     isProcessingBlockAction,
     canManageBlock,
-    isBlocked
+    isBlocked,
+    isViewingSelf,
+    targetProfileId,
+    viewerProfile,
+    setViewerProfile,
+    fetchedUser,
+    setFetchedUser
   };
 }

@@ -16,7 +16,7 @@ import {
   uploadImage,
   createContentReport
 } from '../api/mongoDataApi';
-import runtimeConfig from '../config/runtime';
+import resolveProfileNavTarget from '../utils/profileNav';
 import { DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
 import { routes } from '../routes';
 import './ProfilePage.css';
@@ -60,37 +60,7 @@ export const pageConfig = {
   order: 91,
   showInNav: true,
   protected: true,
-  resolveNavTarget: ({ currentPath } = {}) => {
-    const profileBase = routes.profile.base.replace(/^\/+/, '');
-    const profilePattern = profileBase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const profileMe = routes.profile.me;
-    if (!runtimeConfig.isOffline) {
-      return profileMe;
-    }
-
-    if (typeof window === 'undefined') {
-      return profileMe;
-    }
-
-    const input = window.prompt(
-      'Enter a profile ID (leave blank for your profile, type "me" or cancel to stay put):'
-    );
-    if (input === null) {
-      return currentPath ?? null;
-    }
-    const trimmed = input.trim();
-    if (!trimmed || trimmed.toLowerCase() === 'me') {
-      return profileMe;
-    }
-    const sanitized = trimmed.replace(/^\/+/, '');
-    if (new RegExp(`^${profilePattern}/.+`, 'i').test(sanitized)) {
-      return `/${sanitized}`;
-    }
-    if (new RegExp(`^/${profilePattern}/.+`, 'i').test(trimmed)) {
-      return trimmed;
-    }
-    return `${routes.profile.base}/${sanitized}`;
-  }
+  resolveNavTarget: resolveProfileNavTarget
 };
 
 

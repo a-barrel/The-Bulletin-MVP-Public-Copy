@@ -1,7 +1,6 @@
 /* NOTE: Page exports configuration alongside the component. */
 import { useMemo } from 'react';
 import Box from '@mui/material/Box';
-import runtimeConfig from '../config/runtime';
 import resolveAssetUrl from '../utils/media';
 import useBadgeAwardOnEntry from '../hooks/useBadgeAwardOnEntry';
 import useAutoplayAudio from '../hooks/useAutoplayAudio';
@@ -16,18 +15,17 @@ export const pageConfig = {
 };
 
 function EmulationTestPage() {
-  const apiBase = useMemo(() => (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, ''), []);
   const backgroundUrl = useMemo(
-    () => resolveAssetUrl(`${apiBase}/images/emulation/gifs/kirby-rushing.gif`),
-    [apiBase]
+    () => resolveAssetUrl('/images/emulation/gifs/kirby-rushing.gif'),
+    []
   );
   const overlayUrl = useMemo(
-    () => resolveAssetUrl(`${apiBase}/images/emulation/gifs/engine-engineer.gif`),
-    [apiBase]
+    () => resolveAssetUrl('/images/emulation/gifs/engine-engineer.gif'),
+    []
   );
   const soundUrl = useMemo(
-    () => resolveAssetUrl(`${apiBase}/images/emulation/sounds/gamestartup23.mp3`),
-    [apiBase]
+    () => resolveAssetUrl('/images/emulation/sounds/gamestartup23.mp3'),
+    []
   );
 
   useBadgeAwardOnEntry('how-badge');
