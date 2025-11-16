@@ -13,8 +13,7 @@ import {
   fetchCurrentUserProfile,
   fetchUserProfile,
   updateCurrentUserProfile,
-  uploadImage,
-  createContentReport
+  uploadImage
 } from '../api/mongoDataApi';
 import resolveProfileNavTarget from '../utils/profileNav';
 import { DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
@@ -35,6 +34,7 @@ import useProfileBadges from '../hooks/useProfileBadges';
 import useProfileMutualFriends from '../hooks/useProfileMutualFriends';
 import useProfileStats from '../hooks/useProfileStats';
 import useProfileInteractions from '../hooks/useProfileInteractions';
+import useProfileReporting from '../hooks/useProfileReporting';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import {
   resolveProfileAvatarUrl,
@@ -131,12 +131,6 @@ function ProfilePage() {
   const avatarPreviewUrlRef = useRef(null);
   const bannerPreviewUrlRef = useRef(null);
   const { isOffline } = useNetworkStatusContext();
-  const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [reportReason, setReportReason] = useState('');
-  const [reportSelectedOffenses, setReportSelectedOffenses] = useState([]);
-  const [reportError, setReportError] = useState(null);
-  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
-  const [reportStatus, setReportStatus] = useState(null);
 
   const clearAvatarPreviewUrl = useCallback(() => {
     if (avatarPreviewUrlRef.current && avatarPreviewUrlRef.current.startsWith('blob:')) {
@@ -362,6 +356,26 @@ function ProfilePage() {
     setFetchedUser,
     displayName
   });
+  const {
+    dialogOpen: reportDialogOpen,
+    openDialog: handleOpenReportProfile,
+    closeDialog: handleCloseReportDialog,
+    reason: reportReason,
+    setReason: setReportReason,
+    selectedOffenses: reportSelectedOffenses,
+    toggleOffense: handleToggleReportOffense,
+    submitReport: handleSubmitProfileReport,
+    isSubmitting: isSubmittingReport,
+    error: reportError,
+    setError: setReportError,
+    status: reportStatus,
+    dismissStatus: handleReportStatusClose
+  } = useProfileReporting({
+    targetProfileId,
+    displayName,
+    isViewingSelf,
+    isOffline
+  });
   const { mutualFriendCount, mutualFriendPreview } = useProfileMutualFriends(effectiveUser);
 
   useEffect(() => {
@@ -390,84 +404,6 @@ function ProfilePage() {
     });
   }, [displayName, isOffline, isViewingSelf, navigate, targetProfileId]);
 
-  const handleOpenReportProfile = useCallback(() => {
-    if (!targetProfileId || isViewingSelf || isOffline) {
-      return;
-    }
-    setReportReason('');
-    setReportSelectedOffenses([]);
-    setReportError(null);
-    setReportDialogOpen(true);
-  }, [isOffline, isViewingSelf, targetProfileId]);
-
-  const handleCloseReportDialog = useCallback(() => {
-    if (isSubmittingReport) {
-      return;
-    }
-    setReportDialogOpen(false);
-    setReportReason('');
-    setReportSelectedOffenses([]);
-    setReportError(null);
-  }, [isSubmittingReport]);
-
-  const handleToggleReportOffense = useCallback((offense, checked) => {
-    if (typeof offense !== 'string') {
-      return;
-    }
-    setReportSelectedOffenses((prev) => {
-      const next = new Set(prev);
-      if (checked) {
-        next.add(offense);
-      } else {
-        next.delete(offense);
-      }
-      return Array.from(next);
-    });
-  }, []);
-
-  const handleSubmitProfileReport = useCallback(async () => {
-    if (!targetProfileId || isViewingSelf || isSubmittingReport) {
-      return;
-    }
-    setIsSubmittingReport(true);
-    setReportError(null);
-    try {
-      await createContentReport({
-        contentType: 'user',
-        contentId: targetProfileId,
-        reason: reportReason,
-        context: displayName ? `Profile: ${displayName}` : 'Profile report',
-        offenses: reportSelectedOffenses
-      });
-      setReportDialogOpen(false);
-      setReportReason('');
-      setReportSelectedOffenses([]);
-      setReportStatus({
-        type: 'success',
-        message: 'Thanks — your report was submitted.'
-      });
-    } catch (error) {
-      setReportError(error?.message || 'Failed to submit report.');
-    } finally {
-      setIsSubmittingReport(false);
-    }
-  }, [displayName, isSubmittingReport, isViewingSelf, reportReason, reportSelectedOffenses, targetProfileId]);
-
-  const handleReportStatusClose = useCallback(() => {
-    setReportStatus(null);
-  }, []);
-
-  useEffect(() => {
-    if (!reportStatus || typeof window === 'undefined') {
-      return undefined;
-    }
-    const timeout = window.setTimeout(() => {
-      setReportStatus(null);
-    }, 5000);
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [reportStatus]);
   const canInteractWithProfile = Boolean(targetProfileId && !isViewingSelf);
   const messageDisabled = !canInteractWithProfile || isOffline;
   const reportDisabled = !canInteractWithProfile || isOffline || isSubmittingReport;

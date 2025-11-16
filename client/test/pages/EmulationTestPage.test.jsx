@@ -1,14 +1,14 @@
 import { render, screen } from '@testing-library/react';
-import EmulationTestPage from '../EmulationTest';
-import useAutoplayAudio from '../../hooks/useAutoplayAudio';
-import useBadgeAwardOnEntry from '../../hooks/useBadgeAwardOnEntry';
+import EmulationTestPage from '../../src/pages/EmulationTest';
+import useAutoplayAudio from '../../src/hooks/useAutoplayAudio';
+import useBadgeAwardOnEntry from '../../src/hooks/useBadgeAwardOnEntry';
 
-jest.mock('../../hooks/useAutoplayAudio', () => {
+jest.mock('../../src/hooks/useAutoplayAudio', () => {
   const React = require('react');
   return jest.fn(() => React.createRef());
 });
 
-jest.mock('../../hooks/useBadgeAwardOnEntry', () => jest.fn());
+jest.mock('../../src/hooks/useBadgeAwardOnEntry', () => jest.fn());
 
 describe('EmulationTestPage', () => {
   beforeEach(() => {
@@ -16,6 +16,8 @@ describe('EmulationTestPage', () => {
   });
 
   it('renders the emulation assets and hooks', () => {
+    const reportClientError = require('../../src/utils/reportClientError');
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     const { container } = render(<EmulationTestPage />);
 
     expect(screen.getByAltText('Engineer animation')).toBeInTheDocument();
@@ -27,5 +29,8 @@ describe('EmulationTestPage', () => {
 
     expect(useBadgeAwardOnEntry).toHaveBeenCalledWith('how-badge');
     expect(useAutoplayAudio).toHaveBeenCalledWith({ volume: 0.75 });
+
+    jest.restoreAllMocks();
+    reportClientError.mockClear?.();
   });
 });

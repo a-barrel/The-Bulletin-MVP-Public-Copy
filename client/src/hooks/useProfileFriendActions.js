@@ -16,8 +16,8 @@ export default function useProfileFriendActions({
     setHasPendingFriendRequest(false);
   }, [targetProfileId]);
 
-  const viewerId = viewerProfile?._id ? String(viewerProfile._id) : null;
   const normalizedTargetId = targetProfileId ? String(targetProfileId) : null;
+  const viewerId = viewerProfile?._id ? String(viewerProfile._id) : null;
 
   const normalizedFriendIds = useMemo(() => {
     if (Array.isArray(viewerProfile?.relationships?.friendIds)) {
@@ -88,14 +88,7 @@ export default function useProfileFriendActions({
     } finally {
       setIsSendingFriendRequest(false);
     }
-  }, [
-    canSendFriendRequest,
-    isViewingSelf,
-    normalizedTargetId,
-    setFetchedUser,
-    setViewerProfile,
-    viewerId
-  ]);
+  }, [canSendFriendRequest, isViewingSelf, normalizedTargetId, setFetchedUser, setViewerProfile, viewerId]);
 
   return {
     isFriend,
