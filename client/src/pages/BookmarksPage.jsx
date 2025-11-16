@@ -1,35 +1,50 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+/* NOTE: Page exports navigation config alongside the component. */
+/**
+ * Bookmark architecture cheat sheet:
+ *  - Data source: useBookmarksManager fetches bookmark + collection payloads from the API, normalises
+ *    them, and exposes helper actions (refresh, export, remove). Keep API-specific logic there.
+ *  - Presentation: BookmarksPage handles high-level layout, collection navigation, and renders each
+ *    bookmark via PinCard. We never duplicate card markup here — mapBookmarkToFeedItem adapts the
+ *    saved pin record into the exact shape PinCard expects (see PinCard Data Contract in docs).
+ *  - UX helpers: Quick-nav prefs + focus handling live locally in this component so designers can
+ *    iterate on the experience without touching the data hook. Anchors are tracked in ref maps so we
+ *    can auto-scroll to a collection when `?collection=` is present.
+ *  - Editing tips: If you redesign the cards, consider whether the bookmark metadata (saved date,
+ *    remove button) belongs inside PinCard or alongside it. Right now PinCard is intentionally unaware
+ *    of bookmark-only affordances, so those controls live in the list item footer.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
   Alert,
   Box,
-  Button,
   Chip,
   CircularProgress,
   Divider,
+  FormControl,
+  InputLabel,
   List,
-  ListItemButton,
-  ListItemText,
   ListSubheader,
+  MenuItem,
+  Pagination,
   Paper,
+  Select,
   Stack,
   Typography
 } from '@mui/material';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
-import LaunchIcon from '@mui/icons-material/Launch';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { auth } from '../firebase';
-import {
-  exportBookmarks,
-  fetchBookmarks,
-  fetchBookmarkCollections,
-  removeBookmark
-} from '../api/mongoDataApi';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
+import useBookmarksManager from '../hooks/useBookmarksManager';
+import normalizeObjectId from '../utils/normalizeObjectId';
+import toIdString from '../utils/ids';
+import { fetchCurrentUserProfile } from '../api/mongoDataApi';
+import ExpandableBookmarkItem from '../components/ExpandableBookmarkItem';
 import MainNavBackButton from '../components/MainNavBackButton';
 import './BookmarksPage.css';
+import '../components/BackButton.css';
 import GlobalNavMenu from '../components/GlobalNavMenu';
 
 export const pageConfig = {
@@ -43,292 +58,426 @@ export const pageConfig = {
   protected: true
 };
 
-const EMPTY_GROUP = 'Unsorted';
-
-function formatSavedDate(input) {
-  if (!input) {
-    return 'Unknown date';
-  }
-  const date = new Date(input);
-  return date.toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  });
-}
-
-function groupBookmarks(bookmarks, collectionsById) {
-  const groups = new Map();
-  bookmarks.forEach((bookmark) => {
-    const collectionId = bookmark.collectionId || null;
-    const collectionName = collectionsById.get(collectionId)?.name ?? EMPTY_GROUP;
-    if (!groups.has(collectionName)) {
-      groups.set(collectionName, []);
-    }
-    groups.get(collectionName).push(bookmark);
-  });
-  return Array.from(groups.entries()).map(([name, items]) => ({
-    name,
-    items
-  }));
-}
+const UNSORTED_COLLECTION_KEY = '__ungrouped__';
+const UNSORTED_LABEL = 'Unsorted';
+const BOOKMARK_QUICK_NAV_PREFS_KEY = 'pinpoint:bookmarkQuickNavPrefs';
+const BOOKMARK_QUICK_NAV_PREFS_VERSION = 1;
 
 function BookmarksPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isOffline } = useNetworkStatusContext();
   const [authUser, authLoading] = useAuthState(auth);
-
-  const [bookmarks, setBookmarks] = useState([]);
-  const [collections, setCollections] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [removalStatus, setRemovalStatus] = useState(null);
-  const [removingPinId, setRemovingPinId] = useState(null);
-  const [exportStatus, setExportStatus] = useState(null);
-  const [isExporting, setIsExporting] = useState(false);
-
-  const collectionsById = useMemo(() => {
-    const map = new Map();
-    collections.forEach((collection) => {
-      map.set(collection._id, collection);
-    });
-    return map;
-  }, [collections]);
-
-  const groupedBookmarks = useMemo(
-    () => groupBookmarks(bookmarks, collectionsById),
-    [bookmarks, collectionsById]
-  );
-
-  const totalCount = bookmarks.length;
-
-  const loadData = useCallback(async () => {
-    if (!authUser) {
-      setError('Sign in to view your bookmarks.');
-      setBookmarks([]);
-      setCollections([]);
-      return;
+  const {
+    bookmarks,
+    groupedBookmarks,
+    totalCount,
+    isLoading,
+    error,
+    setError,
+    removalStatus,
+    setRemovalStatus,
+    removingPinId,
+    isExporting,
+    exportStatus,
+    setExportStatus,
+    handleRemoveBookmark,
+    handleExport,
+    refresh,
+    formatSavedDate,
+    collections
+  } = useBookmarksManager({ authUser, authLoading, isOffline });
+  const [quickNavPrefs, setQuickNavPrefs] = useState(() => {
+    if (typeof window === 'undefined') {
+      return { hidden: [] };
     }
-
-    if (isOffline) {
-      setIsLoading(false);
-      setError('You are offline. Connect to refresh your bookmarks.');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
     try {
-      const [bookmarkPayload, collectionPayload] = await Promise.all([
-        fetchBookmarks(),
-        fetchBookmarkCollections()
-      ]);
-      setBookmarks(Array.isArray(bookmarkPayload) ? bookmarkPayload : []);
-      setCollections(Array.isArray(collectionPayload) ? collectionPayload : []);
-    } catch (err) {
-      console.error('Failed to load bookmarks:', err);
-      setBookmarks([]);
-      setCollections([]);
-      setError(err?.message || 'Failed to load bookmarks.');
-    } finally {
-      setIsLoading(false);
+      const stored = window.localStorage.getItem(BOOKMARK_QUICK_NAV_PREFS_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const version = parsed?.version ?? 0;
+        const hidden = Array.isArray(parsed?.hidden) ? parsed.hidden : [];
+        if (version === BOOKMARK_QUICK_NAV_PREFS_VERSION || version === 0) {
+          if (version === 0) {
+            window.localStorage.setItem(
+              BOOKMARK_QUICK_NAV_PREFS_KEY,
+              JSON.stringify({
+                version: BOOKMARK_QUICK_NAV_PREFS_VERSION,
+                hidden
+              })
+            );
+          }
+          return { hidden };
+        }
+        window.localStorage.removeItem(BOOKMARK_QUICK_NAV_PREFS_KEY);
+      }
+    } catch (error) {
+      console.warn('Failed to read bookmark quick nav preferences', error);
     }
+    return { hidden: [] };
+  });
+  const [highlightedCollectionKey, setHighlightedCollectionKey] = useState(null);
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [viewerMongoId, setViewerMongoId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const collectionAnchorsRef = useRef(new Map());
+  const focusAppliedRef = useRef(null);
+  const focusParam = searchParams.get('collection');
+  const normalizedFocusParam = useMemo(
+    () => (focusParam ? focusParam.trim().toLowerCase() : null),
+    [focusParam]
+  );
+  const resolvedFocus = useMemo(() => {
+    if (!normalizedFocusParam) {
+      return null;
+    }
+    const foundById = collections?.find((collection) => collection?._id === focusParam);
+    if (foundById) {
+      return {
+        id: foundById._id,
+        name: foundById.name
+      };
+    }
+    const foundByName = collections?.find(
+      (collection) =>
+        typeof collection?.name === 'string' &&
+        collection.name.trim().toLowerCase() === normalizedFocusParam
+    );
+    if (foundByName) {
+      return {
+        id: foundByName._id,
+        name: foundByName.name
+      };
+    }
+    if (
+      normalizedFocusParam === UNSORTED_COLLECTION_KEY ||
+      normalizedFocusParam === UNSORTED_LABEL.toLowerCase()
+    ) {
+      return {
+        id: null,
+        name: UNSORTED_LABEL
+      };
+    }
+    return null;
+  }, [collections, focusParam, normalizedFocusParam]);
+
+  // Fetch MongoDB user ID for filtering
+  useEffect(() => {
+    if (!authUser || isOffline) {
+      setViewerMongoId(null);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (!cancelled && profile?._id) {
+          setViewerMongoId(toIdString(profile._id));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Failed to load current user profile for bookmarks filtering:', error);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [authUser, isOffline]);
 
   useEffect(() => {
-    if (authLoading) {
-      return;
+    if (!resolvedFocus) {
+      setHighlightedCollectionKey(null);
+      focusAppliedRef.current = null;
+      return undefined;
     }
-    if (!authUser) {
-      setBookmarks([]);
-      setCollections([]);
-      setError('Sign in to view your bookmarks.');
-      setIsLoading(false);
-      return;
+
+    const focusKey = resolvedFocus.id ?? UNSORTED_COLLECTION_KEY;
+    if (focusAppliedRef.current === focusKey && highlightedCollectionKey === focusKey) {
+      return undefined;
     }
-    loadData();
-  }, [authLoading, authUser, isOffline, loadData]);
+
+    const possibleKeys = [
+      focusKey,
+      resolvedFocus.name?.trim().toLowerCase(),
+      `${focusKey}::header`
+    ].filter(Boolean);
+
+    let targetNode = null;
+    for (const key of possibleKeys) {
+      const candidate = collectionAnchorsRef.current.get(key);
+      if (candidate) {
+        targetNode = candidate;
+        break;
+      }
+    }
+
+    if (!targetNode) {
+      return undefined;
+    }
+
+    focusAppliedRef.current = focusKey;
+    setHighlightedCollectionKey(focusKey);
+    try {
+      targetNode.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+    } catch {
+      targetNode.scrollIntoView(true);
+    }
+
+    const timer = window.setTimeout(() => {
+      setHighlightedCollectionKey((prev) => (prev === focusKey ? null : prev));
+    }, 2200);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [groupedBookmarks, highlightedCollectionKey, resolvedFocus]);
+
+  const handleQuickNavPreferenceChange = useCallback((collectionKey, enabled) => {
+    setQuickNavPrefs((prev) => {
+      const hiddenSet = new Set(prev.hidden);
+      if (enabled) {
+        hiddenSet.delete(collectionKey);
+      } else {
+        hiddenSet.add(collectionKey);
+      }
+      const nextHidden = Array.from(hiddenSet);
+      const next = { hidden: nextHidden };
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem(
+            BOOKMARK_QUICK_NAV_PREFS_KEY,
+            JSON.stringify({
+              version: BOOKMARK_QUICK_NAV_PREFS_VERSION,
+              hidden: nextHidden
+            })
+          );
+          window.dispatchEvent(new Event('pinpoint:bookmarkQuickNavPrefsChanged'));
+        } catch (error) {
+          console.warn('Failed to persist quick nav preferences', error);
+        }
+      }
+      return next;
+    });
+  }, []);
 
   const handleViewPin = useCallback(
-    (pinId) => {
-      if (pinId) {
-        navigate(routes.pin.byId(pinId));
+    (pinId, pin) => {
+      const normalized = normalizeObjectId(pinId);
+      if (!normalized) {
+        return;
       }
+      navigate(routes.pin.byId(normalized), { state: { pin } });
     },
     [navigate]
   );
 
-  const handleRemoveBookmark = useCallback(
-    async (bookmark) => {
-      const pinId = bookmark?.pinId || bookmark?.pin?._id;
-      if (!pinId) {
-        setRemovalStatus({ type: 'error', message: 'Bookmark does not include a pin id.' });
-        return;
-      }
+  const filteredBookmarks = useMemo(() => {
+    if (selectedFilter === 'all') {
+      return groupedBookmarks;
+    }
 
-      if (isOffline) {
-        setRemovalStatus({ type: 'warning', message: 'Reconnect to remove bookmarks.' });
-        return;
-      }
+    const filterBookmarks = (bookmarks) => {
+      return bookmarks.filter((bookmark) => {
+        const pin = bookmark.pin;
+        if (!pin) return false;
 
-      setRemovalStatus(null);
-      setRemovingPinId(pinId);
-      try {
-        await removeBookmark(pinId);
-        setBookmarks((prev) =>
-          prev.filter((candidate) => {
-            if (candidate._id && bookmark._id) {
-              return candidate._id !== bookmark._id;
-            }
-            return candidate.pinId !== pinId;
-          })
+        switch (selectedFilter) {
+          case 'event':
+            return pin.type === 'event';
+          case 'discussion':
+            return pin.type === 'discussion';
+          case 'my-pins': {
+            const creatorId = toIdString(pin.creatorId) ?? toIdString(pin.creator?._id);
+            return creatorId && viewerMongoId && creatorId === viewerMongoId;
+          }
+          case 'attending':
+            return Boolean(pin.viewerIsAttending);
+          default:
+            return true;
+        }
+      });
+    };
+
+    // Apply filter to each group's items
+    return groupedBookmarks
+      .map((group) => ({
+        ...group,
+        items: filterBookmarks(group.items)
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [groupedBookmarks, selectedFilter, viewerMongoId]);
+
+  const handleFilterChange = useCallback((event) => {
+    setSelectedFilter(event.target.value);
+    setCurrentPage(1); // Reset to first page when filter changes
+  }, []);
+
+  // Flatten all bookmarks from filtered groups for pagination
+  const flattenedBookmarks = useMemo(() => {
+    const allBookmarks = [];
+    filteredBookmarks.forEach((group) => {
+      group.items.forEach((bookmark) => {
+        allBookmarks.push({
+          ...bookmark,
+          collectionId: group.id,
+          collectionName: group.name || UNSORTED_LABEL
+        });
+      });
+    });
+    return allBookmarks;
+  }, [filteredBookmarks]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(flattenedBookmarks.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedBookmarks = flattenedBookmarks.slice(startIndex, endIndex);
+
+  // Group paginated bookmarks back by collection for display
+  const paginatedGroupedBookmarks = useMemo(() => {
+    const grouped = new Map();
+    paginatedBookmarks.forEach((bookmark) => {
+      const groupKey = bookmark.collectionId ?? UNSORTED_COLLECTION_KEY;
+      if (!grouped.has(groupKey)) {
+        const originalGroup = filteredBookmarks.find(
+          (g) => (g.id ?? UNSORTED_COLLECTION_KEY) === groupKey
         );
-        setRemovalStatus({ type: 'success', message: 'Bookmark removed.' });
-      } catch (err) {
-        console.error('Failed to remove bookmark:', err);
-        setRemovalStatus({ type: 'error', message: err?.message || 'Failed to remove bookmark.' });
-      } finally {
-        setRemovingPinId(null);
+        grouped.set(groupKey, {
+          id: originalGroup?.id,
+          name: originalGroup?.name,
+          description: originalGroup?.description,
+          items: []
+        });
       }
-    },
-    [isOffline]
+      grouped.get(groupKey).items.push(bookmark);
+    });
+    return Array.from(grouped.values());
+  }, [paginatedBookmarks, filteredBookmarks]);
+
+  const handlePageChange = useCallback((event, value) => {
+    setCurrentPage(value);
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  // Reset page if it's out of bounds after filtering
+  useEffect(() => {
+    const maxPage = Math.ceil(flattenedBookmarks.length / itemsPerPage) || 1;
+    if (currentPage > maxPage) {
+      setCurrentPage(1);
+    }
+  }, [flattenedBookmarks.length, currentPage]);
+
+  // Calculate counts for each filter option using bookmarks from useBookmarksManager
+  const filterCounts = useMemo(() => {
+    if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
+      return {
+        all: 0,
+        event: 0,
+        discussion: 0,
+        'my-pins': 0,
+        attending: 0
+      };
+    }
+
+    let eventCount = 0;
+    let discussionCount = 0;
+    let myPinsCount = 0;
+    let attendingCount = 0;
+
+    bookmarks.forEach((bookmark) => {
+      const pin = bookmark.pin;
+      if (!pin) return;
+
+      // Count by type
+      if (pin.type === 'event') {
+        eventCount++;
+      } else if (pin.type === 'discussion') {
+        discussionCount++;
+      }
+
+      // Count user's own pins
+      const creatorId = toIdString(pin.creatorId) ?? toIdString(pin.creator?._id);
+      if (creatorId && viewerMongoId && creatorId === viewerMongoId) {
+        myPinsCount++;
+      }
+
+      // Count attending pins
+      if (pin.viewerIsAttending) {
+        attendingCount++;
+      }
+    });
+
+    return {
+      all: bookmarks.length,
+      event: eventCount,
+      discussion: discussionCount,
+      'my-pins': myPinsCount,
+      attending: attendingCount
+    };
+  }, [bookmarks, viewerMongoId]);
+
+  // Filter options with counts
+  const filterOptions = useMemo(
+    () => [
+      { value: 'all', label: `All Pins (${filterCounts.all})` },
+      { value: 'event', label: `Event Pins (${filterCounts.event})` },
+      { value: 'discussion', label: `Discussion Pins (${filterCounts.discussion})` },
+      { value: 'my-pins', label: `My Pins (${filterCounts['my-pins']})` },
+      { value: 'attending', label: `I'm Attending (${filterCounts.attending})` }
+    ],
+    [filterCounts]
   );
 
-  const handleExport = useCallback(async () => {
-    if (!authUser) {
-      setExportStatus({ type: 'error', message: 'Sign in to export your bookmarks.' });
-      return;
-    }
-
-    if (isOffline) {
-      setExportStatus({ type: 'warning', message: 'Reconnect to export your bookmarks.' });
-      return;
-    }
-
-    setExportStatus(null);
-    setIsExporting(true);
-    try {
-      const { blob, filename } = await exportBookmarks();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = downloadUrl;
-      anchor.download = filename || 'bookmarks.csv';
-      document.body.appendChild(anchor);
-      anchor.click();
-      window.setTimeout(() => {
-        document.body.removeChild(anchor);
-        window.URL.revokeObjectURL(downloadUrl);
-      }, 0);
-
-      setExportStatus({
-        type: 'success',
-        message:
-          totalCount > 0
-            ? `Exported ${totalCount} bookmark${totalCount === 1 ? '' : 's'} to ${filename || 'bookmarks.csv'}.`
-            : `Export ready. ${filename || 'bookmarks.csv'} downloaded.`
-      });
-    } catch (err) {
-      console.error('Failed to export bookmarks:', err);
-      setExportStatus({ type: 'error', message: err?.message || 'Failed to export bookmarks.' });
-    } finally {
-      setIsExporting(false);
-    }
-  }, [authUser, isOffline, totalCount]);
-
   return (
-    <Box
-      className="bookmarks-classic-shell"
-      sx={{
-        width: '100%',
-        maxWidth: 960,
-        mx: 'auto',
-        py: { xs: 3, md: 5 },
-        px: { xs: 2, md: 4 }
-      }}
-    >
-      <Stack spacing={3}>
-        <Stack direction="row" alignItems="center" spacing={1.5}>
-          <MainNavBackButton
-            className="bookmarks-back-button"
-            iconClassName="bookmarks-back-button__icon"
-            ariaLabel="Back to main view"
-            scope="core"
-          >
-            Back
-          </MainNavBackButton>
-          <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
-        </Stack>
-
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <BookmarkIcon color="primary" />
-          <Typography variant="h4" component="h1">
-            Bookmarks
-          </Typography>
-          <Chip
-            label={`${totalCount} saved`}
-            size="small"
-            color="primary"
-            variant="outlined"
-          />
-        </Stack>
-
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={1.5}
-          alignItems={{ xs: 'flex-start', sm: 'center' }}
-          justifyContent="space-between"
+    <>
+      <div className="back-nav-bar bookmarks-back-button">
+        <MainNavBackButton
+          className="back-button"
+          iconClassName="back-button__icon"
+          ariaLabel="Back to main view"
+          scope="core"
         >
-          <Typography variant="body2" sx={{ flexGrow: 1, color: '#111' }}>
-            Quickly revisit saved pins. Bookmarks are grouped by collection and can be removed at any time.
-          </Typography>
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{ alignSelf: { xs: 'flex-start', sm: 'flex-end' } }}
-          >
-            <Button
-              type="button"
-              variant="outlined"
-              size="small"
-              onClick={loadData}
-              disabled={isOffline || isLoading || authLoading || !authUser}
-              title={isOffline ? 'Reconnect to refresh bookmarks' : undefined}
-            >
-              {isLoading ? 'Loading...' : 'Refresh'}
-            </Button>
-            <Button
-              type="button"
-              variant="contained"
-              size="small"
-              onClick={handleExport}
-              disabled={isOffline || isExporting || authLoading || !authUser}
-              title={isOffline ? 'Reconnect to export bookmarks' : undefined}
-            >
-              {isExporting ? 'Exporting...' : 'Export CSV'}
-            </Button>
-          </Stack>
-        </Stack>
-
+          <span className="back-button__text">Back</span>
+        </MainNavBackButton>
+        <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+      </div>
+      <Box
+        sx={{
+          width: '100%',
+          minHeight: '100vh',
+          py: { xs: 3, md: 5 },
+          px: { xs: 2, md: 4 },
+          backgroundColor: '#ffffff',
+          fontFamily: '"Urbanist", sans-serif'
+        }}
+      >
+        <Stack spacing={3}>
         {isOffline ? (
-          <Alert severity="warning">
+          <Alert severity="warning" sx={{ fontFamily: '"Urbanist", sans-serif' }}>
             You are offline. You can browse existing bookmarks, but refresh, removal, and export actions
             require a connection.
           </Alert>
         ) : null}
 
         {exportStatus ? (
-          <Alert severity={exportStatus.type} onClose={() => setExportStatus(null)}>
+          <Alert severity={exportStatus.type} onClose={() => setExportStatus(null)} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
             {exportStatus.message}
           </Alert>
         ) : null}
 
         {removalStatus ? (
-          <Alert severity={removalStatus.type} onClose={() => setRemovalStatus(null)}>
+          <Alert severity={removalStatus.type} onClose={() => setRemovalStatus(null)} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
             {removalStatus.message}
           </Alert>
         ) : null}
 
         {error ? (
-          <Alert severity="error" onClose={() => setError(null)}>
+          <Alert severity="error" onClose={() => setError(null)} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
             {error}
           </Alert>
         ) : null}
@@ -336,46 +485,150 @@ function BookmarksPage() {
         {isLoading ? (
           <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ py: 6 }}>
             <CircularProgress />
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ fontFamily: '"Urbanist", sans-serif' }}>
               Loading bookmarks...
             </Typography>
           </Stack>
         ) : totalCount === 0 ? (
-          <Paper
-            variant="outlined"
-            sx={{
-              borderRadius: 3,
-              p: 4,
-              textAlign: 'center'
-            }}
-          >
-            <Typography variant="h6">No bookmarks yet</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Tap the bookmark icon on a pin to save it. Your collection of favorites will appear here.
-            </Typography>
+<Paper
+  variant="outlined"
+  sx={{
+    borderRadius: 3,
+    p: 4,
+    textAlign: 'center',
+    backgroundColor: '#CDAEF2',
+    border: '1px solid black'
+  }}
+>
+<Typography
+  variant="h6"
+  sx={{
+    fontFamily: '"Urbanist", sans-serif',
+    backgroundColor: '#CDAEF2',
+    color: 'black'
+  }}
+>
+  No bookmarks yet
+</Typography>
+
+<Typography
+  variant="body2"
+  sx={{
+    mt: 1,
+    fontFamily: '"Urbanist", sans-serif',
+    backgroundColor: '#CDAEF2',
+    color: 'black'
+  }}
+>
+  Tap the bookmark icon on a pin to save it. Your collection of favorites will appear here.
+</Typography>
+
           </Paper>
         ) : (
-          <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
-            <List disablePadding className="bookmarks-classic-list">
-              {groupedBookmarks.map(({ name, items }) => (
-                <Box key={name}>
-                  <ListSubheader
-                    component="div"
-                    sx={{
-                      backgroundColor: 'background.paper',
-                      px: 3,
-                      py: 1.5,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1
-                    }}
+          <>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel
+                id="filter-select-label"
+                sx={{ color: 'black', fontFamily: '"Urbanist", sans-serif' }}
+              >
+                Filter
+              </InputLabel>
+              <Select
+                labelId="filter-select-label"
+                id="filter-select"
+                value={selectedFilter}
+                label="Filter"
+                onChange={handleFilterChange}
+                sx={{
+                  color: 'black',
+                  fontFamily: '"Urbanist", sans-serif',
+                  '& .MuiSelect-select': {
+                    color: 'black'
+                  },
+                  '&.Mui-focused .MuiSelect-select': {
+                    color: 'black'
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'black',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'black'
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'black'
+                  }
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      backgroundColor: 'white',
+                      fontFamily: '"Urbanist", sans-serif'
+                    }
+                  }
+                }}
+              >
+                {filterOptions.map((option) => (
+                  <MenuItem
+                    key={option.value}
+                    value={option.value}
+                    sx={{ color: 'black', fontFamily: '"Urbanist", sans-serif' }}
                   >
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      {name}
-                    </Typography>
-                    <Chip label={items.length} size="small" variant="outlined" />
-                  </ListSubheader>
-                  <Divider />
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden', backgroundColor: 'transparent' }}>
+              <List disablePadding>
+                {paginatedGroupedBookmarks.map((group) => {
+                const { id: collectionId, name, description, items } = group;
+                const groupKey = collectionId ?? UNSORTED_COLLECTION_KEY;
+                const displayName = name || UNSORTED_LABEL;
+                const normalizedName = displayName.trim().toLowerCase();
+                const isHighlighted = highlightedCollectionKey === groupKey;
+                const isPinned = !quickNavPrefs.hidden.includes(groupKey);
+
+                const shouldHideHeader = displayName === 'Weekend Events' || displayName === UNSORTED_LABEL;
+
+                return (
+                  <Box key={groupKey}>
+                  {!shouldHideHeader && (
+                    <>
+                      <ListSubheader
+                        component="div"
+                        ref={(node) => {
+                          const anchors = collectionAnchorsRef.current;
+                          const keys = [groupKey, normalizedName, `${groupKey}::header`].filter(Boolean);
+                          keys.forEach((key) => {
+                            if (!key) {
+                              return;
+                            }
+                            if (node) {
+                              anchors.set(key, node);
+                            } else {
+                              anchors.delete(key);
+                            }
+                          });
+                        }}
+                        sx={{
+                          backgroundColor: isHighlighted ? 'rgba(144, 202, 249, 0.12)' : 'background.paper',
+                          transition: 'background-color 220ms ease',
+                          px: 3,
+                          py: 1.5,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          borderLeft: isHighlighted ? '3px solid rgba(144, 202, 249, 0.6)' : '3px solid transparent'
+                        }}
+                      >
+                        <Typography variant="subtitle1" fontWeight={600} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
+                          {displayName}
+                        </Typography>
+                        <Chip label={items.length} size="small" variant="outlined" sx={{ fontFamily: '"Urbanist", sans-serif' }} />
+                      </ListSubheader>
+                      <Divider />
+                    </>
+                  )}
                   {items.map((bookmark) => {
                     const pin = bookmark.pin;
                     const pinId = bookmark.pinId || pin?._id;
@@ -387,63 +640,56 @@ function BookmarksPage() {
                     const isRemoving = removingPinId === pinId;
 
                     return (
-                      <ListItemButton
+                      <ExpandableBookmarkItem
                         key={bookmark._id || pinId}
-                        alignItems="flex-start"
-                        onClick={() => handleViewPin(pinId)}
-                        sx={{ py: 2, px: { xs: 2, md: 3 }, gap: 1.5 }}
-                      >
-                        <ListItemText
-                          primary={
-                            <Stack direction="row" spacing={1} alignItems="center">
-                              <Typography variant="subtitle1" fontWeight={600}>
-                                {pinTitle}
-                              </Typography>
-                              <Chip label={tagLabel} size="small" color="secondary" variant="outlined" />
-                            </Stack>
-                          }
-                          secondary={
-                            <Typography variant="body2" color="text.secondary">
-                              Saved on {savedAt}
-                            </Typography>
-                          }
-                        />
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          startIcon={<LaunchIcon fontSize="small" />}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleViewPin(pinId);
-                          }}
-                        >
-                          View
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="text"
-                          color="error"
-                          startIcon={<DeleteOutlineIcon fontSize="small" />}
-                          disabled={isOffline || isRemoving}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleRemoveBookmark(bookmark);
-                          }}
-                          title={isOffline ? 'Reconnect to remove bookmarks' : undefined}
-                        >
-                          {isRemoving ? 'Removing...' : 'Remove'}
-                        </Button>
-                      </ListItemButton>
+                        bookmark={bookmark}
+                        pin={pin}
+                        pinId={pinId}
+                        pinTitle={pinTitle}
+                        pinType={pinType}
+                        tagLabel={tagLabel}
+                        savedAt={savedAt}
+                        isRemoving={isRemoving}
+                        isOffline={isOffline}
+                        onViewPin={handleViewPin}
+                        onRemoveBookmark={handleRemoveBookmark}
+                      />
                     );
                   })}
-                  <Divider />
+                  {!shouldHideHeader && <Divider />}
                 </Box>
-              ))}
+              );
+            })}
             </List>
           </Paper>
+          {totalPages > 1 && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 2 }}>
+              <Pagination
+                count={totalPages}
+                page={currentPage}
+                onChange={handlePageChange}
+                color="primary"
+                sx={{
+                  '& .MuiPaginationItem-root': {
+                    fontFamily: '"Urbanist", sans-serif',
+                    color: 'black'
+                  },
+                  '& .MuiPaginationItem-root.Mui-selected': {
+                    backgroundColor: '#4b208c',
+                    color: 'white',
+                    '&:hover': {
+                      backgroundColor: '#6b2fa8'
+                    }
+                  }
+                }}
+              />
+            </Box>
+          )}
+          </>
         )}
       </Stack>
-    </Box>
+      </Box>
+    </>
   );
 }
 

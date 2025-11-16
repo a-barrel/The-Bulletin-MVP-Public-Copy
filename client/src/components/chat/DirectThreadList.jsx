@@ -196,6 +196,8 @@ function DirectThreadList({
                 )}
               </ListItemAvatar>
               <ListItemText
+                primaryTypographyProps={{ component: 'div' }}
+                secondaryTypographyProps={{ component: 'div' }}
                 primary={
                   <Typography className="dm-card-name">
                     {displayName}
