@@ -1,79 +1,19 @@
-import { useCallback, useEffect, useReducer } from 'react';
+import { useCallback, useReducer } from 'react';
 import reportClientError from '../utils/reportClientError';
 
 import {
   createDirectMessageThread,
-  fetchDirectMessageThread,
-  fetchDirectMessageThreads,
   sendDirectMessage
 } from '../api/mongoDataApi';
 import { dmReducer, initialState, buildOptimisticMessage } from './directMessages/dmState';
+import useDmThreadsData from './directMessages/useDmThreadsData';
+import useDmThreadDetail from './directMessages/useDmThreadDetail';
 
 export default function useDirectMessages({ autoLoad = true } = {}) {
   const [state, dispatch] = useReducer(dmReducer, initialState);
 
-  const loadThreads = useCallback(async () => {
-    dispatch({ type: 'threads/pending' });
-    try {
-      const payload = await fetchDirectMessageThreads();
-      dispatch({ type: 'threads/success', payload });
-      return payload;
-    } catch (error) {
-      reportClientError(error, 'Failed to load direct message threads', {
-        source: 'useDirectMessages.loadThreads'
-      });
-      dispatch({
-        type: 'threads/error',
-        error:
-          error?.status === 403
-            ? 'Friend management privileges required.'
-            : error?.message || 'Failed to load direct message threads.',
-        status: error?.status ?? null
-      });
-      throw error;
-    }
-  }, []);
-
-  const loadThreadDetail = useCallback(
-    async (threadId) => {
-      if (!threadId) {
-        const error = new Error('Select a thread before loading messages.');
-        dispatch({ type: 'thread/error', error: error.message });
-        throw error;
-      }
-      dispatch({ type: 'thread/pending' });
-      try {
-        const payload = await fetchDirectMessageThread(threadId);
-        dispatch({ type: 'thread/success', payload: payload?.thread ?? null });
-        return payload?.thread ?? null;
-      } catch (error) {
-        reportClientError(error, 'Failed to load direct message thread', {
-          source: 'useDirectMessages.loadThreadDetail',
-          threadId
-        });
-        dispatch({
-          type: 'thread/error',
-          error:
-            error?.status === 403
-              ? 'Friend management privileges required.'
-              : error?.message || 'Failed to load direct message thread.',
-          status: error?.status ?? null
-        });
-        throw error;
-      }
-    },
-    []
-  );
-
-  const selectThread = useCallback(
-    (threadId) => {
-      dispatch({ type: 'thread/select', threadId });
-      if (threadId) {
-        loadThreadDetail(threadId).catch(() => {});
-      }
-    },
-    [loadThreadDetail]
-  );
+  const { loadThreads } = useDmThreadsData({ dispatch, autoLoad });
+  const { loadThreadDetail, selectThread } = useDmThreadDetail({ dispatch });
 
   const sendMessageAction = useCallback(
     async ({ threadId, body, attachments, sender }) => {
@@ -190,12 +130,6 @@ export default function useDirectMessages({ autoLoad = true } = {}) {
     },
     [loadThreads, loadThreadDetail, state.hasAccess, state.threads, state.selectedThreadId]
   );
-
-  useEffect(() => {
-    if (autoLoad) {
-      loadThreads().catch(() => {});
-    }
-  }, [autoLoad, loadThreads]);
 
   const resetSendStatus = useCallback(() => {
     dispatch({ type: 'send/reset' });
