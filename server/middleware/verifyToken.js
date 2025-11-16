@@ -36,7 +36,15 @@ module.exports = async function verifyToken(req, res, next) {
     req.user = decodedToken;
 
     try {
-      await ensureUserForFirebaseAccount(decodedToken);
+      const viewer = await ensureUserForFirebaseAccount(decodedToken);
+      req.viewer = viewer;
+
+      if (viewer?.accountStatus === 'suspended') {
+        return res.status(403).json({
+          code: 'ACCOUNT_SUSPENDED',
+          message: 'Your account has been suspended. Please contact support if you believe this is an error.'
+        });
+      }
     } catch (error) {
       console.error('Failed to sync Firebase user with MongoDB', error);
       logIntegration('firebase:sync-user', error);
