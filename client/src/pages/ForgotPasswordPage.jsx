@@ -7,6 +7,7 @@ import AuthPageLayout from '../components/AuthPageLayout.jsx';
 import AuthEmailField, { validateAuthEmail } from '../components/AuthEmailField.jsx';
 import useShake from '../hooks/useShake.js';
 import useAuthAlerts from '../hooks/useAuthAlerts';
+import { mapPasswordResetError } from '../utils/authErrors';
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -16,21 +17,6 @@ function ForgotPasswordPage() {
   const [emailError, setEmailError] = useState("");
   const { shake, triggerShake } = useShake();
   
-  const mapFirebaseError = (code) => {
-    switch (code) {
-      case 'auth/invalid-email':
-        return 'Please enter a valid email address.';
-      case 'auth/user-not-found':
-        return 'No account found with that email.';
-      case 'auth/missing-email':
-        return 'Please enter an email address.';
-      case 'auth/network-request-failed':
-        return 'Network error. Check your connection and try again.';
-      default:
-        return 'Something went wrong. Please try again.';
-    }
-  };
-
   const handleEmailSubmission = async (e) => {
     e.preventDefault();
     setError(null);
@@ -48,7 +34,7 @@ function ForgotPasswordPage() {
       await sendPasswordResetEmail(auth, email.trim());
       setMessage('If this email is in use, a password reset email has been sent.');
     } catch (err) {
-      setError(mapFirebaseError(err?.code));
+      setError(mapPasswordResetError(err?.code));
       triggerShake();
     }
   };
