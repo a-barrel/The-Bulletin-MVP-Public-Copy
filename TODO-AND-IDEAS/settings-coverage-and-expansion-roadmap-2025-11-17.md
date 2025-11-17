@@ -177,9 +177,10 @@
 
 ### 4. Per-Surface Verbosity (Stretch)
 - **UI:** Slider or segmented control for Chat vs. Map vs. Badges (e.g., “Important only”, “All activity”).
-- **Data:** `preferences.notifications.verbosity.chat = 'important'` etc.
-- **Backend:** Requires fan-out weighting to respect verbosity levels. If backend not ready, gate behind feature flag.
-- **Complexity:** Medium/High depending on backend readiness.
+- **Data:** `preferences.notificationsVerbosity.chat = 'highlights' | 'all' | 'muted'`.
+- **Status:** ✅ Chat control shipped (Highlights/All/Muted). “All” currently mirrors Highlights until lower-signal events exist; other surfaces TBD.
+- **Backend:** Fan-out honors `muted` (chat) now; future expansions need ranking hooks for `all`.
+- **Complexity:** Medium/High depending on backend readiness for additional surfaces.
 
 ### 5. Telemetry & QA
 - Emit analytics events for:

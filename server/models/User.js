@@ -58,6 +58,9 @@ const userSchema = new mongoose.Schema(
           default: []
         }
       },
+      notificationsVerbosity: {
+        chat: { type: String, enum: ['highlights', 'all', 'muted'], default: 'highlights' }
+      },
       notificationsMutedUntil: { type: Date, default: null },
       radiusPreferenceMeters: { type: Number, default: 16093 },
       statsPublic: { type: Boolean, default: true },

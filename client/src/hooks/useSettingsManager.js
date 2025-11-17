@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import useSettingsProfile from './settings/useSettingsProfile';
 import useBlockedUsersManager from './settings/useBlockedUsersManager';
 import useSettingsPersistence from './settings/useSettingsPersistence';
+import { logClientEvent } from '../api/mongoDataApi';
 
 export const RADIUS_MIN = 100;
 export const RADIUS_MAX = 80467; // 50 miles
@@ -32,6 +33,9 @@ export const DEFAULT_SETTINGS = {
     moderationAlerts: true,
     dmMentions: true,
     emailDigests: false
+  },
+  notificationsVerbosity: {
+    chat: 'highlights'
   },
   notificationsMutedUntil: null,
   display: {
@@ -91,10 +95,20 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
     setProfile
   });
 
+  const logSettingsEvent = useCallback((message, context = {}) => {
+    logClientEvent({
+      category: 'settings-notifications',
+      severity: 'info',
+      message,
+      context
+    });
+  }, []);
+
   const handleReset = useCallback(() => {
     setSettings(baselineSettings);
     setSaveStatus(null);
-  }, [baselineSettings, setSaveStatus, setSettings]);
+    logSettingsEvent('settings-reset', {});
+  }, [baselineSettings, logSettingsEvent, setSaveStatus, setSettings]);
 
   const handleThemeChange = useCallback((event) => {
     const value = event.target.value;
@@ -121,48 +135,80 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
     }));
   }, [setSettings]);
 
-  const handleQuietHoursChange = useCallback((nextSchedule) => {
-    setSettings((prev) => ({
-      ...prev,
-      notifications: {
-        ...prev.notifications,
-        quietHours: Array.isArray(nextSchedule) ? nextSchedule : []
+  const handleQuietHoursChange = useCallback(
+    (nextSchedule) => {
+      setSettings((prev) => ({
+        ...prev,
+        notifications: {
+          ...prev.notifications,
+          quietHours: Array.isArray(nextSchedule) ? nextSchedule : []
+        }
+      }));
+      const enabledCount = Array.isArray(nextSchedule)
+        ? nextSchedule.filter((entry) => entry?.enabled !== false).length
+        : 0;
+      logSettingsEvent('quiet-hours-updated', { enabledCount });
+    },
+    [logSettingsEvent, setSettings]
+  );
+
+  const handleNotificationVerbosityChange = useCallback(
+    (key, value) => {
+      if (typeof key !== 'string' || !key.trim()) {
+        return;
       }
-    }));
-  }, [setSettings]);
+      setSettings((prev) => ({
+        ...prev,
+        notificationsVerbosity: {
+          ...(prev.notificationsVerbosity || DEFAULT_SETTINGS.notificationsVerbosity),
+          [key]: value
+        }
+      }));
+      logSettingsEvent('notification-verbosity-updated', { channel: key, value });
+    },
+    [logSettingsEvent, setSettings]
+  );
 
   const handleApplyNotificationBundle = useCallback(
     (bundle) => {
       if (!bundle || typeof bundle !== 'object') {
         return;
       }
+      const toggles =
+        bundle.toggles && typeof bundle.toggles === 'object' ? bundle.toggles : bundle;
       setSettings((prev) => ({
         ...prev,
         notifications: {
           ...prev.notifications,
-          ...bundle
+          ...toggles
         }
       }));
       setSaveStatus({
         type: 'info',
         message: 'Notification bundle applied. Review toggles, then save to keep the changes.'
       });
+      const bundleId = typeof bundle.id === 'string' ? bundle.id : 'custom';
+      logSettingsEvent('notification-bundle-applied', { bundleId });
     },
-    [setSaveStatus, setSettings]
+    [logSettingsEvent, setSaveStatus, setSettings]
   );
 
-  const handleQuickMuteNotifications = useCallback((hours = 4) => {
-    const duration = Math.max(0.5, Number(hours) || 4);
-    const expiresAt = new Date(Date.now() + duration * 60 * 60 * 1000).toISOString();
-    setSettings((prev) => ({
-      ...prev,
-      notificationsMutedUntil: expiresAt
-    }));
-    setSaveStatus({
-      type: 'info',
-      message: `Notifications muted until ${new Date(expiresAt).toLocaleString()}. Save to apply.`
-    });
-  }, [setSaveStatus, setSettings]);
+  const handleQuickMuteNotifications = useCallback(
+    (hours = 4) => {
+      const duration = Math.max(0.5, Number(hours) || 4);
+      const expiresAt = new Date(Date.now() + duration * 60 * 60 * 1000).toISOString();
+      setSettings((prev) => ({
+        ...prev,
+        notificationsMutedUntil: expiresAt
+      }));
+      setSaveStatus({
+        type: 'info',
+        message: `Notifications muted until ${new Date(expiresAt).toLocaleString()}. Save to apply.`
+      });
+      logSettingsEvent('notification-quick-mute', { durationHours: duration });
+    },
+    [logSettingsEvent, setSaveStatus, setSettings]
+  );
 
   const handleClearNotificationMute = useCallback(() => {
     setSettings((prev) => ({
@@ -174,7 +220,8 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
         ? prev
         : { type: 'info', message: 'Notification mute cleared. Save to apply.' }
     );
-  }, [setSaveStatus, setSettings]);
+    logSettingsEvent('notification-mute-cleared', {});
+  }, [logSettingsEvent, setSaveStatus, setSettings]);
 
   const handleTextScaleChange = useCallback((event, value) => {
     const next = Array.isArray(value) ? value[0] : value;
@@ -278,6 +325,7 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
     handleRadiusChange,
     handleNotificationToggle,
     handleQuietHoursChange,
+    handleNotificationVerbosityChange,
     handleApplyNotificationBundle,
     handleQuickMuteNotifications,
     handleClearNotificationMute,

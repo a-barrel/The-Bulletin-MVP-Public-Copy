@@ -7,7 +7,7 @@ function NotificationBundleSelector({ bundles, onApplyBundle, disabled }) {
 
   const handleApply = (bundle) => {
     if (typeof onApplyBundle === 'function') {
-      onApplyBundle(bundle?.toggles);
+      onApplyBundle(bundle);
     }
   };
 

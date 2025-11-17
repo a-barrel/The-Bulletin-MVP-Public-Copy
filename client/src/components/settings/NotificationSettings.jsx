@@ -20,11 +20,22 @@ function NotificationSettings({
   notifications,
   quietHours,
   onQuietHoursChange,
+  notificationVerbosity,
+  onVerbosityChange,
   onApplyBundle,
   onToggleNotification,
   digestFrequency,
   onDigestFrequencyChange
 }) {
+  const chatVerbosity = notificationVerbosity?.chat || 'highlights';
+
+  const handleVerbosityChange = (event) => {
+    const value = event.target.value;
+    if (typeof onVerbosityChange === 'function') {
+      onVerbosityChange('chat', value);
+    }
+  };
+
   return (
     <Stack spacing={2}>
       <Stack spacing={1}>
@@ -104,6 +115,22 @@ function NotificationSettings({
         onToggle={onToggleNotification}
         disabled={isOffline}
       />
+
+      <Stack spacing={1}>
+        <FormControl size="small" sx={{ maxWidth: 320 }}>
+          <FormLabel component="legend" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+            Chat notification intensity
+          </FormLabel>
+          <Select value={chatVerbosity} onChange={handleVerbosityChange} disabled={isOffline}>
+            <MenuItem value="highlights">Highlights only</MenuItem>
+            <MenuItem value="all">All activity</MenuItem>
+            <MenuItem value="muted">Mute chat alerts</MenuItem>
+          </Select>
+        </FormControl>
+        <Typography variant="caption" color="text.secondary">
+          “Mute” blocks chat message alerts even if the toggle above stays on. “All activity” behaves like Highlights until we expose lower-signal pings.
+        </Typography>
+      </Stack>
 
       <Stack spacing={1}>
         <FormControl size="small" sx={{ maxWidth: 320 }}>

@@ -55,6 +55,11 @@ const hydrateSettingsFromProfile = (result) => ({
     dmMentions: result?.preferences?.notifications?.dmMentions ?? DEFAULT_SETTINGS.notifications.dmMentions,
     emailDigests: result?.preferences?.notifications?.emailDigests ?? DEFAULT_SETTINGS.notifications.emailDigests
   },
+  notificationsVerbosity: {
+    chat:
+      result?.preferences?.notificationsVerbosity?.chat ??
+      DEFAULT_SETTINGS.notificationsVerbosity.chat
+  },
   display: {
     textScale: result?.preferences?.display?.textScale ?? DEFAULT_SETTINGS.display.textScale,
     reduceMotion: result?.preferences?.display?.reduceMotion ?? DEFAULT_SETTINGS.display.reduceMotion,

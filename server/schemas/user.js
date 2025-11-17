@@ -36,6 +36,12 @@ const NotificationPreferencesSchema = z
   })
   .partial();
 
+const NotificationVerbositySchema = z
+  .object({
+    chat: z.enum(['highlights', 'all', 'muted']).default('highlights')
+  })
+  .partial();
+
 const DisplayPreferencesSchema = z
   .object({
     textScale: z.number().min(0.5).max(2).default(1),
@@ -55,6 +61,7 @@ const DataPreferencesSchema = z
 const UserPreferencesSchema = z.object({
   theme: z.enum(['system', 'light', 'dark']).default('system'),
   notifications: NotificationPreferencesSchema.optional(),
+  notificationsVerbosity: NotificationVerbositySchema.optional(),
   notificationsMutedUntil: z
     .union([z.string().datetime(), z.null()])
     .optional(),

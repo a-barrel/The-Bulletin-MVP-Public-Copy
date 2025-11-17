@@ -222,7 +222,8 @@ const filterRecipientsByPreference = async (recipientIds, options = {}) => {
     requireUpdates = true,
     requireChatTransitions = false,
     notificationKeys = [],
-    ignoreQuietHours = false
+    ignoreQuietHours = false,
+    mutedVerbosity = null
   } = options;
   const unique = Array.from(
     new Set(recipientIds.map((id) => toIdString(id)).filter(Boolean))
@@ -261,6 +262,19 @@ const filterRecipientsByPreference = async (recipientIds, options = {}) => {
         }
         if (!ignoreQuietHours && isWithinQuietHours(preferenceDoc, referenceDate)) {
           return false;
+        }
+        if (mutedVerbosity && typeof mutedVerbosity === 'object') {
+          const verbosityPrefs = preferenceDoc.notificationsVerbosity || {};
+          const entries = Object.entries(mutedVerbosity);
+          for (const [key, disallowed] of entries) {
+            if (!key) {
+              continue;
+            }
+            const currentValue = verbosityPrefs[key];
+            if (Array.isArray(disallowed) ? disallowed.includes(currentValue) : currentValue === disallowed) {
+              return false;
+            }
+          }
         }
         const mutedUntil = user?.preferences?.notificationsMutedUntil;
         if (mutedUntil) {
@@ -840,7 +854,8 @@ const broadcastChatMessage = async ({ room, message, author }) => {
     }
 
     const filteredRecipients = await filterRecipientsByPreference(Array.from(recipients), {
-      notificationKeys: ['chatMessages']
+      notificationKeys: ['chatMessages'],
+      mutedVerbosity: { chat: ['muted'] }
     });
     if (!filteredRecipients.length) {
       return;

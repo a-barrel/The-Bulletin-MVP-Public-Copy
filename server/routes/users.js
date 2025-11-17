@@ -126,6 +126,12 @@ const NotificationPreferencesUpdateSchema = z
   })
   .optional();
 
+const NotificationVerbosityUpdateSchema = z
+  .object({
+    chat: z.enum(['highlights', 'all', 'muted']).optional()
+  })
+  .optional();
+
 const DisplayPreferencesUpdateSchema = z
   .object({
     textScale: z.number().min(0.8).max(1.4).optional(),
@@ -156,6 +162,7 @@ const UserPreferencesUpdateSchema = z
     dmPermission: z.enum(['everyone', 'friends', 'nobody']).optional(),
     digestFrequency: z.enum(['immediate', 'daily', 'weekly', 'never']).optional(),
     notifications: NotificationPreferencesUpdateSchema,
+    notificationsVerbosity: NotificationVerbosityUpdateSchema,
     notificationsMutedUntil: z.union([z.string().datetime(), z.null()]).optional(),
     display: DisplayPreferencesUpdateSchema,
     data: DataPreferencesUpdateSchema
@@ -716,6 +723,15 @@ router.patch('/me', verifyToken, async (req, res) => {
                 .json({ message: quietHoursError.message || 'Invalid quiet hours payload' });
             }
           }
+        }
+      }
+      if (
+        input.preferences.notificationsVerbosity &&
+        typeof input.preferences.notificationsVerbosity === 'object'
+      ) {
+        const verbosity = input.preferences.notificationsVerbosity;
+        if (verbosity.chat !== undefined) {
+          setDoc['preferences.notificationsVerbosity.chat'] = verbosity.chat;
         }
       }
       if (input.preferences.notificationsMutedUntil !== undefined) {

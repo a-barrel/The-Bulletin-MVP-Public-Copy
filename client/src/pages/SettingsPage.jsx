@@ -97,6 +97,7 @@ function SettingsPage() {
     handleDisplayToggle,
     handleMapDensityChange,
     handleQuietHoursChange,
+    handleNotificationVerbosityChange,
     handleApplyNotificationBundle,
     handleLocationSharingToggle,
     handleStatsVisibilityToggle,
@@ -118,6 +119,10 @@ function SettingsPage() {
     ...(settings.notifications || {})
   };
   const quietHours = Array.isArray(notifications.quietHours) ? notifications.quietHours : [];
+  const notificationsVerbosity = {
+    ...DEFAULT_SETTINGS.notificationsVerbosity,
+    ...(settings.notificationsVerbosity || {})
+  };
   const radiusMeters = settings.radiusPreferenceMeters ?? DEFAULT_SETTINGS.radiusPreferenceMeters;
   const rawRadiusMiles = metersToMiles(radiusMeters);
   const radiusMiles = rawRadiusMiles === null ? null : Math.round(rawRadiusMiles * 10) / 10;
@@ -545,6 +550,8 @@ function SettingsPage() {
                 notifications={notifications}
                 quietHours={quietHours}
                 onQuietHoursChange={handleQuietHoursChange}
+                notificationVerbosity={notificationsVerbosity}
+                onVerbosityChange={handleNotificationVerbosityChange}
                 onApplyBundle={handleApplyNotificationBundle}
                 onToggleNotification={handleNotificationToggle}
                 digestFrequency={digestFrequency}
