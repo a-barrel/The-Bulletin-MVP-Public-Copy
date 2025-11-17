@@ -1,7 +1,26 @@
 import resolveAssetUrl from './media';
 import toIdString from './ids';
 
-export const DEFAULT_AVATAR = 'https://i.pravatar.cc/100?img=64';
+const PLACEHOLDER_COLORS = [
+  '#7c3aed',
+  '#f97316',
+  '#22d3ee',
+  '#facc15',
+  '#10b981',
+  '#f43f5e',
+  '#38bdf8',
+  '#a855f7',
+  '#f59e0b'
+];
+
+const buildPlaceholderAvatar = (seed = 0) => {
+  const normalizedSeed = Number.isFinite(seed) ? Math.abs(Math.floor(seed)) : 0;
+  const color = PLACEHOLDER_COLORS[normalizedSeed % PLACEHOLDER_COLORS.length];
+  const encodedColor = encodeURIComponent(color);
+  return `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='${encodedColor}'/><circle cx='32' cy='24' r='12' fill='%23ffffff' opacity='0.45'/><rect x='14' y='38' width='36' height='16' rx='8' fill='%23ffffff' opacity='0.35'/></svg>`;
+};
+
+export const DEFAULT_AVATAR = buildPlaceholderAvatar(0);
 
 export const FALLBACK_NAMES = [
   'Scout',
@@ -57,10 +76,7 @@ export const resolveAuthorAvatar = (value, { fallback = DEFAULT_AVATAR } = {}) =
   return fallback;
 };
 
-export const resolveLibraryAvatar = (seed = 0) => {
-  const normalizedSeed = Number.isFinite(seed) ? Math.abs(Math.floor(seed)) : 0;
-  return `https://i.pravatar.cc/100?u=pinpoint-fallback-${normalizedSeed}`;
-};
+export const resolveLibraryAvatar = (seed = 0) => buildPlaceholderAvatar(seed);
 
 export const normalizeAttendeeRecord = (record, fallbackSeed = 0) => {
   const normalizedId =

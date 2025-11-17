@@ -1,154 +1,21 @@
 [
   {
     "_id": {
-      "$oid": "68e061721329566a22d474b4"
+      "$oid": "691a6b99d1f945e23fc880ca"
     },
     "roomId": {
-      "$oid": "68e061721329566a22d474b3"
+      "$oid": "68e061721329566a22d40000"
     },
-    "pinId": {
-      "$oid": "68e061721329566a22d474ab"
-    },
-    "authorId": {
-      "$oid": "68e061721329566a22d474a8"
-    },
-    "replyToMessageId": null,
-    "message": "Welcome! Grab a seat near the back patio; we'll kick off at 6:05.",
-    "coordinates": {
-      "type": "Point",
-      "coordinates": [
-        -118.1141,
-        33.7838
-      ],
-      "accuracy": 7
-    },
-    "attachments": [],
-    "audit": {
-      "createdBy": {
-        "$oid": "68e061721329566a22d474a8"
-      }
-    },
-    "createdAt": {
-      "$date": "2026-10-03T23:20:00.000Z"
-    },
-    "updatedAt": {
-      "$date": "2026-10-03T23:20:00.000Z"
-    },
-    "author": {
-      "_id": {
-        "$oid": "68e061721329566a22d474a8"
-      },
-      "displayName": "Priya Desai",
-      "username": "priyadesai",
-      "avatar": {
-        "url": "/images/profile/profile-02",
-        "thumbnailUrl": "/images/profile/profile-02",
-        "width": 128,
-        "height": 128,
-        "mimeType": "image/jpeg",
-        "uploadedAt": {
-          "$date": "2026-08-01T18:12:30.000Z"
-        }
-      }
-    },
-    "authorAvatar": {
-      "url": "/images/profile/profile-02",
-      "thumbnailUrl": "/images/profile/profile-02",
-      "width": 128,
-      "height": 128,
-      "mimeType": "image/jpeg",
-      "uploadedAt": {
-        "$date": "2026-08-01T18:12:30.000Z"
-      }
-    }
-  },
-  {
-    "_id": {
-      "$oid": "68e061721329566a22d47571"
-    },
-    "roomId": {
-      "$oid": "68e061721329566a22d47570"
-    },
-    "pinId": {
-      "$oid": "68e061721329566a22d47530"
-    },
-    "authorId": {
-      "$oid": "68e061721329566a22d47510"
-    },
-    "replyToMessageId": null,
-    "message": "Reminder: vendor load-in starts at 4:00 PM near the union loading dock.",
-    "coordinates": {
-      "type": "Point",
-      "coordinates": [
-        -118.1146,
-        33.7779
-      ],
-      "accuracy": 8
-    },
-    "attachments": [],
-    "audit": {
-      "createdBy": {
-        "$oid": "68e061721329566a22d47510"
-      }
-    },
-    "createdAt": {
-      "$date": "2026-10-09T18:50:00.000Z"
-    },
-    "updatedAt": {
-      "$date": "2026-10-09T18:50:00.000Z"
-    },
-    "author": {
-      "_id": {
-        "$oid": "68e061721329566a22d47510"
-      },
-      "displayName": "Sofia Nguyen",
-      "username": "sofianguyen",
-      "avatar": {
-        "url": "/images/profile/profile-04",
-        "thumbnailUrl": "/images/profile/profile-04",
-        "width": 128,
-        "height": 128,
-        "mimeType": "image/jpeg",
-        "uploadedAt": {
-          "$date": "2026-09-04T16:18:00.000Z"
-        }
-      }
-    },
-    "authorAvatar": {
-      "url": "/images/profile/profile-04",
-      "thumbnailUrl": "/images/profile/profile-04",
-      "width": 128,
-      "height": 128,
-      "mimeType": "image/jpeg",
-      "uploadedAt": {
-        "$date": "2026-09-04T16:18:00.000Z"
-      }
-    }
-  },
-  {
-    "_id": {
-      "$oid": "68e061721329566a22d47572"
-    },
-    "roomId": {
-      "$oid": "68e061721329566a22d47570"
-    },
-    "pinId": {
-      "$oid": "68e061721329566a22d47530"
-    },
+    "pinId": null,
     "authorId": {
       "$oid": "68e061721329566a22d474a7"
     },
-    "replyToMessageId": {
-      "$oid": "68e061721329566a22d47571"
-    },
-    "message": "I'll bring surge protectors and extra gaffer tape for the booth row.",
+    "replyToMessageId": null,
+    "message": "Zlorp glimbus narfty!",
     "coordinates": {
       "type": "Point",
-      "coordinates": [
-        -118.1144,
-        33.7777
-      ],
-      "accuracy": 9
+      "coordinates": [],
+      "accuracy": null
     },
     "attachments": [],
     "audit": {
@@ -157,17 +24,17 @@
       }
     },
     "createdAt": {
-      "$date": "2026-10-09T18:55:00.000Z"
+      "$date": "2025-11-17T00:21:01.970Z"
     },
     "updatedAt": {
-      "$date": "2026-10-09T18:55:00.000Z"
+      "$date": "2025-11-17T00:26:01.970Z"
     },
     "author": {
       "_id": {
         "$oid": "68e061721329566a22d474a7"
       },
-      "displayName": "Alex Rivera",
       "username": "alexrivera",
+      "displayName": "Alex Rivera",
       "avatar": {
         "url": "/images/profile/profile-01",
         "thumbnailUrl": "/images/profile/profile-01",
@@ -192,83 +59,21 @@
   },
   {
     "_id": {
-      "$oid": "68e061721329566a22d476a0"
+      "$oid": "691a6b99d1f945e23fc880cb"
     },
     "roomId": {
-      "$oid": "68e061721329566a22d47690"
+      "$oid": "68e061721329566a22d40000"
     },
-    "authorId": {
-      "$oid": "68e061721329566a22d474a7"
-    },
-    "replyToMessageId": null,
-    "message": "Welcome to Global Debug Lounge A. Use this space for baseline swap + messaging checks.",
-    "coordinates": {
-      "type": "Point",
-      "coordinates": [
-        0,
-        0
-      ],
-      "accuracy": 0
-    },
-    "attachments": [],
-    "audit": {
-      "createdBy": {
-        "$oid": "68e061721329566a22d474a7"
-      }
-    },
-    "createdAt": {
-      "$date": "2026-10-20T19:16:00.000Z"
-    },
-    "updatedAt": {
-      "$date": "2026-10-20T19:16:00.000Z"
-    },
-    "author": {
-      "_id": {
-        "$oid": "68e061721329566a22d474a7"
-      },
-      "displayName": "Alex Rivera",
-      "username": "alexrivera",
-      "avatar": {
-        "url": "/images/profile/profile-01",
-        "thumbnailUrl": "/images/profile/profile-01",
-        "width": 128,
-        "height": 128,
-        "mimeType": "image/jpeg",
-        "uploadedAt": {
-          "$date": "2026-08-01T18:12:00.000Z"
-        }
-      }
-    },
-    "authorAvatar": {
-      "url": "/images/profile/profile-01",
-      "thumbnailUrl": "/images/profile/profile-01",
-      "width": 128,
-      "height": 128,
-      "mimeType": "image/jpeg",
-      "uploadedAt": {
-        "$date": "2026-08-01T18:12:00.000Z"
-      }
-    }
-  },
-  {
-    "_id": {
-      "$oid": "68e061721329566a22d476a1"
-    },
-    "roomId": {
-      "$oid": "68e061721329566a22d47691"
-    },
+    "pinId": null,
     "authorId": {
       "$oid": "68e061721329566a22d474a8"
     },
     "replyToMessageId": null,
-    "message": "Global Lounge B online. Hop here when you just need a fast room swap without geo rules.",
+    "message": "Frindle pop quazar dooble.",
     "coordinates": {
       "type": "Point",
-      "coordinates": [
-        0,
-        0
-      ],
-      "accuracy": 0
+      "coordinates": [],
+      "accuracy": null
     },
     "attachments": [],
     "audit": {
@@ -277,17 +82,17 @@
       }
     },
     "createdAt": {
-      "$date": "2026-10-21T02:32:00.000Z"
+      "$date": "2025-11-17T00:22:01.970Z"
     },
     "updatedAt": {
-      "$date": "2026-10-21T02:32:00.000Z"
+      "$date": "2025-11-17T00:26:01.970Z"
     },
     "author": {
       "_id": {
         "$oid": "68e061721329566a22d474a8"
       },
-      "displayName": "Priya Desai",
       "username": "priyadesai",
+      "displayName": "Priya Desai",
       "avatar": {
         "url": "/images/profile/profile-02",
         "thumbnailUrl": "/images/profile/profile-02",
@@ -312,23 +117,21 @@
   },
   {
     "_id": {
-      "$oid": "68e061721329566a22d476a2"
+      "$oid": "691a6b99d1f945e23fc880cc"
     },
     "roomId": {
-      "$oid": "68e061721329566a22d47692"
+      "$oid": "68e061721329566a22d40000"
     },
+    "pinId": null,
     "authorId": {
       "$oid": "68e061721329566a22d474a9"
     },
     "replyToMessageId": null,
-    "message": "Checking in from the Long Beach waterfront. I can see the chat after spoofing to campus coords.",
+    "message": "Nebula snax vibra tune.",
     "coordinates": {
       "type": "Point",
-      "coordinates": [
-        -118.193739,
-        33.77005
-      ],
-      "accuracy": 12
+      "coordinates": [],
+      "accuracy": null
     },
     "attachments": [],
     "audit": {
@@ -337,17 +140,17 @@
       }
     },
     "createdAt": {
-      "$date": "2026-10-21T02:36:00.000Z"
+      "$date": "2025-11-17T00:23:01.970Z"
     },
     "updatedAt": {
-      "$date": "2026-10-21T02:36:00.000Z"
+      "$date": "2025-11-17T00:26:01.970Z"
     },
     "author": {
       "_id": {
         "$oid": "68e061721329566a22d474a9"
       },
-      "displayName": "Marcus Soto",
       "username": "marcussoto",
+      "displayName": "Marcus Soto",
       "avatar": {
         "url": "/images/profile/profile-03",
         "thumbnailUrl": "/images/profile/profile-03",
@@ -372,23 +175,891 @@
   },
   {
     "_id": {
-      "$oid": "68e061721329566a22d476a3"
+      "$oid": "691a6b99d1f945e23fc880cd"
     },
     "roomId": {
-      "$oid": "68e061721329566a22d47693"
+      "$oid": "68e061721329566a22d40000"
     },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47510"
+    },
+    "replyToMessageId": null,
+    "message": "Jibber flux manta ray.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47510"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:01.970Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.970Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47510"
+      },
+      "username": "sofianguyen",
+      "displayName": "Sofia Nguyen",
+      "avatar": {
+        "url": "/images/profile/profile-04",
+        "thumbnailUrl": "/images/profile/profile-04",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-04T16:18:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-04",
+      "thumbnailUrl": "/images/profile/profile-04",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-04T16:18:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880ce"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40000"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47511"
+    },
+    "replyToMessageId": null,
+    "message": "Kip kip hoor cronx.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47511"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:01.970Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.970Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47511"
+      },
+      "username": "jamaldouglas",
+      "displayName": "Jamal Douglas",
+      "avatar": {
+        "url": "/images/profile/profile-05",
+        "thumbnailUrl": "/images/profile/profile-05",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-06T19:05:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-05",
+      "thumbnailUrl": "/images/profile/profile-05",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-06T19:05:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880d3"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40001"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "46157fa6da7698fc59105392"
+    },
+    "replyToMessageId": null,
+    "message": "Flombo jitter sprylox.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "46157fa6da7698fc59105392"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:01.984Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.984Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "46157fa6da7698fc59105392"
+      },
+      "username": "tf2_demoman",
+      "displayName": "Demoman",
+      "avatar": {
+        "url": "/images/emulation/avatars/Demomanava",
+        "thumbnailUrl": "/images/emulation/avatars/Demomanava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Demomanava",
+      "thumbnailUrl": "/images/emulation/avatars/Demomanava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880d4"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40001"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "d7a6491309b83aad8e67f14c"
+    },
+    "replyToMessageId": null,
+    "message": "Gloopity gloop zap!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "d7a6491309b83aad8e67f14c"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:01.984Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.984Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "d7a6491309b83aad8e67f14c"
+      },
+      "username": "tf2_spy",
+      "displayName": "Spy",
+      "avatar": {
+        "url": "/images/emulation/avatars/Spyava",
+        "thumbnailUrl": "/images/emulation/avatars/Spyava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Spyava",
+      "thumbnailUrl": "/images/emulation/avatars/Spyava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880d5"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40001"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "9090e547f3b4cf5aa61d19a7"
+    },
+    "replyToMessageId": null,
+    "message": "Zoop zoop zip zap.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "9090e547f3b4cf5aa61d19a7"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:01.984Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.984Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "9090e547f3b4cf5aa61d19a7"
+      },
+      "username": "tf2_engineer",
+      "displayName": "Engineer",
+      "avatar": {
+        "url": "/images/emulation/avatars/Engineerava",
+        "thumbnailUrl": "/images/emulation/avatars/Engineerava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Engineerava",
+      "thumbnailUrl": "/images/emulation/avatars/Engineerava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880d6"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40001"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "934981bc88eca7e088f557c6"
+    },
+    "replyToMessageId": null,
+    "message": "Wibber wobber woo!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "934981bc88eca7e088f557c6"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:01.984Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.984Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "934981bc88eca7e088f557c6"
+      },
+      "username": "tf2_heavy",
+      "displayName": "Heavy",
+      "avatar": {
+        "url": "/images/emulation/avatars/Heavyava",
+        "thumbnailUrl": "/images/emulation/avatars/Heavyava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Heavyava",
+      "thumbnailUrl": "/images/emulation/avatars/Heavyava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880d7"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40001"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "8184947383c54cde27f6a325"
+    },
+    "replyToMessageId": null,
+    "message": "Plonk dribble snazzle.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "8184947383c54cde27f6a325"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:01.984Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.984Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "8184947383c54cde27f6a325"
+      },
+      "username": "tf2_medic",
+      "displayName": "Medic",
+      "avatar": {
+        "url": "/images/emulation/avatars/Medicava",
+        "thumbnailUrl": "/images/emulation/avatars/Medicava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Medicava",
+      "thumbnailUrl": "/images/emulation/avatars/Medicava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880db"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40002"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "1e056a58ce0c08e0e420bca0"
+    },
+    "replyToMessageId": null,
+    "message": "Zlorp glimbus narfty!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "1e056a58ce0c08e0e420bca0"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:01.991Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.991Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "1e056a58ce0c08e0e420bca0"
+      },
+      "username": "tf2_pyro",
+      "displayName": "Pyro",
+      "avatar": {
+        "url": "/images/emulation/avatars/Pyroava",
+        "thumbnailUrl": "/images/emulation/avatars/Pyroava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Pyroava",
+      "thumbnailUrl": "/images/emulation/avatars/Pyroava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880dc"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40002"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "486e6bdd712130e78538ba6f"
+    },
+    "replyToMessageId": null,
+    "message": "Frindle pop quazar dooble.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "486e6bdd712130e78538ba6f"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:01.991Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.991Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "486e6bdd712130e78538ba6f"
+      },
+      "username": "tf2_scout",
+      "displayName": "Scout",
+      "avatar": {
+        "url": "/images/emulation/avatars/Scoutava",
+        "thumbnailUrl": "/images/emulation/avatars/Scoutava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Scoutava",
+      "thumbnailUrl": "/images/emulation/avatars/Scoutava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880dd"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40002"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "9bfa44ec70cf17a8086a01e0"
+    },
+    "replyToMessageId": null,
+    "message": "Nebula snax vibra tune.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "9bfa44ec70cf17a8086a01e0"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:01.991Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.991Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "9bfa44ec70cf17a8086a01e0"
+      },
+      "username": "tf2_sniper",
+      "displayName": "Sniper",
+      "avatar": {
+        "url": "/images/emulation/avatars/Sniperava",
+        "thumbnailUrl": "/images/emulation/avatars/Sniperava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Sniperava",
+      "thumbnailUrl": "/images/emulation/avatars/Sniperava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880de"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40002"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "4d250de16a246c301a52b095"
+    },
+    "replyToMessageId": null,
+    "message": "Jibber flux manta ray.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "4d250de16a246c301a52b095"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:01.991Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.991Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "4d250de16a246c301a52b095"
+      },
+      "username": "tf2_soldier",
+      "displayName": "Soldier",
+      "avatar": {
+        "url": "/images/emulation/avatars/Soldierava",
+        "thumbnailUrl": "/images/emulation/avatars/Soldierava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Soldierava",
+      "thumbnailUrl": "/images/emulation/avatars/Soldierava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880df"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40002"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47601"
+    },
+    "replyToMessageId": null,
+    "message": "Kip kip hoor cronx.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47601"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:01.991Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.991Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47601"
+      },
+      "username": "pinpointadmin",
+      "displayName": "Pinpoint Admin",
+      "avatar": {
+        "url": "/images/profile/profile-06",
+        "thumbnailUrl": "/images/profile/profile-06",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-06",
+      "thumbnailUrl": "/images/profile/profile-06",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880e2"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40003"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47602"
+    },
+    "replyToMessageId": null,
+    "message": "Flombo jitter sprylox.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47602"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:01.995Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.995Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47602"
+      },
+      "username": "pinpointusera",
+      "displayName": "Pinpoint User A",
+      "avatar": {
+        "url": "/images/profile/profile-07",
+        "thumbnailUrl": "/images/profile/profile-07",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-07",
+      "thumbnailUrl": "/images/profile/profile-07",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880e3"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40003"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47603"
+    },
+    "replyToMessageId": null,
+    "message": "Gloopity gloop zap!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47603"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:01.995Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.995Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47603"
+      },
+      "username": "pinpointuserb",
+      "displayName": "Pinpoint User B",
+      "avatar": {
+        "url": "/images/profile/profile-08",
+        "thumbnailUrl": "/images/profile/profile-08",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-08",
+      "thumbnailUrl": "/images/profile/profile-08",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880e4"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40003"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "replyToMessageId": null,
+    "message": "Zoop zoop zip zap.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a7"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:01.995Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.995Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      "username": "alexrivera",
+      "displayName": "Alex Rivera",
+      "avatar": {
+        "url": "/images/profile/profile-01",
+        "thumbnailUrl": "/images/profile/profile-01",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-01",
+      "thumbnailUrl": "/images/profile/profile-01",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880e5"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40003"
+    },
+    "pinId": null,
     "authorId": {
       "$oid": "68e061721329566a22d474a8"
     },
     "replyToMessageId": null,
-    "message": "North Pole check: messages here should stay invisible to anyone spoofed to Long Beach.",
+    "message": "Wibber wobber woo!",
     "coordinates": {
       "type": "Point",
-      "coordinates": [
-        135,
-        89.95
-      ],
-      "accuracy": 30
+      "coordinates": [],
+      "accuracy": null
     },
     "attachments": [],
     "audit": {
@@ -397,17 +1068,17 @@
       }
     },
     "createdAt": {
-      "$date": "2026-10-21T02:46:00.000Z"
+      "$date": "2025-11-17T00:24:01.995Z"
     },
     "updatedAt": {
-      "$date": "2026-10-21T02:46:00.000Z"
+      "$date": "2025-11-17T00:26:01.995Z"
     },
     "author": {
       "_id": {
         "$oid": "68e061721329566a22d474a8"
       },
-      "displayName": "Priya Desai",
       "username": "priyadesai",
+      "displayName": "Priya Desai",
       "avatar": {
         "url": "/images/profile/profile-02",
         "thumbnailUrl": "/images/profile/profile-02",
@@ -427,6 +1098,934 @@
       "mimeType": "image/jpeg",
       "uploadedAt": {
         "$date": "2026-08-01T18:12:30.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880e6"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40003"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a9"
+    },
+    "replyToMessageId": null,
+    "message": "Plonk dribble snazzle.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a9"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:01.995Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.995Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      "username": "marcussoto",
+      "displayName": "Marcus Soto",
+      "avatar": {
+        "url": "/images/profile/profile-03",
+        "thumbnailUrl": "/images/profile/profile-03",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:13:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-03",
+      "thumbnailUrl": "/images/profile/profile-03",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:13:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880e9"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40004"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47510"
+    },
+    "replyToMessageId": null,
+    "message": "Zlorp glimbus narfty!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47510"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:01.999Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.999Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47510"
+      },
+      "username": "sofianguyen",
+      "displayName": "Sofia Nguyen",
+      "avatar": {
+        "url": "/images/profile/profile-04",
+        "thumbnailUrl": "/images/profile/profile-04",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-04T16:18:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-04",
+      "thumbnailUrl": "/images/profile/profile-04",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-04T16:18:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880ea"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40004"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47511"
+    },
+    "replyToMessageId": null,
+    "message": "Frindle pop quazar dooble.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47511"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:01.999Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.999Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47511"
+      },
+      "username": "jamaldouglas",
+      "displayName": "Jamal Douglas",
+      "avatar": {
+        "url": "/images/profile/profile-05",
+        "thumbnailUrl": "/images/profile/profile-05",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-06T19:05:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-05",
+      "thumbnailUrl": "/images/profile/profile-05",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-06T19:05:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880eb"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40004"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "46157fa6da7698fc59105392"
+    },
+    "replyToMessageId": null,
+    "message": "Nebula snax vibra tune.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "46157fa6da7698fc59105392"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:01.999Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.999Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "46157fa6da7698fc59105392"
+      },
+      "username": "tf2_demoman",
+      "displayName": "Demoman",
+      "avatar": {
+        "url": "/images/emulation/avatars/Demomanava",
+        "thumbnailUrl": "/images/emulation/avatars/Demomanava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Demomanava",
+      "thumbnailUrl": "/images/emulation/avatars/Demomanava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880ec"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40004"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "d7a6491309b83aad8e67f14c"
+    },
+    "replyToMessageId": null,
+    "message": "Jibber flux manta ray.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "d7a6491309b83aad8e67f14c"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:01.999Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.999Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "d7a6491309b83aad8e67f14c"
+      },
+      "username": "tf2_spy",
+      "displayName": "Spy",
+      "avatar": {
+        "url": "/images/emulation/avatars/Spyava",
+        "thumbnailUrl": "/images/emulation/avatars/Spyava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Spyava",
+      "thumbnailUrl": "/images/emulation/avatars/Spyava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b99d1f945e23fc880ed"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40004"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "9090e547f3b4cf5aa61d19a7"
+    },
+    "replyToMessageId": null,
+    "message": "Kip kip hoor cronx.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "9090e547f3b4cf5aa61d19a7"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:01.999Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:01.999Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "9090e547f3b4cf5aa61d19a7"
+      },
+      "username": "tf2_engineer",
+      "displayName": "Engineer",
+      "avatar": {
+        "url": "/images/emulation/avatars/Engineerava",
+        "thumbnailUrl": "/images/emulation/avatars/Engineerava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Engineerava",
+      "thumbnailUrl": "/images/emulation/avatars/Engineerava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc880f0"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40005"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "934981bc88eca7e088f557c6"
+    },
+    "replyToMessageId": null,
+    "message": "Flombo jitter sprylox.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "934981bc88eca7e088f557c6"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.002Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.002Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "934981bc88eca7e088f557c6"
+      },
+      "username": "tf2_heavy",
+      "displayName": "Heavy",
+      "avatar": {
+        "url": "/images/emulation/avatars/Heavyava",
+        "thumbnailUrl": "/images/emulation/avatars/Heavyava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Heavyava",
+      "thumbnailUrl": "/images/emulation/avatars/Heavyava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc880f1"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40005"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "8184947383c54cde27f6a325"
+    },
+    "replyToMessageId": null,
+    "message": "Gloopity gloop zap!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "8184947383c54cde27f6a325"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.002Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.002Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "8184947383c54cde27f6a325"
+      },
+      "username": "tf2_medic",
+      "displayName": "Medic",
+      "avatar": {
+        "url": "/images/emulation/avatars/Medicava",
+        "thumbnailUrl": "/images/emulation/avatars/Medicava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Medicava",
+      "thumbnailUrl": "/images/emulation/avatars/Medicava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc880f2"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40005"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "1e056a58ce0c08e0e420bca0"
+    },
+    "replyToMessageId": null,
+    "message": "Zoop zoop zip zap.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "1e056a58ce0c08e0e420bca0"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.002Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.002Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "1e056a58ce0c08e0e420bca0"
+      },
+      "username": "tf2_pyro",
+      "displayName": "Pyro",
+      "avatar": {
+        "url": "/images/emulation/avatars/Pyroava",
+        "thumbnailUrl": "/images/emulation/avatars/Pyroava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Pyroava",
+      "thumbnailUrl": "/images/emulation/avatars/Pyroava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc880f3"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40005"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "486e6bdd712130e78538ba6f"
+    },
+    "replyToMessageId": null,
+    "message": "Wibber wobber woo!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "486e6bdd712130e78538ba6f"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.002Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.002Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "486e6bdd712130e78538ba6f"
+      },
+      "username": "tf2_scout",
+      "displayName": "Scout",
+      "avatar": {
+        "url": "/images/emulation/avatars/Scoutava",
+        "thumbnailUrl": "/images/emulation/avatars/Scoutava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Scoutava",
+      "thumbnailUrl": "/images/emulation/avatars/Scoutava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc880f4"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40005"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "9bfa44ec70cf17a8086a01e0"
+    },
+    "replyToMessageId": null,
+    "message": "Plonk dribble snazzle.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "9bfa44ec70cf17a8086a01e0"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.002Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.002Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "9bfa44ec70cf17a8086a01e0"
+      },
+      "username": "tf2_sniper",
+      "displayName": "Sniper",
+      "avatar": {
+        "url": "/images/emulation/avatars/Sniperava",
+        "thumbnailUrl": "/images/emulation/avatars/Sniperava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Sniperava",
+      "thumbnailUrl": "/images/emulation/avatars/Sniperava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc880f7"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40006"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "4d250de16a246c301a52b095"
+    },
+    "replyToMessageId": null,
+    "message": "Zlorp glimbus narfty!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "4d250de16a246c301a52b095"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.007Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.007Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "4d250de16a246c301a52b095"
+      },
+      "username": "tf2_soldier",
+      "displayName": "Soldier",
+      "avatar": {
+        "url": "/images/emulation/avatars/Soldierava",
+        "thumbnailUrl": "/images/emulation/avatars/Soldierava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Soldierava",
+      "thumbnailUrl": "/images/emulation/avatars/Soldierava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc880f8"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40006"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47601"
+    },
+    "replyToMessageId": null,
+    "message": "Frindle pop quazar dooble.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47601"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.007Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.007Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47601"
+      },
+      "username": "pinpointadmin",
+      "displayName": "Pinpoint Admin",
+      "avatar": {
+        "url": "/images/profile/profile-06",
+        "thumbnailUrl": "/images/profile/profile-06",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-06",
+      "thumbnailUrl": "/images/profile/profile-06",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc880f9"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40006"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47602"
+    },
+    "replyToMessageId": null,
+    "message": "Nebula snax vibra tune.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47602"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.007Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.007Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47602"
+      },
+      "username": "pinpointusera",
+      "displayName": "Pinpoint User A",
+      "avatar": {
+        "url": "/images/profile/profile-07",
+        "thumbnailUrl": "/images/profile/profile-07",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-07",
+      "thumbnailUrl": "/images/profile/profile-07",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc880fa"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40006"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47603"
+    },
+    "replyToMessageId": null,
+    "message": "Jibber flux manta ray.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47603"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.007Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.007Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47603"
+      },
+      "username": "pinpointuserb",
+      "displayName": "Pinpoint User B",
+      "avatar": {
+        "url": "/images/profile/profile-08",
+        "thumbnailUrl": "/images/profile/profile-08",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-08",
+      "thumbnailUrl": "/images/profile/profile-08",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc880fb"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40006"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "replyToMessageId": null,
+    "message": "Kip kip hoor cronx.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a7"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.007Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.007Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      "username": "alexrivera",
+      "displayName": "Alex Rivera",
+      "avatar": {
+        "url": "/images/profile/profile-01",
+        "thumbnailUrl": "/images/profile/profile-01",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-01",
+      "thumbnailUrl": "/images/profile/profile-01",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:00.000Z"
       }
     }
   },
@@ -453,7 +2052,6 @@
     },
     "attachments": [
       {
-        "type": "image",
         "url": "/images/event/event-12",
         "thumbnailUrl": "/images/event/event-12",
         "width": 512,
@@ -471,6 +2069,5180 @@
     },
     "updatedAt": {
       "$date": "2026-10-21T18:00:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      "username": "alexrivera",
+      "displayName": "Alex Rivera",
+      "avatar": {
+        "url": "/images/profile/profile-01",
+        "thumbnailUrl": "/images/profile/profile-01",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-01",
+      "thumbnailUrl": "/images/profile/profile-01",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "7d4b7e8b88e140125d724486"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
+    "replyToMessageId": null,
+    "message": "Zibra lox pingra quill bop!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.13148,
+        33.77411
+      ],
+      "accuracy": 9
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a8"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:02:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:02:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      "username": "priyadesai",
+      "displayName": "Priya Desai",
+      "avatar": {
+        "url": "/images/profile/profile-02",
+        "thumbnailUrl": "/images/profile/profile-02",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:30.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-02",
+      "thumbnailUrl": "/images/profile/profile-02",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:30.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "7d4b7e8b88e140125d724487"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a9"
+    },
+    "replyToMessageId": null,
+    "message": "Blix gloober tranxy vibe loops!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.13141,
+        33.77421
+      ],
+      "accuracy": 12
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a9"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:04:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:04:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      "username": "marcussoto",
+      "displayName": "Marcus Soto",
+      "avatar": {
+        "url": "/images/profile/profile-03",
+        "thumbnailUrl": "/images/profile/profile-03",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:13:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-03",
+      "thumbnailUrl": "/images/profile/profile-03",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:13:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "7d4b7e8b88e140125d724488"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47510"
+    },
+    "replyToMessageId": null,
+    "message": "Kree vibra dash mezz looms!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.13165,
+        33.77395
+      ],
+      "accuracy": 10
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47510"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:06:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:06:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47510"
+      },
+      "username": "sofianguyen",
+      "displayName": "Sofia Nguyen",
+      "avatar": {
+        "url": "/images/profile/profile-04",
+        "thumbnailUrl": "/images/profile/profile-04",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-04T16:18:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-04",
+      "thumbnailUrl": "/images/profile/profile-04",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-04T16:18:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "7d4b7e8b88e140125d724489"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40007"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47511"
+    },
+    "replyToMessageId": null,
+    "message": "Plibber razz nomo flux trail!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        -118.1313,
+        33.774
+      ],
+      "accuracy": 8
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47511"
+      }
+    },
+    "createdAt": {
+      "$date": "2026-10-21T18:08:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-10-21T18:08:00.000Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47511"
+      },
+      "username": "jamaldouglas",
+      "displayName": "Jamal Douglas",
+      "avatar": {
+        "url": "/images/profile/profile-05",
+        "thumbnailUrl": "/images/profile/profile-05",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-06T19:05:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-05",
+      "thumbnailUrl": "/images/profile/profile-05",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-06T19:05:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc880ff"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40008"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
+    "replyToMessageId": null,
+    "message": "Flombo jitter sprylox.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a8"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.013Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.013Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      "username": "priyadesai",
+      "displayName": "Priya Desai",
+      "avatar": {
+        "url": "/images/profile/profile-02",
+        "thumbnailUrl": "/images/profile/profile-02",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:30.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-02",
+      "thumbnailUrl": "/images/profile/profile-02",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:30.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88100"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40008"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a9"
+    },
+    "replyToMessageId": null,
+    "message": "Gloopity gloop zap!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a9"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.013Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.013Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      "username": "marcussoto",
+      "displayName": "Marcus Soto",
+      "avatar": {
+        "url": "/images/profile/profile-03",
+        "thumbnailUrl": "/images/profile/profile-03",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:13:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-03",
+      "thumbnailUrl": "/images/profile/profile-03",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:13:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88101"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40008"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47510"
+    },
+    "replyToMessageId": null,
+    "message": "Zoop zoop zip zap.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47510"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.013Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.013Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47510"
+      },
+      "username": "sofianguyen",
+      "displayName": "Sofia Nguyen",
+      "avatar": {
+        "url": "/images/profile/profile-04",
+        "thumbnailUrl": "/images/profile/profile-04",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-04T16:18:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-04",
+      "thumbnailUrl": "/images/profile/profile-04",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-04T16:18:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88102"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40008"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47511"
+    },
+    "replyToMessageId": null,
+    "message": "Wibber wobber woo!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47511"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.013Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.013Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47511"
+      },
+      "username": "jamaldouglas",
+      "displayName": "Jamal Douglas",
+      "avatar": {
+        "url": "/images/profile/profile-05",
+        "thumbnailUrl": "/images/profile/profile-05",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-06T19:05:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-05",
+      "thumbnailUrl": "/images/profile/profile-05",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-06T19:05:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88103"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40008"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "46157fa6da7698fc59105392"
+    },
+    "replyToMessageId": null,
+    "message": "Plonk dribble snazzle.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "46157fa6da7698fc59105392"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.013Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.013Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "46157fa6da7698fc59105392"
+      },
+      "username": "tf2_demoman",
+      "displayName": "Demoman",
+      "avatar": {
+        "url": "/images/emulation/avatars/Demomanava",
+        "thumbnailUrl": "/images/emulation/avatars/Demomanava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Demomanava",
+      "thumbnailUrl": "/images/emulation/avatars/Demomanava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88106"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40009"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "d7a6491309b83aad8e67f14c"
+    },
+    "replyToMessageId": null,
+    "message": "Zlorp glimbus narfty!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "d7a6491309b83aad8e67f14c"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.017Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.017Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "d7a6491309b83aad8e67f14c"
+      },
+      "username": "tf2_spy",
+      "displayName": "Spy",
+      "avatar": {
+        "url": "/images/emulation/avatars/Spyava",
+        "thumbnailUrl": "/images/emulation/avatars/Spyava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Spyava",
+      "thumbnailUrl": "/images/emulation/avatars/Spyava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88107"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40009"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "9090e547f3b4cf5aa61d19a7"
+    },
+    "replyToMessageId": null,
+    "message": "Frindle pop quazar dooble.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "9090e547f3b4cf5aa61d19a7"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.017Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.017Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "9090e547f3b4cf5aa61d19a7"
+      },
+      "username": "tf2_engineer",
+      "displayName": "Engineer",
+      "avatar": {
+        "url": "/images/emulation/avatars/Engineerava",
+        "thumbnailUrl": "/images/emulation/avatars/Engineerava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Engineerava",
+      "thumbnailUrl": "/images/emulation/avatars/Engineerava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88108"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40009"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "934981bc88eca7e088f557c6"
+    },
+    "replyToMessageId": null,
+    "message": "Nebula snax vibra tune.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "934981bc88eca7e088f557c6"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.017Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.017Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "934981bc88eca7e088f557c6"
+      },
+      "username": "tf2_heavy",
+      "displayName": "Heavy",
+      "avatar": {
+        "url": "/images/emulation/avatars/Heavyava",
+        "thumbnailUrl": "/images/emulation/avatars/Heavyava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Heavyava",
+      "thumbnailUrl": "/images/emulation/avatars/Heavyava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88109"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40009"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "8184947383c54cde27f6a325"
+    },
+    "replyToMessageId": null,
+    "message": "Jibber flux manta ray.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "8184947383c54cde27f6a325"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.017Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.017Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "8184947383c54cde27f6a325"
+      },
+      "username": "tf2_medic",
+      "displayName": "Medic",
+      "avatar": {
+        "url": "/images/emulation/avatars/Medicava",
+        "thumbnailUrl": "/images/emulation/avatars/Medicava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Medicava",
+      "thumbnailUrl": "/images/emulation/avatars/Medicava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8810a"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40009"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "1e056a58ce0c08e0e420bca0"
+    },
+    "replyToMessageId": null,
+    "message": "Kip kip hoor cronx.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "1e056a58ce0c08e0e420bca0"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.017Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.017Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "1e056a58ce0c08e0e420bca0"
+      },
+      "username": "tf2_pyro",
+      "displayName": "Pyro",
+      "avatar": {
+        "url": "/images/emulation/avatars/Pyroava",
+        "thumbnailUrl": "/images/emulation/avatars/Pyroava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Pyroava",
+      "thumbnailUrl": "/images/emulation/avatars/Pyroava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8810d"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000a"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "486e6bdd712130e78538ba6f"
+    },
+    "replyToMessageId": null,
+    "message": "Flombo jitter sprylox.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "486e6bdd712130e78538ba6f"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.020Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.020Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "486e6bdd712130e78538ba6f"
+      },
+      "username": "tf2_scout",
+      "displayName": "Scout",
+      "avatar": {
+        "url": "/images/emulation/avatars/Scoutava",
+        "thumbnailUrl": "/images/emulation/avatars/Scoutava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Scoutava",
+      "thumbnailUrl": "/images/emulation/avatars/Scoutava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8810e"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000a"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "9bfa44ec70cf17a8086a01e0"
+    },
+    "replyToMessageId": null,
+    "message": "Gloopity gloop zap!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "9bfa44ec70cf17a8086a01e0"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.020Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.020Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "9bfa44ec70cf17a8086a01e0"
+      },
+      "username": "tf2_sniper",
+      "displayName": "Sniper",
+      "avatar": {
+        "url": "/images/emulation/avatars/Sniperava",
+        "thumbnailUrl": "/images/emulation/avatars/Sniperava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Sniperava",
+      "thumbnailUrl": "/images/emulation/avatars/Sniperava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8810f"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000a"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "4d250de16a246c301a52b095"
+    },
+    "replyToMessageId": null,
+    "message": "Zoop zoop zip zap.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "4d250de16a246c301a52b095"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.020Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.020Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "4d250de16a246c301a52b095"
+      },
+      "username": "tf2_soldier",
+      "displayName": "Soldier",
+      "avatar": {
+        "url": "/images/emulation/avatars/Soldierava",
+        "thumbnailUrl": "/images/emulation/avatars/Soldierava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Soldierava",
+      "thumbnailUrl": "/images/emulation/avatars/Soldierava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88110"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000a"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47601"
+    },
+    "replyToMessageId": null,
+    "message": "Wibber wobber woo!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47601"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.020Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.020Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47601"
+      },
+      "username": "pinpointadmin",
+      "displayName": "Pinpoint Admin",
+      "avatar": {
+        "url": "/images/profile/profile-06",
+        "thumbnailUrl": "/images/profile/profile-06",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-06",
+      "thumbnailUrl": "/images/profile/profile-06",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88111"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000a"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47602"
+    },
+    "replyToMessageId": null,
+    "message": "Plonk dribble snazzle.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47602"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.020Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.020Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47602"
+      },
+      "username": "pinpointusera",
+      "displayName": "Pinpoint User A",
+      "avatar": {
+        "url": "/images/profile/profile-07",
+        "thumbnailUrl": "/images/profile/profile-07",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-07",
+      "thumbnailUrl": "/images/profile/profile-07",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88114"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000b"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47603"
+    },
+    "replyToMessageId": null,
+    "message": "Zlorp glimbus narfty!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47603"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.023Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.023Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47603"
+      },
+      "username": "pinpointuserb",
+      "displayName": "Pinpoint User B",
+      "avatar": {
+        "url": "/images/profile/profile-08",
+        "thumbnailUrl": "/images/profile/profile-08",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-08",
+      "thumbnailUrl": "/images/profile/profile-08",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88115"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000b"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "replyToMessageId": null,
+    "message": "Frindle pop quazar dooble.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a7"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.023Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.023Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      "username": "alexrivera",
+      "displayName": "Alex Rivera",
+      "avatar": {
+        "url": "/images/profile/profile-01",
+        "thumbnailUrl": "/images/profile/profile-01",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-01",
+      "thumbnailUrl": "/images/profile/profile-01",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88116"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000b"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
+    "replyToMessageId": null,
+    "message": "Nebula snax vibra tune.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a8"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.023Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.023Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      "username": "priyadesai",
+      "displayName": "Priya Desai",
+      "avatar": {
+        "url": "/images/profile/profile-02",
+        "thumbnailUrl": "/images/profile/profile-02",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:30.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-02",
+      "thumbnailUrl": "/images/profile/profile-02",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:30.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88117"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000b"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a9"
+    },
+    "replyToMessageId": null,
+    "message": "Jibber flux manta ray.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a9"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.023Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.023Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      "username": "marcussoto",
+      "displayName": "Marcus Soto",
+      "avatar": {
+        "url": "/images/profile/profile-03",
+        "thumbnailUrl": "/images/profile/profile-03",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:13:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-03",
+      "thumbnailUrl": "/images/profile/profile-03",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:13:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88118"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000b"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47510"
+    },
+    "replyToMessageId": null,
+    "message": "Kip kip hoor cronx.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47510"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.023Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.023Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47510"
+      },
+      "username": "sofianguyen",
+      "displayName": "Sofia Nguyen",
+      "avatar": {
+        "url": "/images/profile/profile-04",
+        "thumbnailUrl": "/images/profile/profile-04",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-04T16:18:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-04",
+      "thumbnailUrl": "/images/profile/profile-04",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-04T16:18:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8811b"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000c"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47511"
+    },
+    "replyToMessageId": null,
+    "message": "Flombo jitter sprylox.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47511"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.028Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.028Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47511"
+      },
+      "username": "jamaldouglas",
+      "displayName": "Jamal Douglas",
+      "avatar": {
+        "url": "/images/profile/profile-05",
+        "thumbnailUrl": "/images/profile/profile-05",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-06T19:05:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-05",
+      "thumbnailUrl": "/images/profile/profile-05",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-06T19:05:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8811c"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000c"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "46157fa6da7698fc59105392"
+    },
+    "replyToMessageId": null,
+    "message": "Gloopity gloop zap!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "46157fa6da7698fc59105392"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.028Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.028Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "46157fa6da7698fc59105392"
+      },
+      "username": "tf2_demoman",
+      "displayName": "Demoman",
+      "avatar": {
+        "url": "/images/emulation/avatars/Demomanava",
+        "thumbnailUrl": "/images/emulation/avatars/Demomanava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Demomanava",
+      "thumbnailUrl": "/images/emulation/avatars/Demomanava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8811d"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000c"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "d7a6491309b83aad8e67f14c"
+    },
+    "replyToMessageId": null,
+    "message": "Zoop zoop zip zap.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "d7a6491309b83aad8e67f14c"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.028Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.028Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "d7a6491309b83aad8e67f14c"
+      },
+      "username": "tf2_spy",
+      "displayName": "Spy",
+      "avatar": {
+        "url": "/images/emulation/avatars/Spyava",
+        "thumbnailUrl": "/images/emulation/avatars/Spyava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Spyava",
+      "thumbnailUrl": "/images/emulation/avatars/Spyava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8811e"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000c"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "9090e547f3b4cf5aa61d19a7"
+    },
+    "replyToMessageId": null,
+    "message": "Wibber wobber woo!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "9090e547f3b4cf5aa61d19a7"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.028Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.028Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "9090e547f3b4cf5aa61d19a7"
+      },
+      "username": "tf2_engineer",
+      "displayName": "Engineer",
+      "avatar": {
+        "url": "/images/emulation/avatars/Engineerava",
+        "thumbnailUrl": "/images/emulation/avatars/Engineerava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Engineerava",
+      "thumbnailUrl": "/images/emulation/avatars/Engineerava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8811f"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000c"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "934981bc88eca7e088f557c6"
+    },
+    "replyToMessageId": null,
+    "message": "Plonk dribble snazzle.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "934981bc88eca7e088f557c6"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.028Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.028Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "934981bc88eca7e088f557c6"
+      },
+      "username": "tf2_heavy",
+      "displayName": "Heavy",
+      "avatar": {
+        "url": "/images/emulation/avatars/Heavyava",
+        "thumbnailUrl": "/images/emulation/avatars/Heavyava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Heavyava",
+      "thumbnailUrl": "/images/emulation/avatars/Heavyava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88122"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000d"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "8184947383c54cde27f6a325"
+    },
+    "replyToMessageId": null,
+    "message": "Zlorp glimbus narfty!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "8184947383c54cde27f6a325"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.031Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.031Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "8184947383c54cde27f6a325"
+      },
+      "username": "tf2_medic",
+      "displayName": "Medic",
+      "avatar": {
+        "url": "/images/emulation/avatars/Medicava",
+        "thumbnailUrl": "/images/emulation/avatars/Medicava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Medicava",
+      "thumbnailUrl": "/images/emulation/avatars/Medicava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88123"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000d"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "1e056a58ce0c08e0e420bca0"
+    },
+    "replyToMessageId": null,
+    "message": "Frindle pop quazar dooble.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "1e056a58ce0c08e0e420bca0"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.031Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.031Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "1e056a58ce0c08e0e420bca0"
+      },
+      "username": "tf2_pyro",
+      "displayName": "Pyro",
+      "avatar": {
+        "url": "/images/emulation/avatars/Pyroava",
+        "thumbnailUrl": "/images/emulation/avatars/Pyroava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Pyroava",
+      "thumbnailUrl": "/images/emulation/avatars/Pyroava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88124"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000d"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "486e6bdd712130e78538ba6f"
+    },
+    "replyToMessageId": null,
+    "message": "Nebula snax vibra tune.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "486e6bdd712130e78538ba6f"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.031Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.031Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "486e6bdd712130e78538ba6f"
+      },
+      "username": "tf2_scout",
+      "displayName": "Scout",
+      "avatar": {
+        "url": "/images/emulation/avatars/Scoutava",
+        "thumbnailUrl": "/images/emulation/avatars/Scoutava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Scoutava",
+      "thumbnailUrl": "/images/emulation/avatars/Scoutava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88125"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000d"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "9bfa44ec70cf17a8086a01e0"
+    },
+    "replyToMessageId": null,
+    "message": "Jibber flux manta ray.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "9bfa44ec70cf17a8086a01e0"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.031Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.031Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "9bfa44ec70cf17a8086a01e0"
+      },
+      "username": "tf2_sniper",
+      "displayName": "Sniper",
+      "avatar": {
+        "url": "/images/emulation/avatars/Sniperava",
+        "thumbnailUrl": "/images/emulation/avatars/Sniperava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Sniperava",
+      "thumbnailUrl": "/images/emulation/avatars/Sniperava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88126"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000d"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "4d250de16a246c301a52b095"
+    },
+    "replyToMessageId": null,
+    "message": "Kip kip hoor cronx.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "4d250de16a246c301a52b095"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.031Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.031Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "4d250de16a246c301a52b095"
+      },
+      "username": "tf2_soldier",
+      "displayName": "Soldier",
+      "avatar": {
+        "url": "/images/emulation/avatars/Soldierava",
+        "thumbnailUrl": "/images/emulation/avatars/Soldierava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Soldierava",
+      "thumbnailUrl": "/images/emulation/avatars/Soldierava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88129"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000e"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47601"
+    },
+    "replyToMessageId": null,
+    "message": "Flombo jitter sprylox.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47601"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.036Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.036Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47601"
+      },
+      "username": "pinpointadmin",
+      "displayName": "Pinpoint Admin",
+      "avatar": {
+        "url": "/images/profile/profile-06",
+        "thumbnailUrl": "/images/profile/profile-06",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-06",
+      "thumbnailUrl": "/images/profile/profile-06",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8812a"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000e"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47602"
+    },
+    "replyToMessageId": null,
+    "message": "Gloopity gloop zap!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47602"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.036Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.036Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47602"
+      },
+      "username": "pinpointusera",
+      "displayName": "Pinpoint User A",
+      "avatar": {
+        "url": "/images/profile/profile-07",
+        "thumbnailUrl": "/images/profile/profile-07",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-07",
+      "thumbnailUrl": "/images/profile/profile-07",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8812b"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000e"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47603"
+    },
+    "replyToMessageId": null,
+    "message": "Zoop zoop zip zap.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47603"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.036Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.036Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47603"
+      },
+      "username": "pinpointuserb",
+      "displayName": "Pinpoint User B",
+      "avatar": {
+        "url": "/images/profile/profile-08",
+        "thumbnailUrl": "/images/profile/profile-08",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-08",
+      "thumbnailUrl": "/images/profile/profile-08",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8812c"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000e"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "replyToMessageId": null,
+    "message": "Wibber wobber woo!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a7"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.036Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.036Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      "username": "alexrivera",
+      "displayName": "Alex Rivera",
+      "avatar": {
+        "url": "/images/profile/profile-01",
+        "thumbnailUrl": "/images/profile/profile-01",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-01",
+      "thumbnailUrl": "/images/profile/profile-01",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8812d"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000e"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
+    "replyToMessageId": null,
+    "message": "Plonk dribble snazzle.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a8"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.036Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.036Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      "username": "priyadesai",
+      "displayName": "Priya Desai",
+      "avatar": {
+        "url": "/images/profile/profile-02",
+        "thumbnailUrl": "/images/profile/profile-02",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:30.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-02",
+      "thumbnailUrl": "/images/profile/profile-02",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:30.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88130"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000f"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a9"
+    },
+    "replyToMessageId": null,
+    "message": "Zlorp glimbus narfty!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a9"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.039Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.039Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      "username": "marcussoto",
+      "displayName": "Marcus Soto",
+      "avatar": {
+        "url": "/images/profile/profile-03",
+        "thumbnailUrl": "/images/profile/profile-03",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:13:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-03",
+      "thumbnailUrl": "/images/profile/profile-03",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:13:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88131"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000f"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47510"
+    },
+    "replyToMessageId": null,
+    "message": "Frindle pop quazar dooble.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47510"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.039Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.039Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47510"
+      },
+      "username": "sofianguyen",
+      "displayName": "Sofia Nguyen",
+      "avatar": {
+        "url": "/images/profile/profile-04",
+        "thumbnailUrl": "/images/profile/profile-04",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-04T16:18:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-04",
+      "thumbnailUrl": "/images/profile/profile-04",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-04T16:18:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88132"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000f"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47511"
+    },
+    "replyToMessageId": null,
+    "message": "Nebula snax vibra tune.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47511"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.039Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.039Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47511"
+      },
+      "username": "jamaldouglas",
+      "displayName": "Jamal Douglas",
+      "avatar": {
+        "url": "/images/profile/profile-05",
+        "thumbnailUrl": "/images/profile/profile-05",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-06T19:05:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-05",
+      "thumbnailUrl": "/images/profile/profile-05",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-06T19:05:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88133"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000f"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "46157fa6da7698fc59105392"
+    },
+    "replyToMessageId": null,
+    "message": "Jibber flux manta ray.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "46157fa6da7698fc59105392"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.039Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.039Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "46157fa6da7698fc59105392"
+      },
+      "username": "tf2_demoman",
+      "displayName": "Demoman",
+      "avatar": {
+        "url": "/images/emulation/avatars/Demomanava",
+        "thumbnailUrl": "/images/emulation/avatars/Demomanava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Demomanava",
+      "thumbnailUrl": "/images/emulation/avatars/Demomanava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88134"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d4000f"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "d7a6491309b83aad8e67f14c"
+    },
+    "replyToMessageId": null,
+    "message": "Kip kip hoor cronx.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "d7a6491309b83aad8e67f14c"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.039Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.039Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "d7a6491309b83aad8e67f14c"
+      },
+      "username": "tf2_spy",
+      "displayName": "Spy",
+      "avatar": {
+        "url": "/images/emulation/avatars/Spyava",
+        "thumbnailUrl": "/images/emulation/avatars/Spyava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Spyava",
+      "thumbnailUrl": "/images/emulation/avatars/Spyava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88137"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40010"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "9090e547f3b4cf5aa61d19a7"
+    },
+    "replyToMessageId": null,
+    "message": "Flombo jitter sprylox.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "9090e547f3b4cf5aa61d19a7"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.043Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.043Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "9090e547f3b4cf5aa61d19a7"
+      },
+      "username": "tf2_engineer",
+      "displayName": "Engineer",
+      "avatar": {
+        "url": "/images/emulation/avatars/Engineerava",
+        "thumbnailUrl": "/images/emulation/avatars/Engineerava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Engineerava",
+      "thumbnailUrl": "/images/emulation/avatars/Engineerava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88138"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40010"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "934981bc88eca7e088f557c6"
+    },
+    "replyToMessageId": null,
+    "message": "Gloopity gloop zap!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "934981bc88eca7e088f557c6"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.043Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.043Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "934981bc88eca7e088f557c6"
+      },
+      "username": "tf2_heavy",
+      "displayName": "Heavy",
+      "avatar": {
+        "url": "/images/emulation/avatars/Heavyava",
+        "thumbnailUrl": "/images/emulation/avatars/Heavyava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Heavyava",
+      "thumbnailUrl": "/images/emulation/avatars/Heavyava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88139"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40010"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "8184947383c54cde27f6a325"
+    },
+    "replyToMessageId": null,
+    "message": "Zoop zoop zip zap.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "8184947383c54cde27f6a325"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.043Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.043Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "8184947383c54cde27f6a325"
+      },
+      "username": "tf2_medic",
+      "displayName": "Medic",
+      "avatar": {
+        "url": "/images/emulation/avatars/Medicava",
+        "thumbnailUrl": "/images/emulation/avatars/Medicava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Medicava",
+      "thumbnailUrl": "/images/emulation/avatars/Medicava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8813a"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40010"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "1e056a58ce0c08e0e420bca0"
+    },
+    "replyToMessageId": null,
+    "message": "Wibber wobber woo!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "1e056a58ce0c08e0e420bca0"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.043Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.043Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "1e056a58ce0c08e0e420bca0"
+      },
+      "username": "tf2_pyro",
+      "displayName": "Pyro",
+      "avatar": {
+        "url": "/images/emulation/avatars/Pyroava",
+        "thumbnailUrl": "/images/emulation/avatars/Pyroava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Pyroava",
+      "thumbnailUrl": "/images/emulation/avatars/Pyroava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8813b"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40010"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "486e6bdd712130e78538ba6f"
+    },
+    "replyToMessageId": null,
+    "message": "Plonk dribble snazzle.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "486e6bdd712130e78538ba6f"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.043Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.043Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "486e6bdd712130e78538ba6f"
+      },
+      "username": "tf2_scout",
+      "displayName": "Scout",
+      "avatar": {
+        "url": "/images/emulation/avatars/Scoutava",
+        "thumbnailUrl": "/images/emulation/avatars/Scoutava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Scoutava",
+      "thumbnailUrl": "/images/emulation/avatars/Scoutava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8813e"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40011"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "9bfa44ec70cf17a8086a01e0"
+    },
+    "replyToMessageId": null,
+    "message": "Zlorp glimbus narfty!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "9bfa44ec70cf17a8086a01e0"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.046Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.046Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "9bfa44ec70cf17a8086a01e0"
+      },
+      "username": "tf2_sniper",
+      "displayName": "Sniper",
+      "avatar": {
+        "url": "/images/emulation/avatars/Sniperava",
+        "thumbnailUrl": "/images/emulation/avatars/Sniperava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Sniperava",
+      "thumbnailUrl": "/images/emulation/avatars/Sniperava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8813f"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40011"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "4d250de16a246c301a52b095"
+    },
+    "replyToMessageId": null,
+    "message": "Frindle pop quazar dooble.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "4d250de16a246c301a52b095"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.046Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.046Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "4d250de16a246c301a52b095"
+      },
+      "username": "tf2_soldier",
+      "displayName": "Soldier",
+      "avatar": {
+        "url": "/images/emulation/avatars/Soldierava",
+        "thumbnailUrl": "/images/emulation/avatars/Soldierava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Soldierava",
+      "thumbnailUrl": "/images/emulation/avatars/Soldierava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88140"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40011"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47601"
+    },
+    "replyToMessageId": null,
+    "message": "Nebula snax vibra tune.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47601"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.046Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.046Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47601"
+      },
+      "username": "pinpointadmin",
+      "displayName": "Pinpoint Admin",
+      "avatar": {
+        "url": "/images/profile/profile-06",
+        "thumbnailUrl": "/images/profile/profile-06",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-06",
+      "thumbnailUrl": "/images/profile/profile-06",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88141"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40011"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47602"
+    },
+    "replyToMessageId": null,
+    "message": "Jibber flux manta ray.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47602"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.046Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.046Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47602"
+      },
+      "username": "pinpointusera",
+      "displayName": "Pinpoint User A",
+      "avatar": {
+        "url": "/images/profile/profile-07",
+        "thumbnailUrl": "/images/profile/profile-07",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-07",
+      "thumbnailUrl": "/images/profile/profile-07",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88142"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40011"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47603"
+    },
+    "replyToMessageId": null,
+    "message": "Kip kip hoor cronx.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47603"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.046Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.046Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47603"
+      },
+      "username": "pinpointuserb",
+      "displayName": "Pinpoint User B",
+      "avatar": {
+        "url": "/images/profile/profile-08",
+        "thumbnailUrl": "/images/profile/profile-08",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-08",
+      "thumbnailUrl": "/images/profile/profile-08",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88145"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40012"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "replyToMessageId": null,
+    "message": "Flombo jitter sprylox.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a7"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.050Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.050Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      "username": "alexrivera",
+      "displayName": "Alex Rivera",
+      "avatar": {
+        "url": "/images/profile/profile-01",
+        "thumbnailUrl": "/images/profile/profile-01",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-01",
+      "thumbnailUrl": "/images/profile/profile-01",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88146"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40012"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
+    "replyToMessageId": null,
+    "message": "Gloopity gloop zap!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a8"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.050Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.050Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      "username": "priyadesai",
+      "displayName": "Priya Desai",
+      "avatar": {
+        "url": "/images/profile/profile-02",
+        "thumbnailUrl": "/images/profile/profile-02",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:30.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-02",
+      "thumbnailUrl": "/images/profile/profile-02",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:30.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88147"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40012"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a9"
+    },
+    "replyToMessageId": null,
+    "message": "Zoop zoop zip zap.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a9"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.050Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.050Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      "username": "marcussoto",
+      "displayName": "Marcus Soto",
+      "avatar": {
+        "url": "/images/profile/profile-03",
+        "thumbnailUrl": "/images/profile/profile-03",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:13:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-03",
+      "thumbnailUrl": "/images/profile/profile-03",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:13:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88148"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40012"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47510"
+    },
+    "replyToMessageId": null,
+    "message": "Wibber wobber woo!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47510"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.050Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.050Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47510"
+      },
+      "username": "sofianguyen",
+      "displayName": "Sofia Nguyen",
+      "avatar": {
+        "url": "/images/profile/profile-04",
+        "thumbnailUrl": "/images/profile/profile-04",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-04T16:18:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-04",
+      "thumbnailUrl": "/images/profile/profile-04",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-04T16:18:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88149"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40012"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47511"
+    },
+    "replyToMessageId": null,
+    "message": "Plonk dribble snazzle.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47511"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.050Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.050Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47511"
+      },
+      "username": "jamaldouglas",
+      "displayName": "Jamal Douglas",
+      "avatar": {
+        "url": "/images/profile/profile-05",
+        "thumbnailUrl": "/images/profile/profile-05",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-06T19:05:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-05",
+      "thumbnailUrl": "/images/profile/profile-05",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-06T19:05:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8814c"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40013"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "46157fa6da7698fc59105392"
+    },
+    "replyToMessageId": null,
+    "message": "Zlorp glimbus narfty!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "46157fa6da7698fc59105392"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.052Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.052Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "46157fa6da7698fc59105392"
+      },
+      "username": "tf2_demoman",
+      "displayName": "Demoman",
+      "avatar": {
+        "url": "/images/emulation/avatars/Demomanava",
+        "thumbnailUrl": "/images/emulation/avatars/Demomanava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Demomanava",
+      "thumbnailUrl": "/images/emulation/avatars/Demomanava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8814d"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40013"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "d7a6491309b83aad8e67f14c"
+    },
+    "replyToMessageId": null,
+    "message": "Frindle pop quazar dooble.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "d7a6491309b83aad8e67f14c"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.052Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.052Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "d7a6491309b83aad8e67f14c"
+      },
+      "username": "tf2_spy",
+      "displayName": "Spy",
+      "avatar": {
+        "url": "/images/emulation/avatars/Spyava",
+        "thumbnailUrl": "/images/emulation/avatars/Spyava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Spyava",
+      "thumbnailUrl": "/images/emulation/avatars/Spyava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8814e"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40013"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "9090e547f3b4cf5aa61d19a7"
+    },
+    "replyToMessageId": null,
+    "message": "Nebula snax vibra tune.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "9090e547f3b4cf5aa61d19a7"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.052Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.052Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "9090e547f3b4cf5aa61d19a7"
+      },
+      "username": "tf2_engineer",
+      "displayName": "Engineer",
+      "avatar": {
+        "url": "/images/emulation/avatars/Engineerava",
+        "thumbnailUrl": "/images/emulation/avatars/Engineerava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Engineerava",
+      "thumbnailUrl": "/images/emulation/avatars/Engineerava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8814f"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40013"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "934981bc88eca7e088f557c6"
+    },
+    "replyToMessageId": null,
+    "message": "Jibber flux manta ray.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "934981bc88eca7e088f557c6"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.052Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.052Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "934981bc88eca7e088f557c6"
+      },
+      "username": "tf2_heavy",
+      "displayName": "Heavy",
+      "avatar": {
+        "url": "/images/emulation/avatars/Heavyava",
+        "thumbnailUrl": "/images/emulation/avatars/Heavyava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Heavyava",
+      "thumbnailUrl": "/images/emulation/avatars/Heavyava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88150"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40013"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "8184947383c54cde27f6a325"
+    },
+    "replyToMessageId": null,
+    "message": "Kip kip hoor cronx.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "8184947383c54cde27f6a325"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.052Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.052Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "8184947383c54cde27f6a325"
+      },
+      "username": "tf2_medic",
+      "displayName": "Medic",
+      "avatar": {
+        "url": "/images/emulation/avatars/Medicava",
+        "thumbnailUrl": "/images/emulation/avatars/Medicava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Medicava",
+      "thumbnailUrl": "/images/emulation/avatars/Medicava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88153"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40014"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "1e056a58ce0c08e0e420bca0"
+    },
+    "replyToMessageId": null,
+    "message": "Flombo jitter sprylox.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "1e056a58ce0c08e0e420bca0"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.056Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.056Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "1e056a58ce0c08e0e420bca0"
+      },
+      "username": "tf2_pyro",
+      "displayName": "Pyro",
+      "avatar": {
+        "url": "/images/emulation/avatars/Pyroava",
+        "thumbnailUrl": "/images/emulation/avatars/Pyroava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Pyroava",
+      "thumbnailUrl": "/images/emulation/avatars/Pyroava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88154"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40014"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "486e6bdd712130e78538ba6f"
+    },
+    "replyToMessageId": null,
+    "message": "Gloopity gloop zap!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "486e6bdd712130e78538ba6f"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.056Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.056Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "486e6bdd712130e78538ba6f"
+      },
+      "username": "tf2_scout",
+      "displayName": "Scout",
+      "avatar": {
+        "url": "/images/emulation/avatars/Scoutava",
+        "thumbnailUrl": "/images/emulation/avatars/Scoutava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Scoutava",
+      "thumbnailUrl": "/images/emulation/avatars/Scoutava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88155"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40014"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "9bfa44ec70cf17a8086a01e0"
+    },
+    "replyToMessageId": null,
+    "message": "Zoop zoop zip zap.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "9bfa44ec70cf17a8086a01e0"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.056Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.056Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "9bfa44ec70cf17a8086a01e0"
+      },
+      "username": "tf2_sniper",
+      "displayName": "Sniper",
+      "avatar": {
+        "url": "/images/emulation/avatars/Sniperava",
+        "thumbnailUrl": "/images/emulation/avatars/Sniperava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Sniperava",
+      "thumbnailUrl": "/images/emulation/avatars/Sniperava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88156"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40014"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "4d250de16a246c301a52b095"
+    },
+    "replyToMessageId": null,
+    "message": "Wibber wobber woo!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "4d250de16a246c301a52b095"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.056Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.056Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "4d250de16a246c301a52b095"
+      },
+      "username": "tf2_soldier",
+      "displayName": "Soldier",
+      "avatar": {
+        "url": "/images/emulation/avatars/Soldierava",
+        "thumbnailUrl": "/images/emulation/avatars/Soldierava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Soldierava",
+      "thumbnailUrl": "/images/emulation/avatars/Soldierava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88157"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40014"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47601"
+    },
+    "replyToMessageId": null,
+    "message": "Plonk dribble snazzle.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47601"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.056Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.056Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47601"
+      },
+      "username": "pinpointadmin",
+      "displayName": "Pinpoint Admin",
+      "avatar": {
+        "url": "/images/profile/profile-06",
+        "thumbnailUrl": "/images/profile/profile-06",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-06",
+      "thumbnailUrl": "/images/profile/profile-06",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8815a"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40015"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47602"
+    },
+    "replyToMessageId": null,
+    "message": "Zlorp glimbus narfty!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47602"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.058Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.058Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47602"
+      },
+      "username": "pinpointusera",
+      "displayName": "Pinpoint User A",
+      "avatar": {
+        "url": "/images/profile/profile-07",
+        "thumbnailUrl": "/images/profile/profile-07",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-07",
+      "thumbnailUrl": "/images/profile/profile-07",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8815b"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40015"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47603"
+    },
+    "replyToMessageId": null,
+    "message": "Frindle pop quazar dooble.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47603"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.058Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.058Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47603"
+      },
+      "username": "pinpointuserb",
+      "displayName": "Pinpoint User B",
+      "avatar": {
+        "url": "/images/profile/profile-08",
+        "thumbnailUrl": "/images/profile/profile-08",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-08",
+      "thumbnailUrl": "/images/profile/profile-08",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8815c"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40015"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "replyToMessageId": null,
+    "message": "Nebula snax vibra tune.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a7"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.058Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.058Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a7"
+      },
+      "username": "alexrivera",
+      "displayName": "Alex Rivera",
+      "avatar": {
+        "url": "/images/profile/profile-01",
+        "thumbnailUrl": "/images/profile/profile-01",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-01",
+      "thumbnailUrl": "/images/profile/profile-01",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8815d"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40015"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a8"
+    },
+    "replyToMessageId": null,
+    "message": "Jibber flux manta ray.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a8"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.058Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.058Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a8"
+      },
+      "username": "priyadesai",
+      "displayName": "Priya Desai",
+      "avatar": {
+        "url": "/images/profile/profile-02",
+        "thumbnailUrl": "/images/profile/profile-02",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:12:30.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-02",
+      "thumbnailUrl": "/images/profile/profile-02",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:12:30.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8815e"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40015"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a9"
+    },
+    "replyToMessageId": null,
+    "message": "Kip kip hoor cronx.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a9"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.058Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.058Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d474a9"
+      },
+      "username": "marcussoto",
+      "displayName": "Marcus Soto",
+      "avatar": {
+        "url": "/images/profile/profile-03",
+        "thumbnailUrl": "/images/profile/profile-03",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-08-01T18:13:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-03",
+      "thumbnailUrl": "/images/profile/profile-03",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-08-01T18:13:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88161"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40016"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47510"
+    },
+    "replyToMessageId": null,
+    "message": "Flombo jitter sprylox.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47510"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.061Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.061Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47510"
+      },
+      "username": "sofianguyen",
+      "displayName": "Sofia Nguyen",
+      "avatar": {
+        "url": "/images/profile/profile-04",
+        "thumbnailUrl": "/images/profile/profile-04",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-04T16:18:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-04",
+      "thumbnailUrl": "/images/profile/profile-04",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-04T16:18:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88162"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40016"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47511"
+    },
+    "replyToMessageId": null,
+    "message": "Gloopity gloop zap!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47511"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.061Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.061Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47511"
+      },
+      "username": "jamaldouglas",
+      "displayName": "Jamal Douglas",
+      "avatar": {
+        "url": "/images/profile/profile-05",
+        "thumbnailUrl": "/images/profile/profile-05",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-09-06T19:05:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-05",
+      "thumbnailUrl": "/images/profile/profile-05",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-09-06T19:05:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88163"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40016"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "46157fa6da7698fc59105392"
+    },
+    "replyToMessageId": null,
+    "message": "Zoop zoop zip zap.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "46157fa6da7698fc59105392"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.061Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.061Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "46157fa6da7698fc59105392"
+      },
+      "username": "tf2_demoman",
+      "displayName": "Demoman",
+      "avatar": {
+        "url": "/images/emulation/avatars/Demomanava",
+        "thumbnailUrl": "/images/emulation/avatars/Demomanava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Demomanava",
+      "thumbnailUrl": "/images/emulation/avatars/Demomanava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88164"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40016"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "d7a6491309b83aad8e67f14c"
+    },
+    "replyToMessageId": null,
+    "message": "Wibber wobber woo!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "d7a6491309b83aad8e67f14c"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.061Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.061Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "d7a6491309b83aad8e67f14c"
+      },
+      "username": "tf2_spy",
+      "displayName": "Spy",
+      "avatar": {
+        "url": "/images/emulation/avatars/Spyava",
+        "thumbnailUrl": "/images/emulation/avatars/Spyava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Spyava",
+      "thumbnailUrl": "/images/emulation/avatars/Spyava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88165"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40016"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "9090e547f3b4cf5aa61d19a7"
+    },
+    "replyToMessageId": null,
+    "message": "Plonk dribble snazzle.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "9090e547f3b4cf5aa61d19a7"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.061Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.061Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "9090e547f3b4cf5aa61d19a7"
+      },
+      "username": "tf2_engineer",
+      "displayName": "Engineer",
+      "avatar": {
+        "url": "/images/emulation/avatars/Engineerava",
+        "thumbnailUrl": "/images/emulation/avatars/Engineerava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Engineerava",
+      "thumbnailUrl": "/images/emulation/avatars/Engineerava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88168"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40017"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "934981bc88eca7e088f557c6"
+    },
+    "replyToMessageId": null,
+    "message": "Zlorp glimbus narfty!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "934981bc88eca7e088f557c6"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.064Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.064Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "934981bc88eca7e088f557c6"
+      },
+      "username": "tf2_heavy",
+      "displayName": "Heavy",
+      "avatar": {
+        "url": "/images/emulation/avatars/Heavyava",
+        "thumbnailUrl": "/images/emulation/avatars/Heavyava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Heavyava",
+      "thumbnailUrl": "/images/emulation/avatars/Heavyava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88169"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40017"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "8184947383c54cde27f6a325"
+    },
+    "replyToMessageId": null,
+    "message": "Frindle pop quazar dooble.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "8184947383c54cde27f6a325"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.064Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.064Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "8184947383c54cde27f6a325"
+      },
+      "username": "tf2_medic",
+      "displayName": "Medic",
+      "avatar": {
+        "url": "/images/emulation/avatars/Medicava",
+        "thumbnailUrl": "/images/emulation/avatars/Medicava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Medicava",
+      "thumbnailUrl": "/images/emulation/avatars/Medicava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8816a"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40017"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "1e056a58ce0c08e0e420bca0"
+    },
+    "replyToMessageId": null,
+    "message": "Nebula snax vibra tune.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "1e056a58ce0c08e0e420bca0"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.064Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.064Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "1e056a58ce0c08e0e420bca0"
+      },
+      "username": "tf2_pyro",
+      "displayName": "Pyro",
+      "avatar": {
+        "url": "/images/emulation/avatars/Pyroava",
+        "thumbnailUrl": "/images/emulation/avatars/Pyroava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Pyroava",
+      "thumbnailUrl": "/images/emulation/avatars/Pyroava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8816b"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40017"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "486e6bdd712130e78538ba6f"
+    },
+    "replyToMessageId": null,
+    "message": "Jibber flux manta ray.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "486e6bdd712130e78538ba6f"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.064Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.064Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "486e6bdd712130e78538ba6f"
+      },
+      "username": "tf2_scout",
+      "displayName": "Scout",
+      "avatar": {
+        "url": "/images/emulation/avatars/Scoutava",
+        "thumbnailUrl": "/images/emulation/avatars/Scoutava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Scoutava",
+      "thumbnailUrl": "/images/emulation/avatars/Scoutava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8816c"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40017"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "9bfa44ec70cf17a8086a01e0"
+    },
+    "replyToMessageId": null,
+    "message": "Kip kip hoor cronx.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "9bfa44ec70cf17a8086a01e0"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.064Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.064Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "9bfa44ec70cf17a8086a01e0"
+      },
+      "username": "tf2_sniper",
+      "displayName": "Sniper",
+      "avatar": {
+        "url": "/images/emulation/avatars/Sniperava",
+        "thumbnailUrl": "/images/emulation/avatars/Sniperava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Sniperava",
+      "thumbnailUrl": "/images/emulation/avatars/Sniperava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc8816f"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40018"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "4d250de16a246c301a52b095"
+    },
+    "replyToMessageId": null,
+    "message": "Flombo jitter sprylox.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "4d250de16a246c301a52b095"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:21:02.068Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.068Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "4d250de16a246c301a52b095"
+      },
+      "username": "tf2_soldier",
+      "displayName": "Soldier",
+      "avatar": {
+        "url": "/images/emulation/avatars/Soldierava",
+        "thumbnailUrl": "/images/emulation/avatars/Soldierava",
+        "width": 184,
+        "height": 184,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-10-21T03:51:19.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/emulation/avatars/Soldierava",
+      "thumbnailUrl": "/images/emulation/avatars/Soldierava",
+      "width": 184,
+      "height": 184,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-10-21T03:51:19.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88170"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40018"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47601"
+    },
+    "replyToMessageId": null,
+    "message": "Gloopity gloop zap!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47601"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:22:02.068Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.068Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47601"
+      },
+      "username": "pinpointadmin",
+      "displayName": "Pinpoint Admin",
+      "avatar": {
+        "url": "/images/profile/profile-06",
+        "thumbnailUrl": "/images/profile/profile-06",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-06",
+      "thumbnailUrl": "/images/profile/profile-06",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88171"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40018"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47602"
+    },
+    "replyToMessageId": null,
+    "message": "Zoop zoop zip zap.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47602"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:23:02.068Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.068Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47602"
+      },
+      "username": "pinpointusera",
+      "displayName": "Pinpoint User A",
+      "avatar": {
+        "url": "/images/profile/profile-07",
+        "thumbnailUrl": "/images/profile/profile-07",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-07",
+      "thumbnailUrl": "/images/profile/profile-07",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88172"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40018"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d47603"
+    },
+    "replyToMessageId": null,
+    "message": "Wibber wobber woo!",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d47603"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:24:02.068Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.068Z"
+    },
+    "author": {
+      "_id": {
+        "$oid": "68e061721329566a22d47603"
+      },
+      "username": "pinpointuserb",
+      "displayName": "Pinpoint User B",
+      "avatar": {
+        "url": "/images/profile/profile-08",
+        "thumbnailUrl": "/images/profile/profile-08",
+        "width": 128,
+        "height": 128,
+        "mimeType": "image/jpeg",
+        "uploadedAt": {
+          "$date": "2026-11-14T10:45:00.000Z"
+        }
+      }
+    },
+    "authorAvatar": {
+      "url": "/images/profile/profile-08",
+      "thumbnailUrl": "/images/profile/profile-08",
+      "width": 128,
+      "height": 128,
+      "mimeType": "image/jpeg",
+      "uploadedAt": {
+        "$date": "2026-11-14T10:45:00.000Z"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "691a6b9ad1f945e23fc88173"
+    },
+    "roomId": {
+      "$oid": "68e061721329566a22d40018"
+    },
+    "pinId": null,
+    "authorId": {
+      "$oid": "68e061721329566a22d474a7"
+    },
+    "replyToMessageId": null,
+    "message": "Plonk dribble snazzle.",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [],
+      "accuracy": null
+    },
+    "attachments": [],
+    "audit": {
+      "createdBy": {
+        "$oid": "68e061721329566a22d474a7"
+      }
+    },
+    "createdAt": {
+      "$date": "2025-11-17T00:25:02.068Z"
+    },
+    "updatedAt": {
+      "$date": "2025-11-17T00:26:02.068Z"
     },
     "author": {
       "_id": {
