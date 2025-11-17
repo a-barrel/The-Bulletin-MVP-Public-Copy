@@ -66,9 +66,6 @@ function DirectThreadList({
       <Box className="dm-header">
         <Stack spacing={0.5}>
           <Typography className="dm-header-title" component="h2">
-            Direct messages
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
             Select a message thread below
           </Typography>
         </Stack>
