@@ -26,7 +26,8 @@ import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constants/moderationActions';
 import { getParticipantId } from '../utils/chatParticipants';
 import normalizeObjectId from '../utils/normalizeObjectId';
-
+import ReportContentDialog from '../components/ReportContentDialog';
+import { createContentReport } from '../api/mongoDataApi';
 import './FriendsPage.css';
 
 export const pageConfig = {
@@ -91,6 +92,11 @@ function FriendsPage() {
   const [friendActionStatus, setFriendActionStatus] = useState(null);
   const [isFriendDialogOpen, setIsFriendDialogOpen] = useState(false);
   const [respondingRequestId, setRespondingRequestId] = useState(null);
+  const [reportTarget, setReportTarget] = useState(null);
+  const [reportReason, setReportReason] = useState('');
+  const [reportOffenses, setReportOffenses] = useState([]);
+  const [reportError, setReportError] = useState(null);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
   useEffect(() => {
     if (friendQueueStatus) {
@@ -273,14 +279,67 @@ function FriendsPage() {
       setFriendActionStatus({ type: 'error', message: 'Unable to report this friend.' });
       return;
     }
-    setModerationContext({
+    setReportTarget({
       userId: friendId,
-      displayName: friend.displayName || friend.username || 'User',
-      messagePreview: '',
-      messageId: friendId,
-      defaultAction: 'report'
+      displayName: friend.displayName || friend.username || 'User'
+    });
+    setReportReason('');
+    setReportOffenses([]);
+    setReportError(null);
+  }, []);
+
+  const handleCloseReportDialog = useCallback(() => {
+    if (isSubmittingReport) {
+      return;
+    }
+    setReportTarget(null);
+    setReportReason('');
+    setReportOffenses([]);
+    setReportError(null);
+  }, [isSubmittingReport]);
+
+  const handleToggleReportOffense = useCallback((offense, checked) => {
+    if (typeof offense !== 'string') {
+      return;
+    }
+    setReportOffenses((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(offense);
+      } else {
+        next.delete(offense);
+      }
+      return Array.from(next);
     });
   }, []);
+
+  const handleSubmitReport = useCallback(async () => {
+    if (!reportTarget?.userId || isSubmittingReport) {
+      return;
+    }
+    setIsSubmittingReport(true);
+    setReportError(null);
+    try {
+      await createContentReport({
+        contentType: 'user',
+        contentId: reportTarget.userId,
+        context: `Friends list report: ${reportTarget.displayName || 'User'}`,
+        reason: reportReason,
+        offenses: reportOffenses
+      });
+      setReportTarget(null);
+      setReportReason('');
+      setReportOffenses([]);
+      setFriendActionStatus({
+        type: 'success',
+        message: 'Thanks — your report was submitted.'
+      });
+    } catch (error) {
+      setReportError(error?.message || 'Failed to submit report.');
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  }, [isSubmittingReport, reportOffenses, reportReason, reportTarget]);
 
   const handleOpenFriendDialog = useCallback(() => {
     setFriendActionStatus(null);
@@ -393,6 +452,19 @@ function FriendsPage() {
         actionStatus={friendActionStatus}
         respondingRequestId={respondingRequestId}
         onRespond={handleRespondToFriendRequest}
+      />
+
+      <ReportContentDialog
+        open={Boolean(reportTarget)}
+        onClose={handleCloseReportDialog}
+        onSubmit={handleSubmitReport}
+        reason={reportReason}
+        onReasonChange={setReportReason}
+        submitting={isSubmittingReport}
+        error={reportError || undefined}
+        context={reportTarget ? `Profile: ${reportTarget.displayName || 'User'}` : ''}
+        selectedReasons={reportOffenses}
+        onToggleReason={handleToggleReportOffense}
       />
 
       <Dialog
