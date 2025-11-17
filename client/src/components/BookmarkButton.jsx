@@ -41,6 +41,9 @@ function BookmarkButton({
   } else if (attendeeLocked) {
     baseClassNames.push('bookmark-button--attending');
   }
+  if (displayBookmarked && !isLocked) {
+    baseClassNames.push('bookmark-button--active');
+  }
   if (variant && variant !== 'default') {
     baseClassNames.push(`bookmark-button--${variant}`);
   }

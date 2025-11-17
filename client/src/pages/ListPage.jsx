@@ -11,6 +11,8 @@ import updatesIcon from '../assets/UpdateIcon.svg';
 import Feed from '../components/Feed';
 import GlobalNavMenu from '../components/GlobalNavMenu';
 import Chip from '@mui/material/Chip';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Checkbox from '@mui/material/Checkbox';
 import PlaceIcon from '@mui/icons-material/Place';
 import { useUpdates } from '../contexts/UpdatesContext';
 import { routes } from '../routes';
@@ -18,7 +20,10 @@ import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import { useLocationContext } from '../contexts/LocationContext';
 import toIdString from '../utils/ids';
 import useNearbyPinsFeed from '../hooks/useNearbyPinsFeed';
-import { fetchPinCategories } from '../api/mongoDataApi';
+import useListFilters from '../hooks/useListFilters';
+import usePinCategories from '../hooks/usePinCategories';
+import useOfflineNavigation from '../hooks/useOfflineNavigation';
+import useViewerProfile from '../hooks/useViewerProfile';
 
 export const pageConfig = {
   id: 'list',
@@ -30,54 +35,38 @@ export const pageConfig = {
   protected: true,
 };
 
-const FRIEND_ENGAGEMENT_VALUE_SET = new Set(
-  FRIEND_ENGAGEMENT_OPTIONS.map((option) => option.value)
-);
-
 const FRIEND_ENGAGEMENT_LABEL_LOOKUP = FRIEND_ENGAGEMENT_OPTIONS.reduce((acc, option) => {
   acc[option.value] = option.chipLabel || option.label;
   return acc;
 }, {});
 
-const sanitizeFriendEngagements = (input) => {
-  if (!Array.isArray(input) || input.length === 0) {
-    return [];
-  }
-  const ordered = [];
-  const seen = new Set();
-  input.forEach((value) => {
-    if (FRIEND_ENGAGEMENT_VALUE_SET.has(value) && !seen.has(value)) {
-      ordered.push(value);
-      seen.add(value);
-    }
-  });
-  return ordered;
-};
-
 export default function ListPage() {
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
   const { location: sharedLocation } = useLocationContext();
-
-  const defaultFilters = useMemo(
-    () => ({
-      search: '',
-      status: 'active',
-      startDate: '',
-      endDate: '',
-      types: [],
-      categories: [],
-      friendEngagements: []
-    }),
-    []
-  );
-  const [filters, setFilters] = useState(() => ({ ...defaultFilters }));
+  const {
+    filters,
+    defaultFilters,
+    hasActiveFilters,
+    setFilters,
+    applyFilters,
+    clearFilters,
+    clearSearch,
+    removeType,
+    removeCategory,
+    removeFriendEngagement,
+    resetDates
+  } = useListFilters();
   const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
-  const [categoryOptions, setCategoryOptions] = useState([]);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
-  const [categoriesError, setCategoriesError] = useState(null);
+  const {
+    categories: categoryOptions,
+    isLoading: isLoadingCategories,
+    error: categoriesError,
+    refresh: refreshCategories
+  } = usePinCategories({ isOffline });
 
   const [sortByExpiration, setSortByExpiration] = useState(false);
+  const [hideOwnPins, setHideOwnPins] = useState(true);
   const {
     feedItems,
     loading,
@@ -85,26 +74,14 @@ export default function ListPage() {
     locationNotice,
     isUsingFallbackLocation
   } = useNearbyPinsFeed({ sharedLocation, isOffline, filters });
+  const { viewer: viewerProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
+  const viewerMongoId = useMemo(
+    () => toIdString(viewerProfile?._id) ?? toIdString(viewerProfile?.id) ?? null,
+    [viewerProfile]
+  );
 
   const { unreadCount, refreshUnreadCount } = useUpdates();
-
-  const refreshCategories = useCallback(async () => {
-    if (isOffline) {
-      setCategoriesError('Reconnect to refresh categories.');
-      return;
-    }
-    setIsLoadingCategories(true);
-    setCategoriesError(null);
-    try {
-      const result = await fetchPinCategories();
-      setCategoryOptions(Array.isArray(result) ? result : []);
-    } catch (err) {
-      setCategoriesError(err?.message || 'Failed to load categories.');
-    } finally {
-      setIsLoadingCategories(false);
-    }
-  }, [isOffline]);
-
+  const { navigateIfOnline } = useOfflineNavigation(isOffline);
   useEffect(() => {
     if (!filtersDialogOpen) {
       return;
@@ -113,32 +90,6 @@ export default function ListPage() {
       refreshCategories();
     }
   }, [filtersDialogOpen, categoryOptions.length, isLoadingCategories, refreshCategories]);
-
-  const normalizeForCompare = useCallback((value) => ({
-    search: value.search?.trim() || '',
-    status: value.status || 'active',
-    startDate: value.startDate || '',
-    endDate: value.endDate || '',
-    types: Array.isArray(value.types) ? [...value.types].sort() : [],
-    categories: Array.isArray(value.categories) ? [...value.categories].sort() : [],
-    friendEngagements: Array.isArray(value.friendEngagements)
-      ? [...value.friendEngagements].sort()
-      : []
-  }), []);
-
-  const hasActiveFilters = useMemo(() => {
-    const baseline = normalizeForCompare(defaultFilters);
-    const current = normalizeForCompare(filters);
-    return (
-      current.search !== baseline.search ||
-      current.status !== baseline.status ||
-      current.startDate !== baseline.startDate ||
-      current.endDate !== baseline.endDate ||
-      current.types.join('|') !== baseline.types.join('|') ||
-      current.categories.join('|') !== baseline.categories.join('|') ||
-      current.friendEngagements.join('|') !== baseline.friendEngagements.join('|')
-    );
-  }, [defaultFilters, filters, normalizeForCompare]);
 
   useEffect(() => {
     if (typeof refreshUnreadCount === 'function' && !isOffline) {
@@ -150,17 +101,11 @@ export default function ListPage() {
     setSortByExpiration((prev) => !prev);
   }, []);
   const handleNotifications = useCallback(() => {
-    if (isOffline) {
-      return;
-    }
-    navigate(routes.updates.base);
-  }, [isOffline, navigate]);
+    navigateIfOnline(routes.updates.base);
+  }, [navigateIfOnline]);
   const handleCreatePin = useCallback(() => {
-    if (isOffline) {
-      return;
-    }
-    navigate(routes.createPin.base);
-  }, [isOffline, navigate]);
+    navigateIfOnline(routes.createPin.base);
+  }, [navigateIfOnline]);
   const handleOpenFilters = useCallback(() => {
     setFiltersDialogOpen(true);
   }, []);
@@ -170,75 +115,33 @@ export default function ListPage() {
   }, []);
 
   const handleApplyFilters = useCallback((nextFilters) => {
-    setFilters({
-      search: nextFilters.search?.trim() || '',
-      status: nextFilters.status || 'active',
-      startDate: nextFilters.startDate || '',
-      endDate: nextFilters.endDate || '',
-      types: Array.isArray(nextFilters.types)
-        ? Array.from(new Set(nextFilters.types))
-        : [],
-      categories: Array.isArray(nextFilters.categories)
-        ? Array.from(
-            new Set(
-              nextFilters.categories
-                .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
-                .filter(Boolean)
-            )
-          )
-        : [],
-      friendEngagements: sanitizeFriendEngagements(nextFilters.friendEngagements)
-    });
+    applyFilters(nextFilters);
     setFiltersDialogOpen(false);
-  }, []);
+  }, [applyFilters]);
 
   const handleClearFilters = useCallback(() => {
-    setFilters({
-      search: '',
-      status: defaultFilters.status,
-      startDate: '',
-      endDate: '',
-      types: [],
-      categories: [],
-      friendEngagements: []
-    });
-  }, [defaultFilters.status]);
+    clearFilters();
+  }, [clearFilters]);
 
   const handleClearSearch = useCallback(() => {
-    setFilters((prev) => ({
-      ...prev,
-      search: ''
-    }));
-  }, []);
+    clearSearch();
+  }, [clearSearch]);
 
   const handleRemoveType = useCallback((typeValue) => {
-    setFilters((prev) => ({
-      ...prev,
-      types: prev.types.filter((entry) => entry !== typeValue)
-    }));
-  }, []);
+    removeType(typeValue);
+  }, [removeType]);
 
   const handleRemoveCategory = useCallback((category) => {
-    setFilters((prev) => ({
-      ...prev,
-      categories: prev.categories.filter((entry) => entry !== category)
-    }));
-  }, []);
+    removeCategory(category);
+  }, [removeCategory]);
 
   const handleRemoveFriendEngagement = useCallback((engagement) => {
-    setFilters((prev) => ({
-      ...prev,
-      friendEngagements: prev.friendEngagements.filter((entry) => entry !== engagement)
-    }));
-  }, []);
+    removeFriendEngagement(engagement);
+  }, [removeFriendEngagement]);
 
   const handleResetDates = useCallback(() => {
-    setFilters((prev) => ({
-      ...prev,
-      startDate: '',
-      endDate: ''
-    }));
-  }, []);
+    resetDates();
+  }, [resetDates]);
 
   const handleResetStatus = useCallback(() => {
     setFilters((prev) => ({
@@ -355,7 +258,25 @@ export default function ListPage() {
       return hours > 0;
     });
 
-    const sortedItems = [...statusFiltered].sort((a, b) => {
+    const ownerFiltered =
+      hideOwnPins
+        ? statusFiltered.filter((item) => {
+            if (item?.viewerOwnsPin) {
+              return false;
+            }
+            const ownerId =
+              toIdString(item?.creatorId) ??
+              toIdString(item?.creator?._id) ??
+              toIdString(item?.creator?._id?.$oid) ??
+              null;
+            if (viewerMongoId && ownerId && ownerId === viewerMongoId) {
+              return false;
+            }
+            return true;
+          })
+        : statusFiltered;
+
+    const sortedItems = [...ownerFiltered].sort((a, b) => {
       if (sortByExpiration) {
         const hoursA = Number.isFinite(a.expiresInHours) ? a.expiresInHours : Number.POSITIVE_INFINITY;
         const hoursB = Number.isFinite(b.expiresInHours) ? b.expiresInHours : Number.POSITIVE_INFINITY;
@@ -376,7 +297,7 @@ export default function ListPage() {
     });
 
     return sortedItems;
-  }, [feedItems, filters.status, sortByExpiration]);
+  }, [feedItems, filters.status, hideOwnPins, sortByExpiration, viewerMongoId]);
 
   const notificationsLabel =
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
@@ -422,6 +343,19 @@ export default function ListPage() {
 
             {/* Sort Toggle */}
             <SortToggle sortByExpiration={sortByExpiration} onToggle={handleSortToggle} />
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  size="small"
+                  color="secondary"
+                  checked={hideOwnPins}
+                  onChange={(event) => setHideOwnPins(event.target.checked)}
+                />
+              }
+              label="Hide my pins"
+              className="topbar-hide-own"
+            />
           </div>
 
           <button

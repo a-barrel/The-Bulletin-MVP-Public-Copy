@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import './ForgotPasswordPage.css';
@@ -6,6 +6,8 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import AuthPageLayout from '../components/AuthPageLayout.jsx';
 import AuthEmailField, { validateAuthEmail } from '../components/AuthEmailField.jsx';
 import useShake from '../hooks/useShake.js';
+import useAuthAlerts from '../hooks/useAuthAlerts';
+import { mapPasswordResetError } from '../utils/authErrors';
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -15,29 +17,6 @@ function ForgotPasswordPage() {
   const [emailError, setEmailError] = useState("");
   const { shake, triggerShake } = useShake();
   
-  // Clear error pop-up after 3 seconds
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => setError(null), 3000); 
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
- 
-  const mapFirebaseError = (code) => {
-    switch (code) {
-      case 'auth/invalid-email':
-        return 'Please enter a valid email address.';
-      case 'auth/user-not-found':
-        return 'No account found with that email.';
-      case 'auth/missing-email':
-        return 'Please enter an email address.';
-      case 'auth/network-request-failed':
-        return 'Network error. Check your connection and try again.';
-      default:
-        return 'Something went wrong. Please try again.';
-    }
-  };
-
   const handleEmailSubmission = async (e) => {
     e.preventDefault();
     setError(null);
@@ -55,30 +34,19 @@ function ForgotPasswordPage() {
       await sendPasswordResetEmail(auth, email.trim());
       setMessage('If this email is in use, a password reset email has been sent.');
     } catch (err) {
-      setError(mapFirebaseError(err?.code));
+      setError(mapPasswordResetError(err?.code));
       triggerShake();
     }
   };
 
-  const alerts = [];
-  if (error) {
-    alerts.push({
-      id: 'error',
-      type: 'error',
-      content: error,
-      overlayClassName: 'message-overlay',
-      boxClassName: 'message-box',
-      onClose: () => setError(null)
-    });
-  }
-  if (message) {
-    alerts.push({
-      id: 'message',
-      type: 'info',
-      content: message,
-      onClose: () => setMessage(null)
-    });
-  }
+  const alerts = useAuthAlerts({
+    error,
+    message,
+    onErrorClear: () => setError(null),
+    onMessageClear: () => setMessage(null),
+    errorOverlayClassName: 'message-overlay',
+    errorBoxClassName: 'message-box'
+  });
 
   return (
     <AuthPageLayout

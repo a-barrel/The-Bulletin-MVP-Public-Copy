@@ -230,6 +230,16 @@ function PinDetails() {
 
   const {
     pin,
+    viewState,
+    bookmarkState,
+    attendanceState,
+    replyState,
+    attendeeState,
+    shareState,
+    status,
+    reloadPin
+  } = usePinDetails({ pinId, location, isOffline });
+  const {
     isEventPin,
     isOwnPin,
     isInteractionLocked,
@@ -249,41 +259,49 @@ function PinDetails() {
     createdAtLabel,
     updatedAtLabel,
     creatorProfileLink,
-    creatorAvatarUrl,
-    isLoading,
-    error,
+    creatorAvatarUrl
+  } = viewState;
+  const {
     bookmarked,
-    isUpdatingBookmark,
-    bookmarkError,
-    handleToggleBookmark,
+    isUpdating: isUpdatingBookmark,
+    error: bookmarkError,
+    toggle: handleToggleBookmark
+  } = bookmarkState;
+  const {
     attending,
-    isUpdatingAttendance,
-    attendanceError,
-    handleToggleAttendance,
-    replyItems,
-    replyCount,
-    isLoadingReplies,
-    repliesError,
-    replyComposerOpen,
-    openReplyComposer,
-    closeReplyComposer,
-    replyMessage,
-    setReplyMessage,
-    isSubmittingReply,
-    submitReplyError,
-    handleSubmitReply,
-    shareStatus,
-    setShareStatus,
-    handleSharePin,
-    reloadPin,
+    isUpdating: isUpdatingAttendance,
+    error: attendanceError,
+    toggle: handleToggleAttendance
+  } = attendanceState;
+  const {
+    items: replyItems,
+    count: replyCount,
+    isLoading: isLoadingReplies,
+    error: repliesError,
+    composerOpen: replyComposerOpen,
+    openComposer: openReplyComposer,
+    closeComposer: closeReplyComposer,
+    message: replyMessage,
+    setMessage: setReplyMessage,
+    isSubmitting: isSubmittingReply,
+    submitError: submitReplyError,
+    submit: handleSubmitReply
+  } = replyState;
+  const {
+    items: attendeeItems,
+    overlayOpen: attendeeOverlayOpen,
+    openOverlay: openAttendeeOverlay,
+    closeOverlay: closeAttendeeOverlay,
+    isLoading: isLoadingAttendees,
+    error: attendeesError
+  } = attendeeState;
+  const {
+    status: shareStatus,
+    setStatus: setShareStatus,
     isSharing,
-    attendeeItems,
-    attendeeOverlayOpen,
-    openAttendeeOverlay,
-    closeAttendeeOverlay,
-    isLoadingAttendees,
-    attendeesError
-  } = usePinDetails({ pinId, location, isOffline });
+    share: handleSharePin
+  } = shareState;
+  const { isLoading, error } = status;
   const socialNotifications = useSocialNotificationsContext();
 
   const friendLookup = useMemo(() => {

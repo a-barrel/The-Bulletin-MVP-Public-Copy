@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -6,9 +6,17 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import ReplayIcon from '@mui/icons-material/Replay';
 import RefreshIcon from '@mui/icons-material/Refresh';
+
+import reportClientError from '../utils/reportClientError';
 import { routes } from '../routes';
 
-function ErrorFallback({ onRetry, onReload }) {
+function ErrorFallback({ onRetry, onReload, error }) {
+  useEffect(() => {
+    if (error) {
+      reportClientError(error, 'Unhandled error captured by boundary');
+    }
+  }, [error]);
+
   const handleRetry = useCallback(() => {
     if (typeof onRetry === 'function') {
       onRetry();
@@ -58,6 +66,11 @@ function ErrorFallback({ onRetry, onReload }) {
             An unexpected error occurred while rendering this page. You can try again or reload the
             app to recover.
           </Typography>
+          {error?.message ? (
+            <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+              {error.message}
+            </Typography>
+          ) : null}
         </Stack>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} justifyContent="center">
           <Button

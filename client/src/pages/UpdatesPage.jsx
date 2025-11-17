@@ -1,29 +1,22 @@
 /* NOTE: Page exports configuration alongside the component. */
 import runtimeConfig from '../config/runtime';
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Snackbar from '@mui/material/Snackbar';
-import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
-import CloseIcon from '@mui/icons-material/CancelRounded';
 import UpdateIcon from '@mui/icons-material/Update';
-import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
-import DropDownArrow from '@mui/icons-material/ArrowForwardIosRounded';
 import './UpdatesPage.css';
-import {
-  formatRelativeTime
-} from '../utils/dates';
 import useUpdatesFeed from '../hooks/useUpdatesFeed';
-import { routes } from '../routes';
 import usePushNotifications from '../hooks/usePushNotifications';
 import GlobalNavMenu from '../components/GlobalNavMenu';
 import MainNavBackButton from '../components/MainNavBackButton';
+import UpdatesTabs from '../components/updates/UpdatesTabs';
+import PushNotificationPrompt from '../components/updates/PushNotificationPrompt';
+import UpdatesList from '../components/updates/UpdatesList';
 
 export const pageConfig = {
   id: 'updates',
@@ -37,8 +30,6 @@ export const pageConfig = {
 };
 
 const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
-const PUSH_PROMPT_DISMISS_KEY = 'pinpoint:pushPromptDismissed';
-
 const resolveBadgeImageUrl = (value) => {
   if (!value) {
     return null;
@@ -57,30 +48,6 @@ function UpdatesPage() {
   const handleToggleExpand = (id) => {
     setExpandedUpdateId((prev) => (prev === id ? null : id));
   };
-  const [pushPromptDismissed, setPushPromptDismissed] = useState(() => {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    try {
-      return window.localStorage.getItem(PUSH_PROMPT_DISMISS_KEY) === 'true';
-    } catch {
-      return false;
-    }
-  });
-
-  useEffect(() => {
-    if (pushNotifications.permission === 'granted') {
-      setPushPromptDismissed(true);
-      if (typeof window !== 'undefined') {
-        try {
-          window.localStorage.setItem(PUSH_PROMPT_DISMISS_KEY, 'true');
-        } catch {
-          // ignore
-        }
-      }
-    }
-  }, [pushNotifications.permission]);
-
   const {
     profileError,
     isProfileLoading,
@@ -127,12 +94,14 @@ function UpdatesPage() {
     return counts;
   }, [updates]);
 
+  const normalizedFilteredUpdates = Array.isArray(filteredUpdates) ? filteredUpdates : [];
+
   const tabFilteredUpdates = useMemo(() => {
     if (selectedTab === 'All') {
-      return filteredUpdates;
+      return normalizedFilteredUpdates;
     }
 
-    return filteredUpdates.filter((update) => {
+    return normalizedFilteredUpdates.filter((update) => {
       const category = (update.category || '').toLowerCase();
       if (selectedTab === 'Discussions') {
         return category === 'discussion';
@@ -142,7 +111,7 @@ function UpdatesPage() {
       }
       return true;
     });
-  }, [filteredUpdates, selectedTab]);
+  }, [normalizedFilteredUpdates, selectedTab]);
 
   return (
     <Box className="updates-page">
@@ -170,65 +139,25 @@ function UpdatesPage() {
         </header>
 
         <Box className="updates-content">
-          <Box className="updates-tabs-container">
-            {[
-              { label: 'All', count: unreadCount },
-              { label: 'Discussions', count: unreadDiscussionsCount },
-              { label: 'Events', count: unreadEventsCount }
-            ].map((tab) => (
-              <Button
-                key={tab.label}
-                className={`update-tab ${selectedTab === tab.label ? 'active' : ''}`}
-                onClick={() => setSelectedTab(tab.label)}
-              >
-                {tab.label}
-                {tab.count > 0 ? <span className="unread-badge">{tab.count}</span> : null}
-              </Button>
-            ))}
-          </Box>
+        <UpdatesTabs
+          tabs={[
+            { label: 'All', count: unreadCount },
+            { label: 'Discussions', count: unreadDiscussionsCount },
+            { label: 'Events', count: unreadEventsCount }
+          ]}
+          selected={selectedTab}
+          onSelect={setSelectedTab}
+        />
 
-          {pushNotifications.isSupported &&
-            pushNotifications.permission !== 'granted' &&
-            !pushPromptDismissed ? (
-            <Alert
-              className="push-notifs-container"
-              severity="info"
-              variant="outlined"
-              sx={{ mb: 3 }}
-              action={
-                <Box className="push-notifs-info">
-                  <Button
-                    size="small"
-                    variant="contained"
-                    onClick={async () => {
-                      try {
-                        await pushNotifications.requestPermission();
-                      } catch {
-                        // status handled by hook
-                      }
-                    }}
-                    disabled={pushNotifications.isEnabling}
-                  >
-                    {pushNotifications.isEnabling ? 'Enabling…' : 'Enable'}
-                  </Button>
-                  <Button
-                    size="small"
-                    color="inherit"
-                    onClick={() => {
-                      pushNotifications.dismissPrompt();
-                      setPushPromptDismissed(true);
-                    }}
-                  >
-                    Dismiss
-                  </Button>
-                </Box>
-              }
-            >
-              <Box className="push-notifs-description">
-                Enable push notifications to get updates even when you're away.
-              </Box>
-            </Alert>
-          ) : null}
+        {pushNotifications.isSupported &&
+        pushNotifications.permission !== 'granted' &&
+        !pushNotifications.promptDismissed ? (
+          <PushNotificationPrompt
+            onEnable={pushNotifications.requestPermission}
+            onDismiss={pushNotifications.dismissPrompt}
+            disabled={pushNotifications.isEnabling}
+          />
+        ) : null}
 
           {profileError ? (
             <Alert severity="warning" variant="outlined">
@@ -271,181 +200,19 @@ function UpdatesPage() {
               </Typography>
             </div>     
           ) : (
-            <Box className="updates-list">
-              <Box
-                className="pull-refresh-indicator"
-                style={{
-                  height: Math.max(isPullRefreshing ? 48 : 0, pullDistance),
-                  opacity: pullDistance > 0 || isPullRefreshing ? 1 : 0
-                }}
-              >
-                {isPullRefreshing ? (
-                  <CircularProgress className="pull-refresh-loading-circle" size={28} />
-                ) : (
-                  <>
-                    <span
-                      className={`pull-refresh-arrow-wrapper${
-                        pullDistance > 36 ? ' pull-refresh-arrow-wrapper--flipped' : ''
-                      }`}
-                    >
-                      <ArrowUpwardRoundedIcon className="pull-refresh-prompt-arrow" />
-                    </span>
-                    <Typography className="pull-refresh-label" variant="body2">
-                      {pullDistance > 36 ? 'Release to refresh' : 'Pull to refresh'}
-                    </Typography>
-                  </>
-                )}
-              </Box>
-              {tabFilteredUpdates.map((update) => {
-                const read = Boolean(update.readAt);
-                const pending = pendingUpdateIds.includes(update._id);
-                const isDeleting = deletingUpdateIds.includes(update._id);
-                const message = update.payload?.body;
-                const pinTitle = update.payload?.pin?.title;
-                const pinId = update.payload?.pin?._id;
-                const typeKey = update.payload?.type ?? 'update';
-                const displayTypeLabel = typeKey.replace(/-/g, ' ');
-                const isBadgeUpdate = typeKey === 'badge-earned';
-                const badgeImage = update.payload?.metadata?.badgeImage;
-                const badgeImageUrl = badgeImage ? resolveBadgeImageUrl(badgeImage) : null;
-                const createdAt = update.createdAt;
-
-                return (
-                  <Box
-                    className="update-card"
-                    key={update._id}
-                    onClick={() => handleToggleExpand(update._id)}
-                  >
-                    {/* Header of the update card, consisting of a pinTitle and time of update */}
-                    <Box className="update-header">
-                      <Chip
-                        label={displayTypeLabel}
-                        size="small"
-                        color={read ? 'secondary' : 'secondary'}
-                      />
-  
-                      {pinTitle ? 
-                        <Typography 
-                          className="pin-title"
-                          size="small" 
-                          color="black" 
-                          variant="outlined" 
-                        >
-                          {pinTitle} 
-                        </Typography>
-                      : null}
-  
-                      {/* Time Label */}
-                      <Typography className="update-time">
-                        {formatRelativeTime(createdAt) || ''}
-                      </Typography>
-  
-                      {!read && (
-                      <span className="unread-dot"/>
-                      )}
-                    </Box>
-  
-                    <Typography className="update-title">
-                      {update.payload?.title}
-                    </Typography>
-                    
-                    {/* Text body of the update card */}
-                    <Box>
-                      {message ? (
-                        <Typography className="update-message">
-                          {message}
-                        </Typography>
-                      ) : null}
-                    </Box>
-                    
-                    {update.payload?.avatars?.length > 0 && (
-                      <Box className="avatar-row">
-                        {update.payload.avatars.map((src, idx) => (
-                          <img key={idx} src={src} alt="participant" className="avatar" />
-                        ))}
-                      </Box>
-                    )}
-  
-                    {/* Achievement Badge handling */}
-                    {isBadgeUpdate && badgeImageUrl ? (
-                      <Box
-                        component="img"
-                        src={badgeImageUrl || undefined}
-                        alt={
-                          update.payload?.metadata?.badgeId
-                            ? `${update.payload.metadata.badgeId} badge`
-                            : 'Badge earned'
-                        }
-                        sx={{
-                          width: { xs: 96, sm: 128 },
-                          height: { xs: 96, sm: 128 },
-                          borderRadius: 3,
-                          alignSelf: 'flex-start',
-                          border: (theme) => `1px solid ${theme.palette.divider}`,
-                          objectFit: 'cover',
-                          mt: 2
-                        }}
-                      />
-                    ) : null}
-
-                    <Box className="drop-down-arrow-container">
-                      <DropDownArrow
-                        className="update-action-drop-down-indicator-arrow"
-                        sx={{
-                          transform: expandedUpdateId === update._id ? 'rotate(90deg)' : 'rotate(0deg)'
-                        }}
-                      />
-                    </Box>
-  
-                    <Box 
-                      className="update-action-container"
-                      sx={{
-                        maxHeight: expandedUpdateId === update._id ? 200 : 0,
-                        overflow: 'hidden',
-                        transition: 'max-height 0.3s ease, opacity 0.3s ease',
-                        opacity: expandedUpdateId === update._id ? 1 : 0,
-                        mt: expandedUpdateId === update._id ? 1.5 : 0
-                      }}
-                      onClick={(e) => e.stopPropagation()} // prevent collapsing when clicking buttons
-                    >
-
-                      {pinId ? (
-                        <Button
-                          component={Link}
-                          to={routes.pin.byId(pinId)}
-                          className="view-pin-btn"
-                        >
-                          View
-                        </Button>
-                      ) : null}
-    
-                      {/* Currently there is no way to 'hide' the notifications as before with the toggle, so...
-                          TODO: create a way to actually clear updates 
-                      */}
-                      {!read && (
-                      <Button
-                        className="mark-as-read-btn"
-                        startIcon={<CheckCircleOutlineIcon className="read-icon" fontSize="small" />}
-                        onClick={() => handleMarkRead(update._id)}
-                        disabled={pending || isDeleting}
-                      >
-                        {pending ? 'Marking...' : 'Mark as read'}
-                      </Button>
-                      )}
-                      <Button
-                        className="delete-update-btn"
-                        startIcon={<CloseIcon className="delete-icon" fontSize="small" />}
-                        onClick={() => handleDeleteUpdate(update._id)}
-                        disabled={pending || isDeleting}
-                      >
-                        {isDeleting ? 'Deleting...' : 'Delete'}
-                      </Button>
-                    </Box>
-                  </Box>
-                );
-              })}
-          </Box>
-        )}
+            <UpdatesList
+              updates={tabFilteredUpdates}
+              expandedUpdateId={expandedUpdateId}
+              onToggleExpand={handleToggleExpand}
+              pendingUpdateIds={pendingUpdateIds}
+              deletingUpdateIds={deletingUpdateIds}
+              onMarkRead={handleMarkRead}
+              onDeleteUpdate={handleDeleteUpdate}
+              pullDistance={pullDistance}
+              isPullRefreshing={isPullRefreshing}
+              resolveBadgeImageUrl={resolveBadgeImageUrl}
+            />
+          )}
       </Box>
 
       <Snackbar

@@ -1,106 +1,43 @@
-import React, { useState } from "react";
+import React, { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase";
 import { routes } from "../routes";
 import AuthPageLayout from "../components/AuthPageLayout.jsx";
-import AuthEmailField, { validateAuthEmail } from "../components/AuthEmailField.jsx";
+import AuthEmailField from "../components/AuthEmailField.jsx";
 import PasswordField from "../components/PasswordField.jsx";
-import {
-  formatPhoneNumberInput,
-  validateUsernameField,
-  validatePhoneField,
-  validatePasswordField
-} from "../utils/authForm.js";
 import useShake from "../hooks/useShake.js";
+import useAuthAlerts from "../hooks/useAuthAlerts";
+import useRegistrationForm from "../hooks/useRegistrationForm";
 import "./Registration.css";
 
 function RegistrationPage() {
   const navigate = useNavigate();
   const { shake, triggerShake } = useShake();
+  const {
+    form,
+    errors,
+    isSubmitting,
+    message,
+    setMessage,
+    handleChange,
+    handleSubmit
+  } = useRegistrationForm();
   const [showPassword, setShowPassword] = useState(false);
-  const [message, setMessage] = useState(null);
 
-  const [form, setForm] = useState({
-    username: "",
-    email: "",
-    phone: "",
-    password: "",
+  const onSubmit = useCallback(
+    async (event) => {
+      event.preventDefault();
+      await handleSubmit({
+        onSuccess: () => setTimeout(() => navigate(routes.auth.login), 2000),
+        onError: () => triggerShake()
+      });
+    },
+    [handleSubmit, navigate, triggerShake]
+  );
+
+  const alerts = useAuthAlerts({
+    message,
+    onMessageClear: () => setMessage(null)
   });
-
-  const [errors, setErrors] = useState({
-    username: "",
-    email: "",
-    phone: "",
-    password: "",
-  });
-
-  const onChange = (e) => {
-    const { name, value } = e.target;
-    if (name === "phone") {
-      setForm((f) => ({ ...f, phone: formatPhoneNumberInput(value) }));
-    } else {
-      setForm((f) => ({ ...f, [name]: value }));
-    }
-    setErrors((er) => ({ ...er, [name]: "" }));
-  };
-
-  // simple validators to mirror your red helper text behavior
-  const validate = () => {
-    const er = { username: "", email: "", phone: "", password: "" };
-    er.username = validateUsernameField(form.username);
-    er.email = validateAuthEmail(form.email);
-    er.phone = validatePhoneField(form.phone);
-    er.password = validatePasswordField(form.password);
-
-    setErrors(er);
-    return Object.values(er).every((v) => v === "");
-  };
-
-  const mapFirebaseError = (code) => {
-    switch (code) {
-      case "auth/email-already-in-use":
-        return "An account already exists with this email.";
-      case "auth/invalid-email":
-        return "Please enter a valid email address.";
-      case "auth/operation-not-allowed":
-        return "Email/password sign-up is currently disabled.";
-      case "auth/weak-password":
-        return "Password is too weak. Try adding more characters or symbols.";
-      default:
-        return "Failed to create your account. Please try again.";
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setMessage(null);
-
-    if (!validate()) {
-      triggerShake();
-      return;
-    }
-
-    try {
-      await createUserWithEmailAndPassword(auth, form.email.trim(), form.password);
-      setMessage("Your account has been created successfully! \nRedirecting to login...");
-      setTimeout(() => navigate(routes.auth.login), 2000);
-    } catch (err) {
-      console.error("Registration failed:", err);
-      setMessage(mapFirebaseError(err?.code));
-      triggerShake();
-    }
-  };
-
-  const alerts = [];
-  if (message) {
-    alerts.push({
-      id: "message",
-      type: "info",
-      content: message,
-      onClose: () => setMessage(null)
-    });
-  }
 
   return (
     <AuthPageLayout
@@ -109,14 +46,14 @@ function RegistrationPage() {
       onBack={() => navigate(-1)}
       alerts={alerts}
     >
-      <form className="register-form" onSubmit={handleSubmit} noValidate>
+      <form className="register-form" onSubmit={onSubmit} noValidate>
           {/* Username */}
           <div className="auth-input-container">
             <input
               name="username"
               type="text"
               value={form.username}
-              onChange={onChange}
+              onChange={handleChange}
               placeholder="Choose a Username"
               className={errors.username ? "input-error" : ""}
             />
@@ -126,7 +63,7 @@ function RegistrationPage() {
           {/* Email */}
           <AuthEmailField
             value={form.email}
-            onChange={onChange}
+            onChange={handleChange}
             error={errors.email}
             onErrorChange={(value) => setErrors((prev) => ({ ...prev, email: value }))}
             placeholder="Enter your Email"
@@ -139,7 +76,7 @@ function RegistrationPage() {
               name="phone"
               type="tel"
               value={form.phone}
-              onChange={onChange}
+              onChange={handleChange}
               placeholder="Enter your Phone Number"
               className={errors.phone ? "input-error" : ""}
             />
@@ -150,7 +87,7 @@ function RegistrationPage() {
           <PasswordField
             name="password"
             value={form.password}
-            onChange={onChange}
+            onChange={handleChange}
             error={errors.password}
             placeholder="Choose a Password"
             className="auth-input-container"
@@ -160,8 +97,8 @@ function RegistrationPage() {
           />
 
           {/* Submit */}
-          <button type="submit" className="register-submit">
-            Register
+          <button type="submit" className="register-submit" disabled={isSubmitting}>
+            {isSubmitting ? "Registering..." : "Register"}
           </button>
       </form>
     </AuthPageLayout>

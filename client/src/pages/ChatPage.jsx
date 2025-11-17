@@ -1,5 +1,5 @@
 /* NOTE: Page exports navigation config alongside the component. */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
@@ -8,15 +8,6 @@ import {
   Typography,
   Button,
   IconButton,
-  Avatar,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemAvatar,
-  ListItemText,
-  ListItemSecondaryAction,
-  Chip,
-  Tooltip,
   TextField,
   Dialog,
   DialogTitle,
@@ -26,17 +17,12 @@ import {
   FormControlLabel,
   CircularProgress,
   Alert,
-  MenuItem,
   Tabs,
   Tab,
   Snackbar
 } from '@mui/material';
 import SmsIcon from '@mui/icons-material/Sms';
-import AddCommentIcon from '@mui/icons-material/AddComment';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import RoomIcon from '@mui/icons-material/Room';
 import GroupIcon from '@mui/icons-material/Group';
-import PublicIcon from '@mui/icons-material/Public';
 import MarkUnreadChatAltIcon from '@mui/icons-material/MarkUnreadChatAlt';
 import CloseIcon from '@mui/icons-material/Close';
 import updatesIcon from '../assets/UpdateIcon.svg';
@@ -44,11 +30,15 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
 
 
 import Navbar from '../components/Navbar';
-import GlobalNavMenu from '../components/GlobalNavMenu';
 import MessageBubble from '../components/MessageBubble';
-import ChatComposer from '../components/ChatComposer';
 import ReportContentDialog from '../components/ReportContentDialog';
+import ChatThreadHeader from '../components/chat/ChatThreadHeader';
+import ChatRoomList from '../components/chat/ChatRoomList';
+import ChatComposerFooter from '../components/chat/ChatComposerFooter';
+import ChatModerationDialog from '../components/chat/ChatModerationDialog';
 import DirectThreadList from '../components/chat/DirectThreadList';
+import FriendsListPanel from '../components/friends/FriendsListPanel';
+import FriendRequestsDialog from '../components/friends/FriendRequestsDialog';
 import useDirectMessages from '../hooks/useDirectMessages';
 import useAttachmentManager, {
   mapDraftAttachmentPayloads,
@@ -58,21 +48,19 @@ import useAttachmentManager, {
 import { auth } from '../firebase';
 import useChatManager from '../hooks/useChatManager';
 import useModerationTools from '../hooks/useModerationTools';
-import useFriendGraph from '../hooks/useFriendGraph';
+import useFriendsDirectory from '../hooks/useFriendsDirectory';
+import useChatTabs from '../hooks/useChatTabs';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { useLocationContext } from '../contexts/LocationContext';
 import { useUpdates } from '../contexts/UpdatesContext';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
+import useDmGifPreview from '../hooks/useDmGifPreview';
+import useScrollToLatestMessage from '../hooks/useScrollToLatestMessage';
 import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constants/moderationActions';
-import { previewChatGif, createContentReport } from '../api/mongoDataApi';
+import { createContentReport } from '../api/mongoDataApi';
 import { ATTACHMENT_ONLY_PLACEHOLDER, MAX_CHAT_ATTACHMENTS } from '../utils/chatAttachments';
-import {
-  getParticipantId,
-  resolveAvatarSrc,
-  resolveThreadParticipants
-} from '../utils/chatParticipants';
+import { getParticipantId, resolveThreadParticipants } from '../utils/chatParticipants';
 import normalizeObjectId from '../utils/normalizeObjectId';
-
 import './ChatPage.css';
 
 export const pageConfig = {
@@ -84,129 +72,6 @@ export const pageConfig = {
   order: 90,
   showInNav: true,
   protected: true
-};
-
-function AttachmentPreview({
-  attachments,
-  onRemove,
-  status,
-  isUploading,
-  uploadProgress,
-  onRetry,
-  canRetry,
-  padding
-}) {
-  if (!attachments.length && !status && !isUploading) {
-    return null;
-  }
-
-  const progressLabel = (() => {
-    if (!uploadProgress || typeof uploadProgress.total !== 'number' || uploadProgress.total <= 0) {
-      return 'Uploading…';
-    }
-    const completed = Math.min(uploadProgress.completed || 0, uploadProgress.total);
-    return `Uploading ${completed}/${uploadProgress.total}…`;
-  })();
-
-  return (
-    <>
-      {status ? (
-        <Box sx={{ px: padding, pb: 1 }}>
-          <Alert
-            severity={status.type}
-            action={
-              status.type === 'error' && typeof onRetry === 'function' && canRetry ? (
-                <Button color="inherit" size="small" onClick={onRetry}>
-                  Retry
-                </Button>
-              ) : null
-            }
-          >
-            {status.message}
-          </Alert>
-        </Box>
-      ) : null}
-      {attachments.length ? (
-        <Box sx={{ px: padding, pb: 1 }}>
-          <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
-            {attachments.map((item) => (
-              <Box
-                key={item.id}
-                sx={{
-                  position: 'relative',
-                  width: 132,
-                  height: 132,
-                  borderRadius: 1.5,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  overflow: 'hidden',
-                  backgroundColor: 'background.paper',
-                  boxShadow: 3
-                }}
-              >
-                <Box
-                  component="img"
-                  src={item.asset.url}
-                  alt={item.asset.description || 'Chat attachment'}
-                  sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-                {typeof onRemove === 'function' ? (
-                  <IconButton
-                    size="small"
-                    aria-label="Remove attachment"
-                    onClick={() => onRemove(item.id)}
-                    sx={{
-                      position: 'absolute',
-                      top: 4,
-                      right: 4,
-                      backgroundColor: 'rgba(0,0,0,0.55)',
-                      color: '#fff',
-                      '&:hover': {
-                        backgroundColor: 'rgba(0,0,0,0.75)'
-                      }
-                    }}
-                  >
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                ) : null}
-              </Box>
-            ))}
-          </Stack>
-        </Box>
-      ) : null}
-      {isUploading ? (
-        <Box sx={{ px: padding, pb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CircularProgress size={16} />
-          <Typography variant="caption" color="text.secondary">
-            {progressLabel}
-          </Typography>
-        </Box>
-      ) : null}
-    </>
-  );
-}
-
-AttachmentPreview.defaultProps = {
-  attachments: [],
-  onRemove: undefined,
-  status: null,
-  isUploading: false,
-  uploadProgress: null,
-  onRetry: undefined,
-  canRetry: false,
-  padding: { xs: 2, md: 3 }
-};
-
-const getGifCommandQuery = (value) => {
-  if (typeof value !== 'string') {
-    return null;
-  }
-  const trimmed = value.trim();
-  if (!trimmed.toLowerCase().startsWith('/gif')) {
-    return null;
-  }
-  const query = trimmed.slice(4).trim();
-  return query.length ? query : null;
 };
 
 function ChatPage() {
@@ -295,15 +160,23 @@ function ChatPage() {
   } = useDirectMessages();
 
   const {
-    graph: friendGraph,
-    refresh: refreshFriendGraph,
-    isLoading: isLoadingFriends,
-    status: friendStatus,
-    queueStatus: friendQueueStatus,
-    removeFriend: removeFriendRelationship,
-    hasAccess: friendHasAccess,
-    isProcessing: isProcessingFriendAction
-  } = useFriendGraph();
+    friends,
+    filteredFriends,
+    searchQuery: friendSearchQuery,
+    setSearchQuery: setFriendSearchQuery,
+    incomingRequests,
+    notificationsLabel: friendNotificationsLabel,
+    requestBadge: friendRequestBadge,
+    isLoadingFriends,
+    friendStatus,
+    friendQueueStatus,
+    friendHasAccess,
+    isProcessingFriendAction,
+    refreshFriendGraph,
+    removeFriendRelationship,
+    respondToFriendRequest,
+    refreshNotifications
+  } = useFriendsDirectory();
 
   const [moderationInitAttempted, setModerationInitAttempted] = useState(false);
   const [moderationContext, setModerationContext] = useState(null);
@@ -312,9 +185,20 @@ function ChatPage() {
     reason: '',
     durationMinutes: '15'
   });
-  const [channelTab, setChannelTab] = useState('rooms');
-  const [channelDialogTab, setChannelDialogTab] = useState('rooms');
   const [lastConversationTab, setLastConversationTab] = useState('rooms');
+  const {
+    channelTab,
+    channelDialogTab,
+    setChannelDialogTab,
+    setChannelTab
+  } = useChatTabs({
+    locationSearch: location.search,
+    directMessagesHasAccess,
+    selectDirectThread,
+    refreshDmThreads,
+    refreshFriendGraph,
+    setLastConversationTab
+  });
   const [isChannelDialogOpen, setIsChannelDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
@@ -324,11 +208,10 @@ function ChatPage() {
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportStatus, setReportStatus] = useState(null);
   const [friendActionStatus, setFriendActionStatus] = useState(null);
+  const [isFriendDialogOpen, setIsFriendDialogOpen] = useState(false);
+  const [respondingRequestId, setRespondingRequestId] = useState(null);
   const [dmMessageDraft, setDmMessageDraft] = useState('');
-  const dmGifPreviewRequestRef = useRef(null);
-  const [dmGifPreview, setDmGifPreview] = useState(null);
-  const [dmGifPreviewError, setDmGifPreviewError] = useState(null);
-  const [isDmGifPreviewLoading, setIsDmGifPreviewLoading] = useState(false);
+  const profileDmTargetRef = useRef(null);
 
   const {
     attachments: roomAttachments,
@@ -358,11 +241,24 @@ function ChatPage() {
     canAttachMore: canAttachMoreDm
   } = useAttachmentManager();
 
-  const [showScrollButton, setShowScrollButton] = useState(false);
-  const [scrollBtnBottom, setScrollBtnBottom] = useState(0);
-  const containerRef = useRef(null);
-  const inputContainerRef = useRef(null);
-  const messagesEndRef = useRef(null);
+  const directMessageCount = Array.isArray(directThreadDetail?.messages)
+    ? directThreadDetail.messages.length
+    : 0;
+
+  const {
+    containerRef,
+    inputContainerRef,
+    showScrollButton,
+    scrollButtonOffset,
+    scrollToBottom: scrollMessagesToBottom
+  } = useScrollToLatestMessage({
+    activeChannel: channelTab,
+    roomDependency: selectedRoomId,
+    directDependency: selectedDirectThreadId,
+    roomMessageCount: uniqueMessages.length,
+    directMessageCount,
+    locationKey: location.pathname
+  });
   const roomAttachmentInputRef = useRef(null);
   const dmAttachmentInputRef = useRef(null);
   const roomComposerInputRef = useRef(null);
@@ -385,81 +281,26 @@ function ChatPage() {
     }
   }, []);
 
-  const scrollMessagesToBottom = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior: 'smooth'
-    });
-  }, []);
+  const {
+    gifPreview: dmGifPreview,
+    gifPreviewError: dmGifPreviewError,
+    isGifPreviewLoading: isDmGifPreviewLoading,
+    composerGifPreview: dmComposerGifPreview,
+    ensureGifPreviewForMessage,
+    confirmGifPreview: handleDmGifPreviewConfirm,
+    cancelGifPreview: handleDmGifPreviewCancel,
+    shuffleGifPreview: handleDmGifPreviewShuffle
+  } = useDmGifPreview({
+    authUser,
+    messageDraft: dmMessageDraft,
+    setMessageDraft: setDmMessageDraft,
+    selectedThreadId: selectedDirectThreadId,
+    sendDirectMessage,
+    resetAttachments: resetDmAttachments,
+    setAttachmentStatus: setDmAttachmentStatus,
+    focusComposerInput: () => focusComposer(dmComposerInputRef)
+  });
 
-  useLayoutEffect(() => {
-    const timer = setTimeout(scrollMessagesToBottom, 100);
-    return () => clearTimeout(timer);
-  }, [selectedRoomId, location.pathname, scrollMessagesToBottom]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-    const handleScroll = () => {
-      const node = containerRef.current;
-      if (!node) {
-        return;
-      }
-      const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
-      setShowScrollButton(distanceFromBottom > 20);
-    };
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
-    const inputContainer = inputContainerRef.current;
-    if (!inputContainer) {
-      return;
-    }
-
-    let frameId = null;
-    const resizeObserver = new ResizeObserver(([entry]) => {
-      if (!entry) {
-        return;
-      }
-      const targetBottom = Math.round(entry.contentRect.height) + 8;
-      if (frameId !== null) {
-        cancelAnimationFrame(frameId);
-      }
-      frameId = requestAnimationFrame(() => {
-        setScrollBtnBottom((prev) =>
-          Math.abs(prev - targetBottom) > 0.5 ? targetBottom : prev
-        );
-      });
-    });
-
-    resizeObserver.observe(inputContainer);
-
-    return () => {
-      if (frameId !== null) {
-        cancelAnimationFrame(frameId);
-      }
-      resizeObserver.disconnect();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (channelTab !== 'rooms') {
-      return;
-    }
-    if (!uniqueMessages.length) {
-      return;
-    }
-    const timer = setTimeout(scrollMessagesToBottom, 75);
-    return () => clearTimeout(timer);
-  }, [channelTab, uniqueMessages.length, scrollMessagesToBottom]);
 
   useEffect(() => {
     if (isOffline || moderationHasAccess === false) {
@@ -484,11 +325,6 @@ function ChatPage() {
     }
   }, [channelTab, directMessagesHasAccess]);
 
-  useEffect(() => {
-    if (channelTab === 'rooms' || channelTab === 'direct') {
-      setLastConversationTab(channelTab);
-    }
-  }, [channelTab, setLastConversationTab]);
 
   useEffect(() => {
     if (channelDialogTab === 'direct' && directMessagesHasAccess === false) {
@@ -604,25 +440,6 @@ function ChatPage() {
   }, [dmAttachmentStatus, setDmAttachmentStatus]);
 
   useEffect(() => {
-    const gifQuery = getGifCommandQuery(dmMessageDraft);
-    if (!gifQuery) {
-      if (dmGifPreview || dmGifPreviewError || isDmGifPreviewLoading) {
-        dmGifPreviewRequestRef.current = null;
-        setDmGifPreview(null);
-        setDmGifPreviewError(null);
-        setIsDmGifPreviewLoading(false);
-      }
-      return;
-    }
-
-    if (dmGifPreview && dmGifPreview.query !== gifQuery && !isDmGifPreviewLoading) {
-      dmGifPreviewRequestRef.current = null;
-      setDmGifPreview(null);
-      setDmGifPreviewError(null);
-    }
-  }, [dmGifPreview, dmGifPreviewError, dmMessageDraft, isDmGifPreviewLoading]);
-
-  useEffect(() => {
     if (!moderationContext) {
       return;
     }
@@ -641,10 +458,6 @@ function ChatPage() {
   }, [moderationContext]);
 
   useEffect(() => {
-    dmGifPreviewRequestRef.current = null;
-    setDmGifPreview(null);
-    setDmGifPreviewError(null);
-    setIsDmGifPreviewLoading(false);
     setDmMessageDraft('');
     resetDmAttachments();
   }, [resetDmAttachments, selectedDirectThreadId]);
@@ -652,6 +465,26 @@ function ChatPage() {
   const handleNotifications = useCallback(() => {
     navigate('/updates');
   }, [navigate]);
+
+  const findDirectThreadForUser = useCallback(
+    (rawUserId) => {
+      const normalizedId = normalizeObjectId(rawUserId);
+      if (!normalizedId) {
+        return null;
+      }
+      return (
+        dmThreads.find((thread) => {
+          const participants = Array.isArray(thread.participants)
+            ? thread.participants
+            : [];
+          return participants.some(
+            (participant) => getParticipantId(participant) === normalizedId
+          );
+        }) || null
+      );
+    },
+    [dmThreads]
+  );
 
   const handleChooseRoom = useCallback(
     (roomId) => {
@@ -675,6 +508,93 @@ function ChatPage() {
     [selectDirectThread, handleSelectRoom]
   );
 
+  useEffect(() => {
+    const state = location.state;
+    if (!state || !state.fromProfile) {
+      return;
+    }
+    const normalizedTargetId = normalizeObjectId(state.targetUserId);
+    if (!normalizedTargetId) {
+      navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+      return;
+    }
+    profileDmTargetRef.current = {
+      userId: normalizedTargetId,
+      displayName: state.displayName || null
+    };
+    setChannelTab('direct');
+    setChannelDialogTab('direct');
+    setIsChannelDialogOpen(false);
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+  }, [location.pathname, location.search, location.state, navigate, setChannelDialogTab, setChannelTab]);
+
+  useEffect(() => {
+    if (!profileDmTargetRef.current || directMessagesHasAccess === false) {
+      return;
+    }
+    const target = profileDmTargetRef.current;
+
+    const openConversation = async () => {
+      setChannelTab('direct');
+      setChannelDialogTab('direct');
+      setIsChannelDialogOpen(false);
+
+      const existingThread = findDirectThreadForUser(target.userId);
+      if (existingThread?.id) {
+        handleSelectDirectThreadId(existingThread.id);
+        profileDmTargetRef.current = null;
+        return;
+      }
+
+      try {
+        const result = await createDirectThread({
+          participantIds: [target.userId]
+        });
+        let newThreadId = result?.thread?.id || '';
+        if (!newThreadId) {
+          const refreshed = await refreshDmThreads().catch(() => null);
+          if (refreshed?.threads) {
+            const fallback = refreshed.threads.find((thread) => {
+              const participants = Array.isArray(thread.participants)
+                ? thread.participants
+                : [];
+              return participants.some(
+                (participant) => getParticipantId(participant) === target.userId
+              );
+            });
+            if (fallback?.id) {
+              newThreadId = fallback.id;
+            }
+          }
+          if (!newThreadId) {
+            const fallback = findDirectThreadForUser(target.userId);
+            if (fallback?.id) {
+              newThreadId = fallback.id;
+            }
+          }
+        }
+        if (newThreadId) {
+          handleSelectDirectThreadId(newThreadId);
+        }
+      } catch (error) {
+        console.error('Failed to open direct message from profile:', error);
+      } finally {
+        profileDmTargetRef.current = null;
+      }
+    };
+
+    openConversation();
+  }, [
+    createDirectThread,
+    directMessagesHasAccess,
+    findDirectThreadForUser,
+    handleSelectDirectThreadId,
+    refreshDmThreads,
+    setChannelDialogTab,
+    setChannelTab,
+    setIsChannelDialogOpen
+  ]);
+
   const handleActivateFriendsView = useCallback(() => {
     if (channelTab === 'friends') {
       let targetTab = lastConversationTab;
@@ -693,6 +613,48 @@ function ChatPage() {
     setIsChannelDialogOpen(false);
   }, [channelTab, directMessagesHasAccess, lastConversationTab, setChannelDialogTab, setChannelTab, setIsChannelDialogOpen]);
 
+  const handleOpenFriendDialog = useCallback(() => {
+    setFriendActionStatus(null);
+    setIsFriendDialogOpen(true);
+  }, []);
+
+  const handleCloseFriendDialog = useCallback(() => {
+    if (respondingRequestId) {
+      return;
+    }
+    setIsFriendDialogOpen(false);
+  }, [respondingRequestId]);
+
+  const handleRespondToFriendRequest = useCallback(
+    async (requestId, decision) => {
+      if (!requestId || !decision) {
+        return;
+      }
+      setRespondingRequestId(requestId);
+      setFriendActionStatus(null);
+      try {
+        await respondToFriendRequest({ requestId, decision });
+        setFriendActionStatus({
+          type: 'success',
+          message: decision === 'accept' ? 'Friend request accepted.' : 'Friend request declined.'
+        });
+
+        await Promise.allSettled([
+          refreshNotifications(),
+          refreshFriendGraph().catch(() => {})
+        ]);
+      } catch (error) {
+        setFriendActionStatus({
+          type: 'error',
+          message: error?.message || 'Failed to update friend request.'
+        });
+      } finally {
+        setRespondingRequestId(null);
+      }
+    },
+    [refreshFriendGraph, refreshNotifications, respondToFriendRequest]
+  );
+
   const handleMessageFriend = useCallback(
     async (friend) => {
       const friendId = normalizeObjectId(friend?.id);
@@ -709,12 +671,7 @@ function ChatPage() {
       }
 
       const normalizedFriendId = normalizeObjectId(friendId);
-      const existingThread = dmThreads.find((thread) => {
-        const participants = Array.isArray(thread.participants) ? thread.participants : [];
-        return participants.some(
-          (participant) => getParticipantId(participant) === normalizedFriendId
-        );
-      });
+      const existingThread = findDirectThreadForUser(normalizedFriendId);
 
       if (existingThread?.id) {
         handleSelectDirectThreadId(existingThread.id);
@@ -763,7 +720,7 @@ function ChatPage() {
     [
       createDirectThread,
       directMessagesHasAccess,
-      dmThreads,
+      findDirectThreadForUser,
       handleSelectDirectThreadId,
       refreshDmThreads,
       setFriendActionStatus
@@ -821,131 +778,6 @@ function ChatPage() {
     }
     setIsChannelDialogOpen(true);
   }, [channelTab, directMessagesHasAccess]);
-
-  const requestDmGifPreview = useCallback(
-    async (query) => {
-      if (!authUser) {
-        return;
-      }
-      const trimmedQuery = typeof query === 'string' ? query.trim() : '';
-      if (!trimmedQuery) {
-        return;
-      }
-
-      const requestId = Symbol('dm-gif-preview');
-      dmGifPreviewRequestRef.current = requestId;
-      setDmGifPreview({ query: trimmedQuery, options: [], selectedIndex: null });
-      setIsDmGifPreviewLoading(true);
-      setDmGifPreviewError(null);
-
-      try {
-        const payload = await previewChatGif(trimmedQuery, { limit: 12 });
-        if (dmGifPreviewRequestRef.current !== requestId) {
-          return;
-        }
-        const options = Array.isArray(payload?.results) ? payload.results : [];
-        if (!options.length) {
-          setDmGifPreview({ query: trimmedQuery, options: [], selectedIndex: null });
-          setDmGifPreviewError(`No GIFs found for "${trimmedQuery}". Try another search.`);
-          return;
-        }
-        setDmGifPreview({ query: trimmedQuery, options, selectedIndex: 0 });
-      } catch (error) {
-        if (dmGifPreviewRequestRef.current !== requestId) {
-          return;
-        }
-        setDmGifPreviewError(error?.message || 'Failed to load GIF preview.');
-      } finally {
-        if (dmGifPreviewRequestRef.current === requestId) {
-          setIsDmGifPreviewLoading(false);
-        }
-      }
-    },
-    [authUser]
-  );
-
-  const handleDmGifPreviewCancel = useCallback(() => {
-    dmGifPreviewRequestRef.current = null;
-    setDmGifPreview(null);
-    setDmGifPreviewError(null);
-    setIsDmGifPreviewLoading(false);
-  }, []);
-
-  const handleDmGifPreviewShuffle = useCallback(() => {
-    if (isDmGifPreviewLoading) {
-      return;
-    }
-    if (!dmGifPreview) {
-      const query = getGifCommandQuery(dmMessageDraft);
-      if (query) {
-        setDmGifPreviewError(null);
-        requestDmGifPreview(query);
-      }
-      return;
-    }
-    setDmGifPreviewError(null);
-    const options = Array.isArray(dmGifPreview.options) ? dmGifPreview.options : [];
-    if (options.length > 1) {
-      setDmGifPreview((prev) => {
-        if (!prev) {
-          return prev;
-        }
-        const opts = Array.isArray(prev.options) ? prev.options : [];
-        if (opts.length < 2) {
-          return prev;
-        }
-        const nextIndex =
-          typeof prev.selectedIndex === 'number' ? (prev.selectedIndex + 1) % opts.length : 0;
-        return { ...prev, selectedIndex: nextIndex };
-      });
-    } else if (dmGifPreview.query) {
-      requestDmGifPreview(dmGifPreview.query);
-    }
-  }, [dmGifPreview, dmMessageDraft, isDmGifPreviewLoading, requestDmGifPreview]);
-
-  const handleDmGifPreviewConfirm = useCallback(async () => {
-    if (
-      isDmGifPreviewLoading ||
-      isSendingDirectMessage ||
-      !dmGifPreview ||
-      typeof dmGifPreview.selectedIndex !== 'number'
-    ) {
-      return;
-    }
-    const options = Array.isArray(dmGifPreview.options) ? dmGifPreview.options : [];
-    const selected = options[dmGifPreview.selectedIndex];
-    if (!selected?.attachment) {
-      return;
-    }
-    if (!selectedDirectThreadId) {
-      return;
-    }
-    try {
-      await sendDirectMessage({
-        threadId: selectedDirectThreadId,
-        body: `GIF: ${dmGifPreview.query}`,
-        attachments: [selected.attachment]
-      });
-      setDmMessageDraft('');
-      resetDmAttachments();
-      setDmAttachmentStatus(null);
-      handleDmGifPreviewCancel();
-      focusComposer(dmComposerInputRef);
-    } catch {
-      // surfaced via send status
-    }
-  }, [
-    dmGifPreview,
-    focusComposer,
-    handleDmGifPreviewCancel,
-    isDmGifPreviewLoading,
-    isSendingDirectMessage,
-    resetDmAttachments,
-    selectedDirectThreadId,
-    sendDirectMessage,
-    setDmAttachmentStatus,
-    setDmMessageDraft
-  ]);
 
   const handleChannelDialogTabChange = useCallback(
     (event, value) => {
@@ -1146,19 +978,11 @@ function ChatPage() {
       if (!hasText && !hasAttachments) {
         return;
       }
-      const pendingGifQuery = getGifCommandQuery(dmMessageDraft);
-      if (pendingGifQuery && !dmGifPreview) {
-        setDmGifPreviewError(null);
-        requestDmGifPreview(pendingGifQuery);
+      if (ensureGifPreviewForMessage(dmMessageDraft)) {
         return;
       }
-      if (
-        dmGifPreview &&
-        Array.isArray(dmGifPreview.options) &&
-        typeof dmGifPreview.selectedIndex === 'number' &&
-        dmGifPreview.options[dmGifPreview.selectedIndex]?.attachment
-      ) {
-        handleDmGifPreviewConfirm();
+      const handledGif = await handleDmGifPreviewConfirm();
+      if (handledGif) {
         return;
       }
       try {
@@ -1177,14 +1001,13 @@ function ChatPage() {
     },
     [
       dmAttachments,
-      dmGifPreview,
       dmMessageDraft,
       focusComposer,
       handleDmGifPreviewCancel,
       handleDmGifPreviewConfirm,
+      ensureGifPreviewForMessage,
       isSendingDirectMessage,
       isUploadingDmAttachment,
-      requestDmGifPreview,
       resetDmAttachments,
       selectedDirectThreadId,
       sendDirectMessage,
@@ -1475,30 +1298,6 @@ function ChatPage() {
     setReportStatus(null);
   }, []);
 
-  const dmSelectedGifOption = useMemo(() => {
-    if (
-      !dmGifPreview ||
-      !Array.isArray(dmGifPreview.options) ||
-      typeof dmGifPreview.selectedIndex !== 'number'
-    ) {
-      return null;
-    }
-    return dmGifPreview.options[dmGifPreview.selectedIndex] ?? null;
-  }, [dmGifPreview]);
-
-  const dmComposerGifPreview = useMemo(
-    () =>
-      dmGifPreview
-        ? {
-            query: dmGifPreview.query,
-            attachment: dmSelectedGifOption?.attachment || null,
-            sourceUrl: dmSelectedGifOption?.sourceUrl,
-            optionsCount: Array.isArray(dmGifPreview.options) ? dmGifPreview.options.length : 0
-          }
-        : null,
-    [dmGifPreview, dmSelectedGifOption]
-  );
-
   const headerChannelLabel = useMemo(() => {
     if (channelTab === 'direct') {
       if (selectedDirectNames.length) {
@@ -1513,15 +1312,10 @@ function ChatPage() {
   }, [channelTab, selectedDirectNames, selectedRoom]);
 
   useEffect(() => {
-    if (channelTab !== 'direct') {
-      return;
+    if (channelTab === 'rooms' || channelTab === 'direct') {
+      setLastConversationTab(channelTab);
     }
-    if (!directMessageItems.length) {
-      return;
-    }
-    const timer = setTimeout(scrollMessagesToBottom, 75);
-    return () => clearTimeout(timer);
-  }, [channelTab, directMessageItems.length, scrollMessagesToBottom]);
+  }, [channelTab, setLastConversationTab]);
 
   const handleSelectModerationAction = useCallback((actionType) => {
     setModerationForm((prev) => ({
@@ -1614,6 +1408,26 @@ function ChatPage() {
     isOffline ||
     isRecordingModerationAction;
 
+  const disableMessageAction = directMessagesHasAccess === false || isCreatingDirectThread;
+
+  const friendPanelProps = {
+    friends,
+    filteredFriends,
+    searchQuery: friendSearchQuery,
+    onSearchChange: setFriendSearchQuery,
+    isLoading: isLoadingFriends,
+    friendStatus,
+    hasAccess: friendHasAccess,
+    notificationsLabel: friendNotificationsLabel,
+    requestBadge: friendRequestBadge,
+    onOpenFriendRequests: handleOpenFriendDialog,
+    onMessageFriend: handleMessageFriend,
+    onRemoveFriend: handleUnfriend,
+    onReportFriend: handleReportFriend,
+    disableMessageAction,
+    disableFriendActions: isProcessingFriendAction
+  };
+
   const roomMessageBubbles = useMemo(
     () =>
       uniqueMessages.map((message, index) => (
@@ -1652,127 +1466,6 @@ function ChatPage() {
       )),
     [authUser, directMessageItems, directViewerId, getMessageKey, handleOpenReportForDirectMessage]
   );
-
-  const RoomListContent = () => (
-  <Box className="room-list-container">
-    <Box className="room-list-header">
-      <Typography className="room-list-title">
-        Select a room below
-      </Typography>
-
-      <Box className="room-list-header-action-btns">
-        <IconButton
-          onClick={loadRooms}
-          disabled={isLoadingRooms}
-          className="room-refresh-btn"
-        >
-          {isLoadingRooms ? (
-              <CircularProgress size={18} />
-            ) : (
-              <RefreshIcon sx={{ fontSize: 18, color: '#5C48A8' }} />
-            )}
-        </IconButton>
-
-        <IconButton
-          onClick={handleOpenCreateDialog}
-          className="room-create-btn"
-        >
-          <AddCommentIcon sx={{ fontSize: 18 }} />
-        </IconButton>
-      </Box>
-    </Box>
-
-    {roomsError ? (
-      <Box sx={{ p: 2 }}>
-        <Alert severity="error">{roomsError}</Alert>
-      </Box>
-    ) : rooms.length === 0 ? (
-      <Stack
-        sx={{ flexGrow: 1, py: 6, alignItems: 'center', justifyContent: 'center' }}
-        spacing={1}
-      >
-        <Typography variant="body2" color="text.secondary">
-          {isLoadingRooms ? 'Loading rooms...' : 'No rooms yet. Create one to get started!'}
-        </Typography>
-      </Stack>
-    ) : (
-      <List className="room-list">
-        {rooms.map((room) => {
-          const isActive = room._id === selectedRoomId;
-          const participantLabel = room.participantCount
-            ? `${room.participantCount} members`
-            : 'No members yet';
-
-          return (
-            <ListItemButton
-              className="room-card"
-              key={room._id}
-              onClick={() => handleChooseRoom(room._id)}
-              selected={isActive}
-              sx={{
-                transition: 'background-color 0.2s ease',
-                backgroundColor: isActive ? '#d9f2ffff !important' : 'white',
-              }}
-            >
-              <ListItemText
-                primary={
-                  <Box className="room-card-header">
-                    <Box className="room-card-header-left">
-                      <Typography
-                        className="room-card-room-title"
-                        variant="subtitle2"
-                      >
-                        {room.name}
-                      </Typography>
-
-                      <Chip
-                        className="room-card-globality-chip"
-                        label={room.isGlobal ? 'Global' : 'Local'}
-                        size="small"
-                      />
-                    </Box>
-
-                    <IconButton
-                      className="room-card-pin-icon"
-                      edge="end"
-                      size="small"
-                    >
-                      {room.isGlobal ? (
-                        <PublicIcon sx={{ fontSize: 18 }} />
-                      ) : (
-                        <RoomIcon sx={{ fontSize: 18 }} />
-                      )}
-                    </IconButton>
-                  </Box>
-                }
-                secondary={
-                  <span className="room-card-bottom">
-                    <Typography 
-                      component="span"
-                      className="room-card-member-count" 
-                      variant="caption"
-                    >
-                      {participantLabel}
-                    </Typography>
-                    {isActive && (
-                      <Typography 
-                        component="span"
-                        className="room-card-joined-label"
-                        variant="caption"
-                      >
-                        Joined
-                      </Typography>
-                    )}
-                  </span>
-                }
-              />
-            </ListItemButton>
-          );
-        })}
-      </List>
-    )}
-  </Box>
-);
 
 
   const renderRoomMessagesMobile = () => {
@@ -1840,17 +1533,6 @@ function ChatPage() {
     return (
       <>
         {roomMessageBubbles}
-        <AttachmentPreview
-          attachments={roomAttachments}
-          onRemove={removeRoomAttachment}
-          status={roomAttachmentStatus}
-          isUploading={isUploadingRoomAttachment}
-          uploadProgress={roomUploadProgress}
-          onRetry={retryRoomFailedUploads}
-          canRetry={canRetryRoomUploads}
-          padding={{ xs: 2, md: 3 }}
-        />
-        <div ref={messagesEndRef} />
       </>
     );
   };
@@ -1951,240 +1633,16 @@ function ChatPage() {
     return (
       <>
         {directMessageBubbles}
-        <AttachmentPreview
-          attachments={dmAttachments}
-          onRemove={removeDmAttachment}
-          status={dmAttachmentStatus}
-          isUploading={isUploadingDmAttachment}
-          uploadProgress={dmUploadProgress}
-          onRetry={retryDmFailedUploads}
-          canRetry={canRetryDmUploads}
-          padding={{ xs: 2, md: 3 }}
-        />
-        <div ref={messagesEndRef} />
       </>
     );
   };
 
-  const renderFriendsList = ({ isOverlay = false } = {}) => {
-    if (friendHasAccess === false) {
-      return (
-        <Stack
-          spacing={1.5}
-          alignItems="center"
-          justifyContent="center"
-          sx={{ flexGrow: 1, py: 6, color: isOverlay ? 'inherit' : '#111' }}
-        >
-          <Typography variant="h6" align="center" sx={!isOverlay ? { color: '#111' } : undefined}>
-            Friend access required
-          </Typography>
-          <Typography
-            variant="body2"
-            align="center"
-            sx={!isOverlay ? { color: '#555' } : undefined}
-          >
-            You need additional privileges to view or manage friends.
-          </Typography>
-        </Stack>
-      );
-    }
-
-    const friends = Array.isArray(friendGraph?.friends) ? friendGraph.friends : [];
-
-    if (isLoadingFriends && friends.length === 0) {
-      return (
-        <Stack
-          spacing={2}
-          alignItems="center"
-          justifyContent="center"
-          sx={{ flexGrow: 1, py: 6, color: isOverlay ? 'inherit' : '#111' }}
-        >
-          <CircularProgress />
-          <Typography variant="body2" sx={!isOverlay ? { color: '#111' } : undefined}>
-            Loading friends…
-          </Typography>
-        </Stack>
-      );
-    }
-
-    return (
-      <Box
-        sx={{
-          flexGrow: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          color: isOverlay ? 'inherit' : '#111'
-        }}
-      >
-        <Box
-          sx={{
-            px: 2,
-            py: 1.5,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 2
-          }}
-        >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography
-              variant="subtitle1"
-              fontWeight={700}
-              sx={!isOverlay ? { color: '#111' } : undefined}
-            >
-              Friends
-            </Typography>
-            <Chip label={friends.length} size="small" color="primary" variant="outlined" />
-          </Stack>
-          <Tooltip title="Refresh friends">
-            <span>
-              <IconButton
-                onClick={refreshFriendGraph}
-                disabled={isLoadingFriends || isProcessingFriendAction}
-                color="primary"
-                sx={{
-                  '&.Mui-disabled': {
-                    color: (theme) => theme.palette.action.disabled
-                  }
-                }}
-              >
-                {isLoadingFriends ? (
-                  <CircularProgress size={20} color="primary" />
-                ) : (
-                  <RefreshIcon fontSize="small" />
-                )}
-              </IconButton>
-            </span>
-          </Tooltip>
-        </Box>
-
-        {friendStatus && friendStatus.message ? (
-          <Box sx={{ px: 2, py: 1.5 }}>
-            <Alert severity={friendStatus.type || 'error'}>{friendStatus.message}</Alert>
-          </Box>
-        ) : null}
-
-        {friends.length === 0 && !isLoadingFriends ? (
-          <Stack
-            spacing={1.5}
-            alignItems="center"
-            justifyContent="center"
-            sx={{ flexGrow: 1, py: 6, color: isOverlay ? 'inherit' : '#111' }}
-          >
-            <Typography variant="h6" sx={!isOverlay ? { color: '#111' } : undefined}>
-              No friends yet
-            </Typography>
-            <Typography
-              variant="body2"
-              align="center"
-              sx={!isOverlay ? { color: '#555' } : undefined}
-            >
-              Add some friends to start direct conversations and plan meetups.
-            </Typography>
-          </Stack>
-        ) : null}
-
-        {friends.length ? (
-          <List dense sx={{ flexGrow: 1, overflowY: 'auto', px: { xs: 1, sm: 2 } }}>
-            {friends.map((friend) => {
-              const displayName = friend.displayName || friend.username || 'Friend';
-              const secondaryLabel = friend.username ? `@${friend.username}` : '';
-              const avatarSrc = resolveAvatarSrc(friend);
-              return (
-                <ListItem
-                  key={friend.id}
-                  alignItems="center"
-                  sx={{
-                    py: 1.5,
-                    px: { xs: 1, sm: 0 },
-                    gap: { xs: 1.5, sm: 2 },
-                    flexDirection: { xs: 'column', sm: 'row' },
-                    alignItems: { xs: 'flex-start', sm: 'center' },
-                    color: isOverlay ? 'inherit' : '#111'
-                  }}
-                >
-                  <ListItemAvatar>
-                    <Avatar
-                      src={avatarSrc}
-                      alt={displayName}
-                      imgProps={{ referrerPolicy: 'no-referrer' }}
-                    >
-                      {displayName.charAt(0).toUpperCase()}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={
-                      <Typography
-                        variant="subtitle1"
-                        fontWeight={600}
-                        sx={!isOverlay ? { color: '#111' } : undefined}
-                      >
-                        {displayName}
-                      </Typography>
-                    }
-                    secondary={
-                      secondaryLabel ? (
-                        <Typography
-                          variant="caption"
-                          color={isOverlay ? 'text.secondary' : undefined}
-                          sx={!isOverlay ? { color: '#555' } : undefined}
-                        >
-                          {secondaryLabel}
-                        </Typography>
-                      ) : null
-                    }
-                    sx={{ flex: 1, minWidth: 0 }}
-                  />
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{
-                      width: { xs: '100%', sm: 'auto' },
-                      justifyContent: { xs: 'flex-end', sm: 'flex-start' },
-                      flexWrap: 'wrap',
-                      rowGap: 1
-                    }}
-                  >
-                    <Button
-                      size="small"
-                      variant="contained"
-                      color="primary"
-                      onClick={() => handleMessageFriend(friend)}
-                      disabled={
-                        directMessagesHasAccess === false ||
-                        isProcessingFriendAction ||
-                        isCreatingDirectThread
-                      }
-                    >
-                      Message
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color="secondary"
-                      onClick={() => handleUnfriend(friend)}
-                      disabled={isProcessingFriendAction}
-                    >
-                      Unfriend
-                    </Button>
-                    <Button
-                      size="small"
-                      color="error"
-                      onClick={() => handleReportFriend(friend)}
-                    >
-                      Report
-                    </Button>
-                  </Stack>
-                </ListItem>
-              );
-            })}
-          </List>
-        ) : null}
-      </Box>
-    );
-  };
+  const renderFriendsList = ({ variant }) => (
+    <FriendsListPanel
+      {...friendPanelProps}
+      onBack={variant === 'dialog' ? () => setIsChannelDialogOpen(false) : handleActivateFriendsView}
+    />
+  );
 
   return (
     <>
@@ -2196,7 +1654,7 @@ function ChatPage() {
             className="chat-scroll-to-bottom-btn"
             onClick={scrollMessagesToBottom}
             style={{
-              bottom: `${scrollBtnBottom + 90}px`,
+              bottom: `${scrollButtonOffset + 90}px`,
               position: 'fixed'
             }}
             aria-label="Scroll to latest message"
@@ -2206,109 +1664,101 @@ function ChatPage() {
         )}
 
         <div className="chat-frame">
-          <header className="chat-header-bar">
-            <GlobalNavMenu className="chat-header-menu-nav" />
-            <div className="chat-header-actions">
-
-              <Button
-                className={`switch-chat-btn ${isChannelDialogOpen ? 'open' : ''}`}
-                onClick={handleOpenChannelDialog}
-                endIcon={<ArrowDownwardIcon className="switch-chat-arrow" />}
-              >
-                {headerChannelLabel}
-              </Button>
-            </div>
-            <button
-                className="updates-icon-btn"
-                type="button"
-                aria-label={notificationsLabel}
-                onClick={handleNotifications}
-                disabled={isOffline}
-                title={isOffline ? 'Reconnect to view updates' : undefined}
-              >
-                <img src={updatesIcon} alt="" className="updates-icon" aria-hidden="true" />
-                {displayBadge ? (
-                  <span className="updates-icon-badge" aria-hidden="true">
-                    {displayBadge}
-                  </span>
-                ) : null}
-              </button>
-          </header>
+          <ChatThreadHeader
+            channelLabel={headerChannelLabel}
+            isChannelDialogOpen={isChannelDialogOpen}
+            onOpenChannelDialog={handleOpenChannelDialog}
+            notificationsLabel={notificationsLabel}
+            onNotifications={handleNotifications}
+            isOffline={isOffline}
+            notificationBadge={displayBadge}
+            updatesIconSrc={updatesIcon}
+          />
 
           <Box ref={containerRef} className="chat-messages-field">
             {channelTab === 'direct'
               ? renderDirectMessagesMobile()
               : channelTab === 'friends'
-              ? renderFriendsList({ isOverlay: false })
+              ? renderFriendsList({ variant: 'page' })
               : renderRoomMessagesMobile()}
           </Box>
 
           {channelTab === 'direct' ? (
-            <>
-              <ChatComposer
-                variant="modern"
-                message={dmMessageDraft}
-                placeholder="Send a message"
-                onMessageChange={(event) => setDmMessageDraft(event.target.value)}
-                onKeyDown={handleDirectMessageKeyDown}
-                onSend={handleSendDirectMessage}
-                disabled={
-                  !selectedDirectThreadId ||
-                  isSendingDirectMessage ||
-                  directMessagesHasAccess === false ||
-                  isUploadingDmAttachment
-                }
-                sendDisabled={
-                  (!dmMessageDraft.trim() && dmAttachments.length === 0) ||
-                  !selectedDirectThreadId ||
-                  isSendingDirectMessage ||
-                  directMessagesHasAccess === false ||
-                  isUploadingDmAttachment
-                }
-                isSending={isSendingDirectMessage}
-                containerRef={inputContainerRef}
-                containerClassName="chat-input-container"
-                onAddAttachment={handleOpenDmAttachmentPicker}
-                addAttachmentTooltip="Upload image or GIF"
-                inputRef={dmComposerInputRef}
-                gifPreview={dmComposerGifPreview}
-                gifPreviewError={dmGifPreviewError}
-                isGifPreviewLoading={isDmGifPreviewLoading}
-                onGifPreviewConfirm={handleDmGifPreviewConfirm}
-                onGifPreviewCancel={handleDmGifPreviewCancel}
-                onGifPreviewShuffle={handleDmGifPreviewShuffle}
-              />
-            </>
+            <ChatComposerFooter
+              variant="modern"
+              message={dmMessageDraft}
+              placeholder="Send a message"
+              onMessageChange={(event) => setDmMessageDraft(event.target.value)}
+              onKeyDown={handleDirectMessageKeyDown}
+              onSend={handleSendDirectMessage}
+              disabled={
+                !selectedDirectThreadId ||
+                isSendingDirectMessage ||
+                directMessagesHasAccess === false ||
+                isUploadingDmAttachment
+              }
+              sendDisabled={
+                (!dmMessageDraft.trim() && dmAttachments.length === 0) ||
+                !selectedDirectThreadId ||
+                isSendingDirectMessage ||
+                directMessagesHasAccess === false ||
+                isUploadingDmAttachment
+              }
+              isSending={isSendingDirectMessage}
+              containerRef={inputContainerRef}
+              containerClassName="chat-input-container"
+              onAddAttachment={handleOpenDmAttachmentPicker}
+              addAttachmentTooltip="Upload image or GIF"
+              inputRef={dmComposerInputRef}
+              gifPreview={dmComposerGifPreview}
+              gifPreviewError={dmGifPreviewError}
+              isGifPreviewLoading={isDmGifPreviewLoading}
+              onGifPreviewConfirm={handleDmGifPreviewConfirm}
+              onGifPreviewCancel={handleDmGifPreviewCancel}
+              onGifPreviewShuffle={handleDmGifPreviewShuffle}
+              attachments={dmAttachments}
+              attachmentStatus={dmAttachmentStatus}
+              isUploadingAttachment={isUploadingDmAttachment}
+              attachmentUploadProgress={dmUploadProgress}
+              onRemoveAttachment={removeDmAttachment}
+              onRetryAttachment={retryDmFailedUploads}
+              canRetryAttachment={canRetryDmUploads}
+            />
           ) : channelTab === 'rooms' ? (
-            <>
-              <ChatComposer
-                variant="modern"
-                message={messageDraft}
-                placeholder="Send a message"
-                onMessageChange={(event) => setMessageDraft(event.target.value)}
-                onKeyDown={handleRoomMessageKeyDown}
-                onSend={handleRoomSendMessage}
-                disabled={!authUser || isSendingMessage || isUploadingRoomAttachment}
-                sendDisabled={
-                  (!messageDraft.trim() && roomAttachments.length === 0) ||
-                  !authUser ||
-                  isSendingMessage ||
-                  isUploadingRoomAttachment
-                }
-                isSending={isSendingMessage}
-                containerRef={inputContainerRef}
-                containerClassName="chat-input-container"
-                onAddAttachment={handleOpenRoomAttachmentPicker}
-                addAttachmentTooltip="Upload image or GIF"
-                inputRef={roomComposerInputRef}
-                gifPreview={composerGifPreview}
-                gifPreviewError={gifPreviewError}
-                isGifPreviewLoading={isGifPreviewLoading}
-                onGifPreviewConfirm={handleGifPreviewConfirm}
-                onGifPreviewCancel={handleGifPreviewCancel}
-                onGifPreviewShuffle={handleGifPreviewShuffle}
-              />
-            </>
+            <ChatComposerFooter
+              variant="modern"
+              message={messageDraft}
+              placeholder="Send a message"
+              onMessageChange={(event) => setMessageDraft(event.target.value)}
+              onKeyDown={handleRoomMessageKeyDown}
+              onSend={handleRoomSendMessage}
+              disabled={!authUser || isSendingMessage || isUploadingRoomAttachment}
+              sendDisabled={
+                (!messageDraft.trim() && roomAttachments.length === 0) ||
+                !authUser ||
+                isSendingMessage ||
+                isUploadingRoomAttachment
+              }
+              isSending={isSendingMessage}
+              containerRef={inputContainerRef}
+              containerClassName="chat-input-container"
+              onAddAttachment={handleOpenRoomAttachmentPicker}
+              addAttachmentTooltip="Upload image or GIF"
+              inputRef={roomComposerInputRef}
+              gifPreview={composerGifPreview}
+              gifPreviewError={gifPreviewError}
+              isGifPreviewLoading={isGifPreviewLoading}
+              onGifPreviewConfirm={handleGifPreviewConfirm}
+              onGifPreviewCancel={handleGifPreviewCancel}
+              onGifPreviewShuffle={handleGifPreviewShuffle}
+              attachments={roomAttachments}
+              attachmentStatus={roomAttachmentStatus}
+              isUploadingAttachment={isUploadingRoomAttachment}
+              attachmentUploadProgress={roomUploadProgress}
+              onRemoveAttachment={removeRoomAttachment}
+              onRetryAttachment={retryRoomFailedUploads}
+              canRetryAttachment={canRetryRoomUploads}
+            />
           ) : null}
 
           {channelTab === 'rooms' && presenceError ? (
@@ -2331,6 +1781,15 @@ function ChatPage() {
             onToggleReason={handleToggleReportOffense}
           />
 
+          <FriendRequestsDialog
+            open={isFriendDialogOpen}
+            onClose={handleCloseFriendDialog}
+            requests={incomingRequests}
+            actionStatus={friendActionStatus}
+            respondingRequestId={respondingRequestId}
+            onRespond={handleRespondToFriendRequest}
+          />
+
           <Snackbar
             open={reportStatus}
             autoHideDuration={4000}
@@ -2341,7 +1800,7 @@ function ChatPage() {
               handleReportStatusClose();
             }}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            sx={{ bottom: `${scrollBtnBottom + 72}px` }}
+            sx={{ bottom: `${scrollButtonOffset + 72}px` }}
           >
             {reportStatus && (
               <Alert
@@ -2365,7 +1824,7 @@ function ChatPage() {
               resetDirectSendStatus();
             }}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            sx={{ bottom: `${scrollBtnBottom + 16}px` }}
+            sx={{ bottom: `${scrollButtonOffset + 16}px` }}
           >
             {directSendStatus && (
               <Alert
@@ -2389,7 +1848,7 @@ function ChatPage() {
               setFriendActionStatus(null);
             }}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            sx={{ bottom: `${scrollBtnBottom + 40}px` }}
+            sx={{ bottom: `${scrollButtonOffset + 40}px` }}
           >
             {friendActionStatus && (
               <Alert
@@ -2591,102 +2050,35 @@ function ChatPage() {
                 viewerDisplayName={dmViewer?.displayName || null}
               />
             ) : channelDialogTab === 'friends' ? (
-              renderFriendsList({ isOverlay: true })
+              renderFriendsList({ variant: 'dialog' })
             ) : (
-              <RoomListContent />
+              <ChatRoomList
+                rooms={rooms}
+                selectedRoomId={selectedRoomId}
+                isRefreshing={isLoadingRooms}
+                error={roomsError}
+                onRefresh={loadRooms}
+                onCreateRoom={handleOpenCreateDialog}
+                onSelectRoom={handleChooseRoom}
+              />
             )}
           </Box>
         </DialogContent>
       </Dialog>
 
-      <Dialog
+      <ChatModerationDialog
         open={Boolean(moderationContext)}
+        context={moderationContext}
+        hasAccess={moderationHasAccess}
+        actionStatus={moderationActionStatus}
+        form={moderationForm}
         onClose={handleCloseModerationDialog}
-        fullWidth
-        maxWidth="xs"
-      >
-        <Box component="form" onSubmit={handleModerationSubmit}>
-          <DialogTitle>
-            Moderate {moderationContext?.displayName || 'user'}
-          </DialogTitle>
-          <DialogContent dividers>
-            <Stack spacing={1.5}>
-              {moderationContext?.messagePreview ? (
-                <Alert severity="info" variant="outlined">
-                  {moderationContext.messagePreview}
-                </Alert>
-              ) : null}
-
-              {moderationHasAccess === false ? (
-                <Alert severity="warning">Moderator privileges required to perform actions.</Alert>
-              ) : null}
-
-              {moderationActionStatus ? (
-                <Alert severity={moderationActionStatus.type}>
-                  {moderationActionStatus.message}
-                </Alert>
-              ) : null}
-
-              <Stack direction="row" flexWrap="wrap" gap={1}>
-                {MODERATION_ACTION_OPTIONS.filter((option) =>
-                  QUICK_MODERATION_ACTIONS.includes(option.value)
-                ).map((option) => (
-                  <Chip
-                    key={option.value}
-                    label={option.label}
-                    color={moderationForm.type === option.value ? 'primary' : 'default'}
-                    variant={moderationForm.type === option.value ? 'filled' : 'outlined'}
-                    onClick={() => handleSelectModerationAction(option.value)}
-                    role="button"
-                    aria-pressed={moderationForm.type === option.value}
-                  />
-                ))}
-              </Stack>
-
-              <TextField
-                select
-                label="Moderation action"
-                value={moderationForm.type}
-                onChange={handleModerationFieldChange('type')}
-                fullWidth
-              >
-                {MODERATION_ACTION_OPTIONS.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-
-              {moderationForm.type === 'mute' ? (
-                <TextField
-                  label="Mute duration (minutes)"
-                  type="number"
-                  inputProps={{ min: 1, max: 1440, step: 5 }}
-                  value={moderationForm.durationMinutes}
-                  onChange={handleModerationFieldChange('durationMinutes')}
-                />
-              ) : null}
-
-              <TextField
-                label="Reason (optional)"
-                value={moderationForm.reason}
-                onChange={handleModerationFieldChange('reason')}
-                multiline
-                minRows={2}
-                placeholder="Share context for other moderators."
-              />
-            </Stack>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseModerationDialog} disabled={isRecordingModerationAction}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="contained" disabled={disableModerationSubmit}>
-              {isRecordingModerationAction ? 'Applying…' : 'Apply action'}
-            </Button>
-          </DialogActions>
-        </Box>
-      </Dialog>
+        onSubmit={handleModerationSubmit}
+        onFieldChange={handleModerationFieldChange}
+        onSelectQuickAction={handleSelectModerationAction}
+        disableSubmit={disableModerationSubmit}
+        isSubmitting={isRecordingModerationAction}
+      />
 
       <input
         ref={roomAttachmentInputRef}

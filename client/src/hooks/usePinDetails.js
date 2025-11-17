@@ -11,32 +11,26 @@ import {
   fetchCurrentUserProfile,
   sharePin
 } from '../api/mongoDataApi';
-import runtimeConfig from '../config/runtime';
-import formatDateTime from '../utils/dates';
 import { routes } from '../routes';
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
-import { metersToMiles, METERS_PER_MILE } from '../utils/geo';
-import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
 import { logClientError } from '../utils/clientLogger';
+import reportClientError from '../utils/reportClientError';
+import {
+  resolveMediaAssetUrl,
+  resolveUserAvatarUrl,
+  formatEventRange,
+  formatAddress,
+  formatApproximateAddress,
+  buildUserProfileLink,
+  formatPinDateTime,
+  DEFAULT_COVER_PATH,
+  formatViewerDistanceLabel
+} from '../utils/pinFormatting';
+import { metersToMiles } from '../utils/geo';
 
-const DEFAULT_AVATAR_PATH = '/images/profile/profile-01.jpg';
-const DEFAULT_COVER_PATH = '/images/background/background-01.jpg';
-const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
 const FUTURE_SKEW_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const IS_DEV = import.meta.env.DEV;
-
-const TF2_AVATAR_MAP = {
-  tf2_scout: '/images/emulation/avatars/Scoutava.jpg',
-  tf2_soldier: '/images/emulation/avatars/Soldierava.jpg',
-  tf2_pyro: '/images/emulation/avatars/Pyroava.jpg',
-  tf2_demoman: '/images/emulation/avatars/Demomanava.jpg',
-  tf2_heavy: '/images/emulation/avatars/Heavyava.jpg',
-  tf2_engineer: '/images/emulation/avatars/Engineerava.jpg',
-  tf2_medic: '/images/emulation/avatars/Medicava.jpg',
-  tf2_sniper: '/images/emulation/avatars/Sniperava.jpg',
-  tf2_spy: '/images/emulation/avatars/Spyava.jpg'
-};
 
 const buildPinFetchErrorState = (error, { seedFallbackActive } = {}) => {
   if (!error) {
@@ -59,180 +53,6 @@ const buildPinFetchErrorState = (error, { seedFallbackActive } = {}) => {
     isAuthError,
     seedFallbackActive
   };
-};
-
-/**
- * Resolve any media pointer (string or object) to a usable URL.
- *
- * Context:
- * - Seed data and older uploads may store absolute URLs pointing at
- *   localhost:5000 (or 8000). In dev we actually serve the API on 8000 and
- *   the front-end on 5173, so hard-coded 5000 URLs fail and leave the page
- *   stuck on "Loading…".
- * - Port 5000 persists in legacy data because our earliest dev server hosted
- *   both the API and static bundle on that port; when we moved to the Node API
- *   (8000) + Vite front-end (5173) split we kept the data but never rewrote the
- *   baked URLs.
- * - We also want a single place to fall back to the bundled profile
- *   avatars/backgrounds (DEFAULT_* constants) when nothing custom is present.
- *
- * Behaviour:
- *   • Objects are unwrapped (url/thumbnail/path).
- *   • Strings are normalised via normalizeProfileImagePath.
- *   • Absolute URLs are returned as-is unless they target our offline hosts,
- *     in which case we rewrite the host to runtimeConfig.apiBaseUrl or to the
- *     current window origin (for the static /images/ bundle assets).
- *   • Fallbacks are resolved recursively so we eventually land on a usable
- *     default image.
- *
- * This logic was introduced after we tracked a “Loading pin…” loop caused by
- * asset URLs pointing at localhost:5000; the page fetched real data but the
- * images 404’d, leaving the UI in a loading state. If you see that again,
- * check this helper first.
- */
-const resolveMediaAssetUrl = (asset, fallback) => {
-  if (asset && typeof asset === 'object') {
-    const source = asset.url ?? asset.thumbnailUrl ?? asset.path;
-    if (typeof source === 'string' && source.trim().length > 0) {
-      return resolveMediaAssetUrl(source.trim(), fallback);
-    }
-  }
-
-  if (typeof asset === 'string' && asset.trim().length > 0) {
-    const value = normalizeProfileImagePath(asset.trim());
-    if (/^(?:[a-z]+:)?\/\//i.test(value) || value.startsWith('data:')) {
-      if (!value.startsWith('data:')) {
-        try {
-          const parsed = new URL(value);
-          const offlineHosts = new Set([
-            'localhost:5000',
-            '127.0.0.1:5000',
-            'localhost:8000',
-            '127.0.0.1:8000'
-          ]);
-          if (offlineHosts.has(parsed.host)) {
-            if (API_BASE_URL) {
-              return `${API_BASE_URL}${parsed.pathname}`;
-            }
-            if (typeof window !== 'undefined' && window.location?.origin) {
-              return `${window.location.origin}${parsed.pathname}`;
-            }
-            return parsed.pathname;
-          }
-        } catch {
-          // fall back to original absolute value
-        }
-      }
-      return value;
-    }
-    const normalized = normalizeProfileImagePath(value.startsWith('/') ? value : `/${value}`);
-    return API_BASE_URL ? `${API_BASE_URL}${normalized}` : normalized;
-  }
-
-  if (fallback) {
-    return resolveMediaAssetUrl(fallback);
-  }
-
-  return null;
-};
-
-export const resolveUserAvatarUrl = (user, fallback = DEFAULT_AVATAR_PATH) => {
-  const candidates = [
-    user?.avatar,
-    user?.avatar?.url,
-    user?.avatarUrl,
-    user?.profile?.avatar,
-    user?.profile?.avatar?.url
-  ];
-
-  for (const candidate of candidates) {
-    const resolved = resolveMediaAssetUrl(candidate);
-    if (resolved) {
-      if (DEFAULT_PROFILE_IMAGE_REGEX.test(resolved ?? '') && user?.username) {
-        const mapKey = String(user.username).trim().toLowerCase();
-        const fallbackPath = TF2_AVATAR_MAP[mapKey];
-        if (fallbackPath) {
-          const mapped = resolveMediaAssetUrl(fallbackPath, fallback);
-          if (mapped) {
-            return mapped;
-          }
-        }
-      }
-      return resolved;
-    }
-  }
-
-  if (user?.username) {
-    const mapKey = String(user.username).trim().toLowerCase();
-    const fallbackPath = TF2_AVATAR_MAP[mapKey];
-    if (fallbackPath) {
-      const mapped = resolveMediaAssetUrl(fallbackPath, fallback);
-      if (mapped) {
-        return mapped;
-      }
-    }
-  }
-
-  return resolveMediaAssetUrl(null, fallback);
-};
-
-const formatPinDateTime = (value) =>
-  formatDateTime(value, {
-    fallback: null,
-    options: {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric'
-    }
-  });
-
-const formatEventRange = (start, end) => {
-  const startLabel = formatPinDateTime(start);
-  const endLabel = formatPinDateTime(end);
-  if (startLabel && endLabel) {
-    return `${startLabel} -> ${endLabel}`;
-  }
-  return startLabel ?? endLabel ?? null;
-};
-
-const formatAddress = (address) => {
-  if (!address) {
-    return null;
-  }
-  const { precise, components } = address;
-  const parts = [];
-  if (precise) {
-    parts.push(precise);
-  }
-  if (components) {
-    const componentParts = [
-      components.line1,
-      components.line2,
-      components.city,
-      components.state,
-      components.postalCode,
-      components.country
-    ].filter(Boolean);
-    parts.push(...componentParts);
-  }
-
-  return parts.length > 0 ? parts.join(', ') : null;
-};
-
-const formatApproximateAddress = (approximateAddress) => {
-  if (!approximateAddress) {
-    return null;
-  }
-  const parts = [
-    approximateAddress.formatted,
-    approximateAddress.city,
-    approximateAddress.state,
-    approximateAddress.country
-  ].filter(Boolean);
-
-  return parts.length > 0 ? parts.join(', ') : null;
 };
 
 const normaliseTimestamp = (value) => {
@@ -310,52 +130,452 @@ const formatMetersToMiles = (meters) => {
   return `${formatted} mi`;
 };
 
-export const resolveUserIdentifier = (user) => {
-  if (!user || typeof user !== 'object') {
-    return null;
-  }
-
-  const rawIdentifier =
-    user._id ??
-    user.id ??
-    user.uid ??
-    user.userId ??
-    user.username ??
-    user.email ??
-    user.displayName;
-
-  if (rawIdentifier === undefined || rawIdentifier === null) {
-    return null;
-  }
-
-  const identifierString =
-    typeof rawIdentifier === 'string' ? rawIdentifier.trim() : String(rawIdentifier).trim();
-
-  if (!identifierString) {
-    return null;
-  }
-
-  return identifierString;
-};
-
-export const buildUserProfileLink = (user, originPath) => {
-  const identifier = resolveUserIdentifier(user);
-  if (!identifier) {
-    return null;
-  }
-
-  const linkState = user
-    ? {
-        user,
-        ...(originPath ? { from: originPath } : {})
+const usePinBookmarkState = ({
+  pin,
+  setPin,
+  pinId,
+  pinExpired,
+  distanceLockActive,
+  isOwnPin,
+  isOffline,
+  announceBadgeEarned
+}) => {
+  const [bookmarked, setBookmarked] = useState(false);
+  const [isUpdatingBookmark, setIsUpdatingBookmark] = useState(false);
+  const [bookmarkError, setBookmarkError] = useState(null);
+  const syncBookmarkFromPayload = useCallback(
+    (value, { coerce = false } = {}) => {
+      if (typeof value === 'boolean') {
+        setBookmarked(value);
+        return value;
       }
-    : originPath
-      ? { from: originPath }
-      : undefined;
+      if (coerce) {
+        const normalized = Boolean(value);
+        setBookmarked(normalized);
+        return normalized;
+      }
+      return null;
+    },
+    []
+  );
+
+  const handleToggleBookmark = useCallback(async () => {
+    if (isOffline) {
+      setBookmarkError('Bookmarks are unavailable while offline.');
+      return;
+    }
+    if (isOwnPin && bookmarked) {
+      setBookmarkError('Creators keep their pins bookmarked automatically.');
+      return;
+    }
+
+    const interactionLocked =
+      pinExpired || (distanceLockActive && !bookmarked && !isOwnPin);
+    if (!pin || isUpdatingBookmark || interactionLocked) {
+      if (pinExpired) {
+        setBookmarkError('Expired pins cannot be bookmarked.');
+      } else if (distanceLockActive) {
+        setBookmarkError('Pins outside your interaction radius cannot be bookmarked.');
+      }
+      return;
+    }
+
+    setIsUpdatingBookmark(true);
+    setBookmarkError(null);
+
+    try {
+      if (bookmarked) {
+        const response = await deletePinBookmark(pin._id);
+        setPin((prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentCount = prev.bookmarkCount ?? 0;
+          const nextBookmarkCount =
+            typeof response?.bookmarkCount === 'number'
+              ? response.bookmarkCount
+              : Math.max(0, currentCount - 1);
+          const nextViewerHasBookmarked =
+            typeof response?.viewerHasBookmarked === 'boolean'
+              ? response.viewerHasBookmarked
+              : false;
+          const nextStats = prev.stats
+            ? { ...prev.stats, bookmarkCount: nextBookmarkCount }
+            : prev.stats;
+          return {
+            ...prev,
+            bookmarkCount: nextBookmarkCount,
+            stats: nextStats,
+            viewerHasBookmarked: nextViewerHasBookmarked
+          };
+        });
+        setBookmarked(
+          typeof response?.viewerHasBookmarked === 'boolean'
+            ? response.viewerHasBookmarked
+            : false
+        );
+      } else {
+        const response = await createPinBookmark(pin._id);
+        setPin((prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentCount = prev.bookmarkCount ?? 0;
+          const nextBookmarkCount =
+            typeof response?.bookmarkCount === 'number'
+              ? response.bookmarkCount
+              : currentCount + 1;
+          const nextViewerHasBookmarked =
+            typeof response?.viewerHasBookmarked === 'boolean'
+              ? response.viewerHasBookmarked
+              : true;
+          const nextStats = prev.stats
+            ? { ...prev.stats, bookmarkCount: nextBookmarkCount }
+            : prev.stats;
+          return {
+            ...prev,
+            bookmarkCount: nextBookmarkCount,
+            stats: nextStats,
+            viewerHasBookmarked: nextViewerHasBookmarked
+          };
+        });
+        setBookmarked(
+          typeof response?.viewerHasBookmarked === 'boolean'
+            ? response.viewerHasBookmarked
+            : true
+        );
+        if (response?.badgeEarnedId) {
+          playBadgeSound();
+          announceBadgeEarned(response.badgeEarnedId);
+        }
+      }
+    } catch (toggleError) {
+      logClientError(toggleError, {
+        source: 'usePinDetails.toggleBookmark',
+        pinId,
+        bookmarkedTarget: !bookmarked
+      });
+      setBookmarkError(toggleError?.message || 'Failed to toggle bookmark.');
+    } finally {
+      setIsUpdatingBookmark(false);
+    }
+  }, [
+    announceBadgeEarned,
+    bookmarked,
+    distanceLockActive,
+    isOffline,
+    isOwnPin,
+    pin,
+    pinExpired,
+    pinId,
+    setPin
+  ]);
 
   return {
-    pathname: routes.profile.byId(identifier),
-    state: linkState
+    bookmarked,
+    isUpdatingBookmark,
+    bookmarkError,
+    handleToggleBookmark,
+    syncBookmarkFromPayload
+  };
+};
+
+const usePinAttendanceState = ({
+  pin,
+  setPin,
+  pinId,
+  pinExpired,
+  distanceLockActive,
+  isInteractionLocked,
+  isOffline,
+  announceBadgeEarned,
+  syncBookmarkFromPayload
+}) => {
+  const [attending, setAttending] = useState(false);
+  const [isUpdatingAttendance, setIsUpdatingAttendance] = useState(false);
+  const [attendanceError, setAttendanceError] = useState(null);
+  const syncAttendanceFromPayload = useCallback(
+    (value, { coerce = false } = {}) => {
+      if (typeof value === 'boolean') {
+        setAttending(value);
+        return value;
+      }
+      if (coerce) {
+        const normalized = Boolean(value);
+        setAttending(normalized);
+        return normalized;
+      }
+      return null;
+    },
+    []
+  );
+
+  const handleToggleAttendance = useCallback(async () => {
+    if (!pin || typeof pin?.type !== 'string' || pin.type.toLowerCase() !== 'event') {
+      return;
+    }
+    if (isOffline) {
+      setAttendanceError('Attendance is unavailable while offline.');
+      return;
+    }
+    if (isUpdatingAttendance || isInteractionLocked) {
+      if (pinExpired) {
+        setAttendanceError('Expired events cannot be updated.');
+      } else if (distanceLockActive) {
+        setAttendanceError('You must move closer to attend this event.');
+      }
+      return;
+    }
+
+    setIsUpdatingAttendance(true);
+    setAttendanceError(null);
+
+    try {
+      const response = await updatePinAttendance(pin._id, { attending: !attending });
+
+      setPin((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const stats = prev.stats ?? {};
+        const currentCount = prev.participantCount ?? stats.participantCount ?? 0;
+        const delta =
+          typeof response?.viewerIsAttending === 'boolean'
+            ? response.viewerIsAttending
+              ? 1
+              : -1
+            : attending
+            ? -1
+            : 1;
+        const nextCount = Math.max(0, currentCount + delta);
+        const updatedStats = {
+          ...stats,
+          participantCount: nextCount
+        };
+        return {
+          ...prev,
+          participantCount: nextCount,
+          viewerIsAttending:
+            typeof response?.viewerIsAttending === 'boolean'
+              ? response.viewerIsAttending
+              : !attending,
+          stats: updatedStats
+        };
+      });
+
+      const nextAttending =
+        typeof response?.viewerIsAttending === 'boolean'
+          ? response.viewerIsAttending
+          : !attending;
+      syncAttendanceFromPayload(nextAttending, { coerce: true });
+
+      syncBookmarkFromPayload(response?.viewerHasBookmarked);
+
+      if (response?.badgeEarnedId) {
+        playBadgeSound();
+        announceBadgeEarned(response.badgeEarnedId);
+      }
+    } catch (toggleError) {
+      logClientError(toggleError, {
+        source: 'usePinDetails.toggleAttendance',
+        pinId,
+        attendingTarget: !attending
+      });
+      setAttendanceError(toggleError?.message || 'Failed to update attendance.');
+    } finally {
+      setIsUpdatingAttendance(false);
+    }
+  }, [
+    announceBadgeEarned,
+    attending,
+    distanceLockActive,
+    isInteractionLocked,
+    isOffline,
+    isUpdatingAttendance,
+    pin,
+    pinExpired,
+    pinId,
+    syncAttendanceFromPayload,
+    syncBookmarkFromPayload
+  ]);
+
+  return {
+    attending,
+    isUpdatingAttendance,
+    attendanceError,
+    handleToggleAttendance,
+    syncAttendanceFromPayload
+  };
+};
+
+const usePinRepliesState = ({
+  pin,
+  setPin,
+  pinId,
+  isOffline,
+  pinExpired,
+  distanceLockActive,
+  isInteractionLocked
+}) => {
+  const [replies, setReplies] = useState([]);
+  const [isLoadingReplies, setIsLoadingReplies] = useState(false);
+  const [repliesError, setRepliesError] = useState(null);
+  const [replyComposerOpen, setReplyComposerOpen] = useState(false);
+  const [replyMessage, setReplyMessage] = useState('');
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+  const [submitReplyError, setSubmitReplyError] = useState(null);
+
+  // Auto-load replies whenever connectivity or the target pin changes.
+  useEffect(() => {
+    if (!pinId) {
+      setReplies([]);
+      return;
+    }
+
+    if (isOffline) {
+      setIsLoadingReplies(false);
+      setRepliesError((prev) => prev ?? 'Replies unavailable while offline.');
+      return;
+    }
+
+    let ignore = false;
+
+    async function loadReplies() {
+      setIsLoadingReplies(true);
+      setRepliesError(null);
+
+      try {
+        const payload = await fetchReplies(pinId);
+        if (ignore) {
+          return;
+        }
+        setReplies(Array.isArray(payload) ? sortRepliesByDateDesc(payload) : []);
+      } catch (loadError) {
+        if (ignore) {
+          return;
+        }
+        logClientError(loadError, { source: 'usePinDetails.loadReplies', pinId });
+        setReplies([]);
+        setRepliesError(loadError?.message || 'Failed to load replies.');
+      } finally {
+        if (!ignore) {
+          setIsLoadingReplies(false);
+        }
+      }
+    }
+
+    loadReplies();
+
+    return () => {
+      ignore = true;
+    };
+  }, [isOffline, pinId]);
+  const openReplyComposer = useCallback(() => {
+    if (!pinId) {
+      return;
+    }
+    if (isOffline) {
+      setSubmitReplyError('Replies are unavailable while offline.');
+      return;
+    }
+    if (pinExpired) {
+      setSubmitReplyError('Replies are closed because this pin has expired.');
+      return;
+    }
+    if (distanceLockActive) {
+      setSubmitReplyError('Replies are disabled because you are outside this pin\'s interaction radius.');
+      return;
+    }
+    setSubmitReplyError(null);
+    setReplyComposerOpen(true);
+  }, [distanceLockActive, isOffline, pinExpired, pinId]);
+
+  const closeReplyComposer = useCallback(() => {
+    if (isSubmittingReply) {
+      return;
+    }
+    setReplyComposerOpen(false);
+    setSubmitReplyError(null);
+  }, [isSubmittingReply]);
+
+  const handleSubmitReply = useCallback(async () => {
+    if (isOffline) {
+      setSubmitReplyError('Replies are unavailable while offline.');
+      return;
+    }
+    if (!pinId || isSubmittingReply || isInteractionLocked) {
+      if (pinExpired) {
+        setSubmitReplyError('Replies are closed because this pin has expired.');
+      } else if (distanceLockActive) {
+        setSubmitReplyError('Replies are disabled because you are outside this pin\'s interaction radius.');
+      }
+      return;
+    }
+    const trimmedMessage = replyMessage.trim();
+    if (!trimmedMessage) {
+      setSubmitReplyError('Please enter a message before submitting.');
+      return;
+    }
+
+    setIsSubmittingReply(true);
+    setSubmitReplyError(null);
+
+    try {
+      const newReply = await createPinReply(pinId, { message: trimmedMessage });
+      setReplies((prev) => sortRepliesByDateDesc([...prev, newReply]));
+      setReplyMessage('');
+      setReplyComposerOpen(false);
+      setPin((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const nextStats = prev.stats
+          ? { ...prev.stats, replyCount: (prev.stats.replyCount ?? 0) + 1 }
+          : prev.stats;
+        return {
+          ...prev,
+          replyCount: (prev.replyCount ?? 0) + 1,
+          stats: nextStats
+        };
+      });
+    } catch (submitError) {
+      logClientError(submitError, {
+        source: 'usePinDetails.submitReply',
+        pinId
+      });
+      setSubmitReplyError(submitError?.message || 'Failed to create reply.');
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  }, [
+    distanceLockActive,
+    isInteractionLocked,
+    isOffline,
+    isSubmittingReply,
+    pinExpired,
+    pinId,
+    replyMessage,
+    setPin
+  ]);
+
+  const replyCount = useMemo(
+    () => replies.length || pin?.replyCount || pin?.stats?.replyCount || 0,
+    [pin?.replyCount, pin?.stats?.replyCount, replies.length]
+  );
+
+  return {
+    replies,
+    isLoadingReplies,
+    repliesError,
+    replyComposerOpen,
+    openReplyComposer,
+    closeReplyComposer,
+    replyMessage,
+    setReplyMessage,
+    isSubmittingReply,
+    submitReplyError,
+    handleSubmitReply,
+    replyCount
   };
 };
 
@@ -395,24 +615,11 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   const initialHydrationSource = pinFromState ? 'seed' : 'none';
   const [isLoading, setIsLoading] = useState(!pinFromState);
   const [error, setError] = useState(null);
-  const [bookmarked, setBookmarked] = useState(false);
-  const [isUpdatingBookmark, setIsUpdatingBookmark] = useState(false);
-  const [bookmarkError, setBookmarkError] = useState(null);
-  const [attending, setAttending] = useState(false);
-  const [isUpdatingAttendance, setIsUpdatingAttendance] = useState(false);
-  const [attendanceError, setAttendanceError] = useState(null);
-  const [replies, setReplies] = useState([]);
-  const [isLoadingReplies, setIsLoadingReplies] = useState(false);
-  const [repliesError, setRepliesError] = useState(null);
   const [attendeeOverlayOpen, setAttendeeOverlayOpen] = useState(false);
   const [attendees, setAttendees] = useState([]);
   const [shouldPrefetchAttendees, setShouldPrefetchAttendees] = useState(true);
   const [isLoadingAttendees, setIsLoadingAttendees] = useState(false);
   const [attendeesError, setAttendeesError] = useState(null);
-  const [replyComposerOpen, setReplyComposerOpen] = useState(false);
-  const [replyMessage, setReplyMessage] = useState('');
-  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
-  const [submitReplyError, setSubmitReplyError] = useState(null);
   const [shareStatus, setShareStatus] = useState(null);
   const [isSharing, setIsSharing] = useState(false);
   const isMountedRef = useRef(true);
@@ -421,6 +628,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     pinHydrationSourceRef.current = source;
   }, []);
 
+  // Track mount state so reloadPin can bail when unmounted.
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -494,6 +702,115 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     return (params.get('preview') || '').toLowerCase();
   }, [location?.search]);
 
+  const pinExpired = useMemo(() => {
+    if (!pin) {
+      return false;
+    }
+    const expiresSource = pin.expiresAt ?? pin.endDate;
+    if (!expiresSource) {
+      return false;
+    }
+    const expiry = new Date(expiresSource);
+    if (Number.isNaN(expiry.getTime())) {
+      return false;
+    }
+    return expiry.getTime() < Date.now();
+  }, [pin]);
+
+  const pinCreatorId = useMemo(() => {
+    if (!pin) {
+      return null;
+    }
+    if (typeof pin?.creatorId === 'string' && pin.creatorId.trim().length > 0) {
+      return pin.creatorId.trim();
+    }
+    const nestedId = pin?.creator?._id;
+    if (typeof nestedId === 'string' && nestedId.trim().length > 0) {
+      return nestedId.trim();
+    }
+    return null;
+  }, [pin]);
+
+  const isOwnPin = useMemo(() => {
+    if (!pinCreatorId || !viewerProfileId) {
+      return false;
+    }
+    return pinCreatorId === viewerProfileId;
+  }, [pinCreatorId, viewerProfileId]);
+
+  const viewerWithinInteractionRadius =
+    typeof pin?.viewerWithinInteractionRadius === 'boolean'
+      ? pin.viewerWithinInteractionRadius
+      : undefined;
+  const viewerDistanceMeters =
+    typeof pin?.viewerDistanceMeters === 'number' && Number.isFinite(pin.viewerDistanceMeters)
+      ? pin.viewerDistanceMeters
+      : null;
+  const distanceLockActive =
+    !pinExpired && (previewMode === 'far' || viewerWithinInteractionRadius === false);
+  const viewerInteractionLockMessage = pin?.viewerInteractionLockMessage;
+
+  const {
+    bookmarked,
+    isUpdatingBookmark,
+    bookmarkError,
+    handleToggleBookmark,
+    syncBookmarkFromPayload
+  } = usePinBookmarkState({
+    pin,
+    setPin,
+    pinId,
+    pinExpired,
+    distanceLockActive,
+    isOwnPin,
+    isOffline,
+    announceBadgeEarned
+  });
+
+  const isInteractionLocked =
+    pinExpired || (distanceLockActive && !bookmarked && !isOwnPin);
+
+  const {
+    attending,
+    isUpdatingAttendance,
+    attendanceError,
+    handleToggleAttendance,
+    syncAttendanceFromPayload
+  } = usePinAttendanceState({
+    pin,
+    setPin,
+    pinId,
+    pinExpired,
+    distanceLockActive,
+    isInteractionLocked,
+    isOffline,
+    announceBadgeEarned,
+    syncBookmarkFromPayload
+  });
+
+  const {
+    replies,
+    isLoadingReplies,
+    repliesError,
+    replyComposerOpen,
+    openReplyComposer,
+    closeReplyComposer,
+    replyMessage,
+    setReplyMessage,
+    isSubmittingReply,
+    submitReplyError,
+    handleSubmitReply,
+    replyCount
+  } = usePinRepliesState({
+    pin,
+    setPin,
+    pinId,
+    isOffline,
+    pinExpired,
+    distanceLockActive,
+    isInteractionLocked
+  });
+  // Fetch latest pin details from the API, respecting offline mode and seed hydration.
   const reloadPin = useCallback(
     async ({ silent } = {}) => {
       if (IS_DEV) {
@@ -534,8 +851,8 @@ export default function usePinDetails({ pinId, location, isOffline }) {
           return payload;
         }
         setPin(payload);
-        setBookmarked(Boolean(payload?.viewerHasBookmarked));
-        setAttending(Boolean(payload?.viewerIsAttending));
+        syncBookmarkFromPayload(payload?.viewerHasBookmarked, { coerce: true });
+        syncAttendanceFromPayload(payload?.viewerIsAttending, { coerce: true });
         updatePinHydrationSource('api');
         if (IS_DEV) {
           console.debug('[usePinDetails] reload success', { pinId, title: payload?.title });
@@ -560,60 +877,17 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         }
       }
     },
-    [pinId, isOffline, previewMode, updatePinHydrationSource]
+    [pinId, isOffline, previewMode, syncAttendanceFromPayload, syncBookmarkFromPayload, updatePinHydrationSource]
   );
 
+  // Rehydrate from the API whenever the seeded pin snapshot changes.
   useEffect(() => {
     reloadPin({ silent: pinHydrationSourceRef.current === 'seed' });
   }, [reloadPin, pinFromState]);
 
-  useEffect(() => {
-    if (!pinId) {
-      setReplies([]);
-      return;
-    }
-
-    if (isOffline) {
-      setIsLoadingReplies(false);
-      setRepliesError((prev) => prev ?? 'Replies unavailable while offline.');
-      return;
-    }
-
-    let ignore = false;
-
-    async function loadReplies() {
-      setIsLoadingReplies(true);
-      setRepliesError(null);
-
-      try {
-        const payload = await fetchReplies(pinId);
-        if (ignore) {
-          return;
-        }
-        setReplies(Array.isArray(payload) ? sortRepliesByDateDesc(payload) : []);
-      } catch (loadError) {
-        if (ignore) {
-          return;
-        }
-        logClientError(loadError, { source: 'usePinDetails.loadReplies', pinId });
-        setReplies([]);
-        setRepliesError(loadError?.message || 'Failed to load replies.');
-      } finally {
-        if (!ignore) {
-          setIsLoadingReplies(false);
-        }
-      }
-    }
-
-    loadReplies();
-
-    return () => {
-      ignore = true;
-    };
-  }, [isOffline, pinId]);
-
   const isEventPin = Boolean(pin && typeof pin.type === 'string' && pin.type.toLowerCase() === 'event');
 
+  // Prefetch attendees for event pins so the overlay opens instantly.
   useEffect(() => {
     if (!pinId || !isEventPin) {
       setShouldPrefetchAttendees(false);
@@ -695,69 +969,10 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     };
   }, [attendeeOverlayOpen, isEventPin, isOffline, pinId, shouldPrefetchAttendees]);
 
-  const pinExpired = useMemo(() => {
-    if (!pin) {
-      return false;
-    }
-    const expiresSource = pin.expiresAt ?? pin.endDate;
-    if (!expiresSource) {
-      return false;
-    }
-    const expiry = new Date(expiresSource);
-    if (Number.isNaN(expiry.getTime())) {
-      return false;
-    }
-    return expiry.getTime() < Date.now();
-  }, [pin]);
-
-  const pinCreatorId = useMemo(() => {
-    if (!pin) {
-      return null;
-    }
-    if (typeof pin?.creatorId === 'string' && pin.creatorId.trim().length > 0) {
-      return pin.creatorId.trim();
-    }
-    const nestedId = pin?.creator?._id;
-    if (typeof nestedId === 'string' && nestedId.trim().length > 0) {
-      return nestedId.trim();
-    }
-    return null;
-  }, [pin]);
-
-  const isOwnPin = useMemo(() => {
-    if (!pinCreatorId || !viewerProfileId) {
-      return false;
-    }
-    return pinCreatorId === viewerProfileId;
-  }, [pinCreatorId, viewerProfileId]);
-
-  const viewerWithinInteractionRadius =
-    typeof pin?.viewerWithinInteractionRadius === 'boolean'
-      ? pin.viewerWithinInteractionRadius
-      : undefined;
-  const viewerDistanceMeters =
-    typeof pin?.viewerDistanceMeters === 'number' && Number.isFinite(pin.viewerDistanceMeters)
-      ? pin.viewerDistanceMeters
-      : null;
-  const distanceLockActive =
-    !pinExpired && (previewMode === 'far' || viewerWithinInteractionRadius === false);
-  const isInteractionLocked =
-    pinExpired || (distanceLockActive && !bookmarked && !isOwnPin);
-  const viewerInteractionLockMessage = pin?.viewerInteractionLockMessage;
-
-  const viewerDistanceLabel = useMemo(() => {
-    if (viewerDistanceMeters === null) {
-      return null;
-    }
-    if (viewerDistanceMeters >= METERS_PER_MILE) {
-      const miles = metersToMiles(viewerDistanceMeters);
-      return miles === null ? null : `${miles.toFixed(1)} miles`;
-    }
-    if (viewerDistanceMeters >= 10) {
-      return `${Math.round(viewerDistanceMeters)} meters`;
-    }
-    return `${viewerDistanceMeters.toFixed(1)} meters`;
-  }, [viewerDistanceMeters]);
+  const viewerDistanceLabel = useMemo(
+    () => formatViewerDistanceLabel(viewerDistanceMeters),
+    [viewerDistanceMeters]
+  );
 
   const interactionOverlay = useMemo(() => {
     if (pinExpired) {
@@ -875,7 +1090,16 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     [location?.hash, location?.pathname, location?.search]
   );
   const creatorProfileLink = useMemo(
-    () => buildUserProfileLink(pin?.creator, profileReturnPath),
+    () => {
+      const link = buildUserProfileLink(pin?.creator, profileReturnPath);
+      if (!link) {
+        return null;
+      }
+      if (typeof link === 'string') {
+        return { pathname: link };
+      }
+      return link;
+    },
     [pin, profileReturnPath]
   );
   const creatorAvatarUrl = useMemo(
@@ -906,297 +1130,6 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   const closeAttendeeOverlay = useCallback(() => {
     setAttendeeOverlayOpen(false);
   }, []);
-
-  const openReplyComposer = useCallback(() => {
-    if (!pinId) {
-      return;
-    }
-    if (isOffline) {
-      setSubmitReplyError('Replies are unavailable while offline.');
-      return;
-    }
-    if (pinExpired) {
-      setSubmitReplyError('Replies are closed because this pin has expired.');
-      return;
-    }
-    if (distanceLockActive) {
-      setSubmitReplyError('Replies are disabled because you are outside this pin\'s interaction radius.');
-      return;
-    }
-    setSubmitReplyError(null);
-    setReplyComposerOpen(true);
-  }, [distanceLockActive, isOffline, pinExpired, pinId]);
-
-  const closeReplyComposer = useCallback(() => {
-    if (isSubmittingReply) {
-      return;
-    }
-    setReplyComposerOpen(false);
-    setSubmitReplyError(null);
-  }, [isSubmittingReply]);
-
-  const handleToggleBookmark = useCallback(async () => {
-    if (isOffline) {
-      setBookmarkError('Bookmarks are unavailable while offline.');
-      return;
-    }
-    if (isOwnPin && bookmarked) {
-      setBookmarkError('Creators keep their pins bookmarked automatically.');
-      return;
-    }
-    if (!pin || isUpdatingBookmark || isInteractionLocked) {
-      if (pinExpired) {
-        setBookmarkError('Expired pins cannot be bookmarked.');
-      } else if (distanceLockActive) {
-        setBookmarkError('Pins outside your interaction radius cannot be bookmarked.');
-      }
-      return;
-    }
-
-    setIsUpdatingBookmark(true);
-    setBookmarkError(null);
-
-    try {
-      if (bookmarked) {
-        const response = await deletePinBookmark(pin._id);
-        setPin((prev) => {
-          if (!prev) {
-            return prev;
-          }
-          const currentCount = prev.bookmarkCount ?? 0;
-          const nextBookmarkCount =
-            typeof response?.bookmarkCount === 'number'
-              ? response.bookmarkCount
-              : Math.max(0, currentCount - 1);
-          const nextViewerHasBookmarked =
-            typeof response?.viewerHasBookmarked === 'boolean'
-              ? response.viewerHasBookmarked
-              : false;
-          const nextStats = prev.stats
-            ? { ...prev.stats, bookmarkCount: nextBookmarkCount }
-            : prev.stats;
-          return {
-            ...prev,
-            bookmarkCount: nextBookmarkCount,
-            stats: nextStats,
-            viewerHasBookmarked: nextViewerHasBookmarked
-          };
-        });
-        setBookmarked(
-          typeof response?.viewerHasBookmarked === 'boolean'
-            ? response.viewerHasBookmarked
-            : false
-        );
-      } else {
-        const response = await createPinBookmark(pin._id);
-        setPin((prev) => {
-          if (!prev) {
-            return prev;
-          }
-          const currentCount = prev.bookmarkCount ?? 0;
-          const nextBookmarkCount =
-            typeof response?.bookmarkCount === 'number'
-              ? response.bookmarkCount
-              : currentCount + 1;
-          const nextViewerHasBookmarked =
-            typeof response?.viewerHasBookmarked === 'boolean'
-              ? response.viewerHasBookmarked
-              : true;
-          const nextStats = prev.stats
-            ? { ...prev.stats, bookmarkCount: nextBookmarkCount }
-            : prev.stats;
-          return {
-            ...prev,
-            bookmarkCount: nextBookmarkCount,
-            stats: nextStats,
-            viewerHasBookmarked: nextViewerHasBookmarked
-          };
-        });
-        setBookmarked(
-          typeof response?.viewerHasBookmarked === 'boolean'
-            ? response.viewerHasBookmarked
-            : true
-        );
-        if (response?.badgeEarnedId) {
-          playBadgeSound();
-          announceBadgeEarned(response.badgeEarnedId);
-        }
-      }
-    } catch (toggleError) {
-      logClientError(toggleError, {
-        source: 'usePinDetails.toggleBookmark',
-        pinId,
-        bookmarkedTarget: !bookmarked
-      });
-      setBookmarkError(toggleError?.message || 'Failed to toggle bookmark.');
-    } finally {
-      setIsUpdatingBookmark(false);
-    }
-  }, [
-    announceBadgeEarned,
-    bookmarked,
-    distanceLockActive,
-    isInteractionLocked,
-    isOwnPin,
-    isOffline,
-    isUpdatingBookmark,
-    pin,
-    pinExpired,
-    pinId
-  ]);
-
-  const handleToggleAttendance = useCallback(async () => {
-    if (!pin || typeof pin?.type !== 'string' || pin.type.toLowerCase() !== 'event') {
-      return;
-    }
-    if (isOffline) {
-      setAttendanceError('Attendance is unavailable while offline.');
-      return;
-    }
-    if (isUpdatingAttendance || isInteractionLocked) {
-      if (pinExpired) {
-        setAttendanceError('Expired events cannot be updated.');
-      } else if (distanceLockActive) {
-        setAttendanceError('You must move closer to attend this event.');
-      }
-      return;
-    }
-
-    setIsUpdatingAttendance(true);
-    setAttendanceError(null);
-
-    try {
-      const response = await updatePinAttendance(pin._id, { attending: !attending });
-
-      setPin((prev) => {
-        if (!prev) {
-          return prev;
-        }
-        const stats = prev.stats ?? {};
-        const currentCount = prev.participantCount ?? stats.participantCount ?? 0;
-        const delta =
-          typeof response?.viewerIsAttending === 'boolean'
-            ? response.viewerIsAttending
-              ? 1
-              : -1
-            : attending
-            ? -1
-            : 1;
-        const nextCount = Math.max(0, currentCount + delta);
-        const updatedStats = {
-          ...stats,
-          participantCount: nextCount
-        };
-        return {
-          ...prev,
-          participantCount: nextCount,
-          viewerIsAttending:
-            typeof response?.viewerIsAttending === 'boolean'
-              ? response.viewerIsAttending
-              : !attending,
-          stats: updatedStats
-        };
-      });
-
-      setAttending((prev) =>
-        typeof response?.viewerIsAttending === 'boolean'
-          ? response.viewerIsAttending
-          : !prev
-      );
-
-      if (typeof response?.viewerHasBookmarked === 'boolean') {
-        setBookmarked(response.viewerHasBookmarked);
-      }
-
-      if (response?.badgeEarnedId) {
-        playBadgeSound();
-        announceBadgeEarned(response.badgeEarnedId);
-      }
-    } catch (toggleError) {
-      logClientError(toggleError, {
-        source: 'usePinDetails.toggleAttendance',
-        pinId,
-        attendingTarget: !attending
-      });
-      setAttendanceError(toggleError?.message || 'Failed to update attendance.');
-    } finally {
-      setIsUpdatingAttendance(false);
-    }
-  }, [
-    announceBadgeEarned,
-    attending,
-    distanceLockActive,
-    isInteractionLocked,
-    isOffline,
-    isUpdatingAttendance,
-    pin,
-    pinExpired,
-    pinId
-  ]);
-
-  const handleSubmitReply = useCallback(async () => {
-    if (isOffline) {
-      setSubmitReplyError('Replies are unavailable while offline.');
-      return;
-    }
-    if (!pinId || isSubmittingReply || isInteractionLocked) {
-      if (pinExpired) {
-        setSubmitReplyError('Replies are closed because this pin has expired.');
-      } else if (distanceLockActive) {
-        setSubmitReplyError('Replies are disabled because you are outside this pin\'s interaction radius.');
-      }
-      return;
-    }
-    const trimmedMessage = replyMessage.trim();
-    if (!trimmedMessage) {
-      setSubmitReplyError('Please enter a message before submitting.');
-      return;
-    }
-
-    setIsSubmittingReply(true);
-    setSubmitReplyError(null);
-
-    try {
-      const newReply = await createPinReply(pinId, { message: trimmedMessage });
-      setReplies((prev) => sortRepliesByDateDesc([...prev, newReply]));
-      setReplyMessage('');
-      setReplyComposerOpen(false);
-      setPin((prev) => {
-        if (!prev) {
-          return prev;
-        }
-        const nextStats = prev.stats
-          ? { ...prev.stats, replyCount: (prev.stats.replyCount ?? 0) + 1 }
-          : prev.stats;
-        return {
-          ...prev,
-          replyCount: (prev.replyCount ?? 0) + 1,
-          stats: nextStats
-        };
-      });
-    } catch (submitError) {
-      logClientError(submitError, {
-        source: 'usePinDetails.submitReply',
-        pinId
-      });
-      setSubmitReplyError(submitError?.message || 'Failed to create reply.');
-    } finally {
-      setIsSubmittingReply(false);
-    }
-  }, [
-    distanceLockActive,
-    isInteractionLocked,
-    isOffline,
-    isSubmittingReply,
-    pinExpired,
-    pinId,
-    replyMessage
-  ]);
-
-  const replyCount = useMemo(
-    () => replies.length || pin?.replyCount || pin?.stats?.replyCount || 0,
-    [pin?.replyCount, pin?.stats?.replyCount, replies.length]
-  );
 
   const handleSharePin = useCallback(
     async (options = {}) => {
@@ -1299,65 +1232,154 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     [attendees, profileReturnPath]
   );
 
+  const viewState = useMemo(
+    () => ({
+      isEventPin,
+      isOwnPin,
+      isInteractionLocked,
+      pinTypeHeading,
+      interactionOverlay,
+      viewerDistanceLabel,
+      mapPins,
+      coordinates,
+      coordinateLabel,
+      coverImageUrl,
+      photoItems,
+      proximityRadius,
+      addressLabel,
+      approximateAddressLabel,
+      eventDateRange,
+      expirationLabel,
+      createdAtLabel,
+      updatedAtLabel,
+      creatorProfileLink,
+      creatorAvatarUrl
+    }),
+    [
+      addressLabel,
+      approximateAddressLabel,
+      coordinates,
+      coordinateLabel,
+      coverImageUrl,
+      creatorAvatarUrl,
+      creatorProfileLink,
+      eventDateRange,
+      expirationLabel,
+      interactionOverlay,
+      isEventPin,
+      isInteractionLocked,
+      isOwnPin,
+      mapPins,
+      photoItems,
+      pinTypeHeading,
+      proximityRadius,
+      updatedAtLabel,
+      createdAtLabel,
+      viewerDistanceLabel
+    ]
+  );
+
+  const bookmarkState = useMemo(
+    () => ({
+      bookmarked,
+      isUpdating: isUpdatingBookmark,
+      error: bookmarkError,
+      toggle: handleToggleBookmark
+    }),
+    [bookmarked, bookmarkError, handleToggleBookmark, isUpdatingBookmark]
+  );
+
+  const attendanceState = useMemo(
+    () => ({
+      attending,
+      isUpdating: isUpdatingAttendance,
+      error: attendanceError,
+      toggle: handleToggleAttendance
+    }),
+    [attending, attendanceError, handleToggleAttendance, isUpdatingAttendance]
+  );
+
+  const replyState = useMemo(
+    () => ({
+      list: replies,
+      items: replyItems,
+      count: replyCount,
+      composerOpen: replyComposerOpen,
+      openComposer: openReplyComposer,
+      closeComposer: closeReplyComposer,
+      message: replyMessage,
+      setMessage: setReplyMessage,
+      isSubmitting: isSubmittingReply,
+      submitError: submitReplyError,
+      submit: handleSubmitReply,
+      isLoading: isLoadingReplies,
+      error: repliesError
+    }),
+    [
+      closeReplyComposer,
+      handleSubmitReply,
+      isLoadingReplies,
+      isSubmittingReply,
+      openReplyComposer,
+      replies,
+      repliesError,
+      replyCount,
+      replyItems,
+      replyComposerOpen,
+      replyMessage,
+      setReplyMessage,
+      submitReplyError
+    ]
+  );
+
+  const attendeeState = useMemo(
+    () => ({
+      list: attendees,
+      items: attendeeItems,
+      overlayOpen: attendeeOverlayOpen,
+      openOverlay: openAttendeeOverlay,
+      closeOverlay: closeAttendeeOverlay,
+      isLoading: isLoadingAttendees,
+      error: attendeesError
+    }),
+    [
+      attendeeItems,
+      attendeeOverlayOpen,
+      attendees,
+      attendeesError,
+      isLoadingAttendees,
+      openAttendeeOverlay,
+      closeAttendeeOverlay
+    ]
+  );
+
+  const shareState = useMemo(
+    () => ({
+      status: shareStatus,
+      setStatus: setShareStatus,
+      isSharing,
+      share: handleSharePin
+    }),
+    [handleSharePin, isSharing, setShareStatus, shareStatus]
+  );
+
+  const statusState = useMemo(
+    () => ({
+      isLoading,
+      error
+    }),
+    [error, isLoading]
+  );
+
   return {
     pin,
-    isEventPin: typeof pin?.type === 'string' ? pin.type.toLowerCase() === 'event' : false,
-    isOwnPin,
-    pinExpired,
-    distanceLockActive,
-    isInteractionLocked,
-    pinTypeHeading,
-    interactionOverlay,
-    viewerDistanceLabel,
-    mapPins,
-    coordinates,
-    coordinateLabel,
-    coverImageUrl,
-    photoItems,
-    proximityRadius,
-    addressLabel,
-    approximateAddressLabel,
-    eventDateRange,
-    expirationLabel,
-    createdAtLabel,
-    updatedAtLabel,
-    profileReturnPath,
-    creatorProfileLink,
-    creatorAvatarUrl,
-    isLoading,
-    error,
-    bookmarked,
-    isUpdatingBookmark,
-    bookmarkError,
-    handleToggleBookmark,
-    attending,
-    isUpdatingAttendance,
-    attendanceError,
-    handleToggleAttendance,
-    replies,
-    replyItems,
-    replyCount,
-    isLoadingReplies,
-    repliesError,
-    replyComposerOpen,
-    openReplyComposer,
-    closeReplyComposer,
-    replyMessage,
-    setReplyMessage,
-    isSubmittingReply,
-    submitReplyError,
-    handleSubmitReply,
-    shareStatus,
-    setShareStatus,
-    isSharing,
-    handleSharePin,
-    reloadPin,
-    attendees,
-    attendeeOverlayOpen,
-    openAttendeeOverlay,
-    closeAttendeeOverlay,
-    attendeeItems,
-    isLoadingAttendees,
-    attendeesError
+    viewState,
+    bookmarkState,
+    attendanceState,
+    replyState,
+    attendeeState,
+    shareState,
+    status: statusState,
+    reloadPin
   };
 }

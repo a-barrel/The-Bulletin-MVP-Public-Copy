@@ -1,17 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 
-import {
-  insertLocationUpdate,
-  fetchNearbyUsers,
-  fetchPinsNearby,
-  fetchCurrentUserProfile,
-  fetchChatRooms
-} from '../api/mongoDataApi';
+import { insertLocationUpdate } from '../api/mongoDataApi';
 import { auth } from '../firebase';
 import {
   clampLatitude,
-  formatDistanceMiles,
   haversineDistanceMeters,
   metersToLatitudeDegrees,
   metersToLongitudeDegrees,
@@ -19,50 +12,19 @@ import {
   METERS_PER_MILE
 } from '../utils/geo';
 import reportClientError from '../utils/reportClientError';
-import { resolvePinFetchLimit } from '../utils/pinDensity';
-
-const DEMO_USER_ID = 'demo-user';
-export const DEFAULT_RADIUS_MILES = 25;
-export const DEFAULT_MAX_DISTANCE_METERS = Math.round(DEFAULT_RADIUS_MILES * METERS_PER_MILE);
-const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
-export const DEFAULT_SPOOF_STEP_MILES = 1;
-export const SPOOF_MIN_MILES = 0.25;
-export const SPOOF_MAX_MILES = 5;
-export const SPOOF_STEP_INCREMENT = 0.25;
-
-const normalizeId = (value) => {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    return trimmed.length ? trimmed : null;
-  }
-  if (typeof value === 'object') {
-    if (typeof value._id === 'string') {
-      const trimmed = value._id.trim();
-      return trimmed.length ? trimmed : null;
-    }
-    if (typeof value.id === 'string') {
-      const trimmed = value.id.trim();
-      return trimmed.length ? trimmed : null;
-    }
-    if (typeof value.$oid === 'string') {
-      const trimmed = value.$oid.trim();
-      return trimmed.length ? trimmed : null;
-    }
-  }
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return String(value);
-  }
-  return null;
-};
-
-const hasValidCoordinates = (coords) =>
-  coords &&
-  typeof coords === 'object' &&
-  Number.isFinite(coords.latitude) &&
-  Number.isFinite(coords.longitude);
+import {
+  DEMO_USER_ID,
+  DEFAULT_MAX_DISTANCE_METERS,
+  DEFAULT_SPOOF_STEP_MILES,
+  FALLBACK_LOCATION,
+  SPOOF_MAX_MILES,
+  SPOOF_MIN_MILES,
+  SPOOF_STEP_INCREMENT
+} from '../utils/mapExplorerConstants';
+import { hasValidCoordinates } from '../utils/mapLocation';
+import useMapViewerProfile from './useMapViewerProfile';
+import useMapNearbyData from './useMapNearbyData';
+import useMapChatRooms from './useMapChatRooms';
 
 const requestBrowserLocation = () =>
   new Promise((resolve, reject) => {
@@ -112,23 +74,48 @@ export default function useMapExplorer({
   const [isUsingFallbackLocation, setIsUsingFallbackLocation] = useState(
     !hasValidCoordinates(sharedLocation)
   );
-  const [nearbyUsers, setNearbyUsers] = useState([]);
-  const [pins, setPins] = useState([]);
-  const [showChatRooms, setShowChatRooms] = useState(false);
-  const [chatRooms, setChatRooms] = useState([]);
-  const [isLoadingChatRooms, setIsLoadingChatRooms] = useState(false);
-  const [chatRoomsError, setChatRoomsError] = useState(null);
-  const [selectedChatRoomId, setSelectedChatRoomId] = useState(null);
   const [isSharing, setIsSharing] = useState(false);
-  const [isLoadingNearby, setIsLoadingNearby] = useState(false);
-  const [isLoadingPins, setIsLoadingPins] = useState(false);
   const [error, setError] = useState(null);
   const lastSharedLocationRef = useRef(null);
-  const [currentProfileId, setCurrentProfileId] = useState(null);
-  const [viewerProfile, setViewerProfile] = useState(null);
-  const [pinFetchLimit, setPinFetchLimit] = useState(resolvePinFetchLimit());
   const spoofAnchorRef = useRef(null);
   const [spoofStepMiles, setSpoofStepMiles] = useState(DEFAULT_SPOOF_STEP_MILES);
+
+  const { viewerProfile, currentProfileId, pinFetchLimit } = useMapViewerProfile({
+    authUser,
+    isOffline
+  });
+
+  const {
+    nearbyUsers,
+    pins,
+    refreshPins,
+    refreshNearby,
+    isLoadingNearby,
+    isLoadingPins,
+    clearNearbyUsers
+  } = useMapNearbyData({
+    userLocation,
+    isOffline,
+    pinFetchLimit,
+    currentProfileId,
+    setGlobalError: setError
+  });
+
+  const {
+    showChatRooms,
+    setShowChatRooms,
+    chatRooms,
+    chatRoomPins,
+    isLoadingChatRooms,
+    chatRoomsError,
+    setChatRoomsError,
+    selectedChatRoomId,
+    setSelectedChatRoomId,
+    selectedChatRoom,
+    selectedChatRoomDistanceLabel,
+    selectedChatRoomRadiusLabel,
+    handleMapPinSelect
+  } = useMapChatRooms({ userLocation, isOffline });
 
   useEffect(() => {
     if (!Number.isFinite(sharedLatitude) || !Number.isFinite(sharedLongitude)) {
@@ -159,44 +146,6 @@ export default function useMapExplorer({
     });
     setIsUsingFallbackLocation(false);
   }, [sharedLatitude, sharedLongitude, sharedAccuracy]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const resolveProfile = async () => {
-      if (!authUser || isOffline) {
-        if (isMounted) {
-          setCurrentProfileId(null);
-          setViewerProfile(null);
-          setPinFetchLimit(resolvePinFetchLimit());
-        }
-        return;
-      }
-
-      try {
-        const profile = await fetchCurrentUserProfile();
-        if (isMounted) {
-          setCurrentProfileId(profile?._id ? String(profile._id) : null);
-          setViewerProfile(profile ?? null);
-          setPinFetchLimit(resolvePinFetchLimit(profile));
-        }
-      } catch (fetchError) {
-        reportClientError(fetchError, 'Failed to load current user profile on MapPage:', {
-          source: 'useMapExplorer.profile'
-        });
-        if (isMounted) {
-          setCurrentProfileId(null);
-          setViewerProfile(null);
-          setPinFetchLimit(resolvePinFetchLimit());
-        }
-      }
-    };
-
-    resolveProfile();
-    return () => {
-      isMounted = false;
-    };
-  }, [authUser, isOffline]);
 
   const updateGlobalLocation = useCallback(
     (next, { source } = {}) => {
@@ -250,96 +199,6 @@ export default function useMapExplorer({
       return computed;
     },
     [setSharedLocation, sharedLatitude, sharedLongitude, sharedAccuracy]
-  );
-
-  const refreshPins = useCallback(
-    async (location = userLocation) => {
-      if (!hasValidCoordinates(location)) {
-        if (!location) {
-          setPins([]);
-        }
-        return;
-      }
-
-      if (isOffline) {
-        setIsLoadingPins(false);
-        setError((prev) => prev ?? 'Offline mode: pin data may be stale.');
-        return;
-      }
-
-      setIsLoadingPins(true);
-      try {
-        const results = await fetchPinsNearby({
-          latitude: location.latitude,
-          longitude: location.longitude,
-          distanceMiles: DEFAULT_RADIUS_MILES,
-          limit: pinFetchLimit
-        });
-
-        const viewerId = normalizeId(currentProfileId);
-        const normalizedResults = Array.isArray(results)
-          ? results.map((pin) => {
-              const creatorId =
-                normalizeId(pin?.creatorId) ??
-                normalizeId(pin?.creator?._id) ??
-                normalizeId(pin?.creator?.id);
-              const isSelf = Boolean(viewerId && creatorId && viewerId === creatorId);
-              if (pin && typeof pin === 'object') {
-                return { ...pin, isSelf };
-              }
-              return pin;
-            })
-          : [];
-
-        setPins(normalizedResults);
-        setError((prev) =>
-          prev && prev.toLowerCase().includes('failed to load nearby pins') ? null : prev
-        );
-      } catch (err) {
-        reportClientError(err, 'Error fetching nearby pins:', {
-          source: 'useMapExplorer.fetchPins',
-          location
-        });
-        setError(err.message || 'Failed to load nearby pins.');
-      } finally {
-        setIsLoadingPins(false);
-      }
-    },
-    [currentProfileId, isOffline, pinFetchLimit, userLocation]
-  );
-
-  const refreshNearby = useCallback(
-    async (location = userLocation) => {
-      if (!hasValidCoordinates(location)) return;
-
-      if (isOffline) {
-        setIsLoadingNearby(false);
-        setError((prev) => prev ?? 'Offline mode: nearby activity is unavailable.');
-        return;
-      }
-
-      setIsLoadingNearby(true);
-      try {
-        const results = await fetchNearbyUsers({
-          longitude: location.longitude,
-          latitude: location.latitude,
-          maxDistance: DEFAULT_MAX_DISTANCE_METERS
-        });
-        setNearbyUsers(results);
-        setError((prev) =>
-          prev && prev.toLowerCase().includes('failed to load nearby users') ? null : prev
-        );
-      } catch (err) {
-        reportClientError(err, 'Error fetching nearby users:', {
-          source: 'useMapExplorer.fetchNearbyUsers',
-          location
-        });
-        setError(err.message || 'Failed to load nearby users.');
-      } finally {
-        setIsLoadingNearby(false);
-      }
-    },
-    [isOffline, userLocation]
   );
 
   const pushLocationUpdate = useCallback(
@@ -425,9 +284,9 @@ export default function useMapExplorer({
 
   const handleStopSharing = useCallback(() => {
     setIsSharing(false);
-    setNearbyUsers([]);
+    clearNearbyUsers();
     lastSharedLocationRef.current = null;
-  }, []);
+  }, [clearNearbyUsers]);
 
   useEffect(() => {
     if (!hasValidCoordinates(userLocation) || isOffline) {
@@ -435,57 +294,6 @@ export default function useMapExplorer({
     }
     refreshPins(userLocation);
   }, [isOffline, refreshPins, userLocation]);
-
-  useEffect(() => {
-    if (!showChatRooms) {
-      setChatRooms([]);
-      setChatRoomsError(null);
-      setIsLoadingChatRooms(false);
-      setSelectedChatRoomId(null);
-      return;
-    }
-
-    if (isOffline) {
-      setChatRooms([]);
-      setChatRoomsError('Reconnect to load chat rooms.');
-      setIsLoadingChatRooms(false);
-      return;
-    }
-
-    const latitude = Number.isFinite(userLocation?.latitude) ? userLocation.latitude : undefined;
-    const longitude = Number.isFinite(userLocation?.longitude) ? userLocation.longitude : undefined;
-
-    let cancelled = false;
-    setIsLoadingChatRooms(true);
-    setChatRoomsError(null);
-
-    fetchChatRooms({ latitude, longitude, maxDistanceMiles: 50 })
-      .then((rooms) => {
-        if (!cancelled) {
-          setChatRooms(Array.isArray(rooms) ? rooms : []);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          reportClientError(err, 'Failed to load chat rooms:', {
-            source: 'useMapExplorer.chatRooms',
-            latitude,
-            longitude
-          });
-          setChatRooms([]);
-          setChatRoomsError(err?.message || 'Failed to load chat rooms.');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoadingChatRooms(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOffline, showChatRooms, userLocation]);
 
   useEffect(() => {
     let cancelled = false;
@@ -631,110 +439,12 @@ export default function useMapExplorer({
     [isOffline, shiftLocation]
   );
 
-  const handleMapPinSelect = useCallback(
-    (pin) => {
-      if (!pin || !showChatRooms) {
-        return;
-      }
-      if (pin.type === 'chat-room' || pin.type === 'global-chat-room') {
-        setSelectedChatRoomId(pin._id ?? null);
-      }
-    },
-    [showChatRooms]
-  );
-
-  const chatRoomPins = useMemo(() => {
-    if (!showChatRooms) {
-      return [];
-    }
-
-    return chatRooms
-      .map((room, index) => {
-        const coordinatesArray = room?.coordinates?.coordinates || room?.location?.coordinates;
-        if (!Array.isArray(coordinatesArray) || coordinatesArray.length < 2) {
-          return null;
-        }
-        const [longitude, latitude] = coordinatesArray;
-        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-          return null;
-        }
-
-        const id = room?._id ? String(room._id) : `chat-room-${index}`;
-        const distance = hasValidCoordinates(userLocation)
-          ? haversineDistanceMeters(userLocation, { latitude, longitude })
-          : null;
-
-        return {
-          _id: id,
-          title: room?.name || 'Chat room',
-          type: room?.isGlobal ? 'global-chat-room' : 'chat-room',
-          coordinates: {
-            type: 'Point',
-            coordinates: [longitude, latitude]
-          },
-          proximityRadiusMeters: Number.isFinite(room?.radiusMeters) ? room.radiusMeters : undefined,
-          description: room?.description || undefined,
-          distanceMeters: Number.isFinite(distance) ? distance : undefined,
-          metadata: room
-        };
-      })
-      .filter(Boolean);
-  }, [chatRooms, showChatRooms, userLocation]);
-
   const combinedPins = useMemo(() => {
     if (!showChatRooms) {
       return pins;
     }
     return [...pins, ...chatRoomPins];
   }, [chatRoomPins, pins, showChatRooms]);
-
-  const selectedChatRoom = useMemo(() => {
-    if (!selectedChatRoomId) {
-      return null;
-    }
-    return chatRooms.find((room) => String(room?._id) === String(selectedChatRoomId)) ?? null;
-  }, [chatRooms, selectedChatRoomId]);
-
-  const selectedChatRoomPin = useMemo(() => {
-    if (!selectedChatRoomId) {
-      return null;
-    }
-    return chatRoomPins.find((pin) => pin._id === selectedChatRoomId) ?? null;
-  }, [chatRoomPins, selectedChatRoomId]);
-
-  const selectedChatRoomDistanceLabel = useMemo(() => {
-    const miles = formatDistanceMiles(selectedChatRoomPin?.distanceMeters, { decimals: 2 });
-    return miles ? `${miles} mi` : null;
-  }, [selectedChatRoomPin]);
-
-  const selectedChatRoomRadiusLabel = useMemo(() => {
-    if (!selectedChatRoom || !Number.isFinite(selectedChatRoom.radiusMeters)) {
-      return null;
-    }
-    const miles = formatDistanceMiles(selectedChatRoom.radiusMeters, { decimals: 2 });
-    return miles
-      ? `${Math.round(selectedChatRoom.radiusMeters)} m (${miles} mi)`
-      : `${Math.round(selectedChatRoom.radiusMeters)} m`;
-  }, [selectedChatRoom]);
-
-  useEffect(() => {
-    if (!selectedChatRoomId) {
-      return;
-    }
-    if (!chatRooms.some((room) => String(room?._id) === String(selectedChatRoomId))) {
-      setSelectedChatRoomId(null);
-    }
-  }, [chatRooms, selectedChatRoomId]);
-
-  useEffect(() => {
-    if (!showChatRooms || !chatRoomPins.length) {
-      return;
-    }
-    if (!selectedChatRoomId) {
-      const first = chatRoomPins[0];
-      setSelectedChatRoomId(first._id ?? null);
-    }
-  }, [chatRoomPins, selectedChatRoomId, showChatRooms]);
 
   const shareDisabled = isOffline || !hasValidCoordinates(userLocation);
   const shareHelperText = isOffline

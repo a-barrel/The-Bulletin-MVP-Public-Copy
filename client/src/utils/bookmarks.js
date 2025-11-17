@@ -1,134 +1,101 @@
-/**
- * mapBookmarkToFeedItem: bookmark payloads include a nested pin preview, but PinCard expects the same
- * shape produced by mapPinToFeedItem (List). This adapter fills the gap so BookmarksPage can reuse the
- * exact card component without duplicating layout. Keep any bookmark-specific fallbacks here.
- */
 import toIdString from './ids';
-import resolveAssetUrl from './media';
 import { mapPinToFeedItem } from './pinFeedItem';
 
-const collectImages = (pin) => {
-  const result = [];
-  const pushAsset = (asset) => {
-    const resolved = resolveAssetUrl(asset);
-    if (resolved && !result.includes(resolved)) {
-      result.push(resolved);
-    }
-  };
+export const EMPTY_BOOKMARK_GROUP = 'Unsorted';
 
-  if (pin?.coverPhoto) {
-    pushAsset(pin.coverPhoto);
+export function formatBookmarkSavedDate(value) {
+  if (!value) {
+    return 'Unknown date';
   }
-
-  const collections = [pin?.photos, pin?.images, pin?.mediaAssets];
-  collections.forEach((set) => {
-    if (!Array.isArray(set)) {
-      return;
-    }
-    set.forEach(pushAsset);
+  const date = new Date(value);
+  return date.toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short'
   });
+}
 
-  return result;
-};
+export function groupBookmarksByCollection(bookmarks, collectionsById = new Map()) {
+  const groups = new Map();
+  bookmarks.forEach((bookmark) => {
+    const collectionId = bookmark.collectionId || null;
+    const collectionName = collectionsById.get(collectionId)?.name ?? EMPTY_BOOKMARK_GROUP;
+    if (!groups.has(collectionName)) {
+      groups.set(collectionName, []);
+    }
+    groups.get(collectionName).push(bookmark);
+  });
+  return Array.from(groups.entries()).map(([name, items]) => ({ name, items }));
+}
 
-const buildFallbackBookmarkItem = (bookmark) => {
-  const pin = bookmark.pin ?? {};
-  const pinId = toIdString(bookmark.pinId) ?? toIdString(pin?._id) ?? null;
-  const bookmarkId =
-    toIdString(bookmark._id) ??
-    toIdString(bookmark.id) ??
-    pinId ??
-    bookmark._id ??
-    bookmark.id ??
-    null;
-  const rawType = typeof pin?.type === 'string' ? pin.type.toLowerCase() : 'event';
-  const normalizedType = rawType === 'discussion' || rawType === 'chat' ? 'discussion' : 'pin';
-  const creatorId =
-    toIdString(pin?.creatorId) ??
-    toIdString(pin?.creator?._id) ??
-    toIdString(pin?.creator?._id?.$oid) ??
-    null;
-  const viewerId = toIdString(bookmark.userId);
-  const viewerOwnsPin = Boolean(creatorId && viewerId && creatorId === viewerId);
-  const title =
-    typeof pin?.title === 'string' && pin.title.trim() ? pin.title.trim() : 'Untitled pin';
-  const noteText =
-    typeof bookmark?.notes === 'string' && bookmark.notes.trim()
-      ? bookmark.notes.trim()
-      : null;
-  const text = noteText ?? title;
-  const images = collectImages(pin);
-  const comments =
-    typeof pin?.stats?.replyCount === 'number' ? pin.stats.replyCount : undefined;
-  const participantCount =
-    typeof pin?.stats?.participantCount === 'number'
-      ? pin.stats.participantCount
-      : typeof pin?.participantCount === 'number'
-      ? pin.participantCount
-      : null;
+const FALLBACK_AUTHOR = 'Unknown creator';
+const FALLBACK_TITLE = 'Saved pin unavailable';
 
-  return {
-    id: bookmarkId,
-    _id: bookmarkId,
-    pinId,
-    type: normalizedType,
-    title,
-    text,
-    creator: pin?.creator,
-    creatorId,
-    authorId: creatorId,
-    comments,
-    images,
-    participantCount,
-    attendeeIds: [],
-    interested: [],
-    distance: null,
-    timeLabel: null,
-    viewerHasBookmarked: true,
-    isBookmarked: true,
-    viewerOwnsPin,
-    viewerIsAttending: Boolean(bookmark?.viewerIsAttending)
-  };
-};
-
-export const mapBookmarkToFeedItem = (bookmark, { viewerProfileId } = {}) => {
+export function mapBookmarkToFeedItem(bookmark, { viewerProfileId } = {}) {
   if (!bookmark) {
     return null;
   }
-  const pin = bookmark.pin ?? null;
-  const noteText =
-    typeof bookmark?.notes === 'string' && bookmark.notes.trim()
-      ? bookmark.notes.trim()
-      : null;
 
-  if (pin) {
-    try {
-      const mappedPin = mapPinToFeedItem(pin, { viewerProfileId });
-      if (mappedPin) {
-        const resolvedPinId =
-          mappedPin.pinId ?? toIdString(bookmark.pinId) ?? mappedPin._id ?? null;
-        const bookmarkId =
-          toIdString(bookmark._id) ??
-          toIdString(bookmark.id) ??
-          mappedPin._id ??
-          mappedPin.id ??
-          resolvedPinId;
-        return {
-          ...mappedPin,
-          id: bookmarkId,
-          _id: bookmarkId,
-          pinId: resolvedPinId,
-          text: noteText ?? mappedPin.text,
-          viewerHasBookmarked: true,
-          isBookmarked: true,
-          viewerIsAttending: Boolean(bookmark?.viewerIsAttending)
-        };
-      }
-    } catch (error) {
-      // Fallback handled below if mapPinToFeedItem throws
-      console.warn('Failed to map bookmark pin to feed item:', error);
-    }
+  const savedAt = bookmark.createdAt || bookmark.savedAt || null;
+  const bookmarkId = bookmark._id || bookmark.id || null;
+  const pinId =
+    toIdString(bookmark.pinId) ?? toIdString(bookmark?.pin?._id) ?? toIdString(bookmark.pin?._id?.$oid);
+
+  if (bookmark.pin) {
+    const feedItem = mapPinToFeedItem(bookmark.pin, { viewerProfileId }) || {};
+    return {
+      ...feedItem,
+      viewerHasBookmarked: true,
+      isBookmarked: true,
+      bookmarkId,
+      savedAt,
+      savedAtLabel: formatBookmarkSavedDate(savedAt)
+    };
   }
 
-  return buildFallbackBookmarkItem(bookmark);
-};
+  const creatorName =
+    bookmark.creator?.displayName ||
+    bookmark.creator?.username ||
+    bookmark.creatorName ||
+    FALLBACK_AUTHOR;
+  const creatorId =
+    toIdString(bookmark.creatorId) ??
+    toIdString(bookmark.creator?._id) ??
+    toIdString(bookmark.creator?._id?.$oid) ??
+    null;
+
+  const title =
+    typeof bookmark.title === 'string' && bookmark.title.trim().length > 0
+      ? bookmark.title.trim()
+      : FALLBACK_TITLE;
+  const type =
+    bookmark.pinType === 'discussion' || bookmark.type === 'discussion' ? 'discussion' : 'pin';
+
+  return {
+    id: pinId || bookmarkId,
+    _id: pinId || bookmarkId,
+    pinId: pinId || bookmarkId,
+    type,
+    tag: type === 'discussion' ? 'Discussion' : 'Event',
+    distance: null,
+    timeLabel: null,
+    text: title,
+    title,
+    images: [],
+    author: creatorName,
+    authorName: creatorName,
+    creatorId,
+    creator: bookmark.creator || null,
+    comments: 0,
+    interested: [],
+    participantCount: null,
+    attendeeIds: [],
+    attendeeVersion: null,
+    viewerHasBookmarked: true,
+    isBookmarked: true,
+    viewerOwnsPin: false,
+    viewerIsAttending: false,
+    bookmarkId,
+    savedAt,
+    savedAtLabel: formatBookmarkSavedDate(savedAt)
+  };
+}

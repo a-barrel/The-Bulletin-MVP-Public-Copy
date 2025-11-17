@@ -96,7 +96,7 @@ function DirectThreadList({
       {threadCount === 0 && !isLoading ? (
         <Box className="has-no-dms-container">
           <Typography
-            className="has-no-dms-body-text" 
+            className="has-no-dms-body-text"
             variant="body2"
           >
             You have no conversations yet. Start one from a profile page.

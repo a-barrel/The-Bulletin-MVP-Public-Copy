@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { createPin, uploadPinImage } from '../api/mongoDataApi';
-import { haversineDistanceMeters, metersToMiles, METERS_PER_MILE } from '../utils/geo';
-import { playBadgeSound } from '../utils/badgeSound';
-import reportClientError from '../utils/reportClientError';
-
-const MAX_PIN_DISTANCE_MILES = 50;
-const MAX_PIN_DISTANCE_METERS = MAX_PIN_DISTANCE_MILES * METERS_PER_MILE;
-const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
-const EVENT_MAX_LEAD_TIME_MS = 14 * MILLISECONDS_PER_DAY;
-const DISCUSSION_MAX_DURATION_MS = 3 * MILLISECONDS_PER_DAY;
-const FUTURE_TOLERANCE_MS = 60 * 1000;
+import { haversineDistanceMeters, metersToMiles } from '../utils/geo';
+import usePinMediaQueue from './pin/usePinMediaQueue';
+import usePinDraftPersistence from './pin/usePinDraftPersistence';
+import usePinSubmissionWorkflow from './pin/usePinSubmissionWorkflow';
+import {
+  extractReverseGeocodeFields,
+  formatDateTimeLocalInput
+} from '../utils/pinFormValidation';
+import {
+  MAX_PIN_DISTANCE_MILES,
+  MAX_PIN_DISTANCE_METERS,
+  MILLISECONDS_PER_DAY,
+  EVENT_MAX_LEAD_TIME_MS,
+  DISCUSSION_MAX_DURATION_MS,
+  DEFAULT_APPROX_MESSAGE
+} from './pin/pinFormConstants';
 const MAX_PHOTO_UPLOADS = 3;
-const DRAFT_STORAGE_KEY = 'pinpoint:createPinDraft';
-const AUTOSAVE_DELAY_MS = 1500;
 
 const createInitialFormState = () => ({
   ...INITIAL_FORM_STATE,
@@ -61,128 +64,6 @@ const PIN_TYPE_THEMES = {
   }
 };
 
-const extractReverseGeocodeFields = (payload) => {
-  if (!payload) {
-    return null;
-  }
-
-  const address = payload.address ?? {};
-  const formatted = payload.display_name ?? null;
-  const city =
-    address.city ||
-    address.town ||
-    address.village ||
-    address.hamlet ||
-    address.municipality ||
-    address.county ||
-    null;
-  const state = address.state || address.region || address.state_district || null;
-  const postalCode = address.postcode || null;
-  const country = address.country || null;
-
-  if (!formatted && !city && !state && !country && !postalCode) {
-    return null;
-  }
-
-  return {
-    formatted,
-    city,
-    state,
-    postalCode,
-    country
-  };
-};
-
-const sanitizeNumberField = (value) => {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  const trimmed = `${value}`.trim();
-  if (!trimmed) {
-    return null;
-  }
-  const parsed = Number.parseFloat(trimmed);
-  if (Number.isNaN(parsed)) {
-    throw new Error(`"${value}" is not a valid number.`);
-  }
-  return parsed;
-};
-
-const formatDateTimeLocalInput = (date) => {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
-    return '';
-  }
-  const pad = (input) => String(input).padStart(2, '0');
-  const year = date.getFullYear();
-  const month = pad(date.getMonth() + 1);
-  const day = pad(date.getDate());
-  const hours = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-};
-
-const formatDateForMessage = (date) => {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
-    return 'the specified date';
-  }
-  return date.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  });
-};
-
-const sanitizeDateField = (value, label, options = {}) => {
-  const trimmed = `${value ?? ''}`.trim();
-  if (!trimmed) {
-    throw new Error(`${label} is required.`);
-  }
-  const date = new Date(trimmed);
-  if (Number.isNaN(date.getTime())) {
-    throw new Error(`${label} must be a valid date/time.`);
-  }
-
-  const {
-    allowPast = false,
-    min,
-    max,
-    minMessage,
-    maxMessage,
-    toleranceMs = FUTURE_TOLERANCE_MS
-  } = options;
-
-  if (!allowPast) {
-    const now = Date.now();
-    if (date.getTime() < now - toleranceMs) {
-      throw new Error(`${label} cannot be in the past.`);
-    }
-  }
-
-  if (min) {
-    const minDate = min instanceof Date ? min : new Date(min);
-    if (Number.isNaN(minDate.getTime())) {
-      throw new Error(`${label} has an invalid minimum date.`);
-    }
-    if (date.getTime() < minDate.getTime()) {
-      throw new Error(minMessage ?? `${label} must be on or after ${formatDateForMessage(minDate)}.`);
-    }
-  }
-
-  if (max) {
-    const maxDate = max instanceof Date ? max : new Date(max);
-    if (Number.isNaN(maxDate.getTime())) {
-      throw new Error(`${label} has an invalid maximum date.`);
-    }
-    if (date.getTime() > maxDate.getTime()) {
-      throw new Error(maxMessage ?? `${label} must be on or before ${formatDateForMessage(maxDate)}.`);
-    }
-  }
-
-  return date;
-};
-
 const noop = () => {};
 
 export default function useCreatePinForm({
@@ -197,17 +78,39 @@ export default function useCreatePinForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState(null);
   const [createdPin, setCreatedPin] = useState(null);
-  const [photoAssets, setPhotoAssets] = useState([]);
-  const [coverPhotoId, setCoverPhotoId] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState(null);
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [locationStatus, setLocationStatus] = useState(null);
-  const [draftStatus, setDraftStatus] = useState(null);
 
-  const autosaveTimeoutRef = useRef(null);
-  const draftInitializedRef = useRef(false);
-  const skipNextAutosaveRef = useRef(false);
+  const {
+    photoAssets,
+    coverPhotoId,
+    isUploading,
+    uploadStatus,
+    clearUploadStatus,
+    handleImageSelection,
+    handleRemovePhoto,
+    handleSetCoverPhoto,
+    hydrateMedia,
+    resetMedia
+  } = usePinMediaQueue({ isOffline, maxPhotos: MAX_PHOTO_UPLOADS });
+
+  const {
+    draftStatus,
+    handleSaveDraft,
+    clearDraft,
+    clearDraftStatus
+  } = usePinDraftPersistence({
+    pinType,
+    setPinType,
+    autoDelete,
+    setAutoDelete,
+    formState,
+    setFormState,
+    photoAssets,
+    coverPhotoId,
+    hydrateMedia
+  });
+
   const lastReverseGeocodeRef = useRef(null);
 
   const viewerCoordinates = useMemo(() => {
@@ -237,145 +140,10 @@ export default function useCreatePinForm({
         ...prev,
         latitude: latEmpty ? formattedLat : prev.latitude,
         longitude: lngEmpty ? formattedLng : prev.longitude,
-        approxFormatted: approxEmpty ? 'Near your current location' : prev.approxFormatted
+        approxFormatted: approxEmpty ? DEFAULT_APPROX_MESSAGE : prev.approxFormatted
       };
     });
   }, [viewerCoordinates]);
-
-  const writeDraft = useCallback(() => {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-
-    const draftPayload = {
-      version: 1,
-      pinType,
-      autoDelete,
-      formState,
-      photoAssets,
-      coverPhotoId,
-      timestamp: Date.now()
-    };
-
-    try {
-      window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftPayload));
-      return true;
-    } catch (error) {
-      reportClientError(error, 'Failed to save pin draft', {
-        source: 'useCreatePinForm.saveDraft'
-      });
-      return false;
-    }
-  }, [autoDelete, coverPhotoId, formState, photoAssets, pinType]);
-
-  const clearDraft = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.removeItem(DRAFT_STORAGE_KEY);
-      } catch (error) {
-        console.warn('Failed to clear saved pin draft', error);
-      }
-    }
-    skipNextAutosaveRef.current = true;
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      draftInitializedRef.current = true;
-      skipNextAutosaveRef.current = true;
-      return;
-    }
-
-    try {
-      const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
-      if (!raw) {
-        return;
-      }
-
-      const data = JSON.parse(raw);
-      if (data && typeof data === 'object') {
-        if (data.pinType === 'event' || data.pinType === 'discussion') {
-          setPinType(data.pinType);
-        }
-        if (typeof data.autoDelete === 'boolean') {
-          setAutoDelete(data.autoDelete);
-        }
-        if (data.formState && typeof data.formState === 'object') {
-          setFormState((prev) => ({
-            ...prev,
-            ...data.formState
-          }));
-        }
-        if (Array.isArray(data.photoAssets)) {
-          setPhotoAssets(data.photoAssets);
-        }
-        if (typeof data.coverPhotoId === 'string' && data.coverPhotoId.trim()) {
-          setCoverPhotoId(data.coverPhotoId);
-        }
-
-        setDraftStatus({
-          type: 'info',
-          message: 'Draft restored from your last session.'
-        });
-      }
-    } catch (error) {
-      console.warn('Failed to load saved pin draft', error);
-    } finally {
-      draftInitializedRef.current = true;
-      skipNextAutosaveRef.current = true;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!draftInitializedRef.current) {
-      return;
-    }
-
-    if (skipNextAutosaveRef.current) {
-      skipNextAutosaveRef.current = false;
-      return;
-    }
-
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    if (autosaveTimeoutRef.current) {
-      window.clearTimeout(autosaveTimeoutRef.current);
-    }
-
-    autosaveTimeoutRef.current = window.setTimeout(() => {
-      const success = writeDraft();
-      if (success) {
-        setDraftStatus({
-          type: 'info',
-          message: `Draft saved at ${new Date().toLocaleTimeString([], {
-            hour: 'numeric',
-            minute: '2-digit'
-          })}.`
-        });
-      }
-    }, AUTOSAVE_DELAY_MS);
-
-    return () => {
-      if (autosaveTimeoutRef.current) {
-        window.clearTimeout(autosaveTimeoutRef.current);
-      }
-    };
-  }, [autoDelete, coverPhotoId, formState, photoAssets, pinType, writeDraft]);
-
-  useEffect(() => {
-    if (!draftStatus || typeof window === 'undefined') {
-      return;
-    }
-    const timeoutId = window.setTimeout(
-      () => setDraftStatus(null),
-      draftStatus.type === 'error' ? 8000 : 4000
-    );
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [draftStatus]);
 
   const activeTheme = useMemo(() => PIN_TYPE_THEMES[pinType], [pinType]);
 
@@ -632,319 +400,30 @@ export default function useCreatePinForm({
     setFormState(createInitialFormState());
     setAutoDelete(true);
     setStatus(null);
-    setDraftStatus(null);
+    clearDraftStatus();
     setCreatedPin(null);
-    setPhotoAssets([]);
-    setCoverPhotoId(null);
-    setUploadStatus(null);
+    resetMedia();
+    clearUploadStatus();
     setLocationStatus(null);
     setIsReverseGeocoding(false);
-    setIsUploading(false);
-  }, [clearDraft]);
+  }, [clearDraft, clearDraftStatus, clearUploadStatus, resetMedia]);
 
-  const handleSaveDraft = useCallback(() => {
-    const success = writeDraft();
-    setDraftStatus({
-      type: success ? 'success' : 'error',
-      message: success ? 'Draft saved.' : 'Unable to save draft locally.'
-    });
-  }, [writeDraft]);
-
-  useEffect(() => {
-    if (!photoAssets.length) {
-      if (coverPhotoId !== null) {
-        setCoverPhotoId(null);
-      }
-      return;
-    }
-
-    if (!coverPhotoId || !photoAssets.some((photo) => photo.id === coverPhotoId)) {
-      setCoverPhotoId(photoAssets[0].id);
-    }
-  }, [coverPhotoId, photoAssets]);
-
-  const handleImageSelection = useCallback(
-    async (event) => {
-      const files = Array.from(event.target.files ?? []);
-      if (!files.length) {
-        return;
-      }
-
-      if (isOffline) {
-        setUploadStatus({ type: 'warning', message: 'You are offline. Connect to upload images.' });
-        event.target.value = '';
-        return;
-      }
-
-      const remainingSlots = MAX_PHOTO_UPLOADS - photoAssets.length;
-      if (remainingSlots <= 0) {
-        setUploadStatus({
-          type: 'warning',
-          message: `You can attach up to ${MAX_PHOTO_UPLOADS} images per pin.`
-        });
-        event.target.value = '';
-        return;
-      }
-
-      const filesToUpload = files.slice(0, remainingSlots);
-      if (filesToUpload.length < files.length) {
-        setUploadStatus({
-          type: 'info',
-          message: `Only the first ${filesToUpload.length} image${
-            filesToUpload.length === 1 ? '' : 's'
-          } were queued (max ${MAX_PHOTO_UPLOADS}).`
-        });
-      }
-
-      setIsUploading(true);
-      const successfulUploads = [];
-      const failedUploads = [];
-
-      for (const file of filesToUpload) {
-        try {
-          const uploaded = await uploadPinImage(file);
-          successfulUploads.push({
-            id: window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
-            asset: {
-              url: uploaded.url,
-              width: uploaded.width,
-              height: uploaded.height,
-              mimeType: uploaded.mimeType ?? (file.type || 'image/jpeg'),
-              description: uploaded.fileName || file.name || 'Pin image'
-            }
-          });
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : `Failed to upload ${file.name || 'image'}.`;
-          failedUploads.push(message);
-        }
-      }
-
-      if (successfulUploads.length) {
-        setPhotoAssets((prev) => [...prev, ...successfulUploads]);
-      }
-
-      if (failedUploads.length && successfulUploads.length) {
-        setUploadStatus({
-          type: 'warning',
-          message: `Uploaded ${successfulUploads.length} image${
-            successfulUploads.length === 1 ? '' : 's'
-          }, but ${failedUploads.length} failed. ${failedUploads[0]}`
-        });
-      } else if (failedUploads.length) {
-        setUploadStatus({ type: 'error', message: failedUploads[0] });
-      } else if (successfulUploads.length) {
-        setUploadStatus({
-          type: 'success',
-          message: `Uploaded ${successfulUploads.length} image${
-            successfulUploads.length === 1 ? '' : 's'
-          }.`
-        });
-      }
-
-      setIsUploading(false);
-      event.target.value = '';
-    },
-    [isOffline, photoAssets.length]
-  );
-
-  const handleRemovePhoto = useCallback((photoId) => {
-    setPhotoAssets((prev) => prev.filter((photo) => photo.id !== photoId));
-    setUploadStatus({ type: 'info', message: 'Removed image from pin.' });
-  }, []);
-
-  const handleSetCoverPhoto = useCallback((photoId) => {
-    setCoverPhotoId(photoId);
-    setUploadStatus({ type: 'success', message: 'Cover photo updated.' });
-  }, []);
-
-  const handleSubmit = useCallback(
-    async (event) => {
-      event.preventDefault();
-      setStatus(null);
-
-      if (isOffline) {
-        setStatus({ type: 'warning', message: 'You are offline. Connect to publish a pin.' });
-        return;
-      }
-
-      try {
-        const latitude = sanitizeNumberField(formState.latitude);
-        const longitude = sanitizeNumberField(formState.longitude);
-
-        if (latitude === null || latitude < -90 || latitude > 90) {
-          throw new Error('Latitude must be between -90 and 90.');
-        }
-        if (longitude === null || longitude < -180 || longitude > 180) {
-          throw new Error('Longitude must be between -180 and 180.');
-        }
-
-        if (!viewerCoordinates) {
-          throw new Error(
-            'We need your current location to confirm this pin. Enable location sharing and try again.'
-          );
-        }
-        const distanceMeters = haversineDistanceMeters(viewerCoordinates, {
-          latitude,
-          longitude
-        });
-        if (!Number.isFinite(distanceMeters)) {
-          throw new Error('Unable to validate the selected location. Please try again.');
-        }
-        if (distanceMeters > MAX_PIN_DISTANCE_METERS) {
-          const miles = metersToMiles(distanceMeters);
-          const distanceLabel =
-            miles === null ? 'farther than allowed' : `${miles.toFixed(1)} miles away`;
-          throw new Error(
-            `Pins must be within ${MAX_PIN_DISTANCE_MILES} miles of you. This spot is about ${distanceLabel}.`
-          );
-        }
-
-        const title = formState.title.trim();
-        const description = formState.description.trim();
-        if (!title) {
-          throw new Error('Title is required.');
-        }
-        if (!description) {
-          throw new Error('Description is required.');
-        }
-
-        const proximityMiles = sanitizeNumberField(formState.proximityRadiusMiles);
-        if (proximityMiles !== null && proximityMiles <= 0) {
-          throw new Error('Proximity radius must be greater than zero.');
-        }
-
-        const submissionNow = new Date();
-        const eventMaxDate = new Date(submissionNow.getTime() + EVENT_MAX_LEAD_TIME_MS);
-        const discussionMaxDate = new Date(submissionNow.getTime() + DISCUSSION_MAX_DURATION_MS);
-
-        const payload = {
-          type: pinType,
-          title,
-          description,
-          coordinates: {
-            latitude,
-            longitude
-          },
-          proximityRadiusMeters:
-            proximityMiles !== null ? Math.round(proximityMiles * METERS_PER_MILE) : undefined
-        };
-
-        if (pinType === 'event') {
-          const startDate = sanitizeDateField(formState.startDate, 'Start date', {
-            max: eventMaxDate,
-            maxMessage: 'Events can only be scheduled up to 14 days in advance.'
-          });
-          const endDate = sanitizeDateField(formState.endDate, 'End date', {
-            min: startDate,
-            minMessage: 'End date must be on or after the start date.',
-            max: eventMaxDate,
-            maxMessage: 'Events can only be scheduled up to 14 days in advance.'
-          });
-
-          payload.startDate = startDate.toISOString();
-          payload.endDate = endDate.toISOString();
-
-          const precise = formState.addressPrecise.trim();
-          const city = formState.addressCity.trim();
-          const state = formState.addressState.trim();
-          const postalCode = formState.addressPostalCode.trim();
-          const country = formState.addressCountry.trim();
-
-          if (precise) {
-            const components = {
-              city: city || undefined,
-              state: state || undefined,
-              postalCode: postalCode || undefined,
-              country: country || undefined
-            };
-
-            payload.address = {
-              precise,
-              components: Object.values(components).some(Boolean) ? components : undefined
-            };
-          }
-        } else {
-          const expiresAt = sanitizeDateField(formState.expiresAt, 'Expiration date', {
-            max: discussionMaxDate,
-            maxMessage: 'Discussions can only stay active for up to 3 days.'
-          });
-          payload.expiresAt = expiresAt.toISOString();
-          payload.autoDelete = autoDelete;
-
-          const approximateAddress = {
-            formatted: formState.approxFormatted.trim() || undefined,
-            city: formState.approxCity.trim() || undefined,
-            state: formState.approxState.trim() || undefined,
-            country: formState.approxCountry.trim() || undefined
-          };
-
-          if (Object.values(approximateAddress).some(Boolean)) {
-            payload.approximateAddress = approximateAddress;
-          }
-        }
-
-        if (photoAssets.length > 0) {
-          payload.photos = photoAssets.map((photo) => ({
-            url: photo.asset.url,
-            width: photo.asset.width,
-            height: photo.asset.height,
-            mimeType: photo.asset.mimeType,
-            description: photo.asset.description
-          }));
-
-          const selectedCover =
-            photoAssets.find((photo) => photo.id === coverPhotoId) ?? photoAssets[0];
-          if (selectedCover) {
-            payload.coverPhoto = {
-              url: selectedCover.asset.url,
-              width: selectedCover.asset.width,
-              height: selectedCover.asset.height,
-              mimeType: selectedCover.asset.mimeType,
-              description: selectedCover.asset.description
-            };
-          }
-        }
-
-        setIsSubmitting(true);
-        const result = await createPin(payload);
-        setCreatedPin(result);
-        if (result?._badgeEarnedId) {
-          playBadgeSound();
-          announceBadgeEarned(result._badgeEarnedId);
-        }
-        setStatus({
-          type: 'success',
-          message: result?._id
-            ? `Pin created successfully (ID: ${result._id}).`
-            : 'Pin created successfully.'
-        });
-        clearDraft();
-        setDraftStatus(null);
-        onPinCreated(result);
-      } catch (error) {
-        setStatus({
-          type: 'error',
-          message: error?.message || 'Failed to create pin.'
-        });
-        return;
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
-    [
-      announceBadgeEarned,
-      autoDelete,
-      clearDraft,
-      coverPhotoId,
-      formState,
-      isOffline,
-      onPinCreated,
-      photoAssets,
-      pinType,
-      viewerCoordinates
-    ]
-  );
+  const { handleSubmit } = usePinSubmissionWorkflow({
+    formState,
+    pinType,
+    autoDelete,
+    viewerCoordinates,
+    photoAssets,
+    coverPhotoId,
+    isOffline,
+    announceBadgeEarned,
+    clearDraft,
+    clearDraftStatus,
+    onPinCreated,
+    setStatus,
+    setIsSubmitting,
+    setCreatedPin
+  });
 
   const resultJson = useMemo(() => {
     if (!createdPin) {
@@ -954,8 +433,6 @@ export default function useCreatePinForm({
   }, [createdPin]);
 
   const clearStatus = useCallback(() => setStatus(null), []);
-  const clearDraftStatus = useCallback(() => setDraftStatus(null), []);
-  const clearUploadStatus = useCallback(() => setUploadStatus(null), []);
   const clearLocationStatus = useCallback(() => setLocationStatus(null), []);
 
   return {
@@ -1001,4 +478,5 @@ export default function useCreatePinForm({
   };
 }
 
-export { PIN_TYPE_THEMES, sanitizeNumberField, sanitizeDateField, formatDateTimeLocalInput };
+export { PIN_TYPE_THEMES, formatDateTimeLocalInput };
+export { sanitizeNumberField, sanitizeDateField } from '../utils/pinFormValidation';

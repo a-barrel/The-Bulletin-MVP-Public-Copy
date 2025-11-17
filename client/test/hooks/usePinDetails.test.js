@@ -58,7 +58,7 @@ describe('usePinDetails', () => {
       bookmarkCount: 3,
       participantCount: 1,
       stats: { replyCount: 2 },
-      creator: { displayName: 'Alex' }
+      creator: { _id: 'alex-1', displayName: 'Alex' }
     });
     mockApi.fetchReplies.mockResolvedValue([
       {
@@ -87,19 +87,21 @@ describe('usePinDetails', () => {
       })
     );
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(result.current.status.isLoading).toBe(false));
 
     expect(mockApi.fetchPinById).toHaveBeenCalledWith('pin-1', expect.objectContaining({ previewMode: '' }));
     expect(result.current.pin?.title).toBe('Festival');
-    expect(result.current.replyItems[0].message).toBe('Looking forward to it!');
-    expect(result.current.replyItems[0].createdLabel).toBeTruthy();
+    expect(result.current.replyState.items[0].message).toBe('Looking forward to it!');
+    expect(result.current.replyState.items[0].createdLabel).toBeTruthy();
 
     await act(async () => {
-      result.current.openAttendeeOverlay();
+      result.current.attendeeState.openOverlay();
     });
-    await waitFor(() => expect(result.current.isLoadingAttendees).toBe(false));
-    expect(result.current.attendeeItems).toHaveLength(2);
-    expect(result.current.creatorProfileLink?.pathname).toBe('/profile/Alex');
+    await waitFor(() => expect(result.current.attendeeState.isLoading).toBe(false));
+    expect(result.current.attendeeState.items).toHaveLength(2);
+    await waitFor(() =>
+      expect(result.current.viewState.creatorProfileLink?.pathname).toContain('/profile/alex-1')
+    );
   });
 
   it('surfaces offline messaging when attempting actions without connectivity', async () => {
@@ -122,21 +124,21 @@ describe('usePinDetails', () => {
       })
     );
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(result.current.status.isLoading).toBe(false));
 
     act(() => {
-      result.current.handleToggleBookmark();
+      result.current.bookmarkState.toggle();
     });
-    expect(result.current.bookmarkError).toMatch(/offline/i);
+    expect(result.current.bookmarkState.error).toMatch(/offline/i);
 
     act(() => {
-      result.current.openReplyComposer();
+      result.current.replyState.openComposer();
     });
-    expect(result.current.submitReplyError).toMatch(/offline/i);
+    expect(result.current.replyState.submitError).toMatch(/offline/i);
 
     await act(async () => {
-      await result.current.handleSubmitReply();
+      await result.current.replyState.submit();
     });
-    expect(result.current.submitReplyError).toMatch(/offline/i);
+    expect(result.current.replyState.submitError).toMatch(/offline/i);
   });
 });

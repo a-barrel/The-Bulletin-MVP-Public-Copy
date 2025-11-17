@@ -1449,6 +1449,28 @@ export async function respondToFriendRequest(requestId, decision) {
   return payload;
 }
 
+export async function cancelFriendRequest(requestId) {
+  if (!requestId) {
+    throw new Error('requestId is required to cancel a friend request');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(
+    `${baseUrl}/api/debug/friends/requests/${encodeURIComponent(requestId)}`,
+    {
+      method: 'DELETE',
+      headers: await buildHeaders()
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, 'Failed to cancel friend request');
+  }
+
+  return payload;
+}
+
 export async function removeFriendRelationship(friendId) {
   if (!friendId) {
     throw new Error('friendId is required to remove a friend');

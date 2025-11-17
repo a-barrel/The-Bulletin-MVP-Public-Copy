@@ -17,7 +17,7 @@
     "seed:samples": "cd server && npm run seed:samples",
     "install:all": "npm install && cd server && npm install && cd ../client && npm install",
     "clean:uploads": "node scripts/clean-runtime-uploads.js",
-    "lint": "eslint .",
+    "lint": "eslint client server",
     "test": "jest",
     "test:watch": "jest --watch",
     "server:firebase": "cross-env PORT=8000 GOOGLE_APPLICATION_CREDENTIALS=\"../.vscode/bulletin-app-6548a-firebase-adminsdk-fbsvc-33332cd77e.json\" FIREBASE_AUTH_EMULATOR_HOST= PINPOINT_RUNTIME_MODE=online npm --prefix server run dev",

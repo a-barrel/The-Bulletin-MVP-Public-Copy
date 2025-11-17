@@ -1,12 +1,2 @@
-node_modules/
-client/node_modules/
-server/node_modules/
-client/dist/
-server/dist/
-dist/
-build/
-emulator-data/
-coverage/
+firebase-debug.log
 DEV_LOGS/
-firebase-debug*.log
-**/firebase-debug*.log

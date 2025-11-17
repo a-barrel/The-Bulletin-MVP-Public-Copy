@@ -2,19 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { registerPushToken } from '../api/mongoDataApi';
 import { registerMessagingServiceWorker, requestPushToken } from '../firebaseMessaging';
-
-const PUSH_PROMPT_DISMISS_KEY = 'pinpoint:pushPromptDismissed';
-
-const getInitialDismissedState = () => {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-  try {
-    return window.localStorage.getItem(PUSH_PROMPT_DISMISS_KEY) === 'true';
-  } catch {
-    return false;
-  }
-};
+import usePushPromptDismissal from './usePushPromptDismissal';
 
 export default function usePushNotifications() {
   const isSupported =
@@ -24,7 +12,6 @@ export default function usePushNotifications() {
 
   const [status, setStatus] = useState(null);
   const [isEnabling, setIsEnabling] = useState(false);
-  const [promptDismissed, setPromptDismissed] = useState(getInitialDismissedState);
 
   const permission = useMemo(() => {
     if (!isSupported) {
@@ -32,6 +19,11 @@ export default function usePushNotifications() {
     }
     return Notification.permission;
   }, [isSupported]);
+
+  const [promptDismissed, dismissPrompt] = usePushPromptDismissal(
+    'pinpoint:pushPromptDismissed',
+    permission
+  );
 
   const requestPermission = useCallback(async () => {
     if (!isSupported) {
@@ -56,12 +48,7 @@ export default function usePushNotifications() {
       const token = await requestPushToken();
       await registerPushToken(token, { platform: 'web' });
       setStatus({ type: 'success', message: 'Push notifications enabled.' });
-      try {
-        window.localStorage.setItem(PUSH_PROMPT_DISMISS_KEY, 'true');
-      } catch {
-        // ignore storage errors
-      }
-      setPromptDismissed(true);
+      dismissPrompt();
       return token;
     } catch (error) {
       const message = error?.message || 'Failed to enable notifications.';
@@ -71,17 +58,6 @@ export default function usePushNotifications() {
       setIsEnabling(false);
     }
   }, [isSupported, permission]);
-
-  const dismissPrompt = useCallback(() => {
-    setPromptDismissed(true);
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(PUSH_PROMPT_DISMISS_KEY, 'true');
-      } catch {
-        // ignore
-      }
-    }
-  }, []);
 
   return {
     isSupported,
