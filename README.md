@@ -100,7 +100,7 @@ This launches the Express backend on port 8000 and the Vite dev server on 5173. 
 - When running in offline mode, those timing entries are also mirrored into `DEV_LOGS/` (git ignored) so you can capture and share traces without copy/paste.
 - Offline runs also record any HTTP responses with status ≥ 400 to `DEV_LOGS/http-errors.log`, alongside the console warning.
 - Fatal crashes (`uncaughtException`, `unhandledRejection`) log to `DEV_LOGS/runtime-errors.log` before the process exits, so you keep the stack trace even if the terminal scrolls.
-- External integration failures (Firebase syncs, Tenor, analytics, etc.) append to `DEV_LOGS/integrations.log` in offline mode for easier debugging. When the Firebase emulator produces `firebase-debug.log`, it is automatically moved into `DEV_LOGS/` with a symlink left behind.
+- External integration failures (Firebase syncs, Tenor, analytics, etc.) append to `DEV_LOGS/integrations.log` in offline mode for easier debugging. Firebase emulator noise is muted by default—any `firebase-debug.log` files are deleted instead of relocated. Set `PINPOINT_DISABLE_FIREBASE_DEBUG_LOGS=false` if you really need to keep those raw emulator logs.
 
 ### Additional Commands
 - `npm run server` - backend only (development)

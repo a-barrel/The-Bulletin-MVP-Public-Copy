@@ -33,10 +33,14 @@ const shouldLogToMongo = parseBoolean(
 const minMongoSeverityEnv = (process.env.PINPOINT_LOG_MONGO_MIN_SEVERITY || '').trim().toLowerCase();
 const minMongoSeverity =
   severityRank[minMongoSeverityEnv] !== undefined ? minMongoSeverityEnv : 'warn';
+const disableFirebaseDebugLogs = parseBoolean(
+  process.env.PINPOINT_DISABLE_FIREBASE_DEBUG_LOGS,
+  true
+);
 
 let cleaned = false;
 
-const relocateFirebaseDebugLogs = (dir) => {
+const manageFirebaseDebugLogs = (dir) => {
   const firebasePrefix = 'firebase-debug';
   const entries = fs.readdirSync(PROJECT_ROOT, { withFileTypes: true });
   for (const entry of entries) {
@@ -44,6 +48,15 @@ const relocateFirebaseDebugLogs = (dir) => {
       continue;
     }
     const sourcePath = path.join(PROJECT_ROOT, entry.name);
+    if (disableFirebaseDebugLogs) {
+      try {
+        fs.rmSync(sourcePath, { recursive: false, force: true });
+      } catch (removeError) {
+        console.warn('Failed to remove firebase debug log:', removeError);
+      }
+      continue;
+    }
+
     const destPath = path.join(dir, entry.name);
     try {
       fs.renameSync(sourcePath, destPath);
@@ -74,7 +87,7 @@ const ensureLogDir = () => {
       }
       cleaned = true;
     }
-    relocateFirebaseDebugLogs(LOG_ROOT);
+    manageFirebaseDebugLogs(LOG_ROOT);
     return LOG_ROOT;
   } catch (error) {
     console.warn('Failed to create DEV_LOGS directory:', error);
