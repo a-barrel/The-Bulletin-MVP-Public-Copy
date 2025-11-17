@@ -72,14 +72,17 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
 
   const viewerId = viewerProfile?._id ? String(viewerProfile._id) : null;
   const effectiveUserId = effectiveUser?._id ? String(effectiveUser._id) : null;
-  const canEditProfile =
-    !userFromState &&
-    (shouldLoadCurrentUser || (viewerId && effectiveUserId && viewerId === effectiveUserId));
   const targetProfileId = effectiveUserId
     ? effectiveUserId
     : targetUserId && targetUserId !== 'me'
     ? targetUserId
     : null;
+
+  const normalizedTargetProfileId = targetProfileId ? String(targetProfileId) : null;
+  const isOwnProfile =
+    Boolean(viewerId && normalizedTargetProfileId && viewerId === normalizedTargetProfileId) ||
+    (shouldLoadCurrentUser && !!viewerId);
+  const canEditProfile = Boolean(isOwnProfile && !isOffline);
 
   const {
     relationshipStatus,
@@ -228,6 +231,7 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
     isBlocked,
     canManageBlock,
     isViewingSelf,
+    canEditProfile,
     handleOpenMutualFriend,
     viewerProfile,
     setViewerProfile,
