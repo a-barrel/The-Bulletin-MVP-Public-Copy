@@ -8,6 +8,13 @@ const {
 
 const UserStatusSchema = z.enum(['active', 'inactive', 'suspended', 'deleted']);
 
+const QuietHoursEntrySchema = z.object({
+  day: z.enum(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']),
+  start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  end: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  enabled: z.boolean().default(true)
+});
+
 const NotificationPreferencesSchema = z
   .object({
     proximity: z.boolean().default(true),
@@ -24,7 +31,8 @@ const NotificationPreferencesSchema = z
     badgeUnlocks: z.boolean().default(true),
     moderationAlerts: z.boolean().default(true),
     dmMentions: z.boolean().default(true),
-    emailDigests: z.boolean().default(false)
+    emailDigests: z.boolean().default(false),
+    quietHours: z.array(QuietHoursEntrySchema).default([])
   })
   .partial();
 

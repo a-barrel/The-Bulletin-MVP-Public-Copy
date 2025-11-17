@@ -18,6 +18,8 @@ const router = express.Router();
 
 const DATA_EXPORT_COOLDOWN_MS = 5 * 60 * 1000;
 const MAX_ACTIVE_API_TOKENS = 10;
+const QUIET_HOUR_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const QUIET_HOUR_TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const UsersQuerySchema = z.object({
   search: z.string().trim().optional(),
@@ -73,6 +75,36 @@ const hasDefinedValue = (value) => {
   return true;
 };
 
+const normalizeQuietHoursInput = (entries) => {
+  if (!Array.isArray(entries)) {
+    throw new Error('Quiet hours payload must be an array.');
+  }
+
+  return entries.map((entry) => {
+    if (!entry || typeof entry !== 'object') {
+      throw new Error('Quiet hours entry must be an object.');
+    }
+    const day = (entry.day || '').toLowerCase();
+    if (!QUIET_HOUR_DAYS.includes(day)) {
+      throw new Error(`Invalid quiet hours day: ${entry.day}`);
+    }
+    const start = typeof entry.start === 'string' ? entry.start : '';
+    const end = typeof entry.end === 'string' ? entry.end : '';
+    if (!QUIET_HOUR_TIME_REGEX.test(start) || !QUIET_HOUR_TIME_REGEX.test(end)) {
+      throw new Error('Quiet hours times must be in HH:MM 24h format.');
+    }
+    const enabled = entry.enabled !== false;
+    return { day, start, end, enabled };
+  });
+};
+
+const QuietHoursEntryUpdateSchema = z.object({
+  day: z.enum(QUIET_HOUR_DAYS),
+  start: z.string().regex(QUIET_HOUR_TIME_REGEX),
+  end: z.string().regex(QUIET_HOUR_TIME_REGEX),
+  enabled: z.boolean().optional()
+});
+
 const NotificationPreferencesUpdateSchema = z
   .object({
     proximity: z.boolean().optional(),
@@ -89,7 +121,8 @@ const NotificationPreferencesUpdateSchema = z
     badgeUnlocks: z.boolean().optional(),
     moderationAlerts: z.boolean().optional(),
     dmMentions: z.boolean().optional(),
-    emailDigests: z.boolean().optional()
+    emailDigests: z.boolean().optional(),
+    quietHours: z.array(QuietHoursEntryUpdateSchema).optional()
   })
   .optional();
 
@@ -669,6 +702,20 @@ router.patch('/me', verifyToken, async (req, res) => {
         }
         if (notifications.emailDigests !== undefined) {
           setDoc['preferences.notifications.emailDigests'] = notifications.emailDigests;
+        }
+        if (notifications.quietHours !== undefined) {
+          if (notifications.quietHours === null) {
+            setDoc['preferences.notifications.quietHours'] = [];
+          } else {
+            try {
+              const normalizedQuietHours = normalizeQuietHoursInput(notifications.quietHours);
+              setDoc['preferences.notifications.quietHours'] = normalizedQuietHours;
+            } catch (quietHoursError) {
+              return res
+                .status(400)
+                .json({ message: quietHoursError.message || 'Invalid quiet hours payload' });
+            }
+          }
         }
       }
       if (input.preferences.notificationsMutedUntil !== undefined) {

@@ -44,7 +44,7 @@ import {
   revokeApiToken
 } from '../api/mongoDataApi';
 import reportClientError from '../utils/reportClientError';
-import { formatFriendlyTimestamp } from '../utils/dates';
+import { formatFriendlyTimestamp, formatRelativeTime } from '../utils/dates';
 import { PIN_DENSITY_LEVELS } from '../utils/pinDensity';
 import TabPanel from '../components/settings/TabPanel';
 import AppearanceSettings from '../components/settings/AppearanceSettings';
@@ -96,6 +96,8 @@ function SettingsPage() {
     handleTextScaleChange,
     handleDisplayToggle,
     handleMapDensityChange,
+    handleQuietHoursChange,
+    handleApplyNotificationBundle,
     handleLocationSharingToggle,
     handleStatsVisibilityToggle,
     handleFilterCussWordsToggle,
@@ -115,6 +117,7 @@ function SettingsPage() {
     ...DEFAULT_SETTINGS.notifications,
     ...(settings.notifications || {})
   };
+  const quietHours = Array.isArray(notifications.quietHours) ? notifications.quietHours : [];
   const radiusMeters = settings.radiusPreferenceMeters ?? DEFAULT_SETTINGS.radiusPreferenceMeters;
   const rawRadiusMiles = metersToMiles(radiusMeters);
   const radiusMiles = rawRadiusMiles === null ? null : Math.round(rawRadiusMiles * 10) / 10;
@@ -198,6 +201,9 @@ function SettingsPage() {
   const muteStatusLabel = isMuteActive
     ? `Muted until ${formatFriendlyTimestamp(notificationsMutedUntil)}`
     : 'Notifications active';
+  const muteCountdownLabel = isMuteActive
+    ? `Ends ${formatRelativeTime(notificationsMutedUntil, { fallback: 'soon' })}`
+    : '';
 
   const loadApiTokens = useCallback(async () => {
     setIsLoadingTokens(true);
@@ -532,10 +538,14 @@ function SettingsPage() {
                 isFetchingProfile={isFetchingProfile}
                 isMuteActive={isMuteActive}
                 muteStatusLabel={muteStatusLabel}
+                muteCountdownLabel={muteCountdownLabel}
                 hasMuteTimer={Boolean(notificationsMutedUntil)}
                 onQuickMute={handleQuickMuteNotifications}
                 onClearMute={handleClearNotificationMute}
                 notifications={notifications}
+                quietHours={quietHours}
+                onQuietHoursChange={handleQuietHoursChange}
+                onApplyBundle={handleApplyNotificationBundle}
                 onToggleNotification={handleNotificationToggle}
                 digestFrequency={digestFrequency}
                 onDigestFrequencyChange={handleDigestFrequencyChange}

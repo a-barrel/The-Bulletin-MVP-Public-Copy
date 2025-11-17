@@ -20,6 +20,8 @@ const { PinPreviewSchema } = require('../schemas/pin');
 const { toIdString } = require('../utils/ids');
 const { logIntegration } = require('../utils/devLogger');
 
+const QUIET_HOUR_DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
 const toObjectId = (value) => {
   if (!value) return undefined;
   if (value instanceof mongoose.Types.ObjectId) {
@@ -39,6 +41,61 @@ const truncate = (value, length) => {
     return text;
   }
   return `${text.slice(0, length - 1).trimEnd()}...`;
+};
+
+const parseTimeToMinutes = (value) => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const [hourPart, minutePart] = value.split(':');
+  const hours = Number(hourPart);
+  const minutes = Number(minutePart);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) {
+    return null;
+  }
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return null;
+  }
+  return hours * 60 + minutes;
+};
+
+/**
+ * Quiet hours use hour/minute strings without timezone info, so we interpret them against the
+ * current UTC day/time. This keeps behaviour predictable across regions until per-user timezones land.
+ */
+const isWithinQuietHours = (preferences, referenceDate = new Date()) => {
+  const schedule = preferences?.notifications?.quietHours;
+  if (!Array.isArray(schedule) || schedule.length === 0) {
+    return false;
+  }
+
+  const currentDayKey = QUIET_HOUR_DAY_KEYS[referenceDate.getUTCDay()];
+  const entries = schedule.filter(
+    (entry) =>
+      entry &&
+      typeof entry.day === 'string' &&
+      entry.day.toLowerCase() === currentDayKey &&
+      entry.enabled !== false
+  );
+  if (!entries.length) {
+    return false;
+  }
+
+  const currentMinutes = referenceDate.getUTCHours() * 60 + referenceDate.getUTCMinutes();
+  return entries.some((entry) => {
+    const startMinutes = parseTimeToMinutes(entry.start);
+    const endMinutes = parseTimeToMinutes(entry.end);
+    if (startMinutes === null || endMinutes === null) {
+      return false;
+    }
+    if (startMinutes === endMinutes) {
+      return true;
+    }
+    if (startMinutes < endMinutes) {
+      return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+    }
+    return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+  });
 };
 
 const getDisplayName = (userDoc) => {
@@ -164,7 +221,8 @@ const filterRecipientsByPreference = async (recipientIds, options = {}) => {
   const {
     requireUpdates = true,
     requireChatTransitions = false,
-    notificationKeys = []
+    notificationKeys = [],
+    ignoreQuietHours = false
   } = options;
   const unique = Array.from(
     new Set(recipientIds.map((id) => toIdString(id)).filter(Boolean))
@@ -179,14 +237,16 @@ const filterRecipientsByPreference = async (recipientIds, options = {}) => {
     { preferences: 1 }
   ).lean();
 
+  const referenceDate = new Date();
   const allowed = new Set(
     users
       .filter((user) => {
-        const preferences = user?.preferences?.notifications || {};
-        if (requireUpdates && preferences.updates === false) {
+        const preferenceDoc = user?.preferences || {};
+        const notifications = preferenceDoc.notifications || {};
+        if (requireUpdates && notifications.updates === false) {
           return false;
         }
-        if (requireChatTransitions && preferences.chatTransitions === false) {
+        if (requireChatTransitions && notifications.chatTransitions === false) {
           return false;
         }
         const requiredKeys = Array.isArray(notificationKeys)
@@ -195,9 +255,12 @@ const filterRecipientsByPreference = async (recipientIds, options = {}) => {
           ? [notificationKeys]
           : [];
         for (const key of requiredKeys) {
-          if (preferences[key] === false) {
+          if (notifications[key] === false) {
             return false;
           }
+        }
+        if (!ignoreQuietHours && isWithinQuietHours(preferenceDoc, referenceDate)) {
+          return false;
         }
         const mutedUntil = user?.preferences?.notificationsMutedUntil;
         if (mutedUntil) {

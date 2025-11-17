@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS = {
   digestFrequency: 'weekly',
   autoExportReminders: false,
   notifications: {
+    quietHours: [],
     proximity: true,
     updates: true,
     pinCreated: true,
@@ -119,6 +120,36 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
       }
     }));
   }, [setSettings]);
+
+  const handleQuietHoursChange = useCallback((nextSchedule) => {
+    setSettings((prev) => ({
+      ...prev,
+      notifications: {
+        ...prev.notifications,
+        quietHours: Array.isArray(nextSchedule) ? nextSchedule : []
+      }
+    }));
+  }, [setSettings]);
+
+  const handleApplyNotificationBundle = useCallback(
+    (bundle) => {
+      if (!bundle || typeof bundle !== 'object') {
+        return;
+      }
+      setSettings((prev) => ({
+        ...prev,
+        notifications: {
+          ...prev.notifications,
+          ...bundle
+        }
+      }));
+      setSaveStatus({
+        type: 'info',
+        message: 'Notification bundle applied. Review toggles, then save to keep the changes.'
+      });
+    },
+    [setSaveStatus, setSettings]
+  );
 
   const handleQuickMuteNotifications = useCallback((hours = 4) => {
     const duration = Math.max(0.5, Number(hours) || 4);
@@ -246,6 +277,8 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
     handleThemeChange,
     handleRadiusChange,
     handleNotificationToggle,
+    handleQuietHoursChange,
+    handleApplyNotificationBundle,
     handleQuickMuteNotifications,
     handleClearNotificationMute,
     handleTextScaleChange,

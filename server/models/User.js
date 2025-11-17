@@ -42,7 +42,21 @@ const userSchema = new mongoose.Schema(
         badgeUnlocks: { type: Boolean, default: true },
         moderationAlerts: { type: Boolean, default: true },
         dmMentions: { type: Boolean, default: true },
-        emailDigests: { type: Boolean, default: false }
+        emailDigests: { type: Boolean, default: false },
+        quietHours: {
+          type: [
+            {
+              day: {
+                type: String,
+                enum: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+              },
+              start: { type: String, default: '22:00' },
+              end: { type: String, default: '07:00' },
+              enabled: { type: Boolean, default: true }
+            }
+          ],
+          default: []
+        }
       },
       notificationsMutedUntil: { type: Date, default: null },
       radiusPreferenceMeters: { type: Number, default: 16093 },

@@ -1,19 +1,26 @@
-import { Paper, Stack, Typography, Chip, Button, FormControl, FormLabel, Select, MenuItem } from '@mui/material';
+import { Paper, Stack, Typography, Chip, Button, FormControl, FormLabel, Select, MenuItem, Divider } from '@mui/material';
 import DoNotDisturbOnIcon from '@mui/icons-material/DoNotDisturbOn';
 import RestoreIcon from '@mui/icons-material/Restore';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import NotificationToggleList from './NotificationToggleList';
 import notificationToggleConfig from './notificationToggleConfig';
+import notificationBundleConfig from './notificationBundleConfig';
+import NotificationQuietHoursEditor from './NotificationQuietHoursEditor';
+import NotificationBundleSelector from './NotificationBundleSelector';
 
 function NotificationSettings({
   isOffline,
   isFetchingProfile,
   isMuteActive,
   muteStatusLabel,
+  muteCountdownLabel,
   hasMuteTimer,
   onQuickMute,
   onClearMute,
   notifications,
+  quietHours,
+  onQuietHoursChange,
+  onApplyBundle,
   onToggleNotification,
   digestFrequency,
   onDigestFrequencyChange
@@ -48,18 +55,26 @@ function NotificationSettings({
             <Button
               variant="outlined"
               startIcon={<DoNotDisturbOnIcon />}
-              onClick={() => onQuickMute(2)}
+              onClick={() => onQuickMute(1)}
               disabled={isOffline || isFetchingProfile}
             >
-              Mute 2h
+              Mute 1h
             </Button>
             <Button
               variant="outlined"
               startIcon={<DoNotDisturbOnIcon />}
-              onClick={() => onQuickMute(8)}
+              onClick={() => onQuickMute(4)}
               disabled={isOffline || isFetchingProfile}
             >
-              Mute 8h
+              Mute 4h
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DoNotDisturbOnIcon />}
+              onClick={() => onQuickMute(24)}
+              disabled={isOffline || isFetchingProfile}
+            >
+              Mute 24h
             </Button>
             <Button
               variant="text"
@@ -71,9 +86,15 @@ function NotificationSettings({
               Clear mute
             </Button>
           </Stack>
-          <Typography variant="caption" color="text.secondary">
-            Muting pauses delivery without changing the toggles below. Save after applying changes.
-          </Typography>
+          {isMuteActive ? (
+            <Typography variant="caption" color="text.secondary">
+              {muteCountdownLabel || 'Mute scheduled. Save your settings to keep it active.'}
+            </Typography>
+          ) : (
+            <Typography variant="caption" color="text.secondary">
+              Muting pauses delivery without changing the toggles below. Save after applying changes.
+            </Typography>
+          )}
         </Stack>
       </Paper>
 
@@ -100,6 +121,22 @@ function NotificationSettings({
           Digests bundle less-urgent updates (badges, friend activity, marketing) into a single notification.
         </Typography>
       </Stack>
+
+      <Divider />
+
+      <NotificationQuietHoursEditor
+        quietHours={quietHours}
+        disabled={isOffline || isFetchingProfile}
+        onChange={onQuietHoursChange}
+      />
+
+      <Divider />
+
+      <NotificationBundleSelector
+        bundles={notificationBundleConfig}
+        onApplyBundle={onApplyBundle}
+        disabled={isOffline || isFetchingProfile}
+      />
     </Stack>
   );
 }
