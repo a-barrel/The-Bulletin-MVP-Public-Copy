@@ -211,6 +211,7 @@ function ChatPage() {
   const [isFriendDialogOpen, setIsFriendDialogOpen] = useState(false);
   const [respondingRequestId, setRespondingRequestId] = useState(null);
   const [dmMessageDraft, setDmMessageDraft] = useState('');
+  const profileDmTargetRef = useRef(null);
 
   const {
     attachments: roomAttachments,
@@ -465,6 +466,26 @@ function ChatPage() {
     navigate('/updates');
   }, [navigate]);
 
+  const findDirectThreadForUser = useCallback(
+    (rawUserId) => {
+      const normalizedId = normalizeObjectId(rawUserId);
+      if (!normalizedId) {
+        return null;
+      }
+      return (
+        dmThreads.find((thread) => {
+          const participants = Array.isArray(thread.participants)
+            ? thread.participants
+            : [];
+          return participants.some(
+            (participant) => getParticipantId(participant) === normalizedId
+          );
+        }) || null
+      );
+    },
+    [dmThreads]
+  );
+
   const handleChooseRoom = useCallback(
     (roomId) => {
       handleSelectRoom(roomId);
@@ -486,6 +507,93 @@ function ChatPage() {
     },
     [selectDirectThread, handleSelectRoom]
   );
+
+  useEffect(() => {
+    const state = location.state;
+    if (!state || !state.fromProfile) {
+      return;
+    }
+    const normalizedTargetId = normalizeObjectId(state.targetUserId);
+    if (!normalizedTargetId) {
+      navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+      return;
+    }
+    profileDmTargetRef.current = {
+      userId: normalizedTargetId,
+      displayName: state.displayName || null
+    };
+    setChannelTab('direct');
+    setChannelDialogTab('direct');
+    setIsChannelDialogOpen(false);
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+  }, [location.pathname, location.search, location.state, navigate, setChannelDialogTab, setChannelTab]);
+
+  useEffect(() => {
+    if (!profileDmTargetRef.current || directMessagesHasAccess === false) {
+      return;
+    }
+    const target = profileDmTargetRef.current;
+
+    const openConversation = async () => {
+      setChannelTab('direct');
+      setChannelDialogTab('direct');
+      setIsChannelDialogOpen(false);
+
+      const existingThread = findDirectThreadForUser(target.userId);
+      if (existingThread?.id) {
+        handleSelectDirectThreadId(existingThread.id);
+        profileDmTargetRef.current = null;
+        return;
+      }
+
+      try {
+        const result = await createDirectThread({
+          participantIds: [target.userId]
+        });
+        let newThreadId = result?.thread?.id || '';
+        if (!newThreadId) {
+          const refreshed = await refreshDmThreads().catch(() => null);
+          if (refreshed?.threads) {
+            const fallback = refreshed.threads.find((thread) => {
+              const participants = Array.isArray(thread.participants)
+                ? thread.participants
+                : [];
+              return participants.some(
+                (participant) => getParticipantId(participant) === target.userId
+              );
+            });
+            if (fallback?.id) {
+              newThreadId = fallback.id;
+            }
+          }
+          if (!newThreadId) {
+            const fallback = findDirectThreadForUser(target.userId);
+            if (fallback?.id) {
+              newThreadId = fallback.id;
+            }
+          }
+        }
+        if (newThreadId) {
+          handleSelectDirectThreadId(newThreadId);
+        }
+      } catch (error) {
+        console.error('Failed to open direct message from profile:', error);
+      } finally {
+        profileDmTargetRef.current = null;
+      }
+    };
+
+    openConversation();
+  }, [
+    createDirectThread,
+    directMessagesHasAccess,
+    findDirectThreadForUser,
+    handleSelectDirectThreadId,
+    refreshDmThreads,
+    setChannelDialogTab,
+    setChannelTab,
+    setIsChannelDialogOpen
+  ]);
 
   const handleActivateFriendsView = useCallback(() => {
     if (channelTab === 'friends') {
@@ -563,12 +671,7 @@ function ChatPage() {
       }
 
       const normalizedFriendId = normalizeObjectId(friendId);
-      const existingThread = dmThreads.find((thread) => {
-        const participants = Array.isArray(thread.participants) ? thread.participants : [];
-        return participants.some(
-          (participant) => getParticipantId(participant) === normalizedFriendId
-        );
-      });
+      const existingThread = findDirectThreadForUser(normalizedFriendId);
 
       if (existingThread?.id) {
         handleSelectDirectThreadId(existingThread.id);
@@ -617,7 +720,7 @@ function ChatPage() {
     [
       createDirectThread,
       directMessagesHasAccess,
-      dmThreads,
+      findDirectThreadForUser,
       handleSelectDirectThreadId,
       refreshDmThreads,
       setFriendActionStatus

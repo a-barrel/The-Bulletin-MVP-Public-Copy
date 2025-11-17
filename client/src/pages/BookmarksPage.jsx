@@ -18,6 +18,7 @@ import {
   CircularProgress,
   Divider,
   FormControl,
+  FormControlLabel,
   InputLabel,
   List,
   ListSubheader,
@@ -27,7 +28,8 @@ import {
   Select,
   Snackbar,
   Stack,
-  Typography
+  Typography,
+  Checkbox
 } from '@mui/material';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import { auth } from '../firebase';
@@ -88,6 +90,7 @@ function BookmarksPage() {
 
   const [highlightedCollectionKey, setHighlightedCollectionKey] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [hideOwnPins, setHideOwnPins] = useState(true);
   const viewerMongoId = useBookmarkViewerProfile({ authUser, isOffline });
   const [currentPage, setCurrentPage] = useState(1);
   const collectionAnchorsRef = useRef(new Map());
@@ -180,41 +183,53 @@ function BookmarksPage() {
     [navigate]
   );
 
-  const filteredBookmarks = useMemo(() => {
-    if (selectedFilter === 'all') {
-      return groupedBookmarks;
-    }
+  const filteredGroups = useMemo(() => {
+    const shouldHideOwnPins = hideOwnPins && viewerMongoId;
 
-    const filterBookmarks = (items) => {
-      return items.filter((bookmark) => {
-        const pin = bookmark.pin;
-        if (!pin) {
-          return false;
+    const matchesSelectedFilter = (bookmark) => {
+      const pin = bookmark.pin;
+      if (!pin) {
+        return false;
+      }
+      switch (selectedFilter) {
+        case 'event':
+          return pin.type === 'event';
+        case 'discussion':
+          return pin.type === 'discussion';
+        case 'my-pins': {
+          const creatorId =
+            toIdString(pin.creatorId) ??
+            toIdString(pin.creator?._id) ??
+            toIdString(bookmark.creatorId) ??
+            toIdString(bookmark.creator?._id);
+          return creatorId && viewerMongoId && creatorId === viewerMongoId;
         }
-        switch (selectedFilter) {
-          case 'event':
-            return pin.type === 'event';
-          case 'discussion':
-            return pin.type === 'discussion';
-          case 'my-pins': {
-            const creatorId = toIdString(pin.creatorId) ?? toIdString(pin.creator?._id);
-            return creatorId && viewerMongoId && creatorId === viewerMongoId;
-          }
-          case 'attending':
-            return Boolean(pin.viewerIsAttending);
-          default:
-            return true;
-        }
-      });
+        case 'attending':
+          return Boolean(pin.viewerIsAttending);
+        default:
+          return true;
+      }
     };
 
     return groupedBookmarks
-      .map((group) => ({
-        ...group,
-        items: filterBookmarks(group.items)
-      }))
+      .map((group) => {
+        const filteredItems = group.items.filter((bookmark) => {
+          if (shouldHideOwnPins) {
+            const ownerId =
+              toIdString(bookmark?.pin?.creatorId) ??
+              toIdString(bookmark?.pin?.creator?._id) ??
+              toIdString(bookmark?.creatorId) ??
+              toIdString(bookmark?.creator?._id);
+            if (ownerId && ownerId === viewerMongoId) {
+              return false;
+            }
+          }
+          return matchesSelectedFilter(bookmark);
+        });
+        return { ...group, items: filteredItems };
+      })
       .filter((group) => group.items.length > 0);
-  }, [groupedBookmarks, selectedFilter, viewerMongoId]);
+  }, [groupedBookmarks, hideOwnPins, selectedFilter, viewerMongoId]);
 
   const handleFilterChange = useCallback((event) => {
     setSelectedFilter(event.target.value);
@@ -242,7 +257,7 @@ function BookmarksPage() {
   // Flatten filtered groups for pagination.
   const flattenedBookmarks = useMemo(() => {
     const all = [];
-    filteredBookmarks.forEach((group) => {
+    filteredGroups.forEach((group) => {
       group.items.forEach((bookmark) => {
         all.push({
           ...bookmark,
@@ -252,7 +267,7 @@ function BookmarksPage() {
       });
     });
     return all;
-  }, [filteredBookmarks]);
+  }, [filteredGroups]);
 
   const totalPages = Math.ceil(flattenedBookmarks.length / ITEMS_PER_PAGE) || 1;
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -264,7 +279,7 @@ function BookmarksPage() {
     paginatedBookmarks.forEach((bookmark) => {
       const groupKey = bookmark.collectionId ?? UNSORTED_COLLECTION_KEY;
       if (!grouped.has(groupKey)) {
-        const originalGroup = filteredBookmarks.find(
+        const originalGroup = filteredGroups.find(
           (candidate) => (candidate.id ?? UNSORTED_COLLECTION_KEY) === groupKey
         );
         grouped.set(groupKey, {
@@ -277,7 +292,7 @@ function BookmarksPage() {
       grouped.get(groupKey).items.push(bookmark);
     });
     return Array.from(grouped.values());
-  }, [filteredBookmarks, paginatedBookmarks]);
+  }, [filteredGroups, paginatedBookmarks]);
 
   const handlePageChange = useCallback((event, value) => {
     setCurrentPage(value);
@@ -445,41 +460,54 @@ function BookmarksPage() {
             </Paper>
           ) : (
             <>
-              <FormControl fullWidth size="small">
-                <InputLabel id="bookmarks-filter-label" sx={{ color: 'black', fontFamily: '"Urbanist", sans-serif' }}>
-                  Filter bookmarks
-                </InputLabel>
-                <Select
-                  labelId="bookmarks-filter-label"
-                  value={selectedFilter}
-                  label="Filter bookmarks"
-                  onChange={handleFilterChange}
-                  sx={{
-                    '& .MuiSelect-select': {
-                      color: 'black',
-                      fontFamily: '"Urbanist", sans-serif'
-                    },
-                    '& fieldset': {
-                      borderColor: 'black'
-                    }
-                  }}
-                  MenuProps={{
-                    PaperProps: {
-                      sx: { backgroundColor: '#E6F1FF' }
-                    }
-                  }}
-                >
-                  {filterOptions.map((option) => (
-                    <MenuItem
-                      key={option.value}
-                      value={option.value}
-                      sx={{ color: 'black', fontFamily: '"Urbanist", sans-serif' }}
-                    >
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel id="bookmarks-filter-label" sx={{ color: 'black', fontFamily: '"Urbanist", sans-serif' }}>
+                    Filter bookmarks
+                  </InputLabel>
+                  <Select
+                    labelId="bookmarks-filter-label"
+                    value={selectedFilter}
+                    label="Filter bookmarks"
+                    onChange={handleFilterChange}
+                    sx={{
+                      '& .MuiSelect-select': {
+                        color: 'black',
+                        fontFamily: '"Urbanist", sans-serif'
+                      },
+                      '& fieldset': {
+                        borderColor: 'black'
+                      }
+                    }}
+                    MenuProps={{
+                      PaperProps: {
+                        sx: { backgroundColor: '#E6F1FF' }
+                      }
+                    }}
+                  >
+                    {filterOptions.map((option) => (
+                      <MenuItem
+                        key={option.value}
+                        value={option.value}
+                        sx={{ color: 'black', fontFamily: '"Urbanist", sans-serif' }}
+                      >
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={hideOwnPins}
+                      onChange={(event) => setHideOwnPins(event.target.checked)}
+                      color="secondary"
+                    />
+                  }
+                  label="Hide my pins"
+                  sx={{ fontFamily: '"Urbanist", sans-serif', color: 'black' }}
+                />
+              </Stack>
               <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden', backgroundColor: 'transparent' }}>
                 <List disablePadding>
                   {paginatedGroupedBookmarks.map((group) => {

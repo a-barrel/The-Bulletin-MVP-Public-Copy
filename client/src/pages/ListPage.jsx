@@ -11,6 +11,8 @@ import updatesIcon from '../assets/UpdateIcon.svg';
 import Feed from '../components/Feed';
 import GlobalNavMenu from '../components/GlobalNavMenu';
 import Chip from '@mui/material/Chip';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Checkbox from '@mui/material/Checkbox';
 import PlaceIcon from '@mui/icons-material/Place';
 import { useUpdates } from '../contexts/UpdatesContext';
 import { routes } from '../routes';
@@ -21,6 +23,7 @@ import useNearbyPinsFeed from '../hooks/useNearbyPinsFeed';
 import useListFilters from '../hooks/useListFilters';
 import usePinCategories from '../hooks/usePinCategories';
 import useOfflineNavigation from '../hooks/useOfflineNavigation';
+import useViewerProfile from '../hooks/useViewerProfile';
 
 export const pageConfig = {
   id: 'list',
@@ -45,6 +48,7 @@ export default function ListPage() {
     filters,
     defaultFilters,
     hasActiveFilters,
+    setFilters,
     applyFilters,
     clearFilters,
     clearSearch,
@@ -62,6 +66,7 @@ export default function ListPage() {
   } = usePinCategories({ isOffline });
 
   const [sortByExpiration, setSortByExpiration] = useState(false);
+  const [hideOwnPins, setHideOwnPins] = useState(true);
   const {
     feedItems,
     loading,
@@ -69,6 +74,11 @@ export default function ListPage() {
     locationNotice,
     isUsingFallbackLocation
   } = useNearbyPinsFeed({ sharedLocation, isOffline, filters });
+  const { viewer: viewerProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
+  const viewerMongoId = useMemo(
+    () => toIdString(viewerProfile?._id) ?? toIdString(viewerProfile?.id) ?? null,
+    [viewerProfile]
+  );
 
   const { unreadCount, refreshUnreadCount } = useUpdates();
   const { navigateIfOnline } = useOfflineNavigation(isOffline);
@@ -248,7 +258,25 @@ export default function ListPage() {
       return hours > 0;
     });
 
-    const sortedItems = [...statusFiltered].sort((a, b) => {
+    const ownerFiltered =
+      hideOwnPins
+        ? statusFiltered.filter((item) => {
+            if (item?.viewerOwnsPin) {
+              return false;
+            }
+            const ownerId =
+              toIdString(item?.creatorId) ??
+              toIdString(item?.creator?._id) ??
+              toIdString(item?.creator?._id?.$oid) ??
+              null;
+            if (viewerMongoId && ownerId && ownerId === viewerMongoId) {
+              return false;
+            }
+            return true;
+          })
+        : statusFiltered;
+
+    const sortedItems = [...ownerFiltered].sort((a, b) => {
       if (sortByExpiration) {
         const hoursA = Number.isFinite(a.expiresInHours) ? a.expiresInHours : Number.POSITIVE_INFINITY;
         const hoursB = Number.isFinite(b.expiresInHours) ? b.expiresInHours : Number.POSITIVE_INFINITY;
@@ -269,7 +297,7 @@ export default function ListPage() {
     });
 
     return sortedItems;
-  }, [feedItems, filters.status, sortByExpiration]);
+  }, [feedItems, filters.status, hideOwnPins, sortByExpiration, viewerMongoId]);
 
   const notificationsLabel =
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
@@ -315,6 +343,19 @@ export default function ListPage() {
 
             {/* Sort Toggle */}
             <SortToggle sortByExpiration={sortByExpiration} onToggle={handleSortToggle} />
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  size="small"
+                  color="secondary"
+                  checked={hideOwnPins}
+                  onChange={(event) => setHideOwnPins(event.target.checked)}
+                />
+              }
+              label="Hide my pins"
+              className="topbar-hide-own"
+            />
           </div>
 
           <button

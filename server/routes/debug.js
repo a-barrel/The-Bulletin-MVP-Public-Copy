@@ -1782,6 +1782,53 @@ router.post('/friends/requests/:requestId/respond', async (req, res) => {
   }
 });
 
+router.delete('/friends/requests/:requestId', async (req, res) => {
+  const { requestId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(requestId)) {
+    return res.status(400).json({ message: 'Invalid request id' });
+  }
+
+  try {
+    const viewer = await ensureFriendAdminAccess(req, res);
+    if (!viewer) {
+      return;
+    }
+
+    const requestDoc = await FriendRequest.findById(requestId);
+    if (!requestDoc) {
+      return res.status(404).json({ message: 'Friend request not found.' });
+    }
+
+    if (toIdString(requestDoc.requesterId) !== toIdString(viewer._id)) {
+      return res.status(403).json({ message: 'You can only cancel requests you created.' });
+    }
+
+    if (requestDoc.status !== 'pending') {
+      return res.status(409).json({ message: 'Only pending requests can be cancelled.' });
+    }
+
+    requestDoc.status = 'cancelled';
+    requestDoc.respondedAt = new Date();
+    await requestDoc.save();
+
+    const populated = await requestDoc.populate([
+      { path: 'requesterId', select: 'username displayName roles accountStatus avatar stats' },
+      { path: 'recipientId', select: 'username displayName roles accountStatus avatar stats' }
+    ]);
+
+    res.json({
+      request: mapFriendRequestRecord({
+        ...populated.toObject(),
+        requester: populated.requesterId,
+        recipient: populated.recipientId
+      })
+    });
+  } catch (error) {
+    console.error('Failed to cancel friend request', error);
+    res.status(500).json({ message: 'Failed to cancel friend request' });
+  }
+});
+
 router.delete('/friends/:friendId', async (req, res) => {
   const { friendId } = req.params;
   if (!mongoose.Types.ObjectId.isValid(friendId)) {

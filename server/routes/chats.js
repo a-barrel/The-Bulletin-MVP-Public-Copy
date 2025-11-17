@@ -655,9 +655,6 @@ router.post('/rooms/:roomId/presence', verifyToken, async (req, res) => {
     const currentPresence = existingPresences.find((presence) =>
       presence.roomId && presence.roomId.equals(room._id)
     );
-    const otherPresences = existingPresences.filter(
-      (presence) => !presence.roomId || !presence.roomId.equals(room._id)
-    );
 
     const accessContext = await buildViewerAccessContext({
       viewer,
@@ -685,35 +682,10 @@ router.post('/rooms/:roomId/presence', verifyToken, async (req, res) => {
       lastActiveAt: input.lastActiveAt
     });
 
-    let removedRooms = [];
-    if (otherPresences.length) {
-      const otherRoomIds = otherPresences
-        .map((presence) => presence.roomId)
-        .filter(Boolean);
-      if (otherRoomIds.length) {
-        removedRooms = await ProximityChatRoom.find({ _id: { $in: otherRoomIds } });
-      }
-      await ProximityChatPresence.deleteMany({
-        _id: { $in: otherPresences.map((presence) => presence._id) }
-      });
-      await Promise.all(
-        removedRooms.map((roomDoc) =>
-          broadcastChatRoomTransition({
-            userId: viewer._id,
-            fromRoom: roomDoc,
-            toRoom: null,
-            coordinates
-          })
-        )
-      );
-    }
-
     if (!currentPresence) {
-      const fromRoomDoc =
-        removedRooms.length === 1 ? removedRooms[0] : null;
       await broadcastChatRoomTransition({
         userId: viewer._id,
-        fromRoom: fromRoomDoc,
+        fromRoom: null,
         toRoom: room,
         distanceMeters: access.distanceMeters,
         coordinates

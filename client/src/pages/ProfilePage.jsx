@@ -116,11 +116,10 @@ function ProfilePage() {
   });
 
   const {
-    isFriend,
     canSendFriendRequest,
-    hasPendingFriendRequest,
-    isSendingFriendRequest,
-    handleSendFriendRequest
+    friendState,
+    friendActionBusy,
+    handleFriendAction
   } = useProfileFriendActions({
     viewerProfile,
     setViewerProfile,
@@ -233,6 +232,13 @@ function ProfilePage() {
       : undefined
     : undefined;
 
+  const friendActionDisabled =
+    isViewingSelf ||
+    isOffline ||
+    !targetProfileId ||
+    isFetchingProfile ||
+    (friendState === 'idle' && !canSendFriendRequest);
+
   const actionRowProps = useMemo(
     () => ({
       canManageBlock,
@@ -242,11 +248,10 @@ function ProfilePage() {
       onRequestBlock: handleRequestBlock,
       onRequestUnblock: handleRequestUnblock,
       showFriendAction: !isViewingSelf,
-      canSendFriendRequest,
-      isFriend,
-      hasPendingFriendRequest,
-      isSendingFriendRequest,
-      onSendFriendRequest: handleSendFriendRequest,
+      friendState,
+      onFriendAction: handleFriendAction,
+      friendActionDisabled,
+      friendActionBusy,
       onMessage: handleMessageUser,
       messageDisabled,
       messageTooltip,
@@ -261,18 +266,17 @@ function ProfilePage() {
       handleMessageUser,
       handleRequestBlock,
       handleRequestUnblock,
-      handleSendFriendRequest,
-      hasPendingFriendRequest,
+      friendActionBusy,
+      friendActionDisabled,
+      handleFriendAction,
+      friendState,
       isBlocked,
       isFetchingProfile,
-      isFriend,
       isProcessingBlockAction,
-      isSendingFriendRequest,
       isSubmittingReport,
       isViewingSelf,
       messageDisabled,
       messageTooltip,
-      canSendFriendRequest,
       reportDisabled,
       reportTooltip
     ]

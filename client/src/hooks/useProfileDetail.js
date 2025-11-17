@@ -183,6 +183,7 @@ export default function useProfileDetail({ userIdParam, locationState, isOffline
   return {
     originPath,
     targetUserId,
+    targetProfileId,
     shouldLoadCurrentUser,
     userFromState,
     effectiveUser,

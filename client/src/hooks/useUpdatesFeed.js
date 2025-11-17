@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useUpdates } from '../contexts/UpdatesContext';
 import useUpdatesProfile from './updates/useUpdatesProfile';
 import useUpdatesData from './updates/useUpdatesData';
@@ -58,11 +58,22 @@ export default function useUpdatesFeed() {
     handleRefresh();
   }, [handleRefresh]);
 
+  const filteredUpdates = useMemo(() => {
+    if (!Array.isArray(updates)) {
+      return [];
+    }
+    if (!showUnreadOnly) {
+      return updates;
+    }
+    return updates.filter((update) => !update?.readAt);
+  }, [showUnreadOnly, updates]);
+
   return {
     profile,
     profileError,
     isProfileLoading,
     updates,
+    filteredUpdates,
     isLoadingUpdates,
     updatesError,
     pendingUpdateIds,

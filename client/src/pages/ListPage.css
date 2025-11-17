@@ -149,6 +149,16 @@
   gap: 0.2rem;
 }
 
+.topbar-hide-own {
+  margin-left: 0.75rem;
+  color: #111;
+}
+
+.topbar-hide-own .MuiTypography-root {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 /* Icon buttons in topbar */
 .icon-btn {
   width: 40px;

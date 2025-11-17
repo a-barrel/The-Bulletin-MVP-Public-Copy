@@ -36,6 +36,21 @@ function BookmarkCollectionSection({
   const normalizedDisplayName = normalizeDisplayName(name);
   const normalizedName = normalizedDisplayName.toLowerCase();
 
+  const resolveReplyCount = (bookmark) => {
+    const pin = bookmark?.pin;
+    if (typeof bookmark?.replyCount === 'number') {
+      return bookmark.replyCount;
+    }
+    if (typeof pin?.replyCount === 'number') {
+      return pin.replyCount;
+    }
+    if (typeof pin?.stats?.replyCount === 'number') {
+      return pin.stats.replyCount;
+    }
+    const feedReplies = pin?.comments ?? bookmark?.comments;
+    return typeof feedReplies === 'number' ? feedReplies : 0;
+  };
+
   return (
     <Paper
       className={`bookmarks-collection-card${isHighlighted ? ' is-highlighted' : ''}`}
@@ -72,9 +87,23 @@ function BookmarkCollectionSection({
           const cardItem = mapBookmarkToFeedItem(bookmark, { viewerProfileId });
           const cardKey = bookmark._id || pinId || `bookmark-${bookmarkIndex}`;
           const canViewPin = Boolean(pinId);
+          const replyCount = resolveReplyCount(bookmark);
+          const hasReplyStorm = replyCount >= 3;
 
           return (
-            <Box key={cardKey} className="bookmark-item">
+            <Box
+              key={cardKey}
+              className={`bookmark-item${hasReplyStorm ? ' bookmark-item--reply-storm' : ''}`}
+            >
+              {hasReplyStorm ? (
+                <div className="bookmark-reply-storm-overlay">
+                  <span className="bookmark-reply-storm-fire" />
+                  <span className="bookmark-reply-storm-confetti" />
+                  <span className="bookmark-reply-storm-label">
+                    🔥 Reply Storm ({replyCount})
+                  </span>
+                </div>
+              ) : null}
               {cardItem ? (
                 <PinCard
                   item={cardItem}

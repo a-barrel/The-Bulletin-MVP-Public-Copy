@@ -3,6 +3,7 @@ import FlagIcon from '@mui/icons-material/Flag';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import MessageIcon from '@mui/icons-material/Message';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import PersonIcon from '@mui/icons-material/Person';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
@@ -14,12 +15,11 @@ function ProfileActionRow({
   isFetchingProfile,
   onRequestBlock,
   onRequestUnblock,
+  friendState = 'idle',
   showFriendAction,
-  canSendFriendRequest,
-  isFriend,
-  hasPendingFriendRequest,
-  isSendingFriendRequest,
-  onSendFriendRequest,
+  onFriendAction,
+  friendActionDisabled = false,
+  friendActionBusy = false,
   onMessage,
   messageDisabled = false,
   messageTooltip,
@@ -31,11 +31,40 @@ function ProfileActionRow({
   const blockDisabled = isProcessingBlockAction || isFetchingProfile;
   const blockCursor = blockDisabled ? 'not-allowed' : 'pointer';
 
-  const friendState = isFriend ? 'friends' : hasPendingFriendRequest ? 'pending' : 'idle';
-  const friendLabel =
-    friendState === 'friends' ? 'Friends' : friendState === 'pending' ? 'Request sent' : 'Add friend';
-  const friendDisabled = !canSendFriendRequest || friendState !== 'idle' || isSendingFriendRequest;
-  const friendCursor = friendDisabled ? 'not-allowed' : 'pointer';
+  const friendCursor = friendActionDisabled ? 'not-allowed' : 'pointer';
+
+  let friendLabel = 'Add friend';
+  let friendHelper = 'Send a friend request';
+  let friendIconColor = 'text.secondary';
+  let friendIconNode = (
+    <PersonAddIcon sx={{ fontSize: 32, color: friendIconColor }} />
+  );
+  if (friendState === 'pending') {
+    friendLabel = 'Cancel request';
+    friendHelper = 'Request sent (tap to cancel)';
+    friendIconColor = 'warning.main';
+    friendIconNode = <PersonAddIcon sx={{ fontSize: 32, color: friendIconColor }} />;
+  } else if (friendState === 'friends') {
+    friendLabel = 'Remove friend';
+    friendHelper = 'Already friends';
+    friendIconColor = 'error.main';
+    friendIconNode = (
+      <Box
+        sx={{
+          width: 42,
+          height: 42,
+          borderRadius: '50%',
+          border: '2px solid',
+          borderColor: 'error.main',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        <PersonIcon sx={{ fontSize: 26, color: 'success.main' }} />
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -135,7 +164,7 @@ function ProfileActionRow({
       {showFriendAction ? (
         <Box
           className="section-content-box"
-          onClick={friendDisabled ? undefined : onSendFriendRequest}
+          onClick={friendActionDisabled ? undefined : onFriendAction}
           sx={{
             flex: 1,
             border: '1px solid',
@@ -147,17 +176,16 @@ function ProfileActionRow({
             alignItems: 'center',
             gap: 1,
             cursor: friendCursor,
-            opacity: friendDisabled ? 0.6 : 1,
-            pointerEvents: friendDisabled ? 'none' : undefined
+            opacity: friendActionDisabled ? 0.6 : 1,
+            pointerEvents: friendActionDisabled ? 'none' : undefined
           }}
         >
-          {isSendingFriendRequest ? (
-            <CircularProgress size={28} thickness={5} />
-          ) : (
-            <PersonAddIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
-          )}
+          {friendActionBusy ? <CircularProgress size={28} thickness={5} /> : friendIconNode}
           <Typography variant="body2" color="text.secondary">
             {friendLabel}
+          </Typography>
+          <Typography variant="caption" color={friendState === 'friends' ? 'success.main' : friendState === 'pending' ? 'warning.main' : 'text.secondary'}>
+            {friendHelper}
           </Typography>
         </Box>
       ) : null}

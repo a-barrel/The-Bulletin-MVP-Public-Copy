@@ -163,12 +163,12 @@ export const buildUserProfileLink = (user, returnPath) => {
   if (!targetId) {
     return null;
   }
-  const base = routes.profile.byId(targetId);
-  if (!returnPath) {
-    return base;
+  const pathname = routes.profile.byId(targetId);
+  const link = { pathname };
+  if (returnPath) {
+    link.state = { returnTo: returnPath };
   }
-  const encoded = encodeURIComponent(returnPath);
-  return `${base}?returnTo=${encoded}`;
+  return link;
 };
 
 export const formatViewerDistanceLabel = (meters) => {

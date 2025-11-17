@@ -20,11 +20,13 @@ const resolveBadgeImageUrl = (value) => {
 };
 
 function ProfileBadges({ badgeList }) {
+  const safeBadgeList = Array.isArray(badgeList) ? badgeList : [];
+
   return (
     <ProfileSection title="Badges & achievements">
-      {badgeList.length ? (
+      {safeBadgeList.length ? (
         <Stack direction="row" flexWrap="wrap" gap={1.5}>
-          {badgeList.map((badgeId) => {
+          {safeBadgeList.map((badgeId) => {
             const badgeInfo =
               BADGE_METADATA[badgeId] ?? {
                 label: badgeId,
