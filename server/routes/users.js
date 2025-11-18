@@ -20,6 +20,7 @@ const DATA_EXPORT_COOLDOWN_MS = 5 * 60 * 1000;
 const MAX_ACTIVE_API_TOKENS = 10;
 const QUIET_HOUR_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const QUIET_HOUR_TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
+const MAX_LOCATION_AUTO_DISABLE_HOURS = 24 * 7;
 
 const UsersQuerySchema = z.object({
   search: z.string().trim().optional(),
@@ -148,6 +149,18 @@ const DataPreferencesUpdateSchema = z
   })
   .optional();
 
+const LocationPreferencesUpdateSchema = z
+  .object({
+    autoDisableAfterHours: z
+      .number()
+      .int()
+      .min(0)
+      .max(MAX_LOCATION_AUTO_DISABLE_HOURS)
+      .optional(),
+    globalMapVisible: z.boolean().optional()
+  })
+  .optional();
+
 const UserPreferencesUpdateSchema = z
   .object({
     theme: z.enum(['system', 'light', 'dark']).optional(),
@@ -165,7 +178,8 @@ const UserPreferencesUpdateSchema = z
     notificationsVerbosity: NotificationVerbosityUpdateSchema,
     notificationsMutedUntil: z.union([z.string().datetime(), z.null()]).optional(),
     display: DisplayPreferencesUpdateSchema,
-    data: DataPreferencesUpdateSchema
+    data: DataPreferencesUpdateSchema,
+    location: LocationPreferencesUpdateSchema
   })
   .refine(
     (value) => hasDefinedValue(value),
@@ -350,6 +364,12 @@ const mapUserToProfile = (userDoc) => {
     preferences.notificationsMutedUntil = Number.isNaN(mutedDate.getTime())
       ? undefined
       : mutedDate.toISOString();
+  }
+  if (preferences?.location && typeof preferences.location === 'object') {
+    if (preferences.location.autoDisableAfterHours !== undefined) {
+      const hours = Number(preferences.location.autoDisableAfterHours);
+      preferences.location.autoDisableAfterHours = Number.isFinite(hours) ? hours : 0;
+    }
   }
   const createdAt = toIsoDateString(userDoc.createdAt) ?? toIsoDateString(userDoc._id?.getTimestamp?.());
   const updatedAt = toIsoDateString(userDoc.updatedAt) ?? createdAt ?? new Date().toISOString();
@@ -768,6 +788,15 @@ router.patch('/me', verifyToken, async (req, res) => {
         const dataPrefs = input.preferences.data;
         if (dataPrefs.autoExportReminders !== undefined) {
           setDoc['preferences.data.autoExportReminders'] = dataPrefs.autoExportReminders;
+        }
+      }
+      if (input.preferences.location && typeof input.preferences.location === 'object') {
+        const locationPrefs = input.preferences.location;
+        if (locationPrefs.autoDisableAfterHours !== undefined) {
+          setDoc['preferences.location.autoDisableAfterHours'] = locationPrefs.autoDisableAfterHours;
+        }
+        if (locationPrefs.globalMapVisible !== undefined) {
+          setDoc['preferences.location.globalMapVisible'] = locationPrefs.globalMapVisible;
         }
       }
     }

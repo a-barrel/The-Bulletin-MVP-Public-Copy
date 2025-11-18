@@ -71,7 +71,14 @@ const UserPreferencesSchema = z.object({
   dmPermission: z.enum(['everyone', 'friends', 'nobody']).default('everyone').optional(),
   digestFrequency: z.enum(['immediate', 'daily', 'weekly', 'never']).default('weekly').optional(),
   display: DisplayPreferencesSchema.optional(),
-  data: DataPreferencesSchema.optional()
+  data: DataPreferencesSchema.optional(),
+  location: z
+    .object({
+      autoDisableAfterHours: z.number().int().min(0).max(24 * 7).default(0),
+      globalMapVisible: z.boolean().default(true)
+    })
+    .partial()
+    .optional()
 });
 
 const UserStatsSchema = z.object({

@@ -11,6 +11,8 @@ export const DEFAULT_SETTINGS = {
   theme: 'system',
   radiusPreferenceMeters: 16093,
   locationSharingEnabled: false,
+  locationAutoShareHours: 0,
+  globalMapVisible: true,
   filterCussWords: false,
   statsPublic: true,
   dmPermission: 'everyone',
@@ -289,6 +291,26 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
     }));
   }, [setSettings]);
 
+  const handleLocationAutoShareChange = useCallback((nextHours) => {
+    const resolved = Math.max(0, Number(nextHours) || 0);
+    setSettings((prev) => ({
+      ...prev,
+      locationAutoShareHours: resolved
+    }));
+    logSettingsEvent('location-auto-share-hours-updated', { hours: resolved });
+  }, [logSettingsEvent, setSettings]);
+
+  const handleGlobalMapVisibilityToggle = useCallback(() => {
+    setSettings((prev) => {
+      const nextValue = !(prev.globalMapVisible ?? DEFAULT_SETTINGS.globalMapVisible);
+      logSettingsEvent('global-map-visibility-updated', { visible: nextValue });
+      return {
+        ...prev,
+        globalMapVisible: nextValue
+      };
+    });
+  }, [logSettingsEvent, setSettings]);
+
   const handleStatsVisibilityToggle = useCallback(() => {
     setSettings((prev) => ({
       ...prev,
@@ -333,6 +355,8 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
     handleDisplayToggle,
     handleMapDensityChange,
     handleLocationSharingToggle,
+    handleLocationAutoShareChange,
+    handleGlobalMapVisibilityToggle,
     handleStatsVisibilityToggle,
     handleFilterCussWordsToggle,
     handleDmPermissionChange,

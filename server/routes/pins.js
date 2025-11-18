@@ -202,7 +202,7 @@ const parseDateParam = (value) => {
 };
 
 const USER_SUMMARY_PROJECTION =
-  'username displayName roles accountStatus avatar stats relationships.blockedUserIds';
+  'username displayName roles accountStatus avatar stats relationships.blockedUserIds preferences.location.globalMapVisible';
 
 const buildBlockedSet = (userDoc) => new Set(mapIdList(userDoc?.relationships?.blockedUserIds));
 
@@ -934,6 +934,11 @@ router.get('/nearby', verifyToken, async (req, res) => {
       if (isBlockedBetweenUsers(viewer, creatorDoc)) {
         return false;
       }
+      const globalVisible =
+        creatorDoc?.preferences?.location?.globalMapVisible !== false;
+      if (!globalVisible && creatorId !== viewerId) {
+        return false;
+      }
       return true;
     });
 
@@ -1149,6 +1154,11 @@ router.get('/', verifyToken, async (req, res) => {
         if (isBlockedBetweenUsers(viewer, creatorDoc)) {
           return false;
         }
+        const globalVisible =
+          creatorDoc?.preferences?.location?.globalMapVisible !== false;
+        if (!globalVisible && creatorId !== viewerId) {
+          return false;
+        }
         return true;
       });
 
@@ -1186,6 +1196,11 @@ router.get('/', verifyToken, async (req, res) => {
         return false;
       }
       if (isBlockedBetweenUsers(viewer, creatorDoc)) {
+        return false;
+      }
+      const globalVisible =
+        creatorDoc?.preferences?.location?.globalMapVisible !== false;
+      if (!globalVisible && creatorId !== viewerId) {
         return false;
       }
       return true;

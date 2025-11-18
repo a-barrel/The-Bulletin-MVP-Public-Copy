@@ -100,6 +100,8 @@ function SettingsPage() {
     handleNotificationVerbosityChange,
     handleApplyNotificationBundle,
     handleLocationSharingToggle,
+    handleLocationAutoShareChange,
+    handleGlobalMapVisibilityToggle,
     handleStatsVisibilityToggle,
     handleFilterCussWordsToggle,
     handleDmPermissionChange,
@@ -144,6 +146,9 @@ function SettingsPage() {
   const digestFrequency = settings.digestFrequency ?? DEFAULT_SETTINGS.digestFrequency;
   const autoExportReminders =
     settings.autoExportReminders ?? DEFAULT_SETTINGS.autoExportReminders;
+  const locationAutoShareHours =
+    settings.locationAutoShareHours ?? DEFAULT_SETTINGS.locationAutoShareHours;
+  const globalMapVisible = settings.globalMapVisible ?? DEFAULT_SETTINGS.globalMapVisible;
 
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
@@ -563,6 +568,10 @@ function SettingsPage() {
               <PrivacySettings
                 settings={settings}
                 onLocationSharingToggle={handleLocationSharingToggle}
+                locationAutoShareHours={locationAutoShareHours}
+                onLocationAutoShareChange={handleLocationAutoShareChange}
+                globalMapVisible={globalMapVisible}
+                onGlobalMapVisibilityToggle={handleGlobalMapVisibilityToggle}
                 onStatsVisibilityToggle={handleStatsVisibilityToggle}
                 onFilterCussWordsToggle={handleFilterCussWordsToggle}
                 dmPermission={dmPermission}

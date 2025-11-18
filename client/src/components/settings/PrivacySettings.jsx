@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Stack, Typography, FormControlLabel, Switch, FormControl, FormLabel, RadioGroup, Radio, Button } from '@mui/material';
+import { Stack, Typography, FormControlLabel, Switch, FormControl, FormLabel, RadioGroup, Radio, Button, Select, MenuItem } from '@mui/material';
 import BlockIcon from '@mui/icons-material/Block';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
@@ -7,6 +7,10 @@ import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 function PrivacySettings({
   settings,
   onLocationSharingToggle,
+  locationAutoShareHours,
+  onLocationAutoShareChange,
+  globalMapVisible,
+  onGlobalMapVisibilityToggle,
   onStatsVisibilityToggle,
   onFilterCussWordsToggle,
   dmPermission,
@@ -18,6 +22,14 @@ function PrivacySettings({
   isOffline,
   isManagingBlockedUsers
 }) {
+  const autoShareOptions = [
+    { value: 0, label: 'Never auto-disable' },
+    { value: 4, label: 'After 4 hours' },
+    { value: 12, label: 'After 12 hours' },
+    { value: 24, label: 'After 24 hours' },
+    { value: 72, label: 'After 3 days' }
+  ];
+
   return (
     <Stack spacing={2}>
       <Typography variant="h6">Privacy &amp; sharing</Typography>
@@ -25,6 +37,32 @@ function PrivacySettings({
         control={<Switch checked={settings.locationSharingEnabled} onChange={onLocationSharingToggle} />}
         label="Share my live location with friends"
       />
+      <FormControl size="small" sx={{ maxWidth: 320 }}>
+        <FormLabel component="legend" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+          Auto-disable location sharing
+        </FormLabel>
+        <Select
+          value={locationAutoShareHours}
+          onChange={(event) => onLocationAutoShareChange(event.target.value)}
+          disabled={isOffline}
+        >
+          {autoShareOptions.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </Select>
+        <Typography variant="caption" color="text.secondary">
+          We’ll turn location sharing off automatically once the timer runs out.
+        </Typography>
+      </FormControl>
+      <FormControlLabel
+        control={<Switch checked={globalMapVisible} onChange={onGlobalMapVisibilityToggle} />}
+        label="Show me on the global map & discovery"
+      />
+      <Typography variant="caption" color="text.secondary">
+        Turn this off to stay visible only to friends and followers.
+      </Typography>
       <FormControlLabel
         control={<Switch checked={settings.statsPublic} onChange={onStatsVisibilityToggle} />}
         label="Allow others to view my stats"

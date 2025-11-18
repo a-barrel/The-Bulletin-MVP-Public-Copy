@@ -37,7 +37,7 @@
 - **Goals:** Add breadth without overwhelming users by leaning on tabs/accordions and progressive disclosure.
 - **Candidate Areas:**
   1. **Notifications & Focus:** Quiet hours, mute timers, bundle presets, per-surface verbosity.
-  2. **Privacy & Safety:** Location radius expiry, global map visibility, advanced blocking.
+  2. **Privacy & Safety:** Location radius expiry, global map visibility, advanced blocking, block-owned pins.
   3. **Display & Accessibility:** Font/line-height presets, accent colors, granular reduced motion, widget density.
   4. **Data & Integrations:** Export scheduler, API token scopes, third-party connectors, retention reminders.
   5. **Productivity Labs:** Gesture/hotkey preferences, experimental toggles, multi-account quick switcher prep.
@@ -131,12 +131,47 @@
 
 ---
 
+# Privacy & Safety Roadmap — Sprint 4
+
+**Scope:** Harden privacy controls so users can manage visibility (location sharing expiry, global map presence), curate interactions (block list upgrades, DM guardrails), and ensure blocking has teeth (blocked creators disappear from the map).
+
+## Themes & Deliverables
+
+1. **Location Visibility**
+   - **Location sharing expiry:** Toggle/slider to auto-disable sharing after X hours/days. Persist in `preferences.location.expireAfterMs` and teach the location service to respect it.
+   - **Global map visibility toggle:** Users can hide themselves/pins from the global explorer while remaining visible to friends/followers.
+   - **UI:** Add sub-section under Privacy tab with helper copy (“Hide me after 12h”, “Only show me to friends”).
+
+2. **Blocking & Safety**
+   - **Block-owned pins:** When you block someone, auto-hide all pins where they’re the creator/owner across map/list/bookmarks. Needs server support (filter pinned data) and local filtering.
+   - **Block list enhancements:** Search + pagination in `BlockedUsersDialog`, plus offline messaging.
+   - **DM guardrails:** Review `dmPermission` copy + enforcement (ensure “No one” actually suppresses invites).
+     - ✅ Profile DM button now honors the recipient’s permission (friends-only or mute) and provides clear tooltips instead of letting the dialog open.
+     - ⬜ Upcoming: server-side enforcement for DM thread creation + telemetry when guardrails block a message.
+
+3. **Telemetry & Docs**
+   - Log events when location expiry toggles change, global visibility flips, or blocking actions fire (especially the “hide pins” automation).
+   - Update `docs/privacy-playbook.md` + release notes.
+
+## Next Actions
+1. UX sketch for location expiry + global visibility (Nov 18).
+2. Schema proposal for `preferences.location.expireAfterMs` + user flag `preferences.map.globalVisibility` (Nov 19).
+3. Implementation tickets:
+   - Privacy tab UI additions + state plumbing.
+   - Map/List feed filtering for blocked creators.
+   - Backend API updates (filter queries, enforce blocked pins).
+4. QA checklist (tests for blocking behaviour, location expiry auto-off, toggles).
+5. Telemetry plan (log client/server events).
+
+---
 ## Audit TODOs (WIP Checklist)
 - [ ] Build detailed matrix (CSV) enumerating each field in `DEFAULT_SETTINGS` + runtime contexts with current status, owners, and effort.
 - [ ] Verify backend enforcement for each privacy toggle (location sharing, stats visibility, DM permission) and document gaps.
 - [ ] Add telemetry plan (events fired when toggles change, quiet hours set, exports requested, tokens created).
 - [ ] Schedule design review for Quiet Hours, Notification bundles, and Labs section (target Nov 20).
 - [ ] Confirm `useSettingsManager` defaults stay in sync with `DEFAULT_SETTINGS` and server schema (prevent drift).
+- [ ] **Automated refresh parity:** Proximity chat auto-refreshes, but direct messages/updates still require leaving & re-entering. Add a TODO to audit every surface (DMs, updates, pins) for background refresh/polling so the experience stays consistent.
+- [ ] Enforce location auto-disable timer server-side so `locationSharingEnabled` flips off after the configured hours (client already stores `autoDisableAfterHours`).
 
 ---
 
@@ -206,6 +241,10 @@
 - **Telemetry gaps:** Without analytics, we can’t prove adoption → ship instrumentation alongside UI.
 
 ## Next Steps (Action Items)
+   ### Block-Owned Pins & DM Guardrails (Privacy Sprint Add-on)
+   - Auto-hide map/List/bookmark entries for any creator the viewer blocks (server filters + client caching).
+   - DM guardrails: enforce `dmPermission` with clearer copy (“Friends & followers” vs. “Everyone”), and ensure new DM invites respect those settings.
+
 1. ✅ Draft Quiet Hours wireframes + spec (owner: Settings pod) — merged into MVP.
 2. ✅ Update `DEFAULT_SETTINGS` + schema proposal with new fields (quietHours, mutePreset, notificationBundles) — quietHours landed with schema changes.
 3. Create feature flags for Quiet Hours + Bundles.

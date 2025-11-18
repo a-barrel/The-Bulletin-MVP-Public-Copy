@@ -192,6 +192,8 @@ const mapCollection = (collectionDoc, bookmarks) => {
   });
 };
 
+const buildBlockedSet = (user) => new Set(mapIdList(user?.relationships?.blockedUserIds));
+
 router.get('/', verifyToken, async (req, res) => {
   try {
     const query = BookmarkQuerySchema.parse(req.query);
@@ -209,7 +211,28 @@ router.get('/', verifyToken, async (req, res) => {
       .limit(query.limit)
       .populate({ path: 'pinId', populate: { path: 'creatorId' } });
 
-    const payload = bookmarks.map((bookmark) => {
+    const viewerBlockedSet = viewer ? buildBlockedSet(viewer) : new Set();
+    const viewerId = viewer ? toIdString(viewer._id) : null;
+
+    const filteredBookmarks = bookmarks.filter((bookmark) => {
+      const creatorDoc = bookmark?.pinId?.creatorId;
+      if (!creatorDoc) {
+        return true;
+      }
+      const creatorId = toIdString(creatorDoc._id ?? creatorDoc);
+      if (creatorId && viewerBlockedSet.has(creatorId)) {
+        return false;
+      }
+      if (viewerId) {
+        const creatorBlockedSet = buildBlockedSet(creatorDoc);
+        if (creatorBlockedSet.has(viewerId)) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    const payload = filteredBookmarks.map((bookmark) => {
       const pinPreview = mapPinToPreview(bookmark.pinId);
       return mapBookmark(bookmark, pinPreview);
     });
@@ -239,6 +262,27 @@ router.get('/export', verifyToken, async (req, res) => {
       .sort({ createdAt: -1 })
       .populate({ path: 'pinId', populate: { path: 'creatorId' } });
 
+    const viewerBlockedSet = viewer ? buildBlockedSet(viewer) : new Set();
+    const viewerId = viewer ? toIdString(viewer._id) : null;
+
+    const filteredBookmarks = bookmarks.filter((bookmark) => {
+      const creatorDoc = bookmark?.pinId?.creatorId;
+      if (!creatorDoc) {
+        return true;
+      }
+      const creatorId = toIdString(creatorDoc._id ?? creatorDoc);
+      if (creatorId && viewerBlockedSet.has(creatorId)) {
+        return false;
+      }
+      if (viewerId) {
+        const creatorBlockedSet = buildBlockedSet(creatorDoc);
+        if (creatorBlockedSet.has(viewerId)) {
+          return false;
+        }
+      }
+      return true;
+    });
+
     const header = [
       'Bookmark ID',
       'Saved At',
@@ -252,7 +296,7 @@ router.get('/export', verifyToken, async (req, res) => {
       'Collection ID'
     ];
 
-    const rows = bookmarks.map((bookmark) => {
+    const rows = filteredBookmarks.map((bookmark) => {
       const pinPreview = mapPinToPreview(bookmark.pinId);
       const creator = pinPreview?.creator;
       const creatorName =
