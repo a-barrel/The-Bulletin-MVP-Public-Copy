@@ -80,6 +80,11 @@ const userSchema = new mongoose.Schema(
       },
       data: {
         autoExportReminders: { type: Boolean, default: false }
+      },
+      location: {
+        autoDisableAfterHours: { type: Number, default: 0 },
+        globalMapVisible: { type: Boolean, default: true },
+        lastEnabledAt: { type: Date, default: null }
       }
     },
     stats: {

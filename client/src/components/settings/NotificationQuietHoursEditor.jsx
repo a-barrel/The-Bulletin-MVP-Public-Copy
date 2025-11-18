@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Stack, Typography, FormControlLabel, Switch, TextField, Box } from '@mui/material';
+import settingsPalette, { mutedTextSx, settingsToggleLabelSx } from './settingsPalette';
 
 const QUIET_HOUR_DAYS = [
   { value: 'mon', label: 'Monday' },
@@ -56,8 +57,10 @@ function NotificationQuietHoursEditor({ quietHours, onChange, disabled }) {
   return (
     <Stack spacing={1.5}>
       <Stack spacing={0.5}>
-        <Typography variant="h6">Quiet hours</Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="h6" sx={{ color: settingsPalette.accent, fontWeight: 700 }}>
+          Quiet hours
+        </Typography>
+        <Typography variant="body2" sx={mutedTextSx}>
           Pause non-critical notifications during the windows you choose. Critical alerts (security, moderation) still break through.
         </Typography>
       </Stack>
@@ -74,7 +77,8 @@ function NotificationQuietHoursEditor({ quietHours, onChange, disabled }) {
               p: 1.25,
               borderRadius: 1,
               border: '1px solid',
-              borderColor: 'divider'
+              borderColor: settingsPalette.borderSubtle,
+              backgroundColor: '#FFFFFF'
             }}
           >
             <FormControlLabel
@@ -86,6 +90,7 @@ function NotificationQuietHoursEditor({ quietHours, onChange, disabled }) {
                 />
               }
               label={QUIET_HOUR_DAYS.find((day) => day.value === entry.day)?.label || entry.day}
+              sx={settingsToggleLabelSx}
             />
             <Stack
               direction="row"
@@ -100,6 +105,11 @@ function NotificationQuietHoursEditor({ quietHours, onChange, disabled }) {
                 size="small"
                 disabled={disabled || !entry.enabled}
                 InputLabelProps={{ shrink: true }}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    color: settingsPalette.textPrimary
+                  }
+                }}
               />
               <TextField
                 type="time"
@@ -109,6 +119,11 @@ function NotificationQuietHoursEditor({ quietHours, onChange, disabled }) {
                 size="small"
                 disabled={disabled || !entry.enabled}
                 InputLabelProps={{ shrink: true }}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    color: settingsPalette.textPrimary
+                  }
+                }}
               />
             </Stack>
           </Box>

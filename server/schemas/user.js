@@ -75,7 +75,8 @@ const UserPreferencesSchema = z.object({
   location: z
     .object({
       autoDisableAfterHours: z.number().int().min(0).max(24 * 7).default(0),
-      globalMapVisible: z.boolean().default(true)
+      globalMapVisible: z.boolean().default(true),
+      lastEnabledAt: z.string().datetime().nullable().optional()
     })
     .partial()
     .optional()

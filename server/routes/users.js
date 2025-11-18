@@ -637,7 +637,9 @@ router.patch('/me', verifyToken, async (req, res) => {
     }
 
     if (input.locationSharingEnabled !== undefined) {
-      setDoc.locationSharingEnabled = input.locationSharingEnabled;
+      const nextValue = Boolean(input.locationSharingEnabled);
+      setDoc.locationSharingEnabled = nextValue;
+      setDoc['preferences.location.lastEnabledAt'] = nextValue ? new Date() : null;
     }
 
     if (input.avatar !== undefined) {
