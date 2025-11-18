@@ -13,6 +13,7 @@ import GlobalNavMenu from '../components/GlobalNavMenu';
 import Chip from '@mui/material/Chip';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
+import Pagination from '@mui/material/Pagination';
 import PlaceIcon from '@mui/icons-material/Place';
 import { useUpdates } from '../contexts/UpdatesContext';
 import { routes } from '../routes';
@@ -33,6 +34,26 @@ export const pageConfig = {
   order: 4,
   showInNav: true,
   protected: true,
+};
+
+const LIST_PAGE_SIZE = 10;
+const paginationSx = {
+  '& .MuiPaginationItem-root': {
+    backgroundColor: '#EBE4F8',
+    color: '#5D3889',
+    fontWeight: 600,
+    borderRadius: 999,
+    border: '1px solid rgba(93, 56, 137, 0.25)',
+    minWidth: 36,
+    height: 36
+  },
+  '& .MuiPaginationItem-root.Mui-selected': {
+    backgroundColor: '#5D3889',
+    color: '#FFFFFF'
+  },
+  '& .MuiPaginationItem-root:hover': {
+    backgroundColor: '#DCCBF4'
+  }
 };
 
 const FRIEND_ENGAGEMENT_LABEL_LOOKUP = FRIEND_ENGAGEMENT_OPTIONS.reduce((acc, option) => {
@@ -79,6 +100,7 @@ export default function ListPage() {
     () => toIdString(viewerProfile?._id) ?? toIdString(viewerProfile?.id) ?? null,
     [viewerProfile]
   );
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { unreadCount, refreshUnreadCount } = useUpdates();
   const { navigateIfOnline } = useOfflineNavigation(isOffline);
@@ -126,6 +148,24 @@ export default function ListPage() {
   const handleClearSearch = useCallback(() => {
     clearSearch();
   }, [clearSearch]);
+
+  const filtersSignature = useMemo(() => {
+    return JSON.stringify({
+      search: filters.search ?? '',
+      status: filters.status ?? '',
+      types: Array.isArray(filters.types) ? [...filters.types].sort() : [],
+      categories: Array.isArray(filters.categories) ? [...filters.categories].sort() : [],
+      friendEngagements: Array.isArray(filters.friendEngagements)
+        ? [...filters.friendEngagements].sort()
+        : [],
+      startDate: filters.startDate ?? '',
+      endDate: filters.endDate ?? ''
+    });
+  }, [filters]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filtersSignature, sortByExpiration, hideOwnPins]);
 
   const handleRemoveType = useCallback((typeValue) => {
     removeType(typeValue);
@@ -299,6 +339,31 @@ export default function ListPage() {
     return sortedItems;
   }, [feedItems, filters.status, hideOwnPins, sortByExpiration, viewerMongoId]);
 
+  const totalResults = filteredAndSortedFeed.length;
+  const totalPages = totalResults === 0 ? 1 : Math.ceil(totalResults / LIST_PAGE_SIZE);
+
+  useEffect(() => {
+    setCurrentPage((previous) => {
+      if (previous <= 1) {
+        return totalResults === 0 ? 1 : previous;
+      }
+      return previous > totalPages ? totalPages : previous;
+    });
+  }, [totalPages, totalResults]);
+
+  const paginatedFeedItems = useMemo(() => {
+    if (totalResults === 0) {
+      return [];
+    }
+    const startIndex = (currentPage - 1) * LIST_PAGE_SIZE;
+    return filteredAndSortedFeed.slice(startIndex, startIndex + LIST_PAGE_SIZE);
+  }, [currentPage, filteredAndSortedFeed, totalResults]);
+
+  const startItemNumber =
+    totalResults === 0 ? 0 : (currentPage - 1) * LIST_PAGE_SIZE + 1;
+  const endItemNumber =
+    totalResults === 0 ? 0 : Math.min(totalResults, currentPage * LIST_PAGE_SIZE);
+
   const notificationsLabel =
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
   const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
@@ -356,6 +421,18 @@ export default function ListPage() {
               label="Hide my pins"
               className="topbar-hide-own"
             />
+            {totalResults > LIST_PAGE_SIZE ? (
+              <div className="top-pagination">
+                <Pagination
+                  count={totalPages}
+                  page={currentPage}
+                  size="small"
+                  shape="rounded"
+                  onChange={(_, page) => setCurrentPage(page)}
+                  sx={paginationSx}
+                />
+              </div>
+            ) : null}
           </div>
 
           <button
@@ -393,12 +470,31 @@ export default function ListPage() {
         {error && <p>Error: {error}</p>}
 
         {!loading && !error && (
-          <Feed
-            items={filteredAndSortedFeed}
-            isUsingFallbackLocation={isUsingFallbackLocation}
-            onSelectItem={handleFeedItemSelect}
-            onSelectAuthor={handleFeedAuthorSelect}
-          />
+          <>
+            <Feed
+              items={paginatedFeedItems}
+              isUsingFallbackLocation={isUsingFallbackLocation}
+              onSelectItem={handleFeedItemSelect}
+              onSelectAuthor={handleFeedAuthorSelect}
+            />
+            {totalResults > 0 ? (
+              <div className="list-pagination">
+                <span className="list-pagination__summary">
+                  Showing {startItemNumber}–{endItemNumber} of {totalResults} pins
+                </span>
+                {totalResults > LIST_PAGE_SIZE ? (
+                  <Pagination
+                    count={totalPages}
+                    page={currentPage}
+                    color="primary"
+                    shape="rounded"
+                    onChange={(_, page) => setCurrentPage(page)}
+                    sx={paginationSx}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+          </>
         )}
 
         <ListFiltersOverlay
