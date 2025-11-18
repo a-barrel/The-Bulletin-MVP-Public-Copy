@@ -14,6 +14,8 @@ import Chip from '@mui/material/Chip';
 import RoomIcon from '@mui/icons-material/Room';
 import PublicIcon from '@mui/icons-material/Public';
 
+import './ChatRoomList.css'
+
 function ChatRoomList({
   rooms,
   selectedRoomId,
