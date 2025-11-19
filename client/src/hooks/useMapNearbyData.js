@@ -12,7 +12,8 @@ export default function useMapNearbyData({
   isOffline,
   pinFetchLimit,
   currentProfileId,
-  setGlobalError
+  setGlobalError,
+  hideFullEvents = true
 }) {
   const [nearbyUsers, setNearbyUsers] = useState([]);
   const [pins, setPins] = useState([]);
@@ -40,7 +41,8 @@ export default function useMapNearbyData({
           latitude: location.latitude,
           longitude: location.longitude,
           distanceMiles: DEFAULT_RADIUS_MILES,
-          limit: pinFetchLimit
+          limit: pinFetchLimit,
+          hideFullEvents
         });
 
         const viewerId = normalizeId(currentProfileId);
@@ -72,7 +74,7 @@ export default function useMapNearbyData({
         setIsLoadingPins(false);
       }
     },
-    [currentProfileId, isOffline, pinFetchLimit, setGlobalError, userLocation]
+    [currentProfileId, hideFullEvents, isOffline, pinFetchLimit, setGlobalError, userLocation]
   );
 
   const refreshNearby = useCallback(

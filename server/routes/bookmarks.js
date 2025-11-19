@@ -14,8 +14,28 @@ const { grantBadge } = require('../services/badgeService');
 const { mapMediaAsset } = require('../utils/media');
 const { toIdString, mapIdList } = require('../utils/ids');
 const { toIsoDateString } = require('../utils/dates');
+const { canViewerModeratePins } = require('../utils/moderation');
 
 const router = express.Router();
+
+const parseOptionalBoolean = (value) => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'number') {
+    return value !== 0;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', '1', 'yes', 'y', 'on'].includes(normalized)) {
+      return true;
+    }
+    if (['false', '0', 'no', 'n', 'off'].includes(normalized)) {
+      return false;
+    }
+  }
+  return undefined;
+};
 
 const BookmarkQuerySchema = z.object({
   userId: z
@@ -25,7 +45,11 @@ const BookmarkQuerySchema = z.object({
     .refine((value) => !value || mongoose.Types.ObjectId.isValid(value), {
       message: 'Invalid user id'
     }),
-  limit: z.coerce.number().int().positive().max(100).default(50)
+  limit: z.coerce.number().int().positive().max(100).default(50),
+  hideFullEvents: z
+    .union([z.boolean(), z.string(), z.number()])
+    .optional()
+    .transform(parseOptionalBoolean)
 });
 
 const ExportQuerySchema = z.object({
@@ -192,6 +216,28 @@ const mapCollection = (collectionDoc, bookmarks) => {
   });
 };
 
+const buildBlockedSet = (user) => new Set(mapIdList(user?.relationships?.blockedUserIds));
+
+const isPinAtCapacity = (pinDoc) => {
+  if (!pinDoc || pinDoc.type !== 'event') {
+    return false;
+  }
+  const limit =
+    typeof pinDoc.participantLimit === 'number' && pinDoc.participantLimit > 0
+      ? pinDoc.participantLimit
+      : null;
+  if (!limit) {
+    return false;
+  }
+  const explicitCount =
+    typeof pinDoc.participantCount === 'number' ? pinDoc.participantCount : null;
+  const attendeeListCount = Array.isArray(pinDoc.attendingUserIds)
+    ? pinDoc.attendingUserIds.length
+    : null;
+  const count = explicitCount ?? attendeeListCount ?? 0;
+  return count >= limit;
+};
+
 router.get('/', verifyToken, async (req, res) => {
   try {
     const query = BookmarkQuerySchema.parse(req.query);
@@ -204,12 +250,38 @@ router.get('/', verifyToken, async (req, res) => {
       ? new mongoose.Types.ObjectId(query.userId)
       : viewer._id;
 
+    const hideFullEvents = query.hideFullEvents !== false;
+    const viewerIsPrivileged = viewer ? canViewerModeratePins(viewer) : false;
     const bookmarks = await Bookmark.find({ userId: targetUserId })
       .sort({ createdAt: -1 })
       .limit(query.limit)
       .populate({ path: 'pinId', populate: { path: 'creatorId' } });
 
-    const payload = bookmarks.map((bookmark) => {
+    const viewerBlockedSet = viewer ? buildBlockedSet(viewer) : new Set();
+    const viewerId = viewer ? toIdString(viewer._id) : null;
+
+    const filteredBookmarks = bookmarks.filter((bookmark) => {
+      const creatorDoc = bookmark?.pinId?.creatorId;
+      if (!creatorDoc) {
+        return !(hideFullEvents && !viewerIsPrivileged && isPinAtCapacity(bookmark.pinId));
+      }
+      const creatorId = toIdString(creatorDoc._id ?? creatorDoc);
+      if (creatorId && viewerBlockedSet.has(creatorId)) {
+        return false;
+      }
+      if (viewerId) {
+        const creatorBlockedSet = buildBlockedSet(creatorDoc);
+        if (creatorBlockedSet.has(viewerId)) {
+          return false;
+        }
+      }
+      if (hideFullEvents && !viewerIsPrivileged && isPinAtCapacity(bookmark.pinId)) {
+        return false;
+      }
+      return true;
+    });
+
+    const payload = filteredBookmarks.map((bookmark) => {
       const pinPreview = mapPinToPreview(bookmark.pinId);
       return mapBookmark(bookmark, pinPreview);
     });
@@ -220,6 +292,70 @@ router.get('/', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Invalid bookmark query', issues: error.errors });
     }
     res.status(500).json({ message: 'Failed to load bookmarks' });
+  }
+});
+
+router.get('/history', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const historyEntries = Array.isArray(viewer.viewHistory) ? viewer.viewHistory : [];
+    if (!historyEntries.length) {
+      return res.json([]);
+    }
+
+    const pinIds = historyEntries
+      .map((entry) => entry?.pinId)
+      .filter((id) => id && mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
+    const pins = await Pin.find({ _id: { $in: pinIds } }).populate({
+      path: 'creatorId'
+    });
+    const pinMap = new Map(pins.map((pinDoc) => [toIdString(pinDoc._id), pinDoc]));
+
+    const payload = historyEntries
+      .map((entry) => {
+        if (!entry?.pinId) {
+          return null;
+        }
+        const pinIdString = toIdString(entry.pinId);
+        if (!pinIdString) {
+          return null;
+        }
+        const pinDoc = pinMap.get(pinIdString);
+        if (!pinDoc) {
+          return null;
+        }
+
+        return {
+          pinId: pinIdString,
+          viewedAt: entry.viewedAt ? new Date(entry.viewedAt).toISOString() : new Date().toISOString(),
+          pin: mapPinToPreview(pinDoc)
+        };
+      })
+      .filter(Boolean);
+
+    res.json(payload);
+  } catch (error) {
+    console.error('Failed to load bookmark history:', error);
+    res.status(500).json({ message: 'Failed to load bookmark history' });
+  }
+});
+
+router.delete('/history', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    await User.updateOne({ _id: viewer._id }, { $set: { viewHistory: [] } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to clear bookmark history:', error);
+    res.status(500).json({ message: 'Failed to clear bookmark history' });
   }
 });
 
@@ -239,6 +375,27 @@ router.get('/export', verifyToken, async (req, res) => {
       .sort({ createdAt: -1 })
       .populate({ path: 'pinId', populate: { path: 'creatorId' } });
 
+    const viewerBlockedSet = viewer ? buildBlockedSet(viewer) : new Set();
+    const viewerId = viewer ? toIdString(viewer._id) : null;
+
+    const filteredBookmarks = bookmarks.filter((bookmark) => {
+      const creatorDoc = bookmark?.pinId?.creatorId;
+      if (!creatorDoc) {
+        return true;
+      }
+      const creatorId = toIdString(creatorDoc._id ?? creatorDoc);
+      if (creatorId && viewerBlockedSet.has(creatorId)) {
+        return false;
+      }
+      if (viewerId) {
+        const creatorBlockedSet = buildBlockedSet(creatorDoc);
+        if (creatorBlockedSet.has(viewerId)) {
+          return false;
+        }
+      }
+      return true;
+    });
+
     const header = [
       'Bookmark ID',
       'Saved At',
@@ -252,7 +409,7 @@ router.get('/export', verifyToken, async (req, res) => {
       'Collection ID'
     ];
 
-    const rows = bookmarks.map((bookmark) => {
+    const rows = filteredBookmarks.map((bookmark) => {
       const pinPreview = mapPinToPreview(bookmark.pinId);
       const creator = pinPreview?.creator;
       const creatorName =

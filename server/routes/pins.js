@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const { z, ZodError } = require('zod');
 const Pin = require('../models/Pin');
 const User = require('../models/User');
+const ContentReport = require('../models/ContentReport');
 const Reply = require('../models/Reply');
 const { Bookmark } = require('../models/Bookmark');
 const { PinListItemSchema, PinSchema, PinPreviewSchema } = require('../schemas/pin');
@@ -22,8 +23,32 @@ const { mapMediaAsset: mapMediaAssetResponse } = require('../utils/media');
 const { toIdString, mapIdList } = require('../utils/ids');
 const { METERS_PER_MILE, milesToMeters } = require('../utils/geo');
 const { timeAsync } = require('../utils/devLogger');
+const { recordAuditEntry } = require('../services/auditLogService');
+const { canViewerModeratePins } = require('../utils/moderation');
 
 const router = express.Router();
+
+const OptionalBooleanSchema = z
+  .union([z.boolean(), z.string(), z.number()])
+  .optional()
+  .transform((value) => {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'number') {
+      return value !== 0;
+    }
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (['true', '1', 'yes', 'y', 'on'].includes(normalized)) {
+        return true;
+      }
+      if (['false', '0', 'no', 'n', 'off'].includes(normalized)) {
+        return false;
+      }
+    }
+    return undefined;
+  });
 
 const PinsQuerySchema = z.object({
   type: z.enum(['event', 'discussion']).optional(),
@@ -37,7 +62,8 @@ const PinsQuerySchema = z.object({
   categories: z.string().trim().optional(),
   types: z.string().trim().optional(),
   startDate: z.string().trim().optional(),
-  endDate: z.string().trim().optional()
+  endDate: z.string().trim().optional(),
+  hideFullEvents: OptionalBooleanSchema
 });
 
 const PinIdSchema = z.object({
@@ -70,10 +96,65 @@ const CreateReplySchema = z.object({
     .optional()
 });
 
+const FlagPinSchema = z.object({
+  reason: z.string().trim().max(280).optional()
+});
+
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const EVENT_MAX_LEAD_TIME_MS = 14 * MILLISECONDS_PER_DAY;
 const DISCUSSION_MAX_DURATION_MS = 3 * MILLISECONDS_PER_DAY;
 const PAST_TOLERANCE_MS = 60 * 1000;
+
+const EVENT_ATTENDEE_LIMITS = {
+  min: 5,
+  max: 100,
+  defaultValue: 30
+};
+
+const DISCUSSION_REPLY_LIMIT_OPTIONS = [50, 75, 100, 150, 200];
+const DEFAULT_DISCUSSION_REPLY_LIMIT = 100;
+const VIEW_HISTORY_MAX = 20;
+
+const buildHideFullEventsFilter = () => ({
+  $or: [
+    { type: { $ne: 'event' } },
+    { participantLimit: { $exists: false } },
+    { participantLimit: null },
+    { participantLimit: { $lte: 0 } },
+    {
+      $expr: {
+        $lt: [{ $ifNull: ['$participantCount', 0] }, '$participantLimit']
+      }
+    }
+  ]
+});
+
+const recordPinViewHistory = async (viewer, pinId) => {
+  if (!viewer || !viewer._id || !pinId) {
+    return;
+  }
+  try {
+    const pinObjectId = new mongoose.Types.ObjectId(pinId);
+    await User.updateOne(
+      { _id: viewer._id },
+      { $pull: { viewHistory: { pinId: pinObjectId } } }
+    );
+    await User.updateOne(
+      { _id: viewer._id },
+      {
+        $push: {
+          viewHistory: {
+            $each: [{ pinId: pinObjectId, viewedAt: new Date() }],
+            $position: 0,
+            $slice: VIEW_HISTORY_MAX
+          }
+        }
+      }
+    );
+  } catch (error) {
+    console.warn('Failed to record pin view history:', error);
+  }
+};
 
 const mapUserToPublic = (user) => {
   if (!user) return undefined;
@@ -202,7 +283,7 @@ const parseDateParam = (value) => {
 };
 
 const USER_SUMMARY_PROJECTION =
-  'username displayName roles accountStatus avatar stats relationships.blockedUserIds';
+  'username displayName roles accountStatus avatar stats relationships.blockedUserIds preferences.location.globalMapVisible';
 
 const buildBlockedSet = (userDoc) => new Set(mapIdList(userDoc?.relationships?.blockedUserIds));
 
@@ -386,6 +467,7 @@ const mapPinToFull = (pinDoc, creator, options = {}) => {
     base.approximateAddress = doc.approximateAddress || undefined;
     base.expiresAt = doc.expiresAt ? doc.expiresAt.toISOString() : undefined;
     base.autoDelete = doc.autoDelete ?? true;
+    base.replyLimit = doc.replyLimit ?? undefined;
   }
 
   if (typeof options.viewerHasBookmarked === 'boolean') {
@@ -406,6 +488,18 @@ const mapPinToFull = (pinDoc, creator, options = {}) => {
 
   if (typeof options.viewerInteractionLockMessage === 'string' && options.viewerInteractionLockMessage.trim()) {
     base.viewerInteractionLockMessage = options.viewerInteractionLockMessage.trim();
+  }
+
+  if (doc.moderation) {
+    base.moderation = {
+      status: doc.moderation.status || 'clean',
+      flaggedAt: doc.moderation.flaggedAt ? doc.moderation.flaggedAt.toISOString() : undefined,
+      flaggedBy: toIdString(doc.moderation.flaggedBy),
+      flaggedReason:
+        typeof doc.moderation.flaggedReason === 'string' && doc.moderation.flaggedReason.trim()
+          ? doc.moderation.flaggedReason.trim()
+          : undefined
+    };
   }
 
   return PinSchema.parse(base);
@@ -493,7 +587,8 @@ const NearbyPinsQuerySchema = z.object({
   status: z.enum(['active', 'expired', 'all']).optional(),
   startDate: z.string().trim().optional(),
   endDate: z.string().trim().optional(),
-  friendEngagements: z.string().trim().optional()
+  friendEngagements: z.string().trim().optional(),
+  hideFullEvents: OptionalBooleanSchema
 });
 
 const haversineDistanceMeters = (lat1, lon1, lat2, lon2) => {
@@ -540,11 +635,25 @@ const EventAddressSchema = z.object({
   components: EventAddressComponentsSchema.optional()
 });
 
+const ParticipantLimitSchema = z
+  .coerce.number()
+  .int()
+  .min(EVENT_ATTENDEE_LIMITS.min)
+  .max(EVENT_ATTENDEE_LIMITS.max);
+
+const ReplyLimitSchema = z
+  .coerce.number()
+  .int()
+  .refine((value) => DISCUSSION_REPLY_LIMIT_OPTIONS.includes(value), {
+    message: 'Reply limit must be one of the allowed options.'
+  });
+
 const EventPinCreateSchema = BaseCreatePinSchema.extend({
   type: z.literal('event'),
   startDate: z.coerce.date(),
   endDate: z.coerce.date(),
-  address: EventAddressSchema.optional()
+  address: EventAddressSchema.optional(),
+  participantLimit: ParticipantLimitSchema.optional()
 });
 
 const ApproximateAddressInputSchema = z.object({
@@ -558,7 +667,8 @@ const DiscussionPinCreateSchema = BaseCreatePinSchema.extend({
   type: z.literal('discussion'),
   expiresAt: z.coerce.date(),
   autoDelete: z.boolean().optional(),
-  approximateAddress: ApproximateAddressInputSchema.optional()
+  approximateAddress: ApproximateAddressInputSchema.optional(),
+  replyLimit: ReplyLimitSchema.optional()
 });
 
 const CreatePinSchema = z.discriminatedUnion('type', [
@@ -637,16 +747,16 @@ router.post('/', verifyToken, async (req, res) => {
       coordinates: [input.coordinates.longitude, input.coordinates.latitude]
     };
 
-  const pinData = {
-    type: input.type,
-    creatorId: creatorObjectId,
-    title: input.title,
-    description: input.description,
-    coordinates,
-    proximityRadiusMeters: input.proximityRadiusMeters ?? 1609,
-    visibility: 'public',
-    options: input.options ?? undefined
-  };
+    const pinData = {
+      type: input.type,
+      creatorId: creatorObjectId,
+      title: input.title,
+      description: input.description,
+      coordinates,
+      proximityRadiusMeters: input.proximityRadiusMeters ?? 1609,
+      visibility: 'public',
+      options: input.options ?? undefined
+    };
 
     if (input.type === 'event') {
       pinData.startDate = input.startDate;
@@ -657,6 +767,12 @@ router.post('/', verifyToken, async (req, res) => {
             components: input.address.components
           }
         : undefined;
+      pinData.participantLimit =
+        typeof input.participantLimit === 'number'
+          ? input.participantLimit
+          : EVENT_ATTENDEE_LIMITS.defaultValue;
+      pinData.attendingUserIds = [creatorObjectId];
+      pinData.participantCount = 1;
     } else if (input.type === 'discussion') {
       pinData.expiresAt = input.expiresAt;
       pinData.autoDelete = input.autoDelete ?? true;
@@ -668,6 +784,10 @@ router.post('/', verifyToken, async (req, res) => {
             formatted: input.approximateAddress.formatted
           }
         : undefined;
+      pinData.replyLimit =
+        typeof input.replyLimit === 'number'
+          ? input.replyLimit
+          : DEFAULT_DISCUSSION_REPLY_LIMIT;
     }
 
     if (input.photos?.length) {
@@ -685,6 +805,7 @@ router.post('/', verifyToken, async (req, res) => {
       ensureUserStats(creatorUserDoc);
       if (pin.type === 'event') {
         creatorUserDoc.stats.eventsHosted = (creatorUserDoc.stats.eventsHosted ?? 0) + 1;
+        creatorUserDoc.stats.eventsAttended = (creatorUserDoc.stats.eventsAttended ?? 0) + 1;
       } else if (pin.type === 'discussion') {
         creatorUserDoc.stats.posts = (creatorUserDoc.stats.posts ?? 0) + 1;
       }
@@ -762,6 +883,119 @@ router.post('/', verifyToken, async (req, res) => {
   }
 });
 
+router.post('/:pinId/moderation/flag', verifyToken, async (req, res) => {
+  try {
+    const { pinId } = PinIdSchema.parse(req.params);
+    const input = FlagPinSchema.parse(req.body);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (!canViewerModeratePins(viewer)) {
+      return res.status(403).json({ message: 'Moderator privileges required.' });
+    }
+
+    const pin = await Pin.findById(pinId);
+    if (!pin) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    const now = new Date();
+    pin.moderation = {
+      ...(pin.moderation || {}),
+      status: 'flagged',
+      flaggedAt: now,
+      flaggedBy: viewer._id,
+      flaggedReason:
+        typeof input.reason === 'string' && input.reason.trim()
+          ? input.reason.trim()
+          : pin.moderation?.flaggedReason || 'Flagged for removal'
+    };
+    pin.markModified('moderation');
+    await pin.save();
+
+    const resolveObjectId = (value) => {
+      if (!value) {
+        return null;
+      }
+      if (value instanceof mongoose.Types.ObjectId) {
+        return value;
+      }
+      if (mongoose.Types.ObjectId.isValid(value)) {
+        return new mongoose.Types.ObjectId(value);
+      }
+      return null;
+    };
+
+    const normalizedReason = pin.moderation.flaggedReason || 'Flagged for removal';
+    const metadata = {
+      pinId: toIdString(pin._id),
+      title: pin.title || null
+    };
+    const authorObjectId = resolveObjectId(
+      (pin.creatorId && pin.creatorId._id) ? pin.creatorId._id : pin.creatorId
+    ) || viewer._id;
+
+    try {
+      await ContentReport.findOneAndUpdate(
+        {
+          contentType: 'pin',
+          contentId: pinId,
+          reporterId: viewer._id,
+          status: 'pending'
+        },
+        {
+          $set: {
+            contentAuthorId: authorObjectId,
+            reason: normalizedReason,
+            context: 'Pin flagged via moderator action',
+            offenseTags: ['moderator-flag'],
+            latestSnapshot: {
+              message: pin.description || '',
+              metadata
+            },
+            status: 'pending'
+          },
+          $setOnInsert: {
+            contentType: 'pin',
+            contentId: pinId,
+            reporterId: viewer._id
+          }
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    } catch (reportError) {
+      console.error('Failed to create content report for flagged pin:', reportError);
+    }
+
+    recordAuditEntry({
+      actorId: viewer._id,
+      targetId: pin._id,
+      action: 'pin:flag',
+      metadata: {
+        reason: pin.moderation.flaggedReason || undefined
+      },
+      context: 'moderation'
+    }).catch(() => {});
+
+    return res.json({
+      pinId: toIdString(pin._id),
+      moderation: {
+        status: pin.moderation.status,
+        flaggedAt: pin.moderation.flaggedAt ? pin.moderation.flaggedAt.toISOString() : undefined,
+        flaggedBy: toIdString(pin.moderation.flaggedBy),
+        flaggedReason: pin.moderation.flaggedReason || undefined
+      }
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid flag payload', issues: error.errors });
+    }
+    console.error('Failed to flag pin for moderation:', error);
+    res.status(500).json({ message: 'Failed to flag pin' });
+  }
+});
+
 router.get('/nearby', verifyToken, async (req, res) => {
   try {
     const {
@@ -776,7 +1010,8 @@ router.get('/nearby', verifyToken, async (req, res) => {
       status: statusParam,
       startDate: startDateParam,
       endDate: endDateParam,
-      friendEngagements: friendEngagementsParam
+      friendEngagements: friendEngagementsParam,
+      hideFullEvents
     } = NearbyPinsQuerySchema.parse(req.query);
 
     const maxDistanceMeters = milesToMeters(distanceMiles) ?? distanceMiles * METERS_PER_MILE;
@@ -816,6 +1051,7 @@ router.get('/nearby', verifyToken, async (req, res) => {
     }
 
     const now = new Date();
+    const viewerIsPrivileged = canViewerModeratePins(viewer);
     const filters = [];
 
     if (friendFilterActive) {
@@ -906,6 +1142,10 @@ router.get('/nearby', verifyToken, async (req, res) => {
       });
     }
 
+    if (hideFullEvents === true && !viewerIsPrivileged) {
+      filters.push(buildHideFullEventsFilter());
+    }
+
     const findQuery = {
       ...(filters.length ? { $and: filters } : {}),
       coordinates: {
@@ -932,6 +1172,11 @@ router.get('/nearby', verifyToken, async (req, res) => {
         return false;
       }
       if (isBlockedBetweenUsers(viewer, creatorDoc)) {
+        return false;
+      }
+      const globalVisible =
+        creatorDoc?.preferences?.location?.globalMapVisible !== false;
+      if (!globalVisible && creatorId !== viewerId) {
         return false;
       }
       return true;
@@ -1003,6 +1248,7 @@ router.get('/', verifyToken, async (req, res) => {
     const limit = query.limit;
     const now = new Date();
     const filters = [];
+    const viewerIsPrivileged = canViewerModeratePins(viewer);
     const sortMode = query.sort ?? 'recent';
     const statusFilter = query.status ?? 'active';
 
@@ -1087,6 +1333,10 @@ router.get('/', verifyToken, async (req, res) => {
       });
     }
 
+    if (query.hideFullEvents === true && !viewerIsPrivileged) {
+      filters.push(buildHideFullEventsFilter());
+    }
+
     const matchQuery =
       filters.length === 0
         ? {}
@@ -1149,6 +1399,11 @@ router.get('/', verifyToken, async (req, res) => {
         if (isBlockedBetweenUsers(viewer, creatorDoc)) {
           return false;
         }
+        const globalVisible =
+          creatorDoc?.preferences?.location?.globalMapVisible !== false;
+        if (!globalVisible && creatorId !== viewerId) {
+          return false;
+        }
         return true;
       });
 
@@ -1186,6 +1441,11 @@ router.get('/', verifyToken, async (req, res) => {
         return false;
       }
       if (isBlockedBetweenUsers(viewer, creatorDoc)) {
+        return false;
+      }
+      const globalVisible =
+        creatorDoc?.preferences?.location?.globalMapVisible !== false;
+      if (!globalVisible && creatorId !== viewerId) {
         return false;
       }
       return true;
@@ -1273,6 +1533,7 @@ router.get('/:pinId', verifyToken, async (req, res) => {
     }
 
     const payload = mapPinToFull(pin, mapUserToPublic(pin.creatorId), mapOptions);
+    recordPinViewHistory(viewer, pin._id);
     res.json(payload);
   } catch (error) {
     if (error instanceof ZodError) {
@@ -1299,6 +1560,16 @@ router.post('/:pinId/attendance', verifyToken, async (req, res) => {
 
     if (isBlockedBetweenUsers(viewer, pin.creatorId)) {
       return res.status(403).json({ message: 'You cannot interact with this pin.' });
+    }
+
+    const currentReplyCount = pin.replyCount ?? 0;
+    if (
+      pin.type === 'discussion' &&
+      typeof pin.replyLimit === 'number' &&
+      pin.replyLimit > 0 &&
+      currentReplyCount >= pin.replyLimit
+    ) {
+      return res.status(400).json({ message: 'This discussion has reached its reply limit.' });
     }
 
     if (pin.type !== 'event') {

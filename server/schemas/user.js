@@ -8,6 +8,13 @@ const {
 
 const UserStatusSchema = z.enum(['active', 'inactive', 'suspended', 'deleted']);
 
+const QuietHoursEntrySchema = z.object({
+  day: z.enum(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']),
+  start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  end: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  enabled: z.boolean().default(true)
+});
+
 const NotificationPreferencesSchema = z
   .object({
     proximity: z.boolean().default(true),
@@ -24,7 +31,14 @@ const NotificationPreferencesSchema = z
     badgeUnlocks: z.boolean().default(true),
     moderationAlerts: z.boolean().default(true),
     dmMentions: z.boolean().default(true),
-    emailDigests: z.boolean().default(false)
+    emailDigests: z.boolean().default(false),
+    quietHours: z.array(QuietHoursEntrySchema).default([])
+  })
+  .partial();
+
+const NotificationVerbositySchema = z
+  .object({
+    chat: z.enum(['highlights', 'all', 'muted']).default('highlights')
   })
   .partial();
 
@@ -34,7 +48,8 @@ const DisplayPreferencesSchema = z
     reduceMotion: z.boolean().default(false),
     highContrast: z.boolean().default(false),
     mapDensity: z.enum(['compact', 'balanced', 'detailed']).default('balanced'),
-    celebrationSounds: z.boolean().default(true)
+    celebrationSounds: z.boolean().default(true),
+    hideFullEventsByDefault: z.boolean().default(true)
   })
   .partial();
 
@@ -47,6 +62,7 @@ const DataPreferencesSchema = z
 const UserPreferencesSchema = z.object({
   theme: z.enum(['system', 'light', 'dark']).default('system'),
   notifications: NotificationPreferencesSchema.optional(),
+  notificationsVerbosity: NotificationVerbositySchema.optional(),
   notificationsMutedUntil: z
     .union([z.string().datetime(), z.null()])
     .optional(),
@@ -56,7 +72,15 @@ const UserPreferencesSchema = z.object({
   dmPermission: z.enum(['everyone', 'friends', 'nobody']).default('everyone').optional(),
   digestFrequency: z.enum(['immediate', 'daily', 'weekly', 'never']).default('weekly').optional(),
   display: DisplayPreferencesSchema.optional(),
-  data: DataPreferencesSchema.optional()
+  data: DataPreferencesSchema.optional(),
+  location: z
+    .object({
+      autoDisableAfterHours: z.number().int().min(0).max(24 * 7).default(0),
+      globalMapVisible: z.boolean().default(true),
+      lastEnabledAt: z.string().datetime().nullable().optional()
+    })
+    .partial()
+    .optional()
 });
 
 const UserStatsSchema = z.object({

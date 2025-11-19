@@ -55,7 +55,8 @@ const requestBrowserLocation = () =>
 export default function useMapExplorer({
   sharedLocation,
   setSharedLocation,
-  isOffline
+  isOffline,
+  hideFullEvents = true
 }) {
   const [authUser] = useAuthState(auth);
 
@@ -98,7 +99,8 @@ export default function useMapExplorer({
     isOffline,
     pinFetchLimit,
     currentProfileId,
-    setGlobalError: setError
+    setGlobalError: setError,
+    hideFullEvents
   });
 
   const {

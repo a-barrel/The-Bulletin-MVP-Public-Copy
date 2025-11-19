@@ -6,6 +6,7 @@ import {
 } from '../../api/mongoDataApi';
 import reportClientError from '../../utils/reportClientError';
 import { auth } from '../../firebase';
+import { DEFAULT_SETTINGS } from '../useSettingsManager';
 
 export default function useSettingsPersistence({
   authUser,
@@ -43,11 +44,18 @@ export default function useSettingsPersistence({
           statsPublic: settings.statsPublic,
           dmPermission: settings.dmPermission,
           digestFrequency: settings.digestFrequency,
-          notifications: { ...settings.notifications },
+          notifications: { ...(settings.notifications || DEFAULT_SETTINGS.notifications) },
+          notificationsVerbosity: {
+            ...(settings.notificationsVerbosity || DEFAULT_SETTINGS.notificationsVerbosity)
+          },
           notificationsMutedUntil: settings.notificationsMutedUntil ?? null,
           display: { ...settings.display },
           data: {
             autoExportReminders: settings.autoExportReminders
+          },
+          location: {
+            autoDisableAfterHours: settings.locationAutoShareHours ?? DEFAULT_SETTINGS.locationAutoShareHours,
+            globalMapVisible: settings.globalMapVisible ?? DEFAULT_SETTINGS.globalMapVisible
           }
         },
         locationSharingEnabled: settings.locationSharingEnabled

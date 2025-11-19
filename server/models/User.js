@@ -42,7 +42,24 @@ const userSchema = new mongoose.Schema(
         badgeUnlocks: { type: Boolean, default: true },
         moderationAlerts: { type: Boolean, default: true },
         dmMentions: { type: Boolean, default: true },
-        emailDigests: { type: Boolean, default: false }
+        emailDigests: { type: Boolean, default: false },
+        quietHours: {
+          type: [
+            {
+              day: {
+                type: String,
+                enum: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+              },
+              start: { type: String, default: '22:00' },
+              end: { type: String, default: '07:00' },
+              enabled: { type: Boolean, default: true }
+            }
+          ],
+          default: []
+        }
+      },
+      notificationsVerbosity: {
+        chat: { type: String, enum: ['highlights', 'all', 'muted'], default: 'highlights' }
       },
       notificationsMutedUntil: { type: Date, default: null },
       radiusPreferenceMeters: { type: Number, default: 16093 },
@@ -59,10 +76,16 @@ const userSchema = new mongoose.Schema(
         reduceMotion: { type: Boolean, default: false },
         highContrast: { type: Boolean, default: false },
         mapDensity: { type: String, enum: ['compact', 'balanced', 'detailed'], default: 'balanced' },
-        celebrationSounds: { type: Boolean, default: true }
+        celebrationSounds: { type: Boolean, default: true },
+        hideFullEventsByDefault: { type: Boolean, default: true }
       },
       data: {
         autoExportReminders: { type: Boolean, default: false }
+      },
+      location: {
+        autoDisableAfterHours: { type: Number, default: 0 },
+        globalMapVisible: { type: Boolean, default: true },
+        lastEnabledAt: { type: Date, default: null }
       }
     },
     stats: {
@@ -96,6 +119,12 @@ const userSchema = new mongoose.Schema(
     ownedPinIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Pin' }],
     bookmarkCollectionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'BookmarkCollection' }],
     proximityChatRoomIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ProximityChatRoom' }],
+    viewHistory: [
+      {
+        pinId: { type: mongoose.Schema.Types.ObjectId, ref: 'Pin' },
+        viewedAt: { type: Date, default: Date.now }
+      }
+    ],
     recentLocationIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Location' }]
   },
   { timestamps: true }

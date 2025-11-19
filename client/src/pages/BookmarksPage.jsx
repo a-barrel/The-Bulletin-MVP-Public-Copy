@@ -29,7 +29,8 @@ import {
   Snackbar,
   Stack,
   Typography,
-  Checkbox
+  Checkbox,
+  Button
 } from '@mui/material';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import { auth } from '../firebase';
@@ -39,11 +40,13 @@ import useBookmarksManager from '../hooks/useBookmarksManager';
 import normalizeObjectId from '../utils/normalizeObjectId';
 import toIdString from '../utils/ids';
 import useBookmarkViewerProfile from '../hooks/bookmarks/useBookmarkViewerProfile';
+import useHideFullEventsPreference from '../hooks/useHideFullEventsPreference';
 import ExpandableBookmarkItem from '../components/ExpandableBookmarkItem';
 import MainNavBackButton from '../components/MainNavBackButton';
 import GlobalNavMenu from '../components/GlobalNavMenu';
 import './BookmarksPage.css';
 import '../components/BackButton.css';
+import { resolveUserAvatarUrl, DEFAULT_AVATAR_PATH } from '../utils/pinFormatting';
 
 export const pageConfig = {
   id: 'bookmarks',
@@ -65,6 +68,21 @@ function BookmarksPage() {
   const [searchParams] = useSearchParams();
   const { isOffline } = useNetworkStatusContext();
   const [authUser, authLoading] = useAuthState(auth);
+  const { viewerProfile: bookmarkViewerProfile, viewerMongoId } = useBookmarkViewerProfile({
+    authUser,
+    isOffline
+  });
+  const {
+    hideFullEvents,
+    setHideFullEvents,
+    isSavingPreference: isSavingHideFullPreference,
+    preferenceError: hideFullPreferenceError,
+    clearPreferenceError
+  } = useHideFullEventsPreference({
+    profileValue: bookmarkViewerProfile?.preferences?.display?.hideFullEventsByDefault,
+    disablePersistence: isOffline
+  });
+
   const {
     bookmarks,
     groupedBookmarks,
@@ -85,13 +103,18 @@ function BookmarksPage() {
     handleToggleAttendance,
     refresh,
     formatSavedDate,
-    collections
-  } = useBookmarksManager({ authUser, authLoading, isOffline });
+    collections,
+    viewHistory,
+    clearHistory,
+    isClearingHistory,
+    historyError,
+    dismissHistoryError
+  } = useBookmarksManager({ authUser, authLoading, isOffline, hideFullEvents });
 
   const [highlightedCollectionKey, setHighlightedCollectionKey] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [hideOwnPins, setHideOwnPins] = useState(true);
-  const viewerMongoId = useBookmarkViewerProfile({ authUser, isOffline });
+  const [activeTab, setActiveTab] = useState('bookmarks');
   const [currentPage, setCurrentPage] = useState(1);
   const collectionAnchorsRef = useRef(new Map());
   const focusAppliedRef = useRef(null);
@@ -191,11 +214,12 @@ function BookmarksPage() {
       if (!pin) {
         return false;
       }
+      const pinType = typeof pin.type === 'string' ? pin.type.toLowerCase() : '';
       switch (selectedFilter) {
         case 'event':
-          return pin.type === 'event';
+          return pinType === 'event';
         case 'discussion':
-          return pin.type === 'discussion';
+          return pinType === 'discussion';
         case 'my-pins': {
           const creatorId =
             toIdString(pin.creatorId) ??
@@ -235,6 +259,28 @@ function BookmarksPage() {
     setSelectedFilter(event.target.value);
     setCurrentPage(1);
   }, []);
+
+  const handleTabChange = useCallback((tab) => {
+    setActiveTab(tab);
+  }, []);
+
+  const handleHideFullEventsToggle = useCallback(
+    (event) => {
+      const nextValue = Boolean(event.target.checked);
+      if (hideFullPreferenceError) {
+        clearPreferenceError();
+      }
+      setHideFullEvents(nextValue);
+    },
+    [clearPreferenceError, hideFullPreferenceError, setHideFullEvents]
+  );
+
+  const handleHistoryClear = useCallback(() => {
+    if (historyError) {
+      dismissHistoryError();
+    }
+    clearHistory();
+  }, [clearHistory, dismissHistoryError, historyError]);
 
   const handleBookmarkAttendanceToggle = useCallback(
     async (bookmark) => {
@@ -327,9 +373,10 @@ function BookmarksPage() {
       if (!pin) {
         return;
       }
-      if (pin.type === 'event') {
+      const pinType = typeof pin.type === 'string' ? pin.type.toLowerCase() : '';
+      if (pinType === 'event') {
         eventCount += 1;
-      } else if (pin.type === 'discussion') {
+      } else if (pinType === 'discussion') {
         discussionCount += 1;
       }
       const creatorId = toIdString(pin.creatorId) ?? toIdString(pin.creator?._id);
@@ -408,6 +455,41 @@ function BookmarksPage() {
               </button>
             </Box>
           </Stack>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Chip
+              label={`Bookmarks (${totalCount})`}
+              variant={activeTab === 'bookmarks' ? 'filled' : 'outlined'}
+              onClick={() => handleTabChange('bookmarks')}
+              sx={{
+                fontWeight: 600,
+                backgroundColor: activeTab === 'bookmarks' ? '#5D3889' : 'rgba(93,56,137,0.1)',
+                color: activeTab === 'bookmarks' ? '#fff' : '#5D3889',
+                borderColor: '#5D3889'
+              }}
+            />
+            <Chip
+              label={`History (${viewHistory.length})`}
+              variant={activeTab === 'history' ? 'filled' : 'outlined'}
+              onClick={() => handleTabChange('history')}
+              sx={{
+                fontWeight: 600,
+                backgroundColor: activeTab === 'history' ? '#5D3889' : 'rgba(93,56,137,0.1)',
+                color: activeTab === 'history' ? '#fff' : '#5D3889',
+                borderColor: '#5D3889'
+              }}
+            />
+            {activeTab === 'history' ? (
+              <Button
+                variant="text"
+                color="secondary"
+                onClick={handleHistoryClear}
+                disabled={isClearingHistory || viewHistory.length === 0 || isOffline}
+                sx={{ fontFamily: '"Urbanist", sans-serif' }}
+              >
+                {isClearingHistory ? 'Clearing…' : 'Clear history'}
+              </Button>
+            ) : null}
+          </Stack>
 
           {isOffline ? (
             <Alert severity="warning" sx={{ fontFamily: '"Urbanist", sans-serif' }}>
@@ -426,6 +508,24 @@ function BookmarksPage() {
               {removalStatus.message}
             </Alert>
           ) : null}
+          {hideFullPreferenceError ? (
+            <Alert
+              severity="error"
+              onClose={clearPreferenceError}
+              sx={{ fontFamily: '"Urbanist", sans-serif' }}
+            >
+              {hideFullPreferenceError}
+            </Alert>
+          ) : null}
+          {historyError ? (
+            <Alert
+              severity="error"
+              onClose={dismissHistoryError}
+              sx={{ fontFamily: '"Urbanist", sans-serif' }}
+            >
+              {historyError}
+            </Alert>
+          ) : null}
 
           {error ? (
             <Alert severity="error" onClose={dismissError} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
@@ -433,33 +533,34 @@ function BookmarksPage() {
             </Alert>
           ) : null}
 
-          {isLoading ? (
-            <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ py: 6 }}>
-              <CircularProgress />
-              <Typography variant="body2" color="text.secondary" sx={{ fontFamily: '"Urbanist", sans-serif' }}>
-                Loading bookmarks...
-              </Typography>
-            </Stack>
-          ) : totalCount === 0 ? (
-            <Paper
-              variant="outlined"
-              sx={{
-                borderRadius: 3,
-                p: 4,
-                textAlign: 'center',
-                backgroundColor: '#CDAEF2',
-                border: '1px solid black'
-              }}
-            >
-              <Typography variant="h6" sx={{ fontFamily: '"Urbanist", sans-serif', color: 'black' }}>
-                No bookmarks yet
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 1, fontFamily: '"Urbanist", sans-serif', color: 'black' }}>
-                Tap the bookmark icon on a pin to save it. Your collection of favorites will appear here.
-              </Typography>
-            </Paper>
-          ) : (
-            <>
+          {activeTab === 'bookmarks' ? (
+            isLoading ? (
+              <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ py: 6 }}>
+                <CircularProgress />
+                <Typography variant="body2" color="text.secondary" sx={{ fontFamily: '"Urbanist", sans-serif' }}>
+                  Loading bookmarks...
+                </Typography>
+              </Stack>
+            ) : totalCount === 0 ? (
+              <Paper
+                variant="outlined"
+                sx={{
+                  borderRadius: 3,
+                  p: 4,
+                  textAlign: 'center',
+                  backgroundColor: '#CDAEF2',
+                  border: '1px solid black'
+                }}
+              >
+                <Typography variant="h6" sx={{ fontFamily: '"Urbanist", sans-serif', color: 'black' }}>
+                  No bookmarks yet
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1, fontFamily: '"Urbanist", sans-serif', color: 'black' }}>
+                  Tap the bookmark icon on a pin to save it. Your collection of favorites will appear here.
+                </Typography>
+              </Paper>
+            ) : (
+              <>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
                 <FormControl fullWidth size="small">
                   <InputLabel id="bookmarks-filter-label" sx={{ color: 'black', fontFamily: '"Urbanist", sans-serif' }}>
@@ -505,6 +606,18 @@ function BookmarksPage() {
                     />
                   }
                   label="Hide my pins"
+                  sx={{ fontFamily: '"Urbanist", sans-serif', color: 'black' }}
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={hideFullEvents}
+                      onChange={handleHideFullEventsToggle}
+                      color="secondary"
+                      disabled={isSavingHideFullPreference}
+                    />
+                  }
+                  label="Hide full events"
                   sx={{ fontFamily: '"Urbanist", sans-serif', color: 'black' }}
                 />
               </Stack>
@@ -622,7 +735,93 @@ function BookmarksPage() {
                   />
                 </Box>
               )}
-            </>
+              </>
+            )
+          ) : isLoading ? (
+            <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ py: 6 }}>
+              <CircularProgress />
+              <Typography variant="body2" color="text.secondary" sx={{ fontFamily: '"Urbanist", sans-serif' }}>
+                Loading history...
+              </Typography>
+            </Stack>
+          ) : viewHistory.length === 0 ? (
+            <Paper
+              variant="outlined"
+              sx={{
+                borderRadius: 3,
+                p: 4,
+                textAlign: 'center',
+                backgroundColor: '#E1F5FE',
+                border: '1px solid black'
+              }}
+            >
+              <Typography variant="h6" sx={{ fontFamily: '"Urbanist", sans-serif', color: 'black' }}>
+                No viewed pins yet
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1, fontFamily: '"Urbanist", sans-serif', color: 'black' }}>
+                Pins you open will appear here so you can jump back quickly.
+              </Typography>
+            </Paper>
+          ) : (
+            <Paper
+              variant="outlined"
+              sx={{ borderRadius: 3, p: 2, background: 'linear-gradient(135deg, #F4E8FF 0%, #FFFFFF 100%)' }}
+            >
+              <Stack spacing={1}>
+                {viewHistory.map((entry) => {
+                  const pin = entry.pin;
+                  const title = pin?.title || 'Unavailable pin';
+                  const typeLabel =
+                    pin?.type === 'event' ? 'Event' : pin?.type === 'discussion' ? 'Discussion' : 'Pin';
+                  const hostName = pin?.creator?.displayName || pin?.creator?.username || 'Unknown host';
+                  const hostAvatar = resolveUserAvatarUrl(pin?.creator, DEFAULT_AVATAR_PATH) || DEFAULT_AVATAR_PATH;
+                  return (
+                    <Box
+                      key={`${entry.pinId}-${entry.viewedAt}`}
+                      onClick={() => (pin ? handleViewPin(entry.pinId, pin) : undefined)}
+                      sx={{
+                        border: '1px solid rgba(93,56,137,0.35)',
+                        borderRadius: 3,
+                        p: 1.5,
+                        backgroundColor: '#FFFFFF',
+                        cursor: pin ? 'pointer' : 'default',
+                        transition: 'background-color 0.2s ease',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 1,
+                        '&:hover': {
+                          backgroundColor: pin ? 'rgba(93,56,137,0.12)' : 'inherit'
+                        }
+                      }}
+                    >
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#5D3889' }}>
+                        {title}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#3B2A57' }}>
+                        {typeLabel} · Viewed {formatSavedDate(entry.viewedAt)}
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <img
+                          src={hostAvatar}
+                          alt={`${hostName} avatar`}
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            border: '2px solid rgba(93,56,137,0.3)'
+                          }}
+                        />
+                        <Box sx={{ fontSize: '0.85rem', color: '#2f1f46' }}>
+                          <div style={{ fontWeight: 600 }}>Hosted by</div>
+                          <div>{hostName}</div>
+                        </Box>
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            </Paper>
           )}
       </Stack>
       <Snackbar

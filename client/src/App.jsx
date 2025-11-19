@@ -17,6 +17,7 @@ import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
+import Alert from '@mui/material/Alert';
 import ArticleIcon from '@mui/icons-material/Article';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LoginPage from './pages/LoginPage';
@@ -30,7 +31,7 @@ import { UpdatesProvider } from './contexts/UpdatesContext';
 import { BadgeSoundProvider } from './contexts/BadgeSoundContext';
 import { FriendBadgePreferenceProvider } from './contexts/FriendBadgePreferenceContext';
 import { preloadBadgeSound, setBadgeSoundEnabled } from './utils/badgeSound';
-import { LocationProvider } from './contexts/LocationContext';
+import { LocationProvider, useLocationContext } from './contexts/LocationContext';
 import {
   BadgeCelebrationToast,
   useBadgeCelebrationToast
@@ -45,6 +46,7 @@ import useSocialNotifications from './hooks/useSocialNotifications';
 import runtimeConfig from './config/runtime';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from './firebase';
+import useViewerProfile from './hooks/useViewerProfile';
 
 const theme = createTheme({
   palette: {
@@ -205,7 +207,7 @@ const readStoredFriendBadgePreference = () => {
   }
 };
 
-function App() {
+function AppContent() {
   const pages = useMemo(loadPages, []);
   const location = useLocation();
   const navigate = useNavigate();
@@ -233,9 +235,37 @@ function App() {
     announceBadgeEarned,
     handleClose: handleBadgeToastClose
   } = useBadgeCelebrationToast();
+  const { location: sharedLocation, setLocation } = useLocationContext();
+  const [locationPromptError, setLocationPromptError] = useState(null);
+  const [isRequestingLocation, setIsRequestingLocation] = useState(false);
 
   const isAuthRoute = AUTH_ROUTES.has(location.pathname);
   const isAuthReady = !authLoading && !!firebaseAuthUser;
+  const isLoginRoute = location.pathname === routes.auth.login;
+  const shouldLoadViewerProfile = isAuthReady && !isAuthRoute;
+  const { viewer: viewerProfile, isLoading: isViewerProfileLoading } = useViewerProfile({
+    enabled: shouldLoadViewerProfile
+  });
+  const isPinpointBypass =
+    typeof viewerProfile?.email === 'string' &&
+    viewerProfile.email.trim().toLowerCase() === 'pinpoint@gmail.com';
+  const hasAdminRoleBypass =
+    Array.isArray(viewerProfile?.roles) &&
+    viewerProfile.roles.some((role) => {
+      if (typeof role !== 'string') {
+        return false;
+      }
+      const normalized = role.trim().toLowerCase();
+      return (
+        normalized === 'admin' ||
+        normalized === 'super-admin' ||
+        normalized === 'system-admin' ||
+        normalized === 'moderator' ||
+        normalized === 'community-manager'
+      );
+    });
+  const isLocationBypassUser = Boolean(isPinpointBypass || hasAdminRoleBypass);
+
   const socialNotifications = useSocialNotifications({
     enabled: !isOffline && !isAuthRoute && isAuthReady,
     autoLoad: !isAuthRoute && isAuthReady
@@ -256,6 +286,13 @@ function App() {
     dmAccessDenied,
     refreshAll: refreshSocialNotifications
   } = socialNotifications;
+  const locationGateEnabled =
+    runtimeConfig.isOffline || import.meta.env.VITE_ENABLE_LOCATION_GATE === 'false'
+      ? false
+      : true;
+  const locationGateActive = locationGateEnabled && isLoginRoute && !runtimeConfig.isOffline;
+  const shouldShowLocationGate =
+    locationGateActive && !isLocationBypassUser && !sharedLocation && !isOffline;
 
   useEffect(() => {
     setBadgeSoundEnabled(badgeSoundEnabled);
@@ -504,11 +541,24 @@ function App() {
           }
           total += 1;
           const type = update?.payload?.type;
+          const pinType =
+            typeof update?.payload?.pin?.type === 'string'
+              ? update.payload.pin.type.toLowerCase()
+              : '';
           if (type === 'bookmark-update') {
             bookmark += 1;
-          } else if (type === 'event-starting-soon' || type === 'event-reminder') {
+          } else if (
+            type === 'event-starting-soon' ||
+            type === 'event-reminder' ||
+            pinType === 'event'
+          ) {
             events += 1;
-          } else if (type === 'pin-update' || type === 'new-pin' || type === 'discussion-expiring-soon') {
+          } else if (
+            type === 'pin-update' ||
+            type === 'new-pin' ||
+            type === 'discussion-expiring-soon' ||
+            pinType === 'discussion'
+          ) {
             discussions += 1;
           }
         });
@@ -606,6 +656,18 @@ function App() {
       }
     };
   }, [isAuthReady, location.pathname, refreshUnreadCount]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || isOffline || isAuthRoute || !isAuthReady) {
+      return undefined;
+    }
+    const intervalId = window.setInterval(() => {
+      refreshUnreadCount({ silent: true });
+    }, 180_000);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isAuthReady, isAuthRoute, isOffline, refreshUnreadCount]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -750,9 +812,37 @@ function App() {
     };
   }, [location.pathname, navPages.length, navigate]);
 
+  const handleRequestLocationAccess = useCallback(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLocationPromptError('Location services are unavailable in this browser.');
+      return;
+    }
+    setIsRequestingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setIsRequestingLocation(false);
+        setLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          source: 'browser-geolocation'
+        });
+        setLocationPromptError(null);
+      },
+      (error) => {
+        setIsRequestingLocation(false);
+        setLocationPromptError(error?.message || 'We could not retrieve your current location.');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10_000,
+        maximumAge: 0
+      }
+    );
+  }, [setLocation]);
+
   return (
-    <LocationProvider>
-      <FriendBadgePreferenceProvider value={friendBadgePreferenceValue}>
+    <FriendBadgePreferenceProvider value={friendBadgePreferenceValue}>
         <BadgeSoundProvider value={badgeSoundContextValue}>
           <UpdatesProvider value={updatesContextValue}>
             <SocialNotificationsProvider value={socialNotificationsContextValue}>
@@ -903,6 +993,55 @@ function App() {
                         }
                       />
                     </Routes>
+                    {shouldShowLocationGate ? (
+                      <Box
+                        sx={{
+                          position: 'fixed',
+                          inset: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: 'rgba(0, 0, 0, 0.65)',
+                          zIndex: (theme) => theme.zIndex.modal + 10,
+                          p: 2
+                        }}
+                      >
+                        <Paper
+                          role="dialog"
+                          aria-modal="true"
+                          aria-label="Location access required"
+                          sx={{
+                            width: '100%',
+                            maxWidth: 420,
+                            p: 3,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2
+                          }}
+                        >
+                          <Typography variant="h6">Location access required</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            PinPoint needs your live location to show nearby pins. Enable location
+                            services in your browser to continue.
+                          </Typography>
+                          {locationPromptError ? (
+                            <Alert severity="error" variant="outlined">
+                              {locationPromptError}
+                            </Alert>
+                          ) : null}
+                          <Stack direction="row" justifyContent="flex-end" spacing={1}>
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              onClick={handleRequestLocationAccess}
+                              disabled={isRequestingLocation}
+                            >
+                              {isRequestingLocation ? 'Requesting…' : 'Enable location'}
+                            </Button>
+                          </Stack>
+                        </Paper>
+                      </Box>
+                    ) : null}
                     <BadgeCelebrationToast toastState={badgeToast} onClose={handleBadgeToastClose} />
                   </ThemeProvider>
                 </NavOverlayProvider>
@@ -911,9 +1050,15 @@ function App() {
           </UpdatesProvider>
         </BadgeSoundProvider>
       </FriendBadgePreferenceProvider>
-    </LocationProvider>
   );
 }
 
+function App() {
+  return (
+    <LocationProvider>
+      <AppContent />
+    </LocationProvider>
+  );
+}
 
 export default App;

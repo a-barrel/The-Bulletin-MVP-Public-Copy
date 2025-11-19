@@ -14,10 +14,12 @@ import { useLocationContext } from '../contexts/LocationContext';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import { useUpdates } from '../contexts/UpdatesContext';
 import useMapExplorer from '../hooks/useMapExplorer';
+import useViewerProfile from '../hooks/useViewerProfile';
+import useHideFullEventsPreference from '../hooks/useHideFullEventsPreference';
 import { DEFAULT_MAX_DISTANCE_METERS } from '../utils/mapExplorerConstants';
 import MapHeader from '../components/map/MapHeader';
 import MapFilterPanel from '../components/map/MapFilterPanel';
-import { MAP_FILTERS } from '../utils/mapMarkers';
+import { MAP_FILTERS, MAP_MARKER_ICON_URLS } from '../utils/mapMarkers';
 import useOfflineAction from '../hooks/useOfflineAction';
 
 
@@ -40,6 +42,17 @@ function MapPage() {
   const { unreadCount, refreshUnreadCount } = useUpdates();
   const { location: sharedLocation, setLocation: setSharedLocation } = useLocationContext();
   const offlineAction = useOfflineAction(isOffline);
+  const { viewer: preferenceProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
+  const {
+    hideFullEvents,
+    setHideFullEvents,
+    isSavingPreference: isSavingHideFullPreference,
+    preferenceError: hideFullPreferenceError,
+    clearPreferenceError
+  } = useHideFullEventsPreference({
+    profileValue: preferenceProfile?.preferences?.display?.hideFullEventsByDefault,
+    disablePersistence: isOffline
+  });
 
   const {
     userLocation,
@@ -52,7 +65,8 @@ function MapPage() {
   } = useMapExplorer({
     sharedLocation,
     setSharedLocation,
-    isOffline
+    isOffline,
+    hideFullEvents
   });
 
   const [showEvents, setShowEvents] = useState(true);
@@ -122,6 +136,16 @@ function MapPage() {
   const handleTogglePersonalPins = useCallback((event) => {
     setShowPersonalPins(Boolean(event?.target?.checked));
   }, []);
+  const handleHideFullEventsToggle = useCallback(
+    (event) => {
+      const nextValue = Boolean(event?.target?.checked);
+      if (hideFullPreferenceError) {
+        clearPreferenceError();
+      }
+      setHideFullEvents(nextValue);
+    },
+    [clearPreferenceError, hideFullPreferenceError, setHideFullEvents]
+  );
 
   const handleViewProfile = useCallback(() => {
     navigate(routes.profile.me);
@@ -154,6 +178,19 @@ function MapPage() {
         return filter;
       }),
     [handleToggleDiscussions, handleToggleEvents, handleTogglePersonalPins, showDiscussions, showEvents, showPersonalPins]
+  );
+
+  const hideFullEventsFilter = useMemo(
+    () => ({
+      key: 'hide-full-events',
+      label: 'Hide full events',
+      iconUrl: MAP_MARKER_ICON_URLS.event,
+      ariaLabel: hideFullEvents ? 'Hiding events that reached capacity' : 'Showing full events',
+      checked: hideFullEvents,
+      onChange: handleHideFullEventsToggle,
+      disabled: isSavingHideFullPreference
+    }),
+    [handleHideFullEventsToggle, hideFullEvents, isSavingHideFullPreference]
   );
 
   return (
@@ -223,7 +260,16 @@ function MapPage() {
         </button>
 
         {/* Filter Panel (collapsible on mobile, always visible on desktop) */}
-        <MapFilterPanel open={filtersOpen} onClose={closeFilters} filters={filterItems} />
+        <MapFilterPanel
+          open={filtersOpen}
+          onClose={closeFilters}
+          filters={[...filterItems, hideFullEventsFilter]}
+        />
+        {hideFullPreferenceError ? (
+          <Box sx={{ color: '#b3261e', fontSize: '0.85rem', fontWeight: 600, px: 1.5, mt: 0.5 }}>
+            {hideFullPreferenceError}
+          </Box>
+        ) : null}
 
         {/* Bottom Navigation */}
         <Navbar />

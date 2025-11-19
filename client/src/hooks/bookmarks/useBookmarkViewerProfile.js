@@ -4,11 +4,11 @@ import { fetchCurrentUserProfile } from '../../api/mongoDataApi';
 import toIdString from '../../utils/ids';
 
 export default function useBookmarkViewerProfile({ authUser, isOffline }) {
-  const [viewerMongoId, setViewerMongoId] = useState(null);
+  const [viewerProfile, setViewerProfile] = useState(null);
 
   useEffect(() => {
     if (!authUser || isOffline) {
-      setViewerMongoId(null);
+      setViewerProfile(null);
       return;
     }
 
@@ -16,13 +16,13 @@ export default function useBookmarkViewerProfile({ authUser, isOffline }) {
     (async () => {
       try {
         const profile = await fetchCurrentUserProfile();
-        if (!cancelled && profile?._id) {
-          setViewerMongoId(toIdString(profile._id));
+        if (!cancelled) {
+          setViewerProfile(profile ?? null);
         }
       } catch (error) {
         if (!cancelled) {
           console.warn('Failed to load viewer profile for bookmarks filters:', error);
-          setViewerMongoId(null);
+          setViewerProfile(null);
         }
       }
     })();
@@ -32,5 +32,10 @@ export default function useBookmarkViewerProfile({ authUser, isOffline }) {
     };
   }, [authUser, isOffline]);
 
-  return viewerMongoId;
+  const viewerMongoId = viewerProfile?._id ? toIdString(viewerProfile._id) : null;
+
+  return {
+    viewerProfile,
+    viewerMongoId
+  };
 }

@@ -1578,7 +1578,8 @@ router.get('/friends/overview', async (req, res) => {
               roles: 1,
               accountStatus: 1,
               avatar: 1,
-              stats: 1
+              stats: 1,
+              'relationships.blockedUserIds': 1
             })
             .lean()
         : [],
@@ -1594,9 +1595,24 @@ router.get('/friends/overview', async (req, res) => {
         .lean()
     ]);
 
+    const viewerId = toIdString(viewer._id);
+    const viewerBlockedSet = new Set(mapIdList(viewer.relationships?.blockedUserIds));
+    const friends = friendDocs.map((friendDoc) => {
+      const summary = mapUserSummary(friendDoc);
+      if (!summary) {
+        return summary;
+      }
+      const friendBlockedSet = new Set(mapIdList(friendDoc?.relationships?.blockedUserIds));
+      return {
+        ...summary,
+        isBlockedByViewer: summary.id ? viewerBlockedSet.has(summary.id) : false,
+        isBlockingViewer: viewerId ? friendBlockedSet.has(viewerId) : false
+      };
+    });
+
     res.json({
       viewer: mapUserSummary(viewer),
-      friends: friendDocs.map(mapUserSummary),
+      friends,
       incomingRequests: incomingRequests.map((request) =>
         mapFriendRequestRecord({ ...request, requester: request.requesterId, recipient: viewer })
       ),

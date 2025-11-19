@@ -74,6 +74,7 @@ if (runtime.isOffline) {
 const Location = require('./models/Location');
 const { syncAllFirebaseUsers } = require('./services/firebaseUserSync');
 const { startUpdateScheduler } = require('./services/updateScheduler');
+const { startLocationSharingScheduler } = require('./services/locationSharingScheduler');
 
 const app = express();
 app.enable('trust proxy');
@@ -219,6 +220,7 @@ mongoose
     }
 
     startUpdateScheduler();
+    startLocationSharingScheduler();
   })
   .catch((err) => console.error('MongoDB connection error:', err));
 

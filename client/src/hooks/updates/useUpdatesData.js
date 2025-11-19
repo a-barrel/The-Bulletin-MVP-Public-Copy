@@ -9,6 +9,17 @@ const deriveUpdateCategory = (update) => {
   if (explicit) {
     return explicit;
   }
+  const pinType = String(
+    update?.payload?.pin?.type || update?.pin?.type || ''
+  )
+    .trim()
+    .toLowerCase();
+  if (pinType === 'event') {
+    return 'event';
+  }
+  if (pinType === 'discussion') {
+    return 'discussion';
+  }
   const type = String(update?.payload?.type || '').trim().toLowerCase();
   if (!type) {
     return 'other';

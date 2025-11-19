@@ -20,6 +20,8 @@ const { PinPreviewSchema } = require('../schemas/pin');
 const { toIdString } = require('../utils/ids');
 const { logIntegration } = require('../utils/devLogger');
 
+const QUIET_HOUR_DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
 const toObjectId = (value) => {
   if (!value) return undefined;
   if (value instanceof mongoose.Types.ObjectId) {
@@ -39,6 +41,61 @@ const truncate = (value, length) => {
     return text;
   }
   return `${text.slice(0, length - 1).trimEnd()}...`;
+};
+
+const parseTimeToMinutes = (value) => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const [hourPart, minutePart] = value.split(':');
+  const hours = Number(hourPart);
+  const minutes = Number(minutePart);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) {
+    return null;
+  }
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return null;
+  }
+  return hours * 60 + minutes;
+};
+
+/**
+ * Quiet hours use hour/minute strings without timezone info, so we interpret them against the
+ * current UTC day/time. This keeps behaviour predictable across regions until per-user timezones land.
+ */
+const isWithinQuietHours = (preferences, referenceDate = new Date()) => {
+  const schedule = preferences?.notifications?.quietHours;
+  if (!Array.isArray(schedule) || schedule.length === 0) {
+    return false;
+  }
+
+  const currentDayKey = QUIET_HOUR_DAY_KEYS[referenceDate.getUTCDay()];
+  const entries = schedule.filter(
+    (entry) =>
+      entry &&
+      typeof entry.day === 'string' &&
+      entry.day.toLowerCase() === currentDayKey &&
+      entry.enabled !== false
+  );
+  if (!entries.length) {
+    return false;
+  }
+
+  const currentMinutes = referenceDate.getUTCHours() * 60 + referenceDate.getUTCMinutes();
+  return entries.some((entry) => {
+    const startMinutes = parseTimeToMinutes(entry.start);
+    const endMinutes = parseTimeToMinutes(entry.end);
+    if (startMinutes === null || endMinutes === null) {
+      return false;
+    }
+    if (startMinutes === endMinutes) {
+      return true;
+    }
+    if (startMinutes < endMinutes) {
+      return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+    }
+    return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+  });
 };
 
 const getDisplayName = (userDoc) => {
@@ -164,7 +221,9 @@ const filterRecipientsByPreference = async (recipientIds, options = {}) => {
   const {
     requireUpdates = true,
     requireChatTransitions = false,
-    notificationKeys = []
+    notificationKeys = [],
+    ignoreQuietHours = false,
+    mutedVerbosity = null
   } = options;
   const unique = Array.from(
     new Set(recipientIds.map((id) => toIdString(id)).filter(Boolean))
@@ -179,14 +238,16 @@ const filterRecipientsByPreference = async (recipientIds, options = {}) => {
     { preferences: 1 }
   ).lean();
 
+  const referenceDate = new Date();
   const allowed = new Set(
     users
       .filter((user) => {
-        const preferences = user?.preferences?.notifications || {};
-        if (requireUpdates && preferences.updates === false) {
+        const preferenceDoc = user?.preferences || {};
+        const notifications = preferenceDoc.notifications || {};
+        if (requireUpdates && notifications.updates === false) {
           return false;
         }
-        if (requireChatTransitions && preferences.chatTransitions === false) {
+        if (requireChatTransitions && notifications.chatTransitions === false) {
           return false;
         }
         const requiredKeys = Array.isArray(notificationKeys)
@@ -195,8 +256,24 @@ const filterRecipientsByPreference = async (recipientIds, options = {}) => {
           ? [notificationKeys]
           : [];
         for (const key of requiredKeys) {
-          if (preferences[key] === false) {
+          if (notifications[key] === false) {
             return false;
+          }
+        }
+        if (!ignoreQuietHours && isWithinQuietHours(preferenceDoc, referenceDate)) {
+          return false;
+        }
+        if (mutedVerbosity && typeof mutedVerbosity === 'object') {
+          const verbosityPrefs = preferenceDoc.notificationsVerbosity || {};
+          const entries = Object.entries(mutedVerbosity);
+          for (const [key, disallowed] of entries) {
+            if (!key) {
+              continue;
+            }
+            const currentValue = verbosityPrefs[key];
+            if (Array.isArray(disallowed) ? disallowed.includes(currentValue) : currentValue === disallowed) {
+              return false;
+            }
           }
         }
         const mutedUntil = user?.preferences?.notificationsMutedUntil;
@@ -381,7 +458,7 @@ const broadcastPinUpdated = async ({ previous, updated, editor }) => {
   }
 };
 
-const broadcastEventStartingSoon = async ({ pin }) => {
+const broadcastEventStartingSoon = async ({ pin, windowHours = 2 }) => {
   try {
     if (!pin) {
       return;
@@ -417,11 +494,20 @@ const broadcastEventStartingSoon = async ({ pin }) => {
       return;
     }
 
+    const metadataClauses =
+      windowHours === 2
+        ? [
+            { 'payload.metadata.windowHours': { $exists: false } },
+            { 'payload.metadata.windowHours': 2 }
+          ]
+        : [{ 'payload.metadata.windowHours': windowHours }];
+
     const existing = await Update.find(
       {
         userId: { $in: recipientObjectIds },
         'payload.type': 'event-starting-soon',
-        'payload.pin._id': pinObjectId
+        'payload.pin._id': pinObjectId,
+        $or: metadataClauses
       },
       { userId: 1 }
     ).lean();
@@ -442,19 +528,40 @@ const broadcastEventStartingSoon = async ({ pin }) => {
     const preview = buildPinPreview(pinDoc);
     const hostName = getDisplayName(pinDoc.creatorId);
     const startDateIso = pinDoc.startDate ? new Date(pinDoc.startDate).toISOString() : undefined;
+    const startDateMs = startDateIso ? new Date(startDateIso).getTime() : null;
+    const diffMs = startDateMs ? Math.max(0, startDateMs - Date.now()) : 0;
+    const hoursUntilStart = diffMs / (60 * 60 * 1000);
+    const daysUntilStart = hoursUntilStart / 24;
+    const minutesUntilStart = diffMs / (60 * 1000);
     const title = pinDoc.title || 'Upcoming event';
     const sourceUserId = toObjectId(pinDoc.creatorId?._id ?? pinDoc.creatorId);
+
+    let leadLabel;
+    if (daysUntilStart >= 1) {
+      const roundedDays = Math.max(1, Math.round(daysUntilStart));
+      leadLabel = `${roundedDays} day${roundedDays === 1 ? '' : 's'}`;
+    } else if (hoursUntilStart >= 1) {
+      const roundedHours = Math.max(1, Math.round(hoursUntilStart));
+      leadLabel = `${roundedHours} hour${roundedHours === 1 ? '' : 's'}`;
+    } else if (minutesUntilStart >= 1) {
+      const roundedMinutes = Math.max(1, Math.round(minutesUntilStart));
+      leadLabel = `${roundedMinutes} minute${roundedMinutes === 1 ? '' : 's'}`;
+    } else {
+      leadLabel = 'less than an hour';
+    }
+    const updateTitle = `${title} starts in ${leadLabel}`;
 
     const updates = filteredRecipients.map((recipientId) => ({
       userId: toObjectId(recipientId),
       sourceUserId: sourceUserId ?? undefined,
       payload: {
         type: 'event-starting-soon',
-        title: `${title} starts in 2 hours`,
+        title: updateTitle,
         body: hostName ? `${hostName} is getting ready.` : undefined,
         metadata: {
           updateKind: 'event-starting-soon',
-          startDate: startDateIso
+          startDate: startDateIso,
+          windowHours
         },
         pin: preview,
         relatedEntities: [
@@ -777,7 +884,8 @@ const broadcastChatMessage = async ({ room, message, author }) => {
     }
 
     const filteredRecipients = await filterRecipientsByPreference(Array.from(recipients), {
-      notificationKeys: ['chatMessages']
+      notificationKeys: ['chatMessages'],
+      mutedVerbosity: { chat: ['muted'] }
     });
     if (!filteredRecipients.length) {
       return;

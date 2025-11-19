@@ -386,6 +386,7 @@ def main() -> None:
             "createdAt": data.iso_date(start_dt - timedelta(days=3)),
             "updatedAt": data.iso_date(start_dt - timedelta(days=3)),
             "expiresAt": data.iso_date(expires_dt),
+            "replyLimit": random.choice([50, 75, 100, 150, 200]),
         }
         new_pins.append(pin_payload)
         pin_meta[pin_id] = {

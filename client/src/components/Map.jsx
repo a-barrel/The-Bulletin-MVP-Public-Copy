@@ -10,6 +10,7 @@ import {
   MAP_MARKER_ICON_URLS,
   MAP_MARKER_SHADOW_URL
 } from '../utils/mapMarkers';
+import { resolveUserAvatarUrl } from '../utils/pinFormatting';
 
 // Fix for default marker icons in Leaflet with React
 delete L.Icon.Default.prototype._getIconUrl;
@@ -406,6 +407,9 @@ const Map = ({
         const thumbnailAsset = pin?.coverPhoto || (Array.isArray(pin?.photos) ? pin.photos : null);
         const thumbnailUrl = resolveThumbnailUrl(thumbnailAsset);
 
+        const hostName = pin?.creator?.displayName || pin?.creator?.username || null;
+        const hostAvatarUrl = resolveUserAvatarUrl(pin?.creator, AVATAR_FALLBACK) || AVATAR_FALLBACK;
+
         const popupContent = (
           <div style={{ minWidth: '208px', maxWidth: '240px' }}>
             {thumbnailUrl ? (
@@ -432,6 +436,32 @@ const Map = ({
             {pin._id ? <div>ID: {pin._id}</div> : null}
             {distanceLabel ? <div>Distance: {distanceLabel} mi</div> : null}
             {expirationLabel ? <div>{expirationLabel}</div> : null}
+            {hostName ? (
+              <div
+                style={{
+                  marginTop: '0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <img
+                  src={hostAvatarUrl}
+                  alt={`${hostName} avatar`}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '2px solid rgba(93,56,137,0.35)'
+                  }}
+                />
+                <div style={{ fontSize: '0.85rem', lineHeight: 1.2 }}>
+                  <div style={{ fontWeight: 600 }}>Host</div>
+                  <div>{hostName}</div>
+                </div>
+              </div>
+            ) : null}
             {canViewPin || canViewChatRoom ? (
               <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
                 <button

@@ -3,10 +3,37 @@ import { fetchCurrentUserProfile } from '../../api/mongoDataApi';
 import reportClientError from '../../utils/reportClientError';
 import { DEFAULT_SETTINGS, roundRadius } from '../useSettingsManager';
 
+const QUIET_HOUR_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
+const normalizeQuietHours = (input) => {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+
+  const isValidTime = (value) => typeof value === 'string' && /^\d{2}:\d{2}$/.test(value.trim());
+
+  return input
+    .map((entry) => {
+      const day = typeof entry?.day === 'string' ? entry.day.trim().toLowerCase() : '';
+      if (!QUIET_HOUR_DAYS.includes(day)) {
+        return null;
+      }
+      const start = isValidTime(entry?.start) ? entry.start.trim() : '22:00';
+      const end = isValidTime(entry?.end) ? entry.end.trim() : '07:00';
+      const enabled = entry?.enabled !== false;
+      return { day, start, end, enabled };
+    })
+    .filter(Boolean);
+};
+
 const hydrateSettingsFromProfile = (result) => ({
   theme: result?.preferences?.theme ?? DEFAULT_SETTINGS.theme,
   radiusPreferenceMeters: roundRadius(result?.preferences?.radiusPreferenceMeters),
   locationSharingEnabled: Boolean(result?.locationSharingEnabled),
+  locationAutoShareHours:
+    result?.preferences?.location?.autoDisableAfterHours ?? DEFAULT_SETTINGS.locationAutoShareHours,
+  globalMapVisible:
+    result?.preferences?.location?.globalMapVisible ?? DEFAULT_SETTINGS.globalMapVisible,
   filterCussWords: result?.preferences?.filterCussWords ?? DEFAULT_SETTINGS.filterCussWords,
   statsPublic: result?.preferences?.statsPublic ?? DEFAULT_SETTINGS.statsPublic,
   dmPermission: result?.preferences?.dmPermission ?? DEFAULT_SETTINGS.dmPermission,
@@ -15,6 +42,7 @@ const hydrateSettingsFromProfile = (result) => ({
     result?.preferences?.data?.autoExportReminders ?? DEFAULT_SETTINGS.autoExportReminders,
   notificationsMutedUntil: result?.preferences?.notificationsMutedUntil ?? null,
   notifications: {
+    quietHours: normalizeQuietHours(result?.preferences?.notifications?.quietHours) ?? DEFAULT_SETTINGS.notifications.quietHours,
     proximity: result?.preferences?.notifications?.proximity ?? DEFAULT_SETTINGS.notifications.proximity,
     updates: result?.preferences?.notifications?.updates ?? DEFAULT_SETTINGS.notifications.updates,
     pinCreated: result?.preferences?.notifications?.pinCreated ?? DEFAULT_SETTINGS.notifications.pinCreated,
@@ -30,6 +58,11 @@ const hydrateSettingsFromProfile = (result) => ({
     moderationAlerts: result?.preferences?.notifications?.moderationAlerts ?? DEFAULT_SETTINGS.notifications.moderationAlerts,
     dmMentions: result?.preferences?.notifications?.dmMentions ?? DEFAULT_SETTINGS.notifications.dmMentions,
     emailDigests: result?.preferences?.notifications?.emailDigests ?? DEFAULT_SETTINGS.notifications.emailDigests
+  },
+  notificationsVerbosity: {
+    chat:
+      result?.preferences?.notificationsVerbosity?.chat ??
+      DEFAULT_SETTINGS.notificationsVerbosity.chat
   },
   display: {
     textScale: result?.preferences?.display?.textScale ?? DEFAULT_SETTINGS.display.textScale,

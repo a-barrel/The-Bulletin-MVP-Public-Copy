@@ -10,6 +10,15 @@ import {
   DISCUSSION_MAX_DURATION_MS
 } from './pinFormConstants';
 
+const EVENT_ATTENDEE_LIMITS = {
+  min: 5,
+  max: 100,
+  defaultValue: 30
+};
+
+const DISCUSSION_REPLY_LIMIT_OPTIONS = [50, 75, 100, 150, 200];
+const DEFAULT_DISCUSSION_REPLY_LIMIT = 100;
+
 export default function usePinSubmissionWorkflow({
   formState,
   pinType,
@@ -133,6 +142,19 @@ export default function usePinSubmissionWorkflow({
               components: Object.values(components).some(Boolean) ? components : undefined
             };
           }
+
+          const attendeeLimitValue = sanitizeNumberField(formState.participantLimit);
+          const normalizedAttendeeLimit =
+            attendeeLimitValue === null ? EVENT_ATTENDEE_LIMITS.defaultValue : attendeeLimitValue;
+          if (
+            normalizedAttendeeLimit < EVENT_ATTENDEE_LIMITS.min ||
+            normalizedAttendeeLimit > EVENT_ATTENDEE_LIMITS.max
+          ) {
+            throw new Error(
+              `Attendee limit must be between ${EVENT_ATTENDEE_LIMITS.min} and ${EVENT_ATTENDEE_LIMITS.max}.`
+            );
+          }
+          payload.participantLimit = normalizedAttendeeLimit;
         } else {
           const expiresAt = sanitizeDateField(formState.expiresAt, 'Expiration date', {
             max: discussionMaxDate,
@@ -151,6 +173,12 @@ export default function usePinSubmissionWorkflow({
           if (Object.values(approximateAddress).some(Boolean)) {
             payload.approximateAddress = approximateAddress;
           }
+
+          const replyLimitValue = sanitizeNumberField(formState.replyLimit);
+          const normalizedReplyLimit = DISCUSSION_REPLY_LIMIT_OPTIONS.includes(replyLimitValue)
+            ? replyLimitValue
+            : DEFAULT_DISCUSSION_REPLY_LIMIT;
+          payload.replyLimit = normalizedReplyLimit;
         }
 
         if (photoAssets.length > 0) {

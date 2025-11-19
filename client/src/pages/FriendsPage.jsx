@@ -187,6 +187,20 @@ function FriendsPage() {
         setFriendActionStatus({ type: 'error', message: 'Unable to open this conversation.' });
         return;
       }
+      if (friend?.isBlockedByViewer) {
+        setFriendActionStatus({
+          type: 'error',
+          message: 'Unblock this friend in Settings to resume conversations.'
+        });
+        return;
+      }
+      if (friend?.isBlockingViewer) {
+        setFriendActionStatus({
+          type: 'error',
+          message: 'This friend blocked you, so messaging is disabled.'
+        });
+        return;
+      }
       if (directMessagesHasAccess === false) {
         setFriendActionStatus({
           type: 'error',
