@@ -319,7 +319,7 @@ const ensureUserRelationships = (userDoc) => {
   return relationships;
 };
 
-const blockRelationshipFieldsToClear = ['followerIds', 'followingIds', 'friendIds', 'mutedUserIds'];
+const blockRelationshipFieldsToClear = ['followerIds', 'followingIds', 'mutedUserIds'];
 
 const toObjectIdOrNull = (value) => {
   if (!value) {

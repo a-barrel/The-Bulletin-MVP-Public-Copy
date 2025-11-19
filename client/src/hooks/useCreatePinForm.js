@@ -34,6 +34,8 @@ export const INITIAL_FORM_STATE = {
   startDate: '',
   endDate: '',
   expiresAt: '',
+  participantLimit: '30',
+  replyLimit: '100',
   addressPrecise: '',
   addressCity: '',
   addressState: '',

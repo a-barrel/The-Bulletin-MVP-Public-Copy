@@ -458,7 +458,7 @@ const broadcastPinUpdated = async ({ previous, updated, editor }) => {
   }
 };
 
-const broadcastEventStartingSoon = async ({ pin }) => {
+const broadcastEventStartingSoon = async ({ pin, windowHours = 2 }) => {
   try {
     if (!pin) {
       return;
@@ -494,11 +494,20 @@ const broadcastEventStartingSoon = async ({ pin }) => {
       return;
     }
 
+    const metadataClauses =
+      windowHours === 2
+        ? [
+            { 'payload.metadata.windowHours': { $exists: false } },
+            { 'payload.metadata.windowHours': 2 }
+          ]
+        : [{ 'payload.metadata.windowHours': windowHours }];
+
     const existing = await Update.find(
       {
         userId: { $in: recipientObjectIds },
         'payload.type': 'event-starting-soon',
-        'payload.pin._id': pinObjectId
+        'payload.pin._id': pinObjectId,
+        $or: metadataClauses
       },
       { userId: 1 }
     ).lean();
@@ -522,16 +531,23 @@ const broadcastEventStartingSoon = async ({ pin }) => {
     const title = pinDoc.title || 'Upcoming event';
     const sourceUserId = toObjectId(pinDoc.creatorId?._id ?? pinDoc.creatorId);
 
+    const leadLabel =
+      windowHours >= 24 && windowHours % 24 === 0
+        ? `${windowHours / 24} day${windowHours / 24 === 1 ? '' : 's'}`
+        : `${windowHours} hour${windowHours === 1 ? '' : 's'}`;
+    const updateTitle = `${title} starts in ${leadLabel}`;
+
     const updates = filteredRecipients.map((recipientId) => ({
       userId: toObjectId(recipientId),
       sourceUserId: sourceUserId ?? undefined,
       payload: {
         type: 'event-starting-soon',
-        title: `${title} starts in 2 hours`,
+        title: updateTitle,
         body: hostName ? `${hostName} is getting ready.` : undefined,
         metadata: {
           updateKind: 'event-starting-soon',
-          startDate: startDateIso
+          startDate: startDateIso,
+          windowHours
         },
         pin: preview,
         relatedEntities: [

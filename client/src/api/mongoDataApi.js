@@ -911,6 +911,33 @@ export async function deletePin(pinId) {
   return payload;
 }
 
+export async function flagPinForModeration(pinId, { reason } = {}) {
+  if (!pinId) {
+    throw new Error('Pin id is required to flag a pin');
+  }
+  const baseUrl = resolveApiBaseUrl();
+  const body =
+    typeof reason === 'string' && reason.trim()
+      ? { reason: reason.trim() }
+      : {};
+
+  const response = await fetch(
+    `${baseUrl}/api/pins/${encodeURIComponent(pinId)}/moderation/flag`,
+    {
+      method: 'POST',
+      headers: await buildHeaders(),
+      body: JSON.stringify(body)
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, payload?.message || 'Failed to flag pin');
+  }
+
+  return payload;
+}
+
 async function uploadImageInternal(file) {
   if (!file) {
     throw new Error('Image file is required');

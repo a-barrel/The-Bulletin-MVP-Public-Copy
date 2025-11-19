@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const { z, ZodError } = require('zod');
 const Pin = require('../models/Pin');
 const User = require('../models/User');
+const ContentReport = require('../models/ContentReport');
 const Reply = require('../models/Reply');
 const { Bookmark } = require('../models/Bookmark');
 const { PinListItemSchema, PinSchema, PinPreviewSchema } = require('../schemas/pin');
@@ -22,6 +23,8 @@ const { mapMediaAsset: mapMediaAssetResponse } = require('../utils/media');
 const { toIdString, mapIdList } = require('../utils/ids');
 const { METERS_PER_MILE, milesToMeters } = require('../utils/geo');
 const { timeAsync } = require('../utils/devLogger');
+const runtime = require('../config/runtime');
+const { recordAuditEntry } = require('../services/auditLogService');
 
 const router = express.Router();
 
@@ -70,10 +73,50 @@ const CreateReplySchema = z.object({
     .optional()
 });
 
+const FlagPinSchema = z.object({
+  reason: z.string().trim().max(280).optional()
+});
+
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const EVENT_MAX_LEAD_TIME_MS = 14 * MILLISECONDS_PER_DAY;
 const DISCUSSION_MAX_DURATION_MS = 3 * MILLISECONDS_PER_DAY;
 const PAST_TOLERANCE_MS = 60 * 1000;
+
+const EVENT_ATTENDEE_LIMITS = {
+  min: 5,
+  max: 100,
+  defaultValue: 30
+};
+
+const DISCUSSION_REPLY_LIMIT_OPTIONS = [50, 75, 100, 150, 200];
+const DEFAULT_DISCUSSION_REPLY_LIMIT = 100;
+const DEFAULT_MODERATION_ROLES = ['admin', 'moderator', 'super-admin', 'system-admin'];
+
+const normalizeRole = (role) =>
+  typeof role === 'string' ? role.trim().toLowerCase() : '';
+
+const resolveAllowedModerationRoles = () => {
+  const configured = Array.isArray(runtime.moderation?.allowedRoles)
+    ? runtime.moderation.allowedRoles
+    : DEFAULT_MODERATION_ROLES;
+  return configured.map(normalizeRole).filter(Boolean);
+};
+
+const canViewerModeratePins = (viewer) => {
+  const checksEnabled = runtime.moderation?.roleChecksEnabled !== false;
+  if (runtime.isOffline || !checksEnabled) {
+    return true;
+  }
+  if (!viewer) {
+    return false;
+  }
+  const viewerRoles = Array.isArray(viewer.roles) ? viewer.roles : [];
+  if (!viewerRoles.length) {
+    return false;
+  }
+  const allowed = resolveAllowedModerationRoles();
+  return viewerRoles.map(normalizeRole).some((role) => allowed.includes(role));
+};
 
 const mapUserToPublic = (user) => {
   if (!user) return undefined;
@@ -386,6 +429,7 @@ const mapPinToFull = (pinDoc, creator, options = {}) => {
     base.approximateAddress = doc.approximateAddress || undefined;
     base.expiresAt = doc.expiresAt ? doc.expiresAt.toISOString() : undefined;
     base.autoDelete = doc.autoDelete ?? true;
+    base.replyLimit = doc.replyLimit ?? undefined;
   }
 
   if (typeof options.viewerHasBookmarked === 'boolean') {
@@ -406,6 +450,18 @@ const mapPinToFull = (pinDoc, creator, options = {}) => {
 
   if (typeof options.viewerInteractionLockMessage === 'string' && options.viewerInteractionLockMessage.trim()) {
     base.viewerInteractionLockMessage = options.viewerInteractionLockMessage.trim();
+  }
+
+  if (doc.moderation) {
+    base.moderation = {
+      status: doc.moderation.status || 'clean',
+      flaggedAt: doc.moderation.flaggedAt ? doc.moderation.flaggedAt.toISOString() : undefined,
+      flaggedBy: toIdString(doc.moderation.flaggedBy),
+      flaggedReason:
+        typeof doc.moderation.flaggedReason === 'string' && doc.moderation.flaggedReason.trim()
+          ? doc.moderation.flaggedReason.trim()
+          : undefined
+    };
   }
 
   return PinSchema.parse(base);
@@ -540,11 +596,25 @@ const EventAddressSchema = z.object({
   components: EventAddressComponentsSchema.optional()
 });
 
+const ParticipantLimitSchema = z
+  .coerce.number()
+  .int()
+  .min(EVENT_ATTENDEE_LIMITS.min)
+  .max(EVENT_ATTENDEE_LIMITS.max);
+
+const ReplyLimitSchema = z
+  .coerce.number()
+  .int()
+  .refine((value) => DISCUSSION_REPLY_LIMIT_OPTIONS.includes(value), {
+    message: 'Reply limit must be one of the allowed options.'
+  });
+
 const EventPinCreateSchema = BaseCreatePinSchema.extend({
   type: z.literal('event'),
   startDate: z.coerce.date(),
   endDate: z.coerce.date(),
-  address: EventAddressSchema.optional()
+  address: EventAddressSchema.optional(),
+  participantLimit: ParticipantLimitSchema.optional()
 });
 
 const ApproximateAddressInputSchema = z.object({
@@ -558,7 +628,8 @@ const DiscussionPinCreateSchema = BaseCreatePinSchema.extend({
   type: z.literal('discussion'),
   expiresAt: z.coerce.date(),
   autoDelete: z.boolean().optional(),
-  approximateAddress: ApproximateAddressInputSchema.optional()
+  approximateAddress: ApproximateAddressInputSchema.optional(),
+  replyLimit: ReplyLimitSchema.optional()
 });
 
 const CreatePinSchema = z.discriminatedUnion('type', [
@@ -657,6 +728,10 @@ router.post('/', verifyToken, async (req, res) => {
             components: input.address.components
           }
         : undefined;
+      pinData.participantLimit =
+        typeof input.participantLimit === 'number'
+          ? input.participantLimit
+          : EVENT_ATTENDEE_LIMITS.defaultValue;
     } else if (input.type === 'discussion') {
       pinData.expiresAt = input.expiresAt;
       pinData.autoDelete = input.autoDelete ?? true;
@@ -668,6 +743,10 @@ router.post('/', verifyToken, async (req, res) => {
             formatted: input.approximateAddress.formatted
           }
         : undefined;
+      pinData.replyLimit =
+        typeof input.replyLimit === 'number'
+          ? input.replyLimit
+          : DEFAULT_DISCUSSION_REPLY_LIMIT;
     }
 
     if (input.photos?.length) {
@@ -759,6 +838,119 @@ router.post('/', verifyToken, async (req, res) => {
     req.logError?.(error, { handler: 'pins:create' });
     console.error('Failed to create pin:', error);
     res.status(500).json({ message: 'Failed to create pin' });
+  }
+});
+
+router.post('/:pinId/moderation/flag', verifyToken, async (req, res) => {
+  try {
+    const { pinId } = PinIdSchema.parse(req.params);
+    const input = FlagPinSchema.parse(req.body);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (!canViewerModeratePins(viewer)) {
+      return res.status(403).json({ message: 'Moderator privileges required.' });
+    }
+
+    const pin = await Pin.findById(pinId);
+    if (!pin) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    const now = new Date();
+    pin.moderation = {
+      ...(pin.moderation || {}),
+      status: 'flagged',
+      flaggedAt: now,
+      flaggedBy: viewer._id,
+      flaggedReason:
+        typeof input.reason === 'string' && input.reason.trim()
+          ? input.reason.trim()
+          : pin.moderation?.flaggedReason || 'Flagged for removal'
+    };
+    pin.markModified('moderation');
+    await pin.save();
+
+    const resolveObjectId = (value) => {
+      if (!value) {
+        return null;
+      }
+      if (value instanceof mongoose.Types.ObjectId) {
+        return value;
+      }
+      if (mongoose.Types.ObjectId.isValid(value)) {
+        return new mongoose.Types.ObjectId(value);
+      }
+      return null;
+    };
+
+    const normalizedReason = pin.moderation.flaggedReason || 'Flagged for removal';
+    const metadata = {
+      pinId: toIdString(pin._id),
+      title: pin.title || null
+    };
+    const authorObjectId = resolveObjectId(
+      (pin.creatorId && pin.creatorId._id) ? pin.creatorId._id : pin.creatorId
+    ) || viewer._id;
+
+    try {
+      await ContentReport.findOneAndUpdate(
+        {
+          contentType: 'pin',
+          contentId: pinId,
+          reporterId: viewer._id,
+          status: 'pending'
+        },
+        {
+          $set: {
+            contentAuthorId: authorObjectId,
+            reason: normalizedReason,
+            context: 'Pin flagged via moderator action',
+            offenseTags: ['moderator-flag'],
+            latestSnapshot: {
+              message: pin.description || '',
+              metadata
+            },
+            status: 'pending'
+          },
+          $setOnInsert: {
+            contentType: 'pin',
+            contentId: pinId,
+            reporterId: viewer._id
+          }
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    } catch (reportError) {
+      console.error('Failed to create content report for flagged pin:', reportError);
+    }
+
+    recordAuditEntry({
+      actorId: viewer._id,
+      targetId: pin._id,
+      action: 'pin:flag',
+      metadata: {
+        reason: pin.moderation.flaggedReason || undefined
+      },
+      context: 'moderation'
+    }).catch(() => {});
+
+    return res.json({
+      pinId: toIdString(pin._id),
+      moderation: {
+        status: pin.moderation.status,
+        flaggedAt: pin.moderation.flaggedAt ? pin.moderation.flaggedAt.toISOString() : undefined,
+        flaggedBy: toIdString(pin.moderation.flaggedBy),
+        flaggedReason: pin.moderation.flaggedReason || undefined
+      }
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid flag payload', issues: error.errors });
+    }
+    console.error('Failed to flag pin for moderation:', error);
+    res.status(500).json({ message: 'Failed to flag pin' });
   }
 });
 
@@ -1314,6 +1506,16 @@ router.post('/:pinId/attendance', verifyToken, async (req, res) => {
 
     if (isBlockedBetweenUsers(viewer, pin.creatorId)) {
       return res.status(403).json({ message: 'You cannot interact with this pin.' });
+    }
+
+    const currentReplyCount = pin.replyCount ?? 0;
+    if (
+      pin.type === 'discussion' &&
+      typeof pin.replyLimit === 'number' &&
+      pin.replyLimit > 0 &&
+      currentReplyCount >= pin.replyLimit
+    ) {
+      return res.status(400).json({ message: 'This discussion has reached its reply limit.' });
     }
 
     if (pin.type !== 'event') {

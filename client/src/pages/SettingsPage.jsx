@@ -54,6 +54,7 @@ import DataIntegrationsSettings from '../components/settings/DataIntegrationsSet
 import FeedbackDialog from '../components/settings/FeedbackDialog';
 import BlockedUsersDialog from '../components/settings/BlockedUsersDialog';
 import settingsPalette, { settingsButtonStyles } from '../components/settings/settingsPalette';
+import canAccessModerationTools from '../utils/accessControl';
 
 export const pageConfig = {
   id: 'settings',
@@ -327,21 +328,7 @@ function SettingsPage() {
     }
   };
 
-  const moderationRoleAllowlist = (runtimeConfig.moderation?.allowedRoles ?? [
-    'admin',
-    'moderator',
-    'super-admin',
-    'system-admin'
-  ]).map((role) => role.toLowerCase());
-  const moderationRoleChecksEnabled = runtimeConfig.moderation?.roleChecksEnabled !== false;
-  const bypassModerationRoleChecks = runtimeConfig.isOffline || !moderationRoleChecksEnabled;
-  const canAccessAdminDashboard =
-    bypassModerationRoleChecks ||
-    (Array.isArray(profile?.roles) &&
-      profile.roles.some(
-        (role) =>
-          typeof role === 'string' && moderationRoleAllowlist.includes(role.trim().toLowerCase())
-      ));
+  const canAccessAdminDashboard = canAccessModerationTools(profile);
 
   const handleOpenFeedbackDialog = () => {
     setFeedbackDialogOpen(true);

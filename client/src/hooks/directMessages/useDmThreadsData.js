@@ -2,6 +2,8 @@ import { useCallback, useEffect } from 'react';
 import reportClientError from '../../utils/reportClientError';
 import { fetchDirectMessageThreads } from '../../api/mongoDataApi';
 
+const DM_POLL_INTERVAL_MS = 30 * 1000;
+
 export default function useDmThreadsData({ dispatch, autoLoad = true }) {
   const loadThreads = useCallback(async () => {
     dispatch({ type: 'threads/pending' });
@@ -29,6 +31,18 @@ export default function useDmThreadsData({ dispatch, autoLoad = true }) {
     if (autoLoad) {
       loadThreads().catch(() => {});
     }
+  }, [autoLoad, loadThreads]);
+
+  useEffect(() => {
+    if (!autoLoad || typeof window === 'undefined') {
+      return undefined;
+    }
+    const intervalId = window.setInterval(() => {
+      loadThreads().catch(() => {});
+    }, DM_POLL_INTERVAL_MS);
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, [autoLoad, loadThreads]);
 
   return { loadThreads };

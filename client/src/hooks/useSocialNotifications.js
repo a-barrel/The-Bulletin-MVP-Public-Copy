@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import useFriendGraph from './useFriendGraph';
 import useDirectMessages from './useDirectMessages';
 
+const SOCIAL_POLL_INTERVAL_MS = 30 * 1000;
+
 const useSocialNotifications = ({ enabled = true, autoLoad = true } = {}) => {
   const {
     refresh: refreshFriendGraph,
@@ -52,6 +54,18 @@ const useSocialNotifications = ({ enabled = true, autoLoad = true } = {}) => {
       didAutoLoadRef.current = false;
     }
   }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled || typeof window === 'undefined') {
+      return undefined;
+    }
+    const intervalId = window.setInterval(() => {
+      refreshAll().catch(() => {});
+    }, SOCIAL_POLL_INTERVAL_MS);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [enabled, refreshAll]);
 
   const friendRequestCount = useMemo(() => {
     if (friendHasAccess === false) {

@@ -100,7 +100,18 @@ const pinSchema = new mongoose.Schema(
       formatted: String
     },
     expiresAt: Date,
-    autoDelete: { type: Boolean, default: true }
+    autoDelete: { type: Boolean, default: true },
+    replyLimit: Number,
+    moderation: {
+      status: {
+        type: String,
+        enum: ['clean', 'flagged', 'removed'],
+        default: 'clean'
+      },
+      flaggedAt: Date,
+      flaggedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      flaggedReason: String
+    }
   },
   { timestamps: true }
 );

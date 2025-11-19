@@ -15,6 +15,9 @@ import { useSocialNotificationsContext } from '../contexts/SocialNotificationsCo
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 import { fetchBookmarkCollections } from '../api/mongoDataApi';
 import { useUpdates } from '../contexts/UpdatesContext';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import useViewerProfile from '../hooks/useViewerProfile';
+import canAccessModerationTools from '../utils/accessControl';
 
 const DEFAULT_ITEMS = [
   {
@@ -147,6 +150,27 @@ export default function GlobalNavMenu({
   const [bookmarkShortcuts, setBookmarkShortcuts] = useState([]);
   const bookmarkShortcutsRef = useRef(bookmarkShortcuts);
   const [bookmarkStatus, setBookmarkStatus] = useState(null);
+  const { viewer: viewerProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
+  const resolvedMenuItems = useMemo(() => {
+    const base = Array.isArray(items) && items.length ? items : DEFAULT_ITEMS;
+    if (!canAccessModerationTools(viewerProfile)) {
+      return base;
+    }
+    const alreadyHasAdmin = base.some((entry) => entry?.key === 'admin-dashboard');
+    if (alreadyHasAdmin) {
+      return base;
+    }
+    return [
+      ...base,
+      {
+        key: 'admin-dashboard',
+        label: 'Admin Dashboard',
+        description: 'Moderate reports and audits',
+        to: routes.admin.base,
+        Icon: AdminPanelSettingsIcon
+      }
+    ];
+  }, [items, viewerProfile]);
 
   const filterShortcuts = useCallback(
     (items = []) =>
@@ -421,7 +445,7 @@ export default function GlobalNavMenu({
 
   const menuItems = useMemo(
     () => {
-      const filtered = items.filter((item) => item && item.to && item.label);
+      const filtered = resolvedMenuItems.filter((item) => item && item.to && item.label);
 
       const existingKeys = new Set(filtered.map((item) => item.key));
 
@@ -475,7 +499,7 @@ export default function GlobalNavMenu({
       });
     },
     [
-      items,
+      resolvedMenuItems,
       unreadBookmarkCount,
       socialNotifications.friendAccessDenied,
       socialNotifications.friendRequestCount,

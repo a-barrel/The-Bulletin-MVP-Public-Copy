@@ -62,27 +62,29 @@ async function applyModerationAction({ viewer, target, type, reason = '', durati
         $pull: { 'relationships.mutedUserIds': targetId }
       });
       break;
-    case 'block':
+    case 'block': {
       await User.findByIdAndUpdate(
         viewerId,
         {
-          $addToSet: { 'relationships.blockedUserIds': targetId },
-          $pull: {
-            'relationships.friendIds': targetId,
-            'relationships.followingIds': targetId,
-            'relationships.followerIds': targetId
-          }
+          $addToSet: { 'relationships.blockedUserIds': targetId }
         },
         { new: true }
       );
+      // Stop following each other so feeds don't include blocked content, but keep the friend link.
+      await User.findByIdAndUpdate(viewerId, {
+        $pull: {
+          'relationships.followingIds': targetId,
+          'relationships.followerIds': targetId
+        }
+      });
       await User.findByIdAndUpdate(targetId, {
         $pull: {
-          'relationships.friendIds': viewerId,
           'relationships.followingIds': viewerId,
           'relationships.followerIds': viewerId
         }
       });
       break;
+    }
     case 'unblock':
       await User.findByIdAndUpdate(viewerId, {
         $pull: { 'relationships.blockedUserIds': targetId }
