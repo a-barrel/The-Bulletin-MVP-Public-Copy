@@ -139,7 +139,8 @@ const DisplayPreferencesUpdateSchema = z
     reduceMotion: z.boolean().optional(),
     highContrast: z.boolean().optional(),
     mapDensity: z.enum(['compact', 'balanced', 'detailed']).optional(),
-    celebrationSounds: z.boolean().optional()
+    celebrationSounds: z.boolean().optional(),
+    hideFullEventsByDefault: z.boolean().optional()
   })
   .optional();
 

@@ -76,7 +76,8 @@ const userSchema = new mongoose.Schema(
         reduceMotion: { type: Boolean, default: false },
         highContrast: { type: Boolean, default: false },
         mapDensity: { type: String, enum: ['compact', 'balanced', 'detailed'], default: 'balanced' },
-        celebrationSounds: { type: Boolean, default: true }
+        celebrationSounds: { type: Boolean, default: true },
+        hideFullEventsByDefault: { type: Boolean, default: true }
       },
       data: {
         autoExportReminders: { type: Boolean, default: false }
@@ -118,6 +119,12 @@ const userSchema = new mongoose.Schema(
     ownedPinIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Pin' }],
     bookmarkCollectionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'BookmarkCollection' }],
     proximityChatRoomIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ProximityChatRoom' }],
+    viewHistory: [
+      {
+        pinId: { type: mongoose.Schema.Types.ObjectId, ref: 'Pin' },
+        viewedAt: { type: Date, default: Date.now }
+      }
+    ],
     recentLocationIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Location' }]
   },
   { timestamps: true }

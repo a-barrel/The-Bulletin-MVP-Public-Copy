@@ -9,9 +9,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
+  clearBookmarkHistory,
   exportBookmarks,
   fetchBookmarks,
   fetchBookmarkCollections,
+  fetchBookmarkHistory,
   fetchPinById,
   removeBookmark,
   updatePinAttendance
@@ -59,7 +61,12 @@ const groupBookmarks = (bookmarks, collectionsById) => {
   return Array.from(groups.values());
 };
 
-export default function useBookmarksManager({ authUser, authLoading, isOffline }) {
+export default function useBookmarksManager({
+  authUser,
+  authLoading,
+  isOffline,
+  hideFullEvents = true
+}) {
   // Lower-level state (bookmarks + collections) is kept separate from derived helpers (groupedBookmarks).
   const [bookmarks, setBookmarks] = useState([]);
   const [collections, setCollections] = useState([]);
@@ -70,6 +77,9 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
   const [exportStatus, setExportStatus] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
   const [attendancePendingId, setAttendancePendingId] = useState(null);
+  const [viewHistory, setViewHistory] = useState([]);
+  const [historyError, setHistoryError] = useState(null);
+  const [isClearingHistory, setIsClearingHistory] = useState(false);
 
   // Keep a Map for constant-time lookups when grouping bookmarks by collection.
   const collectionsById = useMemo(() => {
@@ -136,12 +146,14 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
       setError('Sign in to view your bookmarks.');
       setBookmarks([]);
       setCollections([]);
+      setViewHistory([]);
       return;
     }
 
     if (isOffline) {
       setIsLoading(false);
       setError('You are offline. Connect to refresh your bookmarks.');
+      setHistoryError('You are offline. Connect to refresh your history.');
       return;
     }
 
@@ -149,24 +161,44 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
     setError(null);
     try {
       const [bookmarkPayload, collectionPayload] = await Promise.all([
-        fetchBookmarks(),
+        fetchBookmarks({ hideFullEvents }),
         fetchBookmarkCollections()
       ]);
       const baseBookmarks = Array.isArray(bookmarkPayload) ? bookmarkPayload : [];
       const enrichedBookmarks = await enrichBookmarksWithPins(baseBookmarks);
-      setBookmarks(enrichedBookmarks);
+      const normalizedBookmarks = enrichedBookmarks.map((bookmark) => {
+        const pinAttendance =
+          typeof bookmark?.pin?.viewerIsAttending === 'boolean'
+            ? bookmark.pin.viewerIsAttending
+            : undefined;
+        if (pinAttendance === undefined || bookmark.viewerIsAttending === pinAttendance) {
+          return bookmark;
+        }
+        return { ...bookmark, viewerIsAttending: pinAttendance };
+      });
+      setBookmarks(normalizedBookmarks);
       setCollections(Array.isArray(collectionPayload) ? collectionPayload : []);
+      try {
+        const historyPayload = await fetchBookmarkHistory();
+        setViewHistory(Array.isArray(historyPayload) ? historyPayload : []);
+        setHistoryError(null);
+      } catch (historyFetchError) {
+        console.warn('Failed to load bookmark history:', historyFetchError);
+        setViewHistory([]);
+        setHistoryError(historyFetchError?.message || 'Failed to load bookmark history.');
+      }
     } catch (err) {
       reportClientError(err, 'Failed to load bookmarks:', {
         source: 'useBookmarksManager.loadData'
       });
       setBookmarks([]);
       setCollections([]);
+      setViewHistory([]);
       setError(err?.message || 'Failed to load bookmarks.');
     } finally {
       setIsLoading(false);
     }
-  }, [authUser, enrichBookmarksWithPins, isOffline]);
+  }, [authUser, enrichBookmarksWithPins, hideFullEvents, isOffline]);
 
   // Auto-refresh whenever auth or offline status changes.
   useEffect(() => {
@@ -210,13 +242,13 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
           })
         );
         setRemovalStatus({ type: 'success', message: 'Bookmark removed.' });
-        } catch (err) {
-          reportClientError(err, 'Failed to remove bookmark:', {
-            source: 'useBookmarksManager.remove',
-            pinId
-          });
-          setRemovalStatus({ type: 'error', message: err?.message || 'Failed to remove bookmark.' });
-        } finally {
+      } catch (err) {
+        reportClientError(err, 'Failed to remove bookmark:', {
+          source: 'useBookmarksManager.remove',
+          pinId
+        });
+        setRemovalStatus({ type: 'error', message: err?.message || 'Failed to remove bookmark.' });
+      } finally {
         setRemovingPinId(null);
       }
     },
@@ -277,7 +309,11 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
         throw new Error('Reconnect to update attendance.');
       }
 
-      const nextAttending = !(bookmark?.viewerIsAttending);
+      const currentAttending =
+        typeof bookmark?.viewerIsAttending === 'boolean'
+          ? bookmark.viewerIsAttending
+          : Boolean(bookmark?.pin?.viewerIsAttending);
+      const nextAttending = !currentAttending;
       setAttendancePendingId(pinId);
       try {
         await updatePinAttendance(pinId, { attending: nextAttending });
@@ -336,12 +372,33 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
     [isOffline]
   );
 
+  const handleClearHistory = useCallback(async () => {
+    if (isOffline) {
+      setHistoryError('Reconnect to clear your history.');
+      return;
+    }
+    setIsClearingHistory(true);
+    setHistoryError(null);
+    try {
+      await clearBookmarkHistory();
+      setViewHistory([]);
+    } catch (err) {
+      reportClientError(err, 'Failed to clear bookmark history:', {
+        source: 'useBookmarksManager.clearHistory'
+      });
+      setHistoryError(err?.message || 'Failed to clear bookmark history.');
+    } finally {
+      setIsClearingHistory(false);
+    }
+  }, [isOffline]);
+
   const dismissError = useCallback(() => setError(null), []);
   const dismissRemovalStatus = useCallback(() => setRemovalStatus(null), []);
   const notifyRemovalStatus = useCallback((status) => {
     setRemovalStatus(status);
   }, []);
   const dismissExportStatus = useCallback(() => setExportStatus(null), []);
+  const dismissHistoryError = useCallback(() => setHistoryError(null), []);
 
   // Expose raw data, derived data, and the helper actions so pages can pick what they need.
   return {
@@ -365,7 +422,12 @@ export default function useBookmarksManager({ authUser, authLoading, isOffline }
     collectionsById,
     dismissError,
     dismissRemovalStatus,
-    dismissExportStatus
+    dismissExportStatus,
+    viewHistory,
+    clearHistory: handleClearHistory,
+    isClearingHistory,
+    historyError,
+    dismissHistoryError
   };
 }
 

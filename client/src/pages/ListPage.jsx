@@ -25,6 +25,7 @@ import useListFilters from '../hooks/useListFilters';
 import usePinCategories from '../hooks/usePinCategories';
 import useOfflineNavigation from '../hooks/useOfflineNavigation';
 import useViewerProfile from '../hooks/useViewerProfile';
+import useHideFullEventsPreference from '../hooks/useHideFullEventsPreference';
 
 export const pageConfig = {
   id: 'list',
@@ -88,14 +89,24 @@ export default function ListPage() {
 
   const [sortByExpiration, setSortByExpiration] = useState(false);
   const [hideOwnPins, setHideOwnPins] = useState(true);
+  const { viewer: viewerProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
+  const {
+    hideFullEvents,
+    setHideFullEvents,
+    isSavingPreference: isSavingHideFullPreference,
+    preferenceError: hideFullPreferenceError,
+    clearPreferenceError
+  } = useHideFullEventsPreference({
+    profileValue: viewerProfile?.preferences?.display?.hideFullEventsByDefault,
+    disablePersistence: isOffline
+  });
   const {
     feedItems,
     loading,
     error,
     locationNotice,
     isUsingFallbackLocation
-  } = useNearbyPinsFeed({ sharedLocation, isOffline, filters });
-  const { viewer: viewerProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
+  } = useNearbyPinsFeed({ sharedLocation, isOffline, filters, hideFullEvents });
   const viewerMongoId = useMemo(
     () => toIdString(viewerProfile?._id) ?? toIdString(viewerProfile?.id) ?? null,
     [viewerProfile]
@@ -165,7 +176,7 @@ export default function ListPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filtersSignature, sortByExpiration, hideOwnPins]);
+  }, [filtersSignature, sortByExpiration, hideOwnPins, hideFullEvents]);
 
   const handleRemoveType = useCallback((typeValue) => {
     removeType(typeValue);
@@ -193,6 +204,17 @@ export default function ListPage() {
   const handleClearAllFilters = useCallback(() => {
     handleClearFilters();
   }, [handleClearFilters]);
+
+  const handleHideFullEventsToggle = useCallback(
+    (event) => {
+      const nextValue = Boolean(event.target.checked);
+      if (hideFullPreferenceError) {
+        clearPreferenceError();
+      }
+      setHideFullEvents(nextValue);
+    },
+    [clearPreferenceError, hideFullPreferenceError, setHideFullEvents]
+  );
   const handleFeedItemSelect = useCallback(
     (pinId, pin) => {
       const normalized = toIdString(pinId);
@@ -268,6 +290,13 @@ export default function ListPage() {
         onDelete: handleResetDates
       });
     }
+    if (!hideFullEvents) {
+      chips.push({
+        key: 'full-events-visible',
+        label: 'Showing full events',
+        onDelete: () => setHideFullEvents(true)
+      });
+    }
     return chips;
   }, [
     filters,
@@ -277,7 +306,9 @@ export default function ListPage() {
     handleRemoveType,
     handleRemoveFriendEngagement,
     handleResetDates,
-    handleResetStatus
+    handleResetStatus,
+    hideFullEvents,
+    setHideFullEvents
   ]);
 
   const filteredAndSortedFeed = useMemo(() => {
@@ -421,6 +452,20 @@ export default function ListPage() {
               label="Hide my pins"
               className="topbar-hide-own"
             />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  size="small"
+                  color="secondary"
+                  checked={hideFullEvents}
+                  onChange={handleHideFullEventsToggle}
+                  disabled={isSavingHideFullPreference}
+                />
+              }
+              label="Hide full events"
+              className="topbar-hide-own"
+              title={hideFullPreferenceError || undefined}
+            />
             {totalResults > LIST_PAGE_SIZE ? (
               <div className="top-pagination">
                 <Pagination
@@ -446,6 +491,12 @@ export default function ListPage() {
             <img src={addIcon} alt="Add" />
           </button>
         </div>
+
+        {hideFullPreferenceError ? (
+          <p className="topbar-pref-error" role="status">
+            {hideFullPreferenceError}
+          </p>
+        ) : null}
 
         {activeFilterChips.length > 0 ? (
           <div className="filter-chip-row">

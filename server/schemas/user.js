@@ -48,7 +48,8 @@ const DisplayPreferencesSchema = z
     reduceMotion: z.boolean().default(false),
     highContrast: z.boolean().default(false),
     mapDensity: z.enum(['compact', 'balanced', 'detailed']).default('balanced'),
-    celebrationSounds: z.boolean().default(true)
+    celebrationSounds: z.boolean().default(true),
+    hideFullEventsByDefault: z.boolean().default(true)
   })
   .partial();
 

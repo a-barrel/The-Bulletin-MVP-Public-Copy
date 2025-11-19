@@ -23,10 +23,32 @@ const { mapMediaAsset: mapMediaAssetResponse } = require('../utils/media');
 const { toIdString, mapIdList } = require('../utils/ids');
 const { METERS_PER_MILE, milesToMeters } = require('../utils/geo');
 const { timeAsync } = require('../utils/devLogger');
-const runtime = require('../config/runtime');
 const { recordAuditEntry } = require('../services/auditLogService');
+const { canViewerModeratePins } = require('../utils/moderation');
 
 const router = express.Router();
+
+const OptionalBooleanSchema = z
+  .union([z.boolean(), z.string(), z.number()])
+  .optional()
+  .transform((value) => {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'number') {
+      return value !== 0;
+    }
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (['true', '1', 'yes', 'y', 'on'].includes(normalized)) {
+        return true;
+      }
+      if (['false', '0', 'no', 'n', 'off'].includes(normalized)) {
+        return false;
+      }
+    }
+    return undefined;
+  });
 
 const PinsQuerySchema = z.object({
   type: z.enum(['event', 'discussion']).optional(),
@@ -40,7 +62,8 @@ const PinsQuerySchema = z.object({
   categories: z.string().trim().optional(),
   types: z.string().trim().optional(),
   startDate: z.string().trim().optional(),
-  endDate: z.string().trim().optional()
+  endDate: z.string().trim().optional(),
+  hideFullEvents: OptionalBooleanSchema
 });
 
 const PinIdSchema = z.object({
@@ -90,32 +113,47 @@ const EVENT_ATTENDEE_LIMITS = {
 
 const DISCUSSION_REPLY_LIMIT_OPTIONS = [50, 75, 100, 150, 200];
 const DEFAULT_DISCUSSION_REPLY_LIMIT = 100;
-const DEFAULT_MODERATION_ROLES = ['admin', 'moderator', 'super-admin', 'system-admin'];
+const VIEW_HISTORY_MAX = 20;
 
-const normalizeRole = (role) =>
-  typeof role === 'string' ? role.trim().toLowerCase() : '';
+const buildHideFullEventsFilter = () => ({
+  $or: [
+    { type: { $ne: 'event' } },
+    { participantLimit: { $exists: false } },
+    { participantLimit: null },
+    { participantLimit: { $lte: 0 } },
+    {
+      $expr: {
+        $lt: [{ $ifNull: ['$participantCount', 0] }, '$participantLimit']
+      }
+    }
+  ]
+});
 
-const resolveAllowedModerationRoles = () => {
-  const configured = Array.isArray(runtime.moderation?.allowedRoles)
-    ? runtime.moderation.allowedRoles
-    : DEFAULT_MODERATION_ROLES;
-  return configured.map(normalizeRole).filter(Boolean);
-};
-
-const canViewerModeratePins = (viewer) => {
-  const checksEnabled = runtime.moderation?.roleChecksEnabled !== false;
-  if (runtime.isOffline || !checksEnabled) {
-    return true;
+const recordPinViewHistory = async (viewer, pinId) => {
+  if (!viewer || !viewer._id || !pinId) {
+    return;
   }
-  if (!viewer) {
-    return false;
+  try {
+    const pinObjectId = new mongoose.Types.ObjectId(pinId);
+    await User.updateOne(
+      { _id: viewer._id },
+      { $pull: { viewHistory: { pinId: pinObjectId } } }
+    );
+    await User.updateOne(
+      { _id: viewer._id },
+      {
+        $push: {
+          viewHistory: {
+            $each: [{ pinId: pinObjectId, viewedAt: new Date() }],
+            $position: 0,
+            $slice: VIEW_HISTORY_MAX
+          }
+        }
+      }
+    );
+  } catch (error) {
+    console.warn('Failed to record pin view history:', error);
   }
-  const viewerRoles = Array.isArray(viewer.roles) ? viewer.roles : [];
-  if (!viewerRoles.length) {
-    return false;
-  }
-  const allowed = resolveAllowedModerationRoles();
-  return viewerRoles.map(normalizeRole).some((role) => allowed.includes(role));
 };
 
 const mapUserToPublic = (user) => {
@@ -549,7 +587,8 @@ const NearbyPinsQuerySchema = z.object({
   status: z.enum(['active', 'expired', 'all']).optional(),
   startDate: z.string().trim().optional(),
   endDate: z.string().trim().optional(),
-  friendEngagements: z.string().trim().optional()
+  friendEngagements: z.string().trim().optional(),
+  hideFullEvents: OptionalBooleanSchema
 });
 
 const haversineDistanceMeters = (lat1, lon1, lat2, lon2) => {
@@ -708,16 +747,16 @@ router.post('/', verifyToken, async (req, res) => {
       coordinates: [input.coordinates.longitude, input.coordinates.latitude]
     };
 
-  const pinData = {
-    type: input.type,
-    creatorId: creatorObjectId,
-    title: input.title,
-    description: input.description,
-    coordinates,
-    proximityRadiusMeters: input.proximityRadiusMeters ?? 1609,
-    visibility: 'public',
-    options: input.options ?? undefined
-  };
+    const pinData = {
+      type: input.type,
+      creatorId: creatorObjectId,
+      title: input.title,
+      description: input.description,
+      coordinates,
+      proximityRadiusMeters: input.proximityRadiusMeters ?? 1609,
+      visibility: 'public',
+      options: input.options ?? undefined
+    };
 
     if (input.type === 'event') {
       pinData.startDate = input.startDate;
@@ -732,6 +771,8 @@ router.post('/', verifyToken, async (req, res) => {
         typeof input.participantLimit === 'number'
           ? input.participantLimit
           : EVENT_ATTENDEE_LIMITS.defaultValue;
+      pinData.attendingUserIds = [creatorObjectId];
+      pinData.participantCount = 1;
     } else if (input.type === 'discussion') {
       pinData.expiresAt = input.expiresAt;
       pinData.autoDelete = input.autoDelete ?? true;
@@ -764,6 +805,7 @@ router.post('/', verifyToken, async (req, res) => {
       ensureUserStats(creatorUserDoc);
       if (pin.type === 'event') {
         creatorUserDoc.stats.eventsHosted = (creatorUserDoc.stats.eventsHosted ?? 0) + 1;
+        creatorUserDoc.stats.eventsAttended = (creatorUserDoc.stats.eventsAttended ?? 0) + 1;
       } else if (pin.type === 'discussion') {
         creatorUserDoc.stats.posts = (creatorUserDoc.stats.posts ?? 0) + 1;
       }
@@ -968,7 +1010,8 @@ router.get('/nearby', verifyToken, async (req, res) => {
       status: statusParam,
       startDate: startDateParam,
       endDate: endDateParam,
-      friendEngagements: friendEngagementsParam
+      friendEngagements: friendEngagementsParam,
+      hideFullEvents
     } = NearbyPinsQuerySchema.parse(req.query);
 
     const maxDistanceMeters = milesToMeters(distanceMiles) ?? distanceMiles * METERS_PER_MILE;
@@ -1008,6 +1051,7 @@ router.get('/nearby', verifyToken, async (req, res) => {
     }
 
     const now = new Date();
+    const viewerIsPrivileged = canViewerModeratePins(viewer);
     const filters = [];
 
     if (friendFilterActive) {
@@ -1096,6 +1140,10 @@ router.get('/nearby', verifyToken, async (req, res) => {
           { expiresAt: range }
         ]
       });
+    }
+
+    if (hideFullEvents === true && !viewerIsPrivileged) {
+      filters.push(buildHideFullEventsFilter());
     }
 
     const findQuery = {
@@ -1200,6 +1248,7 @@ router.get('/', verifyToken, async (req, res) => {
     const limit = query.limit;
     const now = new Date();
     const filters = [];
+    const viewerIsPrivileged = canViewerModeratePins(viewer);
     const sortMode = query.sort ?? 'recent';
     const statusFilter = query.status ?? 'active';
 
@@ -1282,6 +1331,10 @@ router.get('/', verifyToken, async (req, res) => {
           { expiresAt: range }
         ]
       });
+    }
+
+    if (query.hideFullEvents === true && !viewerIsPrivileged) {
+      filters.push(buildHideFullEventsFilter());
     }
 
     const matchQuery =
@@ -1480,6 +1533,7 @@ router.get('/:pinId', verifyToken, async (req, res) => {
     }
 
     const payload = mapPinToFull(pin, mapUserToPublic(pin.creatorId), mapOptions);
+    recordPinViewHistory(viewer, pin._id);
     res.json(payload);
   } catch (error) {
     if (error instanceof ZodError) {

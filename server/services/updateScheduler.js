@@ -6,7 +6,8 @@ const INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const DISCUSSION_LEAD_MS = 24 * 60 * 60 * 1000;
 const EVENT_REMINDER_WINDOWS = [
   { windowHours: 24, offsetMs: 24 * 60 * 60 * 1000 },
-  { windowHours: 2, offsetMs: 2 * 60 * 60 * 1000 }
+  { windowHours: 2, offsetMs: 2 * 60 * 60 * 1000 },
+  { windowHours: 0.25, offsetMs: 15 * 60 * 1000 }
 ];
 
 let intervalHandle = null;

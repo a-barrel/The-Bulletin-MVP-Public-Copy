@@ -541,11 +541,24 @@ function AppContent() {
           }
           total += 1;
           const type = update?.payload?.type;
+          const pinType =
+            typeof update?.payload?.pin?.type === 'string'
+              ? update.payload.pin.type.toLowerCase()
+              : '';
           if (type === 'bookmark-update') {
             bookmark += 1;
-          } else if (type === 'event-starting-soon' || type === 'event-reminder') {
+          } else if (
+            type === 'event-starting-soon' ||
+            type === 'event-reminder' ||
+            pinType === 'event'
+          ) {
             events += 1;
-          } else if (type === 'pin-update' || type === 'new-pin' || type === 'discussion-expiring-soon') {
+          } else if (
+            type === 'pin-update' ||
+            type === 'new-pin' ||
+            type === 'discussion-expiring-soon' ||
+            pinType === 'discussion'
+          ) {
             discussions += 1;
           }
         });
@@ -643,6 +656,18 @@ function AppContent() {
       }
     };
   }, [isAuthReady, location.pathname, refreshUnreadCount]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || isOffline || isAuthRoute || !isAuthReady) {
+      return undefined;
+    }
+    const intervalId = window.setInterval(() => {
+      refreshUnreadCount({ silent: true });
+    }, 180_000);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isAuthReady, isAuthRoute, isOffline, refreshUnreadCount]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {

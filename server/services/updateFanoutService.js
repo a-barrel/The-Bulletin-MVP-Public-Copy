@@ -528,13 +528,27 @@ const broadcastEventStartingSoon = async ({ pin, windowHours = 2 }) => {
     const preview = buildPinPreview(pinDoc);
     const hostName = getDisplayName(pinDoc.creatorId);
     const startDateIso = pinDoc.startDate ? new Date(pinDoc.startDate).toISOString() : undefined;
+    const startDateMs = startDateIso ? new Date(startDateIso).getTime() : null;
+    const diffMs = startDateMs ? Math.max(0, startDateMs - Date.now()) : 0;
+    const hoursUntilStart = diffMs / (60 * 60 * 1000);
+    const daysUntilStart = hoursUntilStart / 24;
+    const minutesUntilStart = diffMs / (60 * 1000);
     const title = pinDoc.title || 'Upcoming event';
     const sourceUserId = toObjectId(pinDoc.creatorId?._id ?? pinDoc.creatorId);
 
-    const leadLabel =
-      windowHours >= 24 && windowHours % 24 === 0
-        ? `${windowHours / 24} day${windowHours / 24 === 1 ? '' : 's'}`
-        : `${windowHours} hour${windowHours === 1 ? '' : 's'}`;
+    let leadLabel;
+    if (daysUntilStart >= 1) {
+      const roundedDays = Math.max(1, Math.round(daysUntilStart));
+      leadLabel = `${roundedDays} day${roundedDays === 1 ? '' : 's'}`;
+    } else if (hoursUntilStart >= 1) {
+      const roundedHours = Math.max(1, Math.round(hoursUntilStart));
+      leadLabel = `${roundedHours} hour${roundedHours === 1 ? '' : 's'}`;
+    } else if (minutesUntilStart >= 1) {
+      const roundedMinutes = Math.max(1, Math.round(minutesUntilStart));
+      leadLabel = `${roundedMinutes} minute${roundedMinutes === 1 ? '' : 's'}`;
+    } else {
+      leadLabel = 'less than an hour';
+    }
     const updateTitle = `${title} starts in ${leadLabel}`;
 
     const updates = filteredRecipients.map((recipientId) => ({
