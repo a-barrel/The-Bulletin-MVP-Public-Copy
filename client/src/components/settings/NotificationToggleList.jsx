@@ -4,6 +4,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
+import settingsPalette, { mutedTextSx, settingsToggleLabelSx } from './settingsPalette';
 
 function NotificationToggleList({ toggles, values, onToggle, disabled }) {
   return (
@@ -18,17 +19,18 @@ function NotificationToggleList({ toggles, values, onToggle, disabled }) {
             gap: 2,
             borderRadius: 2,
             border: '1px solid',
-            borderColor: 'divider',
+            borderColor: settingsPalette.borderSubtle,
+            backgroundColor: '#FFFFFF',
             px: 2,
             py: 1.5
           }}
         >
           <Box sx={{ flex: 1 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: settingsPalette.textPrimary }}>
               {toggle.label}
             </Typography>
             {toggle.helper ? (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={mutedTextSx}>
                 {toggle.helper}
               </Typography>
             ) : null}
@@ -42,6 +44,7 @@ function NotificationToggleList({ toggles, values, onToggle, disabled }) {
               />
             }
             label=""
+            sx={settingsToggleLabelSx}
           />
         </Box>
       ))}

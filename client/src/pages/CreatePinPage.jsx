@@ -53,6 +53,14 @@ const PIN_TYPE_LABELS = {
   discussion: 'Discussion'
 };
 
+const EVENT_ATTENDEE_LIMITS = {
+  min: 5,
+  max: 100,
+  defaultValue: 30
+};
+
+const DISCUSSION_REPLY_LIMIT_OPTIONS = [50, 75, 100, 150, 200];
+
 function CreatePinPage() {
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
@@ -180,6 +188,7 @@ function CreatePinPage() {
   const latitudeInputId = useId();
   const longitudeInputId = useId();
   const radiusInputId = useId();
+  const participantLimitInputId = useId();
   const addressPreciseInputId = useId();
   const addressCityInputId = useId();
   const addressStateInputId = useId();
@@ -190,6 +199,7 @@ function CreatePinPage() {
   const approxStateInputId = useId();
   const approxCountryInputId = useId();
   const autoDeleteInputId = useId();
+  const replyLimitInputId = useId();
   const headerTitle = PIN_TYPE_LABELS[pinType] ?? FIGMA_TEMPLATE.header.title;
 
   return (
@@ -341,6 +351,25 @@ function CreatePinPage() {
                   <p>Let everyone know when and where to show up.</p>
                 </div>
 
+                <div className="input-group">
+                  <label htmlFor={`create-pin-participant-limit-${participantLimitInputId}`}>
+                    Attendee limit
+                  </label>
+                  <input
+                    type="number"
+                    id={`create-pin-participant-limit-${participantLimitInputId}`}
+                    min={EVENT_ATTENDEE_LIMITS.min}
+                    max={EVENT_ATTENDEE_LIMITS.max}
+                    value={formState.participantLimit}
+                    onChange={handleFieldChange('participantLimit')}
+                    required
+                  />
+                  <small className="field-hint">
+                    Between {EVENT_ATTENDEE_LIMITS.min} and {EVENT_ATTENDEE_LIMITS.max} attendees (default{' '}
+                    {EVENT_ATTENDEE_LIMITS.defaultValue}).
+                  </small>
+                </div>
+
                 <div className="two-col">
                   <div>
                     <label htmlFor={`create-pin-start-date-${startDateInputId}`}>Start date</label>
@@ -434,6 +463,24 @@ function CreatePinPage() {
                 <div className="details-info">
                   <h2>Discussion Details</h2>
                   <p>Share when the topic wraps up and where it mainly takes place.</p>
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor={`create-pin-reply-limit-${replyLimitInputId}`}>Reply limit</label>
+                  <select
+                    id={`create-pin-reply-limit-${replyLimitInputId}`}
+                    value={formState.replyLimit}
+                    onChange={handleFieldChange('replyLimit')}
+                  >
+                    {DISCUSSION_REPLY_LIMIT_OPTIONS.map((limit) => (
+                      <option key={limit} value={limit}>
+                        {limit} replies
+                      </option>
+                    ))}
+                  </select>
+                  <small className="field-hint">
+                    Choose how many replies this discussion allows before it closes (default 100).
+                  </small>
                 </div>
 
                 <div className="two-col">

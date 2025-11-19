@@ -448,9 +448,44 @@
   border-bottom: 1px solid black;
 }
 
+.friends-profile-trigger {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  display: inline-flex;
+  text-align: left;
+}
+
+.friends-profile-trigger:disabled {
+  cursor: default;
+}
+
+.friends-profile-trigger:focus-visible {
+  outline: 2px solid #5d3889;
+  border-radius: 999px;
+}
+.friends-profile-trigger--name:focus-visible {
+  border-radius: 8px;
+}
+
+.friends-profile-trigger--avatar .friends-list-friend-avatar {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.friends-profile-trigger--avatar:hover:not(:disabled) .friends-list-friend-avatar {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
+}
+
 .friends-list-name-container {
   display: flex;
   margin-left: -1.25rem;
+}
+
+.friends-profile-trigger--name {
+  width: 100%;
 }
 
 .friends-list-name-wrapper {
@@ -462,12 +497,18 @@
   font-size: 1rem !important;
   font-weight: 600 !important;
   color: black;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
 }
 
 .friends-list-user-name {
   font-family:'Urbanist', sans-serif !important;
   font-size: 0.8rem !important;
   color: gray;
+}
+
+.friends-profile-trigger--name:hover:not(:disabled) .friends-list-display-name {
+  color: #5d3889;
+  text-shadow: 0 0 8px rgba(93, 56, 137, 0.3);
 }
 
   /* friend action buttons */

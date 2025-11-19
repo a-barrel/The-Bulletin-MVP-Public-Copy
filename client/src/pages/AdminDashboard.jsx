@@ -24,6 +24,7 @@ import ModerationSummaryGrid from '../components/admin/ModerationSummaryGrid';
 import ReportStatusTabs from '../components/admin/ReportStatusTabs';
 import ReportsTable from '../components/admin/ReportsTable';
 import { deriveSummaryAfterResolution } from '../utils/moderationReports';
+import RequireAdminAccess from '../components/RequireAdminAccess';
 
 export const pageConfig = {
   id: 'admin-dashboard',
@@ -44,7 +45,7 @@ const STATUS_TABS = [
 const formatSummaryCount = (count) =>
   typeof count === 'number' ? (count > 99 ? '99+' : String(count)) : '0';
 
-function AdminDashboard() {
+function AdminDashboardContent() {
   const {
     overview,
     error: overviewError,
@@ -362,6 +363,14 @@ function AdminDashboard() {
         </Paper>
       </Stack>
     </Box>
+  );
+}
+
+function AdminDashboard() {
+  return (
+    <RequireAdminAccess>
+      <AdminDashboardContent />
+    </RequireAdminAccess>
   );
 }
 

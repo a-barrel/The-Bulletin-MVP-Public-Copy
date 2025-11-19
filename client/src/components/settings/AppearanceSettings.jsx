@@ -1,4 +1,16 @@
-import { Stack, Typography, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Slider, Switch } from '@mui/material';
+import {
+  Stack,
+  Typography,
+  FormControl,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  Slider,
+  Switch
+} from '@mui/material';
+import SettingsAccordion from './SettingsAccordion';
+import settingsPalette, { mutedTextSx, settingsToggleLabelSx } from './settingsPalette';
 
 function AppearanceSettings({
   theme,
@@ -26,89 +38,123 @@ function AppearanceSettings({
   formatMetersToMiles
 }) {
   return (
-    <Stack spacing={1.5}>
-      <Typography variant="h6">Theme &amp; typography</Typography>
-      <FormControl component="fieldset">
-        <FormLabel component="legend" sx={{ fontSize: '0.875rem' }}>
-          Theme
-        </FormLabel>
-        <RadioGroup row value={theme} onChange={onThemeChange}>
-          <FormControlLabel value="system" control={<Radio />} label="Match system" />
-          <FormControlLabel value="light" control={<Radio />} label="Light" />
-          <FormControlLabel value="dark" control={<Radio />} label="Dark" />
-        </RadioGroup>
-      </FormControl>
+    <Stack spacing={2}>
+      <SettingsAccordion title="Theme & typography" description="Match the system palette or lock in your favorite look.">
+        <FormControl component="fieldset">
+          <FormLabel component="legend" sx={{ fontSize: '0.875rem', color: settingsPalette.accent }}>
+            Theme
+          </FormLabel>
+          <RadioGroup
+            row
+            value={theme}
+            onChange={onThemeChange}
+            sx={{
+              color: settingsPalette.textPrimary,
+              '& .MuiFormControlLabel-label': { color: settingsPalette.textPrimary }
+            }}
+          >
+            <FormControlLabel value="system" control={<Radio />} label="Match system" />
+            <FormControlLabel value="light" control={<Radio />} label="Light" />
+            <FormControlLabel value="dark" control={<Radio />} label="Dark" />
+          </RadioGroup>
+        </FormControl>
+        <Stack spacing={1}>
+          <Typography variant="body2" sx={mutedTextSx}>
+            Adjust text size to improve readability.
+          </Typography>
+          <Slider
+            min={0.8}
+            max={1.4}
+            step={0.05}
+            value={textScale}
+            valueLabelDisplay="auto"
+            valueLabelFormat={(value) => `${Math.round(value * 100)}%`}
+            onChange={onTextScaleChange}
+          />
+        </Stack>
+      </SettingsAccordion>
 
-      <Stack spacing={1}>
-        <Typography variant="body2" color="text.secondary">
-          Adjust text size to improve readability.
+      <SettingsAccordion
+        title="Accessibility & cues"
+        description="Tweak animations, contrast, celebratory effects, and friend badges."
+        defaultExpanded={false}
+      >
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+          <FormControlLabel
+            control={<Switch checked={reduceMotion} onChange={(_, checked) => onReduceMotionToggle(checked)} />}
+            label="Reduce motion & animations"
+            sx={settingsToggleLabelSx}
+          />
+          <FormControlLabel
+            control={<Switch checked={highContrast} onChange={(_, checked) => onHighContrastToggle(checked)} />}
+            label="High contrast mode"
+            sx={settingsToggleLabelSx}
+          />
+          <FormControlLabel
+            control={<Switch checked={celebrationSounds} onChange={(_, checked) => onCelebrationSoundsToggle(checked)} />}
+            label="Play celebration sounds"
+            sx={settingsToggleLabelSx}
+          />
+          <FormControlLabel
+            control={<Switch checked={showFriendBadges} onChange={(_, checked) => onShowFriendBadgesToggle(checked)} />}
+            label="Show friend badges next to names"
+            sx={settingsToggleLabelSx}
+          />
+        </Stack>
+        <Typography variant="caption" sx={mutedTextSx}>
+          Celebration sounds follow this setting everywhere in the app.
         </Typography>
-        <Slider
-          min={0.8}
-          max={1.4}
-          step={0.05}
-          value={textScale}
-          valueLabelDisplay="auto"
-          valueLabelFormat={(value) => `${Math.round(value * 100)}%`}
-          onChange={onTextScaleChange}
-        />
-      </Stack>
+      </SettingsAccordion>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-        <FormControlLabel
-          control={<Switch checked={reduceMotion} onChange={(_, checked) => onReduceMotionToggle(checked)} />}
-          label="Reduce motion & animations"
-        />
-        <FormControlLabel
-          control={<Switch checked={highContrast} onChange={(_, checked) => onHighContrastToggle(checked)} />}
-          label="High contrast mode"
-        />
-        <FormControlLabel
-          control={<Switch checked={celebrationSounds} onChange={(_, checked) => onCelebrationSoundsToggle(checked)} />}
-          label="Play celebration sounds"
-        />
-        <FormControlLabel
-          control={<Switch checked={showFriendBadges} onChange={(_, checked) => onShowFriendBadgesToggle(checked)} />}
-          label="Show friend badges next to names"
-        />
-      </Stack>
+      <SettingsAccordion
+        title="Pin density"
+        description="Control how many pins load at once across Map and List."
+        defaultExpanded={false}
+      >
+        <FormControl component="fieldset">
+          <FormLabel
+            component="legend"
+            sx={{ fontSize: '0.875rem', color: settingsPalette.accent }}
+          >
+            Pin display limit
+          </FormLabel>
+          <RadioGroup
+            row
+            value={mapDensity}
+            onChange={onMapDensityChange}
+            sx={{
+              color: settingsPalette.textPrimary,
+              '& .MuiFormControlLabel-label': { color: settingsPalette.textPrimary }
+            }}
+          >
+            {pinDensityOptions.map((option) => (
+              <FormControlLabel
+                key={option.key}
+                value={option.key}
+                control={<Radio />}
+                label={`${option.label} (${option.limit} pins)`}
+              />
+            ))}
+          </RadioGroup>
+          <Typography variant="caption" sx={mutedTextSx}>
+            Detailed mode fetches the most pins but may use more bandwidth.
+          </Typography>
+          <FormControlLabel
+            control={<Switch checked={listSyncsWithMapLimit} onChange={(_, checked) => onListSyncsToggle(checked)} />}
+            label="Match List view to this limit"
+            sx={{ ...settingsToggleLabelSx, mt: 1 }}
+          />
+          <Typography variant="caption" sx={mutedTextSx}>
+            When enabled, the List page shows the same pin set as the map so both views stay in sync.
+          </Typography>
+        </FormControl>
+      </SettingsAccordion>
 
-      <Typography variant="caption" color="text.secondary">
-        Celebration sounds follow this setting everywhere in the app.
-      </Typography>
-
-      <FormControl component="fieldset" sx={{ mt: 1 }}>
-        <FormLabel component="legend" sx={{ fontSize: '0.875rem' }}>
-          Pin display limit
-        </FormLabel>
-        <RadioGroup row value={mapDensity} onChange={onMapDensityChange}>
-          {pinDensityOptions.map((option) => (
-            <FormControlLabel
-              key={option.key}
-              value={option.key}
-              control={<Radio />}
-              label={`${option.label} (${option.limit} pins)`}
-            />
-          ))}
-        </RadioGroup>
-        <Typography variant="caption" color="text.secondary">
-          Controls how many pins the map loads at once. Detailed mode fetches the most pins but may use more bandwidth.
-        </Typography>
-        <FormControlLabel
-          sx={{ mt: 1 }}
-          control={<Switch checked={listSyncsWithMapLimit} onChange={(_, checked) => onListSyncsToggle(checked)} />}
-          label="Match List view to this limit"
-        />
-        <Typography variant="caption" color="text.secondary">
-          When enabled, the List page shows the same pin set as the map so both views stay in sync.
-        </Typography>
-      </FormControl>
-
-      <Stack spacing={2}>
-        <Typography variant="h6">Location radius</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Adjust how far from your location the app should pull nearby pins and updates.
-        </Typography>
+      <SettingsAccordion
+        title="Nearby radius"
+        description="Define how far from your location we fetch pins and updates."
+        defaultExpanded={false}
+      >
         <Slider
           value={radiusMeters}
           min={radiusMin}
@@ -121,10 +167,10 @@ function AppearanceSettings({
           }}
           onChange={onRadiusChange}
         />
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={mutedTextSx}>
           Current radius: {radiusMeters} m ({radiusMiles ?? 'N/A'} mi)
         </Typography>
-      </Stack>
+      </SettingsAccordion>
     </Stack>
   );
 }

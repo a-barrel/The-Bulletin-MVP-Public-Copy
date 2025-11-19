@@ -2,7 +2,6 @@ import {
   Alert,
   Button,
   CircularProgress,
-  Divider,
   FormControlLabel,
   Stack,
   Switch,
@@ -12,6 +11,8 @@ import {
   ListItem,
   ListItemText
 } from '@mui/material';
+import SettingsAccordion from './SettingsAccordion';
+import settingsPalette, { mutedTextSx, settingsButtonStyles } from './settingsPalette';
 
 function DataIntegrationsSettings({
   isOffline,
@@ -32,40 +33,45 @@ function DataIntegrationsSettings({
 }) {
   return (
     <Stack spacing={2}>
-      <Typography variant="h6">Data &amp; integrations</Typography>
-      <Typography variant="body2" color="text.secondary">
-        Export your account data or generate personal access tokens for scripts. We’ll email you a link whenever an export finishes.
-      </Typography>
-      <FormControlLabel
-        control={<Switch checked={autoExportReminders} onChange={onAutoExportRemindersToggle} />}
-        label="Remind me to export my data each month"
-      />
-      <Typography variant="caption" color="text.secondary">
-        We’ll send a gentle nudge inside the app when it’s time for your next export.
-      </Typography>
-      <Stack spacing={1}>
-        <Typography variant="subtitle2">Data export</Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-          <Button
-            variant="contained"
-            onClick={onDataExport}
-            disabled={isOffline}
-            title={isOffline ? 'Reconnect to request an export' : undefined}
-          >
-            Request data export
-          </Button>
-        </Stack>
+      <SettingsAccordion
+        title="Data exports"
+        description="Request a copy of your data and set monthly reminders."
+      >
+        <Typography variant="body2" sx={mutedTextSx}>
+          We’ll email you a link whenever an export finishes.
+        </Typography>
+        <FormControlLabel
+          control={<Switch checked={autoExportReminders} onChange={onAutoExportRemindersToggle} />}
+          label="Remind me to export my data each month"
+          sx={{
+            color: settingsPalette.textPrimary,
+            '.MuiFormControlLabel-label': { color: settingsPalette.textPrimary }
+          }}
+        />
+        <Typography variant="caption" sx={mutedTextSx}>
+          We’ll send a gentle nudge inside the app when it’s time for your next export.
+        </Typography>
+        <Button
+          variant="contained"
+          onClick={onDataExport}
+          disabled={isOffline}
+          title={isOffline ? 'Reconnect to request an export' : undefined}
+          sx={{ ...settingsButtonStyles.contained, alignSelf: 'flex-start', mt: 1 }}
+        >
+          Request data export
+        </Button>
         {dataStatus ? (
           <Alert severity={dataStatus.type} onClose={onDismissDataStatus}>
             {dataStatus.message}
           </Alert>
         ) : null}
-      </Stack>
+      </SettingsAccordion>
 
-      <Divider />
-
-      <Stack spacing={1.5}>
-        <Typography variant="subtitle2">API tokens</Typography>
+      <SettingsAccordion
+        title="API tokens"
+        description="Generate personal access tokens for scripts and integrations."
+        defaultExpanded={false}
+      >
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
           <TextField
             label="Token label"
@@ -81,6 +87,7 @@ function DataIntegrationsSettings({
             onClick={onGenerateToken}
             disabled={isOffline}
             title={isOffline ? 'Reconnect to generate tokens' : undefined}
+            sx={settingsButtonStyles.outlined}
           >
             Generate API token
           </Button>
@@ -95,13 +102,13 @@ function DataIntegrationsSettings({
             ) : null}
           </Alert>
         ) : null}
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={mutedTextSx}>
           API tokens behave like passwords. Revoke any token you no longer use.
         </Typography>
         {isLoadingTokens ? (
           <Stack alignItems="center" spacing={1}>
             <CircularProgress size={20} />
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={mutedTextSx}>
               Loading tokens...
             </Typography>
           </Stack>
@@ -113,10 +120,22 @@ function DataIntegrationsSettings({
                 secondaryAction={
                   <Button
                     size="small"
-                    color="error"
+                    variant="text"
                     onClick={() => onRevokeToken(token.id)}
                     disabled={isOffline}
                     title={isOffline ? 'Reconnect to revoke tokens' : undefined}
+                    sx={{
+                      color: '#B3261E',
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      '&:hover': {
+                        backgroundColor: '#FFE5E0',
+                        color: '#7A2017'
+                      },
+                      '&:disabled': {
+                        color: settingsPalette.borderSubtle
+                      }
+                    }}
                   >
                     Revoke
                   </Button>
@@ -126,26 +145,27 @@ function DataIntegrationsSettings({
                   primary={token.label || 'Untitled token'}
                   secondary={
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={0.5}>
-                      <Typography component="span" variant="caption" color="text.secondary">
+                      <Typography component="span" variant="caption" sx={mutedTextSx}>
                         Preview: {token.preview ? `${token.preview}••••` : '••••••'}
                       </Typography>
                       {token.createdAt ? (
-                        <Typography component="span" variant="caption" color="text.secondary">
+                        <Typography component="span" variant="caption" sx={mutedTextSx}>
                           Created {new Date(token.createdAt).toLocaleString()}
                         </Typography>
                       ) : null}
                     </Stack>
                   }
+                  primaryTypographyProps={{ sx: { color: settingsPalette.textPrimary, fontWeight: 600 } }}
                 />
               </ListItem>
             ))}
           </List>
         ) : (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={mutedTextSx}>
             No active tokens yet.
           </Typography>
         )}
-      </Stack>
+      </SettingsAccordion>
     </Stack>
   );
 }

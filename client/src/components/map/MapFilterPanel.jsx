@@ -13,6 +13,7 @@ function MapFilterPanel({ open, onClose, filters }) {
             checked={filter.checked}
             onChange={filter.onChange}
             aria-label={filter.ariaLabel}
+            disabled={filter.disabled}
           />
           <span className="map-filter-slider" aria-hidden="true" />
         </label>

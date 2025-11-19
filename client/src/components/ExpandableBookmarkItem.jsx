@@ -88,7 +88,10 @@ function ExpandableBookmarkItem({
   const creatorId = toIdString(displayPin?.creatorId) ?? toIdString(displayPin?.creator?._id);
   const viewerId = toIdString(authUser?.uid);
   const ownsPin = Boolean(creatorId && viewerId && creatorId === viewerId);
-  const attending = Boolean(bookmark?.viewerIsAttending);
+  const attending =
+    typeof bookmark?.viewerIsAttending === 'boolean'
+      ? bookmark.viewerIsAttending
+      : Boolean(displayPin?.viewerIsAttending);
   const participantCount =
     typeof displayPin?.stats?.participantCount === 'number'
       ? displayPin.stats.participantCount

@@ -116,6 +116,7 @@ function ProfilePage() {
   });
 
   const {
+    isFriend,
     canSendFriendRequest,
     friendState,
     friendActionBusy,
@@ -179,19 +180,6 @@ function ProfilePage() {
     navigate(-1);
   }, [navigate, originPath]);
 
-  const handleMessageUser = useCallback(() => {
-    if (!targetProfileId || isViewingSelf || isOffline) {
-      return;
-    }
-    navigate(routes.directMessages.base, {
-      state: {
-        fromProfile: true,
-        targetUserId: targetProfileId,
-        displayName
-      }
-    });
-  }, [displayName, isOffline, isViewingSelf, navigate, targetProfileId]);
-
   const handleOpenMutualFriend = useCallback(
     (friendId) => {
       if (!friendId) {
@@ -206,12 +194,39 @@ function ProfilePage() {
     [navigate, location.pathname]
   );
 
+  const targetDmPermission =
+    typeof effectiveUser?.preferences?.dmPermission === 'string'
+      ? effectiveUser.preferences.dmPermission
+      : 'everyone';
+  const dmPermissionBlocked = !isViewingSelf
+    ? targetDmPermission === 'nobody'
+      ? 'This user is not accepting direct messages right now.'
+      : targetDmPermission === 'friends' && !isFriend
+      ? 'Only friends can send messages to this user.'
+      : null
+    : null;
+
+  const handleMessageUser = useCallback(() => {
+    if (!targetProfileId || isViewingSelf || isOffline || dmPermissionBlocked) {
+      return;
+    }
+    navigate(routes.directMessages.base, {
+      state: {
+        fromProfile: true,
+        targetUserId: targetProfileId,
+        displayName
+      }
+    });
+  }, [displayName, dmPermissionBlocked, isOffline, isViewingSelf, navigate, targetProfileId]);
+
   const canInteractWithProfile = Boolean(targetProfileId && !isViewingSelf);
-  const messageDisabled = !canInteractWithProfile || isOffline;
+  const messageDisabled = !canInteractWithProfile || isOffline || Boolean(dmPermissionBlocked);
   const reportDisabled = !canInteractWithProfile || isOffline || isSubmittingReport;
 
   const messageTooltip = messageDisabled
-    ? isViewingSelf
+    ? dmPermissionBlocked
+      ? dmPermissionBlocked
+      : isViewingSelf
       ? 'You cannot message yourself.'
       : isOffline
       ? 'Reconnect to send messages.'
@@ -275,6 +290,7 @@ function ProfilePage() {
       isProcessingBlockAction,
       isSubmittingReport,
       isViewingSelf,
+      dmPermissionBlocked,
       messageDisabled,
       messageTooltip,
       reportDisabled,

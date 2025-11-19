@@ -12,9 +12,13 @@ import {
   ListItemAvatar,
   ListItemText,
   Stack,
+  TextField,
   Typography
 } from '@mui/material';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
+import SearchIcon from '@mui/icons-material/Search';
+import { useMemo, useState } from 'react';
+import InputAdornment from '@mui/material/InputAdornment';
 
 function BlockedUsersDialog({
   open,
@@ -27,6 +31,26 @@ function BlockedUsersDialog({
   isManaging,
   onClose
 }) {
+  const [query, setQuery] = useState('');
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredUsers = useMemo(() => {
+    if (!normalizedQuery) {
+      return users;
+    }
+    return users.filter((user) => {
+      const haystack = [
+        user.displayName,
+        user.username,
+        user.email,
+        user._id
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [normalizedQuery, users]);
+
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>Blocked users</DialogTitle>
@@ -44,41 +68,63 @@ function BlockedUsersDialog({
             </Typography>
           </Stack>
         ) : users.length ? (
-          <List disablePadding sx={{ mt: -1 }}>
-            {users.map((user) => {
-              const primary = user.displayName || user.username || user._id;
-              const secondary =
-                user.username && user.username !== primary
-                  ? `@${user.username}`
-                  : user.email || user._id;
-              const avatarSource =
-                user?.avatar?.url || user?.avatar?.thumbnailUrl || user?.avatar?.path || null;
-              return (
-                <ListItem
-                  key={user._id}
-                  secondaryAction={
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      startIcon={<HowToRegIcon />}
-                      onClick={() => onUnblock(user._id)}
-                      disabled={isOffline || isManaging}
-                      title={isOffline ? 'Reconnect to unblock users' : undefined}
-                    >
-                      Unblock
-                    </Button>
-                  }
-                >
-                  <ListItemAvatar>
-                    <Avatar src={avatarSource || undefined}>
-                      {primary?.charAt(0)?.toUpperCase() ?? 'U'}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText primary={primary} secondary={secondary} />
-                </ListItem>
-              );
-            })}
-          </List>
+          <>
+            <TextField
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search blocked users"
+              size="small"
+              fullWidth
+              sx={{ mb: 2 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                )
+              }}
+            />
+            <List disablePadding sx={{ mt: -1 }}>
+              {filteredUsers.map((user) => {
+                const primary = user.displayName || user.username || user._id;
+                const secondary =
+                  user.username && user.username !== primary
+                    ? `@${user.username}`
+                    : user.email || user._id;
+                const avatarSource =
+                  user?.avatar?.url || user?.avatar?.thumbnailUrl || user?.avatar?.path || null;
+                return (
+                  <ListItem
+                    key={user._id}
+                    secondaryAction={
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<HowToRegIcon />}
+                        onClick={() => onUnblock(user._id)}
+                        disabled={isOffline || isManaging}
+                        title={isOffline ? 'Reconnect to unblock users' : undefined}
+                      >
+                        Unblock
+                      </Button>
+                    }
+                  >
+                    <ListItemAvatar>
+                      <Avatar src={avatarSource || undefined}>
+                        {primary?.charAt(0)?.toUpperCase() ?? 'U'}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText primary={primary} secondary={secondary} />
+                  </ListItem>
+                );
+              })}
+            </List>
+            {filteredUsers.length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+                No blocked users match “{query}”.
+              </Typography>
+            ) : null}
+          </>
         ) : (
           <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
             You haven&apos;t blocked any users yet. Block someone from their profile to see them here.

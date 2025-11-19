@@ -240,7 +240,8 @@ export async function fetchPinsNearby({
   status,
   startDate,
   endDate,
-  friendEngagements
+  friendEngagements,
+  hideFullEvents
 }) {
   if (latitude === undefined || longitude === undefined) {
     const error = new Error('Latitude and longitude are required');
@@ -320,6 +321,10 @@ export async function fetchPinsNearby({
 
     if (endDate) {
       params.set('endDate', endDate);
+    }
+
+    if (typeof hideFullEvents === 'boolean') {
+      params.set('hideFullEvents', hideFullEvents ? 'true' : 'false');
     }
 
     const response = await fetch(`${baseUrl}/api/pins/nearby?${params.toString()}`, {
@@ -906,6 +911,33 @@ export async function deletePin(pinId) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(payload?.message || 'Failed to delete pin');
+  }
+
+  return payload;
+}
+
+export async function flagPinForModeration(pinId, { reason } = {}) {
+  if (!pinId) {
+    throw new Error('Pin id is required to flag a pin');
+  }
+  const baseUrl = resolveApiBaseUrl();
+  const body =
+    typeof reason === 'string' && reason.trim()
+      ? { reason: reason.trim() }
+      : {};
+
+  const response = await fetch(
+    `${baseUrl}/api/pins/${encodeURIComponent(pinId)}/moderation/flag`,
+    {
+      method: 'POST',
+      headers: await buildHeaders(),
+      body: JSON.stringify(body)
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, payload?.message || 'Failed to flag pin');
   }
 
   return payload;
@@ -1582,7 +1614,7 @@ export async function createBookmark(input) {
   return payload;
 }
 
-export async function fetchBookmarks({ userId, limit } = {}) {
+export async function fetchBookmarks({ userId, limit, hideFullEvents } = {}) {
   const baseUrl = resolveApiBaseUrl();
   const params = new URLSearchParams();
   if (userId) {
@@ -1594,6 +1626,10 @@ export async function fetchBookmarks({ userId, limit } = {}) {
       const constrained = Math.min(100, Math.max(1, Math.trunc(numericLimit)));
       params.set('limit', String(constrained));
     }
+  }
+
+  if (typeof hideFullEvents === 'boolean') {
+    params.set('hideFullEvents', hideFullEvents ? 'true' : 'false');
   }
 
   const query = params.toString();
@@ -1610,6 +1646,34 @@ export async function fetchBookmarks({ userId, limit } = {}) {
     throw new Error((payload?.message || `Failed to load bookmarks (status ${response.status})`) + details);
   }
 
+  return payload;
+}
+
+export async function fetchBookmarkHistory() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/bookmarks/history`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => []);
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load bookmark history');
+  }
+  return payload;
+}
+
+export async function clearBookmarkHistory() {
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/bookmarks/history`, {
+    method: 'DELETE',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to clear bookmark history');
+  }
   return payload;
 }
 

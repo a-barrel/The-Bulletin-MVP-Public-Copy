@@ -47,6 +47,13 @@ const PinOptionsSchema = RawPinOptionsSchema.transform((value) => ({
   highlightColor: value.highlightColor
 }));
 
+const PinModerationSchema = z.object({
+  status: z.enum(['clean', 'flagged', 'removed']).default('clean'),
+  flaggedAt: IsoDateStringSchema.optional(),
+  flaggedBy: ObjectIdSchema.optional(),
+  flaggedReason: z.string().optional()
+});
+
 const BasePinSchema = z.object({
   _id: ObjectIdSchema,
   creatorId: ObjectIdSchema,
@@ -71,6 +78,7 @@ const BasePinSchema = z.object({
   createdAt: IsoDateStringSchema,
   updatedAt: IsoDateStringSchema,
   audit: AuditMetadataSchema.optional(),
+  moderation: PinModerationSchema.optional(),
   viewerIsAttending: z.boolean().optional(),
   viewerHasBookmarked: z.boolean().optional(),
   viewerDistanceMeters: z.number().nonnegative().optional(),
@@ -115,7 +123,8 @@ const DiscussionPinSchema = BasePinSchema.extend({
   type: z.literal('discussion'),
   approximateAddress: ApproximateAddressSchema.optional(),
   expiresAt: IsoDateStringSchema,
-  autoDelete: z.boolean().default(true)
+  autoDelete: z.boolean().default(true),
+  replyLimit: z.number().int().positive().optional()
 });
 
 const PinSchema = z.discriminatedUnion('type', [EventPinSchema, DiscussionPinSchema]);
@@ -151,6 +160,7 @@ const PinListItemSchema = PinPreviewSchema.extend({
 module.exports = {
   PinStatsSchema,
   PinOptionsSchema,
+  PinModerationSchema,
   BasePinSchema,
   EventPinSchema,
   DiscussionPinSchema,

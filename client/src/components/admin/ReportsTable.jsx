@@ -35,11 +35,11 @@ function ReportsTable({ reports, onResolveReport, resolvingReportId }) {
       <Table size="small">
         <TableHead>
           <TableRow>
-            <TableCell>Content</TableCell>
-            <TableCell>Reporter</TableCell>
-            <TableCell>Author</TableCell>
-            <TableCell>Status</TableCell>
-            <TableCell>Submitted</TableCell>
+            <TableCell sx={{ color: '#111' }}>Content</TableCell>
+            <TableCell sx={{ color: '#111' }}>Reporter</TableCell>
+            <TableCell sx={{ color: '#111' }}>Author</TableCell>
+            <TableCell sx={{ color: '#111' }}>Status</TableCell>
+            <TableCell sx={{ color: '#111' }}>Submitted</TableCell>
             <TableCell align="right">Actions</TableCell>
           </TableRow>
         </TableHead>
@@ -59,7 +59,9 @@ function ReportsTable({ reports, onResolveReport, resolvingReportId }) {
                 <TableCell width="35%">
                   <Stack spacing={0.5}>
                     <Typography variant="subtitle2">
-                      {report.latestSnapshot?.message
+                      {report.latestSnapshot?.metadata?.title
+                        ? `Pin: ${report.latestSnapshot.metadata.title}`
+                        : report.latestSnapshot?.message
                         ? report.latestSnapshot.message.slice(0, 120)
                         : report.contentType}
                     </Typography>
@@ -83,14 +85,16 @@ function ReportsTable({ reports, onResolveReport, resolvingReportId }) {
                     ) : null}
                   </Stack>
                 </TableCell>
-                <TableCell width="15%">
+                <TableCell width="15%" sx={{ color: '#111' }}>
                   {report.reporter?.displayName || report.reporter?.username || 'User'}
                 </TableCell>
-                <TableCell width="15%">
+                <TableCell width="15%" sx={{ color: '#111' }}>
                   {report.contentAuthor?.displayName || report.contentAuthor?.username || 'User'}
                 </TableCell>
                 <TableCell width="10%">{statusChip}</TableCell>
-                <TableCell width="15%">{createdAt}</TableCell>
+                <TableCell width="15%" sx={{ color: '#111' }}>
+                  {createdAt}
+                </TableCell>
                 <TableCell width="10%" align="right">
                   <Stack direction="row" spacing={1} justifyContent="flex-end">
                     <Button

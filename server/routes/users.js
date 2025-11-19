@@ -18,6 +18,9 @@ const router = express.Router();
 
 const DATA_EXPORT_COOLDOWN_MS = 5 * 60 * 1000;
 const MAX_ACTIVE_API_TOKENS = 10;
+const QUIET_HOUR_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const QUIET_HOUR_TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
+const MAX_LOCATION_AUTO_DISABLE_HOURS = 24 * 7;
 
 const UsersQuerySchema = z.object({
   search: z.string().trim().optional(),
@@ -73,6 +76,36 @@ const hasDefinedValue = (value) => {
   return true;
 };
 
+const normalizeQuietHoursInput = (entries) => {
+  if (!Array.isArray(entries)) {
+    throw new Error('Quiet hours payload must be an array.');
+  }
+
+  return entries.map((entry) => {
+    if (!entry || typeof entry !== 'object') {
+      throw new Error('Quiet hours entry must be an object.');
+    }
+    const day = (entry.day || '').toLowerCase();
+    if (!QUIET_HOUR_DAYS.includes(day)) {
+      throw new Error(`Invalid quiet hours day: ${entry.day}`);
+    }
+    const start = typeof entry.start === 'string' ? entry.start : '';
+    const end = typeof entry.end === 'string' ? entry.end : '';
+    if (!QUIET_HOUR_TIME_REGEX.test(start) || !QUIET_HOUR_TIME_REGEX.test(end)) {
+      throw new Error('Quiet hours times must be in HH:MM 24h format.');
+    }
+    const enabled = entry.enabled !== false;
+    return { day, start, end, enabled };
+  });
+};
+
+const QuietHoursEntryUpdateSchema = z.object({
+  day: z.enum(QUIET_HOUR_DAYS),
+  start: z.string().regex(QUIET_HOUR_TIME_REGEX),
+  end: z.string().regex(QUIET_HOUR_TIME_REGEX),
+  enabled: z.boolean().optional()
+});
+
 const NotificationPreferencesUpdateSchema = z
   .object({
     proximity: z.boolean().optional(),
@@ -89,7 +122,14 @@ const NotificationPreferencesUpdateSchema = z
     badgeUnlocks: z.boolean().optional(),
     moderationAlerts: z.boolean().optional(),
     dmMentions: z.boolean().optional(),
-    emailDigests: z.boolean().optional()
+    emailDigests: z.boolean().optional(),
+    quietHours: z.array(QuietHoursEntryUpdateSchema).optional()
+  })
+  .optional();
+
+const NotificationVerbosityUpdateSchema = z
+  .object({
+    chat: z.enum(['highlights', 'all', 'muted']).optional()
   })
   .optional();
 
@@ -99,13 +139,26 @@ const DisplayPreferencesUpdateSchema = z
     reduceMotion: z.boolean().optional(),
     highContrast: z.boolean().optional(),
     mapDensity: z.enum(['compact', 'balanced', 'detailed']).optional(),
-    celebrationSounds: z.boolean().optional()
+    celebrationSounds: z.boolean().optional(),
+    hideFullEventsByDefault: z.boolean().optional()
   })
   .optional();
 
 const DataPreferencesUpdateSchema = z
   .object({
     autoExportReminders: z.boolean().optional()
+  })
+  .optional();
+
+const LocationPreferencesUpdateSchema = z
+  .object({
+    autoDisableAfterHours: z
+      .number()
+      .int()
+      .min(0)
+      .max(MAX_LOCATION_AUTO_DISABLE_HOURS)
+      .optional(),
+    globalMapVisible: z.boolean().optional()
   })
   .optional();
 
@@ -123,9 +176,11 @@ const UserPreferencesUpdateSchema = z
     dmPermission: z.enum(['everyone', 'friends', 'nobody']).optional(),
     digestFrequency: z.enum(['immediate', 'daily', 'weekly', 'never']).optional(),
     notifications: NotificationPreferencesUpdateSchema,
+    notificationsVerbosity: NotificationVerbosityUpdateSchema,
     notificationsMutedUntil: z.union([z.string().datetime(), z.null()]).optional(),
     display: DisplayPreferencesUpdateSchema,
-    data: DataPreferencesUpdateSchema
+    data: DataPreferencesUpdateSchema,
+    location: LocationPreferencesUpdateSchema
   })
   .refine(
     (value) => hasDefinedValue(value),
@@ -265,7 +320,7 @@ const ensureUserRelationships = (userDoc) => {
   return relationships;
 };
 
-const blockRelationshipFieldsToClear = ['followerIds', 'followingIds', 'friendIds', 'mutedUserIds'];
+const blockRelationshipFieldsToClear = ['followerIds', 'followingIds', 'mutedUserIds'];
 
 const toObjectIdOrNull = (value) => {
   if (!value) {
@@ -310,6 +365,12 @@ const mapUserToProfile = (userDoc) => {
     preferences.notificationsMutedUntil = Number.isNaN(mutedDate.getTime())
       ? undefined
       : mutedDate.toISOString();
+  }
+  if (preferences?.location && typeof preferences.location === 'object') {
+    if (preferences.location.autoDisableAfterHours !== undefined) {
+      const hours = Number(preferences.location.autoDisableAfterHours);
+      preferences.location.autoDisableAfterHours = Number.isFinite(hours) ? hours : 0;
+    }
   }
   const createdAt = toIsoDateString(userDoc.createdAt) ?? toIsoDateString(userDoc._id?.getTimestamp?.());
   const updatedAt = toIsoDateString(userDoc.updatedAt) ?? createdAt ?? new Date().toISOString();
@@ -577,7 +638,9 @@ router.patch('/me', verifyToken, async (req, res) => {
     }
 
     if (input.locationSharingEnabled !== undefined) {
-      setDoc.locationSharingEnabled = input.locationSharingEnabled;
+      const nextValue = Boolean(input.locationSharingEnabled);
+      setDoc.locationSharingEnabled = nextValue;
+      setDoc['preferences.location.lastEnabledAt'] = nextValue ? new Date() : null;
     }
 
     if (input.avatar !== undefined) {
@@ -670,6 +733,29 @@ router.patch('/me', verifyToken, async (req, res) => {
         if (notifications.emailDigests !== undefined) {
           setDoc['preferences.notifications.emailDigests'] = notifications.emailDigests;
         }
+        if (notifications.quietHours !== undefined) {
+          if (notifications.quietHours === null) {
+            setDoc['preferences.notifications.quietHours'] = [];
+          } else {
+            try {
+              const normalizedQuietHours = normalizeQuietHoursInput(notifications.quietHours);
+              setDoc['preferences.notifications.quietHours'] = normalizedQuietHours;
+            } catch (quietHoursError) {
+              return res
+                .status(400)
+                .json({ message: quietHoursError.message || 'Invalid quiet hours payload' });
+            }
+          }
+        }
+      }
+      if (
+        input.preferences.notificationsVerbosity &&
+        typeof input.preferences.notificationsVerbosity === 'object'
+      ) {
+        const verbosity = input.preferences.notificationsVerbosity;
+        if (verbosity.chat !== undefined) {
+          setDoc['preferences.notificationsVerbosity.chat'] = verbosity.chat;
+        }
       }
       if (input.preferences.notificationsMutedUntil !== undefined) {
         const muteValue = input.preferences.notificationsMutedUntil;
@@ -705,6 +791,15 @@ router.patch('/me', verifyToken, async (req, res) => {
         const dataPrefs = input.preferences.data;
         if (dataPrefs.autoExportReminders !== undefined) {
           setDoc['preferences.data.autoExportReminders'] = dataPrefs.autoExportReminders;
+        }
+      }
+      if (input.preferences.location && typeof input.preferences.location === 'object') {
+        const locationPrefs = input.preferences.location;
+        if (locationPrefs.autoDisableAfterHours !== undefined) {
+          setDoc['preferences.location.autoDisableAfterHours'] = locationPrefs.autoDisableAfterHours;
+        }
+        if (locationPrefs.globalMapVisible !== undefined) {
+          setDoc['preferences.location.globalMapVisible'] = locationPrefs.globalMapVisible;
         }
       }
     }

@@ -32,9 +32,11 @@ import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
 import usePinDetails from '../hooks/usePinDetails';
 import ReportContentDialog from '../components/ReportContentDialog';
-import { createContentReport, deletePin, updatePin } from '../api/mongoDataApi';
+import { createContentReport, deletePin, updatePin, flagPinForModeration } from '../api/mongoDataApi';
 import ImageOverlay from '../components/ImageOverlay.jsx'
 import reportClientError from '../utils/reportClientError';
+import useViewerProfile from '../hooks/useViewerProfile';
+import canAccessModerationTools from '../utils/accessControl';
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
@@ -227,6 +229,7 @@ function PinDetails() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
+  const { viewer: viewerProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
 
   const {
     pin,
@@ -303,6 +306,14 @@ function PinDetails() {
   } = shareState;
   const { isLoading, error } = status;
   const socialNotifications = useSocialNotificationsContext();
+  const replyLimit = typeof pin?.replyLimit === 'number' ? pin.replyLimit : null;
+  const hasReachedReplyLimit =
+    replyLimit !== null && !isLoadingReplies && replyCount >= replyLimit;
+  const commentsLabel = isLoadingReplies
+    ? '...'
+    : replyLimit !== null
+    ? `${replyCount} / ${replyLimit}`
+    : replyCount;
 
   const friendLookup = useMemo(() => {
     const entries = Array.isArray(socialNotifications.friendData?.friends)
@@ -344,6 +355,12 @@ function PinDetails() {
   const pinErrorSeverity = error?.isAuthError ? 'warning' : 'error';
   const shouldShowStatusMessages =
     isLoading || Boolean(pinErrorMessage) || (!pin && !isLoading && pinId);
+  const canModeratePins = canAccessModerationTools(viewerProfile);
+  const isPinFlagged = pin?.moderation?.status === 'flagged';
+  const flaggedReason =
+    typeof pin?.moderation?.flaggedReason === 'string' && pin.moderation.flaggedReason
+      ? pin.moderation.flaggedReason
+      : null;
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
   const [reportReason, setReportReason] = useState('');
@@ -358,6 +375,8 @@ function PinDetails() {
   const [editStatus, setEditStatus] = useState(null);
   const [isDeletingPin, setIsDeletingPin] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [isFlaggingPin, setIsFlaggingPin] = useState(false);
+  const [flagStatus, setFlagStatus] = useState(null);
 
   useEffect(() => {
     if (pin && !isEditDialogOpen) {
@@ -563,6 +582,45 @@ function PinDetails() {
     }
   }, [isOffline, isOwnPin, navigate, pin]);
 
+  const handleFlagPin = useCallback(async () => {
+    if (!pin?._id || isFlaggingPin || isPinFlagged) {
+      return;
+    }
+    if (isOffline) {
+      setFlagStatus({ type: 'warning', message: 'Reconnect to flag this pin.' });
+      return;
+    }
+    const confirmed =
+      typeof window === 'undefined' || typeof window.confirm !== 'function'
+        ? true
+        : window.confirm('Flag this pin for deletion? Moderators will review it shortly.');
+    if (!confirmed) {
+      return;
+    }
+
+    const providedReason =
+      typeof window !== 'undefined' && typeof window.prompt === 'function'
+        ? window.prompt('Reason for flagging (optional)', flaggedReason || '')
+        : '';
+    const trimmedReason =
+      providedReason && providedReason.trim().length ? providedReason.trim() : undefined;
+
+    setIsFlaggingPin(true);
+    setFlagStatus(null);
+    try {
+      await flagPinForModeration(pin._id, { reason: trimmedReason });
+      setFlagStatus({ type: 'success', message: 'Pin flagged for moderator review.' });
+      await reloadPin({ silent: true });
+    } catch (error) {
+      setFlagStatus({
+        type: 'error',
+        message: error?.message || 'Failed to flag pin.'
+      });
+    } finally {
+      setIsFlaggingPin(false);
+    }
+  }, [flaggedReason, isFlaggingPin, isOffline, isPinFlagged, pin, reloadPin]);
+
   const handleOpenReportReply = useCallback((reply) => {
     if (!reply || !reply._id) {
       setReportStatus({ type: 'error', message: 'Unable to report this reply.' });
@@ -693,6 +751,27 @@ function PinDetails() {
               </button>
             </div>
           ) : null}
+          {canModeratePins ? (
+            <div className="flag-button-wrapper">
+              <button
+                className={`flag-pin-button${isPinFlagged ? ' flagged' : ''}`}
+                type="button"
+                onClick={handleFlagPin}
+                disabled={isOffline || !pin || isFlaggingPin || isPinFlagged}
+                title={
+                  isPinFlagged
+                    ? flaggedReason
+                      ? `Flagged: ${flaggedReason}`
+                      : 'This pin has been flagged for removal.'
+                    : isOffline
+                    ? 'Reconnect to flag pins'
+                    : 'Flag this pin for moderator review'
+                }
+              >
+                {isPinFlagged ? 'Flagged' : isFlaggingPin ? 'Flagging…' : 'Flag for deletion'}
+              </button>
+            </div>
+          ) : null}
           <div className="share-button-wrapper">
             <button
               className="share-button"
@@ -741,6 +820,13 @@ function PinDetails() {
         <div className="pin-error-banner">
           <Alert severity={pinErrorSeverity} variant="outlined">
             {pinErrorMessage}
+          </Alert>
+        </div>
+      ) : null}
+      {isPinFlagged ? (
+        <div className="pin-flagged-banner">
+          <Alert severity="warning" variant="outlined">
+            This pin has been flagged for removal{flaggedReason ? `: ${flaggedReason}` : '.'}
           </Alert>
         </div>
       ) : null}
@@ -931,9 +1017,7 @@ function PinDetails() {
           <div className="comments-header">
             <ForumIcon className="comment-icon" aria-hidden="true" />
             <p>
-              Comments (
-              {isLoadingReplies ? '...' : replyCount}
-              )
+              Comments ({commentsLabel})
             </p>
           </div>
 
@@ -942,6 +1026,9 @@ function PinDetails() {
             {repliesError ? <div className="error-text">{repliesError}</div> : null}
             {!isLoadingReplies && !repliesError && replyCount === 0 ? (
               <div className="muted">No replies yet.</div>
+            ) : null}
+            {hasReachedReplyLimit ? (
+              <div className="muted">Reply limit reached for this discussion.</div>
             ) : null}
 
             {replyItems.map((reply) => {
@@ -1002,10 +1089,16 @@ function PinDetails() {
 
           <button
             className="create-comment"
-            disabled={isOffline || isInteractionLocked}
+            disabled={isOffline || isInteractionLocked || hasReachedReplyLimit}
             onClick={openReplyComposer}
             aria-label="Create reply"
-            title={isOffline ? 'Reconnect to add a reply' : undefined}
+            title={
+              isOffline
+                ? 'Reconnect to add a reply'
+                : hasReachedReplyLimit
+                ? 'Reply limit reached for this discussion'
+                : undefined
+            }
           >
             <AddCommentIcon className="create-comment-button" aria-hidden="true" />
           </button>
@@ -1290,6 +1383,29 @@ function PinDetails() {
             onClose={handleReportStatusClose}
           >
             {reportStatus.message}
+          </Alert>
+        ) : null}
+      </Snackbar>
+
+      <Snackbar
+        open={Boolean(flagStatus)}
+        autoHideDuration={4000}
+        onClose={(_, reason) => {
+          if (reason === 'clickaway') {
+            return;
+          }
+          setFlagStatus(null);
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        {flagStatus ? (
+          <Alert
+            elevation={6}
+            variant="filled"
+            severity={flagStatus.type}
+            onClose={() => setFlagStatus(null)}
+          >
+            {flagStatus.message}
           </Alert>
         ) : null}
       </Snackbar>

@@ -25,16 +25,24 @@ const mockCollections = [
 
 const mockFetchBookmarks = jest.fn(() => Promise.resolve(mockBookmarks));
 const mockFetchCollections = jest.fn(() => Promise.resolve(mockCollections));
+const mockFetchBookmarkHistory = jest.fn(() => Promise.resolve([]));
+const mockClearBookmarkHistory = jest.fn(() => Promise.resolve({ success: true }));
+const mockFetchPinById = jest.fn(() => Promise.resolve({ _id: 'pin-1', title: 'Mock pin', type: 'event' }));
 const mockRemoveBookmark = jest.fn(() => Promise.resolve());
 const mockExportBookmarks = jest.fn(() =>
   Promise.resolve({ blob: new Blob(['id']), filename: 'bookmarks.csv' })
 );
+const mockLogClientEvent = jest.fn(() => Promise.resolve());
 
 jest.mock('../../src/api/mongoDataApi', () => ({
   fetchBookmarks: (...args) => mockFetchBookmarks(...args),
   fetchBookmarkCollections: (...args) => mockFetchCollections(...args),
+  fetchBookmarkHistory: (...args) => mockFetchBookmarkHistory(...args),
+  clearBookmarkHistory: (...args) => mockClearBookmarkHistory(...args),
+  fetchPinById: (...args) => mockFetchPinById(...args),
   removeBookmark: (...args) => mockRemoveBookmark(...args),
-  exportBookmarks: (...args) => mockExportBookmarks(...args)
+  exportBookmarks: (...args) => mockExportBookmarks(...args),
+  logClientEvent: (...args) => mockLogClientEvent(...args)
 }));
 
 describe('useBookmarksManager', () => {

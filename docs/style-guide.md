@@ -22,6 +22,7 @@ Last updated: 2025‑11‑10
 - **Neutrals:** `#000000` (primary text), `#1E1E1E` (body copy variant), `#757575` (secondary copy), `#B3B3B3` (dividers), `#00000080` (overlays/focus scrims).
 - **Rule:** Avoid pure black UI fills—reserve `#000000` for text; lean on washes or dark purple for backgrounds.
 - **Reverse text rule:** Default text color is black (`#000000`) on washes and white backgrounds, but flip to Brand White when it sits on dark fills like Dark Purple (`#5D3889`), destructive banners, or other saturated blocks called out in this guide. Always verify contrast ≥ 4.5:1 when you invert colors.
+- **Pastel text rule:** If the background is a wash (Soft Lavender, Wash Pink, Brand White, etc.), **never** use white text. Stick to Dark Purple `#5D3889` or pure black for primary copy so the pastel blocks stay readable. When you recolor a parent container, double-check **every child element** (buttons, chips, icons, accordion headers, etc.) so they inherit the compliant colors—white-on-pastel slips happen when only the shell is updated.
 - **Alert colors:** `#FF3B30` (destructive), `#3EB8F0` / `#5D3889` (info states) appear in Figma exports—reuse them consistently.
 
 ## 3. Typography
@@ -43,6 +44,7 @@ Last updated: 2025‑11‑10
 - **Cards / badges:** Use wash colors or soft lavender fill with subtle drop shadow (same as Figma exports). Keep content centered, text legible.
 - **Navigation / bars:** Keep pill indicators and nav buttons away from screen edges. Notification badges use `#F15BB5` or `#FF3B30` depending on urgency.
 - **Overlays:** Use translucent black (`#00000080`) with blur for modals/toasts; keep animation subtle.
+- **Children enforcement:** When you drop a component into one of these patterned surfaces, audit every nested element (text, icons, button labels, outlines) to ensure they follow the same rules. Pastel shells with white button text, for example, violate contrast even if the parent card is correct.
 
 ### Friend Badge Indicator
 - Purpose: show at-a-glance when the viewer is already friends with the referenced user.

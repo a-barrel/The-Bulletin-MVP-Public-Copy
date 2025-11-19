@@ -44,7 +44,7 @@ import {
   revokeApiToken
 } from '../api/mongoDataApi';
 import reportClientError from '../utils/reportClientError';
-import { formatFriendlyTimestamp } from '../utils/dates';
+import { formatFriendlyTimestamp, formatRelativeTime } from '../utils/dates';
 import { PIN_DENSITY_LEVELS } from '../utils/pinDensity';
 import TabPanel from '../components/settings/TabPanel';
 import AppearanceSettings from '../components/settings/AppearanceSettings';
@@ -53,6 +53,8 @@ import PrivacySettings from '../components/settings/PrivacySettings';
 import DataIntegrationsSettings from '../components/settings/DataIntegrationsSettings';
 import FeedbackDialog from '../components/settings/FeedbackDialog';
 import BlockedUsersDialog from '../components/settings/BlockedUsersDialog';
+import settingsPalette, { settingsButtonStyles } from '../components/settings/settingsPalette';
+import canAccessModerationTools from '../utils/accessControl';
 
 export const pageConfig = {
   id: 'settings',
@@ -96,7 +98,12 @@ function SettingsPage() {
     handleTextScaleChange,
     handleDisplayToggle,
     handleMapDensityChange,
+    handleQuietHoursChange,
+    handleNotificationVerbosityChange,
+    handleApplyNotificationBundle,
     handleLocationSharingToggle,
+    handleLocationAutoShareChange,
+    handleGlobalMapVisibilityToggle,
     handleStatsVisibilityToggle,
     handleFilterCussWordsToggle,
     handleDmPermissionChange,
@@ -114,6 +121,11 @@ function SettingsPage() {
   const notifications = {
     ...DEFAULT_SETTINGS.notifications,
     ...(settings.notifications || {})
+  };
+  const quietHours = Array.isArray(notifications.quietHours) ? notifications.quietHours : [];
+  const notificationsVerbosity = {
+    ...DEFAULT_SETTINGS.notificationsVerbosity,
+    ...(settings.notificationsVerbosity || {})
   };
   const radiusMeters = settings.radiusPreferenceMeters ?? DEFAULT_SETTINGS.radiusPreferenceMeters;
   const rawRadiusMiles = metersToMiles(radiusMeters);
@@ -136,6 +148,9 @@ function SettingsPage() {
   const digestFrequency = settings.digestFrequency ?? DEFAULT_SETTINGS.digestFrequency;
   const autoExportReminders =
     settings.autoExportReminders ?? DEFAULT_SETTINGS.autoExportReminders;
+  const locationAutoShareHours =
+    settings.locationAutoShareHours ?? DEFAULT_SETTINGS.locationAutoShareHours;
+  const globalMapVisible = settings.globalMapVisible ?? DEFAULT_SETTINGS.globalMapVisible;
 
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
@@ -198,6 +213,9 @@ function SettingsPage() {
   const muteStatusLabel = isMuteActive
     ? `Muted until ${formatFriendlyTimestamp(notificationsMutedUntil)}`
     : 'Notifications active';
+  const muteCountdownLabel = isMuteActive
+    ? `Ends ${formatRelativeTime(notificationsMutedUntil, { fallback: 'soon' })}`
+    : '';
 
   const loadApiTokens = useCallback(async () => {
     setIsLoadingTokens(true);
@@ -310,21 +328,7 @@ function SettingsPage() {
     }
   };
 
-  const moderationRoleAllowlist = (runtimeConfig.moderation?.allowedRoles ?? [
-    'admin',
-    'moderator',
-    'super-admin',
-    'system-admin'
-  ]).map((role) => role.toLowerCase());
-  const moderationRoleChecksEnabled = runtimeConfig.moderation?.roleChecksEnabled !== false;
-  const bypassModerationRoleChecks = runtimeConfig.isOffline || !moderationRoleChecksEnabled;
-  const canAccessAdminDashboard =
-    bypassModerationRoleChecks ||
-    (Array.isArray(profile?.roles) &&
-      profile.roles.some(
-        (role) =>
-          typeof role === 'string' && moderationRoleAllowlist.includes(role.trim().toLowerCase())
-      ));
+  const canAccessAdminDashboard = canAccessModerationTools(profile);
 
   const handleOpenFeedbackDialog = () => {
     setFeedbackDialogOpen(true);
@@ -399,13 +403,21 @@ function SettingsPage() {
   return (
     <Box
       sx={{
-        width: '100%',
-        maxWidth: 960,
-        mx: 'auto',
-        py: { xs: 3, md: 5 },
-        px: { xs: 2, md: 4 }
+        minHeight: '100vh',
+        background: 'linear-gradient(180deg, #FFFFFF 0%, #F5EFFD 35%, #CDAEF2 100%)',
+        py: { xs: 3, md: 6 },
+        px: { xs: 1.5, md: 0 }
       }}
     >
+      <Box
+        sx={{
+          width: '100%',
+          maxWidth: 960,
+          mx: 'auto',
+          py: 0,
+          px: { xs: 2, md: 4 }
+        }}
+      >
       <Stack spacing={3}>
         <Stack direction="row" alignItems="center" spacing={1.25}>
           <Button
@@ -414,10 +426,10 @@ function SettingsPage() {
             onClick={() => navigate(-1)}
             sx={{
               alignSelf: 'flex-start',
-              color: '#1f1336',
-              backgroundColor: '#ECF8FE',
+              color: settingsPalette.textPrimary,
+              backgroundColor: settingsPalette.pastelBlue,
               borderRadius: 999,
-              border: '1px solid #9B5DE5',
+              border: `1px solid ${settingsPalette.accentLight}`,
               px: 2,
               '&:hover': {
                 backgroundColor: '#d1edff'
@@ -432,14 +444,9 @@ function SettingsPage() {
           />
         </Stack>
 
-        <Stack
-          direction="row"
-          spacing={1.5}
-          alignItems="center"
-          sx={{ color: '#1f1336' }}
-        >
-          <SettingsIcon color="primary" />
-          <Typography variant="h4" component="h1" sx={{ color: 'inherit' }}>
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ color: settingsPalette.textPrimary }}>
+          <SettingsIcon sx={{ color: settingsPalette.accent }} />
+          <Typography variant="h4" component="h1" sx={{ color: 'inherit', fontWeight: 700 }}>
             Settings
           </Typography>
           {authUser ? (
@@ -449,11 +456,11 @@ function SettingsPage() {
               label={authUser.email ?? 'Authenticated'}
               size="small"
               sx={{
-                backgroundColor: '#ecf8fe',
-                borderColor: '#9B5DE5',
-                color: '#1f1336',
+                backgroundColor: settingsPalette.pastelBlue,
+                borderColor: settingsPalette.accentLight,
+                color: settingsPalette.textPrimary,
                 fontWeight: 600,
-                '.MuiChip-icon': { color: '#5D3889' }
+                '.MuiChip-icon': { color: settingsPalette.accent }
               }}
             />
           ) : null}
@@ -482,13 +489,40 @@ function SettingsPage() {
           </Paper>
         ) : null}
 
-        <Paper elevation={4} sx={{ p: { xs: 2, md: 3 } }}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2, md: 3 },
+            borderRadius: 4,
+            backgroundColor: '#FFFFFF',
+            border: `1px solid ${settingsPalette.borderSubtle}`,
+            boxShadow: '0 25px 65px rgba(93, 56, 137, 0.15)'
+          }}
+        >
           <Stack spacing={3}>
             <Tabs
               value={activeTab}
               onChange={(event, value) => setActiveTab(value)}
               variant="scrollable"
               allowScrollButtonsMobile
+              sx={{
+                backgroundColor: settingsPalette.pastelLavender,
+                borderRadius: 999,
+                px: 0.5,
+                '& .MuiTabs-indicator': { display: 'none' },
+                '& .MuiTab-root': {
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  minHeight: 44,
+                  borderRadius: 999,
+                  color: settingsPalette.accent,
+                  opacity: 1
+                },
+                '& .Mui-selected': {
+                  backgroundColor: settingsPalette.accent,
+                  color: '#FFFFFF !important'
+                }
+              }}
             >
               <Tab label="Appearance" value="appearance" />
               <Tab label="Notifications" value="notifications" />
@@ -532,10 +566,16 @@ function SettingsPage() {
                 isFetchingProfile={isFetchingProfile}
                 isMuteActive={isMuteActive}
                 muteStatusLabel={muteStatusLabel}
+                muteCountdownLabel={muteCountdownLabel}
                 hasMuteTimer={Boolean(notificationsMutedUntil)}
                 onQuickMute={handleQuickMuteNotifications}
                 onClearMute={handleClearNotificationMute}
                 notifications={notifications}
+                quietHours={quietHours}
+                onQuietHoursChange={handleQuietHoursChange}
+                notificationVerbosity={notificationsVerbosity}
+                onVerbosityChange={handleNotificationVerbosityChange}
+                onApplyBundle={handleApplyNotificationBundle}
                 onToggleNotification={handleNotificationToggle}
                 digestFrequency={digestFrequency}
                 onDigestFrequencyChange={handleDigestFrequencyChange}
@@ -546,6 +586,10 @@ function SettingsPage() {
               <PrivacySettings
                 settings={settings}
                 onLocationSharingToggle={handleLocationSharingToggle}
+                locationAutoShareHours={locationAutoShareHours}
+                onLocationAutoShareChange={handleLocationAutoShareChange}
+                globalMapVisible={globalMapVisible}
+                onGlobalMapVisibilityToggle={handleGlobalMapVisibilityToggle}
                 onStatsVisibilityToggle={handleStatsVisibilityToggle}
                 onFilterCussWordsToggle={handleFilterCussWordsToggle}
                 dmPermission={dmPermission}
@@ -581,38 +625,71 @@ function SettingsPage() {
           </Stack>
         </Paper>
 
-        <Paper elevation={3} sx={{ p: { xs: 2, md: 3 } }}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2.5, md: 3 },
+            borderRadius: 4,
+            backgroundColor: settingsPalette.pastelLavender,
+            border: `1px solid ${settingsPalette.borderSubtle}`,
+            boxShadow: settingsPalette.shadowSoft
+          }}
+        >
           <Stack spacing={2}>
-            <Typography variant="h6">Anonymous feedback</Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="h6" sx={{ color: settingsPalette.accent, fontWeight: 700 }}>
+              Anonymous feedback
+            </Typography>
+            <Typography variant="body2" sx={{ color: settingsPalette.textPrimary }}>
               Share suggestions or bugs with the team. Add contact info if you’d like a follow-up.
             </Typography>
             <Button
               type="button"
               variant="contained"
-              color="secondary"
               startIcon={<FeedbackIcon />}
               onClick={handleOpenFeedbackDialog}
               disabled={isOffline}
               title={isOffline ? 'Reconnect to share feedback' : undefined}
+              sx={{ ...settingsButtonStyles.contained, alignSelf: { xs: 'stretch', sm: 'flex-start' }, px: 3 }}
             >
               Send feedback
             </Button>
           </Stack>
         </Paper>
 
-        <Paper elevation={3} sx={{ p: { xs: 2, md: 3 } }}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2, md: 3 },
+            borderRadius: 4,
+            backgroundColor: '#FFFFFF',
+            border: `1px solid ${settingsPalette.borderSubtle}`,
+            boxShadow: '0 12px 30px rgba(93, 56, 137, 0.1)'
+          }}
+        >
           <Stack spacing={1.5}>
-            <Typography variant="h6">Account tools</Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="h6" sx={{ color: settingsPalette.accent, fontWeight: 700 }}>
+              Account tools
+            </Typography>
+            <Typography variant="body2" sx={{ color: settingsPalette.textPrimary }}>
               Review who you&apos;ve blocked or sign out of the app.
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
               <Button
                 onClick={handleSignOut}
                 variant="outlined"
-                color="error"
                 startIcon={<LogoutIcon />}
+                sx={{
+                  borderColor: '#B3261E',
+                  color: '#B3261E',
+                  borderRadius: 999,
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  '&:hover': {
+                    borderColor: '#7A2017',
+                    backgroundColor: '#FFE5E0',
+                    color: '#7A2017'
+                  }
+                }}
               >
                 Sign out
               </Button>
@@ -626,6 +703,7 @@ function SettingsPage() {
             startIcon={<RestartAltIcon />}
             disabled={!profile || !hasChanges || isSaving || isFetchingProfile}
             onClick={handleReset}
+            sx={settingsButtonStyles.outlined}
           >
             Reset
           </Button>
@@ -635,6 +713,7 @@ function SettingsPage() {
             disabled={isOffline || !profile || !hasChanges || isSaving || isFetchingProfile}
             onClick={handleSave}
             title={isOffline ? 'Reconnect to save changes' : undefined}
+            sx={settingsButtonStyles.contained}
           >
             {isSaving ? <CircularProgress size={18} color="inherit" sx={{ mr: 1 }} /> : null}
             {isSaving ? 'Saving...' : 'Save changes'}
@@ -690,6 +769,7 @@ function SettingsPage() {
           </Alert>
         ) : null}
       </Snackbar>
+      </Box>
     </Box>
   );
 }

@@ -3,40 +3,46 @@ const { broadcastEventStartingSoon, broadcastDiscussionExpiringSoon } = require(
 const { logIntegration } = require('../utils/devLogger');
 
 const INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-const EVENT_LEAD_MS = 2 * 60 * 60 * 1000;
 const DISCUSSION_LEAD_MS = 24 * 60 * 60 * 1000;
+const EVENT_REMINDER_WINDOWS = [
+  { windowHours: 24, offsetMs: 24 * 60 * 60 * 1000 },
+  { windowHours: 2, offsetMs: 2 * 60 * 60 * 1000 },
+  { windowHours: 0.25, offsetMs: 15 * 60 * 1000 }
+];
 
 let intervalHandle = null;
 let isRunning = false;
 
 async function sweepEvents(now) {
-  const windowStart = new Date(now + EVENT_LEAD_MS);
-  const windowEnd = new Date(windowStart.getTime() + INTERVAL_MS);
+  for (const windowConfig of EVENT_REMINDER_WINDOWS) {
+    const windowStart = new Date(now + windowConfig.offsetMs);
+    const windowEnd = new Date(windowStart.getTime() + INTERVAL_MS);
 
-  const events = await Pin.find(
-    {
-      type: 'event',
-      startDate: { $gte: windowStart, $lt: windowEnd },
-      isActive: { $ne: false }
-    },
-    {
-      type: 1,
-      title: 1,
-      startDate: 1,
-      endDate: 1,
-      attendingUserIds: 1,
-      bookmarkCount: 1,
-      proximityRadiusMeters: 1,
-      creatorId: 1,
-      coordinates: 1,
-      coverPhoto: 1,
-      photos: 1,
-      description: 1
+    const events = await Pin.find(
+      {
+        type: 'event',
+        startDate: { $gte: windowStart, $lt: windowEnd },
+        isActive: { $ne: false }
+      },
+      {
+        type: 1,
+        title: 1,
+        startDate: 1,
+        endDate: 1,
+        attendingUserIds: 1,
+        bookmarkCount: 1,
+        proximityRadiusMeters: 1,
+        creatorId: 1,
+        coordinates: 1,
+        coverPhoto: 1,
+        photos: 1,
+        description: 1
+      }
+    ).lean();
+
+    for (const event of events) {
+      await broadcastEventStartingSoon({ pin: event, windowHours: windowConfig.windowHours });
     }
-  ).lean();
-
-  for (const event of events) {
-    await broadcastEventStartingSoon({ pin: event });
   }
 }
 

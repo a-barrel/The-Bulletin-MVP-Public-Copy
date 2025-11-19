@@ -1,3 +1,4 @@
+import React, { useCallback } from 'react';
 import PropTypes from 'prop-types';
 import {
   Alert,
@@ -13,6 +14,7 @@ import {
   ListItemText,
   Stack,
   TextField,
+  Tooltip,
   Typography
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -42,6 +44,21 @@ function FriendsListPanel({
   disableMessageAction,
   disableFriendActions
 }) {
+  const handleOpenProfile = useCallback((friend) => {
+    if (!friend) {
+      return;
+    }
+    if (typeof friend.onProfileClick === 'function') {
+      friend.onProfileClick(friend);
+      return;
+    }
+    const friendId = friend?.id || friend?._id;
+    if (!friendId) {
+      return;
+    }
+    window.location.assign(`/profile/${friendId}`);
+  }, []);
+
   if (hasAccess === false) {
     return (
       <Box className="friends-page-text-container">
@@ -137,8 +154,21 @@ function FriendsListPanel({
             const displayName = friend.displayName || friend.username || 'Friend';
             const secondaryLabel = friend.username ? `@${friend.username}` : '';
             const avatarSrc = resolveAvatarSrc(friend);
+            const blockedByViewer = Boolean(friend?.isBlockedByViewer);
+            const blockingViewer = Boolean(friend?.isBlockingViewer);
+            const blockedStatusLabel = blockedByViewer
+              ? `${displayName} (Blocked)`
+              : blockingViewer
+              ? `${displayName} (Blocked you)`
+              : displayName;
+            const blockedTooltip = blockedByViewer
+              ? 'You blocked this friend. Unblock them from Settings to reconnect.'
+              : blockingViewer
+              ? 'This friend blocked you. Messaging is disabled.'
+              : null;
+            const listItemDisabled = Boolean(blockedTooltip);
             const handleMessage = () => {
-              if (!disableMessageAction) {
+              if (!disableMessageAction && !listItemDisabled) {
                 onMessageFriend?.(friend);
               }
             };
@@ -157,6 +187,7 @@ function FriendsListPanel({
                   px: { xs: 1, sm: 0 },
                   gap: { xs: 1.5, sm: 2 },
                   transition: 'background-color 0.2s ease',
+                  opacity: listItemDisabled ? 0.6 : 1,
                   '&:hover': {
                     backgroundColor: (theme) => theme.palette.action.hover,
                     '& .friend-actions': {
@@ -165,45 +196,73 @@ function FriendsListPanel({
                     }
                   }
                 }}
+                aria-disabled={listItemDisabled ? 'true' : undefined}
+                title={blockedTooltip || undefined}
               >
                 <ListItemAvatar>
-                  <Avatar
-                    className="friends-list-friend-avatar"
-                    src={avatarSrc}
-                    alt={displayName}
-                    imgProps={{ referrerPolicy: 'no-referrer' }}
+                  <button
+                    type="button"
+                    className="friends-profile-trigger friends-profile-trigger--avatar"
+                    onClick={() => handleOpenProfile(friend)}
+                    aria-label={`Open ${displayName}'s profile`}
+                    disabled={listItemDisabled}
                   >
-                    {displayName.charAt(0).toUpperCase()}
-                  </Avatar>
+                    <Avatar
+                      className="friends-list-friend-avatar"
+                      src={avatarSrc}
+                      alt={displayName}
+                      imgProps={{ referrerPolicy: 'no-referrer' }}
+                    >
+                      {displayName.charAt(0).toUpperCase()}
+                    </Avatar>
+                  </button>
                 </ListItemAvatar>
 
                 <ListItemText
                   className="friends-list-name-container"
                   primary={
-                    <Box className="friends-list-name-wrapper">
-                      <Typography className="friends-list-display-name">{displayName}</Typography>
-                      {secondaryLabel ? (
-                        <Typography className="friends-list-user-name">{secondaryLabel}</Typography>
-                      ) : null}
-                    </Box>
+                    <button
+                      type="button"
+                      className="friends-profile-trigger friends-profile-trigger--name"
+                      onClick={() => handleOpenProfile(friend)}
+                      disabled={listItemDisabled}
+                    >
+                      <Box className="friends-list-name-wrapper">
+                        <Typography className="friends-list-display-name">{blockedStatusLabel}</Typography>
+                        {secondaryLabel ? (
+                          <Typography className="friends-list-user-name">{secondaryLabel}</Typography>
+                        ) : null}
+                      </Box>
+                    </button>
                   }
                 />
 
                 <Box className="friend-actions-container">
                   <Box className="message-friend-container">
-                    <MessageFriendIcon
-                      className="message-friend-icon"
-                      onClick={handleMessage}
-                      aria-label={`Message ${displayName}`}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' && !disableMessageAction) {
-                          onMessageFriend?.(friend);
-                        }
-                      }}
-                      aria-disabled={disableMessageAction}
-                    />
+                    <Tooltip
+                      title={blockedTooltip || `Message ${displayName}`}
+                      placement="top"
+                      describeChild
+                    >
+                      <span>
+                        <MessageFriendIcon
+                          className={`message-friend-icon${listItemDisabled ? ' disabled' : ''}`}
+                          onClick={handleMessage}
+                          aria-label={blockedTooltip || `Message ${displayName}`}
+                          role="button"
+                          tabIndex={listItemDisabled ? -1 : 0}
+                          style={
+                            listItemDisabled ? { pointerEvents: 'none', opacity: 0.4 } : undefined
+                          }
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' && !disableMessageAction && !listItemDisabled) {
+                              onMessageFriend?.(friend);
+                            }
+                          }}
+                          aria-disabled={disableMessageAction || listItemDisabled}
+                        />
+                      </span>
+                    </Tooltip>
                   </Box>
                   <Box className="remove-friend-container">
                     <RemoveFriendIcon

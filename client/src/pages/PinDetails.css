@@ -18,6 +18,13 @@
     margin: 0 0 1rem 0;
 }
 
+.pin-flagged-banner {
+    width: 100%;
+    padding: 0 1rem;
+    box-sizing: border-box;
+    margin: 0.25rem 0 1rem 0;
+}
+
 /* header */
 .pin-details .header {
     display: flex;
@@ -140,6 +147,33 @@
     box-shadow: none;
     transform: none;
     filter: none;
+}
+
+.pin-details .flag-button-wrapper {
+    display: flex;
+}
+
+.pin-details .flag-pin-button {
+    border: 1px solid #f4a261;
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    font-weight: 600;
+    background-color: #fff2e5;
+    color: #8c3d00;
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease;
+}
+
+.pin-details .flag-pin-button:hover:not(:disabled) {
+    background-color: #ffd6b3;
+}
+
+.pin-details .flag-pin-button.flagged,
+.pin-details .flag-pin-button:disabled {
+    background-color: #fddfca;
+    border-color: #f5c7a0;
+    color: #a05b20;
+    cursor: default;
 }
 
 .pin-details .share-button-wrapper {
