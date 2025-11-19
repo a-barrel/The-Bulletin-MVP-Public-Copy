@@ -1,12 +1,15 @@
 /* NOTE: This module exports the celebration hook alongside the toast component. */
 import { useMemo, useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
+import Slide from '@mui/material/Slide';
 import Snackbar from '@mui/material/Snackbar';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import { useTranslation } from 'react-i18next';
 import { getBadgeLabel } from '../utils/badges';
 import resolveAssetUrl from '../utils/media';
+
+import './BadgeCelebrationToast.css'
 
 const BADGE_CELEBRATION_GIFS = [
   '/images/badges/badge_obtained_1.gif',
@@ -70,16 +73,23 @@ export function useBadgeCelebrationToast() {
   };
 }
 
+  function SlideDownTransition(props) {
+    return <Slide {...props} direction="down" />;
+  }
+
 export function BadgeCelebrationToast({ toastState, onClose }) {
   const { t } = useTranslation();
   const { open, message, key, gifUrl } = toastState;
 
   return (
     <Snackbar
+      className="badge-overlay"
       key={key}
       open={open}
+      TransitionComponent={SlideDownTransition}
       message={
         <Box
+          className="badge-wrapper"
           role="button"
           tabIndex={0}
           onClick={(event) => onClose?.(event, 'manual')}
@@ -89,49 +99,32 @@ export function BadgeCelebrationToast({ toastState, onClose }) {
               onClose?.(event, 'manual');
             }
           }}
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 1.1,
-            textAlign: 'center',
-            cursor: 'pointer'
-          }}
         >
           {gifUrl ? (
             <Box
+              className="badge-background"
               component="img"
               src={gifUrl}
               alt={t('badge.alt')}
               sx={{
-                width: 'min(165px, 45vw)',
-                height: 'auto',
-                borderRadius: 2,
                 boxShadow: (theme) => theme.shadows[8],
-                pointerEvents: 'none'
               }}
             />
           ) : null}
-          <Typography
-            variant="subtitle1"
-            sx={{ fontWeight: 600, textTransform: 'capitalize', fontSize: '0.85rem' }}
-          >
+          <Typography className="badge-text-label">
             {message}
           </Typography>
         </Box>
       }
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       autoHideDuration={3000}
       onClose={onClose}
       ContentProps={{
         sx: {
-          fontSize: '0.9rem',
+          backgroundColor: '#3EB8F0',
           overflow: 'visible',
           display: 'flex',
           justifyContent: 'center',
-          py: gifUrl ? 2.25 : 1.5,
-          px: 2.25
         }
       }}
     />
