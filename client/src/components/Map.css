@@ -4,14 +4,20 @@
 
 @keyframes popularGlowPulse {
   0% {
-    filter: drop-shadow(0 0 4px rgba(255, 106, 213, 0.4)) drop-shadow(0 0 1px rgba(255, 106, 213, 0.3));
+    filter:
+      drop-shadow(0 0 4px rgba(255, 255, 255, 0.45))
+      drop-shadow(0 0 1px rgba(255, 106, 213, 0.5));
   }
   50% {
-    filter: drop-shadow(0 0 10px rgba(255, 106, 213, 0.85))
-      drop-shadow(0 0 4px rgba(255, 106, 213, 0.7));
+    filter:
+      drop-shadow(0 0 16px rgba(255, 255, 255, 0.95))
+      drop-shadow(0 0 8px rgba(255, 106, 213, 0.85))
+      drop-shadow(0 0 2px rgba(255, 255, 255, 0.9));
   }
   100% {
-    filter: drop-shadow(0 0 5px rgba(255, 106, 213, 0.5)) drop-shadow(0 0 2px rgba(255, 106, 213, 0.4));
+    filter:
+      drop-shadow(0 0 6px rgba(255, 222, 249, 0.75))
+      drop-shadow(0 0 2px rgba(255, 106, 213, 0.55));
   }
 }
 

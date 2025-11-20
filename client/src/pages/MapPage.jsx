@@ -72,22 +72,39 @@ function MapPage() {
     hideFullEvents
   });
 
-  const FILTER_STORAGE_KEY = 'mapFilterState-v1';
+  const FILTER_STORAGE_KEY = 'mapFilterState-v2';
+  const LEGACY_FILTER_STORAGE_KEY = 'mapFilterState-v1';
   const loadStoredFilterState = () => {
     if (typeof window === 'undefined') {
       return null;
     }
-    try {
-      const raw = window.localStorage.getItem(FILTER_STORAGE_KEY);
-      if (!raw) {
+    const readKey = (storageKey) => {
+      if (!storageKey) {
         return null;
       }
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') {
-        return parsed;
+      try {
+        const raw = window.localStorage.getItem(storageKey);
+        if (!raw) {
+          return null;
+        }
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          return parsed;
+        }
+      } catch (error) {
+        console.warn(`Failed to parse saved map filters for ${storageKey}:`, error);
       }
-    } catch (error) {
-      console.warn('Failed to parse saved map filters:', error);
+      return null;
+    };
+
+    const current = readKey(FILTER_STORAGE_KEY);
+    if (current) {
+      return current;
+    }
+    const legacy = readKey(LEGACY_FILTER_STORAGE_KEY);
+    if (legacy) {
+      const { showInteractionRadius: _legacyRadius, ...rest } = legacy;
+      return rest;
     }
     return null;
   };
@@ -129,7 +146,7 @@ function MapPage() {
     initialFilterState?.tapToTeleportEnabled ?? false
   );
   const [showInteractionRadius, setShowInteractionRadius] = useState(
-    initialFilterState?.showInteractionRadius ?? true
+    initialFilterState?.showInteractionRadius ?? false
   );
   const [filtersCollapsed, setFiltersCollapsed] = useState(
     initialFilterState?.filtersCollapsed ?? false
@@ -207,6 +224,7 @@ function MapPage() {
     };
     try {
       window.localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(snapshot));
+      window.localStorage.removeItem(LEGACY_FILTER_STORAGE_KEY);
     } catch (error) {
       console.warn('Failed to persist map filters:', error);
     }
@@ -520,7 +538,9 @@ function MapPage() {
       {
         key: 'interaction-radius',
         label: 'Show interaction radius',
-        iconUrl: MAP_MARKER_ICON_URLS.open,
+        iconUrl: showInteractionRadius
+          ? MAP_MARKER_ICON_URLS.interactionRadiusOn
+          : MAP_MARKER_ICON_URLS.interactionRadiusOff,
         ariaLabel: 'Toggle interaction radius circle',
         checked: showInteractionRadius,
         onChange: () => setShowInteractionRadius((prev) => !prev)
@@ -562,7 +582,13 @@ function MapPage() {
         disabled: !canUseAdminTools
       }
     ],
-    [canUseAdminTools, showAllChatRoomsToggle, showMyChatRooms, tapToTeleportEnabled]
+    [
+      canUseAdminTools,
+      showAllChatRoomsToggle,
+      showInteractionRadius,
+      showMyChatRooms,
+      tapToTeleportEnabled
+    ]
   );
 
   const filterGroups = useMemo(
