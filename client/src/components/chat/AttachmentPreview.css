@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap');
+
+* {
+  font-family: "Urbanist", sans-serif;
+}
+
+.attachment-preview-container {
+  position: relative;
+  border-top: 2px solid #3EB8F0;
+  background-color: #ECF8FE;
+  margin-top: -5.1rem;
+  padding-bottom: 5rem;
+  z-index: 5 !important;
+}
+
+.attachment-preview-error-container {
+  padding: padding;
+  padding-bottom: 4px;
+}
+
+.attachment-preview-img-list {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;  
+  overflow-x: auto;       
+  overflow-y: hidden;
+  padding: 12px;
+  gap: 12px;
+  scroll-behavior: smooth;    
+}
+
+.attachment-preview-img-container {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 5px;
+  border: 1px solid black;
+  overflow: visible !important; 
+  background-color: black;
+  box-shadow: 3px;
+  flex: 0 0 auto;
+  z-index: 1 !important;
+}
+
+.attachment-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.attachment-preview-close-btn {
+  position: absolute;
+  top: -5.4rem;  
+  right: -3.4rem;     
+  width: 24px;
+  height: 24px;
+  border-radius: 50%; 
+  background-color: #3EB8F0 !important;
+  color: white;
+  display: flex;     
+  align-items: center;
+  justify-content: center;
+  z-index: 10 !important;
+}
+
+.attachment-preview-close-btn:hover {
+  background-color: #90d1f0;
+}
+
+.attachment-preview-close-icon {
+  height: 18px !important;
+  width: 18px !important;
+}
+
+.attachment-preview-loading-container {
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-items: center;
+  gap: 12px;
+}
+
+.attachment-preview-loading-bar {
+  color: #3EB8F0 !important;
+}
+
+.attachment-preview-loading-label {
+  font-family: 'Urbanist', sans-serif !important;
+  font-size: 1rem !important;
+  color: black !important;
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+.fade-out {
+  animation: fadeOut 300ms forwards;
+}

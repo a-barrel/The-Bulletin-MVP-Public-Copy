@@ -1,12 +1,13 @@
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
 import CloseIcon from '@mui/icons-material/Close';
+import './AttachmentPreview.css';
 
 function AttachmentPreview({
   attachments,
@@ -18,6 +19,23 @@ function AttachmentPreview({
   canRetry,
   padding
 }) {
+  const [closingIds, setClosingIds] = useState(new Set());
+
+  const handleRemove = (id) => {
+    // Mark attachment as closing (to trigger fade-out)
+    setClosingIds(prev => new Set(prev).add(id));
+
+    // After animation duration (300ms), actually remove the attachment
+    setTimeout(() => {
+      onRemove(id);
+      setClosingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 300);
+  };
+
   if (!attachments.length && !status && !isUploading) {
     return null;
   }
@@ -31,9 +49,9 @@ function AttachmentPreview({
   })();
 
   return (
-    <>
+    <Box className="attachment-preview-container">
       {status ? (
-        <Box sx={{ px: padding, pb: 1 }}>
+        <Box className="attachment-preview-error-container">
           <Alert
             severity={status.type}
             action={
@@ -48,63 +66,47 @@ function AttachmentPreview({
           </Alert>
         </Box>
       ) : null}
+
       {attachments.length ? (
-        <Box sx={{ px: padding, pb: 1 }}>
-          <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
-            {attachments.map((item) => (
+        <Box className="attachment-preview-img-list">
+          {attachments.map((item) => (
+            <Box
+              className={`attachment-preview-img-container ${closingIds.has(item.id) ? 'fade-out' : ''}`}
+              key={item.id}
+            >
               <Box
-                key={item.id}
-                sx={{
-                  position: 'relative',
-                  width: 132,
-                  height: 132,
-                  borderRadius: 1.5,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  overflow: 'hidden',
-                  backgroundColor: 'background.paper',
-                  boxShadow: 3
-                }}
-              >
-                <Box
-                  component="img"
-                  src={item.asset.url}
-                  alt={item.asset.description || 'Chat attachment'}
-                  sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-                {typeof onRemove === 'function' ? (
-                  <IconButton
-                    size="small"
-                    aria-label="Remove attachment"
-                    onClick={() => onRemove(item.id)}
-                    sx={{
-                      position: 'absolute',
-                      top: 4,
-                      right: 4,
-                      backgroundColor: 'rgba(0,0,0,0.55)',
-                      color: '#fff',
-                      '&:hover': {
-                        backgroundColor: 'rgba(0,0,0,0.75)'
-                      }
-                    }}
-                  >
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                ) : null}
-              </Box>
-            ))}
-          </Stack>
+                className="attachment-preview-img"
+                component="img"
+                src={item.asset.url}
+                alt={item.asset.description || 'Chat attachment'}
+              />
+              {typeof onRemove === 'function' ? (
+                <IconButton
+                  className="attachment-preview-close-btn"
+                  aria-label="Remove attachment"
+                  onClick={() => handleRemove(item.id)}
+                  disabled={closingIds.has(item.id)}
+                >
+                  <CloseIcon className="attachment-preview-close-icon" />
+                </IconButton>
+              ) : null}
+            </Box>
+          ))}
         </Box>
       ) : null}
+
       {isUploading ? (
-        <Box sx={{ px: padding, pb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CircularProgress size={16} />
-          <Typography variant="caption" color="text.secondary">
+        <Box className="attachment-preview-loading-container">
+          <CircularProgress
+            className="attachment-preview-loading-bar" 
+            size={32} 
+          />
+          <Typography className="attachment-preview-loading-label">
             {progressLabel}
           </Typography>
         </Box>
       ) : null}
-    </>
+    </Box>
   );
 }
 
