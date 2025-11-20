@@ -21,6 +21,8 @@ import MapHeader from '../components/map/MapHeader';
 import MapFilterPanel from '../components/map/MapFilterPanel';
 import { MAP_FILTERS, MAP_MARKER_ICON_URLS } from '../utils/mapMarkers';
 import useOfflineAction from '../hooks/useOfflineAction';
+import toIdString from '../utils/ids';
+import { ADMIN_ROLE_SET, buildPinMeta } from '../utils/mapPinMeta';
 
 
 export const pageConfig = {
@@ -57,11 +59,14 @@ function MapPage() {
   const {
     userLocation,
     nearbyUsers,
-    combinedPins,
+    pins,
+    chatRoomPins,
     showChatRooms,
+    setShowChatRooms,
     handleMapPinSelect,
     selectedChatRoomId,
-    viewerProfile
+    viewerProfile,
+    teleportToLocation
   } = useMapExplorer({
     sharedLocation,
     setSharedLocation,
@@ -72,34 +77,154 @@ function MapPage() {
   const [showEvents, setShowEvents] = useState(true);
   const [showDiscussions, setShowDiscussions] = useState(true);
   const [showPersonalPins, setShowPersonalPins] = useState(true);
+  const showFullEvents = !hideFullEvents;
 
-  const filteredPins = useMemo(() => {
-    if (!Array.isArray(combinedPins)) {
+  const viewerId = useMemo(
+    () => toIdString(viewerProfile?._id) ?? toIdString(viewerProfile?.id) ?? null,
+    [viewerProfile]
+  );
+
+  const friendIdsSet = useMemo(() => {
+    const friends = viewerProfile?.relationships?.friendIds;
+    if (!Array.isArray(friends)) {
+      return new Set();
+    }
+    return new Set(
+      friends
+        .map((value) => toIdString(value))
+        .filter(Boolean)
+    );
+  }, [viewerProfile]);
+
+  const canUseAdminTools = useMemo(() => {
+    if (isOffline) {
+      return true;
+    }
+    if (!Array.isArray(viewerProfile?.roles)) {
+      return false;
+    }
+    return viewerProfile.roles.some((role) => {
+      if (typeof role !== 'string') {
+        return false;
+      }
+      return ADMIN_ROLE_SET.has(role.toLowerCase());
+    });
+  }, [isOffline, viewerProfile]);
+
+  useEffect(() => {
+    if (!canUseAdminTools) {
+      setShowAllChatRoomsToggle(false);
+      setTapToTeleportEnabled(false);
+    }
+  }, [canUseAdminTools]);
+
+  useEffect(() => {
+    if (typeof setShowChatRooms === 'function') {
+      setShowChatRooms(showAllChatRoomsToggle || showMyChatRooms);
+    }
+  }, [setShowChatRooms, showAllChatRoomsToggle, showMyChatRooms]);
+
+  const annotatedPins = useMemo(() => {
+    if (!Array.isArray(pins)) {
       return [];
     }
+    return pins.map((pin) => {
+      const mapMeta = buildPinMeta(pin, { viewerId, friendIds: friendIdsSet });
+      return {
+        ...pin,
+        mapMeta,
+        mapColorKey: mapMeta.colorKey
+      };
+    });
+  }, [pins, friendIdsSet, viewerId]);
 
-    return combinedPins.filter((pin) => {
-      if (!pin || typeof pin !== 'object') {
+  const visiblePins = useMemo(() => {
+    return annotatedPins.filter((pin) => {
+      const meta = pin.mapMeta;
+      if (!meta) {
+        return true;
+      }
+      if (meta.isEvent && !showEvents) {
         return false;
       }
-
-      const type = typeof pin.type === 'string' ? pin.type.toLowerCase() : '';
-
-      if (type === 'event' && !showEvents) {
+      if (meta.isDiscussion && !showDiscussions) {
         return false;
       }
-
-      if (type === 'discussion' && !showDiscussions) {
+      if (meta.isPersonal && !showPersonalPins) {
         return false;
       }
-
-      if ((pin.isSelf || pin.viewerIsCreator) && !showPersonalPins) {
+      if (meta.isFriend && !showFriendPins) {
         return false;
       }
-
+      if (meta.isFull && !showFullEvents) {
+        if (!(meta.isFriend && showFriendPins)) {
+          return false;
+        }
+      }
+      if (meta.discussionExpiresSoon && !showExpiringDiscussions) {
+        return false;
+      }
+      if (meta.startsSoon && !showEventsStartingSoon) {
+        return false;
+      }
+      if (meta.isPopular && !showPopularPins) {
+        return false;
+      }
+      if (meta.hasOpenSpots && !showOpenSpotPins) {
+        return false;
+      }
+      if (meta.isFeatured && !showFeaturedPins) {
+        return false;
+      }
       return true;
     });
-  }, [combinedPins, showDiscussions, showEvents, showPersonalPins]);
+  }, [
+    annotatedPins,
+    showDiscussions,
+    showEvents,
+    showPersonalPins,
+    showFriendPins,
+    showFullEvents,
+    showExpiringDiscussions,
+    showEventsStartingSoon,
+    showPopularPins,
+    showOpenSpotPins,
+    showFeaturedPins
+  ]);
+
+  const visibleChatRoomPins = useMemo(() => {
+    if (!showAllChatRoomsToggle && !showMyChatRooms) {
+      return [];
+    }
+    const baseRooms = Array.isArray(chatRoomPins) ? chatRoomPins : [];
+    if (showAllChatRoomsToggle) {
+      return baseRooms.map((pin) => ({ ...pin, chatRoomCategory: 'all' }));
+    }
+    if (showMyChatRooms && viewerId) {
+      return baseRooms
+        .filter((pin) => {
+          const metadata = pin?.metadata || {};
+          const ownerId = toIdString(metadata.ownerId);
+          if (ownerId && ownerId === viewerId) {
+            return true;
+          }
+          const participantIds = Array.isArray(metadata.participantIds)
+            ? metadata.participantIds
+            : [];
+          return participantIds
+            .map((value) => toIdString(value))
+            .filter(Boolean)
+            .includes(viewerId);
+        })
+        .map((pin) => ({ ...pin, chatRoomCategory: 'mine' }));
+    }
+    return [];
+  }, [chatRoomPins, showAllChatRoomsToggle, showMyChatRooms, viewerId]);
+
+  const mapPinsForRender = useMemo(
+    () => [...visiblePins, ...visibleChatRoomPins],
+    [visiblePins, visibleChatRoomPins]
+  );
 
   useEffect(() => {
     if (typeof refreshUnreadCount === 'function' && !isOffline) {
@@ -146,6 +271,12 @@ function MapPage() {
     },
     [clearPreferenceError, hideFullPreferenceError, setHideFullEvents]
   );
+  const handleToggleFullEventsFilter = useCallback(() => {
+    if (hideFullPreferenceError) {
+      clearPreferenceError();
+    }
+    setHideFullEvents((prev) => !prev);
+  }, [clearPreferenceError, hideFullPreferenceError, setHideFullEvents]);
 
   const handleViewProfile = useCallback(() => {
     navigate(routes.profile.me);
@@ -159,11 +290,28 @@ function MapPage() {
     offlineAction(() => navigate(routes.createPin.base));
   }, [offlineAction, navigate]);
 
+  const handleTapTeleport = useCallback(
+    (latlng) => {
+      if (!tapToTeleportEnabled || !canUseAdminTools) {
+        return;
+      }
+      if (!latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) {
+        return;
+      }
+      teleportToLocation?.({
+        latitude: latlng.lat,
+        longitude: latlng.lng,
+        accuracy: 25
+      });
+    },
+    [canUseAdminTools, tapToTeleportEnabled, teleportToLocation]
+  );
+
   const notificationsLabel =
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
   const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
 
-  const filterItems = useMemo(
+  const baseFilterItems = useMemo(
     () =>
       MAP_FILTERS.map((filter) => {
         if (filter.key === 'event') {
@@ -180,17 +328,122 @@ function MapPage() {
     [handleToggleDiscussions, handleToggleEvents, handleTogglePersonalPins, showDiscussions, showEvents, showPersonalPins]
   );
 
-  const hideFullEventsFilter = useMemo(
-    () => ({
-      key: 'hide-full-events',
-      label: 'Hide full events',
-      iconUrl: MAP_MARKER_ICON_URLS.event,
-      ariaLabel: hideFullEvents ? 'Hiding events that reached capacity' : 'Showing full events',
-      checked: hideFullEvents,
-      onChange: handleHideFullEventsToggle,
-      disabled: isSavingHideFullPreference
-    }),
-    [handleHideFullEventsToggle, hideFullEvents, isSavingHideFullPreference]
+  const extraFilterItems = useMemo(
+    () => [
+      {
+        key: 'full-events',
+        label: 'Full events (red)',
+        iconUrl: MAP_MARKER_ICON_URLS.full,
+        ariaLabel: showFullEvents ? 'Showing full events' : 'Hiding full events',
+        checked: showFullEvents,
+        onChange: handleToggleFullEventsFilter,
+        disabled: isSavingHideFullPreference
+      },
+      {
+        key: 'friend-pins',
+        label: 'Friend pins (green)',
+        iconUrl: MAP_MARKER_ICON_URLS.friend,
+        ariaLabel: 'Toggle friend pins',
+        checked: showFriendPins,
+        onChange: () => setShowFriendPins((prev) => !prev)
+      },
+      {
+        key: 'expiring-discussions',
+        label: 'Discussions expiring soon',
+        iconUrl: MAP_MARKER_ICON_URLS.discussionSoon,
+        ariaLabel: 'Toggle discussions expiring within 24 hours',
+        checked: showExpiringDiscussions,
+        onChange: () => setShowExpiringDiscussions((prev) => !prev)
+      },
+      {
+        key: 'events-soon',
+        label: 'Events starting soon',
+        iconUrl: MAP_MARKER_ICON_URLS.eventSoon,
+        ariaLabel: 'Toggle events starting soon',
+        checked: showEventsStartingSoon,
+        onChange: () => setShowEventsStartingSoon((prev) => !prev)
+      },
+      {
+        key: 'popular-pins',
+        label: 'Popular pins',
+        iconUrl: MAP_MARKER_ICON_URLS.popular,
+        ariaLabel: 'Toggle popular pins',
+        checked: showPopularPins,
+        onChange: () => setShowPopularPins((prev) => !prev)
+      },
+      {
+        key: 'open-spots',
+        label: 'Open spots',
+        iconUrl: MAP_MARKER_ICON_URLS.open,
+        ariaLabel: 'Toggle pins with open spots',
+        checked: showOpenSpotPins,
+        onChange: () => setShowOpenSpotPins((prev) => !prev)
+      },
+      {
+        key: 'featured-pins',
+        label: 'Featured pins',
+        iconUrl: MAP_MARKER_ICON_URLS.featured,
+        ariaLabel: 'Toggle featured pins',
+        checked: showFeaturedPins,
+        onChange: () => setShowFeaturedPins((prev) => !prev)
+      },
+      {
+        key: 'my-chat-rooms',
+        label: 'My chat rooms',
+        iconUrl: MAP_MARKER_ICON_URLS.chatMine,
+        ariaLabel: 'Toggle visualizing chat rooms you belong to',
+        checked: showMyChatRooms,
+        onChange: () => setShowMyChatRooms((prev) => !prev)
+      },
+      {
+        key: 'all-chat-rooms',
+        label: 'All chat rooms (admin)',
+        iconUrl: MAP_MARKER_ICON_URLS.chatAdmin,
+        ariaLabel: 'Toggle all chat rooms',
+        checked: showAllChatRoomsToggle,
+        onChange: () => {
+          if (!canUseAdminTools) {
+            return;
+          }
+          setShowAllChatRoomsToggle((prev) => !prev);
+        },
+        disabled: !canUseAdminTools
+      },
+      {
+        key: 'tap-teleport',
+        label: 'Tap to teleport',
+        iconUrl: MAP_MARKER_ICON_URLS.teleport,
+        ariaLabel: tapToTeleportEnabled ? 'Disable tap to teleport' : 'Enable tap to teleport',
+        checked: tapToTeleportEnabled && canUseAdminTools,
+        onChange: () => {
+          if (!canUseAdminTools) {
+            return;
+          }
+          setTapToTeleportEnabled((prev) => !prev);
+        },
+        disabled: !canUseAdminTools
+      }
+    ],
+    [
+      canUseAdminTools,
+      handleToggleFullEventsFilter,
+      isSavingHideFullPreference,
+      showAllChatRoomsToggle,
+      showEventsStartingSoon,
+      showExpiringDiscussions,
+      showFeaturedPins,
+      showFriendPins,
+      showFullEvents,
+      showMyChatRooms,
+      showOpenSpotPins,
+      showPopularPins,
+      tapToTeleportEnabled
+    ]
+  );
+
+  const filterItems = useMemo(
+    () => [...baseFilterItems, ...extraFilterItems],
+    [baseFilterItems, extraFilterItems]
   );
 
   return (
@@ -220,20 +473,22 @@ function MapPage() {
             backgroundColor: 'background.paper'
           }}
         >
-          <Map
-            userLocation={userLocation}
-            nearbyUsers={nearbyUsers}
-            pins={filteredPins}
-            userRadiusMeters={DEFAULT_MAX_DISTANCE_METERS}
-            selectedPinId={showChatRooms ? selectedChatRoomId : undefined}
-            onPinSelect={showChatRooms ? handleMapPinSelect : undefined}
-            onPinView={handleViewPinDetails}
-            onChatRoomView={handleViewChatRoom}
-            onCurrentUserView={handleViewProfile}
-            isOffline={isOffline}
-            currentUserAvatar={viewerProfile?.avatar}
-            currentUserDisplayName={viewerProfile?.displayName}
-          />
+        <Map
+          userLocation={userLocation}
+          nearbyUsers={nearbyUsers}
+          pins={mapPinsForRender}
+          userRadiusMeters={DEFAULT_MAX_DISTANCE_METERS}
+          selectedPinId={showChatRooms ? selectedChatRoomId : undefined}
+          onPinSelect={showChatRooms ? handleMapPinSelect : undefined}
+          onPinView={handleViewPinDetails}
+          onChatRoomView={handleViewChatRoom}
+          onCurrentUserView={handleViewProfile}
+          isOffline={isOffline}
+          currentUserAvatar={viewerProfile?.avatar}
+          currentUserDisplayName={viewerProfile?.displayName}
+          teleportEnabled={tapToTeleportEnabled && canUseAdminTools}
+          onTeleportRequest={handleTapTeleport}
+        />
         </Box>
 
         {/* Floating Add Button (always visible) */}
@@ -260,11 +515,7 @@ function MapPage() {
         </button>
 
         {/* Filter Panel (collapsible on mobile, always visible on desktop) */}
-        <MapFilterPanel
-          open={filtersOpen}
-          onClose={closeFilters}
-          filters={[...filterItems, hideFullEventsFilter]}
-        />
+        <MapFilterPanel open={filtersOpen} onClose={closeFilters} filters={filterItems} />
         {hideFullPreferenceError ? (
           <Box sx={{ color: '#b3261e', fontSize: '0.85rem', fontWeight: 600, px: 1.5, mt: 0.5 }}>
             {hideFullPreferenceError}

@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, CircleMarker } from 'react-leaflet';
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMap,
+  Circle,
+  CircleMarker,
+  useMapEvents
+} from 'react-leaflet';
 import L from 'leaflet';
 import '../styles/leaflet.css';
 import './Map.css';
@@ -32,12 +41,16 @@ const createMarkerIcon = (key, extraClassName) =>
     className: ['leaflet-marker-icon', extraClassName].filter(Boolean).join(' ')
   });
 
-const nearbyIcon = createMarkerIcon('nearby');
+const markerIconCache = new Map();
+const getMarkerIconByKey = (key, extraClassName) => {
+  const cacheKey = `${key || 'default'}::${extraClassName || ''}`;
+  if (!markerIconCache.has(cacheKey)) {
+    markerIconCache.set(cacheKey, createMarkerIcon(key, extraClassName));
+  }
+  return markerIconCache.get(cacheKey);
+};
 
-const defaultPinIcon = createMarkerIcon('default');
-const discussionPinIcon = createMarkerIcon('discussion');
-const eventPinIcon = createMarkerIcon('event');
-const selfPinIcon = createMarkerIcon('personal', 'self-pin-icon');
+const nearbyIcon = getMarkerIconByKey('nearby');
 
 const AVATAR_FALLBACK = '/images/profile/profile-01.jpg';
 
@@ -96,6 +109,33 @@ function ResizeHandler({ signature }) {
   return null;
 }
 
+function TeleportClickHandler({ enabled, onTeleport }) {
+  const map = useMapEvents({
+    click(event) {
+      if (enabled && typeof onTeleport === 'function') {
+        onTeleport(event.latlng);
+      }
+    }
+  });
+
+  useEffect(() => {
+    const container = map?.getContainer?.();
+    if (!container) {
+      return undefined;
+    }
+    if (enabled) {
+      container.classList.add('map-teleport-active');
+    } else {
+      container.classList.remove('map-teleport-active');
+    }
+    return () => {
+      container.classList.remove('map-teleport-active');
+    };
+  }, [enabled, map]);
+
+  return null;
+}
+
 const parseDate = (value) => {
   if (!value) return null;
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
@@ -148,18 +188,24 @@ const toLatLng = (location) => {
 };
 
 const resolvePinIcon = (pin) => {
+  if (pin?.isSelf || pin?.viewerIsCreator || pin?.mapMeta?.isPersonal) {
+    return getMarkerIconByKey('personal', 'self-pin-icon');
+  }
   const normalizedType = typeof pin?.type === 'string' ? pin.type.toLowerCase() : '';
-
-  if (pin?.isSelf || pin?.viewerIsCreator) {
-    return selfPinIcon;
+  const colorKey =
+    typeof pin?.mapColorKey === 'string' && MAP_MARKER_ICON_URLS[pin.mapColorKey]
+      ? pin.mapColorKey
+      : null;
+  if (colorKey) {
+    return getMarkerIconByKey(colorKey);
   }
   if (normalizedType === 'discussion') {
-    return discussionPinIcon;
+    return getMarkerIconByKey('discussion');
   }
   if (normalizedType === 'event') {
-    return eventPinIcon;
+    return getMarkerIconByKey('event');
   }
-  return defaultPinIcon;
+  return getMarkerIconByKey('default');
 };
 
 const ensureAbsoluteUploadsUrl = (url) => {
@@ -214,7 +260,9 @@ const Map = ({
   userRadiusMeters,
   isOffline = false,
   currentUserAvatar,
-  currentUserDisplayName
+  currentUserDisplayName,
+  teleportEnabled = false,
+  onTeleportRequest
 }) => {
   const tileLayerRef = useRef(null);
   const tileErrorCountRef = useRef(0);
@@ -485,7 +533,12 @@ const Map = ({
         );
 
         if (isChatRoom) {
-          const color = pin.type === 'global-chat-room' ? '#ffb300' : '#ff7043';
+          let color = '#ff7043';
+          if (pin.chatRoomCategory === 'mine') {
+            color = '#3EB8F0';
+          } else if (pin.type === 'global-chat-room') {
+            color = '#ffb300';
+          }
           const isSelected = pin._id && pin._id === selectedPinId;
           const radius = isSelected ? 12 : 8;
 
@@ -551,6 +604,9 @@ const Map = ({
 
       <MapUpdater center={resolvedCenter} />
       <ResizeHandler signature={resizeSignature} />
+      {teleportEnabled && typeof onTeleportRequest === 'function' ? (
+        <TeleportClickHandler enabled={teleportEnabled} onTeleport={onTeleportRequest} />
+      ) : null}
       </MapContainer>
       {tilesUnavailable ? (
         <div

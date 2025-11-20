@@ -49,3 +49,7 @@
   height: 100%;
   object-fit: cover;
 }
+
+.leaflet-container.map-teleport-active {
+  cursor: crosshair !important;
+}

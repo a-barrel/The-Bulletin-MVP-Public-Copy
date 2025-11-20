@@ -1024,6 +1024,9 @@ router.get('/nearby', verifyToken, async (req, res) => {
     const viewerFriendObjectIds = mapIdList(viewer.relationships?.friendIds)
       .filter((id) => mongoose.Types.ObjectId.isValid(id))
       .map((id) => new mongoose.Types.ObjectId(id));
+    const viewerFriendIdStrings = new Set(
+      viewerFriendObjectIds.map((objectId) => toIdString(objectId)).filter(Boolean)
+    );
     const normalizedFriendEngagements = parseCsvParam(friendEngagementsParam)
       .map((entry) => entry.toLowerCase())
       .filter((entry) => entry === 'created' || entry === 'replied' || entry === 'attending');
@@ -1218,11 +1221,85 @@ router.get('/nearby', verifyToken, async (req, res) => {
       });
       const [pinLongitude, pinLatitude] = pinDoc.coordinates.coordinates;
       const distanceMeters = haversineDistanceMeters(latitude, longitude, pinLatitude, pinLongitude);
+      const participantLimit =
+        typeof pinDoc.participantLimit === 'number'
+          ? pinDoc.participantLimit
+          : typeof pinDoc.options?.participantLimit === 'number'
+          ? pinDoc.options.participantLimit
+          : undefined;
+      const participantCount =
+        typeof pinDoc.participantCount === 'number'
+          ? pinDoc.participantCount
+          : Array.isArray(pinDoc.attendingUserIds)
+          ? pinDoc.attendingUserIds.length
+          : undefined;
+      const seatsRemaining =
+        Number.isFinite(participantLimit) && Number.isFinite(participantCount)
+          ? Math.max(participantLimit - participantCount, 0)
+          : undefined;
+      const isFullEvent =
+        Number.isFinite(participantLimit) &&
+        Number.isFinite(participantCount) &&
+        participantLimit > 0 &&
+        participantCount >= participantLimit;
+      const creatorIsFriend =
+        Boolean(pinCreatorId) && viewerFriendIdStrings.has(pinCreatorId);
+      const startDate =
+        pinDoc.startDate && typeof pinDoc.startDate === 'string'
+          ? new Date(pinDoc.startDate)
+          : null;
+      const expiresSource =
+        pinDoc.expiresAt ||
+        pinDoc.endDate ||
+        (pinDoc.type === 'event' ? pinDoc.endDate : null);
+      const expiresDate =
+        expiresSource && typeof expiresSource === 'string'
+          ? new Date(expiresSource)
+          : null;
+      const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+      const nowTime = now.getTime();
+      const startsSoon =
+        pinDoc.type === 'event' &&
+        startDate instanceof Date &&
+        !Number.isNaN(startDate.getTime()) &&
+        startDate.getTime() >= nowTime &&
+        startDate.getTime() - nowTime <= TWENTY_FOUR_HOURS_MS;
+      const discussionExpiresSoon =
+        pinDoc.type === 'discussion' &&
+        expiresDate instanceof Date &&
+        !Number.isNaN(expiresDate.getTime()) &&
+        expiresDate.getTime() >= nowTime &&
+        expiresDate.getTime() - nowTime <= TWENTY_FOUR_HOURS_MS;
+      const bookmarkCount = pinDoc.stats?.bookmarkCount ?? 0;
+      const replyCount =
+        pinDoc.stats?.replyCount ?? pinDoc.replyCount ?? 0;
+      const POPULAR_BOOKMARK_THRESHOLD = 10;
+      const POPULAR_REPLY_THRESHOLD = 15;
+      const isPopular =
+        bookmarkCount >= POPULAR_BOOKMARK_THRESHOLD ||
+        replyCount >= POPULAR_REPLY_THRESHOLD;
+      const hasOpenSpots =
+        Number.isFinite(participantLimit) &&
+        Number.isFinite(participantCount) &&
+        participantLimit > 0 &&
+        participantCount >= 0 &&
+        participantCount / participantLimit <= 0.25;
+      const isFeatured = Boolean(pinDoc.options?.featured);
       return {
         ...listItem,
         distanceMeters,
         isBookmarked: viewerHasBookmarked,
-        viewerHasBookmarked
+        viewerHasBookmarked,
+        participantLimit: Number.isFinite(participantLimit) ? participantLimit : undefined,
+        participantCount: Number.isFinite(participantCount) ? participantCount : undefined,
+        seatsRemaining,
+        isFull: isFullEvent,
+        isFriendCreator: creatorIsFriend,
+        startsSoon,
+        discussionExpiresSoon,
+        isPopular,
+        hasOpenSpots,
+        isFeatured
       };
     });
 

@@ -5,12 +5,30 @@ const MARKER_BASE_URL =
 export const MAP_MARKER_SHADOW_URL =
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png';
 
+const encodeSvgColor = (color) => encodeURIComponent(color);
+
+const createSwatchIcon = (fill, stroke = '#1F1336') => {
+  const encodedFill = encodeSvgColor(fill);
+  const encodedStroke = encodeSvgColor(stroke);
+  return `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'><circle cx='18' cy='18' r='12' fill='${encodedFill}' stroke='${encodedStroke}' stroke-width='3' /></svg>`;
+};
+
 export const MAP_MARKER_ICON_URLS = {
   default: `${MARKER_BASE_URL}-green.png`,
   discussion: `${MARKER_BASE_URL}-blue.png`,
   event: `${MARKER_BASE_URL}-violet.png`,
   personal: `${MARKER_BASE_URL}-orange.png`,
-  nearby: `${MARKER_BASE_URL}-red.png`
+  nearby: `${MARKER_BASE_URL}-red.png`,
+  full: createSwatchIcon('#F1416C'),
+  friend: createSwatchIcon('#2EA043'),
+  discussionSoon: createSwatchIcon('#FFFFFF', '#5D3889'),
+  eventSoon: createSwatchIcon('#F4B400', '#4E342E'),
+  popular: createSwatchIcon('#FF6AD5', '#5D3889'),
+  open: createSwatchIcon('#FFB347', '#5D3889'),
+  featured: createSwatchIcon('#A855F7', '#4C1D95'),
+  chatMine: createSwatchIcon('#3EB8F0', '#0F172A'),
+  chatAdmin: createSwatchIcon('#FF7043', '#5D1512'),
+  teleport: createSwatchIcon('#0F172A', '#F4F4F5')
 };
 
 export const MAP_FILTERS = [

@@ -441,6 +441,30 @@ export default function useMapExplorer({
     [isOffline, shiftLocation]
   );
 
+  const teleportToLocation = useCallback(
+    (nextLocation, options = {}) => {
+      if (
+        !nextLocation ||
+        !Number.isFinite(nextLocation.latitude) ||
+        !Number.isFinite(nextLocation.longitude)
+      ) {
+        return;
+      }
+      updateGlobalLocation(
+        {
+          latitude: Number(nextLocation.latitude),
+          longitude: Number(nextLocation.longitude),
+          accuracy:
+            Number.isFinite(nextLocation.accuracy) && nextLocation.accuracy >= 0
+              ? Number(nextLocation.accuracy)
+              : undefined
+        },
+        { source: options.source || 'map-teleport' }
+      );
+    },
+    [updateGlobalLocation]
+  );
+
   const combinedPins = useMemo(() => {
     if (!showChatRooms) {
       return pins;
@@ -488,6 +512,7 @@ export default function useMapExplorer({
     setSelectedChatRoomId,
     selectedChatRoom,
     selectedChatRoomRadiusLabel,
-    selectedChatRoomDistanceLabel
+    selectedChatRoomDistanceLabel,
+    teleportToLocation
   };
 }
