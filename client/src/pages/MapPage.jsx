@@ -21,7 +21,8 @@ import MapFilterPanel from '../components/map/MapFilterPanel';
 import { MAP_FILTERS, MAP_MARKER_ICON_URLS } from '../utils/mapMarkers';
 import useOfflineAction from '../hooks/useOfflineAction';
 import toIdString from '../utils/ids';
-import { ADMIN_ROLE_SET, buildPinMeta } from '../utils/mapPinMeta';
+import { buildPinMeta } from '../utils/mapPinMeta';
+import { viewerHasDeveloperAccess } from '../utils/roles';
 import runtimeConfig from '../config/runtime';
 
 
@@ -170,20 +171,13 @@ function MapPage() {
     );
   }, [viewerProfile]);
 
-  const canUseAdminTools = useMemo(() => {
-    if (runtimeConfig.isOffline || isOffline) {
-      return true;
-    }
-    if (!Array.isArray(viewerProfile?.roles)) {
-      return false;
-    }
-    return viewerProfile.roles.some((role) => {
-      if (typeof role !== 'string') {
-        return false;
-      }
-      return ADMIN_ROLE_SET.has(role.toLowerCase());
-    });
-  }, [isOffline, viewerProfile]);
+  const canUseAdminTools = useMemo(
+    () =>
+      viewerHasDeveloperAccess(viewerProfile, {
+        offlineOverride: runtimeConfig.isOffline || isOffline
+      }),
+    [isOffline, viewerProfile]
+  );
 
   useEffect(() => {
     if (!canUseAdminTools) {

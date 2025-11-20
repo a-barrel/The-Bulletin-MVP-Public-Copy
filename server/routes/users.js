@@ -374,6 +374,12 @@ const mapUserToProfile = (userDoc) => {
   }
   const createdAt = toIsoDateString(userDoc.createdAt) ?? toIsoDateString(userDoc._id?.getTimestamp?.());
   const updatedAt = toIsoDateString(userDoc.updatedAt) ?? createdAt ?? new Date().toISOString();
+  const normalizedRoles = Array.isArray(doc.roles)
+    ? doc.roles
+        .map((role) => (typeof role === 'string' ? role.trim() : ''))
+        .filter(Boolean)
+    : [];
+  const uniqueRoles = [...new Set(normalizedRoles)];
   const result = UserProfileSchema.safeParse({
     _id: toIdString(doc._id),
     username: doc.username,
@@ -384,6 +390,8 @@ const mapUserToProfile = (userDoc) => {
     primaryLocationId: toIdString(doc.primaryLocationId),
     accountStatus: doc.accountStatus || 'active',
     email: doc.email || undefined,
+    firebaseUid: doc.firebaseUid || undefined,
+    roles: uniqueRoles,
     bio: doc.bio || undefined,
     banner: mapMediaAssetResponse(doc.banner),
     preferences: preferences || undefined,

@@ -25,6 +25,7 @@ const { METERS_PER_MILE, milesToMeters } = require('../utils/geo');
 const { timeAsync } = require('../utils/devLogger');
 const { recordAuditEntry } = require('../services/auditLogService');
 const { canViewerModeratePins } = require('../utils/moderation');
+const { viewerHasDeveloperAccess } = require('../utils/roles');
 
 const router = express.Router();
 
@@ -724,9 +725,7 @@ router.post('/', verifyToken, async (req, res) => {
       }
 
       const requestedCreatorId = new mongoose.Types.ObjectId(input.creatorId);
-      const viewerRoles = Array.isArray(viewer.roles) ? viewer.roles : [];
-      const viewerIsPrivileged =
-        viewerRoles.includes('admin') || viewerRoles.includes('super-admin') || viewerRoles.includes('system-admin');
+      const viewerIsPrivileged = viewerHasDeveloperAccess(viewer);
 
       if (!requestedCreatorId.equals(viewer._id) && !viewerIsPrivileged) {
         return res.status(403).json({ message: 'You are not allowed to create pins for other users' });
@@ -2026,8 +2025,7 @@ router.put('/:pinId', verifyToken, async (req, res) => {
     }
 
     const viewerId = toIdString(viewer._id);
-    const viewerRoles = Array.isArray(viewer.roles) ? viewer.roles : [];
-    const hasElevatedRole = viewerRoles.includes('admin') || viewerRoles.includes('moderator');
+    const hasElevatedRole = viewerHasDeveloperAccess(viewer);
 
     const now = Date.now();
     const maxEventTimestamp = now + EVENT_MAX_LEAD_TIME_MS;

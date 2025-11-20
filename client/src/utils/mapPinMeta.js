@@ -16,8 +16,6 @@ const normalizeDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
-export const ADMIN_ROLE_SET = new Set(['admin', 'moderator', 'super-admin']);
-
 export function buildPinMeta(pin, { viewerId, friendIds } = {}) {
   const normalizedType = typeof pin?.type === 'string' ? pin.type.toLowerCase() : '';
   const isEvent = normalizedType === 'event';
