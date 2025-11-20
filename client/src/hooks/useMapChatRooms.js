@@ -4,7 +4,7 @@ import reportClientError from '../utils/reportClientError';
 import { haversineDistanceMeters, formatDistanceMiles } from '../utils/geo';
 import { hasValidCoordinates } from '../utils/mapLocation';
 
-export default function useMapChatRooms({ userLocation, isOffline }) {
+export default function useMapChatRooms({ userLocation, isOffline, adminView = false }) {
   const [showChatRooms, setShowChatRooms] = useState(false);
   const [chatRooms, setChatRooms] = useState([]);
   const [isLoadingChatRooms, setIsLoadingChatRooms] = useState(false);
@@ -34,7 +34,7 @@ export default function useMapChatRooms({ userLocation, isOffline }) {
     setIsLoadingChatRooms(true);
     setChatRoomsError(null);
 
-    fetchChatRooms({ latitude, longitude, maxDistanceMiles: 50 })
+    fetchChatRooms({ latitude, longitude, maxDistanceMiles: 50, adminView })
       .then((rooms) => {
         if (!cancelled) {
           setChatRooms(Array.isArray(rooms) ? rooms : []);
@@ -60,7 +60,7 @@ export default function useMapChatRooms({ userLocation, isOffline }) {
     return () => {
       cancelled = true;
     };
-  }, [isOffline, showChatRooms, userLocation]);
+  }, [adminView, isOffline, showChatRooms, userLocation]);
 
   const chatRoomPins = useMemo(() => {
     if (!showChatRooms) {
@@ -125,6 +125,44 @@ export default function useMapChatRooms({ userLocation, isOffline }) {
     }
     return chatRooms.find((room) => String(room?._id) === String(selectedChatRoomId)) ?? null;
   }, [chatRooms, selectedChatRoomId]);
+
+  useEffect(() => {
+    if (!showChatRooms || !chatRoomPins.length || !hasValidCoordinates(userLocation)) {
+      return;
+    }
+    const distances = chatRoomPins
+      .map((pin) => {
+        const coords = Array.isArray(pin?.coordinates?.coordinates)
+          ? pin.coordinates.coordinates
+          : null;
+        if (!coords || coords.length < 2) {
+          return null;
+        }
+        const [lon, lat] = coords;
+        return {
+          pin,
+          distance: haversineDistanceMeters(userLocation, { latitude: lat, longitude: lon })
+        };
+      })
+      .filter(Boolean);
+    if (!distances.length) {
+      return;
+    }
+    let currentMatch = distances.find((entry) => entry.pin._id === selectedChatRoomId);
+    const currentRadius = Number.isFinite(currentMatch?.pin?.proximityRadiusMeters)
+      ? currentMatch.pin.proximityRadiusMeters
+      : null;
+    const currentWithin =
+      currentMatch && (currentRadius === null || currentMatch.distance <= currentRadius);
+    if (currentWithin) {
+      return;
+    }
+    distances.sort((a, b) => a.distance - b.distance);
+    const nextPin = distances[0]?.pin;
+    if (nextPin && nextPin._id !== selectedChatRoomId) {
+      setSelectedChatRoomId(nextPin._id);
+    }
+  }, [chatRoomPins, selectedChatRoomId, showChatRooms, userLocation]);
 
   const selectedChatRoomPin = useMemo(() => {
     if (!selectedChatRoomId) {

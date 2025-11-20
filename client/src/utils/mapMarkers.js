@@ -5,30 +5,27 @@ const MARKER_BASE_URL =
 export const MAP_MARKER_SHADOW_URL =
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png';
 
-const encodeSvgColor = (color) => encodeURIComponent(color);
-
-const createSwatchIcon = (fill, stroke = '#1F1336') => {
-  const encodedFill = encodeSvgColor(fill);
-  const encodedStroke = encodeSvgColor(stroke);
-  return `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'><circle cx='18' cy='18' r='12' fill='${encodedFill}' stroke='${encodedStroke}' stroke-width='3' /></svg>`;
+const createPinIconUrl = (fill, stroke = '#210A3C') => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36"><path d="M18 2c-5.523 0-10 4.477-10 10 0 6.852 8.275 16.782 9.242 17.868a1 1 0 0 0 1.516 0C19.7 28.782 28 18.852 28 12c0-5.523-4.477-10-10-10z" fill="${fill}" stroke="${stroke}" stroke-width="2"/><circle cx="18" cy="12" r="5" fill="rgba(255,255,255,0.55)"/></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 };
 
 export const MAP_MARKER_ICON_URLS = {
-  default: `${MARKER_BASE_URL}-green.png`,
-  discussion: `${MARKER_BASE_URL}-blue.png`,
-  event: `${MARKER_BASE_URL}-violet.png`,
-  personal: `${MARKER_BASE_URL}-orange.png`,
+  default: createPinIconUrl('#6DD17C', '#0F6124'),
+  discussion: createPinIconUrl('#4FABFF', '#123B66'),
+  event: createPinIconUrl('#815CFF', '#2E1572'),
+  personal: createPinIconUrl('#FF7A29', '#6A2A00'),
   nearby: `${MARKER_BASE_URL}-red.png`,
-  full: createSwatchIcon('#F1416C'),
-  friend: createSwatchIcon('#2EA043'),
-  discussionSoon: createSwatchIcon('#FFFFFF', '#5D3889'),
-  eventSoon: createSwatchIcon('#F4B400', '#4E342E'),
-  popular: createSwatchIcon('#FF6AD5', '#5D3889'),
-  open: createSwatchIcon('#FFB347', '#5D3889'),
-  featured: createSwatchIcon('#A855F7', '#4C1D95'),
-  chatMine: createSwatchIcon('#3EB8F0', '#0F172A'),
-  chatAdmin: createSwatchIcon('#FF7043', '#5D1512'),
-  teleport: createSwatchIcon('#0F172A', '#F4F4F5')
+  full: createPinIconUrl('#EB134F'),
+  friend: createPinIconUrl('#2EA043'),
+  discussionSoon: createPinIconUrl('#FFFFFF', '#5D3889'),
+  eventSoon: createPinIconUrl('#F4B400', '#70511C'),
+  popular: createPinIconUrl('#FF6AD5', '#4C1D95'),
+  open: createPinIconUrl('#FFB347', '#7A3F00'),
+  featured: createPinIconUrl('#A855F7', '#4C1D95'),
+  chatMine: createPinIconUrl('#3EB8F0', '#0F172A'),
+  chatAdmin: createPinIconUrl('#FF7043', '#5D1512'),
+  teleport: createPinIconUrl('#0F172A', '#F4F4F5')
 };
 
 export const MAP_FILTERS = [

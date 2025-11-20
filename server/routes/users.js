@@ -783,10 +783,13 @@ router.patch('/me', verifyToken, async (req, res) => {
         if (display.mapDensity !== undefined) {
           setDoc['preferences.display.mapDensity'] = display.mapDensity;
         }
-        if (display.celebrationSounds !== undefined) {
-          setDoc['preferences.display.celebrationSounds'] = display.celebrationSounds;
-        }
+      if (display.celebrationSounds !== undefined) {
+        setDoc['preferences.display.celebrationSounds'] = display.celebrationSounds;
       }
+      if (display.hideFullEventsByDefault !== undefined) {
+        setDoc['preferences.display.hideFullEventsByDefault'] = display.hideFullEventsByDefault;
+      }
+    }
       if (input.preferences.data && typeof input.preferences.data === 'object') {
         const dataPrefs = input.preferences.data;
         if (dataPrefs.autoExportReminders !== undefined) {

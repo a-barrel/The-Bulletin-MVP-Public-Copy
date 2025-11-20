@@ -86,6 +86,8 @@ export default function useMapExplorer({
     isOffline
   });
 
+  const [adminChatView, setAdminChatView] = useState(false);
+
   const {
     nearbyUsers,
     pins,
@@ -117,7 +119,7 @@ export default function useMapExplorer({
     selectedChatRoomDistanceLabel,
     selectedChatRoomRadiusLabel,
     handleMapPinSelect
-  } = useMapChatRooms({ userLocation, isOffline });
+  } = useMapChatRooms({ userLocation, isOffline, adminView: adminChatView });
 
   useEffect(() => {
     if (!Number.isFinite(sharedLatitude) || !Number.isFinite(sharedLongitude)) {
@@ -442,7 +444,7 @@ export default function useMapExplorer({
   );
 
   const teleportToLocation = useCallback(
-    (nextLocation, options = {}) => {
+    async (nextLocation, options = {}) => {
       if (
         !nextLocation ||
         !Number.isFinite(nextLocation.latitude) ||
@@ -450,7 +452,7 @@ export default function useMapExplorer({
       ) {
         return;
       }
-      updateGlobalLocation(
+      const updated = updateGlobalLocation(
         {
           latitude: Number(nextLocation.latitude),
           longitude: Number(nextLocation.longitude),
@@ -461,8 +463,23 @@ export default function useMapExplorer({
         },
         { source: options.source || 'map-teleport' }
       );
+      if (updated) {
+        refreshPins(updated);
+        refreshNearby(updated);
+        if (!isOffline) {
+          try {
+            await pushLocationUpdate(updated);
+          } catch (error) {
+            reportClientError(error, 'Failed to push teleport location update', {
+              source: 'useMapExplorer.teleport',
+              latitude: updated.latitude,
+              longitude: updated.longitude
+            });
+          }
+        }
+      }
     },
-    [updateGlobalLocation]
+    [isOffline, pushLocationUpdate, refreshNearby, refreshPins, updateGlobalLocation]
   );
 
   const combinedPins = useMemo(() => {
@@ -513,6 +530,7 @@ export default function useMapExplorer({
     selectedChatRoom,
     selectedChatRoomRadiusLabel,
     selectedChatRoomDistanceLabel,
-    teleportToLocation
+    teleportToLocation,
+    setAdminChatView
   };
 }

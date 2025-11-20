@@ -41,7 +41,7 @@ const createMarkerIcon = (key, extraClassName) =>
     className: ['leaflet-marker-icon', extraClassName].filter(Boolean).join(' ')
   });
 
-const markerIconCache = new Map();
+const markerIconCache = new globalThis.Map();
 const getMarkerIconByKey = (key, extraClassName) => {
   const cacheKey = `${key || 'default'}::${extraClassName || ''}`;
   if (!markerIconCache.has(cacheKey)) {
@@ -196,16 +196,17 @@ const resolvePinIcon = (pin) => {
     typeof pin?.mapColorKey === 'string' && MAP_MARKER_ICON_URLS[pin.mapColorKey]
       ? pin.mapColorKey
       : null;
+  const extraClass = pin?.mapMeta?.isPopular ? 'popular-pin-icon' : undefined;
   if (colorKey) {
-    return getMarkerIconByKey(colorKey);
+    return getMarkerIconByKey(colorKey, extraClass);
   }
   if (normalizedType === 'discussion') {
-    return getMarkerIconByKey('discussion');
+    return getMarkerIconByKey('discussion', extraClass);
   }
   if (normalizedType === 'event') {
-    return getMarkerIconByKey('event');
+    return getMarkerIconByKey('event', extraClass);
   }
-  return getMarkerIconByKey('default');
+  return getMarkerIconByKey('default', extraClass);
 };
 
 const ensureAbsoluteUploadsUrl = (url) => {
@@ -261,6 +262,7 @@ const Map = ({
   isOffline = false,
   currentUserAvatar,
   currentUserDisplayName,
+  showInteractionRadius = true,
   teleportEnabled = false,
   onTeleportRequest
 }) => {
@@ -391,7 +393,10 @@ const Map = ({
           </Popup>
         </Marker>
       )}
-      {userMarkerPosition && Number.isFinite(userRadiusMeters) && userRadiusMeters > 0 && (
+      {showInteractionRadius &&
+        userMarkerPosition &&
+        Number.isFinite(userRadiusMeters) &&
+        userRadiusMeters > 0 && (
         <Circle
           center={userMarkerPosition}
           radius={userRadiusMeters}

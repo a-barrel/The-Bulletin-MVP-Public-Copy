@@ -5,7 +5,10 @@ function MapHeader({
   notificationsLabel,
   notificationBadge,
   notificationsIcon,
-  isOffline
+  isOffline,
+  onCreatePin,
+  createIcon,
+  createLabel = 'Create pin'
 }) {
   return (
     <header className="map-header">
@@ -13,11 +16,27 @@ function MapHeader({
 
       <h1 className="map-title">Map</h1>
 
-      <button
-        className="map-icon-btn"
-        type="button"
-        aria-label={notificationsLabel}
-        onClick={onNotifications}
+      <div className="map-header-actions">
+        <button
+          type="button"
+          className="map-icon-btn map-header-create"
+          onClick={onCreatePin}
+          disabled={isOffline}
+          aria-label={createLabel}
+          title={isOffline ? 'Reconnect to create a pin' : undefined}
+        >
+          {createIcon ? (
+            <img src={createIcon} alt="" className="map-icon map-icon--create" aria-hidden="true" />
+          ) : (
+            <span className="map-icon map-icon--create" aria-hidden="true" />
+          )}
+        </button>
+
+        <button
+          className="map-icon-btn"
+          type="button"
+          aria-label={notificationsLabel}
+          onClick={onNotifications}
         disabled={isOffline}
         title={isOffline ? 'Reconnect to view updates' : undefined}
       >
@@ -31,7 +50,8 @@ function MapHeader({
             {notificationBadge}
           </span>
         ) : null}
-      </button>
+        </button>
+      </div>
     </header>
   );
 }

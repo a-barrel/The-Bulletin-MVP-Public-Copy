@@ -7,8 +7,7 @@ import Box from '@mui/material/Box';
 import Map from '../components/Map';
 import Navbar from '../components/Navbar';
 import updatesIcon from '../assets/UpdateIcon.svg';
-import addIcon from '../assets/AddIcon.svg';
-import filterIcon from '../assets/FilterIcon.svg';
+import addIconPurple from '../assets/AddIconPurple.svg';
 import { routes } from '../routes';
 import { useLocationContext } from '../contexts/LocationContext';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
@@ -23,6 +22,7 @@ import { MAP_FILTERS, MAP_MARKER_ICON_URLS } from '../utils/mapMarkers';
 import useOfflineAction from '../hooks/useOfflineAction';
 import toIdString from '../utils/ids';
 import { ADMIN_ROLE_SET, buildPinMeta } from '../utils/mapPinMeta';
+import runtimeConfig from '../config/runtime';
 
 
 export const pageConfig = {
@@ -36,9 +36,6 @@ export const pageConfig = {
 };
 
 function MapPage() {
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const toggleFilters = () => setFiltersOpen((prev) => !prev);
-  const closeFilters = () => setFiltersOpen(false);
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
   const { unreadCount, refreshUnreadCount } = useUpdates();
@@ -66,7 +63,8 @@ function MapPage() {
     handleMapPinSelect,
     selectedChatRoomId,
     viewerProfile,
-    teleportToLocation
+    teleportToLocation,
+    setAdminChatView
   } = useMapExplorer({
     sharedLocation,
     setSharedLocation,
@@ -74,9 +72,68 @@ function MapPage() {
     hideFullEvents
   });
 
-  const [showEvents, setShowEvents] = useState(true);
-  const [showDiscussions, setShowDiscussions] = useState(true);
-  const [showPersonalPins, setShowPersonalPins] = useState(true);
+  const FILTER_STORAGE_KEY = 'mapFilterState-v1';
+  const loadStoredFilterState = () => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    try {
+      const raw = window.localStorage.getItem(FILTER_STORAGE_KEY);
+      if (!raw) {
+        return null;
+      }
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
+      }
+    } catch (error) {
+      console.warn('Failed to parse saved map filters:', error);
+    }
+    return null;
+  };
+  const initialFilterState = loadStoredFilterState();
+  const [showEvents, setShowEvents] = useState(
+    initialFilterState?.showEvents ?? true
+  );
+  const [showDiscussions, setShowDiscussions] = useState(
+    initialFilterState?.showDiscussions ?? true
+  );
+  const [showPersonalPins, setShowPersonalPins] = useState(
+    initialFilterState?.showPersonalPins ?? true
+  );
+  const [showFriendPins, setShowFriendPins] = useState(
+    initialFilterState?.showFriendPins ?? true
+  );
+  const [showExpiringDiscussions, setShowExpiringDiscussions] = useState(
+    initialFilterState?.showExpiringDiscussions ?? true
+  );
+  const [showEventsStartingSoon, setShowEventsStartingSoon] = useState(
+    initialFilterState?.showEventsStartingSoon ?? true
+  );
+  const [showPopularPins, setShowPopularPins] = useState(
+    initialFilterState?.showPopularPins ?? true
+  );
+  const [showOpenSpotPins, setShowOpenSpotPins] = useState(
+    initialFilterState?.showOpenSpotPins ?? true
+  );
+  const [showFeaturedPins, setShowFeaturedPins] = useState(
+    initialFilterState?.showFeaturedPins ?? true
+  );
+  const [showMyChatRooms, setShowMyChatRooms] = useState(
+    initialFilterState?.showMyChatRooms ?? false
+  );
+  const [showAllChatRoomsToggle, setShowAllChatRoomsToggle] = useState(
+    initialFilterState?.showAllChatRoomsToggle ?? false
+  );
+  const [tapToTeleportEnabled, setTapToTeleportEnabled] = useState(
+    initialFilterState?.tapToTeleportEnabled ?? false
+  );
+  const [showInteractionRadius, setShowInteractionRadius] = useState(
+    initialFilterState?.showInteractionRadius ?? true
+  );
+  const [filtersCollapsed, setFiltersCollapsed] = useState(
+    initialFilterState?.filtersCollapsed ?? false
+  );
   const showFullEvents = !hideFullEvents;
 
   const viewerId = useMemo(
@@ -97,7 +154,7 @@ function MapPage() {
   }, [viewerProfile]);
 
   const canUseAdminTools = useMemo(() => {
-    if (isOffline) {
+    if (runtimeConfig.isOffline || isOffline) {
       return true;
     }
     if (!Array.isArray(viewerProfile?.roles)) {
@@ -119,10 +176,56 @@ function MapPage() {
   }, [canUseAdminTools]);
 
   useEffect(() => {
+    const enableChatRooms = showAllChatRoomsToggle || showMyChatRooms;
     if (typeof setShowChatRooms === 'function') {
-      setShowChatRooms(showAllChatRoomsToggle || showMyChatRooms);
+      setShowChatRooms(enableChatRooms);
     }
-  }, [setShowChatRooms, showAllChatRoomsToggle, showMyChatRooms]);
+    if (typeof setAdminChatView === 'function') {
+      setAdminChatView(showAllChatRoomsToggle && canUseAdminTools);
+    }
+  }, [canUseAdminTools, setAdminChatView, setShowChatRooms, showAllChatRoomsToggle, showMyChatRooms]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const snapshot = {
+      showEvents,
+      showDiscussions,
+      showPersonalPins,
+      showFriendPins,
+      showExpiringDiscussions,
+      showEventsStartingSoon,
+      showPopularPins,
+      showOpenSpotPins,
+      showFeaturedPins,
+      showMyChatRooms,
+      showAllChatRoomsToggle,
+      tapToTeleportEnabled,
+      showInteractionRadius,
+      filtersCollapsed
+    };
+    try {
+      window.localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(snapshot));
+    } catch (error) {
+      console.warn('Failed to persist map filters:', error);
+    }
+  }, [
+    showEvents,
+    showDiscussions,
+    showPersonalPins,
+    showFriendPins,
+    showExpiringDiscussions,
+    showEventsStartingSoon,
+    showPopularPins,
+    showOpenSpotPins,
+    showFeaturedPins,
+    showMyChatRooms,
+    showAllChatRoomsToggle,
+    tapToTeleportEnabled,
+    showInteractionRadius,
+    filtersCollapsed
+  ]);
 
   const annotatedPins = useMemo(() => {
     if (!Array.isArray(pins)) {
@@ -200,23 +303,33 @@ function MapPage() {
     if (showAllChatRoomsToggle) {
       return baseRooms.map((pin) => ({ ...pin, chatRoomCategory: 'all' }));
     }
-    if (showMyChatRooms && viewerId) {
-      return baseRooms
-        .filter((pin) => {
-          const metadata = pin?.metadata || {};
-          const ownerId = toIdString(metadata.ownerId);
-          if (ownerId && ownerId === viewerId) {
-            return true;
-          }
-          const participantIds = Array.isArray(metadata.participantIds)
-            ? metadata.participantIds
-            : [];
-          return participantIds
+    if (showMyChatRooms) {
+      const isViewerRoom = (pin) => {
+        const metadata = pin?.metadata || {};
+        const ownerId = toIdString(metadata.ownerId);
+        if (viewerId && ownerId && ownerId === viewerId) {
+          return true;
+        }
+        const participantIds = Array.isArray(metadata.participantIds)
+          ? metadata.participantIds
+          : [];
+        if (
+          viewerId &&
+          participantIds
             .map((value) => toIdString(value))
             .filter(Boolean)
-            .includes(viewerId);
-        })
-        .map((pin) => ({ ...pin, chatRoomCategory: 'mine' }));
+            .includes(viewerId)
+        ) {
+          return true;
+        }
+        const radius = Number.isFinite(pin?.proximityRadiusMeters) ? pin.proximityRadiusMeters : null;
+        const distance = Number.isFinite(pin?.distanceMeters) ? pin.distanceMeters : null;
+        if (radius !== null && distance !== null) {
+          return distance <= radius;
+        }
+        return false;
+      };
+      return baseRooms.filter(isViewerRoom).map((pin) => ({ ...pin, chatRoomCategory: 'mine' }));
     }
     return [];
   }, [chatRoomPins, showAllChatRoomsToggle, showMyChatRooms, viewerId]);
@@ -275,8 +388,8 @@ function MapPage() {
     if (hideFullPreferenceError) {
       clearPreferenceError();
     }
-    setHideFullEvents((prev) => !prev);
-  }, [clearPreferenceError, hideFullPreferenceError, setHideFullEvents]);
+    setHideFullEvents(!hideFullEvents);
+  }, [clearPreferenceError, hideFullPreferenceError, hideFullEvents, setHideFullEvents]);
 
   const handleViewProfile = useCallback(() => {
     navigate(routes.profile.me);
@@ -328,11 +441,11 @@ function MapPage() {
     [handleToggleDiscussions, handleToggleEvents, handleTogglePersonalPins, showDiscussions, showEvents, showPersonalPins]
   );
 
-  const extraFilterItems = useMemo(
+  const highlightFilters = useMemo(
     () => [
       {
         key: 'full-events',
-        label: 'Full events (red)',
+        label: 'Full events',
         iconUrl: MAP_MARKER_ICON_URLS.full,
         ariaLabel: showFullEvents ? 'Showing full events' : 'Hiding full events',
         checked: showFullEvents,
@@ -341,7 +454,7 @@ function MapPage() {
       },
       {
         key: 'friend-pins',
-        label: 'Friend pins (green)',
+        label: 'Friend pins',
         iconUrl: MAP_MARKER_ICON_URLS.friend,
         ariaLabel: 'Toggle friend pins',
         checked: showFriendPins,
@@ -367,6 +480,7 @@ function MapPage() {
         key: 'popular-pins',
         label: 'Popular pins',
         iconUrl: MAP_MARKER_ICON_URLS.popular,
+        iconClassName: 'popular-filter-icon',
         ariaLabel: 'Toggle popular pins',
         checked: showPopularPins,
         onChange: () => setShowPopularPins((prev) => !prev)
@@ -386,6 +500,30 @@ function MapPage() {
         ariaLabel: 'Toggle featured pins',
         checked: showFeaturedPins,
         onChange: () => setShowFeaturedPins((prev) => !prev)
+      }
+    ],
+    [
+      handleToggleFullEventsFilter,
+      isSavingHideFullPreference,
+      showEventsStartingSoon,
+      showExpiringDiscussions,
+      showFeaturedPins,
+      showFriendPins,
+      showFullEvents,
+      showOpenSpotPins,
+      showPopularPins
+    ]
+  );
+
+  const chatFilterItems = useMemo(
+    () => [
+      {
+        key: 'interaction-radius',
+        label: 'Show interaction radius',
+        iconUrl: MAP_MARKER_ICON_URLS.open,
+        ariaLabel: 'Toggle interaction radius circle',
+        checked: showInteractionRadius,
+        onChange: () => setShowInteractionRadius((prev) => !prev)
       },
       {
         key: 'my-chat-rooms',
@@ -411,7 +549,7 @@ function MapPage() {
       },
       {
         key: 'tap-teleport',
-        label: 'Tap to teleport',
+        label: 'Tap to teleport (admin)',
         iconUrl: MAP_MARKER_ICON_URLS.teleport,
         ariaLabel: tapToTeleportEnabled ? 'Disable tap to teleport' : 'Enable tap to teleport',
         checked: tapToTeleportEnabled && canUseAdminTools,
@@ -424,26 +562,17 @@ function MapPage() {
         disabled: !canUseAdminTools
       }
     ],
-    [
-      canUseAdminTools,
-      handleToggleFullEventsFilter,
-      isSavingHideFullPreference,
-      showAllChatRoomsToggle,
-      showEventsStartingSoon,
-      showExpiringDiscussions,
-      showFeaturedPins,
-      showFriendPins,
-      showFullEvents,
-      showMyChatRooms,
-      showOpenSpotPins,
-      showPopularPins,
-      tapToTeleportEnabled
-    ]
+    [canUseAdminTools, showAllChatRoomsToggle, showMyChatRooms, tapToTeleportEnabled]
   );
 
-  const filterItems = useMemo(
-    () => [...baseFilterItems, ...extraFilterItems],
-    [baseFilterItems, extraFilterItems]
+  const filterGroups = useMemo(
+    () =>
+      [
+        { key: 'pin-types', title: 'Pin types', filters: baseFilterItems },
+        { key: 'highlights', title: 'Highlights & alerts', filters: highlightFilters },
+        { key: 'chat-tools', title: 'Chat overlays & tools', filters: chatFilterItems }
+      ].filter((group) => Array.isArray(group.filters) && group.filters.length > 0),
+    [baseFilterItems, chatFilterItems, highlightFilters]
   );
 
   return (
@@ -455,6 +584,8 @@ function MapPage() {
           notificationBadge={displayBadge}
           notificationsIcon={updatesIcon}
           isOffline={isOffline}
+          onCreatePin={handleCreatePin}
+          createIcon={addIconPurple}
         />
 
         <Box
@@ -487,35 +618,17 @@ function MapPage() {
           currentUserAvatar={viewerProfile?.avatar}
           currentUserDisplayName={viewerProfile?.displayName}
           teleportEnabled={tapToTeleportEnabled && canUseAdminTools}
+          showInteractionRadius={showInteractionRadius}
           onTeleportRequest={handleTapTeleport}
         />
         </Box>
 
-        {/* Floating Add Button (always visible) */}
-        <button
-          className="map-add-btn"
-          type="button"
-          aria-label="Create pin"
-          onClick={handleCreatePin}
-          disabled={isOffline}
-          title={isOffline ? 'Reconnect to create a pin' : undefined}
-        >
-          <img src={addIcon} alt="" aria-hidden="true" />
-        </button>
-
         {/* NEW: Filter FAB (mobile-only) */}
-        <button
-          className="map-filter-fab"
-          type="button"
-          aria-label={filtersOpen ? 'Close filters' : 'Open filters'}
-          aria-expanded={filtersOpen}
-          onClick={toggleFilters}
-        >
-          <img src={filterIcon} alt="" className="map-filter-fab__img" aria-hidden="true" />
-        </button>
-
-        {/* Filter Panel (collapsible on mobile, always visible on desktop) */}
-        <MapFilterPanel open={filtersOpen} onClose={closeFilters} filters={filterItems} />
+        <MapFilterPanel
+          collapsed={filtersCollapsed}
+          onToggleCollapse={() => setFiltersCollapsed((prev) => !prev)}
+          filterGroups={filterGroups}
+        />
         {hideFullPreferenceError ? (
           <Box sx={{ color: '#b3261e', fontSize: '0.85rem', fontWeight: 600, px: 1.5, mt: 0.5 }}>
             {hideFullPreferenceError}

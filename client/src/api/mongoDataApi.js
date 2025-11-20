@@ -1946,7 +1946,14 @@ export async function createChatRoom(input) {
   return payload;
 }
 
-export async function fetchChatRooms({ pinId, ownerId, latitude, longitude, includeBookmarked = true } = {}) {
+export async function fetchChatRooms({
+  pinId,
+  ownerId,
+  latitude,
+  longitude,
+  includeBookmarked = true,
+  adminView
+} = {}) {
   const baseUrl = resolveApiBaseUrl();
   const params = new URLSearchParams();
   if (pinId) {
@@ -1963,6 +1970,9 @@ export async function fetchChatRooms({ pinId, ownerId, latitude, longitude, incl
   }
   if (!includeBookmarked) {
     params.set('includeBookmarked', 'false');
+  }
+  if (adminView) {
+    params.set('adminView', 'true');
   }
 
   const query = params.toString();
