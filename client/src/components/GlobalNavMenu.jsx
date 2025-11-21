@@ -153,15 +153,18 @@ export default function GlobalNavMenu({
   const { viewer: viewerProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
   const resolvedMenuItems = useMemo(() => {
     const base = Array.isArray(items) && items.length ? items : DEFAULT_ITEMS;
+    const filteredBase = base.filter(
+      (entry) => entry && !['bookmarks', 'settings', 'friends'].includes(entry.key)
+    );
     if (!canAccessModerationTools(viewerProfile)) {
-      return base;
+      return filteredBase;
     }
-    const alreadyHasAdmin = base.some((entry) => entry?.key === 'admin-dashboard');
+    const alreadyHasAdmin = filteredBase.some((entry) => entry?.key === 'admin-dashboard');
     if (alreadyHasAdmin) {
-      return base;
+      return filteredBase;
     }
     return [
-      ...base,
+      ...filteredBase,
       {
         key: 'admin-dashboard',
         label: 'Admin Dashboard',

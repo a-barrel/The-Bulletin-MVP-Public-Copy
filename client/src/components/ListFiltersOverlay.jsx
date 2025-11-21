@@ -45,6 +45,12 @@ const FRIEND_ENGAGEMENT_VALUE_SET = new Set(
   FRIEND_ENGAGEMENT_OPTIONS.map((option) => option.value)
 );
 
+const POPULAR_SORT_OPTIONS = [
+  { value: null, label: 'None' },
+  { value: 'replies', label: 'Most replies' },
+  { value: 'attending', label: 'Most attending' }
+];
+
 const normalizeFilters = (filters, defaults) => ({
   search: filters.search ?? defaults.search ?? '',
   status: filters.status ?? defaults.status ?? 'active',
@@ -56,7 +62,8 @@ const normalizeFilters = (filters, defaults) => ({
     : [...(defaults.categories ?? [])],
   friendEngagements: Array.isArray(filters.friendEngagements)
     ? filters.friendEngagements.filter((entry) => FRIEND_ENGAGEMENT_VALUE_SET.has(entry))
-    : [...(defaults.friendEngagements ?? [])]
+    : [...(defaults.friendEngagements ?? [])],
+  popularSort: filters.popularSort ?? defaults.popularSort ?? null
 });
 
 function uniqueMerge(list = [], additions = []) {
@@ -184,6 +191,14 @@ export default function ListFiltersOverlay({
     }
   };
 
+  const handlePopularSortChange = (event) => {
+    const value = event.target.value || null;
+    setLocalFilters((prev) => ({
+      ...prev,
+      popularSort: value === 'replies' || value === 'attending' ? value : null
+    }));
+  };
+
   const handleStatusChange = (event) => {
     setLocalFilters((prev) => ({
       ...prev,
@@ -298,6 +313,29 @@ export default function ListFiltersOverlay({
                 />
               ))}
             </FormGroup>
+          </Stack>
+
+          <Divider />
+
+          {/* Popular pins */}
+          <Stack spacing={1}>
+            <Typography variant="subtitle2" color="text.secondary">
+              Popular pins
+            </Typography>
+            <RadioGroup
+              row
+              value={localFilters.popularSort || null}
+              onChange={handlePopularSortChange}
+            >
+              {POPULAR_SORT_OPTIONS.map((option) => (
+                <FormControlLabel
+                  key={option.value ?? 'none'}
+                  value={option.value ?? ''}
+                  control={<Radio />}
+                  label={option.label}
+                />
+              ))}
+            </RadioGroup>
           </Stack>
 
           <Divider />

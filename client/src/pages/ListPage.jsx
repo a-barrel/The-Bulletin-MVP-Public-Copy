@@ -147,10 +147,14 @@ export default function ListPage() {
     setFiltersDialogOpen(false);
   }, []);
 
-  const handleApplyFilters = useCallback((nextFilters) => {
-    applyFilters(nextFilters);
-    setFiltersDialogOpen(false);
-  }, [applyFilters]);
+  const handleApplyFilters = useCallback(
+    (nextFilters) => {
+      applyFilters(nextFilters);
+      setFiltersDialogOpen(false);
+      setCurrentPage(1);
+    },
+    [applyFilters]
+  );
 
   const handleClearFilters = useCallback(() => {
     clearFilters();
@@ -170,7 +174,8 @@ export default function ListPage() {
         ? [...filters.friendEngagements].sort()
         : [],
       startDate: filters.startDate ?? '',
-      endDate: filters.endDate ?? ''
+      endDate: filters.endDate ?? '',
+      popularSort: filters.popularSort ?? null
     });
   }, [filters]);
 
@@ -297,8 +302,22 @@ export default function ListPage() {
         onDelete: () => setHideFullEvents(true)
       });
     }
+    if (filters.popularSort === 'replies') {
+      chips.push({
+        key: 'popular-replies',
+        label: 'Most replies',
+        onDelete: () => applyFilters({ ...filters, popularSort: null })
+      });
+    } else if (filters.popularSort === 'attending') {
+      chips.push({
+        key: 'popular-attending',
+        label: 'Most attending',
+        onDelete: () => applyFilters({ ...filters, popularSort: null })
+      });
+    }
     return chips;
   }, [
+    applyFilters,
     filters,
     defaultFilters.status,
     handleClearSearch,
@@ -348,6 +367,38 @@ export default function ListPage() {
         : statusFiltered;
 
     const sortedItems = [...ownerFiltered].sort((a, b) => {
+      if (filters.popularSort === 'replies') {
+        const aReplies = Number.isFinite(a?.comments) ? a.comments : 0;
+        const bReplies = Number.isFinite(b?.comments) ? b.comments : 0;
+        if (bReplies !== aReplies) {
+          return bReplies - aReplies;
+        }
+        const aAttending = Number.isFinite(a?.participantCount) ? a.participantCount : 0;
+        const bAttending = Number.isFinite(b?.participantCount) ? b.participantCount : 0;
+        if (bAttending !== aAttending) {
+          return bAttending - aAttending;
+        }
+        const aUpdated = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
+        const bUpdated = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
+        return bUpdated - aUpdated;
+      }
+
+      if (filters.popularSort === 'attending') {
+        const aAttending = Number.isFinite(a?.participantCount) ? a.participantCount : 0;
+        const bAttending = Number.isFinite(b?.participantCount) ? b.participantCount : 0;
+        if (bAttending !== aAttending) {
+          return bAttending - aAttending;
+        }
+        const aReplies = Number.isFinite(a?.comments) ? a.comments : 0;
+        const bReplies = Number.isFinite(b?.comments) ? b.comments : 0;
+        if (bReplies !== aReplies) {
+          return bReplies - aReplies;
+        }
+        const aUpdated = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
+        const bUpdated = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
+        return bUpdated - aUpdated;
+      }
+
       if (sortByExpiration) {
         const hoursA = Number.isFinite(a.expiresInHours) ? a.expiresInHours : Number.POSITIVE_INFINITY;
         const hoursB = Number.isFinite(b.expiresInHours) ? b.expiresInHours : Number.POSITIVE_INFINITY;
@@ -368,7 +419,7 @@ export default function ListPage() {
     });
 
     return sortedItems;
-  }, [feedItems, filters.status, hideOwnPins, sortByExpiration, viewerMongoId]);
+  }, [feedItems, filters.popularSort, filters.status, hideOwnPins, sortByExpiration, viewerMongoId]);
 
   const totalResults = filteredAndSortedFeed.length;
   const totalPages = totalResults === 0 ? 1 : Math.ceil(totalResults / LIST_PAGE_SIZE);
@@ -447,6 +498,17 @@ export default function ListPage() {
                   color="secondary"
                   checked={hideOwnPins}
                   onChange={(event) => setHideOwnPins(event.target.checked)}
+                  sx={{
+                    color: '#666',
+                    '& .MuiSvgIcon-root': {
+                      stroke: '#666',
+                      strokeWidth: 1.4,
+                      borderRadius: '4px'
+                    },
+                    '&.Mui-checked': {
+                      color: '#5d3889'
+                    }
+                  }}
                 />
               }
               label="Hide my pins"
@@ -460,6 +522,17 @@ export default function ListPage() {
                   checked={hideFullEvents}
                   onChange={handleHideFullEventsToggle}
                   disabled={isSavingHideFullPreference}
+                  sx={{
+                    color: '#666',
+                    '& .MuiSvgIcon-root': {
+                      stroke: '#666',
+                      strokeWidth: 1.4,
+                      borderRadius: '4px'
+                    },
+                    '&.Mui-checked': {
+                      color: '#5d3889'
+                    }
+                  }}
                 />
               }
               label="Hide full events"
