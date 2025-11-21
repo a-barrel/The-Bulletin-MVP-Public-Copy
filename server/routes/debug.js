@@ -377,7 +377,6 @@ const mapUserToProfile = (userDoc) => {
     banner: mapMediaAsset(doc.banner, { toIdString }),
     preferences: doc.preferences || undefined,
     relationships: doc.relationships || undefined,
-    locationSharingEnabled: Boolean(doc.locationSharingEnabled),
     pinnedPinIds: mapIdList(doc.pinnedPinIds),
     ownedPinIds: mapIdList(doc.ownedPinIds),
     bookmarkCollectionIds: mapIdList(doc.bookmarkCollectionIds),
@@ -682,7 +681,6 @@ router.post('/users', async (req, res) => {
     email: z.string().email().optional(),
     bio: z.string().max(500).optional(),
     accountStatus: z.enum(['active', 'inactive', 'suspended', 'deleted']).optional(),
-    locationSharingEnabled: z.boolean().optional(),
     roles: z.array(z.string()).optional()
   });
 
@@ -694,7 +692,6 @@ router.post('/users', async (req, res) => {
       email: input.email,
       bio: input.bio,
       accountStatus: input.accountStatus || 'active',
-      locationSharingEnabled: input.locationSharingEnabled ?? false,
       roles: input.roles && input.roles.length ? input.roles : undefined
     });
 
@@ -719,7 +716,6 @@ router.patch('/users/:userId', async (req, res) => {
       email: z.union([z.string().email(), z.literal(null)]).optional(),
       bio: z.union([z.string().max(500), z.literal(null)]).optional(),
       accountStatus: z.enum(['active', 'inactive', 'suspended', 'deleted']).optional(),
-      locationSharingEnabled: z.boolean().optional(),
       roles: z.array(z.string()).optional()
     })
     .refine((value) => Object.keys(value).length > 0, {
@@ -757,9 +753,6 @@ router.patch('/users/:userId', async (req, res) => {
     applyNullable('bio', input.bio);
     if (input.accountStatus !== undefined) {
       setDoc.accountStatus = input.accountStatus;
-    }
-    if (input.locationSharingEnabled !== undefined) {
-      setDoc.locationSharingEnabled = input.locationSharingEnabled;
     }
     if (input.roles !== undefined) {
       setDoc.roles = input.roles;

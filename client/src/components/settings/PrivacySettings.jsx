@@ -3,14 +3,12 @@ import {
   Stack,
   Typography,
   FormControlLabel,
-  Switch,
-  FormControl,
-  FormLabel,
   RadioGroup,
   Radio,
   Button,
-  Select,
-  MenuItem
+  Switch,
+  FormControl,
+  FormLabel
 } from '@mui/material';
 import BlockIcon from '@mui/icons-material/Block';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
@@ -24,11 +22,6 @@ import settingsPalette, {
 
 function PrivacySettings({
   settings,
-  onLocationSharingToggle,
-  locationAutoShareHours,
-  onLocationAutoShareChange,
-  globalMapVisible,
-  onGlobalMapVisibilityToggle,
   onStatsVisibilityToggle,
   onFilterCussWordsToggle,
   dmPermission,
@@ -37,74 +30,19 @@ function PrivacySettings({
   canAccessAdminDashboard,
   adminRoute,
   profileRoute,
-  isOffline,
-  isManagingBlockedUsers
+  isManagingBlockedUsers,
+  isOffline
 }) {
-  const autoShareOptions = [
-    { value: 0, label: 'Never auto-disable' },
-    { value: 4, label: 'After 4 hours' },
-    { value: 12, label: 'After 12 hours' },
-    { value: 24, label: 'After 24 hours' },
-    { value: 72, label: 'After 3 days' }
-  ];
-
+  
   return (
     <Stack spacing={2}>
       <SettingsAccordion
         title="Privacy & sharing"
-        description="Control who can see your location and how you appear in discovery."
+        description="Your location is used only to enable features (radius checks, proximity chat). It is never shared with other users."
       >
-        <FormControlLabel
-          control={<Switch checked={settings.locationSharingEnabled} onChange={onLocationSharingToggle} />}
-          label="Share my live location with friends"
-          sx={settingsToggleLabelSx}
-        />
-        <FormControl size="small" sx={{ maxWidth: 320 }}>
-          <FormLabel
-            component="legend"
-            sx={{ fontSize: '0.875rem', mb: 0.5, color: settingsPalette.accent }}
-          >
-            Auto-disable location sharing
-          </FormLabel>
-          <Select
-            value={locationAutoShareHours}
-            onChange={(event) => onLocationAutoShareChange(event.target.value)}
-            disabled={isOffline}
-            sx={{
-              '& .MuiSelect-select': {
-                borderRadius: 2,
-                backgroundColor: '#FFFFFF',
-                color: settingsPalette.textPrimary
-              },
-              '& fieldset': {
-                borderRadius: 2,
-                borderColor: settingsPalette.borderSubtle
-              },
-              '&:hover fieldset': {
-                borderColor: settingsPalette.accent
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: settingsPalette.accent
-              }
-            }}
-          >
-            {autoShareOptions.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </Select>
-          <Typography variant="caption" sx={mutedTextSx}>
-            We’ll turn location sharing off automatically once the timer runs out.
-          </Typography>
-        </FormControl>
-        <FormControlLabel
-          control={<Switch checked={globalMapVisible} onChange={onGlobalMapVisibilityToggle} />}
-          label="Show me on the global map & discovery"
-          sx={settingsToggleLabelSx}
-        />
-        <Typography variant="caption" sx={mutedTextSx}>
-          Turn this off to stay visible only to friends and followers.
+        <Typography variant="body2" sx={{ color: settingsPalette.textPrimary }}>
+          Location is required to confirm you are in-range for map interactions, but your exact
+          location is never shown to other people.
         </Typography>
       </SettingsAccordion>
 

@@ -206,27 +206,8 @@ export async function insertLocationUpdate(input) {
 }
 
 export async function fetchNearbyUsers(query) {
-  const baseUrl = resolveApiBaseUrl();
-  const params = new URLSearchParams({
-    longitude: String(query.longitude),
-    latitude: String(query.latitude)
-  });
-
-  if (query.maxDistance !== undefined) {
-    params.set('maxDistance', String(query.maxDistance));
-  }
-
-  const response = await fetch(`${baseUrl}/api/locations/nearby?${params.toString()}`, {
-    method: 'GET',
-    headers: await buildHeaders()
-  });
-
-  const payload = await response.json().catch(() => []);
-  if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load nearby users');
-  }
-
-  return payload;
+  // Location sharing between users is disabled; return an empty list.
+  return [];
 }
 
 export async function fetchPinsNearby({

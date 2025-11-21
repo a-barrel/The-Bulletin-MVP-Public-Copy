@@ -52,13 +52,8 @@ export default function useSettingsPersistence({
           display: { ...settings.display },
           data: {
             autoExportReminders: settings.autoExportReminders
-          },
-          location: {
-            autoDisableAfterHours: settings.locationAutoShareHours ?? DEFAULT_SETTINGS.locationAutoShareHours,
-            globalMapVisible: settings.globalMapVisible ?? DEFAULT_SETTINGS.globalMapVisible
           }
-        },
-        locationSharingEnabled: settings.locationSharingEnabled
+        }
       };
 
       const updated = await updateCurrentUserProfile(payload);

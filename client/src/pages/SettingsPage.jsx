@@ -148,9 +148,8 @@ function SettingsPage() {
   const digestFrequency = settings.digestFrequency ?? DEFAULT_SETTINGS.digestFrequency;
   const autoExportReminders =
     settings.autoExportReminders ?? DEFAULT_SETTINGS.autoExportReminders;
-  const locationAutoShareHours =
-    settings.locationAutoShareHours ?? DEFAULT_SETTINGS.locationAutoShareHours;
-  const globalMapVisible = settings.globalMapVisible ?? DEFAULT_SETTINGS.globalMapVisible;
+  const locationAutoShareHours = DEFAULT_SETTINGS.locationAutoShareHours;
+  const globalMapVisible = DEFAULT_SETTINGS.globalMapVisible;
 
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
@@ -585,11 +584,6 @@ function SettingsPage() {
             <TabPanel value="privacy" current={activeTab}>
               <PrivacySettings
                 settings={settings}
-                onLocationSharingToggle={handleLocationSharingToggle}
-                locationAutoShareHours={locationAutoShareHours}
-                onLocationAutoShareChange={handleLocationAutoShareChange}
-                globalMapVisible={globalMapVisible}
-                onGlobalMapVisibilityToggle={handleGlobalMapVisibilityToggle}
                 onStatsVisibilityToggle={handleStatsVisibilityToggle}
                 onFilterCussWordsToggle={handleFilterCussWordsToggle}
                 dmPermission={dmPermission}
@@ -598,7 +592,6 @@ function SettingsPage() {
                 canAccessAdminDashboard={canAccessAdminDashboard}
                 adminRoute={routes.admin.base}
                 profileRoute={routes.profile.me}
-                isOffline={isOffline}
                 isManagingBlockedUsers={isManagingBlockedUsers}
               />
             </TabPanel>

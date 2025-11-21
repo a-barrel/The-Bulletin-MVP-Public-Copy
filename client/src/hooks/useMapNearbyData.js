@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { fetchNearbyUsers, fetchPinsNearby } from '../api/mongoDataApi';
+import { fetchPinsNearby } from '../api/mongoDataApi';
 import reportClientError from '../utils/reportClientError';
 import {
   DEFAULT_MAX_DISTANCE_METERS,
@@ -15,8 +15,8 @@ export default function useMapNearbyData({
   setGlobalError,
   hideFullEvents = true
 }) {
-  const [nearbyUsers, setNearbyUsers] = useState([]);
   const [pins, setPins] = useState([]);
+  const nearbyUsers = [];
   const [isLoadingNearby, setIsLoadingNearby] = useState(false);
   const [isLoadingPins, setIsLoadingPins] = useState(false);
 
@@ -78,40 +78,14 @@ export default function useMapNearbyData({
   );
 
   const refreshNearby = useCallback(
-    async (location = userLocation) => {
-      if (!hasValidCoordinates(location)) return;
-
-      if (isOffline) {
-        setIsLoadingNearby(false);
-        setGlobalError?.((prev) => prev ?? 'Offline mode: nearby activity is unavailable.');
-        return;
-      }
-
-      setIsLoadingNearby(true);
-      try {
-        const results = await fetchNearbyUsers({
-          longitude: location.longitude,
-          latitude: location.latitude,
-          maxDistance: DEFAULT_MAX_DISTANCE_METERS
-        });
-        setNearbyUsers(results);
-        setGlobalError?.((prev) =>
-          prev && prev.toLowerCase().includes('failed to load nearby users') ? null : prev
-        );
-      } catch (err) {
-        reportClientError(err, 'Error fetching nearby users:', {
-          source: 'useMapNearbyData.refreshNearby',
-          location
-        });
-        setGlobalError?.(err.message || 'Failed to load nearby users.');
-      } finally {
-        setIsLoadingNearby(false);
-      }
+    async () => {
+      setIsLoadingNearby(false);
+      setGlobalError?.(null);
     },
-    [isOffline, setGlobalError, userLocation]
+    [setGlobalError]
   );
 
-  const clearNearbyUsers = useCallback(() => setNearbyUsers([]), []);
+  const clearNearbyUsers = useCallback(() => {}, []);
 
   return {
     nearbyUsers,

@@ -58,7 +58,7 @@ export default function usePinSubmissionWorkflow({
 
         if (!viewerCoordinates) {
           throw new Error(
-            'We need your current location to confirm this pin. Enable location sharing and try again.'
+            'We need your current location to confirm this pin. Enable location services and try again.'
           );
         }
         const distanceMeters = haversineDistanceMeters(viewerCoordinates, {

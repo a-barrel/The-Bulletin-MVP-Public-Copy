@@ -208,7 +208,7 @@ export default function useMapExplorer({
   const pushLocationUpdate = useCallback(
     async (location) => {
       if (!hasValidCoordinates(location)) {
-        throw new Error('Cannot share location without valid coordinates.');
+      throw new Error('Location permission is required to continue.');
       }
       if (isOffline) {
         throw new Error('Location sharing is unavailable while offline.');
@@ -232,7 +232,7 @@ export default function useMapExplorer({
 
   const handleStartSharing = useCallback(async () => {
     if (isOffline) {
-      setError('You are offline. Connect to share your location.');
+      setError('You are offline. Connect to provide your location.');
       setIsSharing(false);
       return;
     }
@@ -280,7 +280,7 @@ export default function useMapExplorer({
         source: 'useMapExplorer.shareLocation',
         location: locationToShare
       });
-      setError(err.message || 'Failed to share your location.');
+      setError(err.message || 'Failed to update your location.');
       lastSharedLocationRef.current = null;
       setIsSharing(false);
     }
@@ -327,7 +327,7 @@ export default function useMapExplorer({
             source: 'useMapExplorer.syncSharedLocation',
             userLocation
           });
-          setError(err.message || 'Failed to share your location.');
+          setError(err.message || 'Failed to update your location.');
           lastSharedLocationRef.current = null;
           setIsSharing(false);
         }

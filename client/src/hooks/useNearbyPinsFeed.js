@@ -36,7 +36,7 @@ export default function useNearbyPinsFeed({
   const [userLocation, setUserLocation] = useState(initialLocation);
   const [isUsingFallbackLocation, setIsUsingFallbackLocation] = useState(!hasSharedLocation);
   const [locationNotice, setLocationNotice] = useState(
-    hasSharedLocation ? null : 'Showing popular pins near Long Beach until you share your location.'
+    hasSharedLocation ? null : 'Showing popular pins near Long Beach until you enable location.'
   );
   const [viewerProfileId, setViewerProfileId] = useState(null);
   const fallbackLimit = limit ?? PIN_FETCH_LIMIT;
@@ -64,7 +64,7 @@ export default function useNearbyPinsFeed({
     }
 
     setIsUsingFallbackLocation(true);
-    setLocationNotice('Showing popular pins near Long Beach until you share your location.');
+      setLocationNotice('Showing popular pins near Long Beach until you enable location.');
     setUserLocation((previous) => {
       if (hasValidCoordinates(previous)) {
         return previous;

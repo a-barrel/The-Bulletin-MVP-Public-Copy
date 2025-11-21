@@ -199,7 +199,6 @@ const UserSelfUpdateSchema = z
     bio: z
       .union([z.string().trim().max(500, 'Bio must be 500 characters or fewer'), z.literal(null)])
       .optional(),
-    locationSharingEnabled: z.boolean().optional(),
     avatar: z.union([MediaAssetUpdateSchema, z.literal(null)]).optional(),
     banner: z.union([MediaAssetUpdateSchema, z.literal(null)]).optional(),
     preferences: UserPreferencesUpdateSchema
@@ -396,7 +395,6 @@ const mapUserToProfile = (userDoc) => {
     banner: mapMediaAssetResponse(doc.banner),
     preferences: preferences || undefined,
     relationships: mapRelationships(doc.relationships),
-    locationSharingEnabled: Boolean(doc.locationSharingEnabled),
     pinnedPinIds: mapIdList(doc.pinnedPinIds),
     ownedPinIds: mapIdList(doc.ownedPinIds),
     bookmarkCollectionIds: mapIdList(doc.bookmarkCollectionIds),
@@ -643,12 +641,6 @@ router.patch('/me', verifyToken, async (req, res) => {
       } else {
         setDoc.bio = input.bio;
       }
-    }
-
-    if (input.locationSharingEnabled !== undefined) {
-      const nextValue = Boolean(input.locationSharingEnabled);
-      setDoc.locationSharingEnabled = nextValue;
-      setDoc['preferences.location.lastEnabledAt'] = nextValue ? new Date() : null;
     }
 
     if (input.avatar !== undefined) {

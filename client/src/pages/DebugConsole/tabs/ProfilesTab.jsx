@@ -169,24 +169,12 @@ function ProfilesTab() {
             fullWidth
           />
 
-          <TextField
-            label="Roles (comma separated)"
-            value={createForm.roles}
-            onChange={(event) => setCreateForm((prev) => ({ ...prev, roles: event.target.value }))}
-            fullWidth
-          />
-
-          <FormControlLabel
-            control={
-              <Switch
-                checked={createForm.locationSharingEnabled}
-                onChange={(event) =>
-                  setCreateForm((prev) => ({ ...prev, locationSharingEnabled: event.target.checked }))
-                }
-              />
-            }
-            label="Location sharing enabled"
-          />
+        <TextField
+          label="Roles (comma separated)"
+          value={createForm.roles}
+          onChange={(event) => setCreateForm((prev) => ({ ...prev, roles: event.target.value }))}
+          fullWidth
+        />
 
           <Stack direction="row" spacing={2}>
             <Button type="submit" variant="contained" disabled={isCreating}>
@@ -335,18 +323,6 @@ function ProfilesTab() {
               multiline
               minRows={3}
               fullWidth
-            />
-
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={editForm.locationSharingEnabled}
-                  onChange={(event) =>
-                    setEditForm((prev) => ({ ...prev, locationSharingEnabled: event.target.checked }))
-                  }
-                />
-              }
-              label="Location sharing enabled"
             />
 
             <Stack direction="row" spacing={2}>
