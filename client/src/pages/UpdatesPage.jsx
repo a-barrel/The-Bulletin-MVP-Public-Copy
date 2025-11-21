@@ -43,6 +43,7 @@ const resolveBadgeImageUrl = (value) => {
 
 function UpdatesPage() {
   const [selectedTab, setSelectedTab] = useState('All');
+  const [secondaryTab, setSecondaryTab] = useState('All');
   const pushNotifications = usePushNotifications();
   const [expandedUpdateId, setExpandedUpdateId] = useState(null);
   const handleToggleExpand = (id) => {
@@ -72,10 +73,13 @@ function UpdatesPage() {
   const isLoading = isProfileLoading || isLoadingUpdates;
   const isAnyDeletePending = deletingUpdateIds.length > 0;
 
-  const { unreadDiscussionsCount, unreadEventsCount } = useMemo(() => {
+  const { unreadDiscussionsCount, unreadEventsCount, unreadBadgesCount, unreadBookmarkCount, unreadTimeCount } = useMemo(() => {
     const counts = {
       unreadDiscussionsCount: 0,
-      unreadEventsCount: 0
+      unreadEventsCount: 0,
+      unreadBadgesCount: 0,
+      unreadBookmarkCount: 0,
+      unreadTimeCount: 0
     };
 
     updates.forEach((update) => {
@@ -89,6 +93,15 @@ function UpdatesPage() {
       if (category === 'event') {
         counts.unreadEventsCount += 1;
       }
+      if (category === 'badge') {
+        counts.unreadBadgesCount += 1;
+      }
+      if (category === 'bookmark') {
+        counts.unreadBookmarkCount += 1;
+      }
+      if (category === 'time') {
+        counts.unreadTimeCount += 1;
+      }
     });
 
     return counts;
@@ -97,21 +110,40 @@ function UpdatesPage() {
   const normalizedFilteredUpdates = Array.isArray(filteredUpdates) ? filteredUpdates : [];
 
   const tabFilteredUpdates = useMemo(() => {
-    if (selectedTab === 'All') {
-      return normalizedFilteredUpdates;
+    const primaryFiltered = (() => {
+      if (selectedTab === 'All') {
+        return normalizedFilteredUpdates;
+      }
+      return normalizedFilteredUpdates.filter((update) => {
+        const category = (update.category || '').toLowerCase();
+        if (selectedTab === 'Discussions') {
+          return category === 'discussion';
+        }
+        if (selectedTab === 'Events') {
+          return category === 'event';
+        }
+        return true;
+      });
+    })();
+
+    if (secondaryTab === 'All') {
+      return primaryFiltered;
     }
 
-    return normalizedFilteredUpdates.filter((update) => {
+    return primaryFiltered.filter((update) => {
       const category = (update.category || '').toLowerCase();
-      if (selectedTab === 'Discussions') {
-        return category === 'discussion';
+      if (secondaryTab === 'Badges') {
+        return category === 'badge';
       }
-      if (selectedTab === 'Events') {
-        return category === 'event';
+      if (secondaryTab === 'Bookmarks') {
+        return category === 'bookmark';
+      }
+      if (secondaryTab === 'Time') {
+        return category === 'time' || category === 'event' || category === 'discussion';
       }
       return true;
     });
-  }, [normalizedFilteredUpdates, selectedTab]);
+  }, [normalizedFilteredUpdates, secondaryTab, selectedTab]);
 
   return (
     <Box className="updates-page">
@@ -147,6 +179,16 @@ function UpdatesPage() {
           ]}
           selected={selectedTab}
           onSelect={setSelectedTab}
+        />
+
+        <UpdatesTabs
+          tabs={[
+            { label: 'Badges', count: unreadBadgesCount },
+            { label: 'Bookmarks', count: unreadBookmarkCount },
+            { label: 'Time', count: unreadTimeCount }
+          ]}
+          selected={secondaryTab}
+          onSelect={setSecondaryTab}
         />
 
         {pushNotifications.isSupported &&

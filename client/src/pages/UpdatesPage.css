@@ -33,7 +33,7 @@
 }
 
 .updates-content {
-  padding-top: calc(var(--header-h) + 56px);
+  padding-top: var(--header-h);
 }
 
 /* ===== Header (purple) ===== */
@@ -120,14 +120,15 @@
 /* Tabs */
 .updates-tabs-container {
   font-family: 'Urbanist', sans-serif !important;
-  position: fixed;
-  width: 100vw;
-  top: calc(var(--header-h) - 15px);
+  position: sticky;
+  top: var(--header-h);
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-around;
   background-color: white;
   border-bottom: 2px solid rgb(194, 194, 194);
-  padding: 8px 0;
+  padding: 4px 0;
+  gap: 4px 0;
   z-index: 40;
 }
 
@@ -194,7 +195,7 @@
 /* Updates List */
 .updates-list {
   position: relative;
-  top: calc(var(--header-h) - 89px) !important;
+  top: calc(var(--header-h) - 30px) !important;
   width: 100vw;
   height: calc(100vh - 6.6rem);
   overflow-y: auto;

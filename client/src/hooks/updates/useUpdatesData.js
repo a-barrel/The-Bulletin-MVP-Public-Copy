@@ -9,6 +9,16 @@ const deriveUpdateCategory = (update) => {
   if (explicit) {
     return explicit;
   }
+  const type = String(update?.payload?.type || '').trim().toLowerCase();
+  if (type === 'bookmark-update') {
+    return 'bookmark';
+  }
+  if (type.includes('badge')) {
+    return 'badge';
+  }
+  if (type.includes('expiring') || type.includes('starting')) {
+    return 'time';
+  }
   const pinType = String(
     update?.payload?.pin?.type || update?.pin?.type || ''
   )
@@ -20,7 +30,6 @@ const deriveUpdateCategory = (update) => {
   if (pinType === 'discussion') {
     return 'discussion';
   }
-  const type = String(update?.payload?.type || '').trim().toLowerCase();
   if (!type) {
     return 'other';
   }
@@ -51,16 +60,19 @@ export default function useUpdatesData({ profile, unreadCallbacks = {} }) {
   const { setUnreadCount = noop, setUnreadBookmarkCount = noop, setUnreadDiscussionsCount = noop, setUnreadEventsCount = noop } = unreadCallbacks;
 
   const unreadMetrics = useMemo(() => {
-    const metrics = { total: 0, bookmark: 0, discussions: 0, events: 0 };
+    const metrics = { total: 0, bookmark: 0, discussions: 0, events: 0, badges: 0, time: 0 };
     updates.forEach((update) => {
       if (update?.readAt) {
         return;
       }
       metrics.total += 1;
-      const category = update?.category || deriveUpdateCategory(update);
-      const type = String(update?.payload?.type || '').toLowerCase();
-      if (type === 'bookmark-update') {
+      const category = (update?.category || deriveUpdateCategory(update)) ?? 'other';
+      if (category === 'bookmark') {
         metrics.bookmark += 1;
+      } else if (category === 'badge') {
+        metrics.badges += 1;
+      } else if (category === 'time') {
+        metrics.time += 1;
       } else if (category === 'event') {
         metrics.events += 1;
       } else if (category === 'discussion') {

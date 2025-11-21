@@ -34,6 +34,7 @@ const RepliesTab = lazy(() => import('./tabs/RepliesTab'));
 const AccountSwapTab = lazy(() => import('./tabs/AccountSwapTab'));
 const ExperimentTab = lazy(() => import('./tabs/ExperimentTab'));
 const RolesTab = lazy(() => import('./tabs/RolesTab'));
+const PopularLocationsTab = lazy(() => import('./tabs/PopularLocationsTab'));
 
 const HEAVY_TAB_FALLBACKS = {
   [LIVE_CHAT_TAB_ID]: 'Loading live chat tools…',
@@ -74,6 +75,7 @@ const BASE_TABS = [
   { id: 'direct-messages', label: 'Direct Messages', Component: DirectMessagesTab },
   { id: 'replies', label: 'Replies', Component: RepliesTab },
   { id: 'roles', label: 'Roles', Component: RolesTab },
+  { id: 'popular-locations', label: 'Popular Locations', Component: PopularLocationsTab },
   { id: ACCOUNT_SWAP_TAB_ID, label: 'Account Swap', Component: AccountSwapTab }
 ];
 
