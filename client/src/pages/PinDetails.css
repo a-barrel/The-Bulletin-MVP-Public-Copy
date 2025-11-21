@@ -1338,6 +1338,136 @@
     box-shadow: 0 14px 28px rgba(156, 39, 176, 0.4);
 }
 
+.pin-details .pin-analytics-card {
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 50%, #f5f7ff 100%);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+}
+
+.pin-details .pin-analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.pin-details .pin-analytics-card h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.pin-details .pin-analytics-subtitle {
+  margin: 4px 0 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.pin-details .pin-analytics-pill {
+  background: #111827;
+  color: #ffffff;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.pin-details .pin-analytics-metrics {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0 6px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.pin-details .pin-analytics-metric {
+  min-width: 120px;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f8f9ff;
+  white-space: nowrap;
+}
+
+.pin-details .pin-analytics-metric .label {
+  display: block;
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.pin-details .pin-analytics-metric .value {
+  display: block;
+  font-size: 1.2rem;
+  color: #111827;
+}
+
+.pin-details .pin-analytics-metric .value.tiny {
+  font-size: 0.95rem;
+  color: #111827;
+}
+
+.pin-details .pin-analytics-metric .value.success {
+  color: #0f9d58;
+}
+
+.pin-details .pin-analytics-metric .value.muted-text {
+  color: #6b7280;
+}
+
+.pin-details .pin-analytics-sparkline-wrapper {
+  margin: 6px 0 0;
+}
+
+.pin-details .pin-analytics-sparkline {
+  width: 100%;
+  height: auto;
+}
+
+.pin-details .pin-analytics-sparkline polyline {
+  fill: none;
+  stroke: #2563eb;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pin-details .pin-analytics-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.pin-details .pin-analytics-buckets {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.pin-details .pin-analytics-bar {
+  flex: 1;
+  text-align: center;
+}
+
+.pin-details .pin-analytics-bar-fill {
+  width: 100%;
+  min-height: 6px;
+  border-radius: 8px 8px 4px 4px;
+  background: linear-gradient(180deg, #22c55e 0%, #f59e0b 60%, #ef4444 100%);
+  transition: height 0.25s ease;
+}
+
+.pin-details .pin-analytics-bar-label {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: #374151;
+}
+
 .pin-details .create-comment:disabled {
     opacity: 0.5;
     cursor: not-allowed;

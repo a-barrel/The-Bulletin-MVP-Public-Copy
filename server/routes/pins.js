@@ -17,6 +17,7 @@ const {
   broadcastAttendanceChange,
   broadcastBookmarkCreated
 } = require('../services/updateFanoutService');
+const AttendanceEvent = require('../models/AttendanceEvent');
 const { grantBadge } = require('../services/badgeService');
 const { trackEvent } = require('../services/analyticsService');
 const { mapMediaAsset: mapMediaAssetResponse } = require('../utils/media');
@@ -1619,6 +1620,90 @@ router.get('/:pinId', verifyToken, async (req, res) => {
   }
 });
 
+router.get('/:pinId/analytics', verifyToken, async (req, res) => {
+  try {
+    const { pinId } = PinIdSchema.parse(req.params);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const pin = await Pin.findById(pinId).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
+    if (!pin) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    const viewerId = toIdString(viewer._id);
+    const creatorId = toIdString(pin.creatorId?._id ?? pin.creatorId);
+    const isCreator = viewerId && creatorId && viewerId === creatorId;
+    const viewerRoles = Array.isArray(viewer.roles) ? viewer.roles : [];
+    const isAdmin = viewerRoles.some((role) => typeof role === 'string' && role.toLowerCase().includes('admin'));
+
+    if (!isCreator && !isAdmin) {
+      return res.status(403).json({ message: 'Only the pin creator can view analytics.' });
+    }
+
+    const events = await AttendanceEvent.find({ pinId })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    const buckets = new Map();
+    let cumulative = 0;
+    const series = events.map((event) => {
+      cumulative += event.action === 'join' ? 1 : -1;
+      const ts = event.createdAt instanceof Date ? event.createdAt : new Date(event.createdAt);
+      const bucketKey = ts.toISOString().slice(0, 13); // hour bucket
+      const existing = buckets.get(bucketKey) || { join: 0, leave: 0 };
+      if (event.action === 'join') {
+        existing.join += 1;
+      } else {
+        existing.leave += 1;
+      }
+      buckets.set(bucketKey, existing);
+      return {
+        id: String(event._id),
+        action: event.action,
+        timestamp: ts.toISOString(),
+        cumulative
+      };
+    });
+
+    const hourlyBuckets = Array.from(buckets.entries()).map(([bucketKey, value]) => ({
+      bucket: bucketKey,
+      join: value.join,
+      leave: value.leave
+    }));
+
+    const joins = events.filter((evt) => evt.action === 'join').length;
+    const leaves = events.filter((evt) => evt.action === 'leave').length;
+    const firstJoinAt = events.find((evt) => evt.action === 'join')?.createdAt;
+    const lastJoinAt = [...events].reverse().find((evt) => evt.action === 'join')?.createdAt;
+
+    res.json({
+      pinId,
+      totals: {
+        joins,
+        leaves,
+        net: joins - leaves,
+        current: pin.participantCount ?? joins - leaves
+      },
+      milestones: {
+        firstJoinAt: firstJoinAt ? new Date(firstJoinAt).toISOString() : null,
+        lastJoinAt: lastJoinAt ? new Date(lastJoinAt).toISOString() : null,
+        participantLimit: pin.participantLimit ?? null
+      },
+      series,
+      hourlyBuckets
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid pin id', issues: error.errors });
+    }
+    console.error('Failed to load pin analytics:', error);
+    res.status(500).json({ message: 'Failed to load pin analytics' });
+  }
+});
+
 router.post('/:pinId/attendance', verifyToken, async (req, res) => {
   try {
     const { pinId } = PinIdSchema.parse(req.params);
@@ -1688,6 +1773,16 @@ router.post('/:pinId/attendance', verifyToken, async (req, res) => {
 
     await pin.save();
     if (viewerJoined || viewerLeft) {
+      try {
+        await AttendanceEvent.create({
+          pinId: pin._id,
+          userId: viewer._id,
+          action: viewerJoined ? 'join' : 'leave'
+        });
+      } catch (logError) {
+        console.error('Failed to log attendance event', logError);
+      }
+
       try {
         ensureUserStats(viewer);
         const existingCount = viewer.stats.eventsAttended ?? 0;

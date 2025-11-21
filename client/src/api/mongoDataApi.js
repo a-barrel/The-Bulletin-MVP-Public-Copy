@@ -634,6 +634,35 @@ export async function updatePinAttendance(pinId, { attending }) {
   }
 }
 
+export async function fetchPinAnalytics(pinId) {
+  if (!pinId) {
+    throw new Error('Pin id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  try {
+    const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/analytics`, {
+      method: 'GET',
+      headers: await buildHeaders(),
+      cache: 'no-store'
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = createApiError(response, payload, payload?.message || 'Failed to load analytics');
+      await logApiError('/api/pins/:pinId/analytics', error, { status: response.status, pinId });
+      throw error;
+    }
+
+    return payload;
+  } catch (error) {
+    if (!hasApiErrorBeenLogged(error)) {
+      await logApiError('/api/pins/:pinId/analytics', error, { pinId });
+    }
+    throw error;
+  }
+}
+
 export async function createPinBookmark(pinId) {
   if (!pinId) {
     throw new Error('Pin id is required');
