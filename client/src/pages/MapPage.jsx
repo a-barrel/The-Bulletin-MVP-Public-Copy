@@ -131,6 +131,9 @@ function MapPage() {
   const [showPopularPins, setShowPopularPins] = useState(
     initialFilterState?.showPopularPins ?? true
   );
+  const [showBookmarkedPins, setShowBookmarkedPins] = useState(
+    initialFilterState?.showBookmarkedPins ?? true
+  );
   const [showOpenSpotPins, setShowOpenSpotPins] = useState(
     initialFilterState?.showOpenSpotPins ?? true
   );
@@ -208,6 +211,7 @@ function MapPage() {
       showExpiringDiscussions,
       showEventsStartingSoon,
       showPopularPins,
+      showBookmarkedPins,
       showOpenSpotPins,
       showFeaturedPins,
       showMyChatRooms,
@@ -230,6 +234,7 @@ function MapPage() {
     showExpiringDiscussions,
     showEventsStartingSoon,
     showPopularPins,
+    showBookmarkedPins,
     showOpenSpotPins,
     showFeaturedPins,
     showMyChatRooms,
@@ -285,6 +290,9 @@ function MapPage() {
       if (meta.isPopular && !showPopularPins) {
         return false;
       }
+      if (meta.isBookmarked && !showBookmarkedPins) {
+        return false;
+      }
       if (meta.hasOpenSpots && !showOpenSpotPins) {
         return false;
       }
@@ -303,6 +311,7 @@ function MapPage() {
     showExpiringDiscussions,
     showEventsStartingSoon,
     showPopularPins,
+    showBookmarkedPins,
     showOpenSpotPins,
     showFeaturedPins
   ]);
@@ -498,6 +507,14 @@ function MapPage() {
         onChange: () => setShowPopularPins((prev) => !prev)
       },
       {
+        key: 'bookmarked-pins',
+        label: 'Bookmarked pins',
+        iconUrl: MAP_MARKER_ICON_URLS.bookmarked,
+        ariaLabel: 'Toggle bookmarked pins',
+        checked: showBookmarkedPins,
+        onChange: () => setShowBookmarkedPins((prev) => !prev)
+      },
+      {
         key: 'open-spots',
         label: 'Open spots',
         iconUrl: MAP_MARKER_ICON_URLS.open,
@@ -522,6 +539,7 @@ function MapPage() {
       showFeaturedPins,
       showFriendPins,
       showFullEvents,
+      showBookmarkedPins,
       showOpenSpotPins,
       showPopularPins
     ]
@@ -585,15 +603,19 @@ function MapPage() {
     ]
   );
 
-  const filterGroups = useMemo(
-    () =>
-      [
-        { key: 'pin-types', title: 'Pin types', filters: baseFilterItems },
-        { key: 'highlights', title: 'Highlights & alerts', filters: highlightFilters },
-        { key: 'chat-tools', title: 'Chat overlays & tools', filters: chatFilterItems }
-      ].filter((group) => Array.isArray(group.filters) && group.filters.length > 0),
-    [baseFilterItems, chatFilterItems, highlightFilters]
-  );
+  const filterGroups = useMemo(() => {
+    const reorderedHighlights = Array.isArray(highlightFilters) ? [...highlightFilters] : [];
+    const bookmarkedIndex = reorderedHighlights.findIndex((entry) => entry.key === 'bookmarked-pins');
+    if (bookmarkedIndex > 0) {
+      const [bookmarked] = reorderedHighlights.splice(bookmarkedIndex, 1);
+      reorderedHighlights.unshift(bookmarked);
+    }
+    return [
+      { key: 'pin-types', title: 'Pin types', filters: baseFilterItems },
+      { key: 'highlights', title: 'Highlights & alerts', filters: reorderedHighlights },
+      { key: 'chat-tools', title: 'Chat overlays & tools', filters: chatFilterItems }
+    ].filter((group) => Array.isArray(group.filters) && group.filters.length > 0);
+  }, [baseFilterItems, chatFilterItems, highlightFilters]);
 
   return (
     <div className="map-page">

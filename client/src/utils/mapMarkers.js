@@ -34,6 +34,7 @@ export const MAP_MARKER_ICON_URLS = {
   popular: createPinIconUrl('#FF6AD5', '#4C1D95'),
   open: createPinIconUrl('#FFB347', '#7A3F00'),
   featured: createPinIconUrl('#A855F7', '#4C1D95'),
+  bookmarked: createPinIconUrl('#5D3889', '#2E155D'),
   chatMine: createPinIconUrl('#3EB8F0', '#0F172A'),
   chatAdmin: createPinIconUrl('#FF7043', '#5D1512'),
   teleport: createPinIconUrl('#0F172A', '#F4F4F5'),

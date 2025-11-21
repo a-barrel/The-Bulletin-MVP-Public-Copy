@@ -22,6 +22,7 @@ import resolveAssetUrl from "../utils/media";
 import toIdString from "../utils/ids";
 import usePinAttendees from "../hooks/usePinAttendees";
 import { useNetworkStatusContext } from "../contexts/NetworkStatusContext";
+import { useSocialNotificationsContext } from "../contexts/SocialNotificationsContext";
 import {
   DEFAULT_AVATAR,
   FALLBACK_NAMES,
@@ -120,6 +121,20 @@ export default function PinCard({
   const [bookmarkError, setBookmarkError] = useState(null);
   const viewerOwnsPin = Boolean(item?.viewerOwnsPin);
   const viewerIsAttending = Boolean(item?.viewerIsAttending);
+  const socialNotifications = useSocialNotificationsContext();
+  const friendLookup = useMemo(() => {
+    const entries = Array.isArray(socialNotifications.friendData?.friends)
+      ? socialNotifications.friendData.friends
+      : [];
+    const lookup = new Set();
+    entries.forEach((friend) => {
+      const id = toIdString(friend?.id ?? friend?._id ?? friend);
+      if (id) {
+        lookup.add(id);
+      }
+    });
+    return lookup;
+  }, [socialNotifications.friendData?.friends]);
 
   useEffect(() => {
     setIsBookmarked(derivedBookmark);
@@ -142,6 +157,15 @@ export default function PinCard({
   );
 
   const attendeesFeatureEnabled = showAttendeeAvatars && isEventPin;
+  const friendAttendingCount = useMemo(() => {
+    if (!isEventPin || !friendLookup.size || attendeeIds.length === 0) {
+      return 0;
+    }
+    return attendeeIds.reduce((total, id) => {
+      const normalized = toIdString(id);
+      return normalized && friendLookup.has(normalized) ? total + 1 : total;
+    }, 0);
+  }, [attendeeIds, friendLookup, isEventPin]);
 
   const { attendees } = usePinAttendees({
     pinId,
@@ -529,6 +553,17 @@ export default function PinCard({
                 aria-hidden="true"
               />
               <span>{attendeeTotal}</span>
+            </span>
+          )}
+          {isEventPin && friendAttendingCount > 0 && (
+            <span className="count-item friend-count" title="Friends attending">
+              <img
+                src={InterestedIcon}
+                alt=""
+                className="count-icon friend-count-icon"
+                aria-hidden="true"
+              />
+              <span>{friendAttendingCount}</span>
             </span>
           )}
         </div>

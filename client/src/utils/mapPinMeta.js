@@ -20,6 +20,12 @@ export function buildPinMeta(pin, { viewerId, friendIds } = {}) {
   const normalizedType = typeof pin?.type === 'string' ? pin.type.toLowerCase() : '';
   const isEvent = normalizedType === 'event';
   const isDiscussion = normalizedType === 'discussion';
+  const isBookmarked =
+    typeof pin?.viewerHasBookmarked === 'boolean'
+      ? pin.viewerHasBookmarked
+      : typeof pin?.isBookmarked === 'boolean'
+      ? pin.isBookmarked
+      : false;
   const participantLimit =
     typeof pin?.participantLimit === 'number' ? pin.participantLimit : undefined;
   const participantCount =
@@ -100,6 +106,9 @@ export function buildPinMeta(pin, { viewerId, friendIds } = {}) {
     if (isFull) {
       return 'full';
     }
+    if (isBookmarked) {
+      return 'bookmarked';
+    }
     if (isFriendCreator) {
       return 'friend';
     }
@@ -137,6 +146,7 @@ export function buildPinMeta(pin, { viewerId, friendIds } = {}) {
     discussionExpiresSoon,
     isFeatured,
     isPersonal,
+    isBookmarked,
     seatsRemaining,
     participantLimit,
     participantCount,
