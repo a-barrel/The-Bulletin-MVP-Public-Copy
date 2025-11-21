@@ -47,6 +47,7 @@ import runtimeConfig from './config/runtime';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from './firebase';
 import useViewerProfile from './hooks/useViewerProfile';
+import { viewerHasDeveloperAccess } from './utils/roles';
 
 const theme = createTheme({
   palette: {
@@ -265,6 +266,10 @@ function AppContent() {
       );
     });
   const isLocationBypassUser = Boolean(isPinpointBypass || hasAdminRoleBypass);
+  const isDeveloper = useMemo(
+    () => viewerHasDeveloperAccess(viewerProfile, { offlineOverride: runtimeConfig.isOffline }),
+    [viewerProfile]
+  );
 
   const socialNotifications = useSocialNotifications({
     enabled: !isOffline && !isAuthRoute && isAuthReady,
@@ -357,9 +362,20 @@ function AppContent() {
     }
   }, [lastCoreNavPath, lastMainNavPath, location]);
 
-  const navPages = useMemo(
+  const filteredPages = useMemo(
     () =>
       pages.filter((page) => {
+        if (page.id === 'debug-console' && !isDeveloper) {
+          return false;
+        }
+        return true;
+      }),
+    [isDeveloper, pages]
+  );
+
+  const navPages = useMemo(
+    () =>
+      filteredPages.filter((page) => {
         if (page.showInNav) {
           return true;
         }
@@ -368,7 +384,7 @@ function AppContent() {
         }
         return false;
       }),
-    [pages]
+    [filteredPages]
   );
 
   const navPathSet = useMemo(() => {
@@ -398,10 +414,10 @@ function AppContent() {
     return (
       navPages.find((page) => page.isDefault) ??
       navPages[0] ??
-      pages.find((page) => page.isDefault) ??
+      filteredPages.find((page) => page.isDefault) ??
       null
     );
-  }, [navPages, pages]);
+  }, [filteredPages, navPages]);
 
   const currentNavPath = useMemo(() => {
     if (!navPages.length) {
@@ -960,7 +976,7 @@ function AppContent() {
                       <Route path={routes.auth.forgotPassword} element={<ForgotPasswordPage />} />
                       <Route path={routes.auth.resetPassword} element={<ResetPasswordPage />} />
 
-                      {pages.map((page) => (
+                      {filteredPages.map((page) => (
                         <Route
                           key={page.id}
                           path={page.path}
@@ -968,7 +984,7 @@ function AppContent() {
                         />
                       ))}
 
-                      {pages.map((page) =>
+                      {filteredPages.map((page) =>
                         page.aliases.map((alias) => (
                           <Route
                             key={`${page.id}-alias-${alias}`}
