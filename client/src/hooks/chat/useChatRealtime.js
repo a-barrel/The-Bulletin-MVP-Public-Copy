@@ -5,6 +5,7 @@ import {
   createChatMessage,
   upsertChatPresence
 } from '../../api/mongoDataApi';
+import { playBadgeSound } from '../../utils/badgeSound';
 
 const PRESENCE_HEARTBEAT_MS = 30_000;
 const MESSAGES_REFRESH_MS = 7_000;

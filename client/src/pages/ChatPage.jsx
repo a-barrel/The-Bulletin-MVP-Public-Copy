@@ -27,8 +27,6 @@ import MarkUnreadChatAltIcon from '@mui/icons-material/MarkUnreadChatAlt';
 import CloseIcon from '@mui/icons-material/Close';
 import updatesIcon from '../assets/UpdateIcon.svg';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
-
-
 import Navbar from '../components/Navbar';
 import MessageBubble from '../components/MessageBubble';
 import ReportContentDialog from '../components/ReportContentDialog';
@@ -38,6 +36,11 @@ import ChatComposerFooter from '../components/chat/ChatComposerFooter';
 import ChatModerationDialog from '../components/chat/ChatModerationDialog';
 import DirectThreadList from '../components/chat/DirectThreadList';
 import FriendsListPanel from '../components/friends/FriendsListPanel';
+import ChatSharePinModal from '../components/chat/ChatSharePinModal';
+import useBookmarksManager from '../hooks/useBookmarksManager';
+import toIdString from '../utils/ids';
+import resolveAssetUrl from '../utils/media';
+import { routes } from '../routes';
 import FriendRequestsDialog from '../components/friends/FriendRequestsDialog';
 import useDirectMessages from '../hooks/useDirectMessages';
 import useAttachmentManager, {
@@ -128,6 +131,11 @@ function ChatPage() {
     refreshUnreadCount,
     announceBadgeEarned
   });
+  const {
+    bookmarks,
+    refresh: refreshBookmarks,
+    isLoading: isLoadingBookmarks
+  } = useBookmarksManager({ authUser, authLoading, isOffline, hideFullEvents: true });
 
   const {
     hasAccess: moderationHasAccess,
@@ -186,6 +194,7 @@ function ChatPage() {
     durationMinutes: '15'
   });
   const [lastConversationTab, setLastConversationTab] = useState('rooms');
+  const [shareModalContext, setShareModalContext] = useState(null); // 'room' | 'direct' | null
   const {
     channelTab,
     channelDialogTab,
@@ -244,6 +253,11 @@ function ChatPage() {
   const directMessageCount = Array.isArray(directThreadDetail?.messages)
     ? directThreadDetail.messages.length
     : 0;
+
+  const shareableBookmarks = useMemo(
+    () => (Array.isArray(bookmarks) ? bookmarks : []),
+    [bookmarks]
+  );
 
   const {
     containerRef,
@@ -1016,6 +1030,105 @@ function ChatPage() {
     ]
   );
 
+  const handleOpenSharePin = useCallback(
+    (context) => {
+      if (isOffline) {
+        return;
+      }
+      if (isLoadingBookmarks) {
+        refreshBookmarks();
+      }
+      setShareModalContext(context);
+    },
+    [isLoadingBookmarks, isOffline, refreshBookmarks]
+  );
+
+  const handleCloseSharePin = useCallback(() => {
+    setShareModalContext(null);
+  }, []);
+
+  const handleSharePinSelect = useCallback(
+    async (pin) => {
+      if (!pin) {
+        setShareModalContext(null);
+        return;
+      }
+      const pinId =
+        toIdString(pin.pinId) ??
+        toIdString(pin._id) ??
+        toIdString(pin.id) ??
+        toIdString(pin.pin_id);
+      const title = pin.title || 'Shared pin';
+      const link = pinId ? routes.pin.byId(pinId) : '';
+      const message = `Shared pin: ${title}`;
+      const cover =
+        resolveAssetUrl(pin.coverPhoto, null) ||
+        (Array.isArray(pin.photos) ? resolveAssetUrl(pin.photos[0], null) : null);
+      const thumb = cover || (Array.isArray(pin.photos) ? resolveAssetUrl(pin.photos[1], null) : null);
+      const locationLabel =
+        (pin.approximateAddress && typeof pin.approximateAddress === 'object'
+          ? [pin.approximateAddress.city, pin.approximateAddress.state, pin.approximateAddress.country]
+              .filter((part) => typeof part === 'string' && part.trim())
+              .join(', ') || pin.approximateAddress.formatted
+          : null) ||
+        (pin.address && typeof pin.address === 'object'
+          ? pin.address.formatted ||
+            [pin.address.line1, pin.address.city, pin.address.state, pin.address.country]
+              .filter((part) => typeof part === 'string' && part.trim())
+              .join(', ')
+          : typeof pin.address === 'string'
+          ? pin.address
+          : null);
+      const pinShareMeta = {
+        pinId,
+        title,
+        type: pin.type,
+        link,
+        location: locationLabel || null,
+        thumb
+      };
+      const attachment = {
+        url: cover || link || '/',
+        description: `PINSHARE:${JSON.stringify(pinShareMeta)}`,
+        pinId,
+        mimeType: 'application/x-pinshare'
+      };
+      const attachments = cover || link ? [attachment] : [];
+
+      if (shareModalContext === 'room') {
+        const sent = await handleSendMessage({ preventDefault() {} }, { attachments, messageOverride: message });
+        if (sent !== false) {
+          setMessageDraft('');
+          resetRoomAttachments();
+        }
+      } else if (shareModalContext === 'direct' && selectedDirectThreadId) {
+        try {
+          await sendDirectMessage({
+            threadId: selectedDirectThreadId,
+            body: message,
+            attachments
+          });
+          setDmMessageDraft('');
+          resetDmAttachments();
+        } catch {
+          // errors surfaced via send status
+        }
+      }
+
+      setShareModalContext(null);
+    },
+    [
+      handleSendMessage,
+      resetRoomAttachments,
+      sendDirectMessage,
+      selectedDirectThreadId,
+      setDmMessageDraft,
+      setMessageDraft,
+      shareModalContext,
+      resetDmAttachments
+    ]
+  );
+
   const handleDirectMessageKeyDown = useCallback(
     (event) => {
       const isPlainEnter =
@@ -1709,6 +1822,7 @@ function ChatPage() {
               containerClassName="chat-input-container"
               onAddAttachment={handleOpenDmAttachmentPicker}
               addAttachmentTooltip="Upload image or GIF"
+              onSharePin={() => handleOpenSharePin('direct')}
               inputRef={dmComposerInputRef}
               gifPreview={dmComposerGifPreview}
               gifPreviewError={dmGifPreviewError}
@@ -1744,6 +1858,7 @@ function ChatPage() {
               containerClassName="chat-input-container"
               onAddAttachment={handleOpenRoomAttachmentPicker}
               addAttachmentTooltip="Upload image or GIF"
+              onSharePin={() => handleOpenSharePin('room')}
               inputRef={roomComposerInputRef}
               gifPreview={composerGifPreview}
               gifPreviewError={gifPreviewError}
@@ -1766,6 +1881,13 @@ function ChatPage() {
               <Alert severity="error">{presenceError}</Alert>
             </Box>
           ) : null}
+
+          <ChatSharePinModal
+            open={Boolean(shareModalContext)}
+            bookmarks={shareableBookmarks}
+            onClose={handleCloseSharePin}
+            onSelect={handleSharePinSelect}
+          />
 
           <ReportContentDialog
             open={reportDialogOpen}
