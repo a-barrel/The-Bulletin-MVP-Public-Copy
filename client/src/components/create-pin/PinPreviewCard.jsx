@@ -86,8 +86,7 @@ function PinPreviewCard({
   viewerAvatarUrl,
   photoAssets,
   coverPhotoId,
-  pinDistanceLabel,
-  activeTheme
+  pinDistanceLabel
 }) {
   const copy = PIN_TYPE_COPY[pinType] ?? PIN_TYPE_COPY.event;
   const coverPhotoUrl = useMemo(

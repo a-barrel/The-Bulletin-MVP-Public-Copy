@@ -10,6 +10,11 @@ const createPinIconUrl = (fill, stroke = '#210A3C') => {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 };
 
+const createCircleIconUrl = (fill, stroke = '#210A3C') => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="12" fill="${fill}" stroke="${stroke}" stroke-width="2"/><circle cx="18" cy="18" r="6" fill="rgba(255,255,255,0.6)"/></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+};
+
 const createRingIconUrl = ({
   stroke,
   strokeWidth = 3.5,
@@ -38,6 +43,7 @@ export const MAP_MARKER_ICON_URLS = {
   chatMine: createPinIconUrl('#3EB8F0', '#0F172A'),
   chatAdmin: createPinIconUrl('#FF7043', '#5D1512'),
   teleport: createPinIconUrl('#0F172A', '#F4F4F5'),
+  clusterToggle: createCircleIconUrl('#8A4FD0', '#3C1A74'),
   interactionRadiusOff: createRingIconUrl({
     stroke: 'rgba(42, 154, 244, 0.45)',
     glow: 'rgba(42, 154, 244, 0.15)',

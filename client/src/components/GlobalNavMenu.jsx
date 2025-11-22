@@ -164,7 +164,6 @@ export default function GlobalNavMenu({
   const hiddenQuickNavRef = useRef(new Set());
   const [bookmarkShortcuts, setBookmarkShortcuts] = useState([]);
   const bookmarkShortcutsRef = useRef(bookmarkShortcuts);
-  const [bookmarkStatus, setBookmarkStatus] = useState(null);
   const { viewer: viewerProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
 
   const translateNavItem = useCallback(
@@ -357,9 +356,6 @@ export default function GlobalNavMenu({
 
   useEffect(() => {
     if (!open || isOffline) {
-      if (isOffline && open && !bookmarkShortcuts.length) {
-        setBookmarkStatus(t('nav.bookmarkQuickNav.offline'));
-      }
       return;
     }
 
@@ -374,7 +370,6 @@ export default function GlobalNavMenu({
     }
 
     meta.loading = true;
-    setBookmarkStatus(null);
     fetchBookmarkCollections()
       .then((collections) => {
         const items = computeBookmarkQuickNav(Array.isArray(collections) ? collections : []);
@@ -395,9 +390,7 @@ export default function GlobalNavMenu({
           }
         }
       })
-      .catch((error) => {
-        setBookmarkStatus(error?.message || t('nav.bookmarkQuickNav.loadError'));
-      })
+      .catch(() => {})
       .finally(() => {
         bookmarkFetchMetaRef.current.loading = false;
       });

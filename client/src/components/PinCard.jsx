@@ -202,7 +202,7 @@ export default function PinCard({
       name: String(name),
       avatar: resolveLibraryAvatar(idx)
     }));
-  }, [isEventPin, interestedNames, baseKey, participantCount]);
+  }, [attendeesFeatureEnabled, isEventPin, interestedNames, baseKey, participantCount]);
 
   const resolvedAttendees =
     attendeesFeatureEnabled && attendees.length

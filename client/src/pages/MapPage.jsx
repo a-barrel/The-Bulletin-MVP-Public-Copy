@@ -152,6 +152,9 @@ function MapPage() {
   const [showInteractionRadius, setShowInteractionRadius] = useState(
     initialFilterState?.showInteractionRadius ?? false
   );
+  const [clusterPins, setClusterPins] = useState(
+    initialFilterState?.clusterPins ?? true
+  );
   const [filtersCollapsed, setFiltersCollapsed] = useState(
     initialFilterState?.filtersCollapsed ?? false
   );
@@ -218,6 +221,7 @@ function MapPage() {
       showAllChatRoomsToggle,
       tapToTeleportEnabled,
       showInteractionRadius,
+      clusterPins,
       filtersCollapsed
     };
     try {
@@ -241,6 +245,7 @@ function MapPage() {
     showAllChatRoomsToggle,
     tapToTeleportEnabled,
     showInteractionRadius,
+    clusterPins,
     filtersCollapsed
   ]);
 
@@ -395,16 +400,6 @@ function MapPage() {
   const handleTogglePersonalPins = useCallback((event) => {
     setShowPersonalPins(Boolean(event?.target?.checked));
   }, []);
-  const handleHideFullEventsToggle = useCallback(
-    (event) => {
-      const nextValue = Boolean(event?.target?.checked);
-      if (hideFullPreferenceError) {
-        clearPreferenceError();
-      }
-      setHideFullEvents(nextValue);
-    },
-    [clearPreferenceError, hideFullPreferenceError, setHideFullEvents]
-  );
   const handleToggleFullEventsFilter = useCallback(() => {
     if (hideFullPreferenceError) {
       clearPreferenceError();
@@ -548,6 +543,14 @@ function MapPage() {
   const chatFilterItems = useMemo(
     () => [
       {
+        key: 'cluster-pins',
+        label: 'Supercluster',
+        iconUrl: MAP_MARKER_ICON_URLS.clusterToggle,
+        ariaLabel: clusterPins ? 'Supercluster on' : 'Supercluster off',
+        checked: clusterPins,
+        onChange: () => setClusterPins((prev) => !prev)
+      },
+      {
         key: 'interaction-radius',
         label: 'Show interaction radius',
         iconUrl: showInteractionRadius
@@ -595,6 +598,7 @@ function MapPage() {
       }
     ],
     [
+      clusterPins,
       canUseAdminTools,
       showAllChatRoomsToggle,
       showInteractionRadius,
@@ -651,6 +655,7 @@ function MapPage() {
           nearbyUsers={nearbyUsers}
           pins={mapPinsForRender}
           userRadiusMeters={DEFAULT_MAX_DISTANCE_METERS}
+          clusterPins={clusterPins}
           selectedPinId={showChatRooms ? selectedChatRoomId : undefined}
           onPinSelect={showChatRooms ? handleMapPinSelect : undefined}
           onPinView={handleViewPinDetails}
