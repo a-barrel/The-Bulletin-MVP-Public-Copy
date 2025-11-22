@@ -209,7 +209,7 @@ export default function ListPage() {
       ...prev,
       status: defaultFilters.status
     }));
-  }, [defaultFilters.status]);
+  }, [defaultFilters.status, setFilters]);
 
   const handleClearAllFilters = useCallback(() => {
     handleClearFilters();

@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom';
 
 import { TextEncoder, TextDecoder } from 'util';
+import '../src/i18n/config';
 
 try {
   const { fetch: undiciFetch, Headers, Request, Response } = require('undici');

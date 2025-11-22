@@ -65,7 +65,6 @@ function UpdatesPage() {
     isPullRefreshing,
     handleDismissUpdatesError,
     handleMarkRead,
-    handleMarkAllRead,
     handleDeleteUpdate,
     handleClearAllUpdates
   } = useUpdatesFeed();
@@ -107,9 +106,8 @@ function UpdatesPage() {
     return counts;
   }, [updates]);
 
-  const normalizedFilteredUpdates = Array.isArray(filteredUpdates) ? filteredUpdates : [];
-
   const tabFilteredUpdates = useMemo(() => {
+    const normalizedFilteredUpdates = Array.isArray(filteredUpdates) ? filteredUpdates : [];
     const primaryFiltered = (() => {
       if (selectedTab === 'All') {
         return normalizedFilteredUpdates;
@@ -143,7 +141,7 @@ function UpdatesPage() {
       }
       return true;
     });
-  }, [normalizedFilteredUpdates, secondaryTab, selectedTab]);
+  }, [filteredUpdates, secondaryTab, selectedTab]);
 
   return (
     <Box className="updates-page">

@@ -254,11 +254,16 @@ export default function ListFiltersOverlay({
 
   const handleApply = () => {
     const normalized = normalizeFilters(localFilters, defaultFilters);
-    onApply({
-      ...normalized,
+    const { popularSort, ...rest } = normalized;
+    const payload = {
+      ...rest,
+      ...(popularSort ? { popularSort } : {}),
       types: [...normalized.types],
       categories: [...normalized.categories],
       friendEngagements: [...(normalized.friendEngagements || [])]
+    };
+    onApply({
+      ...payload
     });
     onClose();
   };

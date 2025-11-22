@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import formatDateTime from '../utils/dates';
-import { metersToMiles } from '../utils/geo';
 import { DEFAULT_PROFILE_IMAGE_REGEX } from '../utils/media';
 import {
   resolveProfileAvatarUrl,

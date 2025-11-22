@@ -195,7 +195,7 @@ function ClusterLayer({ pins, enabled, renderPin }) {
       prevClustersRef.current = next;
       setClusters(next);
     }
-  }, [enabled, getClusters, map, setClusters]);
+  }, [clusters.length, enabled, getClusters, map, setClusters]);
 
   useEffect(() => {
     updateClusters();
@@ -363,7 +363,6 @@ const Map = ({
   onPinSelect,
   onPinView,
   onChatRoomView,
-  onCurrentUserView,
   selectedPinId,
   centerOverride,
   userRadiusMeters,

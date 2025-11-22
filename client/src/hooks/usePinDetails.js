@@ -11,11 +11,9 @@ import {
   fetchCurrentUserProfile,
   sharePin
 } from '../api/mongoDataApi';
-import { routes } from '../routes';
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { logClientError } from '../utils/clientLogger';
-import reportClientError from '../utils/reportClientError';
 import {
   resolveMediaAssetUrl,
   resolveUserAvatarUrl,
@@ -268,6 +266,7 @@ const usePinBookmarkState = ({
     pin,
     pinExpired,
     pinId,
+    isUpdatingBookmark,
     setPin
   ]);
 
@@ -395,6 +394,7 @@ const usePinAttendanceState = ({
     pin,
     pinExpired,
     pinId,
+    setPin,
     syncAttendanceFromPayload,
     syncBookmarkFromPayload
   ]);
@@ -877,7 +877,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         }
       }
     },
-    [pinId, isOffline, previewMode, syncAttendanceFromPayload, syncBookmarkFromPayload, updatePinHydrationSource]
+    [pinId, isOffline, previewMode, setPin, syncAttendanceFromPayload, syncBookmarkFromPayload, updatePinHydrationSource]
   );
 
   // Rehydrate from the API whenever the seeded pin snapshot changes.
@@ -1058,7 +1058,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     }
 
     return items;
-  }, [pin, coverImageUrl]);
+  }, [pin]);
 
   const coordinates = useMemo(
     () => parseCoordinates(pin?.coordinates?.coordinates),

@@ -12,7 +12,6 @@ const MESSAGES_REFRESH_MS = 7_000;
 
 export default function useChatRealtime({
   authUser,
-  isOffline,
   selectedRoomId,
   locationParams,
   announceBadgeEarned

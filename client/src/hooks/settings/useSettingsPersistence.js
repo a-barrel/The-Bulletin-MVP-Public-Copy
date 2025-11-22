@@ -24,7 +24,7 @@ export default function useSettingsPersistence({
       return;
     }
     if (isOffline) {
-      setSaveStatus({ type: 'error', message: 'Reconnect to save your settings.' });
+      setSaveStatus({ type: 'warning', message: 'Reconnect to save your settings.' });
       return;
     }
     if (!hasChanges) {

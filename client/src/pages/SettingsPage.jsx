@@ -37,7 +37,6 @@ import useSettingsManager, {
   RADIUS_MIN
 } from '../hooks/useSettingsManager';
 import { metersToMiles } from '../utils/geo';
-import runtimeConfig from '../config/runtime';
 import {
   submitAnonymousFeedback,
   requestDataExport,
@@ -105,9 +104,6 @@ function SettingsPage() {
     handleQuietHoursChange,
     handleNotificationVerbosityChange,
     handleApplyNotificationBundle,
-    handleLocationSharingToggle,
-    handleLocationAutoShareChange,
-    handleGlobalMapVisibilityToggle,
     handleStatsVisibilityToggle,
     handleFilterCussWordsToggle,
     handleDmPermissionChange,
@@ -154,9 +150,6 @@ function SettingsPage() {
   const autoExportReminders =
     settings.autoExportReminders ?? DEFAULT_SETTINGS.autoExportReminders;
   const betaOptIn = settings.betaOptIn ?? DEFAULT_SETTINGS.betaOptIn;
-  const locationAutoShareHours = DEFAULT_SETTINGS.locationAutoShareHours;
-  const globalMapVisible = DEFAULT_SETTINGS.globalMapVisible;
-
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [feedbackContact, setFeedbackContact] = useState('');

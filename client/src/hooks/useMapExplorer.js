@@ -21,6 +21,8 @@ import {
   SPOOF_MIN_MILES,
   SPOOF_STEP_INCREMENT
 } from '../utils/mapExplorerConstants';
+
+export { DEFAULT_SPOOF_STEP_MILES, SPOOF_MAX_MILES };
 import { hasValidCoordinates } from '../utils/mapLocation';
 import useMapViewerProfile from './useMapViewerProfile';
 import useMapNearbyData from './useMapNearbyData';
@@ -108,7 +110,6 @@ export default function useMapExplorer({
   const {
     showChatRooms,
     setShowChatRooms,
-    chatRooms,
     chatRoomPins,
     isLoadingChatRooms,
     chatRoomsError,

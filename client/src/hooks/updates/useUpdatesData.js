@@ -66,7 +66,8 @@ export default function useUpdatesData({ profile, unreadCallbacks = {} }) {
         return;
       }
       metrics.total += 1;
-      const category = (update?.category || deriveUpdateCategory(update)) ?? 'other';
+      const category =
+        update?.derivedCategory || update?.category || deriveUpdateCategory(update) || 'other';
       if (category === 'bookmark') {
         metrics.bookmark += 1;
       } else if (category === 'badge') {
@@ -103,7 +104,11 @@ export default function useUpdatesData({ profile, unreadCallbacks = {} }) {
         const result = await fetchUpdates({ userId: profile._id, limit: 100 });
         setUpdates(
           Array.isArray(result)
-            ? result.map((item) => ({ ...item, category: deriveUpdateCategory(item) }))
+            ? result.map((item) => {
+                const derived = deriveUpdateCategory(item);
+                const category = derived === 'bookmark' ? 'other' : derived;
+                return { ...item, category, derivedCategory: derived };
+              })
             : []
         );
       } catch (error) {

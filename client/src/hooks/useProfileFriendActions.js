@@ -8,7 +8,6 @@ import {
 export default function useProfileFriendActions({
   viewerProfile,
   setViewerProfile,
-  effectiveUser,
   setFetchedUser,
   targetProfileId,
   isViewingSelf

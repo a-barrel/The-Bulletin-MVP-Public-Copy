@@ -380,10 +380,10 @@ function PinDetails() {
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const showAnalytics = isEventPin && (isOwnPin || canModeratePins);
 
-  const analyticsSeries = analytics?.series || [];
-  const analyticsTotals = analytics?.totals || {};
-  const analyticsMilestones = analytics?.milestones || {};
-  const analyticsBuckets = analytics?.hourlyBuckets || [];
+  const analyticsSeries = useMemo(() => analytics?.series || [], [analytics]);
+  const analyticsTotals = useMemo(() => analytics?.totals || {}, [analytics]);
+  const analyticsMilestones = useMemo(() => analytics?.milestones || {}, [analytics]);
+  const analyticsBuckets = useMemo(() => analytics?.hourlyBuckets || [], [analytics]);
 
   const analyticsSparklinePoints = useMemo(() => {
     if (!analyticsSeries.length) {

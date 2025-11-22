@@ -337,14 +337,14 @@ function ChatPage() {
     if (channelTab === 'direct' && directMessagesHasAccess === false) {
       setChannelTab('rooms');
     }
-  }, [channelTab, directMessagesHasAccess]);
+  }, [channelTab, directMessagesHasAccess, setChannelTab]);
 
 
   useEffect(() => {
     if (channelDialogTab === 'direct' && directMessagesHasAccess === false) {
       setChannelDialogTab('rooms');
     }
-  }, [channelDialogTab, directMessagesHasAccess]);
+  }, [channelDialogTab, directMessagesHasAccess, setChannelDialogTab]);
 
   useEffect(() => {
     if (channelTab === 'direct') {
@@ -407,7 +407,7 @@ function ChatPage() {
 
     setChannelTab('rooms');
     setChannelDialogTab((prev) => (prev === 'direct' ? 'rooms' : prev));
-  }, [directMessagesHasAccess, location.search, selectDirectThread]);
+  }, [directMessagesHasAccess, location.search, selectDirectThread, setChannelDialogTab, setChannelTab]);
 
   useEffect(() => {
     if (!moderationActionStatus) {
@@ -508,7 +508,7 @@ function ChatPage() {
       setChannelDialogTab('rooms');
       setIsChannelDialogOpen(false);
     },
-    [handleSelectRoom, selectDirectThread]
+    [handleSelectRoom, selectDirectThread, setChannelDialogTab, setChannelTab]
   );
 
   const handleSelectDirectThreadId = useCallback(
@@ -519,7 +519,7 @@ function ChatPage() {
       setChannelDialogTab('direct');
       setIsChannelDialogOpen(false);
     },
-    [selectDirectThread, handleSelectRoom]
+    [handleSelectRoom, selectDirectThread, setChannelDialogTab, setChannelTab]
   );
 
   useEffect(() => {
@@ -791,7 +791,7 @@ function ChatPage() {
       setChannelDialogTab('rooms');
     }
     setIsChannelDialogOpen(true);
-  }, [channelTab, directMessagesHasAccess]);
+  }, [channelTab, directMessagesHasAccess, setChannelDialogTab]);
 
   const handleChannelDialogTabChange = useCallback(
     (event, value) => {
@@ -800,7 +800,7 @@ function ChatPage() {
       }
       setChannelDialogTab(value);
     },
-    [directMessagesHasAccess]
+    [directMessagesHasAccess, setChannelDialogTab]
   );
 
   const handleOpenRoomAttachmentPicker = useCallback(() => {

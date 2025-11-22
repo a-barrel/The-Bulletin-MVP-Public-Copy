@@ -61,11 +61,7 @@ export function resolveAssetUrl(asset, options) {
       ? { fallback: options }
       : {};
 
-  const {
-    fallback,
-    baseUrl = DEFAULT_BASE_URL,
-    keys
-  } = normalizedOptions;
+  const { fallback, baseUrl = DEFAULT_BASE_URL } = normalizedOptions;
   const hasCustomFallback = Object.prototype.hasOwnProperty.call(normalizedOptions, 'fallback');
 
   const shouldReturnRelativeOffline = (path) =>
