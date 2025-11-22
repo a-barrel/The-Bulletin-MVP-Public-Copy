@@ -16,6 +16,8 @@ import {
   Tabs,
   Tab
 } from '@mui/material';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch from '@mui/material/Switch';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SaveIcon from '@mui/icons-material/Save';
@@ -112,6 +114,7 @@ function SettingsPage() {
     handleOpenBlockedOverlay,
     handleCloseBlockedOverlay,
     handleUnblockUser,
+    handleBetaToggle,
     handleReset,
     handleSave,
     handleSignOut
@@ -148,6 +151,7 @@ function SettingsPage() {
   const digestFrequency = settings.digestFrequency ?? DEFAULT_SETTINGS.digestFrequency;
   const autoExportReminders =
     settings.autoExportReminders ?? DEFAULT_SETTINGS.autoExportReminders;
+  const betaOptIn = settings.betaOptIn ?? DEFAULT_SETTINGS.betaOptIn;
   const locationAutoShareHours = DEFAULT_SETTINGS.locationAutoShareHours;
   const globalMapVisible = DEFAULT_SETTINGS.globalMapVisible;
 
@@ -614,6 +618,33 @@ function SettingsPage() {
                 isLoadingTokens={isLoadingTokens}
                 onRevokeToken={handleRevokeToken}
               />
+              <Box
+                sx={{
+                  mt: 3,
+                  p: 2.5,
+                  borderRadius: 3,
+                  border: `1px solid ${settingsPalette.borderSubtle}`,
+                  backgroundColor: '#fff'
+                }}
+              >
+                <Typography variant="h6" sx={{ color: settingsPalette.accent, fontWeight: 700, mb: 1 }}>
+                  Beta features
+                </Typography>
+                <Typography variant="body2" sx={{ color: settingsPalette.textPrimary, mb: 1.5 }}>
+                  Opt in to preview experimental features. Turn off anytime if you prefer stable features only.
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={betaOptIn}
+                      onChange={(event) => handleBetaToggle(event.target.checked)}
+                      color="primary"
+                    />
+                  }
+                  label="Enable beta features"
+                  sx={{ color: settingsPalette.textPrimary }}
+                />
+              </Box>
             </TabPanel>
           </Stack>
         </Paper>

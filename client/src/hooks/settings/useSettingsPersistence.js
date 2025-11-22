@@ -42,6 +42,7 @@ export default function useSettingsPersistence({
           radiusPreferenceMeters: settings.radiusPreferenceMeters,
           filterCussWords: settings.filterCussWords,
           statsPublic: settings.statsPublic,
+          betaOptIn: settings.betaOptIn ?? DEFAULT_SETTINGS.betaOptIn,
           dmPermission: settings.dmPermission,
           digestFrequency: settings.digestFrequency,
           notifications: { ...(settings.notifications || DEFAULT_SETTINGS.notifications) },

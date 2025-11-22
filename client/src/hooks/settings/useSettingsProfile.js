@@ -32,6 +32,7 @@ const hydrateSettingsFromProfile = (result) => ({
   locationSharingEnabled: false,
   filterCussWords: result?.preferences?.filterCussWords ?? DEFAULT_SETTINGS.filterCussWords,
   statsPublic: result?.preferences?.statsPublic ?? DEFAULT_SETTINGS.statsPublic,
+  betaOptIn: result?.preferences?.betaOptIn ?? DEFAULT_SETTINGS.betaOptIn,
   dmPermission: result?.preferences?.dmPermission ?? DEFAULT_SETTINGS.dmPermission,
   digestFrequency: result?.preferences?.digestFrequency ?? DEFAULT_SETTINGS.digestFrequency,
   autoExportReminders:

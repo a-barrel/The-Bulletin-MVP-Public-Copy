@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS = {
   radiusPreferenceMeters: 16093,
   filterCussWords: false,
   statsPublic: true,
+  betaOptIn: false,
   dmPermission: 'everyone',
   digestFrequency: 'weekly',
   autoExportReminders: false,
@@ -192,6 +193,17 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
     [logSettingsEvent, setSaveStatus, setSettings]
   );
 
+  const handleBetaToggle = useCallback(
+    (value) => {
+      setSettings((prev) => ({
+        ...prev,
+        betaOptIn: typeof value === 'boolean' ? value : !prev.betaOptIn
+      }));
+      logSettingsEvent('beta-opt-toggle', { enabled: value });
+    },
+    [logSettingsEvent, setSettings]
+  );
+
   const handleQuickMuteNotifications = useCallback(
     (hours = 4) => {
       const duration = Math.max(0.5, Number(hours) || 4);
@@ -332,6 +344,7 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
     handleOpenBlockedOverlay,
     handleCloseBlockedOverlay,
     handleUnblockUser,
+    handleBetaToggle,
     handleReset,
     handleSave,
     handleSignOut
