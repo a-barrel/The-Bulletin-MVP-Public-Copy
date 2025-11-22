@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import './ForgotPasswordPage.css';
@@ -11,6 +12,7 @@ import { mapPasswordResetError } from '../utils/authErrors';
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
@@ -22,7 +24,10 @@ function ForgotPasswordPage() {
     setError(null);
     setMessage(null);
 
-    const emailErr = validateAuthEmail(email);
+    const emailErr = validateAuthEmail(email, {
+      requiredMessage: t('auth.errors.emailRequired'),
+      invalidMessage: t('auth.errors.emailInvalid')
+    });
     setEmailError(emailErr);
 
     if (emailErr) {
@@ -32,9 +37,9 @@ function ForgotPasswordPage() {
 
     try {
       await sendPasswordResetEmail(auth, email.trim());
-      setMessage('If this email is in use, a password reset email has been sent.');
+      setMessage(t('auth.forgot.success'));
     } catch (err) {
-      setError(mapPasswordResetError(err?.code));
+      setError(mapPasswordResetError(err?.code, t));
       triggerShake();
     }
   };
@@ -52,11 +57,12 @@ function ForgotPasswordPage() {
     <AuthPageLayout
       shake={shake}
       onBack={() => navigate(-1)}
-      title="Forgot Password?"
+      title={t('auth.forgot.title')}
+      backButtonAriaLabel={t('auth.back')}
       alerts={alerts}
     >
       <p className="instruction-text">
-        Enter the email of the account you are trying to access.
+        {t('auth.forgot.instruction')}
       </p>
 
       <form onSubmit={handleEmailSubmission} className={"page-form"}>
@@ -65,14 +71,16 @@ function ForgotPasswordPage() {
           onChange={(event) => setEmail(event.target.value)}
           error={emailError}
           onErrorChange={setEmailError}
-          placeholder="Enter Email"
+          placeholder={t('auth.placeholders.email')}
+          requiredMessage={t('auth.errors.emailRequired')}
+          invalidMessage={t('auth.errors.emailInvalid')}
         />
         
         <button 
           type="submit" 
           className="forgot-password-page-submit-email-btn"
         >
-          Submit
+          {t('auth.submit')}
         </button>
       </form>
     </AuthPageLayout>

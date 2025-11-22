@@ -205,7 +205,7 @@ export async function insertLocationUpdate(input) {
   return payload;
 }
 
-export async function fetchNearbyUsers(query) {
+export async function fetchNearbyUsers() {
   // Location sharing between users is disabled; return an empty list.
   return [];
 }

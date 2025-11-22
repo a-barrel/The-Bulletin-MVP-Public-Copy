@@ -244,7 +244,7 @@ function AppContent() {
   const isAuthReady = !authLoading && !!firebaseAuthUser;
   const isLoginRoute = location.pathname === routes.auth.login;
   const shouldLoadViewerProfile = isAuthReady && !isAuthRoute;
-  const { viewer: viewerProfile, isLoading: isViewerProfileLoading } = useViewerProfile({
+  const { viewer: viewerProfile } = useViewerProfile({
     enabled: shouldLoadViewerProfile
   });
   const isPinpointBypass =

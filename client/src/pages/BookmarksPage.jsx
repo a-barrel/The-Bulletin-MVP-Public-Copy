@@ -107,7 +107,6 @@ function BookmarksPage() {
     viewHistory,
     clearHistory,
     isClearingHistory,
-    isHistoryLoading,
     historyError,
     dismissHistoryError,
     refreshHistory

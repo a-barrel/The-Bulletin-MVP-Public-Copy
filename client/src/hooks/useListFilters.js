@@ -12,9 +12,7 @@ export const DEFAULT_LIST_FILTERS = {
   popularSort: null
 };
 
-const FRIEND_ENGAGEMENT_VALUE_SET = new Set(
-  FRIEND_ENGAGEMENT_OPTIONS.map((option) => option.value)
-);
+const FRIEND_ENGAGEMENT_VALUE_SET = new Set(FRIEND_ENGAGEMENT_OPTIONS);
 
 const sanitizeFriendEngagements = (input) => {
   if (!Array.isArray(input) || input.length === 0) {

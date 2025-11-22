@@ -3,6 +3,7 @@ import ButtonBase from '@mui/material/ButtonBase';
 import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { useTranslation } from 'react-i18next';
 import ProfileSection from './ProfileSection';
 import FriendBadge from '../FriendBadge';
 
@@ -12,17 +13,19 @@ function ProfileMutualFriends({
   onSelectFriend,
   resolveAvatarUrl
 }) {
+  const { t } = useTranslation();
+
   if (mutualFriendCount === null || mutualFriendCount === undefined) {
     return null;
   }
 
   return (
-    <ProfileSection title="Mutual friends">
+    <ProfileSection title={t('profile.mutual.title')}>
       {mutualFriendCount > 0 ? (
         <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={2}>
           {mutualFriendPreview.map((friend) => {
             const friendId = friend?._id || friend?.id || friend?.userId;
-            const friendName = friend?.displayName || friend?.username || friend?.email || 'Friend';
+            const friendName = friend?.displayName || friend?.username || friend?.email || t('profile.mutual.friendFallback');
             return (
               <ButtonBase
                 key={friendId || friendName}
@@ -40,7 +43,7 @@ function ProfileMutualFriends({
                   alt={friendName}
                   sx={{ width: 56, height: 56, mb: 0.5 }}
                 >
-                  {friendName?.charAt(0)?.toUpperCase() || 'F'}
+                  {friendName?.charAt(0)?.toUpperCase() || t('profile.mutual.friendInitial')}
                 </Avatar>
                 <Typography
                   variant="caption"
@@ -55,7 +58,7 @@ function ProfileMutualFriends({
           })}
           {mutualFriendCount > mutualFriendPreview.length ? (
             <Chip
-              label={`+${mutualFriendCount - mutualFriendPreview.length} more`}
+              label={t('profile.mutual.more', { count: mutualFriendCount - mutualFriendPreview.length })}
               variant="outlined"
               sx={{ alignSelf: 'center' }}
             />
@@ -63,7 +66,7 @@ function ProfileMutualFriends({
         </Stack>
       ) : (
         <Typography variant="body2" color="text.secondary">
-          You have no mutual friends yet. Start connecting!
+          {t('profile.mutual.empty')}
         </Typography>
       )}
     </ProfileSection>

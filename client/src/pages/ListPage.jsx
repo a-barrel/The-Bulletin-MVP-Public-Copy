@@ -26,6 +26,7 @@ import usePinCategories from '../hooks/usePinCategories';
 import useOfflineNavigation from '../hooks/useOfflineNavigation';
 import useViewerProfile from '../hooks/useViewerProfile';
 import useHideFullEventsPreference from '../hooks/useHideFullEventsPreference';
+import { useTranslation } from 'react-i18next';
 
 export const pageConfig = {
   id: 'list',
@@ -57,12 +58,8 @@ const paginationSx = {
   }
 };
 
-const FRIEND_ENGAGEMENT_LABEL_LOOKUP = FRIEND_ENGAGEMENT_OPTIONS.reduce((acc, option) => {
-  acc[option.value] = option.chipLabel || option.label;
-  return acc;
-}, {});
-
 export default function ListPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
   const { location: sharedLocation } = useLocationContext();
@@ -112,6 +109,14 @@ export default function ListPage() {
     [viewerProfile]
   );
   const [currentPage, setCurrentPage] = useState(1);
+
+  const friendEngagementLabels = useMemo(() => {
+    const lookup = {};
+    FRIEND_ENGAGEMENT_OPTIONS.forEach((value) => {
+      lookup[value] = t(`bookmarks.filters.friendOptions.${value}.chip`);
+    });
+    return lookup;
+  }, [t]);
 
   const { unreadCount, refreshUnreadCount } = useUpdates();
   const { navigateIfOnline } = useOfflineNavigation(isOffline);
@@ -204,7 +209,7 @@ export default function ListPage() {
       ...prev,
       status: defaultFilters.status
     }));
-  }, [defaultFilters.status]);
+  }, [defaultFilters.status, setFilters]);
 
   const handleClearAllFilters = useCallback(() => {
     handleClearFilters();
@@ -246,27 +251,32 @@ export default function ListPage() {
     if (filters.search?.trim()) {
       chips.push({
         key: 'search',
-        label: `Keyword: "${filters.search.trim()}"`,
+        label: t('bookmarks.filters.chips.keyword', { keyword: filters.search.trim() }),
         onDelete: handleClearSearch
       });
     }
+    const typeLabels = {
+      event: t('bookmarks.filters.typeOptions.event'),
+      discussion: t('bookmarks.filters.typeOptions.discussion')
+    };
     filters.types.forEach((typeValue) => {
       chips.push({
         key: `type-${typeValue}`,
-        label: `Type: ${typeValue}`,
+        label: t('bookmarks.filters.chips.type', {
+          type: typeLabels[typeValue] || typeValue
+        }),
         onDelete: () => handleRemoveType(typeValue)
       });
     });
     filters.categories.forEach((category) => {
       chips.push({
         key: `category-${category}`,
-        label: `Category: ${category}`,
+        label: t('bookmarks.filters.chips.category', { category }),
         onDelete: () => handleRemoveCategory(category)
       });
     });
     filters.friendEngagements.forEach((engagement) => {
-      const label =
-        FRIEND_ENGAGEMENT_LABEL_LOOKUP[engagement] || `Friends: ${engagement}`;
+      const label = friendEngagementLabels[engagement] || t('bookmarks.filters.chips.friend', { engagement });
       chips.push({
         key: `friend-${engagement}`,
         label,
@@ -276,18 +286,25 @@ export default function ListPage() {
     if (filters.status && filters.status !== defaultFilters.status) {
       chips.push({
         key: `status-${filters.status}`,
-        label: `Status: ${filters.status}`,
+        label: t('bookmarks.filters.chips.status', {
+          status: t(`bookmarks.filters.statusOptions.${filters.status}`, {
+            defaultValue: filters.status
+          })
+        }),
         onDelete: handleResetStatus
       });
     }
     if (filters.startDate || filters.endDate) {
-      let label = 'Date range';
+      let label = t('bookmarks.filters.chips.dateRange');
       if (filters.startDate && filters.endDate) {
-        label = `Date: ${filters.startDate} → ${filters.endDate}`;
+        label = t('bookmarks.filters.chips.dateRangeBetween', {
+          start: filters.startDate,
+          end: filters.endDate
+        });
       } else if (filters.startDate) {
-        label = `From ${filters.startDate}`;
+        label = t('bookmarks.filters.chips.dateFrom', { start: filters.startDate });
       } else if (filters.endDate) {
-        label = `Until ${filters.endDate}`;
+        label = t('bookmarks.filters.chips.dateUntil', { end: filters.endDate });
       }
       chips.push({
         key: 'date-range',
@@ -298,20 +315,20 @@ export default function ListPage() {
     if (!hideFullEvents) {
       chips.push({
         key: 'full-events-visible',
-        label: 'Showing full events',
+        label: t('bookmarks.filters.chips.showingFullEvents'),
         onDelete: () => setHideFullEvents(true)
       });
     }
     if (filters.popularSort === 'replies') {
       chips.push({
         key: 'popular-replies',
-        label: 'Most replies',
+        label: t('bookmarks.filters.popularOptions.replies'),
         onDelete: () => applyFilters({ ...filters, popularSort: null })
       });
     } else if (filters.popularSort === 'attending') {
       chips.push({
         key: 'popular-attending',
-        label: 'Most attending',
+        label: t('bookmarks.filters.popularOptions.attending'),
         onDelete: () => applyFilters({ ...filters, popularSort: null })
       });
     }
@@ -327,7 +344,9 @@ export default function ListPage() {
     handleResetDates,
     handleResetStatus,
     hideFullEvents,
-    setHideFullEvents
+    setHideFullEvents,
+    t,
+    friendEngagementLabels
   ]);
 
   const filteredAndSortedFeed = useMemo(() => {

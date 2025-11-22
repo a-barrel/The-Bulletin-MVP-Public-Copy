@@ -18,6 +18,7 @@ import { useUpdates } from '../contexts/UpdatesContext';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import useViewerProfile from '../hooks/useViewerProfile';
 import canAccessModerationTools from '../utils/accessControl';
+import { useTranslation } from 'react-i18next';
 
 const DEFAULT_ITEMS = [
   {
@@ -57,6 +58,14 @@ const QUICK_NAV_MAX_ITEMS = 4;
 const QUICK_NAV_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const BOOKMARK_QUICK_NAV_SCHEMA_VERSION = 2;
 const BOOKMARK_QUICK_NAV_PREFS_VERSION = 1;
+
+const NAV_TRANSLATION_KEY_OVERRIDES = {
+  'admin-dashboard': 'admin',
+  'direct-messages': 'directMessages',
+  'friend-menu': 'friends'
+};
+
+const resolveNavTranslationKey = (key) => NAV_TRANSLATION_KEY_OVERRIDES[key] ?? key;
 
 const QUICK_TAP_ACTIONS = [
   {
@@ -133,12 +142,18 @@ function areShortcutListsEqual(a, b) {
 export default function GlobalNavMenu({
   className = '',
   triggerClassName = 'header-icon-btn',
-  triggerAriaLabel = 'Open navigation menu',
+  triggerAriaLabel,
   iconClassName = 'header-icon',
-  menuTitle = 'Menu',
+  menuTitle,
   items = DEFAULT_ITEMS
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
+  const resolvedTriggerAriaLabel = triggerAriaLabel ?? t('nav.openMenu');
+  const resolvedMenuTitle = menuTitle ?? t('nav.menuTitle');
+  const closeNavigationLabel = t('nav.closeMenu');
+  const closeMenuLabel = t('nav.close');
+  const quickShortcutsLabel = t('nav.quickShortcuts');
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
   const [anchor, setAnchor] = useState({ x: 16, y: 56, w: 40, h: 40 });
@@ -149,11 +164,34 @@ export default function GlobalNavMenu({
   const hiddenQuickNavRef = useRef(new Set());
   const [bookmarkShortcuts, setBookmarkShortcuts] = useState([]);
   const bookmarkShortcutsRef = useRef(bookmarkShortcuts);
-  const [bookmarkStatus, setBookmarkStatus] = useState(null);
   const { viewer: viewerProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
+
+  const translateNavItem = useCallback(
+    (item) => {
+      const translationKey = resolveNavTranslationKey(item?.key || '');
+      const translatedLabel = t(`nav.items.${translationKey}.label`, {
+        defaultValue: item?.label ?? translationKey
+      });
+      const translatedDescription =
+        item?.description !== undefined
+          ? t(`nav.items.${translationKey}.description`, { defaultValue: item.description })
+          : undefined;
+
+      return {
+        ...item,
+        label: translatedLabel,
+        description: translatedDescription ?? item?.description
+      };
+    },
+    [t]
+  );
+
+  const baseItems = useMemo(() => {
+    const source = Array.isArray(items) && items.length ? items : DEFAULT_ITEMS;
+    return source.map((item) => translateNavItem(item));
+  }, [items, translateNavItem]);
   const resolvedMenuItems = useMemo(() => {
-    const base = Array.isArray(items) && items.length ? items : DEFAULT_ITEMS;
-    const filteredBase = base.filter(
+    const filteredBase = baseItems.filter(
       (entry) => entry && !['bookmarks', 'settings', 'friends'].includes(entry.key)
     );
     if (!canAccessModerationTools(viewerProfile)) {
@@ -165,15 +203,15 @@ export default function GlobalNavMenu({
     }
     return [
       ...filteredBase,
-      {
+      translateNavItem({
         key: 'admin-dashboard',
         label: 'Admin Dashboard',
         description: 'Moderate reports and audits',
         to: routes.admin.base,
         Icon: AdminPanelSettingsIcon
-      }
+      })
     ];
-  }, [items, viewerProfile]);
+  }, [baseItems, translateNavItem, viewerProfile]);
 
   const filterShortcuts = useCallback(
     (items = []) =>
@@ -276,7 +314,7 @@ export default function GlobalNavMenu({
         .slice(0, QUICK_NAV_MAX_ITEMS)
         .map((collection) => ({
           key: collection._id,
-          label: collection.name || 'Untitled collection',
+          label: collection.name || t('nav.bookmarkQuickNav.untitled'),
           to: routes.bookmarks.collection(collection._id),
           count: Array.isArray(collection.bookmarkIds) ? collection.bookmarkIds.length : undefined,
           description: collection.description || ''
@@ -285,18 +323,18 @@ export default function GlobalNavMenu({
       const result = [
         {
           key: 'all-bookmarks',
-          label: 'All bookmarks',
+          label: t('nav.bookmarkQuickNav.all'),
           to: routes.bookmarks.base,
           count: null,
-          description: 'View your full library'
+          description: t('nav.bookmarkQuickNav.allDescription')
         },
         ...sorted,
         {
           key: BOOKMARK_UNSORTED_ID,
-          label: 'Unsorted',
+          label: t('nav.bookmarkQuickNav.unsorted'),
           to: routes.bookmarks.collection(BOOKMARK_UNSORTED_ID),
           count: null,
-          description: 'Pins saved without a collection'
+          description: t('nav.bookmarkQuickNav.unsortedDescription')
         }
       ];
 
@@ -313,14 +351,11 @@ export default function GlobalNavMenu({
 
       return unique;
     },
-    []
+    [t]
   );
 
   useEffect(() => {
     if (!open || isOffline) {
-      if (isOffline && open && !bookmarkShortcuts.length) {
-        setBookmarkStatus('Offline — showing cached collections only.');
-      }
       return;
     }
 
@@ -335,7 +370,6 @@ export default function GlobalNavMenu({
     }
 
     meta.loading = true;
-    setBookmarkStatus(null);
     fetchBookmarkCollections()
       .then((collections) => {
         const items = computeBookmarkQuickNav(Array.isArray(collections) ? collections : []);
@@ -356,13 +390,11 @@ export default function GlobalNavMenu({
           }
         }
       })
-      .catch((error) => {
-        setBookmarkStatus(error?.message || 'Failed to load bookmark collections.');
-      })
+      .catch(() => {})
       .finally(() => {
         bookmarkFetchMetaRef.current.loading = false;
       });
-  }, [applyBookmarkShortcuts, bookmarkShortcuts.length, computeBookmarkQuickNav, isOffline, open]);
+  }, [applyBookmarkShortcuts, bookmarkShortcuts.length, computeBookmarkQuickNav, isOffline, open, t]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -453,31 +485,37 @@ export default function GlobalNavMenu({
       const existingKeys = new Set(filtered.map((item) => item.key));
 
       if (!socialNotifications.friendAccessDenied && !existingKeys.has('friend-requests')) {
-        filtered.push({
-          key: 'friend-menu',
-          label: 'Friends',
-          description:
-            socialNotifications.friendRequestCount > 0
-              ? `${socialNotifications.friendRequestCount} pending`
-              : 'No pending invites',
-          to: routes.friends.base,
-          Icon: GroupAddIcon,
-          badgeCount: socialNotifications.friendRequestCount
-        });
+        const friendDescription =
+          socialNotifications.friendRequestCount > 0
+            ? t('nav.friendRequests.pending', { count: socialNotifications.friendRequestCount })
+            : t('nav.friendRequests.none');
+        filtered.push(
+          translateNavItem({
+            key: 'friend-menu',
+            label: t('nav.items.friends.label'),
+            description: friendDescription,
+            to: routes.friends.base,
+            Icon: GroupAddIcon,
+            badgeCount: socialNotifications.friendRequestCount
+          })
+        );
       }
 
       if (!socialNotifications.dmAccessDenied && !existingKeys.has('direct-messages')) {
-        filtered.push({
-          key: 'direct-messages',
-          label: 'Direct messages',
-          description:
-            socialNotifications.dmThreadCount > 0
-              ? `${socialNotifications.dmThreadCount} conversations`
-              : 'No active conversations yet',
-          to: routes.directMessages.base,
-          Icon: MarkUnreadChatAltIcon,
-          badgeCount: socialNotifications.dmThreadCount
-        });
+        const dmDescription =
+          socialNotifications.dmThreadCount > 0
+            ? t('nav.directMessages.pending', { count: socialNotifications.dmThreadCount })
+            : t('nav.directMessages.none');
+        filtered.push(
+          translateNavItem({
+            key: 'direct-messages',
+            label: t('nav.items.directMessages.label'),
+            description: dmDescription,
+            to: routes.directMessages.base,
+            Icon: MarkUnreadChatAltIcon,
+            badgeCount: socialNotifications.dmThreadCount
+          })
+        );
       }
 
       return filtered.map((item) => {
@@ -489,8 +527,8 @@ export default function GlobalNavMenu({
               badgeCount: badge,
               description:
                 badge === 1
-                  ? '1 unread bookmark update'
-                  : `${badge} unread bookmark updates`
+                  ? t('nav.bookmarksBadge.one')
+                  : t('nav.bookmarksBadge.other', { count: badge })
             };
           }
           return {
@@ -498,7 +536,7 @@ export default function GlobalNavMenu({
             badgeCount: item.badgeCount
           };
         }
-        return item;
+        return translateNavItem(item);
       });
     },
     [
@@ -507,7 +545,9 @@ export default function GlobalNavMenu({
       socialNotifications.friendAccessDenied,
       socialNotifications.friendRequestCount,
       socialNotifications.dmAccessDenied,
-      socialNotifications.dmThreadCount
+      socialNotifications.dmThreadCount,
+      t,
+      translateNavItem
     ]
   );
 
@@ -552,7 +592,7 @@ export default function GlobalNavMenu({
         ref={triggerRef}
         type="button"
         className={triggerClassName}
-        aria-label={triggerAriaLabel}
+        aria-label={resolvedTriggerAriaLabel}
         onClick={handleOpen}
       >
         <img src={MenuIcon} alt="" className={iconClassName} />
@@ -563,7 +603,7 @@ export default function GlobalNavMenu({
           <button
             type="button"
             className="global-nav-menu__backdrop"
-            aria-label="Close navigation menu"
+            aria-label={closeNavigationLabel}
             onClick={handleClose}
           />
           <div
@@ -576,19 +616,23 @@ export default function GlobalNavMenu({
             }}
           >
             <div className="global-nav-menu__header">
-              <h2 className="global-nav-menu__title">{menuTitle}</h2>
+              <h2 className="global-nav-menu__title">{resolvedMenuTitle}</h2>
               <button
                 type="button"
                 className="global-nav-menu__close"
-                aria-label="Close menu"
+                aria-label={closeMenuLabel}
                 onClick={handleClose}
               >
                 &times;
               </button>
             </div>
-            <div className="global-nav-menu__quick-panel" role="group" aria-label="Quick navigation shortcuts">
+            <div className="global-nav-menu__quick-panel" role="group" aria-label={quickShortcutsLabel}>
               {QUICK_TAP_ACTIONS.map((action) => {
                 const ActionIcon = action.Icon;
+                const actionLabel = t(
+                  `nav.items.${resolveNavTranslationKey(action.key)}.label`,
+                  { defaultValue: action.label }
+                );
                 return (
                   <button
                     key={action.key}
@@ -599,7 +643,7 @@ export default function GlobalNavMenu({
                     <span className="global-nav-menu__quick-button-icon" aria-hidden="true">
                       <ActionIcon fontSize="medium" />
                     </span>
-                    <span className="global-nav-menu__quick-button-label">{action.label}</span>
+                    <span className="global-nav-menu__quick-button-label">{actionLabel}</span>
                   </button>
                 );
               })}

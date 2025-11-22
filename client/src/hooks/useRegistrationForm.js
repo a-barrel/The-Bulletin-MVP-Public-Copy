@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { formatPhoneNumberInput, validatePasswordField, validatePhoneField, validateUsernameField } from '../utils/authForm';
 import { validateAuthEmail } from '../components/AuthEmailField';
@@ -19,6 +20,7 @@ export default function useRegistrationForm() {
   const [errors, setErrors] = useState(buildErrorState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
+  const { t } = useTranslation();
 
   const handleChange = useCallback((event) => {
     const { name, value } = event.target;
@@ -31,30 +33,41 @@ export default function useRegistrationForm() {
 
   const validate = useCallback(() => {
     const nextErrors = buildErrorState();
-    nextErrors.username = validateUsernameField(form.username);
-    nextErrors.email = validateAuthEmail(form.email);
-    nextErrors.phone = validatePhoneField(form.phone);
-    nextErrors.password = validatePasswordField(form.password);
+    nextErrors.username = validateUsernameField(form.username, {
+      empty: t('auth.errors.usernameRequired')
+    });
+    nextErrors.email = validateAuthEmail(form.email, {
+      requiredMessage: t('auth.errors.emailRequired'),
+      invalidMessage: t('auth.errors.emailInvalid')
+    });
+    nextErrors.phone = validatePhoneField(form.phone, {
+      empty: t('auth.errors.phoneRequired'),
+      invalid: t('auth.errors.phoneInvalid')
+    });
+    nextErrors.password = validatePasswordField(form.password, {
+      empty: t('auth.errors.passwordRequired'),
+      min: t('auth.errors.passwordMin')
+    });
     setErrors(nextErrors);
     return Object.values(nextErrors).every((value) => value === '');
-  }, [form.email, form.password, form.phone, form.username]);
+  }, [form.email, form.password, form.phone, form.username, t]);
 
   const handleSubmit = useCallback(
     async ({ onSuccess, onError }) => {
       setMessage(null);
       if (!validate()) {
-        onError?.('Please fix the highlighted fields.');
+        onError?.(t('auth.errors.registrationValidation'));
         return false;
       }
       try {
         setIsSubmitting(true);
         await createUserWithEmailAndPassword(auth, form.email.trim(), form.password);
-        setMessage('Your account has been created successfully! Redirecting to login...');
+        setMessage(t('auth.register.success'));
         onSuccess?.();
         return true;
       } catch (error) {
         console.error('Registration failed:', error);
-        const messageText = mapRegistrationError(error?.code);
+        const messageText = mapRegistrationError(error?.code, t);
         setMessage(messageText);
         onError?.(messageText);
         return false;
@@ -62,7 +75,7 @@ export default function useRegistrationForm() {
         setIsSubmitting(false);
       }
     },
-    [form.email, form.password, validate]
+    [form.email, form.password, t, validate]
   );
 
   return {

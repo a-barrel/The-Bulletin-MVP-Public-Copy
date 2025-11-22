@@ -20,6 +20,7 @@ import {
   MAP_MARKER_SHADOW_URL
 } from '../utils/mapMarkers';
 import { resolveUserAvatarUrl } from '../utils/pinFormatting';
+import usePinClusters from './map/usePinClusters';
 
 // Fix for default marker icons in Leaflet with React
 delete L.Icon.Default.prototype._getIconUrl;
@@ -101,6 +102,22 @@ function MapUpdater({ center }) {
   return null;
 }
 
+function ZoomWatcher({ onZoomChange }) {
+  const map = useMap();
+  useEffect(() => {
+    if (typeof onZoomChange !== 'function') {
+      return undefined;
+    }
+    const handler = () => onZoomChange(map.getZoom());
+    handler();
+    map.on('zoomend', handler);
+    return () => {
+      map.off('zoomend', handler);
+    };
+  }, [map, onZoomChange]);
+  return null;
+}
+
 function ResizeHandler({ signature }) {
   const map = useMap();
   useEffect(() => {
@@ -134,6 +151,97 @@ function TeleportClickHandler({ enabled, onTeleport }) {
   }, [enabled, map]);
 
   return null;
+}
+
+function ClusterLayer({ pins, enabled, renderPin }) {
+  const map = useMap();
+  const { clusters, setClusters, getClusters, getExpansionZoom } = usePinClusters(pins, {
+    enabled
+  });
+  const prevClustersRef = useRef([]);
+
+  const clustersEqual = (a, b) => {
+    if (a === b) return true;
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+      const ca = a[i];
+      const cb = b[i];
+      if (!ca || !cb) return false;
+      if (ca.id !== cb.id) return false;
+      const [lonA, latA] = ca.geometry?.coordinates || [];
+      const [lonB, latB] = cb.geometry?.coordinates || [];
+      if (lonA !== lonB || latA !== latB) return false;
+      if (ca.properties?.point_count !== cb.properties?.point_count) return false;
+    }
+    return true;
+  };
+
+  const updateClusters = useCallback(() => {
+    if (!enabled) {
+      if (clusters.length) {
+        setClusters([]);
+        prevClustersRef.current = [];
+      }
+      return;
+    }
+    const bounds = map.getBounds();
+    if (!bounds) {
+      return;
+    }
+    const zoom = map.getZoom();
+    const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+    const next = getClusters(bbox, zoom);
+    if (!clustersEqual(prevClustersRef.current, next)) {
+      prevClustersRef.current = next;
+      setClusters(next);
+    }
+  }, [clusters.length, enabled, getClusters, map, setClusters]);
+
+  useEffect(() => {
+    updateClusters();
+  }, [updateClusters, pins]);
+
+  useEffect(() => {
+    const handleMove = () => updateClusters();
+    map.on('moveend', handleMove);
+    map.on('zoomend', handleMove);
+    return () => {
+      map.off('moveend', handleMove);
+      map.off('zoomend', handleMove);
+    };
+  }, [map, updateClusters]);
+
+  return clusters.map((cluster) => {
+    const [longitude, latitude] = cluster.geometry.coordinates;
+    if (cluster.properties.cluster) {
+      const count = cluster.properties.point_count;
+      const size =
+        count < 10 ? 34 : count < 50 ? 40 : count < 200 ? 48 : 56;
+      const icon = L.divIcon({
+        html: `<div class="pin-cluster-marker" style="width:${size}px;height:${size}px"><span>${count}</span></div>`,
+        className: 'pin-cluster-wrapper',
+        iconSize: [size, size]
+      });
+      const handleClick = () => {
+        const expansionZoom = getExpansionZoom(cluster.id ?? cluster.properties.cluster_id);
+        const nextZoom =
+          expansionZoom && Number.isFinite(expansionZoom)
+            ? Math.min(expansionZoom, map.getMaxZoom())
+            : map.getZoom() + 1;
+        map.setView([latitude, longitude], nextZoom, { animate: true });
+      };
+      return (
+        <Marker
+          key={`cluster-${cluster.id ?? cluster.properties.cluster_id}-${latitude}-${longitude}`}
+          position={[latitude, longitude]}
+          icon={icon}
+          eventHandlers={{ click: handleClick }}
+        />
+      );
+    }
+    const pin = cluster.properties?.pin;
+    return renderPin ? renderPin(pin) : null;
+  });
 }
 
 const parseDate = (value) => {
@@ -255,10 +363,10 @@ const Map = ({
   onPinSelect,
   onPinView,
   onChatRoomView,
-  onCurrentUserView,
   selectedPinId,
   centerOverride,
   userRadiusMeters,
+  clusterPins = true,
   isOffline = false,
   currentUserAvatar,
   currentUserDisplayName,
@@ -331,10 +439,170 @@ const Map = ({
     }
   }, []);
 
-  const resolvedCenter = toLatLng(centerOverride) ?? toLatLng(userLocation) ?? [0, 0];
+  const resolvedCenter = useMemo(() => {
+    const center = toLatLng(centerOverride) ?? toLatLng(userLocation);
+    if (Array.isArray(center) && center.length === 2) {
+      return [center[0], center[1]];
+    }
+    return [0, 0];
+  }, [centerOverride, userLocation]);
   const userMarkerPosition = toLatLng(userLocation);
-  const resolvedPins = Array.isArray(pins) ? pins : [];
+  const resolvedPins = useMemo(() => (Array.isArray(pins) ? pins : []), [pins]);
+  const clusterablePins = useMemo(
+    () =>
+      resolvedPins.filter((pin) => {
+        const type = typeof pin?.type === 'string' ? pin.type.toLowerCase() : '';
+        return type !== 'chat-room' && type !== 'global-chat-room';
+      }),
+    [resolvedPins]
+  );
+  const chatPins = useMemo(
+    () =>
+      resolvedPins.filter((pin) => {
+        const type = typeof pin?.type === 'string' ? pin.type.toLowerCase() : '';
+        return type === 'chat-room' || type === 'global-chat-room';
+      }),
+    [resolvedPins]
+  );
+  const safeChatPins = chatPins || [];
+  const safeClusterablePins = clusterablePins || [];
   const resizeSignature = `${resolvedCenter?.[0] ?? 'na'}-${resolvedCenter?.[1] ?? 'na'}-${resolvedPins.length}-${nearbyUsers.length}-${userRadiusMeters ?? 'no-radius'}`;
+  const [mapZoom, setMapZoom] = useState(13);
+
+  const renderPinPopup = useCallback(
+    (pin, distanceLabel, expirationLabel, canViewPin, canViewChatRoom, handleViewPin) => {
+      const thumbnailAsset = pin?.coverPhoto || (Array.isArray(pin?.photos) ? pin.photos : null);
+      const thumbnailUrl = resolveThumbnailUrl(thumbnailAsset);
+      const hostName = pin?.creator?.displayName || pin?.creator?.username || null;
+      const hostAvatarUrl = resolveUserAvatarUrl(pin?.creator, AVATAR_FALLBACK) || AVATAR_FALLBACK;
+
+      return (
+        <div style={{ minWidth: '208px', maxWidth: '240px' }}>
+          {thumbnailUrl ? (
+            <div
+              style={{
+                width: '100%',
+                marginBottom: '0.65rem',
+                borderRadius: '10px',
+                overflow: 'hidden',
+                boxShadow: '0 8px 20px rgba(12, 17, 28, 0.28)'
+              }}
+            >
+              <img
+                src={thumbnailUrl}
+                alt={pin?.title ? `${pin.title} preview` : 'Pin preview'}
+                style={{ display: 'block', width: '100%', height: '132px', objectFit: 'cover' }}
+              />
+            </div>
+          ) : null}
+          <strong style={{ display: 'block', fontSize: '1rem', marginBottom: '0.35rem' }}>
+            {pin.title ?? 'Untitled pin'}
+          </strong>
+          {pin.type ? <div>Type: {pin.type}</div> : null}
+          {pin._id ? <div>ID: {pin._id}</div> : null}
+          {distanceLabel ? <div>Distance: {distanceLabel} mi</div> : null}
+          {expirationLabel ? <div>{expirationLabel}</div> : null}
+          {hostName ? (
+            <div
+              style={{
+                marginTop: '0.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <img
+                src={hostAvatarUrl}
+                alt={`${hostName} avatar`}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: '2px solid rgba(93,56,137,0.35)'
+                }}
+              />
+              <div style={{ fontSize: '0.85rem', lineHeight: 1.2 }}>
+                <div style={{ fontWeight: 600 }}>Host</div>
+                <div>{hostName}</div>
+              </div>
+            </div>
+          ) : null}
+          {canViewPin || canViewChatRoom ? (
+            <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
+              <button
+                type="button"
+                onClick={handleViewPin}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: '999px',
+                  border: 'none',
+                  backgroundColor: '#3EB8F0',
+                  color: '#fff',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                View
+              </button>
+            </div>
+          ) : null}
+        </div>
+      );
+    },
+    []
+  );
+
+  const renderRegularPin = useCallback(
+    (pin) => {
+      const coordinates = pin?.coordinates?.coordinates;
+      if (!Array.isArray(coordinates) || coordinates.length < 2) {
+        return null;
+      }
+      const [longitude, latitude] = coordinates;
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        return null;
+      }
+      const providedDistance = typeof pin.distanceMeters === 'number' ? pin.distanceMeters : null;
+      const computedDistance =
+        providedDistance ?? haversineDistanceMeters(userMarkerPosition, [latitude, longitude]);
+      const distanceLabel = formatDistanceMiles(computedDistance, { decimals: 1 });
+      const expirationLabel = formatExpiration(pin);
+      const key = pin._id ?? `pin-${latitude}-${longitude}-${pin?.title ?? 'pin'}`;
+      const canViewPin = typeof onPinView === 'function';
+      const markerIcon = resolvePinIcon(pin);
+      const markerZIndex = pin?.isSelf ? 1200 : pin._id && pin._id === selectedPinId ? 1100 : 1000;
+
+      const handleViewPin = (event) => {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+        if (canViewPin) {
+          onPinView(pin);
+        }
+      };
+
+      const popupContent = renderPinPopup(pin, distanceLabel, expirationLabel, canViewPin, false, handleViewPin);
+
+      return (
+        <Marker
+          key={key}
+          position={[latitude, longitude]}
+          icon={markerIcon}
+          zIndexOffset={markerZIndex}
+          eventHandlers={
+            onPinSelect
+              ? {
+                  click: () => onPinSelect(pin)
+                }
+              : undefined
+          }
+        >
+          <Popup>{popupContent}</Popup>
+        </Marker>
+      );
+    },
+    [onPinSelect, onPinView, renderPinPopup, selectedPinId, userMarkerPosition]
+  );
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -362,36 +630,13 @@ const Map = ({
         />
       
       {userMarkerPosition && (
-        <Marker position={userMarkerPosition} icon={userIcon} zIndexOffset={1800}>
-          <Popup>
-            <div>
-              <h3 style={{ margin: 0 }}>You are here</h3>
-              {typeof onCurrentUserView === 'function' ? (
-                <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      onCurrentUserView();
-                    }}
-                    style={{
-                      padding: '0.35rem 0.75rem',
-                      borderRadius: '999px',
-                      border: 'none',
-                      backgroundColor: '#3EB8F0',
-                      color: '#fff',
-                      fontSize: '0.85rem',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    View
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </Popup>
-        </Marker>
+        <Marker
+          position={userMarkerPosition}
+          icon={userIcon}
+          zIndexOffset={200}
+          opacity={Math.max(0.35, Math.min(1, (mapZoom - 7) / 5))}
+          interactive={false}
+        />
       )}
       {showInteractionRadius &&
         userMarkerPosition &&
@@ -422,192 +667,81 @@ const Map = ({
         );
       })}
 
-      {resolvedPins.map((pin, index) => {
+      {safeChatPins.map((pin, index) => {
         const coordinates = pin?.coordinates?.coordinates;
         if (!Array.isArray(coordinates) || coordinates.length < 2) {
           return null;
         }
-
         const [longitude, latitude] = coordinates;
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
           return null;
         }
-
-        const providedDistance = typeof pin.distanceMeters === 'number' ? pin.distanceMeters : null;
-        const computedDistance =
-          providedDistance ?? haversineDistanceMeters(userMarkerPosition, [latitude, longitude]);
-        const distanceLabel = formatDistanceMiles(computedDistance, { decimals: 1 });
-        const expirationLabel = formatExpiration(pin);
-        const key = pin._id ?? `pin-${index}-${latitude}-${longitude}`;
-        const isChatRoom = pin.type === 'chat-room' || pin.type === 'global-chat-room';
-        const isRegularPin = pin.type === 'event' || pin.type === 'discussion';
-        const canViewPin =
-          typeof onPinView === 'function' && !isChatRoom && isRegularPin;
-        const canViewChatRoom =
-          typeof onChatRoomView === 'function' && isChatRoom;
-
-        const handleViewPin = (canViewPin || canViewChatRoom)
-          ? (event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              if (canViewPin) {
-                onPinView(pin);
-              } else if (canViewChatRoom) {
-                onChatRoomView(pin);
-              }
-            }
-          : null;
-        const thumbnailAsset = pin?.coverPhoto || (Array.isArray(pin?.photos) ? pin.photos : null);
-        const thumbnailUrl = resolveThumbnailUrl(thumbnailAsset);
-
-        const hostName = pin?.creator?.displayName || pin?.creator?.username || null;
-        const hostAvatarUrl = resolveUserAvatarUrl(pin?.creator, AVATAR_FALLBACK) || AVATAR_FALLBACK;
-
-        const popupContent = (
-          <div style={{ minWidth: '208px', maxWidth: '240px' }}>
-            {thumbnailUrl ? (
-              <div
-                style={{
-                  width: '100%',
-                  marginBottom: '0.65rem',
-                  borderRadius: '10px',
-                  overflow: 'hidden',
-                  boxShadow: '0 8px 20px rgba(12, 17, 28, 0.28)'
-                }}
-              >
-                <img
-                  src={thumbnailUrl}
-                  alt={pin?.title ? `${pin.title} preview` : 'Pin preview'}
-                  style={{ display: 'block', width: '100%', height: '132px', objectFit: 'cover' }}
-                />
-              </div>
-            ) : null}
-            <strong style={{ display: 'block', fontSize: '1rem', marginBottom: '0.35rem' }}>
-              {pin.title ?? 'Untitled pin'}
-            </strong>
-            {pin.type ? <div>Type: {pin.type}</div> : null}
-            {pin._id ? <div>ID: {pin._id}</div> : null}
-            {distanceLabel ? <div>Distance: {distanceLabel} mi</div> : null}
-            {expirationLabel ? <div>{expirationLabel}</div> : null}
-            {hostName ? (
-              <div
-                style={{
-                  marginTop: '0.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                <img
-                  src={hostAvatarUrl}
-                  alt={`${hostName} avatar`}
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    objectFit: 'cover',
-                    border: '2px solid rgba(93,56,137,0.35)'
-                  }}
-                />
-                <div style={{ fontSize: '0.85rem', lineHeight: 1.2 }}>
-                  <div style={{ fontWeight: 600 }}>Host</div>
-                  <div>{hostName}</div>
-                </div>
-              </div>
-            ) : null}
-            {canViewPin || canViewChatRoom ? (
-              <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
-                <button
-                  type="button"
-                  onClick={handleViewPin}
-                  style={{
-                    padding: '0.35rem 0.75rem',
-                    borderRadius: '999px',
-                    border: 'none',
-                    backgroundColor: '#3EB8F0',
-                    color: '#fff',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  View
-                </button>
-              </div>
-            ) : null}
-          </div>
-        );
-
-        if (isChatRoom) {
-          let color = '#ff7043';
-          if (pin.chatRoomCategory === 'mine') {
-            color = '#3EB8F0';
-          } else if (pin.type === 'global-chat-room') {
-            color = '#ffb300';
+        const key = pin._id ?? `chat-${index}-${latitude}-${longitude}`;
+        const canViewChatRoom = typeof onChatRoomView === 'function';
+        const handleViewChatRoom = (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (canViewChatRoom) {
+            onChatRoomView(pin);
           }
-          const isSelected = pin._id && pin._id === selectedPinId;
-          const radius = isSelected ? 12 : 8;
+        };
+        const popupContent = renderPinPopup(pin, null, null, false, canViewChatRoom, handleViewChatRoom);
+        let color = '#ff7043';
+        if (pin.chatRoomCategory === 'mine') {
+          color = '#3EB8F0';
+        } else if (pin.type === 'global-chat-room') {
+          color = '#ffb300';
+        }
+        const isSelected = pin._id && pin._id === selectedPinId;
+        const radius = isSelected ? 12 : 8;
 
-          return (
-            <Fragment key={key}>
-              {Number.isFinite(pin.proximityRadiusMeters) && pin.proximityRadiusMeters > 0 ? (
-                <Circle
-                  center={[latitude, longitude]}
-                  radius={pin.proximityRadiusMeters}
-                  pathOptions={{ color, weight: isSelected ? 2 : 1.2, dashArray: '6 6', fillColor: color, fillOpacity: 0.08 }}
-                />
-              ) : null}
-              <CircleMarker
+        return (
+          <Fragment key={key}>
+            {Number.isFinite(pin.proximityRadiusMeters) && pin.proximityRadiusMeters > 0 ? (
+              <Circle
                 center={[latitude, longitude]}
-                radius={radius}
-                pathOptions={{
-                  color,
-                  weight: isSelected ? 3 : 2,
-                  fillColor: color,
-                  fillOpacity: 0.85
-                }}
-                eventHandlers={
-                  onPinSelect || canViewChatRoom
-                    ? {
-                        click: () => {
-                          if (onPinSelect) {
-                            onPinSelect(pin);
-                          }
-                          if (canViewChatRoom && !onPinSelect) {
-                            onChatRoomView(pin);
-                          }
+                radius={pin.proximityRadiusMeters}
+                pathOptions={{ color, weight: isSelected ? 2 : 1.2, dashArray: '6 6', fillColor: color, fillOpacity: 0.08 }}
+              />
+            ) : null}
+            <CircleMarker
+              center={[latitude, longitude]}
+              radius={radius}
+              pathOptions={{
+                color,
+                weight: isSelected ? 3 : 2,
+                fillColor: color,
+                fillOpacity: 0.85
+              }}
+              eventHandlers={
+                onPinSelect || canViewChatRoom
+                  ? {
+                      click: () => {
+                        if (onPinSelect) {
+                          onPinSelect(pin);
+                        }
+                        if (canViewChatRoom && !onPinSelect) {
+                          onChatRoomView(pin);
                         }
                       }
-                    : undefined
-                }
-              >
-                <Popup>{popupContent}</Popup>
-              </CircleMarker>
-            </Fragment>
-          );
-        }
-
-        const markerIcon = resolvePinIcon(pin);
-        const markerZIndex = pin?.isSelf ? 1200 : pin._id && pin._id === selectedPinId ? 1100 : 1000;
-        return (
-          <Marker
-            key={key}
-            position={[latitude, longitude]}
-            icon={markerIcon}
-            zIndexOffset={markerZIndex}
-            eventHandlers={
-              onPinSelect
-                ? {
-                    click: () => onPinSelect(pin)
-                  }
-                : undefined
-            }
-          >
-            <Popup>{popupContent}</Popup>
-          </Marker>
+                    }
+                  : undefined
+              }
+            >
+              <Popup>{popupContent}</Popup>
+            </CircleMarker>
+          </Fragment>
         );
       })}
 
+      {clusterPins ? (
+        <ClusterLayer pins={safeClusterablePins} enabled={clusterPins} renderPin={renderRegularPin} />
+      ) : (
+        safeClusterablePins.map((pin) => renderRegularPin(pin))
+      )}
+
       <MapUpdater center={resolvedCenter} />
+      <ZoomWatcher onZoomChange={setMapZoom} />
       <ResizeHandler signature={resizeSignature} />
       {teleportEnabled && typeof onTeleportRequest === 'function' ? (
         <TeleportClickHandler enabled={teleportEnabled} onTeleport={onTeleportRequest} />

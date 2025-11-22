@@ -1,9 +1,12 @@
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import { Stack, Typography } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 import BackButton from '../../BackButton';
 import GlobalNavMenu from '../../GlobalNavMenu';
 
 function BookmarksDebugHeader({ totalCount }) {
+  const { t } = useTranslation();
+
   return (
     <>
       <div className="bookmarks-nav">
@@ -13,7 +16,7 @@ function BookmarksDebugHeader({ totalCount }) {
         </div>
         <div className="bookmarks-nav-title">
           <BookmarkIcon fontSize="small" />
-          <span>Bookmarks</span>
+          <span>{t('debugBookmarks.title')}</span>
         </div>
         <div className="bookmarks-nav-left" />
       </div>
@@ -25,7 +28,7 @@ function BookmarksDebugHeader({ totalCount }) {
         className="bookmarks-nav-summary"
       >
         <Typography variant="body2" color="text.secondary">
-          Total saved pins:
+          {t('debugBookmarks.totalSaved')}
         </Typography>
         <Typography variant="subtitle2">{totalCount}</Typography>
       </Stack>

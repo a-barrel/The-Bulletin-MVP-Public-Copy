@@ -24,7 +24,7 @@ export default function useSettingsPersistence({
       return;
     }
     if (isOffline) {
-      setSaveStatus({ type: 'error', message: 'Reconnect to save your settings.' });
+      setSaveStatus({ type: 'warning', message: 'Reconnect to save your settings.' });
       return;
     }
     if (!hasChanges) {
@@ -42,6 +42,7 @@ export default function useSettingsPersistence({
           radiusPreferenceMeters: settings.radiusPreferenceMeters,
           filterCussWords: settings.filterCussWords,
           statsPublic: settings.statsPublic,
+          betaOptIn: settings.betaOptIn ?? DEFAULT_SETTINGS.betaOptIn,
           dmPermission: settings.dmPermission,
           digestFrequency: settings.digestFrequency,
           notifications: { ...(settings.notifications || DEFAULT_SETTINGS.notifications) },

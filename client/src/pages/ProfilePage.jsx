@@ -289,7 +289,6 @@ function ProfilePage() {
       isProcessingBlockAction,
       isSubmittingReport,
       isViewingSelf,
-      dmPermissionBlocked,
       messageDisabled,
       messageTooltip,
       reportDisabled,

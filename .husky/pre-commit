@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Ensure locale is available to avoid setlocale warnings on systems missing en_US.UTF-8.
+export LC_ALL=C.UTF-8
+export LANG=C.UTF-8
+
 set -eu
 # POSIX sh (used by husky wrappers) doesn't support `pipefail`; ignore errors when unavailable.
 set -o pipefail 2>/dev/null || true

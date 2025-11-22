@@ -12,6 +12,7 @@ import {
 import SendIcon from '@mui/icons-material/SendRounded';
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
 import AddIcon from '@mui/icons-material/AddCircleOutlineRounded';
+import { useTranslation } from 'react-i18next';
 
 function ChatComposer({
   variant = 'legacy',
@@ -37,6 +38,7 @@ function ChatComposer({
   onGifPreviewShuffle,
   onSharePin
 }) {
+  const { t } = useTranslation();
   const sharedInputProps = {
     value: message,
     onChange: onMessageChange,
@@ -167,14 +169,14 @@ function ChatComposer({
 
   if (variant === 'modern') {
     const sharePinButton = (
-      <Tooltip title="Share a saved pin" enterDelay={200} arrow>
+      <Tooltip title={t('tooltips.shareSavedPin')} enterDelay={200} arrow>
         <span>
           <IconButton
             className="share-pin-btn"
             type="button"
             onClick={onSharePin}
             disabled={disabled || !onSharePin}
-            aria-label="Share a saved pin"
+            aria-label={t('tooltips.shareSavedPin')}
             sx={{
               color: '#5d3889',
               backgroundColor: 'rgba(93, 56, 137, 0.1)',
@@ -280,14 +282,14 @@ function ChatComposer({
     >
       {renderPreviewPanel('legacy')}
       {onSharePin ? (
-        <Tooltip title="Share a saved pin" enterDelay={200} arrow>
+        <Tooltip title={t('tooltips.shareSavedPin')} enterDelay={200} arrow>
           <span>
             <IconButton
               className="share-pin-btn"
               type="button"
               onClick={onSharePin}
               disabled={disabled}
-              aria-label="Share a saved pin"
+              aria-label={t('tooltips.shareSavedPin')}
               sx={{
                 color: '#5d3889',
                 backgroundColor: 'rgba(93, 56, 137, 0.1)',

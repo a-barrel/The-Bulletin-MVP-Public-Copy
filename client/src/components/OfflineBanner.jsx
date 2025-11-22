@@ -1,8 +1,12 @@
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
+import { useTranslation } from 'react-i18next';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
 
-function OfflineBanner({ message = 'Offline mode: Some actions are disabled until connection returns.' }) {
+function OfflineBanner({ message }) {
+  const { t } = useTranslation();
+  const resolvedMessage = message ?? t('offline.default');
+
   return (
     <Stack sx={{ width: '100%', mb: 2 }}>
       <Alert
@@ -11,7 +15,7 @@ function OfflineBanner({ message = 'Offline mode: Some actions are disabled unti
           warning: <WifiOffIcon fontSize="inherit" />
         }}
       >
-        {message}
+        {resolvedMessage}
       </Alert>
     </Stack>
   );

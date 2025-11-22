@@ -18,7 +18,9 @@ function PasswordField({
   autoComplete = 'current-password',
   inputProps = {},
   errorTextClassName = 'auth-input-error-text',
-  onBlur
+  onBlur,
+  showPasswordLabel = 'Show password',
+  hidePasswordLabel = 'Hide password'
 }) {
   const generatedId = useId();
   const inputId = id || generatedId;
@@ -49,7 +51,7 @@ function PasswordField({
         type="button"
         className={buttonClassName}
         onClick={onToggleVisibility}
-        aria-label={showPassword ? 'Hide password' : 'Show password'}
+        aria-label={showPassword ? hidePasswordLabel : showPasswordLabel}
       >
         {showPassword ? <FaEyeSlash /> : <FaEye />}
       </button>

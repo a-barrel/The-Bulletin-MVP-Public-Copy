@@ -1,4 +1,5 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { routes } from "../routes";
 import AuthPageLayout from "../components/AuthPageLayout.jsx";
@@ -11,6 +12,7 @@ import "./Registration.css";
 
 function RegistrationPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { shake, triggerShake } = useShake();
   const {
     form,
@@ -42,8 +44,9 @@ function RegistrationPage() {
   return (
     <AuthPageLayout
       shake={shake}
-      title="Registration"
+      title={t("auth.register.title")}
       onBack={() => navigate(-1)}
+      backButtonAriaLabel={t("auth.back")}
       alerts={alerts}
     >
       <form className="register-form" onSubmit={onSubmit} noValidate>
@@ -54,7 +57,7 @@ function RegistrationPage() {
               type="text"
               value={form.username}
               onChange={handleChange}
-              placeholder="Choose a Username"
+              placeholder={t("auth.register.username")}
               className={errors.username ? "input-error" : ""}
             />
             {errors.username && <p className="auth-input-error-text">{errors.username}</p>}
@@ -65,8 +68,9 @@ function RegistrationPage() {
             value={form.email}
             onChange={handleChange}
             error={errors.email}
-            onErrorChange={(value) => setErrors((prev) => ({ ...prev, email: value }))}
-            placeholder="Enter your Email"
+            placeholder={t("auth.placeholders.email")}
+            requiredMessage={t("auth.errors.emailRequired")}
+            invalidMessage={t("auth.errors.emailInvalid")}
             className="auth-input-container"
           />
 
@@ -77,7 +81,7 @@ function RegistrationPage() {
               type="tel"
               value={form.phone}
               onChange={handleChange}
-              placeholder="Enter your Phone Number"
+              placeholder={t("auth.register.phone")}
               className={errors.phone ? "input-error" : ""}
             />
             {errors.phone && <p className="auth-input-error-text">{errors.phone}</p>}
@@ -89,16 +93,18 @@ function RegistrationPage() {
             value={form.password}
             onChange={handleChange}
             error={errors.password}
-            placeholder="Choose a Password"
+            placeholder={t("auth.register.password")}
             className="auth-input-container"
             showPassword={showPassword}
             onToggleVisibility={() => setShowPassword((prev) => !prev)}
             autoComplete="new-password"
+            showPasswordLabel={t("auth.aria.showPassword")}
+            hidePasswordLabel={t("auth.aria.hidePassword")}
           />
 
           {/* Submit */}
           <button type="submit" className="register-submit" disabled={isSubmitting}>
-            {isSubmitting ? "Registering..." : "Register"}
+            {isSubmitting ? t("auth.register.submitting") : t("auth.register.button")}
           </button>
       </form>
     </AuthPageLayout>

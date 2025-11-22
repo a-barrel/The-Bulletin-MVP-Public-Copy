@@ -1,0 +1,22 @@
+{
+  "app": { "name": "📍😊" },
+  "tooltips": {
+    "reportMessage": "🚩✉️",
+    "moderateUser": "🛠️👤",
+    "shareSavedPin": "📤📌",
+    "comments": "💬",
+    "attendees": "👥",
+    "friendsAttending": "🧑‍🤝‍🧑🎉"
+  },
+  "nav": {
+    "menuTitle": "📜",
+    "bottomNav": {
+      "chat": "💬",
+      "map": "🗺️",
+      "list": "🧾",
+      "chatAria": { "default": "💬" },
+      "listAria": { "default": "🧾" }
+    }
+  },
+  "bookmarks": { "title": "🔖" }
+}

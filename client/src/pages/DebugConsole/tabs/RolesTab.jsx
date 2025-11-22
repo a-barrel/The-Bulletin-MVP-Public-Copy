@@ -72,7 +72,7 @@ function RolesTab() {
       if (!prev || prev.debugRoleOverride === undefined) {
         return prev;
       }
-      const { debugRoleOverride, ...rest } = prev;
+      const { debugRoleOverride: _debugRoleOverride, ...rest } = prev;
       return rest;
     });
   }, []);

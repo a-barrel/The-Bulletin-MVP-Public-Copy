@@ -1,0 +1,155 @@
+{
+  "app": {
+    "name": "PinPoint (Pirate)"
+  },
+  "nav": {
+    "menuTitle": "Treasure menu",
+    "openMenu": "Hoist the nav",
+    "closeMenu": "Stow the nav",
+    "close": "Close menu",
+    "quickShortcuts": "Swift sails",
+    "items": {
+      "profile": { "label": "Captain's log" },
+      "settings": { "label": "Rigging" },
+      "bookmarks": { "label": "Stashed loot" },
+      "updates": { "label": "Parrot squawks" },
+      "chat": { "label": "Chatter" },
+      "friends": { "label": "Crew" },
+      "map": { "label": "Chart" },
+      "list": { "label": "Ledger" },
+      "admin": { "label": "Captain's cabin" },
+      "directMessages": { "label": "Secret notes" }
+    },
+    "bookmarkQuickNav": {
+      "all": "All loot",
+      "unsorted": "Loose trinkets"
+    },
+    "bottomNav": {
+      "chat": "Chatter",
+      "map": "Chart",
+      "list": "Ledger",
+      "chatAria": {
+        "default": "Chatter",
+        "badge_one": "Chatter ({{count}} secret note)",
+        "badge_other": "Chatter ({{count}} secret notes)"
+      },
+      "listAria": {
+        "default": "Ledger",
+        "badge_one": "Ledger ({{count}} crew request)",
+        "badge_other": "Ledger ({{count}} crew requests)"
+      }
+    }
+  },
+  "offline": {
+    "default": "Ye be offline—some tricks be locked until ye reconnect."
+  },
+  "tooltips": {
+    "reportMessage": "Report this scallywag",
+    "moderateUser": "Open brig tools",
+    "shareSavedPin": "Share hidden loot",
+    "comments": "Parrot squawks",
+    "attendees": "Crew aboard",
+    "friendsAttending": "Mates attending"
+  },
+  "mapHeader": {
+    "title": "Chart",
+    "createPin": "Drop treasure",
+    "offlineCreate": "Reconnect to drop treasure",
+    "offlineNotifications": "Reconnect to hear the parrot"
+  },
+  "bookmarks": {
+    "title": "Stashed loot",
+    "back": "Back",
+    "backAria": "Back to main deck",
+    "saved": "{{count}} stashed",
+    "subtitle": "Find yer buried pins quick. Loot be grouped by chests and can be tossed anytime.",
+    "refresh": "Refresh",
+    "refreshing": "Swabbing…",
+    "export": "Export manifest",
+    "exporting": "Hauling…",
+    "offlineRefresh": "Reconnect to refresh loot",
+    "offlineExport": "Reconnect to export the manifest",
+    "filters": {
+      "title": "Hunt pins",
+      "keyword": "Word hunt",
+      "keywordPlaceholder": "Hunt titles, tales, or tags",
+      "pinTypes": "Pin breeds",
+      "typeOptions": {
+        "event": "Parley",
+        "discussion": "Tavern talk"
+      },
+      "friendActivity": "Crew doings",
+      "friendOptions": {
+        "created": {
+          "label": "Crew posted it",
+          "chip": "Crew posted"
+        },
+        "replied": {
+          "label": "Crew chimed in",
+          "chip": "Crew replied"
+        },
+        "attending": {
+          "label": "Crew attending",
+          "chip": "Crew attending"
+        }
+      },
+      "popularPins": "Popular loot",
+      "popularOptions": {
+        "none": "None",
+        "replies": "Most replies",
+        "attending": "Most attending"
+      },
+      "categories": "Crates",
+      "refreshCategories": "Refresh crates",
+      "refreshing": "Refreshing…",
+      "addCategoryLabel": "Add crate",
+      "addCategoryPlaceholder": "e.g. Rum, Maps",
+      "addCategory": "Add",
+      "categoryWithCount": "{{name}} ({{count}})",
+      "noCategories": "No crates yet.",
+      "dateRange": "Date range",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "status": "Status",
+      "statusOptions": {
+        "active": "Fresh",
+        "expired": "Stale",
+        "all": "All pins"
+      },
+      "chips": {
+        "keyword": "Word: \"{{keyword}}\"",
+        "type": "Breed: {{type}}",
+        "category": "Crate: {{category}}",
+        "friend": "Crew: {{engagement}}",
+        "status": "Status: {{status}}",
+        "dateRange": "Dates",
+        "dateRangeBetween": "{{start}} → {{end}}",
+        "dateFrom": "From {{start}}",
+        "dateUntil": "Until {{end}}",
+        "showingFullEvents": "Showing full holds"
+      },
+      "cancel": "Cancel",
+      "clear": "Clear filters",
+      "apply": "Apply filters"
+    }
+  },
+  "report": {
+    "title": "Report scallywag",
+    "messageLabel": "Message:",
+    "commonIssues": "Troubles (pick any)",
+    "detailsLabel": "Optional: tell the tale",
+    "detailsPlaceholder": "Share details for the crew that moderates.",
+    "helperDefault": "Reports be anonymous. The crew reviews every note.",
+    "cancel": "Cancel",
+    "submit": "Send report",
+    "submitting": "Sending…",
+    "offenses": {
+      "harassment": "Harassment / bullying",
+      "spam": "Spam or self-promotion",
+      "hate": "Hate speech / discrimination",
+      "nsfw": "NSFW / sexual content",
+      "violence": "Threats or violence",
+      "misinfo": "Misinformation / scam"
+    }
+  }
+}

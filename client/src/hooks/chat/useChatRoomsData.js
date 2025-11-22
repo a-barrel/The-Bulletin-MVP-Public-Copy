@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchChatRooms, createChatRoom } from '../../api/mongoDataApi';
-import { playBadgeSound } from '../../utils/badgeSound';
 
 const DEFAULT_COORDINATES = {
   latitude: 33.7838,
@@ -10,7 +9,6 @@ const DEFAULT_COORDINATES = {
 export default function useChatRoomsData({
   authUser,
   authLoading,
-  isOffline,
   viewerLatitude,
   viewerLongitude
 }) {
