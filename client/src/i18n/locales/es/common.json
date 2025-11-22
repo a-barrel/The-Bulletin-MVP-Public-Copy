@@ -1,0 +1,429 @@
+{
+  "app": {
+    "name": "PinPoint"
+  },
+  "nav": {
+    "menuTitle": "Menú",
+    "openMenu": "Abrir menú de navegación",
+    "closeMenu": "Cerrar menú de navegación",
+    "close": "Cerrar menú",
+    "quickShortcuts": "Accesos rápidos de navegación",
+    "items": {
+      "profile": {
+        "label": "Perfil",
+        "description": "Ver tu perfil"
+      },
+      "settings": {
+        "label": "Configuración",
+        "description": "Ajustar preferencias"
+      },
+      "bookmarks": {
+        "label": "Marcadores",
+        "description": "Ver pines guardados"
+      },
+      "updates": {
+        "label": "Actualizaciones",
+        "description": "Revisar notificaciones"
+      },
+      "chat": { "label": "Chat" },
+      "friends": { "label": "Amigos" },
+      "map": { "label": "Mapa" },
+      "list": { "label": "Lista" },
+      "admin": {
+        "label": "Panel de administración",
+        "description": "Moderar reportes y auditorías"
+      },
+      "directMessages": { "label": "Mensajes directos" }
+    },
+    "friendRequests": {
+      "pending_one": "{{count}} pendiente",
+      "pending_other": "{{count}} pendientes",
+      "none": "Sin invitaciones pendientes"
+    },
+    "directMessages": {
+      "pending_one": "{{count}} conversación",
+      "pending_other": "{{count}} conversaciones",
+      "none": "Ninguna conversación activa aún"
+    },
+    "bookmarksBadge": {
+      "one": "1 actualización de marcador sin leer",
+      "other": "{{count}} actualizaciones de marcadores sin leer"
+    },
+    "bookmarkQuickNav": {
+      "untitled": "Colección sin título",
+      "all": "Todos los marcadores",
+      "allDescription": "Ver toda tu biblioteca",
+      "unsorted": "Sin clasificar",
+      "unsortedDescription": "Pines guardados sin colección",
+      "offline": "Sin conexión: mostrando solo colecciones en caché.",
+      "loadError": "No se pudieron cargar las colecciones de marcadores."
+    },
+    "bottomNav": {
+      "chat": "Chat",
+      "map": "Mapa",
+      "list": "Lista",
+      "chatAria": {
+        "default": "Chat",
+        "badge_one": "Chat ({{count}} hilo de mensaje directo)",
+        "badge_other": "Chat ({{count}} hilos de mensajes directos)"
+      },
+      "listAria": {
+        "default": "Lista",
+        "badge_one": "Lista ({{count}} solicitud de amistad)",
+        "badge_other": "Lista ({{count}} solicitudes de amistad)"
+      }
+    }
+  },
+  "offline": {
+    "default": "Modo sin conexión: algunas acciones están deshabilitadas hasta que vuelva la conexión."
+  },
+  "badge": {
+    "announcement": "¡Has obtenido la insignia {{badge}}!",
+    "alt": "Celebración de insignia"
+  },
+  "tooltips": {
+    "reportMessage": "Reportar mensaje",
+    "moderateUser": "Moderar usuario",
+    "shareSavedPin": "Compartir un pin guardado",
+    "comments": "Comentarios",
+    "attendees": "Asistentes",
+    "friendsAttending": "Amigos asistirán",
+    "settings": {
+      "accessibility": "Accesibilidad y señales",
+      "pinDensity": "Densidad de pines",
+      "nearbyRadius": "Radio cercano",
+      "quickActions": "Acciones rápidas",
+      "notificationChannels": "Canales de notificación",
+      "chatIntensity": "Intensidad del chat",
+      "digestFrequency": "Frecuencia del resumen",
+      "quietHours": "Horas de silencio",
+      "channelBundles": "Paquetes de canales",
+      "dataExports": "Exportaciones de datos",
+      "apiTokens": "Tokens de API",
+      "privacySharing": "Privacidad y uso compartido",
+      "profileVisibility": "Visibilidad de perfil",
+      "directMessages": "Mensajes directos",
+      "accountManagement": "Gestión de cuenta",
+      "blockedUsers": "Reconéctate para gestionar bloqueados",
+      "generateTokens": "Reconéctate para generar tokens",
+      "revokeTokens": "Reconéctate para revocar tokens",
+      "requestExport": "Reconéctate para solicitar un export"
+    }
+  },
+  "auth": {
+    "back": "Regresar",
+    "placeholders": {
+      "email": "Ingresa el correo",
+      "password": "Ingresa la contraseña",
+      "newPassword": "Ingresa la nueva contraseña",
+      "confirmPassword": "Confirma la nueva contraseña",
+      "username": "Elige un nombre de usuario",
+      "phone": "Ingresa tu número de teléfono"
+    },
+    "rememberMe": "Recordarme",
+    "forgotPassword": "¿Olvidaste la contraseña?",
+    "submit": "Enviar",
+    "aria": {
+      "showPassword": "Mostrar contraseña",
+      "hidePassword": "Ocultar contraseña"
+    },
+    "errors": {
+      "emailRequired": "Por favor ingresa un correo electrónico.",
+      "emailInvalid": "Por favor ingresa un correo válido.",
+      "passwordRequired": "Por favor ingresa tu contraseña.",
+      "passwordConfirmRequired": "Ingresa una contraseña y confírmala en los campos.",
+      "passwordMismatch": "Las contraseñas no coinciden. Vuelve a ingresarlas.",
+      "passwordWeak": "La contraseña es demasiado débil. Hazla más fuerte.",
+      "passwordMin": "La contraseña debe tener al menos 6 caracteres.",
+      "resetLinkInvalid": "Este enlace de restablecimiento es inválido o ya se utilizó.",
+      "loginGeneric": "No se pudo iniciar sesión. Inténtalo de nuevo.",
+      "loginNotFound": "No existe una cuenta con este correo.",
+      "loginWrongPassword": "Contraseña incorrecta. Intenta de nuevo.",
+      "googleGeneric": "Error al iniciar sesión con Google. Inténtalo de nuevo.",
+      "appleUnavailable": "El inicio de sesión con Apple no está disponible en este entorno.",
+      "appleLinked": "Este correo está vinculado a otro método de inicio de sesión. Intenta con el proveedor original.",
+      "appleGeneric": "Error al iniciar sesión con Apple. Inténtalo de nuevo.",
+      "resetExpired": "Este enlace expiró. Solicita otro restablecimiento de contraseña.",
+      "resetInvalid": "Código de acción inválido. Solicita otro restablecimiento de contraseña.",
+      "resetWeakPassword": "La contraseña es demasiado débil. Elige una más segura.",
+      "resetGeneric": "Ocurrió un problema. Inténtalo de nuevo.",
+      "registrationValidation": "Corrige los campos marcados.",
+      "registrationDefault": "No se pudo crear tu cuenta. Inténtalo de nuevo.",
+      "registrationEmailInUse": "Ya existe una cuenta con este correo.",
+      "registrationNotAllowed": "El registro con correo/contraseña está deshabilitado.",
+      "registrationWeakPassword": "La contraseña es muy débil. Agrega más caracteres o símbolos.",
+      "networkError": "Error de red. Verifica tu conexión e inténtalo de nuevo.",
+      "passwordResetNotFound": "No existe una cuenta con ese correo.",
+      "usernameRequired": "Ingresa un nombre de usuario.",
+      "phoneRequired": "Ingresa un número de teléfono.",
+      "phoneInvalid": "Ingresa un número de teléfono válido."
+    },
+    "login": {
+      "title": "Iniciar sesión",
+      "button": "Iniciar sesión",
+      "submitting": "Iniciando sesión...",
+      "google": "Ingresar con Google",
+      "apple": "Ingresar con Apple",
+      "gettingStarted": "¿Apenas empiezas?",
+      "register": "Regístrate aquí"
+    },
+    "forgot": {
+      "title": "¿Olvidaste la contraseña?",
+      "instruction": "Ingresa el correo de la cuenta a la que intentas acceder.",
+      "success": "Si el correo existe, se envió un email para restablecer la contraseña."
+    },
+    "reset": {
+      "title": "Restablece tu contraseña",
+      "strengthLabel": "Fortaleza de la contraseña: {{strength}}",
+      "strength": {
+        "weak": "Débil",
+        "medium": "Media",
+        "strong": "Fuerte"
+      },
+      "requirements": {
+        "uppercase": "Incluye una letra mayúscula",
+        "lowercase": "Incluye una letra minúscula",
+        "number": "Incluye un número",
+        "special": "Incluye un carácter especial",
+        "length": "Tiene al menos 8 caracteres"
+      },
+      "newPassword": "Nueva contraseña",
+      "confirmPassword": "Confirmar nueva contraseña",
+      "submitting": "Restableciendo...",
+      "button": "Restablecer contraseña",
+      "success": "¡Tu contraseña se restableció correctamente! Redirigiendo al inicio de sesión..."
+    },
+    "register": {
+      "title": "Registro",
+      "username": "Elige un nombre de usuario",
+      "phone": "Ingresa tu número de teléfono",
+      "password": "Elige una contraseña",
+      "button": "Registrarse",
+      "submitting": "Registrando...",
+      "success": "¡Tu cuenta se creó correctamente! Redirigiendo al inicio de sesión..."
+    }
+  },
+  "settings": {
+    "tabs": {
+      "appearance": "Apariencia",
+      "notifications": "Notificaciones",
+      "privacy": "Privacidad",
+      "data": "Datos e integraciones"
+    },
+    "language": {
+      "title": "Idioma",
+      "description": "Elige tu idioma preferido para PinPoint.",
+      "emergency": "Inglés de emergencia",
+      "saved": "Idioma actualizado",
+      "optionsLabel": "Idioma de la app"
+    }
+  },
+  "mapHeader": {
+    "title": "Mapa",
+    "createPin": "Crear pin",
+    "offlineCreate": "Reconéctate para crear un pin",
+    "offlineNotifications": "Reconéctate para ver actualizaciones"
+  },
+  "bookmarks": {
+    "title": "Marcadores",
+    "back": "Volver",
+    "backAria": "Volver a la vista principal",
+    "saved": "{{count}} guardados",
+    "subtitle": "Vuelve rápido a los pines guardados. Los marcadores se agrupan por colección y puedes quitarlos cuando quieras.",
+    "refresh": "Actualizar",
+    "refreshing": "Cargando...",
+    "export": "Exportar CSV",
+    "exporting": "Exportando...",
+    "offlineRefresh": "Reconéctate para actualizar los marcadores",
+    "offlineExport": "Reconéctate para exportar marcadores",
+    "filters": {
+      "title": "Descubrir pines",
+      "keyword": "Búsqueda por palabra clave",
+      "keywordPlaceholder": "Busca títulos, descripciones o etiquetas",
+      "pinTypes": "Tipos de pin",
+      "typeOptions": {
+        "event": "Eventos",
+        "discussion": "Debates"
+      },
+      "friendActivity": "Actividad de amigos",
+      "friendOptions": {
+        "created": {
+          "label": "Creado por mis amigos",
+          "chip": "Amigos lo crearon"
+        },
+        "replied": {
+          "label": "Amigos respondieron",
+          "chip": "Amigos respondieron"
+        },
+        "attending": {
+          "label": "Amigos asistirán",
+          "chip": "Amigos asistirán"
+        }
+      },
+      "popularPins": "Pines populares",
+      "popularOptions": {
+        "none": "Ninguno",
+        "replies": "Más respuestas",
+        "attending": "Más asistentes"
+      },
+      "categories": "Categorías",
+      "refreshCategories": "Actualizar categorías",
+      "refreshing": "Actualizando…",
+      "addCategoryLabel": "Agregar categoría",
+      "addCategoryPlaceholder": "ej. Comida, Grupo de estudio",
+      "addCategory": "Agregar",
+      "categoryWithCount": "{{name}} ({{count}})",
+      "noCategories": "Aún no hay categorías disponibles.",
+      "dateRange": "Rango de fechas",
+      "startDate": "Fecha de inicio",
+      "endDate": "Fecha de fin",
+      "status": "Estado",
+      "statusOptions": {
+        "active": "Activo",
+        "expired": "Vencido",
+        "all": "Todos los pines"
+      },
+      "chips": {
+        "keyword": "Palabra clave: \"{{keyword}}\"",
+        "type": "Tipo: {{type}}",
+        "category": "Categoría: {{category}}",
+        "friend": "Amigos: {{engagement}}",
+        "status": "Estado: {{status}}",
+        "dateRange": "Rango de fechas",
+        "dateRangeBetween": "Fecha: {{start}} → {{end}}",
+        "dateFrom": "Desde {{start}}",
+        "dateUntil": "Hasta {{end}}",
+        "showingFullEvents": "Mostrando eventos llenos"
+      },
+      "cancel": "Cancelar",
+      "clear": "Borrar filtros",
+      "apply": "Aplicar filtros"
+    }
+  },
+  "notifications": {
+    "quickActionsDescription": "Silencia temporalmente sin cambiar tus preferencias.",
+    "mute1h": "Silenciar 1h",
+    "mute4h": "Silenciar 4h",
+    "mute24h": "Silenciar 24h",
+    "clearMute": "Quitar silencio",
+    "muteActive": "Silencio programado. Guarda la configuración para mantenerlo.",
+    "muteInactive": "Silenciar pausa la entrega sin cambiar los interruptores. Guarda después de aplicar cambios.",
+    "channelsDescription": "Elige qué notificaciones recibes en la app.",
+    "chatIntensityDescription": "Ajusta con qué frecuencia llegan los mensajes y chats.",
+    "chatIntensityLabel": "Intensidad de notificaciones de chat",
+    "chatIntensityHighlights": "Solo destacados",
+    "chatIntensityAll": "Toda la actividad",
+    "chatIntensityMuted": "Silenciar alertas de chat",
+    "chatIntensityNote": "“Silenciar” bloquea alertas de chat aunque el interruptor siga encendido. “Toda la actividad” funciona como Destacados hasta mostrar alertas de menor señal.",
+    "digestDescription": "Agrupa notificaciones de baja prioridad en resúmenes diarios o semanales.",
+    "digestLabel": "Frecuencia del resumen",
+    "digestImmediate": "Enviar inmediatamente",
+    "digestDaily": "Resumen diario",
+    "digestWeekly": "Resumen semanal",
+    "digestNever": "Nunca enviar resúmenes",
+    "quietDescription": "Pausa notificaciones no críticas en un horario semanal.",
+    "channelBundlesDescription": "Empieza con un preset y ajusta los interruptores."
+  },
+  "privacy": {
+    "sharingDescription": "Tu ubicación se usa solo para habilitar funciones (radios, chat cercano). Nunca se comparte con otros usuarios.",
+    "sharingBody": "La ubicación confirma que estás en rango para interacciones del mapa, pero tu ubicación exacta nunca se muestra a otras personas.",
+    "visibilityDescription": "Decide cuánta información pueden ver los demás.",
+    "statsPublic": "Permitir que otros vean mis estadísticas",
+    "filterCussWords": "Filtrar lenguaje explícito en chats públicos",
+    "dmDescription": "Elige quién puede iniciar nuevas conversaciones contigo.",
+    "dmLabel": "¿Quién puede enviarme mensajes directos?",
+    "dmEveryone": "Todos",
+    "dmFriends": "Amigos y seguidores",
+    "dmNobody": "Nadie (silenciar MD)",
+    "dmNote": "El modo Amigos también permite a quienes te siguen. “Nadie” te oculta de nuevos hilos.",
+    "accountDescription": "Bloquea a alguien o abre vistas de admin/perfil.",
+    "manageBlocked": "Gestionar bloqueados",
+    "adminDashboard": "Panel de admin",
+    "viewProfile": "Ver perfil"
+  },
+  "integrations": {
+    "exportsDescription": "Solicita una copia de tus datos y programa recordatorios mensuales.",
+    "exportEmail": "Te enviaremos un enlace cuando termine un export.",
+    "exportReminders": "Recuérdame exportar mis datos cada mes",
+    "exportNudge": "Enviaremos un aviso en la app cuando toque tu siguiente export.",
+    "requestExport": "Solicitar export de datos",
+    "tokensDescription": "Genera tokens de acceso para scripts e integraciones.",
+    "tokenLabel": "Etiqueta del token",
+    "tokenPlaceholder": "ej., cliente CLI",
+    "generateToken": "Generar token de API",
+    "tokenWarning": "Los tokens funcionan como contraseñas. Revoca los que no uses.",
+    "loadingTokens": "Cargando tokens...",
+    "untitledToken": "Token sin título",
+    "tokenPreview": "Vista previa: {{value}}",
+    "tokenCreated": "Creado {{date}}",
+    "noTokens": "Aún no hay tokens activos."
+  },
+  "profile": {
+    "bio": {
+      "title": "Biografía",
+      "empty": "Este usuario aún no ha agregado una bio."
+    },
+    "badges": {
+      "title": "Insignias y logros",
+      "defaultDescription": "Gana esta insignia para descubrir su historia.",
+      "empty": "Aún no hay insignias. Aparecerán cuando el usuario consiga logros."
+    },
+    "mutual": {
+      "title": "Amigos en común",
+      "friendFallback": "Amigo",
+      "friendInitial": "A",
+      "more": "+{{count}} más",
+      "empty": "No tienen amigos en común todavía. ¡Empieza a conectar!"
+    },
+    "moderation": {
+      "title": "Herramientas de moderación",
+      "description": "Solo visible para staff/offline. Úsalo con cuidado: se registran las acciones.",
+      "status": "Estado: {{status}}",
+      "userId": "ID de usuario: {{id}}",
+      "noAccess": "Se requieren privilegios de moderador. Si debes tener acceso, actualiza roles y refresca.",
+      "loadingHistory": "Cargando historial…",
+      "emptyHistory": "No hay acciones de moderación previas para este usuario.",
+      "noReason": "Sin motivo proporcionado.",
+      "unknownTime": "Hora desconocida",
+      "notesLabel": "Notas de moderación (opcional)",
+      "notesPlaceholder": "Agrega contexto para {{name}}",
+      "recent": "Moderación reciente",
+      "actions": {
+        "warn": "Advertir",
+        "mute15": "Silenciar 15 min",
+        "mute60": "Silenciar 1 h",
+        "ban": "Suspender",
+        "unban": "Reintegrar"
+      }
+    }
+  },
+  "report": {
+    "title": "Reportar contenido",
+    "messageLabel": "Mensaje:",
+    "commonIssues": "Problemas comunes (selecciona todos los que correspondan)",
+    "detailsLabel": "Opcional: cuéntanos qué pasó",
+    "detailsPlaceholder": "Comparte más detalles para los moderadores.",
+    "helperDefault": "Los reportes son anónimos. Nuestros moderadores revisan cada envío.",
+    "cancel": "Cancelar",
+    "submit": "Enviar reporte",
+    "submitting": "Enviando…",
+    "offenses": {
+      "harassment": "Acoso / bullying",
+      "spam": "Spam o autopromoción",
+      "hate": "Discurso de odio / discriminación",
+      "nsfw": "Contenido sexual / NSFW",
+      "violence": "Amenazas o violencia",
+      "misinfo": "Desinformación / estafa"
+    }
+  },
+  "debugBookmarks": {
+    "title": "Marcadores",
+    "totalSaved": "Total de pines guardados:",
+    "countLabel": "Pines guardados: {{count}}",
+    "filters": {
+      "all": "Todos los marcadores",
+      "event": "Eventos",
+      "discussion": "Debates"
+    }
+  }
+}

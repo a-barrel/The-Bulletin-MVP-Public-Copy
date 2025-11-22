@@ -4,6 +4,7 @@ import PropTypes from 'prop-types';
 import Snackbar from '@mui/material/Snackbar';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
+import { useTranslation } from 'react-i18next';
 import { getBadgeLabel } from '../utils/badges';
 import resolveAssetUrl from '../utils/media';
 
@@ -16,6 +17,7 @@ const BADGE_CELEBRATION_GIFS = [
 ];
 
 export function useBadgeCelebrationToast() {
+  const { t } = useTranslation();
   const badgeGifUrls = useMemo(
     () => BADGE_CELEBRATION_GIFS.map(resolveAssetUrl).filter(Boolean),
     []
@@ -35,7 +37,10 @@ export function useBadgeCelebrationToast() {
       }
 
       const label = getBadgeLabel(badgeId);
-      const message = `you earned ${label} badge!!`;
+      const message = t('badge.announcement', {
+        badge: label,
+        defaultValue: `You earned ${label} badge!`
+      });
       const gifUrl =
         badgeGifUrls.length > 0
           ? badgeGifUrls[Math.floor(Math.random() * badgeGifUrls.length)]
@@ -48,7 +53,7 @@ export function useBadgeCelebrationToast() {
         gifUrl
       });
     },
-    [badgeGifUrls]
+    [badgeGifUrls, t]
   );
 
   const handleClose = useCallback((event, reason) => {
@@ -66,6 +71,7 @@ export function useBadgeCelebrationToast() {
 }
 
 export function BadgeCelebrationToast({ toastState, onClose }) {
+  const { t } = useTranslation();
   const { open, message, key, gifUrl } = toastState;
 
   return (
@@ -97,7 +103,7 @@ export function BadgeCelebrationToast({ toastState, onClose }) {
             <Box
               component="img"
               src={gifUrl}
-              alt="Badge celebration"
+              alt={t('badge.alt')}
               sx={{
                 width: 'min(165px, 45vw)',
                 height: 'auto',

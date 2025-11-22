@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import { REPORT_OFFENSE_OPTIONS } from '../constants/reportOffenseOptions';
 import './ReportContentDialog.css';
+import { useTranslation } from 'react-i18next';
 
 const truncateSummary = (value) => {
   if (!value || typeof value !== 'string') {
@@ -41,6 +42,7 @@ function ReportContentDialog({
   selectedReasons = [],
   onToggleReason
 }) {
+  const { t } = useTranslation();
   const helperText = useMemo(() => {
     if (context) {
       return truncateSummary(context);
@@ -55,20 +57,20 @@ function ReportContentDialog({
 
   return (
     <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth="sm" fullWidth className="report-dialog">
-      <DialogTitle className="report-title">Report Content</DialogTitle>
+      <DialogTitle className="report-title">{t('report.title')}</DialogTitle>
 
       <DialogContent dividers className="report-content">
         <Stack spacing={2} className="report-stack">
           {contentSummary ? (
             <Typography variant="body2" className="report-summary" component="div">
-              <strong>Message:</strong>
+              <strong>{t('report.messageLabel')}</strong>
               <span className="report-summary-text">{truncateSummary(contentSummary)}</span>
             </Typography>
           ) : null}
 
           <div className="report-offense-section">
             <Typography variant="subtitle2" className="report-offense-title">
-              Common issues (select all that apply)
+              {t('report.commonIssues')}
             </Typography>
             <FormGroup className="report-offense-group">
               {offenseOptions.map((option) => (
@@ -81,7 +83,7 @@ function ReportContentDialog({
                       disabled={submitting}
                     />
                   }
-                  label={option.label}
+                  label={t(`report.offenses.${option.value}`, { defaultValue: option.label })}
                   className="report-offense-option"
                 />
               ))}
@@ -92,12 +94,12 @@ function ReportContentDialog({
             multiline
             minRows={3}
             maxRows={6}
-            label="Optional: Tell us what happened"
+            label={t('report.detailsLabel')}
             value={reason}
             onChange={(event) => onReasonChange?.(event.target.value)}
             disabled={submitting}
-            placeholder="Share additional details here for moderators."
-            helperText={helperText || 'Reports are anonymous. Our moderators review every submission.'}
+            placeholder={t('report.detailsPlaceholder')}
+            helperText={helperText || t('report.helperDefault')}
             className="report-textfield"
           />
 
@@ -111,7 +113,7 @@ function ReportContentDialog({
 
       <DialogActions className="report-actions">
         <Button onClick={onClose} disabled={submitting} className="report-cancel">
-          Cancel
+          {t('report.cancel')}
         </Button>
         <Button
           onClick={onSubmit}
@@ -120,7 +122,7 @@ function ReportContentDialog({
           color="error"
           className="report-submit"
         >
-          {submitting ? 'Sending…' : 'Submit report'}
+          {submitting ? t('report.submitting') : t('report.submit')}
         </Button>
       </DialogActions>
     </Dialog>

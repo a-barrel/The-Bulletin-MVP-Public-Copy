@@ -30,6 +30,7 @@ import {
   resolveAuthorName,
   resolveLibraryAvatar
 } from "../utils/feed";
+import { useTranslation } from "react-i18next";
 // Reference docs/frontend-api-cheatsheet.md (“PinCard Data Contract”) for the payload fields this card expects.
 
 const TAG_ICON_MAP = {
@@ -63,6 +64,7 @@ export default function PinCard({
   enableBookmarkToggle = true,
   className = ""
 }) {
+  const { t } = useTranslation();
   const rawType = item?.type ? String(item.type).toLowerCase() : "";
   const normalizedType =
     rawType === "event"
@@ -533,7 +535,7 @@ export default function PinCard({
 
         <div className="counts">
           {typeof item?.comments === "number" && (
-            <span className="count-item" title="Comments">
+            <span className="count-item" title={t('tooltips.comments')}>
               <img
                 src={CommentsIcon}
                 alt=""
@@ -545,7 +547,7 @@ export default function PinCard({
           )}
 
           {isEventPin && attendeeTotal > 0 && (
-            <span className="count-item" title="Attendees">
+            <span className="count-item" title={t('tooltips.attendees')}>
               <img
                 src={InterestedIcon}
                 alt=""
@@ -556,7 +558,7 @@ export default function PinCard({
             </span>
           )}
           {isEventPin && friendAttendingCount > 0 && (
-            <span className="count-item friend-count" title="Friends attending">
+            <span className="count-item friend-count" title={t('tooltips.friendsAttending')}>
               <img
                 src={InterestedIcon}
                 alt=""

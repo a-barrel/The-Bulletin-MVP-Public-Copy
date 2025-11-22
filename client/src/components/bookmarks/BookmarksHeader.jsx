@@ -5,6 +5,7 @@ import Chip from '@mui/material/Chip';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import MainNavBackButton from '../../components/MainNavBackButton';
 import GlobalNavMenu from '../../components/GlobalNavMenu';
+import { useTranslation } from 'react-i18next';
 
 function BookmarksHeader({
   totalCount,
@@ -16,6 +17,8 @@ function BookmarksHeader({
   authLoading,
   hasAuth
 }) {
+  const { t } = useTranslation();
+  const safeTotal = Number.isFinite(totalCount) ? totalCount : 0;
   const disableActions = isOffline || authLoading || !hasAuth;
   return (
     <Stack spacing={3}>
@@ -23,10 +26,10 @@ function BookmarksHeader({
         <MainNavBackButton
           className="bookmarks-back-button"
           iconClassName="bookmarks-back-button__icon"
-          ariaLabel="Back to main view"
+          ariaLabel={t('bookmarks.backAria')}
           scope="core"
         >
-          Back
+          {t('bookmarks.back')}
         </MainNavBackButton>
         <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
       </Stack>
@@ -34,9 +37,9 @@ function BookmarksHeader({
       <Stack direction="row" spacing={1.5} alignItems="center">
         <BookmarkIcon color="primary" />
         <Typography variant="h4" component="h1">
-          Bookmarks
+          {t('bookmarks.title')}
         </Typography>
-        <Chip label={`${totalCount} saved`} size="small" color="primary" variant="outlined" />
+        <Chip label={t('bookmarks.saved', { count: safeTotal })} size="small" color="primary" variant="outlined" />
       </Stack>
 
       <Stack
@@ -46,8 +49,7 @@ function BookmarksHeader({
         justifyContent="space-between"
       >
         <Typography variant="body2" sx={{ flexGrow: 1, color: '#111' }}>
-          Quickly revisit saved pins. Bookmarks are grouped by collection and can be removed at any
-          time.
+          {t('bookmarks.subtitle')}
         </Typography>
         <Stack direction="row" spacing={1} sx={{ alignSelf: { xs: 'flex-start', sm: 'flex-end' } }}>
           <Button
@@ -56,9 +58,9 @@ function BookmarksHeader({
             size="small"
             onClick={onRefresh}
             disabled={disableActions || isLoading}
-            title={isOffline ? 'Reconnect to refresh bookmarks' : undefined}
+            title={isOffline ? t('bookmarks.offlineRefresh') : undefined}
           >
-            {isLoading ? 'Loading...' : 'Refresh'}
+            {isLoading ? t('bookmarks.refreshing') : t('bookmarks.refresh')}
           </Button>
           <Button
             type="button"
@@ -66,9 +68,9 @@ function BookmarksHeader({
             size="small"
             onClick={onExport}
             disabled={disableActions || isExporting}
-            title={isOffline ? 'Reconnect to export bookmarks' : undefined}
+            title={isOffline ? t('bookmarks.offlineExport') : undefined}
           >
-            {isExporting ? 'Exporting...' : 'Export CSV'}
+            {isExporting ? t('bookmarks.exporting') : t('bookmarks.export')}
           </Button>
         </Stack>
       </Stack>

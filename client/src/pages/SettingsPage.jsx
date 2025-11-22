@@ -57,6 +57,7 @@ import FeedbackDialog from '../components/settings/FeedbackDialog';
 import BlockedUsersDialog from '../components/settings/BlockedUsersDialog';
 import settingsPalette, { settingsButtonStyles } from '../components/settings/settingsPalette';
 import canAccessModerationTools from '../utils/accessControl';
+import { useTranslation } from 'react-i18next';
 
 export const pageConfig = {
   id: 'settings',
@@ -70,6 +71,7 @@ export const pageConfig = {
 };
 
 function SettingsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [authUser, authLoading] = useAuthState(auth);
   const { enabled: badgeSoundEnabled, setEnabled: setBadgeSoundEnabled } = useBadgeSound();
@@ -527,10 +529,10 @@ function SettingsPage() {
                 }
               }}
             >
-              <Tab label="Appearance" value="appearance" />
-              <Tab label="Notifications" value="notifications" />
-              <Tab label="Privacy" value="privacy" />
-              <Tab label="Data & Integrations" value="data" />
+              <Tab label={t('settings.tabs.appearance')} value="appearance" />
+              <Tab label={t('settings.tabs.notifications')} value="notifications" />
+              <Tab label={t('settings.tabs.privacy')} value="privacy" />
+              <Tab label={t('settings.tabs.data')} value="data" />
             </Tabs>
 
             <Divider />

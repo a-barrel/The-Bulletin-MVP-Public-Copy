@@ -10,6 +10,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import { useTranslation } from 'react-i18next';
 
 import ProfileSection from './ProfileSection';
 import useModerationTools from '../../hooks/useModerationTools';
@@ -63,6 +64,7 @@ const STATUS_COLOR = {
 };
 
 function ProfileModerationPanel({ targetUserId, displayName, accountStatus, isViewingSelf }) {
+  const { t } = useTranslation();
   const [notes, setNotes] = useState('');
   const {
     hasAccess,
@@ -97,10 +99,10 @@ function ProfileModerationPanel({ targetUserId, displayName, accountStatus, isVi
     const normalized = typeof accountStatus === 'string' ? accountStatus.toLowerCase() : 'unknown';
     const chipColor = STATUS_COLOR[normalized] || 'default';
     return {
-      label: `Status: ${normalized}`,
+      label: t('profile.moderation.status', { status: normalized }),
       color: chipColor
     };
-  }, [accountStatus]);
+  }, [accountStatus, t]);
 
   if (!targetUserId || isViewingSelf) {
     return null;
@@ -138,7 +140,7 @@ function ProfileModerationPanel({ targetUserId, displayName, accountStatus, isVi
         <Stack direction="row" spacing={1} alignItems="center">
           <CircularProgress size={16} thickness={5} />
           <Typography variant="body2" color="text.secondary">
-            Loading history…
+            {t('profile.moderation.loadingHistory')}
           </Typography>
         </Stack>
       );
@@ -148,7 +150,7 @@ function ProfileModerationPanel({ targetUserId, displayName, accountStatus, isVi
     if (!preview.length) {
       return (
         <Typography variant="body2" color="text.secondary">
-          No prior moderation actions logged for this user.
+          {t('profile.moderation.emptyHistory')}
         </Typography>
       );
     }
@@ -158,13 +160,13 @@ function ProfileModerationPanel({ targetUserId, displayName, accountStatus, isVi
         {preview.map((entry) => (
           <Box key={entry.id} className="profile-moderation-history__row">
             <Typography variant="subtitle2" className="profile-moderation-history__type">
-              {entry.type}
+              {t(`profile.moderation.actions.${entry.type}`, { defaultValue: entry.type })}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {entry.reason ? entry.reason : <em>No reason provided.</em>}
+              {entry.reason ? entry.reason : <em>{t('profile.moderation.noReason')}</em>}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {formatFriendlyTimestamp(entry.createdAt, { fallback: 'Unknown time' })}
+              {formatFriendlyTimestamp(entry.createdAt, { fallback: t('profile.moderation.unknownTime') })}
             </Typography>
           </Box>
         ))}
@@ -174,8 +176,8 @@ function ProfileModerationPanel({ targetUserId, displayName, accountStatus, isVi
 
   return (
     <ProfileSection
-      title="Moderator tools"
-      description="Only visible to staff/offline builds. Use responsibly—actions are logged."
+      title={t('profile.moderation.title')}
+      description={t('profile.moderation.description')}
     >
       <Stack spacing={2} className="profile-moderation-panel">
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -185,13 +187,13 @@ function ProfileModerationPanel({ targetUserId, displayName, accountStatus, isVi
             size="small"
             className="profile-moderation-status-chip"
           />
-          <Chip label={`User ID: ${targetUserId}`} size="small" variant="outlined" />
+          <Chip label={t('profile.moderation.userId', { id: targetUserId })} size="small" variant="outlined" />
           {isLoadingOverview ? <CircularProgress size={16} thickness={5} /> : null}
         </Stack>
 
         {hasAccess === false ? (
           <Alert severity="info">
-            Moderator privileges required. If you should have access, refresh after updating roles.
+            {t('profile.moderation.noAccess')}
           </Alert>
         ) : (
           <>
@@ -200,8 +202,8 @@ function ProfileModerationPanel({ targetUserId, displayName, accountStatus, isVi
             ) : null}
 
             <TextField
-              label="Moderator notes (optional)"
-              placeholder={`Add context for ${displayName}`}
+              label={t('profile.moderation.notesLabel')}
+              placeholder={t('profile.moderation.notesPlaceholder', { name: displayName })}
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               multiline
@@ -231,7 +233,7 @@ function ProfileModerationPanel({ targetUserId, displayName, accountStatus, isVi
                         disabled={disabled}
                         onClick={() => handleQuickAction(action)}
                       >
-                        {action.label}
+                        {t(`profile.moderation.actions.${action.key}`, { defaultValue: action.label })}
                       </Button>
                     </span>
                   </Tooltip>
@@ -242,7 +244,7 @@ function ProfileModerationPanel({ targetUserId, displayName, accountStatus, isVi
             <Divider />
 
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Recent moderation</Typography>
+              <Typography variant="subtitle2">{t('profile.moderation.recent')}</Typography>
               {renderHistory()}
             </Stack>
           </>

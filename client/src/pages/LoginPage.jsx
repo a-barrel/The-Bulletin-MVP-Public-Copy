@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../firebase";
 import {
@@ -21,6 +22,7 @@ import GoogleIcon from "@mui/icons-material/Google";
 import AppleIcon from "@mui/icons-material/Apple";
 
 function LoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,7 +37,7 @@ function LoginPage() {
   const { signInWithProvider, isPopupActive } = useProviderSignIn({ remember });
 
   const validatePassword = (value) => {
-    if (!value) return "Please enter your password.";
+    if (!value) return t("auth.errors.passwordRequired");
     return "";
   };
 
@@ -43,7 +45,10 @@ function LoginPage() {
     e.preventDefault();
     setError(null);
 
-    const emailErr = validateAuthEmail(email);
+    const emailErr = validateAuthEmail(email, {
+      requiredMessage: t("auth.errors.emailRequired"),
+      invalidMessage: t("auth.errors.emailInvalid")
+    });
     const passwordErr = validatePassword(password);
 
     setEmailError(emailErr);
@@ -62,22 +67,20 @@ function LoginPage() {
       navigate(routes.map.base);
     } catch (error) {
       switch (error.code) {
-        // Only big errors (e.g. no account with email or login failure) will get a popup.
-        // Else, blank or missing parameters just get a simple text error.
         case "auth/invalid-email":
-          //setError("Please enter a valid email address.");
-          break;
-        case "auth/user-not-found":
-          setError("No account found with this email.");
-          break;
-        case "auth/wrong-password":
-          setError("Incorrect password. Try again.");
+          setError(t("auth.errors.emailInvalid"));
           break;
         case "auth/missing-password":
-          //setError("Please enter your password.");
+          setError(t("auth.errors.passwordRequired"));
+          break;
+        case "auth/user-not-found":
+          setError(t("auth.errors.loginNotFound"));
+          break;
+        case "auth/wrong-password":
+          setError(t("auth.errors.loginWrongPassword"));
           break;
         default:
-          setError("Login failed. Please try again.");
+          setError(t("auth.errors.loginGeneric"));
           break;
       }
       triggerShake();
@@ -95,7 +98,7 @@ function LoginPage() {
       if (popupError?.message) {
         setError(popupError.message);
       } else {
-        setError("Google sign-in failed. Please try again.");
+        setError(t("auth.errors.googleGeneric"));
       }
     }
   };
@@ -107,15 +110,13 @@ function LoginPage() {
       navigate(routes.map.base);
     } catch (signupError) {
       if (signupError?.code === "auth/operation-not-supported-in-this-environment") {
-        setError("Apple sign-in is not available in this environment.");
+        setError(t("auth.errors.appleUnavailable"));
       } else if (signupError?.code === "auth/account-exists-with-different-credential") {
-        setError(
-          "This email is linked to a different sign-in method. Try logging in with the original provider."
-        );
+        setError(t("auth.errors.appleLinked"));
       } else if (signupError?.message) {
         setError(signupError.message);
       } else {
-        setError("Apple sign-in failed. Please try again.");
+        setError(t("auth.errors.appleGeneric"));
       }
     }
   };
@@ -136,7 +137,7 @@ function LoginPage() {
       alerts={alerts}
     >
       <div className="bulletin-image">
-        <img src={bulletinLogo} alt="PinPoint logo" />
+        <img src={bulletinLogo} alt={`${t("app.name")} logo`} />
       </div>
 
       <form onSubmit={handleLogin} className={"page-form"}>
@@ -145,7 +146,9 @@ function LoginPage() {
           onChange={(event) => setEmail(event.target.value)}
           error={emailError}
           onErrorChange={setEmailError}
-          placeholder="Enter Email"
+          placeholder={t("auth.placeholders.email")}
+          requiredMessage={t("auth.errors.emailRequired")}
+          invalidMessage={t("auth.errors.emailInvalid")}
           className="auth-input-container input-container"
           errorTextClassName="auth-input-error-text input-error-text"
         />
@@ -156,11 +159,13 @@ function LoginPage() {
             setPassword(e.target.value);
             setPasswordError("");
           }}
-            placeholder="Enter Password"
+            placeholder={t("auth.placeholders.password")}
           error={passwordError}
           showPassword={showPassword}
           onToggleVisibility={() => setShowPassword((prev) => !prev)}
           autoComplete="current-password"
+          showPasswordLabel={t("auth.aria.showPassword")}
+          hidePasswordLabel={t("auth.aria.hidePassword")}
         />
 
         <div className="additional-options">
@@ -170,7 +175,7 @@ function LoginPage() {
               checked={remember}
             onChange={() => setRemember((prev) => !prev)}
           />
-          Remember me
+          {t("auth.rememberMe")}
         </label>
           
           <div className="forgot-password-link">
@@ -178,7 +183,7 @@ function LoginPage() {
               className="forgot-password-clickable"
               onClick={() => navigate(routes.auth.forgotPassword)}
             > 
-              Forgot Password?
+              {t("auth.forgotPassword")}
             </span>
           </div>
         </div>
@@ -188,7 +193,7 @@ function LoginPage() {
           className="login-page-login-btn"
           disabled={isSubmitting}
         >
-          {isSubmitting ? "Logging in..." : "Login"}
+          {isSubmitting ? t("auth.login.submitting") : t("auth.login.button")}
         </button>
 
         <button 
@@ -198,7 +203,7 @@ function LoginPage() {
           disabled={isPopupActive}
         >
           <GoogleIcon className="google-icon" fontSize="small" />
-          Sign in with Google
+          {t("auth.login.google")}
         </button>
 
         <button
@@ -208,17 +213,17 @@ function LoginPage() {
           disabled={isPopupActive}
         >
           <AppleIcon className="apple-icon" fontSize="small" />
-          Sign in with Apple
+          {t("auth.login.apple")}
         </button>
 
-        <p className="getting-started-text">Getting started?</p>
+        <p className="getting-started-text">{t("auth.login.gettingStarted")}</p>
 
         <button 
           type="button"
           className="login-page-register-btn" 
           onClick={() => navigate(routes.auth.register)}
         > 
-          Register Here
+          {t("auth.login.register")}
         </button>    
       </form>
     </AuthPageLayout>

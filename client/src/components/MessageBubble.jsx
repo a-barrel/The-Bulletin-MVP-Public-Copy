@@ -10,9 +10,11 @@ import { resolveAvatarSrc } from '../utils/chatParticipants';
 import { ensureImageSrc, withFallbackOnError } from '../utils/imageFallback';
 import FriendBadge from './FriendBadge';
 import { routes } from '../routes';
+import { useTranslation } from 'react-i18next';
 
 
 function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate, onReport }) {
+  const { t } = useTranslation();
   const rawMessage = typeof msg?.message === 'string' ? msg.message : '';
   const strippedMessage = rawMessage.replace(/^GIF:\s*/i, '').trim();
   const isAttachmentOnly = rawMessage === ATTACHMENT_ONLY_PLACEHOLDER;
@@ -206,7 +208,7 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
               {formatFriendlyTimestamp(msg.createdAt) || formatRelativeTime(msg.createdAt) || ''}
             </Typography>
             {!isSelf && typeof onReport === 'function' ? (
-              <Tooltip title="Report message">
+              <Tooltip title={t('tooltips.reportMessage')}>
                 <span>
                   <IconButton
                     className="chat-report-btn"
@@ -231,7 +233,7 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
               </Tooltip>
             ) : null}
             {canModerate && !isSelf && typeof onModerate === 'function' ? (
-              <Tooltip title="Moderate user">
+              <Tooltip title={t('tooltips.moderateUser')}>
                 <span>
                   <IconButton
                     className="chat-moderation-btn"

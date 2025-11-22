@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation } from "react-router-dom";
 import { auth } from "../firebase";
 import "./ResetPasswordPage.css";
@@ -17,6 +18,7 @@ import {
 function ResetPasswordPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const strength = useMemo(() => getPasswordStrength(newPassword), [newPassword]);
@@ -30,7 +32,7 @@ function ResetPasswordPage() {
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
 
   const validatePassword = (value) => {
-    if (!value) return "Please enter your password.";
+    if (!value) return t("auth.errors.passwordRequired");
     return "";
   };
 
@@ -50,12 +52,12 @@ function ResetPasswordPage() {
 
   useMemo(() => {
     if (!oobCode) {
-      setOobCodeError("This reset link is invalid or has already been used.");
+      setOobCodeError(t("auth.errors.resetLinkInvalid"));
     } else {
       setOobCodeError(null);
     }
     return null;
-  }, [oobCode]);
+  }, [oobCode, t]);
 
   const handlePasswordReset = async (e) => {
     e.preventDefault();
@@ -67,25 +69,25 @@ function ResetPasswordPage() {
     setPasswordError(passwordErr);
 
     if (!oobCode) {
-      setOobCodeError("This reset link is invalid or has already been used.");
+      setOobCodeError(t("auth.errors.resetLinkInvalid"));
       triggerShake();
       return;
     }
 
     if (!newPassword || !confirmNewPassword) {
-      setPasswordError("Please enter a password and confirm it in the fields.");
+      setPasswordError(t("auth.errors.passwordConfirmRequired"));
       triggerShake();
       return;
     }
 
     if (newPassword !== confirmNewPassword) {
-      setPasswordError("Passwords are not matching. Please re-enter them again.");
+      setPasswordError(t("auth.errors.passwordMismatch"));
       triggerShake();
       return;
     }
 
     if (strength.label !== "Strong") {
-      setPasswordError("Password is too weak. Make it stronger.");
+      setPasswordError(t("auth.errors.passwordWeak"));
       triggerShake();
       return;
     }
@@ -93,21 +95,21 @@ function ResetPasswordPage() {
     try {
       setIsSubmitting(true);
       await confirmPasswordReset(auth, oobCode, newPassword);
-      setMessage("Your password has been reset successfully! \nRedirecting to login...");
+      setMessage(t("auth.reset.success"));
       setTimeout(() => navigate(routes.auth.login), 2000);
     } catch (err) {
       switch (err.code) {
         case "auth/expired-action-code":
-          setError("This link has expired. Please request a new password reset.");
+          setError(t("auth.errors.resetExpired"));
           break;
         case "auth/invalid-action-code":
-          setError("Invalid action code. Please request a new password reset.");
+          setError(t("auth.errors.resetInvalid"));
           break;
         case "auth/weak-password":
-          setError("Password is too weak. Please choose a stronger password.");
+          setError(t("auth.errors.resetWeakPassword"));
           break;
         default:
-          setError("Something went wrong. Please try again.");
+          setError(t("auth.errors.resetGeneric"));
           break;
       }
       triggerShake();
@@ -145,7 +147,8 @@ function ResetPasswordPage() {
   return (
     <AuthPageLayout
       shake={shake}
-      title="Reset Your Password"
+      title={t("auth.reset.title")}
+      backButtonAriaLabel={t("auth.back")}
       alerts={alerts}
     >
       <form onSubmit={handlePasswordReset} className={"page-form"}>
@@ -156,41 +159,52 @@ function ResetPasswordPage() {
               style={{ width: `${fillPercent}%`, backgroundColor: fillColor }}
             />
           </div>
-          <p className="strength-label">Password strength: {strength.label || "Weak"}</p>
+          <p className="strength-label">
+            {t("auth.reset.strengthLabel", {
+              strength: t(
+                `auth.reset.strength.${(strength.label || "Weak").toLowerCase()}`,
+                { defaultValue: strength.label || "Weak" }
+              )
+            })}
+          </p>
         </div>
 
         <PasswordField
-          label="New Password"
+          label={t("auth.reset.newPassword")}
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
-          placeholder="Enter new password"
+          placeholder={t("auth.placeholders.newPassword")}
           error={passwordError}
           showPassword={showNewPassword}
           onToggleVisibility={() => setShowNewPassword((prev) => !prev)}
           autoComplete="new-password"
+          showPasswordLabel={t("auth.aria.showPassword")}
+          hidePasswordLabel={t("auth.aria.hidePassword")}
         />
 
         <PasswordField
-          label="Confirm New Password"
+          label={t("auth.reset.confirmPassword")}
           value={confirmNewPassword}
           onChange={(e) => setConfirmNewPassword(e.target.value)}
-          placeholder="Confirm new password"
+          placeholder={t("auth.placeholders.confirmPassword")}
           error={passwordError}
           showPassword={showConfirmNewPassword}
           onToggleVisibility={() => setShowConfirmNewPassword((prev) => !prev)}
           autoComplete="new-password"
+          showPasswordLabel={t("auth.aria.showPassword")}
+          hidePasswordLabel={t("auth.aria.hidePassword")}
         />
 
         <ul className="password-requirements">
           {PASSWORD_REQUIREMENTS.map((req) => (
-            <li key={req.label} className={req.test(newPassword) ? "met" : "unmet"}>
-              {req.label}
+            <li key={req.key} className={req.test(newPassword) ? "met" : "unmet"}>
+              {t(`auth.reset.requirements.${req.key}`, { defaultValue: req.label })}
             </li>
           ))}
         </ul>
 
         <button type="submit" className="reset-password-btn" disabled={isSubmitting}>
-          {isSubmitting ? "Resetting..." : "Reset Password"}
+          {isSubmitting ? t("auth.reset.submitting") : t("auth.reset.button")}
         </button>
       </form>
     </AuthPageLayout>

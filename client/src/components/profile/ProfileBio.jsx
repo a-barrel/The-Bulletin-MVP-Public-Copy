@@ -1,16 +1,18 @@
 import Typography from '@mui/material/Typography';
+import { useTranslation } from 'react-i18next';
 import ProfileSection from './ProfileSection';
 
 function ProfileBio({ bioText }) {
+  const { t } = useTranslation();
   return (
-    <ProfileSection title="Bio">
+    <ProfileSection title={t('profile.bio.title')}>
       {bioText ? (
         <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
           {bioText}
         </Typography>
       ) : (
         <Typography variant="body2" color="text.secondary">
-          This user hasn't added a bio yet.
+          {t('profile.bio.empty')}
         </Typography>
       )}
     </ProfileSection>

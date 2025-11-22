@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import SettingsAccordion from './SettingsAccordion';
 import settingsPalette, { mutedTextSx, settingsButtonStyles } from './settingsPalette';
+import { useTranslation } from 'react-i18next';
 
 function DataIntegrationsSettings({
   isOffline,
@@ -31,34 +32,39 @@ function DataIntegrationsSettings({
   isLoadingTokens,
   onRevokeToken
 }) {
+  const { t } = useTranslation();
   return (
     <Stack spacing={2}>
       <SettingsAccordion
-        title="Data exports"
-        description="Request a copy of your data and set monthly reminders."
+        title={t('tooltips.settings.dataExports')}
+        description={t('integrations.exportsDescription', {
+          defaultValue: 'Request a copy of your data and set monthly reminders.'
+        })}
       >
         <Typography variant="body2" sx={mutedTextSx}>
-          We’ll email you a link whenever an export finishes.
+          {t('integrations.exportEmail', { defaultValue: 'We’ll email you a link whenever an export finishes.' })}
         </Typography>
         <FormControlLabel
           control={<Switch checked={autoExportReminders} onChange={onAutoExportRemindersToggle} />}
-          label="Remind me to export my data each month"
+          label={t('integrations.exportReminders', { defaultValue: 'Remind me to export my data each month' })}
           sx={{
             color: settingsPalette.textPrimary,
             '.MuiFormControlLabel-label': { color: settingsPalette.textPrimary }
           }}
         />
         <Typography variant="caption" sx={mutedTextSx}>
-          We’ll send a gentle nudge inside the app when it’s time for your next export.
+          {t('integrations.exportNudge', {
+            defaultValue: 'We’ll send a gentle nudge inside the app when it’s time for your next export.'
+          })}
         </Typography>
         <Button
           variant="contained"
           onClick={onDataExport}
           disabled={isOffline}
-          title={isOffline ? 'Reconnect to request an export' : undefined}
+          title={isOffline ? t('tooltips.settings.requestExport') : undefined}
           sx={{ ...settingsButtonStyles.contained, alignSelf: 'flex-start', mt: 1 }}
         >
-          Request data export
+          {t('integrations.requestExport', { defaultValue: 'Request data export' })}
         </Button>
         {dataStatus ? (
           <Alert severity={dataStatus.type} onClose={onDismissDataStatus}>
@@ -68,16 +74,18 @@ function DataIntegrationsSettings({
       </SettingsAccordion>
 
       <SettingsAccordion
-        title="API tokens"
-        description="Generate personal access tokens for scripts and integrations."
+        title={t('tooltips.settings.apiTokens')}
+        description={t('integrations.tokensDescription', {
+          defaultValue: 'Generate personal access tokens for scripts and integrations.'
+        })}
         defaultExpanded={false}
       >
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
           <TextField
-            label="Token label"
+            label={t('integrations.tokenLabel', { defaultValue: 'Token label' })}
             value={tokenLabel}
             onChange={onTokenLabelChange}
-            placeholder="e.g., CLI client"
+            placeholder={t('integrations.tokenPlaceholder', { defaultValue: 'e.g., CLI client' })}
             size="small"
             sx={{ maxWidth: 320 }}
             disabled={isOffline}
@@ -86,10 +94,10 @@ function DataIntegrationsSettings({
             variant="outlined"
             onClick={onGenerateToken}
             disabled={isOffline}
-            title={isOffline ? 'Reconnect to generate tokens' : undefined}
+            title={isOffline ? t('tooltips.settings.generateTokens') : undefined}
             sx={settingsButtonStyles.outlined}
           >
-            Generate API token
+            {t('integrations.generateToken', { defaultValue: 'Generate API token' })}
           </Button>
         </Stack>
         {tokenStatus ? (
@@ -103,13 +111,15 @@ function DataIntegrationsSettings({
           </Alert>
         ) : null}
         <Typography variant="caption" sx={mutedTextSx}>
-          API tokens behave like passwords. Revoke any token you no longer use.
+          {t('integrations.tokenWarning', {
+            defaultValue: 'API tokens behave like passwords. Revoke any token you no longer use.'
+          })}
         </Typography>
         {isLoadingTokens ? (
           <Stack alignItems="center" spacing={1}>
             <CircularProgress size={20} />
             <Typography variant="body2" sx={mutedTextSx}>
-              Loading tokens...
+              {t('integrations.loadingTokens', { defaultValue: 'Loading tokens...' })}
             </Typography>
           </Stack>
         ) : apiTokens.length ? (
@@ -123,7 +133,7 @@ function DataIntegrationsSettings({
                     variant="text"
                     onClick={() => onRevokeToken(token.id)}
                     disabled={isOffline}
-                    title={isOffline ? 'Reconnect to revoke tokens' : undefined}
+                    title={isOffline ? t('tooltips.settings.revokeTokens') : undefined}
                     sx={{
                       color: '#B3261E',
                       fontWeight: 600,
@@ -141,16 +151,22 @@ function DataIntegrationsSettings({
                   </Button>
                 }
               >
-                <ListItemText
-                  primary={token.label || 'Untitled token'}
+                  <ListItemText
+                  primary={token.label || t('integrations.untitledToken', { defaultValue: 'Untitled token' })}
                   secondary={
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={0.5}>
                       <Typography component="span" variant="caption" sx={mutedTextSx}>
-                        Preview: {token.preview ? `${token.preview}••••` : '••••••'}
+                        {t('integrations.tokenPreview', {
+                          defaultValue: 'Preview: {{value}}',
+                          value: token.preview ? `${token.preview}••••` : '••••••'
+                        })}
                       </Typography>
                       {token.createdAt ? (
                         <Typography component="span" variant="caption" sx={mutedTextSx}>
-                          Created {new Date(token.createdAt).toLocaleString()}
+                          {t('integrations.tokenCreated', {
+                            defaultValue: 'Created {{date}}',
+                            date: new Date(token.createdAt).toLocaleString()
+                          })}
                         </Typography>
                       ) : null}
                     </Stack>
@@ -162,7 +178,7 @@ function DataIntegrationsSettings({
           </List>
         ) : (
           <Typography variant="body2" sx={mutedTextSx}>
-            No active tokens yet.
+            {t('integrations.noTokens', { defaultValue: 'No active tokens yet.' })}
           </Typography>
         )}
       </SettingsAccordion>

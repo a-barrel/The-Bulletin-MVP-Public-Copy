@@ -1,10 +1,7 @@
 import { Button, Stack } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 
-const FILTERS = [
-  { label: 'All bookmarks', value: 'all' },
-  { label: 'Events', value: 'event' },
-  { label: 'Discussions', value: 'discussion' }
-];
+const FILTERS = ['all', 'event', 'discussion'];
 
 function BookmarksDebugFilters({
   activeType,
@@ -17,23 +14,24 @@ function BookmarksDebugFilters({
   isLoading,
   isExporting
 }) {
+  const { t } = useTranslation();
   return (
     <Stack direction="row" spacing={0} alignItems="center" className="bookmarks-main-toolbar">
       <Stack direction="row" spacing={1} flexWrap="wrap" className="bookmarks-type-filters">
         {FILTERS.map((filter) => (
           <button
             type="button"
-            key={filter.value}
-            className={`bookmark-type-chip${activeType === filter.value ? ' is-active' : ''}`}
-            onClick={() => onActiveTypeChange(filter.value)}
+            key={filter}
+            className={`bookmark-type-chip${activeType === filter ? ' is-active' : ''}`}
+            onClick={() => onActiveTypeChange(filter)}
           >
-            {filter.label}
+            {t(`debugBookmarks.filters.${filter}`)}
           </button>
         ))}
       </Stack>
 
       <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" className="bookmarks-toolbar-actions">
-        <span className="bookmarks-count">Saved pins: {totalCount}</span>
+        <span className="bookmarks-count">{t('debugBookmarks.countLabel', { count: totalCount })}</span>
         <Button
           type="button"
           variant="outlined"
@@ -41,7 +39,7 @@ function BookmarksDebugFilters({
           onClick={onRefresh}
           disabled={refreshDisabled}
         >
-          {isLoading ? 'Loading...' : 'Refresh'}
+          {isLoading ? t('bookmarks.refreshing') : t('bookmarks.refresh')}
         </Button>
         <Button
           type="button"
@@ -50,7 +48,7 @@ function BookmarksDebugFilters({
           onClick={onExport}
           disabled={exportDisabled}
         >
-          {isExporting ? 'Exporting...' : 'Export CSV'}
+          {isExporting ? t('bookmarks.exporting') : t('bookmarks.export')}
         </Button>
       </Stack>
     </Stack>
