@@ -1950,7 +1950,9 @@ export async function createChatRoom(input) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to create chat room');
+    const error = new Error(payload?.message || 'Failed to create chat room');
+    error.status = response.status;
+    throw error;
   }
 
   return payload;
@@ -1995,7 +1997,9 @@ export async function fetchChatRooms({
 
   const payload = await response.json().catch(() => []);
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load chat rooms');
+    const error = new Error(payload?.message || 'Failed to load chat rooms');
+    error.status = response.status;
+    throw error;
   }
 
   return payload;

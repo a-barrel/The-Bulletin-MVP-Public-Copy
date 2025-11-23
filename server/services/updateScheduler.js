@@ -1,6 +1,7 @@
 const Pin = require('../models/Pin');
 const { broadcastEventStartingSoon, broadcastDiscussionExpiringSoon } = require('./updateFanoutService');
 const { logIntegration } = require('../utils/devLogger');
+const { deletePinRoomByPinId } = require('./proximityChatService');
 
 const INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const DISCUSSION_LEAD_MS = 24 * 60 * 60 * 1000;
@@ -73,6 +74,27 @@ async function sweepDiscussions(now) {
   }
 }
 
+async function sweepExpiredPins(now) {
+  const expiredPins = await Pin.find(
+    {
+      $or: [
+        { expiresAt: { $lte: new Date(now) } },
+        { endDate: { $lte: new Date(now) } }
+      ],
+      isActive: { $ne: false }
+    },
+    { _id: 1 }
+  ).lean();
+
+  for (const pin of expiredPins) {
+    try {
+      await deletePinRoomByPinId(pin._id);
+    } catch (error) {
+      console.error('Failed to delete pin chat room during expiry sweep:', { pinId: pin?._id, error });
+    }
+  }
+}
+
 async function runSweep() {
   if (isRunning) {
     return;
@@ -82,6 +104,7 @@ async function runSweep() {
     const now = Date.now();
     await sweepEvents(now);
     await sweepDiscussions(now);
+    await sweepExpiredPins(now);
   } catch (error) {
     console.error('Update scheduler run failed', error);
     logIntegration('update-scheduler', error);

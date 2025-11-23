@@ -406,8 +406,10 @@ function MapPage() {
   );
 
   const handleViewChatRoom = useCallback(() => {
-    navigate(routes.chat.base);
-  }, [navigate]);
+    navigate(routes.chat.base, {
+      state: selectedChatRoomId ? { pinId: selectedChatRoomId } : undefined
+    });
+  }, [navigate, selectedChatRoomId]);
 
   const handleToggleEvents = useCallback((event) => {
     setShowEvents(Boolean(event?.target?.checked));

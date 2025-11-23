@@ -13,6 +13,7 @@ const { PublicUserSchema } = require('../schemas/user');
 const { mapMediaAsset: mapMediaAssetResponse, mapUserAvatar } = require('../utils/media');
 const { toIdString, mapIdList } = require('../utils/ids');
 const { toIsoDateString } = require('../utils/dates');
+const { buildPinRoomPayload } = require('../utils/chatRoomContract');
 
 const buildAvatarMedia = (userDoc) => mapUserAvatar(userDoc, { toIdString });
 
@@ -56,6 +57,7 @@ const mapRoom = (roomDoc) => {
     participantIds: mapIdList(doc.participantIds),
     moderatorIds: mapIdList(doc.moderatorIds),
     pinId: toIdString(doc.pinId),
+    expiresAt: doc.expiresAt ? toIsoDateString(doc.expiresAt) : undefined,
     presetKey: typeof doc.presetKey === 'string' && doc.presetKey.trim().length > 0 ? doc.presetKey.trim() : undefined,
     createdAt: roomDoc.createdAt.toISOString(),
     updatedAt: roomDoc.updatedAt.toISOString(),
@@ -133,6 +135,7 @@ async function createRoom(input) {
     participantCount: participantIds.length,
     moderatorIds: (input.moderatorIds || []).map(toObjectId).filter(Boolean),
     pinId: toObjectId(input.pinId),
+    expiresAt: input.expiresAt ? new Date(input.expiresAt) : undefined,
     presetKey: input.presetKey && input.presetKey.trim ? input.presetKey.trim() : undefined,
     isGlobal: Boolean(input.isGlobal)
   });
@@ -191,11 +194,62 @@ async function upsertPresence(input) {
   return mapPresence(presence);
 }
 
+async function upsertPinRoom({
+  pinId,
+  pinType,
+  pinTitle,
+  ownerId,
+  latitude,
+  longitude,
+  expiresAt,
+  radiusMeters = 500
+}) {
+  if (!pinId || !ownerId) {
+    throw new Error('pinId and ownerId are required to upsert a pin chat room');
+  }
+  const payload = buildPinRoomPayload({
+    pinId: toIdString(pinId),
+    pinType,
+    pinTitle,
+    latitude,
+    longitude,
+    radiusMeters
+  });
+  const update = {
+    ownerId: toObjectId(ownerId),
+    name: payload.name,
+    presetKey: payload.presetKey,
+    pinId: toObjectId(pinId),
+    isGlobal: false,
+    coordinates: {
+      type: 'Point',
+      coordinates: [payload.longitude ?? longitude ?? 0, payload.latitude ?? latitude ?? 0]
+    },
+    radiusMeters,
+    expiresAt: expiresAt ? new Date(expiresAt) : undefined
+  };
+  const room = await ProximityChatRoom.findOneAndUpdate(
+    { pinId: toObjectId(pinId) },
+    { $set: update, $setOnInsert: { participantIds: [], participantCount: 0, moderatorIds: [] } },
+    { upsert: true, new: true }
+  );
+  return mapRoom(room);
+}
+
+async function deletePinRoomByPinId(pinId) {
+  if (!pinId) {
+    return { deletedCount: 0 };
+  }
+  return ProximityChatRoom.deleteMany({ pinId: toObjectId(pinId) });
+}
+
 module.exports = {
   mapRoom,
   mapMessage,
   mapPresence,
   createRoom,
   createMessage,
-  upsertPresence
+  upsertPresence,
+  upsertPinRoom,
+  deletePinRoomByPinId
 };

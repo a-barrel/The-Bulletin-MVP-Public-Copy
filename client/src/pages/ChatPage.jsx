@@ -8,13 +8,9 @@ import {
   Typography,
   Button,
   IconButton,
-  TextField,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
-  Switch,
-  FormControlLabel,
   CircularProgress,
   Alert,
   Tabs,
@@ -114,14 +110,6 @@ function ChatPage() {
     handleGifPreviewCancel,
     handleGifPreviewShuffle,
     composerGifPreview,
-    handleOpenCreateDialog,
-    handleCloseCreateDialog,
-    handleCreateRoom,
-    isCreateDialogOpen,
-    createForm,
-    setCreateForm,
-    isCreatingRoom,
-    createError
   } = useChatManager({
     authUser: firebaseAuthUser,
     authLoading,
@@ -129,7 +117,8 @@ function ChatPage() {
     viewerLongitude,
     isOffline,
     refreshUnreadCount,
-    announceBadgeEarned
+    announceBadgeEarned,
+    pinId: location.state?.pinId || new URLSearchParams(location.search).get('pinId')
   });
   const {
     bookmarks,
@@ -1988,89 +1977,6 @@ function ChatPage() {
     </div>
   </Box>
 
-      <Dialog open={isCreateDialogOpen} onClose={handleCloseCreateDialog} fullWidth maxWidth="sm">
-        <DialogTitle>Create chat room</DialogTitle>
-        <Box component="form" onSubmit={handleCreateRoom}>
-          <DialogContent>
-            <Stack spacing={2} sx={{ mt: 1 }}>
-              <TextField
-                label="Name"
-                value={createForm.name}
-                onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
-                required
-                fullWidth
-              />
-              <TextField
-                label="Description"
-                value={createForm.description}
-                onChange={(event) =>
-                  setCreateForm((prev) => ({ ...prev, description: event.target.value }))
-                }
-                multiline
-                minRows={2}
-                fullWidth
-              />
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <TextField
-                  label="Latitude"
-                  type="number"
-                  value={createForm.latitude}
-                  onChange={(event) =>
-                    setCreateForm((prev) => ({ ...prev, latitude: event.target.value }))
-                  }
-                  fullWidth
-                  inputProps={{ step: '0.0001' }}
-                />
-                <TextField
-                  label="Longitude"
-                  type="number"
-                  value={createForm.longitude}
-                  onChange={(event) =>
-                    setCreateForm((prev) => ({ ...prev, longitude: event.target.value }))
-                  }
-                  fullWidth
-                  inputProps={{ step: '0.0001' }}
-                />
-              </Stack>
-              <TextField
-                label="Radius (meters)"
-                type="number"
-                value={createForm.radiusMeters}
-                onChange={(event) =>
-                  setCreateForm((prev) => ({ ...prev, radiusMeters: event.target.value }))
-                }
-                fullWidth
-                inputProps={{ min: 50, step: 10 }}
-              />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={createForm.isGlobal}
-                    onChange={(event) =>
-                      setCreateForm((prev) => ({ ...prev, isGlobal: event.target.checked }))
-                    }
-                  />
-                }
-                label="Global room (visible everywhere)"
-              />
-              {createError ? (
-                <Typography variant="body2" color="error">
-                  {createError}
-                </Typography>
-              ) : null}
-            </Stack>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseCreateDialog} disabled={isCreatingRoom}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="contained" disabled={isCreatingRoom}>
-              {isCreatingRoom ? 'Creating…' : 'Create room'}
-            </Button>
-          </DialogActions>
-        </Box>
-      </Dialog>
-
       <Dialog
         className="channel-switch-overlay"
         open={isChannelDialogOpen}
@@ -2180,7 +2086,6 @@ function ChatPage() {
                 isRefreshing={isLoadingRooms}
                 error={roomsError}
                 onRefresh={loadRooms}
-                onCreateRoom={handleOpenCreateDialog}
                 onSelectRoom={handleChooseRoom}
               />
             )}
