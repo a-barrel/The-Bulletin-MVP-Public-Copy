@@ -626,6 +626,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   const pinHydrationSourceRef = useRef(initialHydrationSource);
   const reloadInFlightRef = useRef(false);
   const pinCacheRef = useRef(new Map());
+  const analyticsInFlightRef = useRef(false);
   const updatePinHydrationSource = useCallback((source) => {
     pinHydrationSourceRef.current = source;
   }, []);

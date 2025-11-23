@@ -78,4 +78,25 @@ describe('useMapNearbyData', () => {
 
     expect(fetchPinsNearby).toHaveBeenCalledTimes(1);
   });
+
+  it('throttles rapid calls even when location changes', async () => {
+    fetchPinsNearby.mockResolvedValue([]);
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+    let refreshPins;
+    render(
+      <TestHarness
+        onReady={(hook) => {
+          refreshPins = hook.refreshPins;
+        }}
+      />
+    );
+
+    await act(async () => {
+      await refreshPins({ latitude: 1, longitude: 2 });
+      await refreshPins({ latitude: 3, longitude: 4 });
+    });
+
+    expect(fetchPinsNearby).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
+  });
 });

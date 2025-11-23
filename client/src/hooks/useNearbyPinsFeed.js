@@ -7,6 +7,8 @@ import { resolvePinFetchLimit } from '../utils/pinDensity';
 const DEFAULT_RADIUS_MILES = 10;
 const PIN_FETCH_LIMIT = 50;
 const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
+const FETCH_THROTTLE_MS = 250;
+const CACHE_TTL_MS = 45_000;
 
 const hasValidCoordinates = (coords) =>
   coords &&
@@ -53,6 +55,8 @@ export default function useNearbyPinsFeed({
   const [syncListWithMapLimit, setSyncListWithMapLimit] = useState(true);
   const filtersRef = useRef(filters);
   const isLoadingRef = useRef(false);
+  const lastFetchAtRef = useRef(0);
+  const cacheRef = useRef(new Map());
 
   useEffect(() => {
     filtersRef.current = filters;
@@ -156,6 +160,30 @@ export default function useNearbyPinsFeed({
         return;
       }
 
+      const cacheKey = JSON.stringify({
+        loc: {
+          latitude: targetLocation.latitude,
+          longitude: targetLocation.longitude
+        },
+        distanceMiles,
+        limit: pinDisplayLimit,
+        filters: filtersRef.current
+      });
+      const cached = cacheRef.current.get(cacheKey);
+      const now = Date.now();
+      if (cached && now - cached.ts < CACHE_TTL_MS) {
+        setPins(cached.pins);
+        setLoading(false);
+        setError(null);
+        return;
+      }
+
+      const nowTs = Date.now();
+      if (nowTs - lastFetchAtRef.current < FETCH_THROTTLE_MS) {
+        return;
+      }
+      lastFetchAtRef.current = nowTs;
+
       isLoadingRef.current = true;
       setLoading(true);
       setError(null);
@@ -213,6 +241,7 @@ export default function useNearbyPinsFeed({
         );
 
         setPins(detailResults);
+        cacheRef.current.set(cacheKey, { pins: detailResults, ts: now });
       } catch (err) {
         reportClientError(err, 'Failed to load nearby pins:', {
           source: 'useNearbyPinsFeed.fetchPins',

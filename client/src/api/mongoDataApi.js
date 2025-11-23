@@ -634,7 +634,7 @@ export async function updatePinAttendance(pinId, { attending }) {
   }
 }
 
-export async function fetchPinAnalytics(pinId, { enabled = true } = {}) {
+export async function fetchPinAnalytics(pinId, { enabled = true, suppressLogStatuses = [] } = {}) {
   if (!pinId) {
     throw new Error('Pin id is required');
   }
@@ -652,6 +652,9 @@ export async function fetchPinAnalytics(pinId, { enabled = true } = {}) {
 
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
+      if (suppressLogStatuses.includes(response.status)) {
+        return null;
+      }
       const error = createApiError(response, payload, payload?.message || 'Failed to load analytics');
       await logApiError('/api/pins/:pinId/analytics', error, { status: response.status, pinId });
       throw error;

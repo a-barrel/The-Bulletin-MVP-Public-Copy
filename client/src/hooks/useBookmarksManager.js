@@ -23,6 +23,7 @@ import toIdString from '../utils/ids';
 import reportClientError from '../utils/reportClientError';
 
 const EMPTY_GROUP = 'Unsorted';
+const BOOKMARK_CACHE_TTL_MS = 45_000;
 
 // Helpers stay in this file so both the hook and components can format bookmark metadata consistently.
 const formatSavedDate = (input) => {
@@ -81,6 +82,7 @@ export default function useBookmarksManager({
   const [historyError, setHistoryError] = useState(null);
   const [isClearingHistory, setIsClearingHistory] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const cacheRef = useRef(null);
   const isLoadingRef = useRef(false);
 
   // Keep a Map for constant-time lookups when grouping bookmarks by collection.
@@ -143,6 +145,10 @@ export default function useBookmarksManager({
     });
   }, []);
 
+  const invalidateCache = useCallback(() => {
+    cacheRef.current = null;
+  }, []);
+
   const loadData = useCallback(async () => {
     if (!authUser) {
       setError('Sign in to view your bookmarks.');
@@ -155,6 +161,14 @@ export default function useBookmarksManager({
     if (isLoadingRef.current) {
       return;
     }
+    const cached = cacheRef.current;
+    if (cached && Date.now() - cached.ts < BOOKMARK_CACHE_TTL_MS) {
+      setBookmarks(cached.bookmarks);
+      setCollections(cached.collections);
+      setError(null);
+      return;
+    }
+
     isLoadingRef.current = true;
 
     if (isOffline) {
@@ -186,6 +200,11 @@ export default function useBookmarksManager({
       });
       setBookmarks(normalizedBookmarks);
       setCollections(Array.isArray(collectionPayload) ? collectionPayload : []);
+      cacheRef.current = {
+        ts: Date.now(),
+        bookmarks: normalizedBookmarks,
+        collections: Array.isArray(collectionPayload) ? collectionPayload : []
+      };
     } catch (err) {
       reportClientError(err, 'Failed to load bookmarks:', {
         source: 'useBookmarksManager.loadData'
@@ -198,7 +217,7 @@ export default function useBookmarksManager({
       isLoadingRef.current = false;
       setIsLoading(false);
     }
-  }, [authUser, enrichBookmarksWithPins, hideFullEvents, isOffline]);
+  }, [authUser, enrichBookmarksWithPins, hideFullEvents, isOffline, viewHistory]);
 
   // Auto-refresh whenever auth or offline status changes.
   useEffect(() => {
@@ -229,7 +248,11 @@ export default function useBookmarksManager({
     setHistoryError(null);
     try {
       const historyPayload = await fetchBookmarkHistory();
-      setViewHistory(Array.isArray(historyPayload) ? historyPayload : []);
+      const nextHistory = Array.isArray(historyPayload) ? historyPayload : [];
+      setViewHistory(nextHistory);
+      cacheRef.current = cacheRef.current
+        ? { ...cacheRef.current, ts: cacheRef.current.ts, viewHistory: nextHistory }
+        : null;
     } catch (historyFetchError) {
       console.warn('Failed to load bookmark history:', historyFetchError);
       setViewHistory([]);
@@ -266,6 +289,7 @@ export default function useBookmarksManager({
           })
         );
         setRemovalStatus({ type: 'success', message: 'Bookmark removed.' });
+        invalidateCache();
       } catch (err) {
         reportClientError(err, 'Failed to remove bookmark:', {
           source: 'useBookmarksManager.remove',
@@ -276,7 +300,7 @@ export default function useBookmarksManager({
         setRemovingPinId(null);
       }
     },
-    [isOffline]
+    [invalidateCache, isOffline]
   );
 
   // Kick off a CSV export and surface simple status objects that the UI can show in alerts.
@@ -391,9 +415,10 @@ export default function useBookmarksManager({
         throw new Error(error?.message || 'Failed to update attendance.');
       } finally {
         setAttendancePendingId(null);
+        invalidateCache();
       }
     },
-    [isOffline]
+    [invalidateCache, isOffline]
   );
 
   const handleClearHistory = useCallback(async () => {
@@ -406,6 +431,7 @@ export default function useBookmarksManager({
     try {
       await clearBookmarkHistory();
       setViewHistory([]);
+      invalidateCache();
     } catch (err) {
       reportClientError(err, 'Failed to clear bookmark history:', {
         source: 'useBookmarksManager.clearHistory'

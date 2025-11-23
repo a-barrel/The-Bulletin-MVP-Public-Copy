@@ -1,5 +1,5 @@
 /* NOTE: Page exports configuration alongside the component. */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import './PinDetails.css';
 import {
@@ -441,6 +441,7 @@ function PinDetails() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [isFlaggingPin, setIsFlaggingPin] = useState(false);
   const [flagStatus, setFlagStatus] = useState(null);
+  const analyticsInFlightRef = useRef(false);
 
   useEffect(() => {
     if (pin && !isEditDialogOpen) {
@@ -454,15 +455,19 @@ function PinDetails() {
       setAnalyticsError(null);
       return;
     }
+    if (analyticsInFlightRef.current) {
+      return;
+    }
     if (isOffline) {
       setAnalyticsError('Reconnect to view attendance analytics.');
       setAnalyticsLoading(false);
       return;
     }
     let ignore = false;
+    analyticsInFlightRef.current = true;
     setAnalyticsLoading(true);
     setAnalyticsError(null);
-    fetchPinAnalytics(pinId, { enabled: isHostLike })
+    fetchPinAnalytics(pinId, { enabled: isHostLike, suppressLogStatuses: [401, 403] })
       .then((payload) => {
         if (!ignore) {
           setAnalytics(payload);
@@ -483,6 +488,7 @@ function PinDetails() {
         if (!ignore) {
           setAnalyticsLoading(false);
         }
+        analyticsInFlightRef.current = false;
       });
 
     return () => {
