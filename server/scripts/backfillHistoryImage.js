@@ -19,7 +19,8 @@ async function backfillHistoryImages() {
   let processedUsers = 0;
   let updatedEntries = 0;
 
-  while (true) {
+  let hasMore = true;
+  while (hasMore) {
     const users = await User.find({
       viewHistory: { $exists: true, $ne: [] },
       $or: [{ 'viewHistory.imageUrl': { $exists: false } }, { 'viewHistory.imageUrl': null }]
@@ -29,6 +30,7 @@ async function backfillHistoryImages() {
       .exec();
 
     if (!users.length) {
+      hasMore = false;
       break;
     }
 
