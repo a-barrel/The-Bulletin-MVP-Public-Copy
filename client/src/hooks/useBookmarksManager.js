@@ -80,6 +80,7 @@ export default function useBookmarksManager({
   const [viewHistory, setViewHistory] = useState([]);
   const [historyError, setHistoryError] = useState(null);
   const [isClearingHistory, setIsClearingHistory] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 
   // Keep a Map for constant-time lookups when grouping bookmarks by collection.
   const collectionsById = useMemo(() => {
@@ -178,15 +179,6 @@ export default function useBookmarksManager({
       });
       setBookmarks(normalizedBookmarks);
       setCollections(Array.isArray(collectionPayload) ? collectionPayload : []);
-      try {
-        const historyPayload = await fetchBookmarkHistory();
-        setViewHistory(Array.isArray(historyPayload) ? historyPayload : []);
-        setHistoryError(null);
-      } catch (historyFetchError) {
-        console.warn('Failed to load bookmark history:', historyFetchError);
-        setViewHistory([]);
-        setHistoryError(historyFetchError?.message || 'Failed to load bookmark history.');
-      }
     } catch (err) {
       reportClientError(err, 'Failed to load bookmarks:', {
         source: 'useBookmarksManager.loadData'
@@ -214,6 +206,30 @@ export default function useBookmarksManager({
     }
     loadData();
   }, [authLoading, authUser, isOffline, loadData]);
+
+  const refreshHistory = useCallback(async () => {
+    if (!authUser) {
+      setHistoryError('Sign in to view your history.');
+      setViewHistory([]);
+      return;
+    }
+    if (isOffline) {
+      setHistoryError('You are offline. Connect to refresh your history.');
+      return;
+    }
+    setIsHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const historyPayload = await fetchBookmarkHistory();
+      setViewHistory(Array.isArray(historyPayload) ? historyPayload : []);
+    } catch (historyFetchError) {
+      console.warn('Failed to load bookmark history:', historyFetchError);
+      setViewHistory([]);
+      setHistoryError(historyFetchError?.message || 'Failed to load bookmark history.');
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  }, [authUser, isOffline]);
 
   // Remove a bookmark and optimistically update cached state so the page stays snappy.
   const handleRemoveBookmark = useCallback(
@@ -417,6 +433,7 @@ export default function useBookmarksManager({
     handleExport,
     handleToggleAttendance: toggleAttendance,
     refresh: loadData,
+    refreshHistory,
     formatSavedDate,
     collections,
     collectionsById,
@@ -426,6 +443,7 @@ export default function useBookmarksManager({
     viewHistory,
     clearHistory: handleClearHistory,
     isClearingHistory,
+    isHistoryLoading,
     historyError,
     dismissHistoryError
   };

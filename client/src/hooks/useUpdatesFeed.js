@@ -58,15 +58,10 @@ export default function useUpdatesFeed() {
     handleRefresh();
   }, [handleRefresh]);
 
-  const filteredUpdates = useMemo(() => {
-    if (!Array.isArray(updates)) {
-      return [];
-    }
-    if (!showUnreadOnly) {
-      return updates;
-    }
-    return updates.filter((update) => !update?.readAt);
-  }, [showUnreadOnly, updates]);
+  const filteredUpdates = useMemo(
+    () => (Array.isArray(updates) ? updates : []),
+    [updates]
+  );
 
   return {
     profile,

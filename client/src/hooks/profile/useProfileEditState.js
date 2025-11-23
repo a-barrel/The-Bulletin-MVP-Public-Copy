@@ -19,7 +19,6 @@ const buildMediaAssetPayload = (uploaded, uploadedBy) =>
 const initializeFormState = (profile) => ({
   displayName: profile?.displayName ?? '',
   bio: profile?.bio ?? '',
-  locationSharingEnabled: Boolean(profile?.locationSharingEnabled),
   theme: profile?.preferences?.theme ?? 'system',
   avatarFile: null,
   avatarPreviewUrl: profile?.avatar ? resolveProfileAvatarUrl(profile.avatar) : null,
@@ -152,13 +151,6 @@ export default function useProfileEditState({ effectiveUser, setFetchedUser, isO
     }));
   }, []);
 
-  const handleToggleLocationSharing = useCallback((event) => {
-    setFormState((prev) => ({
-      ...prev,
-      locationSharingEnabled: Boolean(event?.target?.checked)
-    }));
-  }, []);
-
   const handleSaveProfile = useCallback(
     async (event) => {
       event.preventDefault();
@@ -191,10 +183,6 @@ export default function useProfileEditState({ effectiveUser, setFetchedUser, isO
       const existingBio = effectiveUser?.bio ?? '';
       if (normalizedBio !== existingBio) {
         payload.bio = normalizedBio.length > 0 ? normalizedBio : null;
-      }
-
-      if (formState.locationSharingEnabled !== Boolean(effectiveUser?.locationSharingEnabled)) {
-        payload.locationSharingEnabled = formState.locationSharingEnabled;
       }
 
       if (formState.theme !== (effectiveUser?.preferences?.theme ?? 'system')) {
@@ -266,7 +254,6 @@ export default function useProfileEditState({ effectiveUser, setFetchedUser, isO
       formState.bannerFile,
       formState.bio,
       formState.displayName,
-      formState.locationSharingEnabled,
       formState.theme,
       isOffline,
       setFetchedUser
@@ -297,7 +284,6 @@ export default function useProfileEditState({ effectiveUser, setFetchedUser, isO
     handleClearBanner,
     handleFieldChange,
     handleThemeChange,
-    handleToggleLocationSharing,
     handleSaveProfile,
     editingAvatarSrc,
     editingBannerSrc,

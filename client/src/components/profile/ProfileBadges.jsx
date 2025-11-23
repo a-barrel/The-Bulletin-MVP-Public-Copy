@@ -6,6 +6,7 @@ import Typography from '@mui/material/Typography';
 import runtimeConfig from '../../config/runtime';
 import { BADGE_METADATA } from '../../utils/badges';
 import ProfileSection from './ProfileSection';
+import { useTranslation } from 'react-i18next';
 
 const resolveBadgeImageUrl = (value) => {
   if (!value) {
@@ -20,17 +21,18 @@ const resolveBadgeImageUrl = (value) => {
 };
 
 function ProfileBadges({ badgeList }) {
+  const { t } = useTranslation();
   const safeBadgeList = Array.isArray(badgeList) ? badgeList : [];
 
   return (
-    <ProfileSection title="Badges & achievements">
+    <ProfileSection title={t('profile.badges.title')}>
       {safeBadgeList.length ? (
         <Stack direction="row" flexWrap="wrap" gap={1.5}>
           {safeBadgeList.map((badgeId) => {
             const badgeInfo =
               BADGE_METADATA[badgeId] ?? {
                 label: badgeId,
-                description: 'Earn this badge to uncover its story.',
+                description: t('profile.badges.defaultDescription'),
                 image: undefined
               };
             const badgeImageUrl = resolveBadgeImageUrl(badgeInfo.image);
@@ -64,7 +66,7 @@ function ProfileBadges({ badgeList }) {
         </Stack>
       ) : (
         <Typography variant="body2" color="text.secondary">
-          No badges yet. They will appear here once this user starts collecting achievements.
+          {t('profile.badges.empty')}
         </Typography>
       )}
     </ProfileSection>

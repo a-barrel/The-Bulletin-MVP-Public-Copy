@@ -88,7 +88,6 @@ function ProfilePage() {
     handleClearBanner,
     handleFieldChange,
     handleThemeChange,
-    handleToggleLocationSharing,
     handleSaveProfile,
     isSavingProfile,
     updateStatus,
@@ -290,7 +289,6 @@ function ProfilePage() {
       isProcessingBlockAction,
       isSubmittingReport,
       isViewingSelf,
-      dmPermissionBlocked,
       messageDisabled,
       messageTooltip,
       reportDisabled,
@@ -379,7 +377,6 @@ function ProfilePage() {
               onClearBanner={handleClearBanner}
               onFieldChange={handleFieldChange}
               onThemeChange={handleThemeChange}
-              onToggleLocationSharing={handleToggleLocationSharing}
             />
           ) : null}
 

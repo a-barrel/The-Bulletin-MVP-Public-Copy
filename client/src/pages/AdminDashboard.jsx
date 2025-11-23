@@ -89,7 +89,7 @@ function AdminDashboardContent() {
       return;
     }
     setReportStatus(newValue);
-  }, [reportStatus]);
+  }, [reportStatus, setReportStatus]);
 
   const handleResolveReport = useCallback(
     async (reportId, nextStatus) => {
@@ -163,7 +163,7 @@ function AdminDashboardContent() {
         setResolvingReportId(null);
       }
     },
-    [reportStatus, reports]
+    [reportStatus, reports, setReportSummary, setReports]
   );
 
   const overviewStats = useMemo(() => {

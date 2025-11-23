@@ -8,12 +8,11 @@ export const DEFAULT_LIST_FILTERS = {
   endDate: '',
   types: [],
   categories: [],
-  friendEngagements: []
+  friendEngagements: [],
+  popularSort: null
 };
 
-const FRIEND_ENGAGEMENT_VALUE_SET = new Set(
-  FRIEND_ENGAGEMENT_OPTIONS.map((option) => option.value)
-);
+const FRIEND_ENGAGEMENT_VALUE_SET = new Set(FRIEND_ENGAGEMENT_OPTIONS);
 
 const sanitizeFriendEngagements = (input) => {
   if (!Array.isArray(input) || input.length === 0) {
@@ -39,7 +38,8 @@ const normalizeForCompare = (value) => ({
   categories: Array.isArray(value.categories) ? [...value.categories].sort() : [],
   friendEngagements: Array.isArray(value.friendEngagements)
     ? [...value.friendEngagements].sort()
-    : []
+    : [],
+  popularSort: value.popularSort || null
 });
 
 export default function useListFilters(initialOverrides = {}) {
@@ -85,7 +85,8 @@ export default function useListFilters(initialOverrides = {}) {
             )
           )
         : [],
-      friendEngagements: sanitizeFriendEngagements(nextFilters.friendEngagements)
+      friendEngagements: sanitizeFriendEngagements(nextFilters.friendEngagements),
+      popularSort: nextFilters.popularSort || null
     });
   }, []);
 

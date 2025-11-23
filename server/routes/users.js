@@ -199,7 +199,6 @@ const UserSelfUpdateSchema = z
     bio: z
       .union([z.string().trim().max(500, 'Bio must be 500 characters or fewer'), z.literal(null)])
       .optional(),
-    locationSharingEnabled: z.boolean().optional(),
     avatar: z.union([MediaAssetUpdateSchema, z.literal(null)]).optional(),
     banner: z.union([MediaAssetUpdateSchema, z.literal(null)]).optional(),
     preferences: UserPreferencesUpdateSchema
@@ -374,6 +373,12 @@ const mapUserToProfile = (userDoc) => {
   }
   const createdAt = toIsoDateString(userDoc.createdAt) ?? toIsoDateString(userDoc._id?.getTimestamp?.());
   const updatedAt = toIsoDateString(userDoc.updatedAt) ?? createdAt ?? new Date().toISOString();
+  const normalizedRoles = Array.isArray(doc.roles)
+    ? doc.roles
+        .map((role) => (typeof role === 'string' ? role.trim() : ''))
+        .filter(Boolean)
+    : [];
+  const uniqueRoles = [...new Set(normalizedRoles)];
   const result = UserProfileSchema.safeParse({
     _id: toIdString(doc._id),
     username: doc.username,
@@ -384,11 +389,12 @@ const mapUserToProfile = (userDoc) => {
     primaryLocationId: toIdString(doc.primaryLocationId),
     accountStatus: doc.accountStatus || 'active',
     email: doc.email || undefined,
+    firebaseUid: doc.firebaseUid || undefined,
+    roles: uniqueRoles,
     bio: doc.bio || undefined,
     banner: mapMediaAssetResponse(doc.banner),
     preferences: preferences || undefined,
     relationships: mapRelationships(doc.relationships),
-    locationSharingEnabled: Boolean(doc.locationSharingEnabled),
     pinnedPinIds: mapIdList(doc.pinnedPinIds),
     ownedPinIds: mapIdList(doc.ownedPinIds),
     bookmarkCollectionIds: mapIdList(doc.bookmarkCollectionIds),
@@ -637,12 +643,6 @@ router.patch('/me', verifyToken, async (req, res) => {
       }
     }
 
-    if (input.locationSharingEnabled !== undefined) {
-      const nextValue = Boolean(input.locationSharingEnabled);
-      setDoc.locationSharingEnabled = nextValue;
-      setDoc['preferences.location.lastEnabledAt'] = nextValue ? new Date() : null;
-    }
-
     if (input.avatar !== undefined) {
       if (input.avatar === null) {
         unsetDoc.avatar = '';
@@ -783,10 +783,13 @@ router.patch('/me', verifyToken, async (req, res) => {
         if (display.mapDensity !== undefined) {
           setDoc['preferences.display.mapDensity'] = display.mapDensity;
         }
-        if (display.celebrationSounds !== undefined) {
-          setDoc['preferences.display.celebrationSounds'] = display.celebrationSounds;
-        }
+      if (display.celebrationSounds !== undefined) {
+        setDoc['preferences.display.celebrationSounds'] = display.celebrationSounds;
       }
+      if (display.hideFullEventsByDefault !== undefined) {
+        setDoc['preferences.display.hideFullEventsByDefault'] = display.hideFullEventsByDefault;
+      }
+    }
       if (input.preferences.data && typeof input.preferences.data === 'object') {
         const dataPrefs = input.preferences.data;
         if (dataPrefs.autoExportReminders !== undefined) {

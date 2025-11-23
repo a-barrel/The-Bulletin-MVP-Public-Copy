@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import './index.css';
@@ -8,6 +8,9 @@ import { NetworkStatusProvider } from './contexts/NetworkStatusContext.jsx';
 import { installTelemetryGuards } from './utils/suppressTelemetryNoise.js';
 import { installClientErrorListeners } from './utils/clientLogger.js';
 import { installStyleWarningFilter } from './utils/styleWarningFilter.js';
+import { I18nextProvider } from 'react-i18next';
+import i18n from './i18n/config.js';
+import LanguageHotkeys from './i18n/LanguageHotkeys.jsx';
 
 installTelemetryGuards();
 installClientErrorListeners();
@@ -34,12 +37,17 @@ if (import.meta.hot && typeof window !== 'undefined') {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
-      <AppErrorBoundary>
-        <NetworkStatusProvider>
-          <App />
-        </NetworkStatusProvider>
-      </AppErrorBoundary>
-    </BrowserRouter>
+    <Suspense fallback={null}>
+      <I18nextProvider i18n={i18n}>
+        <BrowserRouter>
+          <AppErrorBoundary>
+            <NetworkStatusProvider>
+              <LanguageHotkeys />
+              <App />
+            </NetworkStatusProvider>
+          </AppErrorBoundary>
+        </BrowserRouter>
+      </I18nextProvider>
+    </Suspense>
   </StrictMode>
 );

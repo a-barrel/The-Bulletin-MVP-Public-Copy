@@ -64,6 +64,8 @@ const parseCsv = (value) =>
         .filter(Boolean)
     : [];
 
+const parseCsvLower = (value) => parseCsv(value).map((entry) => entry.toLowerCase()).filter(Boolean);
+
 const parseOriginList = (value) =>
   parseCsv(value).map((entry) => entry.toLowerCase()).filter(Boolean);
 
@@ -129,6 +131,42 @@ const cors = {
       )
 };
 
+const normalizeRoleName = (value, fallback) => {
+  if (!value || !value.trim()) {
+    return fallback;
+  }
+  return value.trim().toLowerCase();
+};
+
+const baseUserRole = normalizeRoleName(process.env.PINPOINT_BASE_USER_ROLE, 'user');
+const developerRoleName = normalizeRoleName(process.env.PINPOINT_DEVELOPER_ROLE, 'developer');
+
+const configuredElevatedRoles = parseCsvLower(process.env.PINPOINT_ELEVATED_ROLE_NAMES);
+if (!configuredElevatedRoles.length) {
+  configuredElevatedRoles.push(
+    'admin',
+    'moderator',
+    'super-admin',
+    'system-admin',
+    developerRoleName
+  );
+}
+const elevatedRoles = new Set(configuredElevatedRoles);
+
+const defaultAlwaysAdminUserIds = new Set(['F69ZziUU5tXWJ7TtyDKwbvhbSzi1']);
+parseCsv(process.env.PINPOINT_ALWAYS_ADMIN_UIDS).forEach((entry) => {
+  if (entry) {
+    defaultAlwaysAdminUserIds.add(entry);
+  }
+});
+
+const defaultAlwaysAdminEmails = new Set(['thepinpointishere@gmail.com']);
+parseCsvLower(process.env.PINPOINT_ALWAYS_ADMIN_EMAILS).forEach((entry) => {
+  if (entry) {
+    defaultAlwaysAdminEmails.add(entry);
+  }
+});
+
 module.exports = {
   mode,
   isOffline,
@@ -142,5 +180,12 @@ module.exports = {
     allowAccountSwapOnline,
     accountSwapAllowlist
   },
-  cors
+  cors,
+  roles: {
+    baseUserRole,
+    developerRoleName,
+    elevatedRoles,
+    alwaysAdminUserIds: defaultAlwaysAdminUserIds,
+    alwaysAdminEmails: defaultAlwaysAdminEmails
+  }
 };

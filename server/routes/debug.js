@@ -39,6 +39,7 @@ const DirectMessageThread = require('../models/DirectMessageThread');
 const { applyModerationAction } = require('../services/moderationActionService');
 const ContentReport = require('../models/ContentReport');
 const AnalyticsEvent = require('../models/AnalyticsEvent');
+const { normalizeRoles, viewerHasDeveloperAccess } = require('../utils/roles');
 
 const router = express.Router();
 
@@ -102,6 +103,10 @@ const describeDmRestriction = (user) => {
 };
 
 const resolveViewerUser = async (req) => {
+  if (req?.viewer) {
+    return req.viewer;
+  }
+
   if (!req?.user?.uid) {
     return null;
   }
@@ -115,50 +120,21 @@ const resolveViewerUser = async (req) => {
   }
 };
 
-const MODERATION_ROLES = new Set(['admin', 'moderator', 'super-admin', 'system-admin']);
-const FRIEND_ADMIN_ROLES = new Set(['user', 'admin', 'moderator', 'community-manager', 'super-admin']);
-
-const normalizeRoles = (roles) =>
-  Array.isArray(roles)
-    ? roles
-        .map((role) => (typeof role === 'string' ? role.trim().toLowerCase() : ''))
-        .filter(Boolean)
-    : [];
-
-const hasAllowedRole = (viewer, allowedRoles) => {
-  if (!viewer) {
-    return false;
-  }
-
-  const normalized = normalizeRoles(viewer.roles);
-  return normalized.some((role) => allowedRoles.has(role));
-};
-
 const ensureModerationAccess = async (req, res) => {
   const viewer = await resolveViewerUser(req);
-  if (runtime.isOffline) {
+  if (viewerHasDeveloperAccess(viewer)) {
     return viewer;
   }
-
-  if (!viewer || !hasAllowedRole(viewer, MODERATION_ROLES)) {
-    res.status(403).json({ message: 'Moderator privileges required.' });
-    return null;
-  }
-
-  return viewer;
+  res.status(403).json({ message: 'Developer privileges required.' });
+  return null;
 };
 
 const ensureFriendAdminAccess = async (req, res) => {
   const viewer = await resolveViewerUser(req);
-  if (runtime.isOffline) {
-    return viewer;
-  }
-
-  if (!viewer || !hasAllowedRole(viewer, FRIEND_ADMIN_ROLES)) {
-    res.status(403).json({ message: 'Friend management privileges required.' });
+  if (!viewer) {
+    res.status(403).json({ message: 'Authentication required.' });
     return null;
   }
-
   return viewer;
 };
 
@@ -311,7 +287,6 @@ const mapDirectMessageThread = (threadDoc, userLookup = new Map(), { includeMess
   };
 };
 
-const PRIVILEGED_ACCOUNT_SWAP_ROLES = new Set(['admin', 'super-admin', 'system-admin']);
 const accountSwapAllowlist =
   runtime?.debugAuth?.accountSwapAllowlist instanceof Set
     ? runtime.debugAuth.accountSwapAllowlist
@@ -335,12 +310,7 @@ const toAllowlistKey = (value) => {
   return null;
 };
 
-const hasPrivilegedAccountSwapRole = (viewer) => {
-  const roles = Array.isArray(viewer?.roles) ? viewer.roles : [];
-  return roles
-    .map((role) => (typeof role === 'string' ? role.trim().toLowerCase() : ''))
-    .some((role) => role && PRIVILEGED_ACCOUNT_SWAP_ROLES.has(role));
-};
+const hasPrivilegedAccountSwapRole = (viewer) => viewerHasDeveloperAccess(viewer);
 
 const isAllowlistedForAccountSwap = (req, viewer) => {
   if (!(accountSwapAllowlist instanceof Set) || accountSwapAllowlist.size === 0) {
@@ -366,11 +336,7 @@ const isAllowlistedForAccountSwap = (req, viewer) => {
 };
 
 const getAccountSwapGateFailureMessage = (req, viewer) => {
-  if (runtime.isOffline) {
-    return null;
-  }
-
-  if (hasPrivilegedAccountSwapRole(viewer)) {
+  if (runtime.isOffline || hasPrivilegedAccountSwapRole(viewer)) {
     return null;
   }
 
@@ -411,7 +377,6 @@ const mapUserToProfile = (userDoc) => {
     banner: mapMediaAsset(doc.banner, { toIdString }),
     preferences: doc.preferences || undefined,
     relationships: doc.relationships || undefined,
-    locationSharingEnabled: Boolean(doc.locationSharingEnabled),
     pinnedPinIds: mapIdList(doc.pinnedPinIds),
     ownedPinIds: mapIdList(doc.ownedPinIds),
     bookmarkCollectionIds: mapIdList(doc.bookmarkCollectionIds),
@@ -716,7 +681,6 @@ router.post('/users', async (req, res) => {
     email: z.string().email().optional(),
     bio: z.string().max(500).optional(),
     accountStatus: z.enum(['active', 'inactive', 'suspended', 'deleted']).optional(),
-    locationSharingEnabled: z.boolean().optional(),
     roles: z.array(z.string()).optional()
   });
 
@@ -728,7 +692,6 @@ router.post('/users', async (req, res) => {
       email: input.email,
       bio: input.bio,
       accountStatus: input.accountStatus || 'active',
-      locationSharingEnabled: input.locationSharingEnabled ?? false,
       roles: input.roles && input.roles.length ? input.roles : undefined
     });
 
@@ -753,7 +716,6 @@ router.patch('/users/:userId', async (req, res) => {
       email: z.union([z.string().email(), z.literal(null)]).optional(),
       bio: z.union([z.string().max(500), z.literal(null)]).optional(),
       accountStatus: z.enum(['active', 'inactive', 'suspended', 'deleted']).optional(),
-      locationSharingEnabled: z.boolean().optional(),
       roles: z.array(z.string()).optional()
     })
     .refine((value) => Object.keys(value).length > 0, {
@@ -791,9 +753,6 @@ router.patch('/users/:userId', async (req, res) => {
     applyNullable('bio', input.bio);
     if (input.accountStatus !== undefined) {
       setDoc.accountStatus = input.accountStatus;
-    }
-    if (input.locationSharingEnabled !== undefined) {
-      setDoc.locationSharingEnabled = input.locationSharingEnabled;
     }
     if (input.roles !== undefined) {
       setDoc.roles = input.roles;

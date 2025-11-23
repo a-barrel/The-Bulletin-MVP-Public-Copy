@@ -5,12 +5,59 @@ const MARKER_BASE_URL =
 export const MAP_MARKER_SHADOW_URL =
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png';
 
+const createPinIconUrl = (fill, stroke = '#210A3C') => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36"><path d="M18 2c-5.523 0-10 4.477-10 10 0 6.852 8.275 16.782 9.242 17.868a1 1 0 0 0 1.516 0C19.7 28.782 28 18.852 28 12c0-5.523-4.477-10-10-10z" fill="${fill}" stroke="${stroke}" stroke-width="2"/><circle cx="18" cy="12" r="5" fill="rgba(255,255,255,0.55)"/></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+};
+
+const createCircleIconUrl = (fill, stroke = '#210A3C') => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="12" fill="${fill}" stroke="${stroke}" stroke-width="2"/><circle cx="18" cy="18" r="6" fill="rgba(255,255,255,0.6)"/></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+};
+
+const createRingIconUrl = ({
+  stroke,
+  strokeWidth = 3.5,
+  glow = 'rgba(62, 184, 240, 0.28)',
+  glowOpacity = 0.6,
+  glowWidth = 6
+}) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="13" fill="none" stroke="${glow}" stroke-width="${glowWidth}" stroke-linecap="round" stroke-linejoin="round" opacity="${glowOpacity}"/><circle cx="18" cy="18" r="11" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+};
+
 export const MAP_MARKER_ICON_URLS = {
-  default: `${MARKER_BASE_URL}-green.png`,
-  discussion: `${MARKER_BASE_URL}-blue.png`,
-  event: `${MARKER_BASE_URL}-violet.png`,
-  personal: `${MARKER_BASE_URL}-orange.png`,
-  nearby: `${MARKER_BASE_URL}-red.png`
+  default: createPinIconUrl('#6DD17C', '#0F6124'),
+  discussion: createPinIconUrl('#4FABFF', '#123B66'),
+  event: createPinIconUrl('#815CFF', '#2E1572'),
+  personal: createPinIconUrl('#FF7A29', '#6A2A00'),
+  nearby: `${MARKER_BASE_URL}-red.png`,
+  full: createPinIconUrl('#EB134F'),
+  friend: createPinIconUrl('#2EA043'),
+  discussionSoon: createPinIconUrl('#FFFFFF', '#5D3889'),
+  eventSoon: createPinIconUrl('#F4B400', '#70511C'),
+  popular: createPinIconUrl('#FF6AD5', '#4C1D95'),
+  open: createPinIconUrl('#FFB347', '#7A3F00'),
+  featured: createPinIconUrl('#A855F7', '#4C1D95'),
+  bookmarked: createPinIconUrl('#5D3889', '#2E155D'),
+  chatMine: createPinIconUrl('#3EB8F0', '#0F172A'),
+  chatAdmin: createPinIconUrl('#FF7043', '#5D1512'),
+  teleport: createPinIconUrl('#0F172A', '#F4F4F5'),
+  clusterToggle: createCircleIconUrl('#8A4FD0', '#3C1A74'),
+  interactionRadiusOff: createRingIconUrl({
+    stroke: 'rgba(42, 154, 244, 0.45)',
+    glow: 'rgba(42, 154, 244, 0.15)',
+    glowOpacity: 0.4,
+    glowWidth: 5,
+    strokeWidth: 3
+  }),
+  interactionRadiusOn: createRingIconUrl({
+    stroke: '#2A9AF4',
+    glow: 'rgba(42, 154, 244, 0.55)',
+    glowOpacity: 0.85,
+    glowWidth: 7,
+    strokeWidth: 3.8
+  })
 };
 
 export const MAP_FILTERS = [

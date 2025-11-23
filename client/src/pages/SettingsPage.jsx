@@ -16,6 +16,8 @@ import {
   Tabs,
   Tab
 } from '@mui/material';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch from '@mui/material/Switch';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SaveIcon from '@mui/icons-material/Save';
@@ -35,7 +37,6 @@ import useSettingsManager, {
   RADIUS_MIN
 } from '../hooks/useSettingsManager';
 import { metersToMiles } from '../utils/geo';
-import runtimeConfig from '../config/runtime';
 import {
   submitAnonymousFeedback,
   requestDataExport,
@@ -55,6 +56,7 @@ import FeedbackDialog from '../components/settings/FeedbackDialog';
 import BlockedUsersDialog from '../components/settings/BlockedUsersDialog';
 import settingsPalette, { settingsButtonStyles } from '../components/settings/settingsPalette';
 import canAccessModerationTools from '../utils/accessControl';
+import { useTranslation } from 'react-i18next';
 
 export const pageConfig = {
   id: 'settings',
@@ -68,6 +70,7 @@ export const pageConfig = {
 };
 
 function SettingsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [authUser, authLoading] = useAuthState(auth);
   const { enabled: badgeSoundEnabled, setEnabled: setBadgeSoundEnabled } = useBadgeSound();
@@ -101,9 +104,6 @@ function SettingsPage() {
     handleQuietHoursChange,
     handleNotificationVerbosityChange,
     handleApplyNotificationBundle,
-    handleLocationSharingToggle,
-    handleLocationAutoShareChange,
-    handleGlobalMapVisibilityToggle,
     handleStatsVisibilityToggle,
     handleFilterCussWordsToggle,
     handleDmPermissionChange,
@@ -112,6 +112,7 @@ function SettingsPage() {
     handleOpenBlockedOverlay,
     handleCloseBlockedOverlay,
     handleUnblockUser,
+    handleBetaToggle,
     handleReset,
     handleSave,
     handleSignOut
@@ -148,10 +149,7 @@ function SettingsPage() {
   const digestFrequency = settings.digestFrequency ?? DEFAULT_SETTINGS.digestFrequency;
   const autoExportReminders =
     settings.autoExportReminders ?? DEFAULT_SETTINGS.autoExportReminders;
-  const locationAutoShareHours =
-    settings.locationAutoShareHours ?? DEFAULT_SETTINGS.locationAutoShareHours;
-  const globalMapVisible = settings.globalMapVisible ?? DEFAULT_SETTINGS.globalMapVisible;
-
+  const betaOptIn = settings.betaOptIn ?? DEFAULT_SETTINGS.betaOptIn;
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [feedbackContact, setFeedbackContact] = useState('');
@@ -524,10 +522,10 @@ function SettingsPage() {
                 }
               }}
             >
-              <Tab label="Appearance" value="appearance" />
-              <Tab label="Notifications" value="notifications" />
-              <Tab label="Privacy" value="privacy" />
-              <Tab label="Data & Integrations" value="data" />
+              <Tab label={t('settings.tabs.appearance')} value="appearance" />
+              <Tab label={t('settings.tabs.notifications')} value="notifications" />
+              <Tab label={t('settings.tabs.privacy')} value="privacy" />
+              <Tab label={t('settings.tabs.data')} value="data" />
             </Tabs>
 
             <Divider />
@@ -585,11 +583,6 @@ function SettingsPage() {
             <TabPanel value="privacy" current={activeTab}>
               <PrivacySettings
                 settings={settings}
-                onLocationSharingToggle={handleLocationSharingToggle}
-                locationAutoShareHours={locationAutoShareHours}
-                onLocationAutoShareChange={handleLocationAutoShareChange}
-                globalMapVisible={globalMapVisible}
-                onGlobalMapVisibilityToggle={handleGlobalMapVisibilityToggle}
                 onStatsVisibilityToggle={handleStatsVisibilityToggle}
                 onFilterCussWordsToggle={handleFilterCussWordsToggle}
                 dmPermission={dmPermission}
@@ -598,7 +591,6 @@ function SettingsPage() {
                 canAccessAdminDashboard={canAccessAdminDashboard}
                 adminRoute={routes.admin.base}
                 profileRoute={routes.profile.me}
-                isOffline={isOffline}
                 isManagingBlockedUsers={isManagingBlockedUsers}
               />
             </TabPanel>
@@ -621,6 +613,33 @@ function SettingsPage() {
                 isLoadingTokens={isLoadingTokens}
                 onRevokeToken={handleRevokeToken}
               />
+              <Box
+                sx={{
+                  mt: 3,
+                  p: 2.5,
+                  borderRadius: 3,
+                  border: `1px solid ${settingsPalette.borderSubtle}`,
+                  backgroundColor: '#fff'
+                }}
+              >
+                <Typography variant="h6" sx={{ color: settingsPalette.accent, fontWeight: 700, mb: 1 }}>
+                  Beta features
+                </Typography>
+                <Typography variant="body2" sx={{ color: settingsPalette.textPrimary, mb: 1.5 }}>
+                  Opt in to preview experimental features. Turn off anytime if you prefer stable features only.
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={betaOptIn}
+                      onChange={(event) => handleBetaToggle(event.target.checked)}
+                      color="primary"
+                    />
+                  }
+                  label="Enable beta features"
+                  sx={{ color: settingsPalette.textPrimary }}
+                />
+              </Box>
             </TabPanel>
           </Stack>
         </Paper>

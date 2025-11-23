@@ -1,5 +1,5 @@
-import { Box, Typography, IconButton, Tooltip } from '@mui/material';
-import { NavLink } from 'react-router-dom';
+import { Box, Typography, IconButton, Tooltip, Button } from '@mui/material';
+import { NavLink, Link } from 'react-router-dom';
 import AvatarIcon from '../assets/AvatarIcon.svg';
 import "./MessageBubble.css";
 import { formatFriendlyTimestamp, formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
@@ -9,30 +9,66 @@ import { ATTACHMENT_ONLY_PLACEHOLDER } from '../utils/chatAttachments';
 import { resolveAvatarSrc } from '../utils/chatParticipants';
 import { ensureImageSrc, withFallbackOnError } from '../utils/imageFallback';
 import FriendBadge from './FriendBadge';
+import { routes } from '../routes';
+import { useTranslation } from 'react-i18next';
 
 
 function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate, onReport }) {
+  const { t } = useTranslation();
   const rawMessage = typeof msg?.message === 'string' ? msg.message : '';
   const strippedMessage = rawMessage.replace(/^GIF:\s*/i, '').trim();
   const isAttachmentOnly = rawMessage === ATTACHMENT_ONLY_PLACEHOLDER;
   const attachments = Array.isArray(msg?.attachments) ? msg.attachments : [];
-  const imageAssets = attachments
-    .map((asset, index) => ({
-      key: asset._id || `${asset.url || 'attachment'}-${index}`,
-      url: ensureImageSrc(asset?.url),
-      alt:
-        asset?.description ||
-        (isAttachmentOnly
-          ? 'Chat attachment'
-          : strippedMessage
-            ? `Attachment for message "${strippedMessage}"`
-            : rawMessage
-              ? `Attachment for message "${rawMessage}"`
-              : 'Chat attachment')
-    }))
-    .filter((asset) => typeof asset.url === 'string' && asset.url.trim().length > 0);
+  const pinShares = [];
+  const imageAssets = [];
+  attachments.forEach((asset, index) => {
+    const desc = typeof asset?.description === 'string' ? asset.description : '';
+    let parsedPin = null;
+    if (desc.startsWith('PINSHARE:')) {
+      const payload = desc.slice('PINSHARE:'.length);
+      try {
+        const meta = JSON.parse(payload);
+        if (meta && (meta.pinId || meta.link)) {
+          parsedPin = {
+            id: meta.pinId || meta.link || index,
+            title: meta.title || 'Shared pin',
+            type: meta.type || 'pin',
+            link: meta.link || (meta.pinId ? routes.pin.byId(meta.pinId) : null),
+            location: meta.location || null,
+            thumb: meta.thumb || null
+          };
+        }
+      } catch {
+        // ignore parse errors, treat as regular attachment
+      }
+    }
+    if (parsedPin) {
+      pinShares.push({
+        key: asset._id || parsedPin.id || `${asset.url || 'pin'}-${index}`,
+        pin: parsedPin,
+        thumb: parsedPin.thumb || ensureImageSrc(asset?.url)
+      });
+      return;
+    }
+    const url = ensureImageSrc(asset?.url);
+    if (typeof url === 'string' && url.trim().length > 0) {
+      imageAssets.push({
+        key: asset._id || `${asset.url || 'attachment'}-${index}`,
+        url,
+        alt:
+          asset?.description ||
+          (isAttachmentOnly
+            ? 'Chat attachment'
+            : strippedMessage
+              ? `Attachment for message "${strippedMessage}"`
+              : rawMessage
+                ? `Attachment for message "${rawMessage}"`
+                : 'Chat attachment')
+      });
+    }
+  });
 
-  if (!imageAssets.length && msg?.imageUrl) {
+  if (!imageAssets.length && !pinShares.length && msg?.imageUrl) {
     imageAssets.push({
       key: msg.imageUrl,
       url: ensureImageSrc(msg.imageUrl),
@@ -55,6 +91,71 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
     }
     return strippedMessage;
   })();
+
+  const formatLocation = (pin) => {
+    const approx = pin?.approximateAddress;
+    if (approx && typeof approx === 'object') {
+      if (typeof approx.formatted === 'string' && approx.formatted.trim()) {
+        return approx.formatted.trim();
+      }
+      const parts = [approx.city, approx.state, approx.country].filter(
+        (part) => typeof part === 'string' && part.trim()
+      );
+      if (parts.length) {
+        return parts.join(', ');
+      }
+    }
+    const addr = pin?.address;
+    if (!addr) {
+      const loc = pin?.location || null;
+      if (typeof loc === 'string' && loc.trim()) {
+        return loc.trim();
+      }
+      if (loc && typeof loc === 'object') {
+        if (typeof loc.formatted === 'string' && loc.formatted.trim()) {
+          return loc.formatted.trim();
+        }
+        const parts = [loc.line1, loc.city, loc.state, loc.country, loc.postalCode].filter(
+          (part) => typeof part === 'string' && part.trim()
+        );
+        if (!parts.length && loc.components && typeof loc.components === 'object') {
+          const nested = [loc.components.line1, loc.components.city, loc.components.state, loc.components.country]
+            .filter((part) => typeof part === 'string' && part.trim());
+          if (nested.length) {
+            return nested.join(', ');
+          }
+        }
+        if (parts.length) {
+          return parts.join(', ');
+        }
+      }
+      if (typeof pin?.locationLabel === 'string' && pin.locationLabel.trim()) {
+        return pin.locationLabel.trim();
+      }
+      return null;
+    }
+    if (typeof addr === 'string' && addr.trim()) {
+      return addr.trim();
+    }
+    if (typeof addr === 'object') {
+      if (typeof addr.formatted === 'string' && addr.formatted.trim()) {
+        return addr.formatted.trim();
+      }
+      const parts = [addr.line1, addr.city, addr.state, addr.country, addr.postalCode]
+        .filter((part) => typeof part === 'string' && part.trim());
+      if (!parts.length && addr.components && typeof addr.components === 'object') {
+        const nested = [addr.components.line1, addr.components.city, addr.components.state, addr.components.country]
+          .filter((part) => typeof part === 'string' && part.trim());
+        if (nested.length) {
+          return nested.join(', ');
+        }
+      }
+      if (parts.length) {
+        return parts.join(', ');
+      }
+    }
+    return null;
+  };
 
   const authorId =
     typeof msg?.authorId === 'string'
@@ -107,7 +208,7 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
               {formatFriendlyTimestamp(msg.createdAt) || formatRelativeTime(msg.createdAt) || ''}
             </Typography>
             {!isSelf && typeof onReport === 'function' ? (
-              <Tooltip title="Report message">
+              <Tooltip title={t('tooltips.reportMessage')}>
                 <span>
                   <IconButton
                     className="chat-report-btn"
@@ -132,7 +233,7 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
               </Tooltip>
             ) : null}
             {canModerate && !isSelf && typeof onModerate === 'function' ? (
-              <Tooltip title="Moderate user">
+              <Tooltip title={t('tooltips.moderateUser')}>
                 <span>
                   <IconButton
                     className="chat-moderation-btn"
@@ -160,6 +261,58 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
         </div>
         {displayMessage ? (
           <Typography className="chat-text">{displayMessage}</Typography>
+        ) : null}
+        {pinShares.length > 0 ? (
+          <Box className="chat-pin-share-stack">
+            {pinShares.map((share, index) => {
+              const pin = share.pin || share;
+              const pinId =
+                pin?.pinId ||
+                pin?._id ||
+                (typeof pin?.id === 'string' ? pin.id : null) ||
+                (typeof pin?.pin_id === 'string' ? pin.pin_id : null);
+              const href = pinId ? routes.pin.byId(pinId) : null;
+              const locationLabel = formatLocation(pin);
+              const thumb = share.thumb || pin.thumb || null;
+              return (
+                <Box key={share._id || pinId || index} className="chat-pin-share-card">
+                  <Box className="chat-pin-card-row">
+                    <Box className="chat-pin-card-body">
+                      <Typography variant="subtitle2" fontWeight={700} className="chat-pin-title">
+                        {pin?.title || 'Shared pin'}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#0f172a' }}>
+                        {pin?.type === 'event' ? 'Event' : 'Discussion'}
+                        {locationLabel ? ` · ${locationLabel}` : ''}
+                      </Typography>
+                      {href ? (
+                        <Button
+                          component={Link}
+                          to={href}
+                          variant="outlined"
+                          size="small"
+                          className="chat-pin-view-btn"
+                          sx={{
+                            color: '#1d4ed8',
+                            borderColor: '#1d4ed8',
+                            fontWeight: 700,
+                            textTransform: 'none'
+                          }}
+                        >
+                          View pin
+                        </Button>
+                      ) : null}
+                    </Box>
+                    {thumb ? (
+                      <Box className="chat-pin-thumb-wrapper">
+                        <Box component="img" src={thumb} alt="" className="chat-pin-thumb-vertical" />
+                      </Box>
+                    ) : null}
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
         ) : null}
         {imageAssets.map((asset) => (
           <img

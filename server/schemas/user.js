@@ -114,11 +114,12 @@ const PublicUserSchema = z.object({
 
 const UserProfileSchema = PublicUserSchema.extend({
   email: z.string().email().optional(),
+  firebaseUid: z.string().min(1).optional(),
+  roles: z.array(z.string().min(1)).default([]).optional(),
   bio: z.string().max(500).optional(),
   banner: MediaAssetSchema.optional(),
   preferences: UserPreferencesSchema.optional(),
   relationships: UserRelationshipSchema.optional(),
-  locationSharingEnabled: z.boolean().default(false),
   pinnedPinIds: z.array(ObjectIdSchema).default([]),
   ownedPinIds: z.array(ObjectIdSchema).default([]),
   bookmarkCollectionIds: z.array(ObjectIdSchema).default([]),

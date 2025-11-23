@@ -1,6 +1,7 @@
 /* NOTE: Page exports configuration alongside the component. */
-import { useCallback, useId, useMemo, useState } from 'react';
+import { useCallback, useId, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import L from 'leaflet';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import MapIcon from '@mui/icons-material/Map';
 import EventNoteIcon from '@mui/icons-material/EventNote';

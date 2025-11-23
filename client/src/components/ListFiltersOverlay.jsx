@@ -23,27 +23,21 @@ import {
   IconButton
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import { useTranslation } from 'react-i18next';
 
-const TYPE_OPTIONS = [
-  { value: 'event', label: 'Events' },
-  { value: 'discussion', label: 'Discussions' }
+const TYPE_OPTIONS = ['event', 'discussion'];
+
+const STATUS_OPTIONS = ['active', 'expired', 'all'];
+
+export const FRIEND_ENGAGEMENT_OPTIONS = ['created', 'replied', 'attending'];
+
+const FRIEND_ENGAGEMENT_VALUE_SET = new Set(FRIEND_ENGAGEMENT_OPTIONS);
+
+const POPULAR_SORT_OPTIONS = [
+  { value: null, label: 'None' },
+  { value: 'replies', label: 'Most replies' },
+  { value: 'attending', label: 'Most attending' }
 ];
-
-const STATUS_OPTIONS = [
-  { value: 'active', label: 'Active' },
-  { value: 'expired', label: 'Expired' },
-  { value: 'all', label: 'All pins' }
-];
-
-export const FRIEND_ENGAGEMENT_OPTIONS = [
-  { value: 'created', label: 'Created by my friends', chipLabel: 'Friends created it' },
-  { value: 'replied', label: 'Friends replied', chipLabel: 'Friends replied' },
-  { value: 'attending', label: 'Friends are attending', chipLabel: 'Friends attending' }
-];
-
-const FRIEND_ENGAGEMENT_VALUE_SET = new Set(
-  FRIEND_ENGAGEMENT_OPTIONS.map((option) => option.value)
-);
 
 const normalizeFilters = (filters, defaults) => ({
   search: filters.search ?? defaults.search ?? '',
@@ -56,7 +50,8 @@ const normalizeFilters = (filters, defaults) => ({
     : [...(defaults.categories ?? [])],
   friendEngagements: Array.isArray(filters.friendEngagements)
     ? filters.friendEngagements.filter((entry) => FRIEND_ENGAGEMENT_VALUE_SET.has(entry))
-    : [...(defaults.friendEngagements ?? [])]
+    : [...(defaults.friendEngagements ?? [])],
+  popularSort: filters.popularSort ?? defaults.popularSort ?? null
 });
 
 function uniqueMerge(list = [], additions = []) {
@@ -81,6 +76,7 @@ export default function ListFiltersOverlay({
   onRefreshCategories,
   categoryError = null
 }) {
+  const { t } = useTranslation();
   const [localFilters, setLocalFilters] = useState(() =>
     normalizeFilters(initialFilters, defaultFilters)
   );
@@ -92,6 +88,43 @@ export default function ListFiltersOverlay({
       setNewCategory('');
     }
   }, [open, initialFilters, defaultFilters]);
+
+  const typeOptions = useMemo(
+    () =>
+      TYPE_OPTIONS.map((value) => ({
+        value,
+        label: t(`bookmarks.filters.typeOptions.${value}`)
+      })),
+    [t]
+  );
+
+  const statusOptions = useMemo(
+    () =>
+      STATUS_OPTIONS.map((value) => ({
+        value,
+        label: t(`bookmarks.filters.statusOptions.${value}`)
+      })),
+    [t]
+  );
+
+  const friendEngagementOptions = useMemo(
+    () =>
+      FRIEND_ENGAGEMENT_OPTIONS.map((value) => ({
+        value,
+        label: t(`bookmarks.filters.friendOptions.${value}.label`),
+        chipLabel: t(`bookmarks.filters.friendOptions.${value}.chip`)
+      })),
+    [t]
+  );
+
+  const popularOptions = useMemo(
+    () => [
+      { value: null, label: t('bookmarks.filters.popularOptions.none') },
+      { value: 'replies', label: t('bookmarks.filters.popularOptions.replies') },
+      { value: 'attending', label: t('bookmarks.filters.popularOptions.attending') }
+    ],
+    [t]
+  );
 
   const categoryOptions = useMemo(() => {
     const optionNames = new Set();
@@ -184,6 +217,14 @@ export default function ListFiltersOverlay({
     }
   };
 
+  const handlePopularSortChange = (event) => {
+    const value = event.target.value || null;
+    setLocalFilters((prev) => ({
+      ...prev,
+      popularSort: value === 'replies' || value === 'attending' ? value : null
+    }));
+  };
+
   const handleStatusChange = (event) => {
     setLocalFilters((prev) => ({
       ...prev,
@@ -213,11 +254,16 @@ export default function ListFiltersOverlay({
 
   const handleApply = () => {
     const normalized = normalizeFilters(localFilters, defaultFilters);
-    onApply({
-      ...normalized,
+    const { popularSort, ...rest } = normalized;
+    const payload = {
+      ...rest,
+      ...(popularSort ? { popularSort } : {}),
       types: [...normalized.types],
       categories: [...normalized.categories],
       friendEngagements: [...(normalized.friendEngagements || [])]
+    };
+    onApply({
+      ...payload
     });
     onClose();
   };
@@ -237,19 +283,19 @@ export default function ListFiltersOverlay({
       className="filters-dialog"
       slotProps={{ backdrop: { className: 'filters-backdrop' } }}
     >
-      <DialogTitle className="filters-title">Discover pins</DialogTitle>
+      <DialogTitle className="filters-title">{t('bookmarks.filters.title')}</DialogTitle>
 
       <DialogContent dividers className="filters-content">
         <Stack spacing={3}>
           {/* Keyword search */}
           <Stack spacing={1}>
             <Typography variant="subtitle2" color="text.secondary">
-              Keyword search
+              {t('bookmarks.filters.keyword')}
             </Typography>
             <TextField
               value={localFilters.search}
               onChange={handleSearchChange}
-              placeholder="Search titles, descriptions, or tags"
+              placeholder={t('bookmarks.filters.keywordPlaceholder')}
               fullWidth
             />
           </Stack>
@@ -259,10 +305,10 @@ export default function ListFiltersOverlay({
           {/* Pin types */}
           <Stack spacing={1}>
             <Typography variant="subtitle2" color="text.secondary">
-              Pin types
+              {t('bookmarks.filters.pinTypes')}
             </Typography>
             <FormGroup row>
-              {TYPE_OPTIONS.map((option) => (
+              {typeOptions.map((option) => (
                 <FormControlLabel
                   key={option.value}
                   control={
@@ -282,10 +328,10 @@ export default function ListFiltersOverlay({
           {/* Friend activity */}
           <Stack spacing={1}>
             <Typography variant="subtitle2" color="text.secondary">
-              Friend activity
+              {t('bookmarks.filters.friendActivity')}
             </Typography>
             <FormGroup row>
-              {FRIEND_ENGAGEMENT_OPTIONS.map((option) => (
+              {friendEngagementOptions.map((option) => (
                 <FormControlLabel
                   key={option.value}
                   control={
@@ -302,19 +348,42 @@ export default function ListFiltersOverlay({
 
           <Divider />
 
+          {/* Popular pins */}
+          <Stack spacing={1}>
+            <Typography variant="subtitle2" color="text.secondary">
+              {t('bookmarks.filters.popularPins')}
+            </Typography>
+            <RadioGroup
+              row
+              value={localFilters.popularSort || null}
+              onChange={handlePopularSortChange}
+            >
+              {popularOptions.map((option) => (
+                <FormControlLabel
+                  key={option.value ?? 'none'}
+                  value={option.value ?? ''}
+                  control={<Radio />}
+                  label={option.label}
+                />
+              ))}
+            </RadioGroup>
+          </Stack>
+
+          <Divider />
+
           {/* Categories */}
           <Stack spacing={1}>
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography variant="subtitle2" color="text.secondary">
-                Categories
+                {t('bookmarks.filters.categories')}
               </Typography>
               <IconButton
                 size="small"
                 onClick={onRefreshCategories}
                 disabled={loadingCategories}
-                aria-label="Refresh categories"
+                aria-label={t('bookmarks.filters.refreshCategories')}
                 aria-busy={loadingCategories ? 'true' : undefined}
-                title={loadingCategories ? 'Refreshing…' : 'Refresh categories'}
+                title={loadingCategories ? t('bookmarks.filters.refreshing') : t('bookmarks.filters.refreshCategories')}
               >
                 <RefreshIcon
                   fontSize="inherit"
@@ -331,12 +400,12 @@ export default function ListFiltersOverlay({
 
             <Stack direction="row" spacing={1} alignItems="center">
               <TextField
-                label="Add category"
+                label={t('bookmarks.filters.addCategoryLabel')}
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
                 onKeyDown={handleEnterCategory}
                 size="small"
-                placeholder="e.g. Food, Study Group"
+                placeholder={t('bookmarks.filters.addCategoryPlaceholder')}
               />
               <Button
                 type="button"
@@ -344,7 +413,7 @@ export default function ListFiltersOverlay({
                 onClick={handleAddCategory}
                 disabled={!newCategory.trim()}
               >
-                Add
+                {t('bookmarks.filters.addCategory')}
               </Button>
             </Stack>
 
@@ -361,7 +430,7 @@ export default function ListFiltersOverlay({
                 <CircularProgress size={24} />
               ) : categoryOptions.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">
-                  No categories available yet.
+                  {t('bookmarks.filters.noCategories')}
                 </Typography>
               ) : (
                 categoryOptions.map((option) => {
@@ -370,7 +439,12 @@ export default function ListFiltersOverlay({
                     <Chip
                       key={option.name}
                       label={
-                        option.count ? `${option.name} (${option.count})` : option.name
+                        option.count
+                          ? t('bookmarks.filters.categoryWithCount', {
+                              name: option.name,
+                              count: option.count
+                            })
+                          : option.name
                       }
                       color={selected ? 'primary' : 'default'}
                       variant={selected ? 'filled' : 'outlined'}
@@ -389,11 +463,11 @@ export default function ListFiltersOverlay({
           {/* Date range */}
           <Stack spacing={1}>
             <Typography variant="subtitle2" color="text.secondary">
-              Date range
+              {t('bookmarks.filters.dateRange')}
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
               <TextField
-                label="Start date"
+                label={t('bookmarks.filters.startDate')}
                 type="date"
                 value={localFilters.startDate}
                 onChange={handleDateChange('startDate')}
@@ -401,7 +475,7 @@ export default function ListFiltersOverlay({
                 fullWidth
               />
               <TextField
-                label="End date"
+                label={t('bookmarks.filters.endDate')}
                 type="date"
                 value={localFilters.endDate}
                 onChange={handleDateChange('endDate')}
@@ -416,10 +490,10 @@ export default function ListFiltersOverlay({
           {/* Status */}
           <Stack spacing={1}>
             <Typography variant="subtitle2" color="text.secondary">
-              Status
+              {t('bookmarks.filters.status')}
             </Typography>
             <RadioGroup row value={localFilters.status} onChange={handleStatusChange}>
-              {STATUS_OPTIONS.map((option) => (
+              {statusOptions.map((option) => (
                 <FormControlLabel
                   key={option.value}
                   value={option.value}
@@ -433,12 +507,12 @@ export default function ListFiltersOverlay({
       </DialogContent>
 
       <DialogActions className="filters-actions">
-        <Button onClick={handleCancel}>Cancel</Button>
+        <Button onClick={handleCancel}>{t('bookmarks.filters.cancel')}</Button>
         <Button onClick={handleClearLocal} color="inherit">
-          Clear filters
+          {t('bookmarks.filters.clear')}
         </Button>
         <Button onClick={handleApply} variant="contained">
-          Apply filters
+          {t('bookmarks.filters.apply')}
         </Button>
       </DialogActions>
     </Dialog>

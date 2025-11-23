@@ -57,7 +57,7 @@ export default function usePushNotifications() {
     } finally {
       setIsEnabling(false);
     }
-  }, [isSupported, permission]);
+  }, [dismissPrompt, isSupported, permission]);
 
   return {
     isSupported,
@@ -70,4 +70,3 @@ export default function usePushNotifications() {
     dismissPrompt
   };
 }
-

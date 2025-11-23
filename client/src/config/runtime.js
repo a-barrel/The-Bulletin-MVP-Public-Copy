@@ -49,6 +49,16 @@ function parseJson(value, fallback = null) {
   }
 }
 
+const parseCsv = (value) =>
+  value
+    ? value
+        .split(/[,;]/)
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+    : [];
+
+const parseCsvLower = (value) => parseCsv(value).map((entry) => entry.toLowerCase()).filter(Boolean);
+
 const DEFAULT_OFFLINE_API_BASE_URL = 'http://localhost:8000';
 
 const apiBaseUrl = isOffline
@@ -99,6 +109,30 @@ const enableModerationRoleChecks = parseBooleanEnv(
   !isOffline
 );
 
+const normalizeRoleName = (value, fallback) => {
+  if (!value || !value.trim()) {
+    return fallback;
+  }
+  return value.trim().toLowerCase();
+};
+
+const baseUserRole = normalizeRoleName(import.meta.env.VITE_BASE_USER_ROLE, 'user');
+const developerRoleName = normalizeRoleName(import.meta.env.VITE_DEVELOPER_ROLE, 'developer');
+
+const defaultAlwaysAdminUserIds = new Set(['F69ZziUU5tXWJ7TtyDKwbvhbSzi1']);
+parseCsv(import.meta.env.VITE_ALWAYS_ADMIN_USER_IDS).forEach((entry) => {
+  if (entry) {
+    defaultAlwaysAdminUserIds.add(entry);
+  }
+});
+
+const defaultAlwaysAdminEmails = new Set(['thepinpointishere@gmail.com']);
+parseCsvLower(import.meta.env.VITE_ALWAYS_ADMIN_EMAILS).forEach((entry) => {
+  if (entry) {
+    defaultAlwaysAdminEmails.add(entry);
+  }
+});
+
 export const runtimeConfig = {
   mode,
   isOffline,
@@ -112,6 +146,12 @@ export const runtimeConfig = {
   moderation: {
     roleChecksEnabled: enableModerationRoleChecks,
     allowedRoles: MODERATION_ROLE_ALLOWLIST
+  },
+  roles: {
+    baseUserRole,
+    developerRoleName,
+    alwaysAdminUserIds: [...defaultAlwaysAdminUserIds],
+    alwaysAdminEmails: [...defaultAlwaysAdminEmails]
   },
   troyExperimentEnabled,
   firebase: {

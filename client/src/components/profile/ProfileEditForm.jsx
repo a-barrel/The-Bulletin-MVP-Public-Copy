@@ -2,10 +2,8 @@ import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
-import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
@@ -24,8 +22,7 @@ function ProfileEditForm({
   onClearAvatar,
   onClearBanner,
   onFieldChange,
-  onThemeChange,
-  onToggleLocationSharing
+  onThemeChange
 }) {
   return (
     <Stack
@@ -208,19 +205,6 @@ function ProfileEditForm({
           <MenuItem value="light">Light</MenuItem>
           <MenuItem value="dark">Dark</MenuItem>
         </TextField>
-
-        <FormControlLabel
-          control={
-            <Switch
-              checked={formState.locationSharingEnabled}
-              onChange={onToggleLocationSharing}
-              color="primary"
-              disabled={isSaving}
-            />
-          }
-          label="Share location with nearby features"
-          sx={{ color: '#1f1336' }}
-        />
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} justifyContent="flex-end">
           <Button type="button" variant="outlined" color="inherit" onClick={onCancel} disabled={isSaving}>

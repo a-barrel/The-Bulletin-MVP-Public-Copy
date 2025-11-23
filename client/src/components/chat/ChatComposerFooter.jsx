@@ -52,7 +52,8 @@ ChatComposerFooter.propTypes = {
   onRemoveAttachment: PropTypes.func,
   onRetryAttachment: PropTypes.func,
   canRetryAttachment: PropTypes.bool,
-  attachmentPadding: PropTypes.oneOfType([PropTypes.number, PropTypes.object])
+  attachmentPadding: PropTypes.oneOfType([PropTypes.number, PropTypes.object]),
+  onSharePin: PropTypes.func
 };
 
 ChatComposerFooter.defaultProps = {
@@ -63,7 +64,8 @@ ChatComposerFooter.defaultProps = {
   onRemoveAttachment: undefined,
   onRetryAttachment: undefined,
   canRetryAttachment: false,
-  attachmentPadding: { xs: 2, md: 3 }
+  attachmentPadding: { xs: 2, md: 3 },
+  onSharePin: undefined
 };
 
 export default ChatComposerFooter;

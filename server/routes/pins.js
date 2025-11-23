@@ -17,6 +17,7 @@ const {
   broadcastAttendanceChange,
   broadcastBookmarkCreated
 } = require('../services/updateFanoutService');
+const AttendanceEvent = require('../models/AttendanceEvent');
 const { grantBadge } = require('../services/badgeService');
 const { trackEvent } = require('../services/analyticsService');
 const { mapMediaAsset: mapMediaAssetResponse } = require('../utils/media');
@@ -25,6 +26,7 @@ const { METERS_PER_MILE, milesToMeters } = require('../utils/geo');
 const { timeAsync } = require('../utils/devLogger');
 const { recordAuditEntry } = require('../services/auditLogService');
 const { canViewerModeratePins } = require('../utils/moderation');
+const { viewerHasDeveloperAccess } = require('../utils/roles');
 
 const router = express.Router();
 
@@ -724,9 +726,7 @@ router.post('/', verifyToken, async (req, res) => {
       }
 
       const requestedCreatorId = new mongoose.Types.ObjectId(input.creatorId);
-      const viewerRoles = Array.isArray(viewer.roles) ? viewer.roles : [];
-      const viewerIsPrivileged =
-        viewerRoles.includes('admin') || viewerRoles.includes('super-admin') || viewerRoles.includes('system-admin');
+      const viewerIsPrivileged = viewerHasDeveloperAccess(viewer);
 
       if (!requestedCreatorId.equals(viewer._id) && !viewerIsPrivileged) {
         return res.status(403).json({ message: 'You are not allowed to create pins for other users' });
@@ -1024,6 +1024,9 @@ router.get('/nearby', verifyToken, async (req, res) => {
     const viewerFriendObjectIds = mapIdList(viewer.relationships?.friendIds)
       .filter((id) => mongoose.Types.ObjectId.isValid(id))
       .map((id) => new mongoose.Types.ObjectId(id));
+    const viewerFriendIdStrings = new Set(
+      viewerFriendObjectIds.map((objectId) => toIdString(objectId)).filter(Boolean)
+    );
     const normalizedFriendEngagements = parseCsvParam(friendEngagementsParam)
       .map((entry) => entry.toLowerCase())
       .filter((entry) => entry === 'created' || entry === 'replied' || entry === 'attending');
@@ -1218,11 +1221,85 @@ router.get('/nearby', verifyToken, async (req, res) => {
       });
       const [pinLongitude, pinLatitude] = pinDoc.coordinates.coordinates;
       const distanceMeters = haversineDistanceMeters(latitude, longitude, pinLatitude, pinLongitude);
+      const participantLimit =
+        typeof pinDoc.participantLimit === 'number'
+          ? pinDoc.participantLimit
+          : typeof pinDoc.options?.participantLimit === 'number'
+          ? pinDoc.options.participantLimit
+          : undefined;
+      const participantCount =
+        typeof pinDoc.participantCount === 'number'
+          ? pinDoc.participantCount
+          : Array.isArray(pinDoc.attendingUserIds)
+          ? pinDoc.attendingUserIds.length
+          : undefined;
+      const seatsRemaining =
+        Number.isFinite(participantLimit) && Number.isFinite(participantCount)
+          ? Math.max(participantLimit - participantCount, 0)
+          : undefined;
+      const isFullEvent =
+        Number.isFinite(participantLimit) &&
+        Number.isFinite(participantCount) &&
+        participantLimit > 0 &&
+        participantCount >= participantLimit;
+      const creatorIsFriend =
+        Boolean(pinCreatorId) && viewerFriendIdStrings.has(pinCreatorId);
+      const startDate =
+        pinDoc.startDate && typeof pinDoc.startDate === 'string'
+          ? new Date(pinDoc.startDate)
+          : null;
+      const expiresSource =
+        pinDoc.expiresAt ||
+        pinDoc.endDate ||
+        (pinDoc.type === 'event' ? pinDoc.endDate : null);
+      const expiresDate =
+        expiresSource && typeof expiresSource === 'string'
+          ? new Date(expiresSource)
+          : null;
+      const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+      const nowTime = now.getTime();
+      const startsSoon =
+        pinDoc.type === 'event' &&
+        startDate instanceof Date &&
+        !Number.isNaN(startDate.getTime()) &&
+        startDate.getTime() >= nowTime &&
+        startDate.getTime() - nowTime <= TWENTY_FOUR_HOURS_MS;
+      const discussionExpiresSoon =
+        pinDoc.type === 'discussion' &&
+        expiresDate instanceof Date &&
+        !Number.isNaN(expiresDate.getTime()) &&
+        expiresDate.getTime() >= nowTime &&
+        expiresDate.getTime() - nowTime <= TWENTY_FOUR_HOURS_MS;
+      const bookmarkCount = pinDoc.stats?.bookmarkCount ?? 0;
+      const replyCount =
+        pinDoc.stats?.replyCount ?? pinDoc.replyCount ?? 0;
+      const POPULAR_BOOKMARK_THRESHOLD = 10;
+      const POPULAR_REPLY_THRESHOLD = 15;
+      const isPopular =
+        bookmarkCount >= POPULAR_BOOKMARK_THRESHOLD ||
+        replyCount >= POPULAR_REPLY_THRESHOLD;
+      const hasOpenSpots =
+        Number.isFinite(participantLimit) &&
+        Number.isFinite(participantCount) &&
+        participantLimit > 0 &&
+        participantCount >= 0 &&
+        participantCount / participantLimit <= 0.25;
+      const isFeatured = Boolean(pinDoc.options?.featured);
       return {
         ...listItem,
         distanceMeters,
         isBookmarked: viewerHasBookmarked,
-        viewerHasBookmarked
+        viewerHasBookmarked,
+        participantLimit: Number.isFinite(participantLimit) ? participantLimit : undefined,
+        participantCount: Number.isFinite(participantCount) ? participantCount : undefined,
+        seatsRemaining,
+        isFull: isFullEvent,
+        isFriendCreator: creatorIsFriend,
+        startsSoon,
+        discussionExpiresSoon,
+        isPopular,
+        hasOpenSpots,
+        isFeatured
       };
     });
 
@@ -1543,6 +1620,90 @@ router.get('/:pinId', verifyToken, async (req, res) => {
   }
 });
 
+router.get('/:pinId/analytics', verifyToken, async (req, res) => {
+  try {
+    const { pinId } = PinIdSchema.parse(req.params);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const pin = await Pin.findById(pinId).populate({ path: 'creatorId', select: USER_SUMMARY_PROJECTION });
+    if (!pin) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
+
+    const viewerId = toIdString(viewer._id);
+    const creatorId = toIdString(pin.creatorId?._id ?? pin.creatorId);
+    const isCreator = viewerId && creatorId && viewerId === creatorId;
+    const viewerRoles = Array.isArray(viewer.roles) ? viewer.roles : [];
+    const isAdmin = viewerRoles.some((role) => typeof role === 'string' && role.toLowerCase().includes('admin'));
+
+    if (!isCreator && !isAdmin) {
+      return res.status(403).json({ message: 'Only the pin creator can view analytics.' });
+    }
+
+    const events = await AttendanceEvent.find({ pinId })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    const buckets = new Map();
+    let cumulative = 0;
+    const series = events.map((event) => {
+      cumulative += event.action === 'join' ? 1 : -1;
+      const ts = event.createdAt instanceof Date ? event.createdAt : new Date(event.createdAt);
+      const bucketKey = ts.toISOString().slice(0, 13); // hour bucket
+      const existing = buckets.get(bucketKey) || { join: 0, leave: 0 };
+      if (event.action === 'join') {
+        existing.join += 1;
+      } else {
+        existing.leave += 1;
+      }
+      buckets.set(bucketKey, existing);
+      return {
+        id: String(event._id),
+        action: event.action,
+        timestamp: ts.toISOString(),
+        cumulative
+      };
+    });
+
+    const hourlyBuckets = Array.from(buckets.entries()).map(([bucketKey, value]) => ({
+      bucket: bucketKey,
+      join: value.join,
+      leave: value.leave
+    }));
+
+    const joins = events.filter((evt) => evt.action === 'join').length;
+    const leaves = events.filter((evt) => evt.action === 'leave').length;
+    const firstJoinAt = events.find((evt) => evt.action === 'join')?.createdAt;
+    const lastJoinAt = [...events].reverse().find((evt) => evt.action === 'join')?.createdAt;
+
+    res.json({
+      pinId,
+      totals: {
+        joins,
+        leaves,
+        net: joins - leaves,
+        current: pin.participantCount ?? joins - leaves
+      },
+      milestones: {
+        firstJoinAt: firstJoinAt ? new Date(firstJoinAt).toISOString() : null,
+        lastJoinAt: lastJoinAt ? new Date(lastJoinAt).toISOString() : null,
+        participantLimit: pin.participantLimit ?? null
+      },
+      series,
+      hourlyBuckets
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid pin id', issues: error.errors });
+    }
+    console.error('Failed to load pin analytics:', error);
+    res.status(500).json({ message: 'Failed to load pin analytics' });
+  }
+});
+
 router.post('/:pinId/attendance', verifyToken, async (req, res) => {
   try {
     const { pinId } = PinIdSchema.parse(req.params);
@@ -1612,6 +1773,16 @@ router.post('/:pinId/attendance', verifyToken, async (req, res) => {
 
     await pin.save();
     if (viewerJoined || viewerLeft) {
+      try {
+        await AttendanceEvent.create({
+          pinId: pin._id,
+          userId: viewer._id,
+          action: viewerJoined ? 'join' : 'leave'
+        });
+      } catch (logError) {
+        console.error('Failed to log attendance event', logError);
+      }
+
       try {
         ensureUserStats(viewer);
         const existingCount = viewer.stats.eventsAttended ?? 0;
@@ -1949,8 +2120,7 @@ router.put('/:pinId', verifyToken, async (req, res) => {
     }
 
     const viewerId = toIdString(viewer._id);
-    const viewerRoles = Array.isArray(viewer.roles) ? viewer.roles : [];
-    const hasElevatedRole = viewerRoles.includes('admin') || viewerRoles.includes('moderator');
+    const hasElevatedRole = viewerHasDeveloperAccess(viewer);
 
     const now = Date.now();
     const maxEventTimestamp = now + EVENT_MAX_LEAD_TIME_MS;

@@ -348,7 +348,7 @@ export default function useCreatePinForm({
       if (!viewerCoordinates) {
         setLocationStatus({
           type: 'warning',
-          message: 'We need your current location to place an event. Enable location sharing and try again.'
+          message: 'We need your current location to place an event. Enable location services and try again.'
         });
         return;
       }

@@ -1,9 +1,9 @@
 export const PASSWORD_REQUIREMENTS = [
-  { label: 'Has an uppercase letter', test: (pw) => /[A-Z]/.test(pw) },
-  { label: 'Has a lowercase letter', test: (pw) => /[a-z]/.test(pw) },
-  { label: 'Has a number', test: (pw) => /\d/.test(pw) },
-  { label: 'Has a special character', test: (pw) => /[^A-Za-z0-9]/.test(pw) },
-  { label: 'Is at least 8 characters long', test: (pw) => pw.length >= 8 }
+  { key: 'uppercase', label: 'Has an uppercase letter', test: (pw) => /[A-Z]/.test(pw) },
+  { key: 'lowercase', label: 'Has a lowercase letter', test: (pw) => /[a-z]/.test(pw) },
+  { key: 'number', label: 'Has a number', test: (pw) => /\d/.test(pw) },
+  { key: 'special', label: 'Has a special character', test: (pw) => /[^A-Za-z0-9]/.test(pw) },
+  { key: 'length', label: 'Is at least 8 characters long', test: (pw) => pw.length >= 8 }
 ];
 
 export const PASSWORD_STRENGTH_STEPS = PASSWORD_REQUIREMENTS.length + 1;

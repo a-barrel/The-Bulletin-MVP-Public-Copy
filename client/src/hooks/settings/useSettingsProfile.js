@@ -29,13 +29,10 @@ const normalizeQuietHours = (input) => {
 const hydrateSettingsFromProfile = (result) => ({
   theme: result?.preferences?.theme ?? DEFAULT_SETTINGS.theme,
   radiusPreferenceMeters: roundRadius(result?.preferences?.radiusPreferenceMeters),
-  locationSharingEnabled: Boolean(result?.locationSharingEnabled),
-  locationAutoShareHours:
-    result?.preferences?.location?.autoDisableAfterHours ?? DEFAULT_SETTINGS.locationAutoShareHours,
-  globalMapVisible:
-    result?.preferences?.location?.globalMapVisible ?? DEFAULT_SETTINGS.globalMapVisible,
+  locationSharingEnabled: false,
   filterCussWords: result?.preferences?.filterCussWords ?? DEFAULT_SETTINGS.filterCussWords,
   statsPublic: result?.preferences?.statsPublic ?? DEFAULT_SETTINGS.statsPublic,
+  betaOptIn: result?.preferences?.betaOptIn ?? DEFAULT_SETTINGS.betaOptIn,
   dmPermission: result?.preferences?.dmPermission ?? DEFAULT_SETTINGS.dmPermission,
   digestFrequency: result?.preferences?.digestFrequency ?? DEFAULT_SETTINGS.digestFrequency,
   autoExportReminders:

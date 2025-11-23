@@ -108,7 +108,8 @@ function BookmarksPage() {
     clearHistory,
     isClearingHistory,
     historyError,
-    dismissHistoryError
+    dismissHistoryError,
+    refreshHistory
   } = useBookmarksManager({ authUser, authLoading, isOffline, hideFullEvents });
 
   const [highlightedCollectionKey, setHighlightedCollectionKey] = useState(null);
@@ -281,6 +282,12 @@ function BookmarksPage() {
     }
     clearHistory();
   }, [clearHistory, dismissHistoryError, historyError]);
+
+  useEffect(() => {
+    if (activeTab === 'history') {
+      refreshHistory();
+    }
+  }, [activeTab, refreshHistory]);
 
   const handleBookmarkAttendanceToggle = useCallback(
     async (bookmark) => {

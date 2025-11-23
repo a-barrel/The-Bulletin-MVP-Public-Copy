@@ -22,6 +22,7 @@ import resolveAssetUrl from "../utils/media";
 import toIdString from "../utils/ids";
 import usePinAttendees from "../hooks/usePinAttendees";
 import { useNetworkStatusContext } from "../contexts/NetworkStatusContext";
+import { useSocialNotificationsContext } from "../contexts/SocialNotificationsContext";
 import {
   DEFAULT_AVATAR,
   FALLBACK_NAMES,
@@ -29,6 +30,7 @@ import {
   resolveAuthorName,
   resolveLibraryAvatar
 } from "../utils/feed";
+import { useTranslation } from "react-i18next";
 // Reference docs/frontend-api-cheatsheet.md (“PinCard Data Contract”) for the payload fields this card expects.
 
 const TAG_ICON_MAP = {
@@ -62,6 +64,7 @@ export default function PinCard({
   enableBookmarkToggle = true,
   className = ""
 }) {
+  const { t } = useTranslation();
   const rawType = item?.type ? String(item.type).toLowerCase() : "";
   const normalizedType =
     rawType === "event"
@@ -120,6 +123,20 @@ export default function PinCard({
   const [bookmarkError, setBookmarkError] = useState(null);
   const viewerOwnsPin = Boolean(item?.viewerOwnsPin);
   const viewerIsAttending = Boolean(item?.viewerIsAttending);
+  const socialNotifications = useSocialNotificationsContext();
+  const friendLookup = useMemo(() => {
+    const entries = Array.isArray(socialNotifications.friendData?.friends)
+      ? socialNotifications.friendData.friends
+      : [];
+    const lookup = new Set();
+    entries.forEach((friend) => {
+      const id = toIdString(friend?.id ?? friend?._id ?? friend);
+      if (id) {
+        lookup.add(id);
+      }
+    });
+    return lookup;
+  }, [socialNotifications.friendData?.friends]);
 
   useEffect(() => {
     setIsBookmarked(derivedBookmark);
@@ -142,6 +159,15 @@ export default function PinCard({
   );
 
   const attendeesFeatureEnabled = showAttendeeAvatars && isEventPin;
+  const friendAttendingCount = useMemo(() => {
+    if (!isEventPin || !friendLookup.size || attendeeIds.length === 0) {
+      return 0;
+    }
+    return attendeeIds.reduce((total, id) => {
+      const normalized = toIdString(id);
+      return normalized && friendLookup.has(normalized) ? total + 1 : total;
+    }, 0);
+  }, [attendeeIds, friendLookup, isEventPin]);
 
   const { attendees } = usePinAttendees({
     pinId,
@@ -176,7 +202,7 @@ export default function PinCard({
       name: String(name),
       avatar: resolveLibraryAvatar(idx)
     }));
-  }, [isEventPin, interestedNames, baseKey, participantCount]);
+  }, [attendeesFeatureEnabled, interestedNames, baseKey, participantCount]);
 
   const resolvedAttendees =
     attendeesFeatureEnabled && attendees.length
@@ -509,7 +535,7 @@ export default function PinCard({
 
         <div className="counts">
           {typeof item?.comments === "number" && (
-            <span className="count-item" title="Comments">
+            <span className="count-item" title={t('tooltips.comments')}>
               <img
                 src={CommentsIcon}
                 alt=""
@@ -521,7 +547,7 @@ export default function PinCard({
           )}
 
           {isEventPin && attendeeTotal > 0 && (
-            <span className="count-item" title="Attendees">
+            <span className="count-item" title={t('tooltips.attendees')}>
               <img
                 src={InterestedIcon}
                 alt=""
@@ -529,6 +555,17 @@ export default function PinCard({
                 aria-hidden="true"
               />
               <span>{attendeeTotal}</span>
+            </span>
+          )}
+          {isEventPin && friendAttendingCount > 0 && (
+            <span className="count-item friend-count" title={t('tooltips.friendsAttending')}>
+              <img
+                src={InterestedIcon}
+                alt=""
+                className="count-icon friend-count-icon"
+                aria-hidden="true"
+              />
+              <span>{friendAttendingCount}</span>
             </span>
           )}
         </div>

@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import "./Navbar.css";
 
 // regular icons
@@ -12,6 +13,7 @@ import ListFilled from "../assets/list-filled.svg";
 import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
 
 export default function Navbar() {
+  const { t } = useTranslation();
   const {
     friendRequestCount,
     dmThreadCount,
@@ -25,12 +27,15 @@ export default function Navbar() {
   const formattedDmCount = showDmBadge ? (dmThreadCount > 99 ? '99+' : String(dmThreadCount)) : null;
   const formattedFriendCount = showFriendBadge ? (friendRequestCount > 99 ? '99+' : String(friendRequestCount)) : null;
 
+  const chatLabel = t("nav.bottomNav.chat");
+  const mapLabel = t("nav.bottomNav.map");
+  const listLabel = t("nav.bottomNav.list");
   const chatAriaLabel = showDmBadge
-    ? `Chat (${dmThreadCount} direct message ${dmThreadCount === 1 ? 'thread' : 'threads'})`
-    : 'Chat';
+    ? t("nav.bottomNav.chatAria.badge", { count: dmThreadCount })
+    : t("nav.bottomNav.chatAria.default");
   const listAriaLabel = showFriendBadge
-    ? `List (${friendRequestCount} friend request${friendRequestCount === 1 ? '' : 's'})`
-    : 'List';
+    ? t("nav.bottomNav.listAria.badge", { count: friendRequestCount })
+    : t("nav.bottomNav.listAria.default");
 
   return (
     <>
@@ -45,7 +50,7 @@ export default function Navbar() {
             <>
               <img
                 src={isActive ? ChatFilled : ChatIcon}
-                alt="Chat"
+                alt={chatLabel}
                 className="nav-icon"
               />
               {showDmBadge ? (
@@ -53,7 +58,7 @@ export default function Navbar() {
                   {formattedDmCount}
                 </span>
               ) : null}
-              <span>Chat</span>
+              <span>{chatLabel}</span>
             </>
           )}
         </NavLink>
@@ -65,10 +70,10 @@ export default function Navbar() {
             <>
               <img
                 src={isActive ? MapFilled : MapIcon}
-                alt="Map"
+                alt={mapLabel}
                 className="nav-icon"
               />
-              <span>Map</span>
+              <span>{mapLabel}</span>
             </>
           )}
         </NavLink>
@@ -82,7 +87,7 @@ export default function Navbar() {
             <>
               <img
                 src={isActive ? ListFilled : ListIcon}
-                alt="List"
+                alt={listLabel}
                 className="nav-icon"
               />
               {showFriendBadge ? (
@@ -90,7 +95,7 @@ export default function Navbar() {
                   {formattedFriendCount}
                 </span>
               ) : null}
-              <span>List</span>
+              <span>{listLabel}</span>
             </>
           )}
         </NavLink>

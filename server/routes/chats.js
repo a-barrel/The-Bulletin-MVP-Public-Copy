@@ -18,6 +18,7 @@ const {
   createMessage,
   upsertPresence
 } = require('../services/proximityChatService');
+const { canViewerModeratePins } = require('../utils/moderation');
 const {
   broadcastChatMessage,
   broadcastChatRoomTransition
@@ -106,14 +107,35 @@ const countProfanityInstances = (text = '') => {
   return matches ? matches.length : 0;
 };
 
+const parseBooleanParam = (value, fallback) => {
+  if (value === undefined) {
+    return fallback;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) {
+      return fallback;
+    }
+    if (['true', '1', 'yes', 'y', 'on'].includes(normalized)) {
+      return true;
+    }
+    if (['false', '0', 'no', 'n', 'off'].includes(normalized)) {
+      return false;
+    }
+  }
+  return fallback;
+};
+
 const RoomQuerySchema = z.object({
   pinId: z.string().optional(),
   ownerId: z.string().optional(),
   latitude: z.coerce.number().min(-90).max(90).optional(),
   longitude: z.coerce.number().min(-180).max(180).optional(),
-  includeBookmarked: z
-    .union([z.boolean(), z.string().transform((value) => value.toLowerCase() !== 'false')])
-    .optional()
+  includeBookmarked: z.union([z.boolean(), z.string()]).optional(),
+  adminView: z.union([z.boolean(), z.string()]).optional()
 });
 
 const RoomIdSchema = z.object({
@@ -724,8 +746,9 @@ router.get('/rooms', verifyToken, async (req, res) => {
       criteria.ownerId = query.ownerId;
     }
 
-    const includeBookmarked =
-      query.includeBookmarked === undefined ? true : Boolean(query.includeBookmarked);
+    const includeBookmarked = parseBooleanParam(query.includeBookmarked, true);
+    const adminViewRequested = parseBooleanParam(query.adminView, false);
+    const viewerIsPrivileged = adminViewRequested && canViewerModeratePins(viewer);
 
     const roomsTimingLabel = `chat:rooms:query:${viewer._id}:${Date.now()}`;
     if (ENABLE_QUERY_TIMERS) {
@@ -747,7 +770,9 @@ router.get('/rooms', verifyToken, async (req, res) => {
       includeBookmarked
     });
 
-    const filtered = rooms.filter((room) => evaluateRoomAccess(room, accessContext).allowed);
+    const filtered = viewerIsPrivileged
+      ? rooms
+      : rooms.filter((room) => evaluateRoomAccess(room, accessContext).allowed);
     const deduped = dedupeRooms(filtered);
     const payload = deduped.map(mapRoom);
     res.json(payload);

@@ -21,6 +21,8 @@ import {
   SPOOF_MIN_MILES,
   SPOOF_STEP_INCREMENT
 } from '../utils/mapExplorerConstants';
+
+export { DEFAULT_SPOOF_STEP_MILES, SPOOF_MAX_MILES };
 import { hasValidCoordinates } from '../utils/mapLocation';
 import useMapViewerProfile from './useMapViewerProfile';
 import useMapNearbyData from './useMapNearbyData';
@@ -86,6 +88,8 @@ export default function useMapExplorer({
     isOffline
   });
 
+  const [adminChatView, setAdminChatView] = useState(false);
+
   const {
     nearbyUsers,
     pins,
@@ -106,7 +110,6 @@ export default function useMapExplorer({
   const {
     showChatRooms,
     setShowChatRooms,
-    chatRooms,
     chatRoomPins,
     isLoadingChatRooms,
     chatRoomsError,
@@ -117,7 +120,7 @@ export default function useMapExplorer({
     selectedChatRoomDistanceLabel,
     selectedChatRoomRadiusLabel,
     handleMapPinSelect
-  } = useMapChatRooms({ userLocation, isOffline });
+  } = useMapChatRooms({ userLocation, isOffline, adminView: adminChatView });
 
   useEffect(() => {
     if (!Number.isFinite(sharedLatitude) || !Number.isFinite(sharedLongitude)) {
@@ -206,7 +209,7 @@ export default function useMapExplorer({
   const pushLocationUpdate = useCallback(
     async (location) => {
       if (!hasValidCoordinates(location)) {
-        throw new Error('Cannot share location without valid coordinates.');
+      throw new Error('Location permission is required to continue.');
       }
       if (isOffline) {
         throw new Error('Location sharing is unavailable while offline.');
@@ -230,7 +233,7 @@ export default function useMapExplorer({
 
   const handleStartSharing = useCallback(async () => {
     if (isOffline) {
-      setError('You are offline. Connect to share your location.');
+      setError('You are offline. Connect to provide your location.');
       setIsSharing(false);
       return;
     }
@@ -278,7 +281,7 @@ export default function useMapExplorer({
         source: 'useMapExplorer.shareLocation',
         location: locationToShare
       });
-      setError(err.message || 'Failed to share your location.');
+      setError(err.message || 'Failed to update your location.');
       lastSharedLocationRef.current = null;
       setIsSharing(false);
     }
@@ -325,7 +328,7 @@ export default function useMapExplorer({
             source: 'useMapExplorer.syncSharedLocation',
             userLocation
           });
-          setError(err.message || 'Failed to share your location.');
+          setError(err.message || 'Failed to update your location.');
           lastSharedLocationRef.current = null;
           setIsSharing(false);
         }
@@ -441,6 +444,45 @@ export default function useMapExplorer({
     [isOffline, shiftLocation]
   );
 
+  const teleportToLocation = useCallback(
+    async (nextLocation, options = {}) => {
+      if (
+        !nextLocation ||
+        !Number.isFinite(nextLocation.latitude) ||
+        !Number.isFinite(nextLocation.longitude)
+      ) {
+        return;
+      }
+      const updated = updateGlobalLocation(
+        {
+          latitude: Number(nextLocation.latitude),
+          longitude: Number(nextLocation.longitude),
+          accuracy:
+            Number.isFinite(nextLocation.accuracy) && nextLocation.accuracy >= 0
+              ? Number(nextLocation.accuracy)
+              : undefined
+        },
+        { source: options.source || 'map-teleport' }
+      );
+      if (updated) {
+        refreshPins(updated);
+        refreshNearby(updated);
+        if (!isOffline) {
+          try {
+            await pushLocationUpdate(updated);
+          } catch (error) {
+            reportClientError(error, 'Failed to push teleport location update', {
+              source: 'useMapExplorer.teleport',
+              latitude: updated.latitude,
+              longitude: updated.longitude
+            });
+          }
+        }
+      }
+    },
+    [isOffline, pushLocationUpdate, refreshNearby, refreshPins, updateGlobalLocation]
+  );
+
   const combinedPins = useMemo(() => {
     if (!showChatRooms) {
       return pins;
@@ -488,6 +530,8 @@ export default function useMapExplorer({
     setSelectedChatRoomId,
     selectedChatRoom,
     selectedChatRoomRadiusLabel,
-    selectedChatRoomDistanceLabel
+    selectedChatRoomDistanceLabel,
+    teleportToLocation,
+    setAdminChatView
   };
 }

@@ -71,6 +71,10 @@ export const resolveUserAvatarUrl = (user, fallback = DEFAULT_AVATAR_PATH) => {
     user?.avatar,
     user?.avatar?.url,
     user?.avatarUrl,
+    user?.photoURL,
+    user?.photoUrl,
+    user?.profileImage,
+    user?.profileImage?.url,
     user?.profile?.avatar,
     user?.profile?.avatar?.url
   ];

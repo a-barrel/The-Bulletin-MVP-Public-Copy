@@ -113,7 +113,6 @@ const userSchema = new mongoose.Schema(
         lastSeenAt: { type: Date, default: Date.now }
       }
     ],
-    locationSharingEnabled: { type: Boolean, default: false },
     primaryLocationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Location' },
     pinnedPinIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Pin' }],
     ownedPinIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Pin' }],

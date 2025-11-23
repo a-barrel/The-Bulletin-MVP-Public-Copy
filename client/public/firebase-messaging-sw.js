@@ -1,5 +1,5 @@
 /* eslint-env worker */
-/* global firebase, clients */
+/* global firebase, clients, importScripts */
 
 let firebaseInitialized = false;
 

@@ -2,11 +2,7 @@
 const { z, ZodError } = require('zod');
 const router = express.Router();
 const Location = require('../models/Location');
-const {
-  LocationWriteSchema,
-  LocationQuerySchema,
-  NearbyUserSchema
-} = require('../schemas/location');
+const { LocationWriteSchema } = require('../schemas/location');
 const verifyToken = require('../middleware/verifyToken');
 const { toIdString, mapIdList } = require('../utils/ids');
 
@@ -141,79 +137,9 @@ router.post('/', verifyToken, async (req, res) => {
   }
 });
 
-router.get('/nearby', verifyToken, async (req, res) => {
-  try {
-    const queryInput = {
-      longitude: req.query.longitude !== undefined ? Number(req.query.longitude) : undefined,
-      latitude: req.query.latitude !== undefined ? Number(req.query.latitude) : undefined,
-      maxDistance: req.query.maxDistance !== undefined ? Number(req.query.maxDistance) : undefined
-    };
-
-    const parsed = LocationQuerySchema.parse(queryInput);
-
-    const pipeline = [
-      {
-        $geoNear: {
-          near: {
-            type: 'Point',
-            coordinates: [parsed.longitude, parsed.latitude]
-          },
-          distanceField: 'distanceMeters',
-          maxDistance: parsed.maxDistance,
-          spherical: true
-        }
-      },
-      { $match: { isPublic: true } },
-      {
-        $project: {
-          userId: 1,
-          coordinates: '$coordinates.coordinates',
-          accuracy: '$accuracy',
-          lastSeenAt: 1,
-          distanceMeters: 1,
-          sessionId: 1,
-          source: 1,
-          linkedPinIds: 1
-        }
-      },
-      { $limit: 50 }
-    ];
-
-    const docs = await Location.aggregate(pipeline);
-
-    const formatted = docs.map((doc) => {
-      const coordinates = {
-        type: 'Point',
-        coordinates: doc.coordinates
-      };
-
-      if (doc.accuracy !== undefined && doc.accuracy !== null) {
-        coordinates.accuracy = doc.accuracy;
-      }
-
-      return {
-        userId: doc.userId,
-        coordinates,
-        distanceMeters: doc.distanceMeters,
-        lastSeenAt: toISOString(doc.lastSeenAt) || toISOString(new Date()),
-        sessionId: toIdString(doc.sessionId),
-        source: doc.source || undefined,
-        linkedPinIds: mapIdList(doc.linkedPinIds)
-      };
-    });
-
-    const nearbyUsers = z.array(NearbyUserSchema).parse(formatted);
-
-    res.json(nearbyUsers);
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return res.status(400).json({
-        message: 'Invalid nearby query parameters',
-        issues: error.errors
-      });
-    }
-    res.status(400).json({ message: error.message });
-  }
+router.get('/nearby', verifyToken, async (_req, res) => {
+  // Location sharing between users is disabled; return an empty list to callers.
+  res.json([]);
 });
 
 router.get('/history/:userId', verifyToken, async (req, res) => {

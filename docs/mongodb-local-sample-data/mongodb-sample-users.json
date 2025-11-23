@@ -82,7 +82,6 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": true,
     "primaryLocationId": {
       "$oid": "68e061721329566a22d474c1"
     },
@@ -220,7 +219,6 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": true,
     "primaryLocationId": {
       "$oid": "68e061721329566a22d474c2"
     },
@@ -339,7 +337,6 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": true,
     "primaryLocationId": {
       "$oid": "68e061721329566a22d474c3"
     },
@@ -458,7 +455,6 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": true,
     "primaryLocationId": {
       "$oid": "68e061721329566a22d47520"
     },
@@ -581,7 +577,6 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": true,
     "primaryLocationId": {
       "$oid": "68e061721329566a22d47521"
     },
@@ -701,7 +696,6 @@
         }
       ]
     },
-    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -796,7 +790,6 @@
         }
       ]
     },
-    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -891,7 +884,6 @@
         }
       ]
     },
-    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -986,7 +978,6 @@
         }
       ]
     },
-    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -1081,7 +1072,6 @@
         }
       ]
     },
-    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -1176,7 +1166,6 @@
         }
       ]
     },
-    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -1271,7 +1260,6 @@
         }
       ]
     },
-    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -1366,7 +1354,6 @@
         }
       ]
     },
-    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -1461,7 +1448,6 @@
         }
       ]
     },
-    "locationSharingEnabled": true,
     "primaryLocationId": null,
     "pinnedPinIds": [],
     "ownedPinIds": [],
@@ -1533,7 +1519,6 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": false,
     "pinnedPinIds": [],
     "ownedPinIds": [],
     "bookmarkCollectionIds": [],
@@ -1603,7 +1588,6 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": false,
     "pinnedPinIds": [],
     "ownedPinIds": [],
     "bookmarkCollectionIds": [],
@@ -1673,7 +1657,6 @@
       "mutedUserIds": [],
       "blockedUserIds": []
     },
-    "locationSharingEnabled": false,
     "pinnedPinIds": [],
     "ownedPinIds": [],
     "bookmarkCollectionIds": [],

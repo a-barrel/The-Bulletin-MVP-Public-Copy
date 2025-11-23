@@ -1,0 +1,22 @@
+{
+  "app": { "name": "P1nP01nt" },
+  "tooltips": {
+    "reportMessage": "R3p0rt msg",
+    "moderateUser": "M0d usr",
+    "shareSavedPin": "Sh4r3 p1n",
+    "comments": "C0mm3ntz",
+    "attendees": "Att3nd33z",
+    "friendsAttending": "Fr13ndz 0n d3ck"
+  },
+  "nav": {
+    "menuTitle": "M3nu",
+    "bottomNav": {
+      "chat": "Ch4t",
+      "map": "M4p",
+      "list": "L1st",
+      "chatAria": { "default": "Ch4t" },
+      "listAria": { "default": "L1st" }
+    }
+  },
+  "bookmarks": { "title": "B00km4rkz" }
+}

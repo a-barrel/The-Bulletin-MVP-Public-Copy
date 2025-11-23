@@ -105,6 +105,58 @@
   word-break: break-word;
 }
 
+.chat-pin-share-stack {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.chat-pin-share-card {
+  border: 1px solid rgba(93, 56, 137, 0.3);
+  border-radius: 10px;
+  padding: 10px;
+  background: linear-gradient(135deg, #f2e8ff, #e0c8ff);
+  color: #0f172a;
+}
+
+.chat-pin-card-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.chat-pin-card-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chat-pin-view-btn {
+  margin-top: 6px;
+  font-weight: 700;
+  text-transform: none;
+  color: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.chat-pin-thumb-wrapper {
+  flex: 0 0 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-pin-thumb-vertical {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
 .chat-image {
   margin-top: 8px;
   border-radius: 10px;

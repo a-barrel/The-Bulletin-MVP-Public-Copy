@@ -40,7 +40,6 @@ describe('useSettingsManager', () => {
   it('loads profile preferences and toggles notifications', async () => {
     mockApi.fetchCurrentUserProfile.mockResolvedValue({
       _id: 'user-1',
-      locationSharingEnabled: true,
       preferences: {
         theme: 'dark',
         radiusPreferenceMeters: 4000,
@@ -74,7 +73,6 @@ describe('useSettingsManager', () => {
   it('prevents saving when offline and surfaces a warning', async () => {
     mockApi.fetchCurrentUserProfile.mockResolvedValue({
       _id: 'user-1',
-      locationSharingEnabled: false,
       preferences: DEFAULT_SETTINGS
     });
     const { result } = renderHook(() =>

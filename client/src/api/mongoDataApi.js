@@ -205,28 +205,9 @@ export async function insertLocationUpdate(input) {
   return payload;
 }
 
-export async function fetchNearbyUsers(query) {
-  const baseUrl = resolveApiBaseUrl();
-  const params = new URLSearchParams({
-    longitude: String(query.longitude),
-    latitude: String(query.latitude)
-  });
-
-  if (query.maxDistance !== undefined) {
-    params.set('maxDistance', String(query.maxDistance));
-  }
-
-  const response = await fetch(`${baseUrl}/api/locations/nearby?${params.toString()}`, {
-    method: 'GET',
-    headers: await buildHeaders()
-  });
-
-  const payload = await response.json().catch(() => []);
-  if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load nearby users');
-  }
-
-  return payload;
+export async function fetchNearbyUsers() {
+  // Location sharing between users is disabled; return an empty list.
+  return [];
 }
 
 export async function fetchPinsNearby({
@@ -648,6 +629,35 @@ export async function updatePinAttendance(pinId, { attending }) {
   } catch (error) {
     if (!hasApiErrorBeenLogged(error)) {
       await logApiError('/api/pins/:pinId/attendance', error, { pinId, attending });
+    }
+    throw error;
+  }
+}
+
+export async function fetchPinAnalytics(pinId) {
+  if (!pinId) {
+    throw new Error('Pin id is required');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  try {
+    const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/analytics`, {
+      method: 'GET',
+      headers: await buildHeaders(),
+      cache: 'no-store'
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = createApiError(response, payload, payload?.message || 'Failed to load analytics');
+      await logApiError('/api/pins/:pinId/analytics', error, { status: response.status, pinId });
+      throw error;
+    }
+
+    return payload;
+  } catch (error) {
+    if (!hasApiErrorBeenLogged(error)) {
+      await logApiError('/api/pins/:pinId/analytics', error, { pinId });
     }
     throw error;
   }
@@ -1946,7 +1956,14 @@ export async function createChatRoom(input) {
   return payload;
 }
 
-export async function fetchChatRooms({ pinId, ownerId, latitude, longitude, includeBookmarked = true } = {}) {
+export async function fetchChatRooms({
+  pinId,
+  ownerId,
+  latitude,
+  longitude,
+  includeBookmarked = true,
+  adminView
+} = {}) {
   const baseUrl = resolveApiBaseUrl();
   const params = new URLSearchParams();
   if (pinId) {
@@ -1963,6 +1980,9 @@ export async function fetchChatRooms({ pinId, ownerId, latitude, longitude, incl
   }
   if (!includeBookmarked) {
     params.set('includeBookmarked', 'false');
+  }
+  if (adminView) {
+    params.set('adminView', 'true');
   }
 
   const query = params.toString();

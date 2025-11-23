@@ -20,7 +20,6 @@ export function useChatManager({
     isLoadingRooms,
     loadRooms,
     selectedRoomId,
-    setSelectedRoomId,
     handleSelectRoom,
     isCreateDialogOpen,
     handleOpenCreateDialog,
@@ -34,7 +33,6 @@ export function useChatManager({
   } = useChatRoomsData({
     authUser,
     authLoading,
-    isOffline,
     viewerLatitude,
     viewerLongitude
   });
@@ -53,7 +51,6 @@ export function useChatManager({
     handleRefreshCurrentRoom
   } = useChatRealtime({
     authUser,
-    isOffline,
     selectedRoomId,
     locationParams,
     announceBadgeEarned

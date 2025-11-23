@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap');
+
+* {
+  font-family: "Urbanist", sans-serif;
+}
+
+/* Portion of overlay that contains the room cards */
+.room-list-container {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  background-color:  white;
+}
+
+.room-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: white;
+  padding: 0.2rem 1rem !important;
+}
+
+.room-list-title {
+  font-family: 'Urbanist', sans-serif !important;
+  color: black !important;
+  font-weight: 600 !important;
+}
+
+.room-list-header-action-btns {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+}
+
+.room-refresh-btn,
+.room-create-btn {
+  width: 34px;
+  height: 34px;
+  color: #5D3889 !important;
+  margin-left: 0.25rem !important;
+}
+
+/* Selectable area */
+.room-list {
+  background-color: white;
+  overflow-y: auto !important;
+}
+
+/* Card-shaped clickable area of each room */
+.room-card {
+  align-items: flex-start !important;
+}
+
+/* Text header of the card */
+.room-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.room-card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* spacing between title + chip */
+}
+
+.room-card-room-title {
+  font-family: 'Urbanist', sans-serif !important;
+  font-weight: 600 !important;
+  color: black !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.room-card-globality-chip {
+  font-family: 'Urbanist', sans-serif !important;
+  font-size: 0.65rem !important;
+  font-weight: 500 !important;
+  height: 20px !important;
+  color: black !important;
+  background-color: #F15BB5 !important;
+}
+
+/* Bottom part of the card */
+.room-card-bottom {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.room-card-member-count {
+  font-family: 'Urbanist', sans-serif !important;
+  font-size: 0.7rem !important;
+  color: black !important;
+}
+
+.room-card-joined-label {
+  font-family: 'Urbanist', sans-serif !important;
+  font-size: 0.7rem !important;
+  font-weight: 500 !important;
+  color: #3EB8F0 !important;
+}
+
+/* The pin icon; separate from the header*/
+.room-card-pin-icon {
+  color: #5D3889 !important;
+}

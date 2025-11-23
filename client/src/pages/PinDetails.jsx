@@ -32,7 +32,13 @@ import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
 import usePinDetails from '../hooks/usePinDetails';
 import ReportContentDialog from '../components/ReportContentDialog';
-import { createContentReport, deletePin, updatePin, flagPinForModeration } from '../api/mongoDataApi';
+import {
+  createContentReport,
+  deletePin,
+  updatePin,
+  flagPinForModeration,
+  fetchPinAnalytics
+} from '../api/mongoDataApi';
 import ImageOverlay from '../components/ImageOverlay.jsx'
 import reportClientError from '../utils/reportClientError';
 import useViewerProfile from '../hooks/useViewerProfile';
@@ -49,6 +55,8 @@ const FAR_PIN_ID = SAMPLE_PIN_IDS[0] ?? '68e061721329566a22d474aa';
 const MAX_PHOTO_PIN_ID = '68e061721329566a22d47a00';
 const BROKEN_TEXTURE_PIN_ID = '68e061721329566a22d47a01';
 const NO_IMAGE_PIN_ID = '68e061721329566a22d47a10';
+const ANALYTICS_SPARKLINE_WIDTH = 220;
+const ANALYTICS_SPARKLINE_HEIGHT = 72;
 
 export const pageConfig = {
   id: 'pin-details',
@@ -113,6 +121,22 @@ const parseDateInput = (value) => {
   }
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatAnalyticsTimestamp = (value) => {
+  if (!value) {
+    return '—';
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
 };
 
 const normalizeMediaAssetForUpdate = (asset) => {
@@ -350,12 +374,51 @@ function PinDetails() {
     [attendingFriendItems]
   );
 
+  const canModeratePins = canAccessModerationTools(viewerProfile);
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsError, setAnalyticsError] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const showAnalytics = isEventPin && (isOwnPin || canModeratePins);
+
+  const analyticsSeries = useMemo(() => analytics?.series || [], [analytics]);
+  const analyticsTotals = useMemo(() => analytics?.totals || {}, [analytics]);
+  const analyticsMilestones = useMemo(() => analytics?.milestones || {}, [analytics]);
+  const analyticsBuckets = useMemo(() => analytics?.hourlyBuckets || [], [analytics]);
+
+  const analyticsSparklinePoints = useMemo(() => {
+    if (!analyticsSeries.length) {
+      return null;
+    }
+    const minValue = Math.min(0, ...analyticsSeries.map((entry) => entry.cumulative ?? 0));
+    const maxValue = Math.max(1, ...analyticsSeries.map((entry) => entry.cumulative ?? 0));
+    const range = Math.max(1, maxValue - minValue);
+    const lastIndex = Math.max(analyticsSeries.length - 1, 1);
+    return analyticsSeries
+      .map((entry, index) => {
+        const x = (index / lastIndex) * ANALYTICS_SPARKLINE_WIDTH;
+        const y =
+          ANALYTICS_SPARKLINE_HEIGHT -
+          ((Number(entry.cumulative ?? 0) - minValue) / range) * ANALYTICS_SPARKLINE_HEIGHT;
+        return `${x},${y}`;
+      })
+      .join(' ');
+  }, [analyticsSeries]);
+
+  const maxAnalyticsBucketTotal = useMemo(() => {
+    if (!analyticsBuckets.length) {
+      return 0;
+    }
+    return Math.max(
+      ...analyticsBuckets.map((bucket) => (bucket.join ?? 0) + (bucket.leave ?? 0)),
+      0
+    );
+  }, [analyticsBuckets]);
+
   const themeClass = isEventPin ? 'event-mode' : 'discussion-mode';
   const pinErrorMessage = typeof error === 'string' ? error : error?.message;
   const pinErrorSeverity = error?.isAuthError ? 'warning' : 'error';
   const shouldShowStatusMessages =
     isLoading || Boolean(pinErrorMessage) || (!pin && !isLoading && pinId);
-  const canModeratePins = canAccessModerationTools(viewerProfile);
   const isPinFlagged = pin?.moderation?.status === 'flagged';
   const flaggedReason =
     typeof pin?.moderation?.flaggedReason === 'string' && pin.moderation.flaggedReason
@@ -383,6 +446,42 @@ function PinDetails() {
       setEditForm(buildInitialEditForm(pin));
     }
   }, [pin, isEditDialogOpen]);
+
+  useEffect(() => {
+    if (!showAnalytics || !pinId) {
+      setAnalytics(null);
+      setAnalyticsError(null);
+      return;
+    }
+    if (isOffline) {
+      setAnalyticsError('Reconnect to view attendance analytics.');
+      setAnalyticsLoading(false);
+      return;
+    }
+    let ignore = false;
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+    fetchPinAnalytics(pinId)
+      .then((payload) => {
+        if (!ignore) {
+          setAnalytics(payload);
+        }
+      })
+      .catch((fetchError) => {
+        if (!ignore) {
+          setAnalyticsError(fetchError?.message || 'Failed to load analytics');
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setAnalyticsLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [showAnalytics, pinId, isOffline]);
 
   const handleOpenEditDialog = useCallback(() => {
     if (!pin) {
@@ -921,6 +1020,102 @@ function PinDetails() {
             onClose={() => setSelectedImage(null)}
             imageSrc={selectedImage}
           />
+
+          {showAnalytics ? (
+            <div className="pin-analytics-card">
+              <div className="pin-analytics-header">
+                <div>
+                  <h3>Attendance insights</h3>
+                  <p className="pin-analytics-subtitle">Host-only view of joins and leaves.</p>
+                </div>
+                <span className="pin-analytics-pill">
+                  {analyticsLoading ? 'Loading…' : 'Private'}
+                </span>
+              </div>
+              {analyticsError ? (
+                <div className="error-text">{analyticsError}</div>
+              ) : analyticsLoading && !analytics ? (
+                <div className="muted">Loading attendance data…</div>
+              ) : !analytics ? (
+                <div className="muted">No attendance activity yet.</div>
+              ) : (
+                <>
+                  <div className="pin-analytics-metrics">
+                    <div className="pin-analytics-metric">
+                      <span className="label">Current</span>
+                      <strong className="value">{analyticsTotals.current ?? '—'}</strong>
+                    </div>
+                    <div className="pin-analytics-metric">
+                      <span className="label">Joins</span>
+                      <strong className="value success">{analyticsTotals.joins ?? 0}</strong>
+                    </div>
+                    <div className="pin-analytics-metric">
+                      <span className="label">Leaves</span>
+                      <strong className="value muted-text">{analyticsTotals.leaves ?? 0}</strong>
+                    </div>
+                    <div className="pin-analytics-metric">
+                      <span className="label">Net</span>
+                      <strong className="value">{analyticsTotals.net ?? 0}</strong>
+                    </div>
+                    <div className="pin-analytics-metric">
+                      <span className="label">Limit</span>
+                      <strong className="value">
+                        {analyticsMilestones.participantLimit ?? '—'}
+                      </strong>
+                    </div>
+                    <div className="pin-analytics-metric">
+                      <span className="label">Last join</span>
+                      <span className="value tiny">
+                        {formatAnalyticsTimestamp(analyticsMilestones.lastJoinAt)}
+                      </span>
+                    </div>
+                  </div>
+                  {analyticsSparklinePoints ? (
+                    <div className="pin-analytics-sparkline-wrapper" aria-label="Attendance trend">
+                      <svg
+                        className="pin-analytics-sparkline"
+                        viewBox={`0 0 ${ANALYTICS_SPARKLINE_WIDTH} ${ANALYTICS_SPARKLINE_HEIGHT}`}
+                        role="img"
+                        aria-hidden="true"
+                      >
+                        <polyline points={analyticsSparklinePoints} />
+                      </svg>
+                      <div className="pin-analytics-axis">
+                        <span>First join</span>
+                        <span>Latest</span>
+                      </div>
+                    </div>
+                  ) : null}
+                  {analyticsBuckets.length ? (
+                    <div className="pin-analytics-buckets">
+                      {analyticsBuckets.map((bucket) => {
+                        const total = (bucket.join ?? 0) + (bucket.leave ?? 0);
+                        const height =
+                          maxAnalyticsBucketTotal > 0
+                            ? Math.max(6, (total / maxAnalyticsBucketTotal) * 100)
+                            : 0;
+                        const label = new Date(`${bucket.bucket}:00`).toLocaleString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: 'numeric'
+                        });
+                        return (
+                          <div className="pin-analytics-bar" key={bucket.bucket}>
+                            <div
+                              className="pin-analytics-bar-fill"
+                              style={{ height: `${height}%` }}
+                              title={`${label}: +${bucket.join ?? 0} / -${bucket.leave ?? 0}`}
+                            />
+                            <span className="pin-analytics-bar-label">{bucket.join ?? 0}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
+          ) : null}
 
           <div className="post-info">
             <div className="post-location">

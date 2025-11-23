@@ -13,38 +13,38 @@ export const formatPhoneNumberInput = (value) => {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
 };
 
-export const validateUsernameField = (value) => {
+export const validateUsernameField = (value, messages = {}) => {
   const trimmed = `${value ?? ''}`.trim();
   if (!trimmed) {
-    return 'Error: Empty username';
+    return messages.empty ?? 'Error: Empty username';
   }
   return '';
 };
 
-export const validatePhoneField = (value) => {
+export const validatePhoneField = (value, messages = {}) => {
   const trimmed = `${value ?? ''}`.trim();
 
   if (!trimmed) {
-    return 'Error: Empty Phone Number';
+    return messages.empty ?? 'Error: Empty Phone Number';
   }
 
   const normalized = trimmed.replace(/[^\d+]/g, '');
   if (!/^\+?\d{10,15}$/.test(normalized)) {
-    return 'Error: Invalid Phone Number';
+    return messages.invalid ?? 'Error: Invalid Phone Number';
   }
 
   return '';
 };
 
-export const validatePasswordField = (value) => {
+export const validatePasswordField = (value, messages = {}) => {
   const raw = `${value ?? ''}`;
 
   if (!raw.trim()) {
-    return 'Error: Empty Password';
+    return messages.empty ?? 'Error: Empty Password';
   }
 
   if (raw.length < 6) {
-    return 'Error: Min 6 characters';
+    return messages.min ?? 'Error: Min 6 characters';
   }
 
   return '';

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   Stack,
   Typography,
@@ -7,10 +8,20 @@ import {
   FormControlLabel,
   Radio,
   Slider,
-  Switch
+  Switch,
+  Select,
+  MenuItem,
+  Button
 } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 import SettingsAccordion from './SettingsAccordion';
 import settingsPalette, { mutedTextSx, settingsToggleLabelSx } from './settingsPalette';
+import {
+  EMERGENCY_LANGUAGE,
+  LANGUAGE_OPTIONS,
+  getActiveLanguage,
+  setLanguage
+} from '../../i18n/config';
 
 function AppearanceSettings({
   theme,
@@ -37,12 +48,86 @@ function AppearanceSettings({
   radiusMax,
   formatMetersToMiles
 }) {
+  const { t, i18n } = useTranslation();
+  const [language, setLanguageSelection] = useState(getActiveLanguage());
+  const [languageStatus, setLanguageStatus] = useState('');
+
+  useEffect(() => {
+    const handleLanguageChange = (lng) => setLanguageSelection(lng);
+    i18n.on('languageChanged', handleLanguageChange);
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange);
+    };
+  }, [i18n]);
+
+  const handleLanguageChange = async (event) => {
+    const nextLanguage = event.target.value || EMERGENCY_LANGUAGE.code;
+    const applied = await setLanguage(nextLanguage);
+    setLanguageSelection(applied);
+    setLanguageStatus(t('settings.language.saved'));
+  };
+
+  const handleEmergencyEnglish = async () => {
+    const applied = await setLanguage(EMERGENCY_LANGUAGE.code);
+    setLanguageSelection(applied);
+    setLanguageStatus(t('settings.language.saved'));
+  };
+
   return (
     <Stack spacing={2}>
-      <SettingsAccordion title="Theme & typography" description="Match the system palette or lock in your favorite look.">
+      <SettingsAccordion
+        title={t('settings.language.title')}
+        description={t('settings.language.description')}
+        defaultExpanded
+      >
+        <FormControl component="fieldset" sx={{ gap: 1 }}>
+          <FormLabel component="legend" sx={{ fontSize: '0.875rem', color: settingsPalette.accent }}>
+            {t('settings.language.optionsLabel')}
+          </FormLabel>
+          <Select
+            value={language}
+            onChange={handleLanguageChange}
+            size="small"
+            sx={{
+              maxWidth: 260,
+              color: settingsPalette.textPrimary,
+              '& .MuiOutlinedInput-notchedOutline': { borderColor: settingsPalette.accentHover },
+              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: settingsPalette.accentHover },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: settingsPalette.accent },
+              '& .MuiSelect-icon': { color: settingsPalette.accentHover }
+            }}
+          >
+            {LANGUAGE_OPTIONS.filter((option) => !option.emergency).map((option) => (
+              <MenuItem key={option.label} value={option.code}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Select>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center">
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleEmergencyEnglish}
+              sx={{ textTransform: 'none', fontWeight: 600 }}
+            >
+              {t('settings.language.emergency')}
+            </Button>
+            {languageStatus ? (
+              <Typography variant="caption" sx={mutedTextSx}>
+                {languageStatus}
+              </Typography>
+            ) : null}
+          </Stack>
+        </FormControl>
+      </SettingsAccordion>
+
+      <SettingsAccordion
+        title={t('settings.tabs.appearance')}
+        description="Match the system palette or lock in your favorite look."
+      >
         <FormControl component="fieldset">
           <FormLabel component="legend" sx={{ fontSize: '0.875rem', color: settingsPalette.accent }}>
-            Theme
+            {t('settings.tabs.appearance')}
           </FormLabel>
           <RadioGroup
             row
@@ -75,7 +160,7 @@ function AppearanceSettings({
       </SettingsAccordion>
 
       <SettingsAccordion
-        title="Accessibility & cues"
+        title={t('tooltips.settings.accessibility')}
         description="Tweak animations, contrast, celebratory effects, and friend badges."
         defaultExpanded={false}
       >
@@ -107,7 +192,7 @@ function AppearanceSettings({
       </SettingsAccordion>
 
       <SettingsAccordion
-        title="Pin density"
+        title={t('tooltips.settings.pinDensity')}
         description="Control how many pins load at once across Map and List."
         defaultExpanded={false}
       >
@@ -151,7 +236,7 @@ function AppearanceSettings({
       </SettingsAccordion>
 
       <SettingsAccordion
-        title="Nearby radius"
+        title={t('tooltips.settings.nearbyRadius')}
         description="Define how far from your location we fetch pins and updates."
         defaultExpanded={false}
       >

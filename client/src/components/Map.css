@@ -2,6 +2,29 @@
   filter: saturate(220%) hue-rotate(-8deg);
 }
 
+@keyframes popularGlowPulse {
+  0% {
+    filter:
+      drop-shadow(0 0 4px rgba(255, 255, 255, 0.45))
+      drop-shadow(0 0 1px rgba(255, 106, 213, 0.5));
+  }
+  50% {
+    filter:
+      drop-shadow(0 0 16px rgba(255, 255, 255, 0.95))
+      drop-shadow(0 0 8px rgba(255, 106, 213, 0.85))
+      drop-shadow(0 0 2px rgba(255, 255, 255, 0.9));
+  }
+  100% {
+    filter:
+      drop-shadow(0 0 6px rgba(255, 222, 249, 0.75))
+      drop-shadow(0 0 2px rgba(255, 106, 213, 0.55));
+  }
+}
+
+.leaflet-marker-icon.popular-pin-icon {
+  animation: popularGlowPulse 2s ease-in-out infinite;
+}
+
 .user-avatar-marker {
   border: none !important;
   background: transparent !important;
@@ -48,4 +71,27 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.leaflet-container.map-teleport-active {
+  cursor: crosshair !important;
+}
+
+.pin-cluster-wrapper {
+  transition: transform 120ms ease;
+}
+
+.pin-cluster-marker {
+  background: radial-gradient(circle at 30% 30%, #c59cf0 0%, #b37be9 55%, #8a4fd0 100%);
+  color: #fff;
+  font-weight: 700;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 8px 24px rgba(13, 6, 35, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.82);
+}
+
+.pin-cluster-marker span {
+  font-size: 0.95rem;
 }

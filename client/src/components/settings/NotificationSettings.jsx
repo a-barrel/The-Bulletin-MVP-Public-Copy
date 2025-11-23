@@ -9,6 +9,7 @@ import NotificationQuietHoursEditor from './NotificationQuietHoursEditor';
 import NotificationBundleSelector from './NotificationBundleSelector';
 import SettingsAccordion from './SettingsAccordion';
 import settingsPalette, { mutedTextSx, settingsButtonStyles } from './settingsPalette';
+import { useTranslation } from 'react-i18next';
 
 function NotificationSettings({
   isOffline,
@@ -29,6 +30,7 @@ function NotificationSettings({
   digestFrequency,
   onDigestFrequencyChange
 }) {
+  const { t } = useTranslation();
   const chatVerbosity = notificationVerbosity?.chat || 'highlights';
 
   const handleVerbosityChange = (event) => {
@@ -50,8 +52,10 @@ function NotificationSettings({
       </Stack>
 
       <SettingsAccordion
-        title="Quick actions"
-        description="Mute delivery temporarily without changing your preferences."
+        title={t('tooltips.settings.quickActions')}
+        description={t('notifications.quickActionsDescription', {
+          defaultValue: 'Mute delivery temporarily without changing your preferences.'
+        })}
       >
         <Stack spacing={1.5} sx={{ color: settingsPalette.textPrimary }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
@@ -62,7 +66,7 @@ function NotificationSettings({
               disabled={isOffline || isFetchingProfile}
               sx={settingsButtonStyles.outlined}
             >
-              Mute 1h
+              {t('notifications.mute1h', { defaultValue: 'Mute 1h' })}
             </Button>
             <Button
               variant="outlined"
@@ -71,7 +75,7 @@ function NotificationSettings({
               disabled={isOffline || isFetchingProfile}
               sx={settingsButtonStyles.outlined}
             >
-              Mute 4h
+              {t('notifications.mute4h', { defaultValue: 'Mute 4h' })}
             </Button>
             <Button
               variant="outlined"
@@ -80,7 +84,7 @@ function NotificationSettings({
               disabled={isOffline || isFetchingProfile}
               sx={settingsButtonStyles.outlined}
             >
-              Mute 24h
+              {t('notifications.mute24h', { defaultValue: 'Mute 24h' })}
             </Button>
             <Button
               variant="text"
@@ -90,16 +94,16 @@ function NotificationSettings({
               disabled={!hasMuteTimer}
               sx={settingsButtonStyles.text}
             >
-              Clear mute
+              {t('notifications.clearMute', { defaultValue: 'Clear mute' })}
             </Button>
           </Stack>
           {isMuteActive ? (
             <Typography variant="caption" sx={mutedTextSx}>
-              {muteCountdownLabel || 'Mute scheduled. Save your settings to keep it active.'}
+              {muteCountdownLabel || t('notifications.muteActive', { defaultValue: 'Mute scheduled. Save your settings to keep it active.' })}
             </Typography>
           ) : (
             <Typography variant="caption" sx={mutedTextSx}>
-              Muting pauses delivery without changing the toggles below. Save after applying changes.
+              {t('notifications.muteInactive', { defaultValue: 'Muting pauses delivery without changing the toggles below. Save after applying changes.' })}
             </Typography>
           )}
         </Stack>
@@ -122,8 +126,8 @@ function NotificationSettings({
       </SettingsAccordion>
 
       <SettingsAccordion
-        title="Notification channels"
-        description="Choose which updates reach you across the app."
+        title={t('tooltips.settings.notificationChannels')}
+        description={t('notifications.channelsDescription', { defaultValue: 'Choose which updates reach you across the app.' })}
       >
         <NotificationToggleList
           toggles={notificationToggleConfig}
@@ -134,8 +138,8 @@ function NotificationSettings({
       </SettingsAccordion>
 
       <SettingsAccordion
-        title="Chat intensity"
-        description="Fine-tune how often direct messages and chat highlights ping you."
+        title={t('tooltips.settings.chatIntensity')}
+        description={t('notifications.chatIntensityDescription', { defaultValue: 'Fine-tune how often direct messages and chat highlights ping you.' })}
         defaultExpanded={false}
       >
         <Stack spacing={1}>
@@ -144,7 +148,7 @@ function NotificationSettings({
               component="legend"
               sx={{ fontSize: '0.875rem', mb: 0.5, color: settingsPalette.accent }}
             >
-              Chat notification intensity
+              {t('notifications.chatIntensityLabel', { defaultValue: 'Chat notification intensity' })}
             </FormLabel>
             <Select
               value={chatVerbosity}
@@ -157,20 +161,20 @@ function NotificationSettings({
                 '& fieldset': { borderColor: settingsPalette.borderSubtle, borderRadius: 2 }
               }}
             >
-              <MenuItem value="highlights">Highlights only</MenuItem>
-              <MenuItem value="all">All activity</MenuItem>
-              <MenuItem value="muted">Mute chat alerts</MenuItem>
+              <MenuItem value="highlights">{t('notifications.chatIntensityHighlights', { defaultValue: 'Highlights only' })}</MenuItem>
+              <MenuItem value="all">{t('notifications.chatIntensityAll', { defaultValue: 'All activity' })}</MenuItem>
+              <MenuItem value="muted">{t('notifications.chatIntensityMuted', { defaultValue: 'Mute chat alerts' })}</MenuItem>
             </Select>
           </FormControl>
           <Typography variant="caption" sx={mutedTextSx}>
-            “Mute” blocks chat alerts even if the toggle above stays on. “All activity” behaves like Highlights until we surface lower-signal pings.
+            {t('notifications.chatIntensityNote', { defaultValue: '“Mute” blocks chat alerts even if the toggle above stays on. “All activity” behaves like Highlights until we surface lower-signal pings.' })}
           </Typography>
         </Stack>
       </SettingsAccordion>
 
       <SettingsAccordion
-        title="Digest frequency"
-        description="Bundle low-priority updates into daily or weekly recaps."
+        title={t('tooltips.settings.digestFrequency')}
+        description={t('notifications.digestDescription', { defaultValue: 'Bundle low-priority updates into daily or weekly recaps.' })}
         defaultExpanded={false}
       >
         <Stack spacing={1}>
@@ -179,7 +183,7 @@ function NotificationSettings({
               component="legend"
               sx={{ fontSize: '0.875rem', mb: 0.5, color: settingsPalette.accent }}
             >
-              Digest frequency
+              {t('notifications.digestLabel', { defaultValue: 'Digest frequency' })}
             </FormLabel>
             <Select
               value={digestFrequency}
@@ -191,10 +195,10 @@ function NotificationSettings({
                 '& fieldset': { borderColor: settingsPalette.borderSubtle, borderRadius: 2 }
               }}
             >
-              <MenuItem value="immediate">Send immediately</MenuItem>
-              <MenuItem value="daily">Daily summary</MenuItem>
-              <MenuItem value="weekly">Weekly summary</MenuItem>
-              <MenuItem value="never">Never send digests</MenuItem>
+              <MenuItem value="immediate">{t('notifications.digestImmediate', { defaultValue: 'Send immediately' })}</MenuItem>
+              <MenuItem value="daily">{t('notifications.digestDaily', { defaultValue: 'Daily summary' })}</MenuItem>
+              <MenuItem value="weekly">{t('notifications.digestWeekly', { defaultValue: 'Weekly summary' })}</MenuItem>
+              <MenuItem value="never">{t('notifications.digestNever', { defaultValue: 'Never send digests' })}</MenuItem>
             </Select>
           </FormControl>
           <Typography variant="caption" sx={mutedTextSx}>
@@ -204,8 +208,8 @@ function NotificationSettings({
       </SettingsAccordion>
 
       <SettingsAccordion
-        title="Quiet hours"
-        description="Pause non-critical notifications on a weekly schedule."
+        title={t('tooltips.settings.quietHours')}
+        description={t('notifications.quietDescription', { defaultValue: 'Pause non-critical notifications on a weekly schedule.' })}
         defaultExpanded={false}
       >
         <NotificationQuietHoursEditor
@@ -216,8 +220,8 @@ function NotificationSettings({
       </SettingsAccordion>
 
       <SettingsAccordion
-        title="Channel bundles"
-        description="Start from a preset and then tweak individual toggles."
+        title={t('tooltips.settings.channelBundles')}
+        description={t('notifications.channelBundlesDescription', { defaultValue: 'Start from a preset and then tweak individual toggles.' })}
         defaultExpanded={false}
       >
         <NotificationBundleSelector

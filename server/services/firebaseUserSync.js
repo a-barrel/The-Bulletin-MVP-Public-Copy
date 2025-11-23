@@ -4,6 +4,7 @@ const fs = require('fs');
 const User = require('../models/User');
 const runtime = require('../config/runtime');
 const { toIdString } = require('../utils/ids');
+const { ensurePersistentDeveloperRole } = require('../utils/roles');
 
 const USERNAME_MAX_LENGTH = 32;
 const DEFAULT_USERNAME_PREFIX = 'user';
@@ -304,6 +305,9 @@ async function ensureUserForFirebaseAccount(decodedToken) {
   }
 
   const { user } = await upsertUserFromAuthProfile(decodedToken);
+  if (user) {
+    await ensurePersistentDeveloperRole(user);
+  }
   return user;
 }
 

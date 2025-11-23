@@ -18,8 +18,7 @@ export const INITIAL_CREATE_PROFILE_FORM = {
   email: '',
   bio: '',
   accountStatus: ACCOUNT_STATUS_OPTIONS[0],
-  roles: '',
-  locationSharingEnabled: false
+  roles: ''
 };
 
 const buildEditForm = (profile) => ({
@@ -27,8 +26,7 @@ const buildEditForm = (profile) => ({
   displayName: profile?.displayName ?? '',
   email: profile?.email ?? '',
   bio: profile?.bio ?? '',
-  accountStatus: profile?.accountStatus ?? ACCOUNT_STATUS_OPTIONS[0],
-  locationSharingEnabled: Boolean(profile?.locationSharingEnabled)
+  accountStatus: profile?.accountStatus ?? ACCOUNT_STATUS_OPTIONS[0]
 });
 
 const useProfilesTools = () => {
@@ -73,8 +71,7 @@ const useProfilesTools = () => {
         const payload = {
           username,
           displayName,
-          accountStatus: createForm.accountStatus,
-          locationSharingEnabled: createForm.locationSharingEnabled
+          accountStatus: createForm.accountStatus
         };
 
         const email = createForm.email.trim();
@@ -165,8 +162,7 @@ const useProfilesTools = () => {
         const payload = {
           username,
           displayName,
-          accountStatus: editForm.accountStatus,
-          locationSharingEnabled: Boolean(editForm.locationSharingEnabled)
+          accountStatus: editForm.accountStatus
         };
 
         const email = (editForm.email ?? '').trim();

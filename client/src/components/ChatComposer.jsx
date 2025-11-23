@@ -10,7 +10,9 @@ import {
   Tooltip
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/SendRounded';
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
 import AddIcon from '@mui/icons-material/AddCircleOutlineRounded';
+import { useTranslation } from 'react-i18next';
 
 function ChatComposer({
   variant = 'legacy',
@@ -33,8 +35,10 @@ function ChatComposer({
   isGifPreviewLoading = false,
   onGifPreviewConfirm,
   onGifPreviewCancel,
-  onGifPreviewShuffle
+  onGifPreviewShuffle,
+  onSharePin
 }) {
+  const { t } = useTranslation();
   const sharedInputProps = {
     value: message,
     onChange: onMessageChange,
@@ -164,6 +168,35 @@ function ChatComposer({
   };
 
   if (variant === 'modern') {
+    const sharePinButton = (
+      <Tooltip title={t('tooltips.shareSavedPin')} enterDelay={200} arrow>
+        <span>
+          <IconButton
+            className="share-pin-btn"
+            type="button"
+            onClick={onSharePin}
+            disabled={disabled || !onSharePin}
+            aria-label={t('tooltips.shareSavedPin')}
+            sx={{
+              color: '#5d3889',
+              backgroundColor: 'rgba(93, 56, 137, 0.1)',
+              transition: 'background-color 120ms ease, transform 120ms ease',
+              '&:hover, &:focus-visible': {
+                backgroundColor: 'rgba(93, 56, 137, 0.18)',
+                transform: 'scale(1.05)'
+              },
+              '&.Mui-disabled': {
+                backgroundColor: 'transparent',
+                color: 'action.disabled'
+              }
+            }}
+          >
+            <ShareOutlinedIcon className="share-pin-icon" />
+          </IconButton>
+        </span>
+      </Tooltip>
+    );
+
     const attachmentButton = (
       <IconButton
         className="add-img-btn"
@@ -199,6 +232,7 @@ function ChatComposer({
       >
         {renderPreviewPanel('modern')}
         <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, width: '100%' }}>
+          {sharePinButton}
           {onAddAttachment ? (
             <Tooltip title={addAttachmentTooltip} enterDelay={200} arrow>
               <span>{attachmentButton}</span>
@@ -247,6 +281,34 @@ function ChatComposer({
       }}
     >
       {renderPreviewPanel('legacy')}
+      {onSharePin ? (
+        <Tooltip title={t('tooltips.shareSavedPin')} enterDelay={200} arrow>
+          <span>
+            <IconButton
+              className="share-pin-btn"
+              type="button"
+              onClick={onSharePin}
+              disabled={disabled}
+              aria-label={t('tooltips.shareSavedPin')}
+              sx={{
+                color: '#5d3889',
+                backgroundColor: 'rgba(93, 56, 137, 0.1)',
+                transition: 'background-color 120ms ease, transform 120ms ease',
+                '&:hover, &:focus-visible': {
+                  backgroundColor: 'rgba(93, 56, 137, 0.18)',
+                  transform: 'scale(1.05)'
+                },
+                '&.Mui-disabled': {
+                  backgroundColor: 'transparent',
+                  color: 'action.disabled'
+                }
+              }}
+            >
+              <ShareOutlinedIcon className="share-pin-icon" />
+            </IconButton>
+          </span>
+        </Tooltip>
+      ) : null}
       {onAddAttachment ? (
         <Tooltip title={addAttachmentTooltip} enterDelay={200} arrow>
           <span>
@@ -314,6 +376,7 @@ ChatComposer.propTypes = {
   addAttachmentAriaLabel: PropTypes.string,
   addAttachmentTooltip: PropTypes.string,
   onAddAttachment: PropTypes.func,
+  onSharePin: PropTypes.func,
   inputRef: PropTypes.oneOfType([PropTypes.func, PropTypes.shape({ current: PropTypes.any })]),
   gifPreview: PropTypes.shape({
     query: PropTypes.string,

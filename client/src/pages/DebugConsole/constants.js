@@ -140,7 +140,7 @@ export const TELEPORT_PRESETS = [
   ...GRID_TELEPORT_PRESETS,
   {
     key: DEFAULT_LOCATION_TELEPORT_KEY,
-    label: 'Default location sharing',
+    label: 'Default location access (never shared)',
     latitude: DEFAULT_LOCATION_COORDINATES.latitude,
     longitude: DEFAULT_LOCATION_COORDINATES.longitude,
     accuracy: 15,
