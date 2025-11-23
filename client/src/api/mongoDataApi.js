@@ -222,7 +222,8 @@ export async function fetchPinsNearby({
   startDate,
   endDate,
   friendEngagements,
-  hideFullEvents
+  hideFullEvents,
+  signal
 }) {
   if (latitude === undefined || longitude === undefined) {
     const error = new Error('Latitude and longitude are required');
@@ -310,7 +311,8 @@ export async function fetchPinsNearby({
 
     const response = await fetch(`${baseUrl}/api/pins/nearby?${params.toString()}`, {
       method: 'GET',
-      headers: await buildHeaders()
+      headers: await buildHeaders(),
+      signal
     });
 
     const payload = await response.json().catch(() => []);

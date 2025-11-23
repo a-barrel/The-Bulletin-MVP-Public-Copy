@@ -4,11 +4,16 @@ import { fetchPinsNearby, fetchPinById, fetchCurrentUserProfile } from '../api/m
 import reportClientError from '../utils/reportClientError';
 import { mapPinToFeedItem } from '../utils/pinFeedItem';
 import { resolvePinFetchLimit } from '../utils/pinDensity';
+import { enableListPerfLogs, logListPerf, nowMs } from '../utils/listPerfLogger';
 const DEFAULT_RADIUS_MILES = 10;
 const PIN_FETCH_LIMIT = 50;
 const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
 const FETCH_THROTTLE_MS = 250;
+const FETCH_DEBOUNCE_MS = 250;
 const CACHE_TTL_MS = 45_000;
+const DETAIL_CACHE_TTL_MS = 60_000;
+const nearbyCacheStore = new Map();
+const detailCacheStore = new Map();
 
 const hasValidCoordinates = (coords) =>
   coords &&
@@ -53,14 +58,38 @@ export default function useNearbyPinsFeed({
   const fallbackLimit = limit ?? PIN_FETCH_LIMIT;
   const [pinDisplayLimit, setPinDisplayLimit] = useState(fallbackLimit);
   const [syncListWithMapLimit, setSyncListWithMapLimit] = useState(true);
-  const filtersRef = useRef(filters);
+  const normalizedFilters = useMemo(() => {
+    const safeFilters = filters || {};
+    return {
+      search: typeof safeFilters.search === 'string' ? safeFilters.search.trim() : '',
+      status: safeFilters.status || '',
+      types: Array.isArray(safeFilters.types) ? [...safeFilters.types].sort() : [],
+      categories: Array.isArray(safeFilters.categories) ? [...safeFilters.categories].sort() : [],
+      friendEngagements: Array.isArray(safeFilters.friendEngagements)
+        ? [...safeFilters.friendEngagements].sort()
+        : [],
+      startDate: safeFilters.startDate || '',
+      endDate: safeFilters.endDate || '',
+      popularSort: safeFilters.popularSort || null
+    };
+  }, [filters]);
+  const filtersRef = useRef(normalizedFilters);
   const isLoadingRef = useRef(false);
   const lastFetchAtRef = useRef(0);
-  const cacheRef = useRef(new Map());
+  const cacheRef = useRef(nearbyCacheStore);
+  const activeRequestRef = useRef({ id: 0, controller: null });
+  const debounceTimerRef = useRef(null);
+  const detailCacheRef = useRef(detailCacheStore);
+  const perfCountersRef = useRef({
+    fetchNearbyCalls: 0,
+    detailCalls: 0,
+    cacheHits: 0,
+    throttledSkips: 0
+  });
 
   useEffect(() => {
-    filtersRef.current = filters;
-  }, [filters]);
+    filtersRef.current = normalizedFilters;
+  }, [normalizedFilters]);
 
   useEffect(() => {
     if (hasValidCoordinates(sharedLocation)) {
@@ -137,28 +166,86 @@ export default function useNearbyPinsFeed({
     }
   }, [fallbackLimit, syncListWithMapLimit]);
 
+  const fetchParamsSignature = useMemo(
+    () =>
+      JSON.stringify({
+        location: hasValidCoordinates(userLocation)
+          ? { latitude: userLocation.latitude, longitude: userLocation.longitude }
+          : null,
+        distanceMiles,
+        limit: pinDisplayLimit,
+        filters: normalizedFilters,
+        hideFullEvents
+      }),
+    [
+      distanceMiles,
+      hideFullEvents,
+      normalizedFilters,
+      pinDisplayLimit,
+      userLocation?.latitude,
+      userLocation?.longitude
+    ]
+  );
+
   const loadPins = useCallback(
     async (overrideLocation) => {
+      const perfStart = enableListPerfLogs ? nowMs() : null;
       const targetLocation = overrideLocation ?? userLocation;
       if (shouldRequireLocation && !hasValidCoordinates(targetLocation)) {
+        if (enableListPerfLogs) {
+          logListPerf('loadPins skipped: location required', {
+            isOffline,
+            usingFallback: isUsingFallbackLocation,
+            hasSharedLocation
+          });
+        }
         setError('Location required to load nearby pins.');
         setLoading(false);
         setPins([]);
         return;
       }
       if (!hasValidCoordinates(targetLocation)) {
-        return;
-      }
-
-      if (isLoadingRef.current) {
+        if (enableListPerfLogs) {
+          logListPerf('loadPins skipped: invalid target location', {
+            isOffline,
+            usingFallback: isUsingFallbackLocation
+          });
+        }
         return;
       }
 
       if (isOffline) {
+        if (activeRequestRef.current?.controller) {
+          activeRequestRef.current.controller.abort();
+        }
+        if (enableListPerfLogs) {
+          logListPerf('loadPins skipped: offline mode');
+        }
         setLoading(false);
+        isLoadingRef.current = false;
         setError((prev) => prev ?? 'Offline mode: showing previously loaded pins.');
         return;
       }
+
+      if (activeRequestRef.current?.controller) {
+        activeRequestRef.current.controller.abort();
+      }
+      const requestId = (activeRequestRef.current?.id ?? 0) + 1;
+      const abortController =
+        typeof AbortController !== 'undefined' ? new AbortController() : null;
+      activeRequestRef.current = { id: requestId, controller: abortController };
+
+      const now = Date.now();
+      cacheRef.current.forEach((entry, key) => {
+        if (!entry || now - entry.ts >= CACHE_TTL_MS) {
+          cacheRef.current.delete(key);
+        }
+      });
+      detailCacheRef.current.forEach((entry, key) => {
+        if (!entry || now - entry.ts >= DETAIL_CACHE_TTL_MS) {
+          detailCacheRef.current.delete(key);
+        }
+      });
 
       const cacheKey = JSON.stringify({
         loc: {
@@ -170,9 +257,19 @@ export default function useNearbyPinsFeed({
         filters: filtersRef.current
       });
       const cached = cacheRef.current.get(cacheKey);
-      const now = Date.now();
       if (cached && now - cached.ts < CACHE_TTL_MS) {
+        if (enableListPerfLogs) {
+          perfCountersRef.current.cacheHits += 1;
+          logListPerf('nearby cache hit', {
+            cacheHits: perfCountersRef.current.cacheHits,
+            fetchNearbyCalls: perfCountersRef.current.fetchNearbyCalls,
+            detailCalls: perfCountersRef.current.detailCalls,
+            resultCount: Array.isArray(cached?.pins) ? cached.pins.length : 0,
+            elapsedMs: perfStart !== null ? Math.round(nowMs() - perfStart) : null
+          });
+        }
         setPins(cached.pins);
+        isLoadingRef.current = false;
         setLoading(false);
         setError(null);
         return;
@@ -180,6 +277,12 @@ export default function useNearbyPinsFeed({
 
       const nowTs = Date.now();
       if (nowTs - lastFetchAtRef.current < FETCH_THROTTLE_MS) {
+        if (enableListPerfLogs) {
+          perfCountersRef.current.throttledSkips += 1;
+          logListPerf('nearby fetch throttled', {
+            throttledSkips: perfCountersRef.current.throttledSkips
+          });
+        }
         return;
       }
       lastFetchAtRef.current = nowTs;
@@ -188,8 +291,32 @@ export default function useNearbyPinsFeed({
       setLoading(true);
       setError(null);
 
+      const activeFilters = filtersRef.current || {};
+
       try {
-        const activeFilters = filtersRef.current || {};
+        const filterCounts = enableListPerfLogs
+          ? {
+              search: Boolean(activeFilters.search),
+              types: Array.isArray(activeFilters.types) ? activeFilters.types.length : 0,
+              categories: Array.isArray(activeFilters.categories) ? activeFilters.categories.length : 0,
+              engagements: Array.isArray(activeFilters.friendEngagements)
+                ? activeFilters.friendEngagements.length
+                : 0,
+              status: activeFilters.status || null
+            }
+          : null;
+        const fetchStartedAt = enableListPerfLogs ? nowMs() : null;
+        if (enableListPerfLogs) {
+          perfCountersRef.current.fetchNearbyCalls += 1;
+          logListPerf('nearby fetch started', {
+            requestId,
+            fetchNearbyCalls: perfCountersRef.current.fetchNearbyCalls,
+            usingFallback: isUsingFallbackLocation,
+            limit: pinDisplayLimit,
+            distanceMiles,
+            filterCounts
+          });
+        }
         const results = await fetchPinsNearby({
           latitude: targetLocation.latitude,
           longitude: targetLocation.longitude,
@@ -204,25 +331,55 @@ export default function useNearbyPinsFeed({
           friendEngagements: Array.isArray(activeFilters.friendEngagements)
             ? activeFilters.friendEngagements
             : undefined,
-          hideFullEvents
+          hideFullEvents,
+          signal: abortController?.signal
         });
 
-        if (!Array.isArray(results) || results.length === 0) {
-          setPins([]);
+        if (activeRequestRef.current.id !== requestId) {
           return;
         }
 
+        if (!Array.isArray(results) || results.length === 0) {
+          if (enableListPerfLogs) {
+            logListPerf('nearby fetch returned no results', {
+              fetchNearbyCalls: perfCountersRef.current.fetchNearbyCalls
+            });
+          }
+          setPins([]);
+          setLoading(false);
+          isLoadingRef.current = false;
+          return;
+        }
+
+        let detailNetworkCalls = 0;
+        const detailStartedAt = enableListPerfLogs ? nowMs() : null;
         const detailResults = await Promise.all(
           results.map(async (pin) => {
             if (!pin?._id) {
               return pin;
             }
+            const cachedDetail = detailCacheRef.current.get(pin._id);
+            const cacheAgeMs = cachedDetail ? Date.now() - cachedDetail.ts : Number.POSITIVE_INFINITY;
+            if (cachedDetail && cacheAgeMs < DETAIL_CACHE_TTL_MS) {
+              if (enableListPerfLogs) {
+                logListPerf('detail cache hit', { pinId: pin._id });
+              }
+              return {
+                ...cachedDetail.data,
+                distanceMeters: pin.distanceMeters ?? cachedDetail.data.distanceMeters,
+                startDate: cachedDetail.data.startDate ?? pin.startDate,
+                endDate: cachedDetail.data.endDate ?? pin.endDate,
+                expiresAt: cachedDetail.data.expiresAt ?? pin.expiresAt,
+                type: cachedDetail.data.type ?? pin.type
+              };
+            }
             try {
-              const detail = await fetchPinById(pin._id);
+              detailNetworkCalls += 1;
+              const detail = await fetchPinById(pin._id, { signal: abortController?.signal });
               if (!detail || typeof detail !== 'object') {
                 return pin;
               }
-              return {
+              const merged = {
                 ...detail,
                 distanceMeters: pin.distanceMeters ?? detail.distanceMeters,
                 startDate: detail.startDate ?? pin.startDate,
@@ -230,7 +387,12 @@ export default function useNearbyPinsFeed({
                 expiresAt: detail.expiresAt ?? pin.expiresAt,
                 type: detail.type ?? pin.type
               };
+              detailCacheRef.current.set(pin._id, { ts: Date.now(), data: detail });
+              return merged;
             } catch (detailError) {
+              if (detailError?.name === 'AbortError') {
+                return pin;
+              }
               reportClientError(detailError, 'Failed to load full pin details:', {
                 source: 'useNearbyPinsFeed.detail',
                 pinId: pin?._id
@@ -240,9 +402,43 @@ export default function useNearbyPinsFeed({
           })
         );
 
+        if (activeRequestRef.current.id !== requestId) {
+          return;
+        }
+
+        if (enableListPerfLogs) {
+          perfCountersRef.current.detailCalls += detailNetworkCalls;
+          const nearbyMs = fetchStartedAt !== null ? Math.round(nowMs() - fetchStartedAt) : null;
+          const detailMs =
+            detailStartedAt !== null ? Math.round(nowMs() - detailStartedAt) : null;
+          logListPerf('nearby fetch completed', {
+            fetchNearbyCalls: perfCountersRef.current.fetchNearbyCalls,
+            detailFetchCount: detailNetworkCalls,
+            detailCallsTotal: perfCountersRef.current.detailCalls,
+            resultCount: detailResults.length,
+            nearbyMs,
+            detailMs
+          });
+        }
         setPins(detailResults);
-        cacheRef.current.set(cacheKey, { pins: detailResults, ts: now });
+        cacheRef.current.set(cacheKey, { pins: detailResults, ts: Date.now() });
       } catch (err) {
+        if (err?.name === 'AbortError') {
+          if (enableListPerfLogs) {
+            logListPerf('nearby fetch aborted', { requestId });
+          }
+          if (activeRequestRef.current.id === requestId) {
+            isLoadingRef.current = false;
+            setLoading(false);
+          }
+          return;
+        }
+        if (enableListPerfLogs) {
+          logListPerf('nearby fetch failed', {
+            fetchNearbyCalls: perfCountersRef.current.fetchNearbyCalls,
+            message: err?.message
+          });
+        }
         reportClientError(err, 'Failed to load nearby pins:', {
           source: 'useNearbyPinsFeed.fetchPins',
           location: targetLocation,
@@ -251,22 +447,58 @@ export default function useNearbyPinsFeed({
         setPins([]);
         setError(err?.message || 'Failed to load nearby pins.');
       } finally {
-        isLoadingRef.current = false;
-        setLoading(false);
+        if (activeRequestRef.current.id === requestId) {
+          isLoadingRef.current = false;
+          setLoading(false);
+        }
       }
     },
-    [distanceMiles, hideFullEvents, isOffline, pinDisplayLimit, shouldRequireLocation, userLocation]
+    [
+      distanceMiles,
+      hasSharedLocation,
+      hideFullEvents,
+      isOffline,
+      isUsingFallbackLocation,
+      pinDisplayLimit,
+      shouldRequireLocation,
+      userLocation?.latitude,
+      userLocation?.longitude
+    ]
   );
 
   useEffect(() => {
-    loadPins();
-  }, [loadPins]);
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    if (isOffline) {
+      return () => {};
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      loadPins();
+    }, FETCH_DEBOUNCE_MS);
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [fetchParamsSignature, isOffline, loadPins]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      if (activeRequestRef.current?.controller) {
+        activeRequestRef.current.controller.abort();
+      }
+    };
+  }, []);
 
   const feedItems = useMemo(() => {
     const mapped = Array.isArray(pins)
       ? pins.map((pin) => mapPinToFeedItem(pin, { viewerProfileId }))
       : [];
-    const popularSort = filters?.popularSort || null;
+    const popularSort = normalizedFilters.popularSort || null;
     if (!popularSort || mapped.length === 0) {
       return mapped;
     }
@@ -312,7 +544,7 @@ export default function useNearbyPinsFeed({
       });
     }
     return sorted;
-  }, [filters?.popularSort, pins, viewerProfileId]);
+  }, [normalizedFilters.popularSort, pins, viewerProfileId]);
 
   return {
     feedItems,

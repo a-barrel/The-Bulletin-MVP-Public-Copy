@@ -1,11 +1,11 @@
-import React from "react";
+import React, { memo } from "react";
 import "./Feed.css";
 import PinCard from "./PinCard";
 import { resolveAuthorName } from "../utils/feed";
 
 // Feed only manages the list container and passes each item to PinCard so every surface shares identical card UX.
 
-export default function Feed({ items, onSelectItem, onSelectAuthor }) {
+function Feed({ items, onSelectItem, onSelectAuthor }) {
   if (!Array.isArray(items) || items.length === 0) {
     return (
       <div className="feed">
@@ -29,6 +29,13 @@ export default function Feed({ items, onSelectItem, onSelectAuthor }) {
     </div>
   );
 }
+
+const areFeedPropsEqual = (prevProps, nextProps) =>
+  prevProps.items === nextProps.items &&
+  prevProps.onSelectItem === nextProps.onSelectItem &&
+  prevProps.onSelectAuthor === nextProps.onSelectAuthor;
+
+export default memo(Feed, areFeedPropsEqual);
 
 
 

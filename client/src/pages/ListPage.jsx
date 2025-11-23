@@ -1,5 +1,5 @@
 /* NOTE: Page exports configuration alongside the component. */
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ListPage.css';
 import Navbar from '../components/Navbar';
@@ -29,6 +29,7 @@ import useHideFullEventsPreference from '../hooks/useHideFullEventsPreference';
 import { useTranslation } from 'react-i18next';
 import runtimeConfig from '../config/runtime';
 import { viewerHasDeveloperAccess } from '../utils/roles';
+import { enableListPerfLogs, logListPerf } from '../utils/listPerfLogger';
 
 export const pageConfig = {
   id: 'list',
@@ -79,6 +80,10 @@ export default function ListPage() {
     resetDates
   } = useListFilters();
   const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
+  const renderCountRef = useRef(0);
+  if (enableListPerfLogs) {
+    renderCountRef.current += 1;
+  }
   const {
     categories: categoryOptions,
     isLoading: isLoadingCategories,
@@ -122,6 +127,13 @@ export default function ListPage() {
     requireLocation: locationRequired,
     isAdminExempt: isAdminViewer
   });
+  const initialPerfContextRef = useRef(null);
+  if (initialPerfContextRef.current === null) {
+    initialPerfContextRef.current = {
+      hasActiveFilters,
+      isUsingFallbackLocation
+    };
+  }
   const viewerMongoId = useMemo(
     () => toIdString(viewerProfile?._id) ?? toIdString(viewerProfile?.id) ?? null,
     [viewerProfile]
@@ -171,6 +183,20 @@ export default function ListPage() {
   }, [filtersDialogOpen, categoryOptions.length, isLoadingCategories, refreshCategories]);
 
   useEffect(() => {
+    if (!enableListPerfLogs) {
+      return;
+    }
+    const initialContext = initialPerfContextRef.current || {};
+    logListPerf('ListPage mount', {
+      hasActiveFilters: initialContext.hasActiveFilters,
+      usingFallbackLocation: initialContext.isUsingFallbackLocation
+    });
+    return () => {
+      logListPerf('ListPage unmount', { totalRenders: renderCountRef.current });
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof refreshUnreadCount === 'function' && !isOffline) {
       refreshUnreadCount({ silent: true });
     }
@@ -215,7 +241,7 @@ export default function ListPage() {
 
   const filtersSignature = useMemo(() => {
     return JSON.stringify({
-      search: filters.search ?? '',
+      search: typeof filters.search === 'string' ? filters.search.trim() : '',
       status: filters.status ?? '',
       types: Array.isArray(filters.types) ? [...filters.types].sort() : [],
       categories: Array.isArray(filters.categories) ? [...filters.categories].sort() : [],
@@ -231,6 +257,34 @@ export default function ListPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [filtersSignature, sortByExpiration, hideOwnPins, hideFullEvents]);
+
+  useEffect(() => {
+    if (!enableListPerfLogs) {
+      return;
+    }
+    const filterSummary = {
+      search: Boolean(filters.search),
+      types: Array.isArray(filters.types) ? filters.types.length : 0,
+      categories: Array.isArray(filters.categories) ? filters.categories.length : 0,
+      engagements: Array.isArray(filters.friendEngagements) ? filters.friendEngagements.length : 0,
+      status: filters.status || null,
+      sortByExpiration,
+      hideOwnPins,
+      hideFullEvents
+    };
+    logListPerf('ListPage filters updated', {
+      renderCount: renderCountRef.current,
+      currentPage,
+      filterSummary
+    });
+  }, [
+    currentPage,
+    filters,
+    filtersSignature,
+    sortByExpiration,
+    hideOwnPins,
+    hideFullEvents
+  ]);
 
   const handleRemoveType = useCallback((typeValue) => {
     removeType(typeValue);
@@ -496,6 +550,17 @@ export default function ListPage() {
     });
   }, [totalPages, totalResults]);
 
+  useEffect(() => {
+    if (!enableListPerfLogs) {
+      return;
+    }
+    logListPerf('ListPage page changed', {
+      currentPage,
+      totalPages,
+      totalResults
+    });
+  }, [currentPage, totalPages, totalResults]);
+
   const paginatedFeedItems = useMemo(() => {
     if (totalResults === 0) {
       return [];
@@ -508,6 +573,30 @@ export default function ListPage() {
     totalResults === 0 ? 0 : (currentPage - 1) * LIST_PAGE_SIZE + 1;
   const endItemNumber =
     totalResults === 0 ? 0 : Math.min(totalResults, currentPage * LIST_PAGE_SIZE);
+
+  useEffect(() => {
+    if (!enableListPerfLogs) {
+      return;
+    }
+    logListPerf('ListPage feed stats', {
+      renderCount: renderCountRef.current,
+      feedItems: feedItems.length,
+      paginatedItems: paginatedFeedItems.length,
+      currentPage,
+      totalPages,
+      totalResults,
+      loading,
+      error: Boolean(error)
+    });
+  }, [
+    currentPage,
+    totalPages,
+    totalResults,
+    feedItems.length,
+    paginatedFeedItems.length,
+    loading,
+    error
+  ]);
 
   const notificationsLabel =
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
