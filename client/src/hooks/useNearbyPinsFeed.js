@@ -52,6 +52,7 @@ export default function useNearbyPinsFeed({
   const [pinDisplayLimit, setPinDisplayLimit] = useState(fallbackLimit);
   const [syncListWithMapLimit, setSyncListWithMapLimit] = useState(true);
   const filtersRef = useRef(filters);
+  const isLoadingRef = useRef(false);
 
   useEffect(() => {
     filtersRef.current = filters;
@@ -145,12 +146,17 @@ export default function useNearbyPinsFeed({
         return;
       }
 
+      if (isLoadingRef.current) {
+        return;
+      }
+
       if (isOffline) {
         setLoading(false);
         setError((prev) => prev ?? 'Offline mode: showing previously loaded pins.');
         return;
       }
 
+      isLoadingRef.current = true;
       setLoading(true);
       setError(null);
 
@@ -216,6 +222,7 @@ export default function useNearbyPinsFeed({
         setPins([]);
         setError(err?.message || 'Failed to load nearby pins.');
       } finally {
+        isLoadingRef.current = false;
         setLoading(false);
       }
     },

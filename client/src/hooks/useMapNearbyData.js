@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { fetchPinsNearby } from '../api/mongoDataApi';
 import reportClientError from '../utils/reportClientError';
 import {
@@ -6,6 +6,8 @@ import {
   DEFAULT_RADIUS_MILES
 } from '../utils/mapExplorerConstants';
 import { hasValidCoordinates, normalizeId } from '../utils/mapLocation';
+
+const FETCH_THROTTLE_MS = 250;
 
 export default function useMapNearbyData({
   userLocation,
@@ -19,13 +21,25 @@ export default function useMapNearbyData({
   const nearbyUsers = [];
   const [isLoadingNearby, setIsLoadingNearby] = useState(false);
   const [isLoadingPins, setIsLoadingPins] = useState(false);
+  const isLoadingRef = useRef(false);
+  const lastFetchAtRef = useRef(0);
 
   const refreshPins = useCallback(
     async (location = userLocation) => {
+      const now = Date.now();
+      if (now - lastFetchAtRef.current < FETCH_THROTTLE_MS) {
+        return;
+      }
+      lastFetchAtRef.current = now;
+
       if (!hasValidCoordinates(location)) {
         if (!location) {
           setPins([]);
         }
+        return;
+      }
+
+      if (isLoadingRef.current) {
         return;
       }
 
@@ -35,6 +49,7 @@ export default function useMapNearbyData({
         return;
       }
 
+      isLoadingRef.current = true;
       setIsLoadingPins(true);
       try {
         const results = await fetchPinsNearby({
@@ -71,6 +86,7 @@ export default function useMapNearbyData({
         });
         setGlobalError?.(err.message || 'Failed to load nearby pins.');
       } finally {
+        isLoadingRef.current = false;
         setIsLoadingPins(false);
       }
     },

@@ -6,7 +6,7 @@
  * If you touch the bookmark API contract, adjust the transforms here rather than sprinkling logic
  * across the UI. This hook intentionally mirrors the data responsibilities of useNearbyPinsFeed.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   clearBookmarkHistory,
@@ -81,6 +81,7 @@ export default function useBookmarksManager({
   const [historyError, setHistoryError] = useState(null);
   const [isClearingHistory, setIsClearingHistory] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const isLoadingRef = useRef(false);
 
   // Keep a Map for constant-time lookups when grouping bookmarks by collection.
   const collectionsById = useMemo(() => {
@@ -151,10 +152,16 @@ export default function useBookmarksManager({
       return;
     }
 
+    if (isLoadingRef.current) {
+      return;
+    }
+    isLoadingRef.current = true;
+
     if (isOffline) {
       setIsLoading(false);
       setError('You are offline. Connect to refresh your bookmarks.');
       setHistoryError('You are offline. Connect to refresh your history.');
+      isLoadingRef.current = false;
       return;
     }
 
@@ -188,6 +195,7 @@ export default function useBookmarksManager({
       setViewHistory([]);
       setError(err?.message || 'Failed to load bookmarks.');
     } finally {
+      isLoadingRef.current = false;
       setIsLoading(false);
     }
   }, [authUser, enrichBookmarksWithPins, hideFullEvents, isOffline]);

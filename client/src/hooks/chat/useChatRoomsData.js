@@ -21,6 +21,7 @@ export default function useChatRoomsData({
   const [selectedRoomId, setSelectedRoomId] = useState(pinId || null);
   const pinRoomAttemptedRef = useRef(false);
   const lastLoadKeyRef = useRef(null);
+  const isLoadingRef = useRef(false);
 
   const resolvedLatitude = Number.isFinite(viewerLatitude)
     ? viewerLatitude
@@ -42,6 +43,10 @@ export default function useChatRoomsData({
     if (!authUser) {
       return;
     }
+    if (isLoadingRef.current) {
+      return;
+    }
+    isLoadingRef.current = true;
     setIsLoadingRooms(true);
     setRoomsError(null);
     try {
@@ -93,6 +98,7 @@ export default function useChatRoomsData({
         setRoomsError(error?.message || 'Failed to load chat rooms.');
       }
     } finally {
+      isLoadingRef.current = false;
       setIsLoadingRooms(false);
     }
   }, [authUser, locationParams.latitude, locationParams.longitude, pinId]);
