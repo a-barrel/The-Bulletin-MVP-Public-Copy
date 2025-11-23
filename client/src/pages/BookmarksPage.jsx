@@ -47,6 +47,7 @@ import GlobalNavMenu from '../components/GlobalNavMenu';
 import './BookmarksPage.css';
 import '../components/BackButton.css';
 import { resolveUserAvatarUrl, DEFAULT_AVATAR_PATH } from '../utils/pinFormatting';
+import resolveAssetUrl from '../utils/media';
 
 export const pageConfig = {
   id: 'bookmarks',
@@ -423,10 +424,11 @@ function BookmarksPage() {
           iconClassName="back-button__icon"
           ariaLabel="Back to main view"
           scope="core"
-        >
-          <span className="back-button__text">Back</span>
-        </MainNavBackButton>
+        />
         <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+        <Typography className="bookmarks-header-title" component="h1">
+          Bookmarks
+        </Typography>
       </div>
       <Box
         sx={{
@@ -788,6 +790,18 @@ function BookmarksPage() {
                   const hostName = pin?.creator?.displayName || pin?.creator?.username || 'Unknown host';
                   const hostAvatar = resolveUserAvatarUrl(pin?.creator, DEFAULT_AVATAR_PATH) || DEFAULT_AVATAR_PATH;
                   const isClickable = Boolean(pin);
+                  const canonicalImage = entry.imageUrl ? resolveAssetUrl(entry.imageUrl) : null;
+                  // Media priority: canonical history imageUrl -> coverPhoto -> mediaAssets[0] -> photos[0] -> images[0]
+                  const rawImage =
+                    canonicalImage ||
+                    resolveAssetUrl(pin?.coverPhoto) ||
+                    resolveAssetUrl(Array.isArray(pin?.mediaAssets) ? pin.mediaAssets[0] : null) ||
+                    resolveAssetUrl(Array.isArray(pin?.photos) ? pin.photos[0] : null) ||
+                    resolveAssetUrl(Array.isArray(pin?.images) ? pin.images[0] : null);
+                  const mediaSrc =
+                    rawImage && typeof rawImage === 'string' && !rawImage.includes('UNKNOWN_TEXTURE')
+                      ? rawImage
+                      : null;
                   return (
                     <Box
                       key={`${entry.pinId}-${entry.viewedAt}`}
@@ -795,25 +809,47 @@ function BookmarksPage() {
                       className={`history-card${isClickable ? ' history-card--clickable' : ''}`}
                     >
                       <div className="history-card__row">
-                        <Typography variant="subtitle1" className="history-card__title">
-                          {title}
-                        </Typography>
-                        <span className="history-card__badge">{typeLabel}</span>
+                        <div className="history-card__content">
+                          <div className="history-card__header">
+                            <Typography variant="subtitle1" className="history-card__title">
+                              {title}
+                            </Typography>
+                            <span
+                              className={`history-card__badge ${
+                                pin?.type === 'discussion' ? 'history-card__badge--discussion' : ''
+                              }`}
+                            >
+                              {typeLabel}
+                            </span>
+                          </div>
+                          <Typography variant="body2" className="history-card__meta">
+                            Viewed {formatSavedDate(entry.viewedAt)}
+                          </Typography>
+                          <Box className="history-card__host">
+                            <img
+                              className="history-card__avatar"
+                              src={hostAvatar}
+                              alt={`${hostName} avatar`}
+                            />
+                            <Box className="history-card__host-text">
+                              <div className="history-card__host-label">Hosted by</div>
+                              <div className="history-card__host-name">{hostName}</div>
+                            </Box>
+                          </Box>
+                        </div>
+                        <div
+                          className={`history-card__media${
+                            mediaSrc ? '' : ' history-card__media--placeholder'
+                          }`}
+                          aria-hidden={!mediaSrc}
+                        >
+                          {mediaSrc ? (
+                            <img src={mediaSrc} alt={`${title} preview`} loading="lazy" />
+                          ) : (
+                            <span className="history-card__media-fallback">Photo</span>
+                          )}
+                        </div>
                       </div>
-                      <Typography variant="body2" className="history-card__meta">
-                        Viewed {formatSavedDate(entry.viewedAt)}
-                      </Typography>
-                      <Box className="history-card__host">
-                        <img
-                          className="history-card__avatar"
-                          src={hostAvatar}
-                          alt={`${hostName} avatar`}
-                        />
-                        <Box className="history-card__host-text">
-                          <div className="history-card__host-label">Hosted by</div>
-                          <div className="history-card__host-name">{hostName}</div>
-                        </Box>
-                      </Box>
                     </Box>
                   );
                 })}

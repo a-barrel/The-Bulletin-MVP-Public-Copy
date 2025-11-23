@@ -121,7 +121,8 @@ const userSchema = new mongoose.Schema(
     viewHistory: [
       {
         pinId: { type: mongoose.Schema.Types.ObjectId, ref: 'Pin' },
-        viewedAt: { type: Date, default: Date.now }
+        viewedAt: { type: Date, default: Date.now },
+        imageUrl: { type: String, default: null }
       }
     ],
     recentLocationIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Location' }]

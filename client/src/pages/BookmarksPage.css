@@ -3,37 +3,52 @@ body {
 }
 
 /* History tab palette/spacing (Style Guide: docs/style/style-guide.md, docs/style/light_mode_colorpalate.md)
-   Surfaces: Soft Lavender #F5EFFD, Wash Blue #ECF8FE, Border/Wash Pink #CDAEF2
-   Accents: Dark Purple #5D3889, Primary Purple #9B5DE5
+   Surfaces: Wash Blue #ECF8FE (base), Soft Lavender #E6D6FA (strong), Border/Wash Pink #CDAEF2
+   Accents: Dark Purple #5D3889 (headings), Pink #F15BB5 (badges), Blue #1D5B89 (meta/icons)
    Text: Body #1E1E1E, Muted #4A3A63
    Rhythm: 16–20px padding on cards, 12px gaps, 12–14px radii, 150–200ms ease transitions.
 */
 :root {
-  --history-surface: #f5effd;
-  --history-surface-strong: #ecf8fe;
-  --history-border: #cdaef2;
+  --history-surface: #ecf8fe;
+  --history-surface-strong: #e6d6fa;
+  --history-border: #5d3889;
   --history-accent: #5d3889;
   --history-accent-strong: #9b5de5;
+  --history-secondary-accent: #1d5b89;
   --history-text: #1e1e1e;
   --history-muted: #4a3a63;
 }
 
 /* Center "Bookmarks" title in back button */
 .bookmarks-back-button.back-nav-bar {
-  justify-content: flex-start;
-  gap: 0.75rem;
-  position: relative;
+  justify-content: space-between;
+  gap: 0.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: #d1b4f5;
+  align-items: center;
 }
 
-.bookmarks-back-button.back-nav-bar::after {
-  content: 'Bookmarks';
+.bookmarks-header-title {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  font-size: var(--font-size-subtitle);
-  font-weight: var(--font-weight-semibold);
+  font-size: clamp(1.4rem, 4vw, 1.9rem);
+  font-weight: var(--font-weight-bold);
   color: #4b208c;
+  margin: 0;
+  text-align: center;
   pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .bookmarks-back-button.back-nav-bar {
+    padding: 0 0.75rem;
+  }
+  .bookmarks-header-title {
+    font-size: var(--font-size-body);
+  }
 }
 
 .bookmarks-actions {
@@ -105,18 +120,19 @@ body {
 
 .history-panel {
   border: 1px solid var(--history-border);
-  background: var(--history-surface);
+  background: linear-gradient(160deg, var(--history-surface) 0%, #ffffff 40%, var(--history-surface-strong) 100%);
   box-shadow: 0 12px 28px rgba(93, 56, 137, 0.12);
 }
 
 .history-card {
   border: 1px solid var(--history-border);
   border-radius: 14px;
-  padding: 1.25rem;
+  padding: 1.1rem 1.1rem 1.1rem 1.25rem;
   background: #ffffff;
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 1rem;
   color: var(--history-text);
   transition: background-color 180ms ease, box-shadow 180ms ease, transform 140ms ease, border-color 180ms ease;
 }
@@ -127,7 +143,7 @@ body {
 
 .history-card--clickable:hover {
   background-color: var(--history-surface-strong);
-  box-shadow: 0 10px 22px rgba(93, 56, 137, 0.14);
+  box-shadow: 0 10px 22px rgba(93, 56, 137, 0.16);
   transform: translateY(-1px);
   border-color: var(--history-accent-strong);
 }
@@ -142,9 +158,9 @@ body {
 
 .history-card__row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  align-items: stretch;
+  gap: 1rem;
+  width: 100%;
 }
 
 .history-card__title {
@@ -154,23 +170,44 @@ body {
   line-height: 1.25;
 }
 
+.history-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.history-card__content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
 .history-card__badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.3rem 0.8rem;
+  padding: 0.35rem 0.85rem;
   border-radius: 999px;
-  background: var(--history-surface-strong);
-  color: var(--history-accent);
+  background: #f5effd;
+  color: #5d3889;
   font-weight: 700;
   font-size: var(--font-size-caption);
   border: 1px solid var(--history-accent-strong);
   letter-spacing: 0.02em;
 }
 
+.history-card__badge--discussion {
+  background: rgba(29, 91, 137, 0.12);
+  color: var(--history-secondary-accent);
+  border-color: var(--history-secondary-accent);
+}
+
 .history-card__meta {
   font-family: var(--font-family-base);
-  color: var(--history-muted);
+  color: var(--history-secondary-accent);
   font-size: var(--font-size-body-sm);
 }
 
@@ -209,10 +246,68 @@ body {
   color: var(--history-text);
 }
 
+.history-card__media {
+  width: 132px;
+  height: 96px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--history-border);
+  background: linear-gradient(140deg, var(--history-surface) 0%, var(--history-surface-strong) 100%);
+  box-shadow: inset 0 1px 4px rgba(93, 56, 137, 0.12);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.history-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.history-card__media--placeholder {
+  color: var(--history-muted);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.history-card__media-fallback {
+  opacity: 0.9;
+}
+
+@media (max-width: 720px) {
+  .history-card {
+    flex-direction: column;
+    padding: 1rem;
+  }
+
+  .history-card__row {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .history-card__header {
+    align-items: center;
+  }
+
+  .history-card__badge {
+    align-self: flex-start;
+  }
+
+  .history-card__media {
+    width: 100%;
+    height: 180px;
+  }
+}
+
 .history-empty {
   border: 1px solid var(--history-border);
-  background: var(--history-surface);
-  box-shadow: 0 10px 24px rgba(93, 56, 137, 0.12);
+  background: linear-gradient(135deg, var(--history-surface) 0%, var(--history-surface-strong) 100%);
+  box-shadow: 0 12px 26px rgba(93, 56, 137, 0.14);
   color: var(--history-text);
 }
 
@@ -229,14 +324,14 @@ body {
 
 .history-loading {
   border: 1px solid var(--history-border);
-  background: var(--history-surface-strong);
+  background: linear-gradient(135deg, var(--history-surface-strong) 0%, #ffffff 100%);
   border-radius: 16px;
   padding: 1.5rem;
-  box-shadow: 0 8px 20px rgba(93, 56, 137, 0.1);
+  box-shadow: 0 10px 22px rgba(93, 56, 137, 0.1);
   color: var(--history-text);
 }
 
 .history-loading .MuiTypography-root {
-  color: var(--history-muted);
+  color: var(--history-secondary-accent);
   font-family: var(--font-family-base);
 }

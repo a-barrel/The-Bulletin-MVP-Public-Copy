@@ -21,6 +21,7 @@ const AttendanceEvent = require('../models/AttendanceEvent');
 const { grantBadge } = require('../services/badgeService');
 const { trackEvent } = require('../services/analyticsService');
 const { mapMediaAsset: mapMediaAssetResponse } = require('../utils/media');
+const { resolvePinPrimaryImageUrl } = require('../utils/pinMedia');
 const { toIdString, mapIdList } = require('../utils/ids');
 const { METERS_PER_MILE, milesToMeters } = require('../utils/geo');
 const { timeAsync } = require('../utils/devLogger');
@@ -151,12 +152,13 @@ const buildHideFullEventsFilter = () => ({
   ]
 });
 
-const recordPinViewHistory = async (viewer, pinId) => {
-  if (!viewer || !viewer._id || !pinId) {
+const recordPinViewHistory = async (viewer, pinDoc) => {
+  if (!viewer || !viewer._id || !pinDoc?._id) {
     return;
   }
   try {
-    const pinObjectId = new mongoose.Types.ObjectId(pinId);
+    const pinObjectId = new mongoose.Types.ObjectId(pinDoc._id);
+    const imageUrl = resolvePinPrimaryImageUrl(pinDoc);
     await User.updateOne(
       { _id: viewer._id },
       { $pull: { viewHistory: { pinId: pinObjectId } } }
@@ -166,7 +168,7 @@ const recordPinViewHistory = async (viewer, pinId) => {
       {
         $push: {
           viewHistory: {
-            $each: [{ pinId: pinObjectId, viewedAt: new Date() }],
+            $each: [{ pinId: pinObjectId, viewedAt: new Date(), imageUrl }],
             $position: 0,
             $slice: VIEW_HISTORY_MAX
           }
@@ -1631,7 +1633,7 @@ router.get('/:pinId', verifyToken, async (req, res) => {
     }
 
     const payload = mapPinToFull(pin, mapUserToPublic(pin.creatorId), mapOptions);
-    recordPinViewHistory(viewer, pin._id);
+    recordPinViewHistory(viewer, pin);
     res.json(payload);
   } catch (error) {
     if (error instanceof ZodError) {
