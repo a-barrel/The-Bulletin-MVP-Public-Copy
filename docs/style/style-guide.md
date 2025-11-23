@@ -10,9 +10,9 @@ Last updated: 2025‑11‑10
 ## 2. Color System
 | Role | HEX | Usage |
 | --- | --- | --- |
-| Primary Purple | `#9B5DE5` | Event pins, core accents |
+| Primary Purple | `#9B5DE5` | **Events:** primary accent for event pins/cards, headers, and CTAs |
 | Primary Pink | `#F15BB5` | UI box backgrounds, celebratory moments |
-| Primary Blue | `#3EB8F0` | Discussion pins, secondary accents |
+| Primary Blue | `#3EB8F0` | **Discussions:** primary accent for discussion pins/cards, links, and secondary accents |
 | Dark Purple | `#5D3889` | Headers, button backgrounds, info frames |
 | Wash Pink | `#CDAEF2` | Text-heavy surfaces, offset blue areas |
 | Wash Blue | `#ECF8FE` | Surfaces that offset purple content |
@@ -23,7 +23,9 @@ Last updated: 2025‑11‑10
 - **Rule:** Avoid pure black UI fills—reserve `#000000` for text; lean on washes or dark purple for backgrounds.
 - **Reverse text rule:** Default text color is black (`#000000`) on washes and white backgrounds, but flip to Brand White when it sits on dark fills like Dark Purple (`#5D3889`), destructive banners, or other saturated blocks called out in this guide. Always verify contrast ≥ 4.5:1 when you invert colors.
 - **Pastel text rule:** If the background is a wash (Soft Lavender, Wash Pink, Brand White, etc.), **never** use white text. Stick to Dark Purple `#5D3889` or pure black for primary copy so the pastel blocks stay readable. When you recolor a parent container, double-check **every child element** (buttons, chips, icons, accordion headers, etc.) so they inherit the compliant colors—white-on-pastel slips happen when only the shell is updated.
-- **Alert colors:** `#FF3B30` (destructive), `#3EB8F0` / `#5D3889` (info states) appear in Figma exports—reuse them consistently.
+- **Alert colors:** Use `#FF3B30` **only** for destructive/error states. Prefer Blue (`#3EB8F0`) or Dark Purple (`#5D3889`) for info/warning to avoid heavy red. Avoid introducing new reds beyond this token.
+- **Event/Discussion accents:** Default event surfaces/indicators to Purple (`#9B5DE5` / `#5D3889` accents). Default discussion surfaces/indicators to Blue (`#3EB8F0`). Use these consistently across cards, tabs, badges, and chips.
+- **Washes:** Wash Pink `#CDAEF2`, Wash Blue `#ECF8FE`, and Soft Lavender `#F5EFFD` are meant to be visibly distinct from white—pair them with subtle borders/shadows if needed rather than drifting to pure white. If a wash reads too faint, deepen via border/shadow before changing the fill hue.
 
 ## 3. Typography
 - **Primary font:** Urbanist (Regular 400 for body, Bold 700 for emphasis). Inter appears in certain mockups but Urbanist should be the UI default.

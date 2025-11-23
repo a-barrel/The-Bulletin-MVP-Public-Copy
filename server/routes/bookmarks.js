@@ -12,6 +12,7 @@ const verifyToken = require('../middleware/verifyToken');
 const { broadcastBookmarkCreated } = require('../services/updateFanoutService');
 const { grantBadge } = require('../services/badgeService');
 const { mapMediaAsset } = require('../utils/media');
+const { resolvePinPrimaryImageUrl } = require('../utils/pinMedia');
 const { toIdString, mapIdList } = require('../utils/ids');
 const { toIsoDateString } = require('../utils/dates');
 const { canViewerModeratePins } = require('../utils/moderation');
@@ -330,10 +331,13 @@ router.get('/history', verifyToken, async (req, res) => {
           return null;
         }
 
+        const imageUrl = entry.imageUrl || resolvePinPrimaryImageUrl(pinDoc);
+
         return {
           pinId: pinIdString,
           viewedAt: entry.viewedAt ? new Date(entry.viewedAt).toISOString() : new Date().toISOString(),
-          pin: mapPinToPreview(pinDoc)
+          pin: mapPinToPreview(pinDoc),
+          imageUrl
         };
       })
       .filter(Boolean);

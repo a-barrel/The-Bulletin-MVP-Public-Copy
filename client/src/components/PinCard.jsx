@@ -10,7 +10,7 @@
  * Reference docs/frontend-api-cheatsheet.md (“PinCard Data Contract”) for the payload fields this card expects.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./PinCard.css";
 import PinTagIcon from "../assets/Event_Pin.svg";
 import DiscussionTagIcon from "../assets/chat-filled.svg";
@@ -55,7 +55,7 @@ const resolveTagBadge = (type) => {
   return TAG_ICON_MAP[key] || TAG_ICON_MAP.pin;
 };
 
-export default function PinCard({
+function PinCard({
   item,
   onSelectItem,
   onSelectAuthor,
@@ -484,6 +484,7 @@ export default function PinCard({
             className="avatar"
             src={resolveAuthorAvatar(item)}
             alt={`${authorName} avatar`}
+            loading="lazy"
             onError={(event) => {
               event.currentTarget.onerror = null;
               event.currentTarget.src = DEFAULT_AVATAR;
@@ -518,6 +519,7 @@ export default function PinCard({
                   src={attendee.avatar || DEFAULT_AVATAR}
                   alt=""
                   className="interest-avatar"
+                  loading="lazy"
                   onError={(event) => {
                     event.currentTarget.onerror = null;
                     event.currentTarget.src = DEFAULT_AVATAR;
@@ -573,3 +575,44 @@ export default function PinCard({
     </article>
   );
 }
+
+const arePinCardPropsEqual = (prevProps, nextProps) => {
+  const prevId =
+    toIdString(prevProps.item?.pinId) ??
+    toIdString(prevProps.item?._id) ??
+    toIdString(prevProps.item?.id);
+  const nextId =
+    toIdString(nextProps.item?.pinId) ??
+    toIdString(nextProps.item?._id) ??
+    toIdString(nextProps.item?.id);
+  if (prevId !== nextId) {
+    return false;
+  }
+  const bookmarkEqual =
+    prevProps.item?.viewerHasBookmarked === nextProps.item?.viewerHasBookmarked &&
+    prevProps.item?.isBookmarked === nextProps.item?.isBookmarked;
+  const attendeeEqual =
+    prevProps.item?.attendeeVersion === nextProps.item?.attendeeVersion &&
+    prevProps.item?.participantCount === nextProps.item?.participantCount;
+  const metaEqual =
+    prevProps.item?.comments === nextProps.item?.comments &&
+    prevProps.item?.distance === nextProps.item?.distance &&
+    prevProps.item?.timeLabel === nextProps.item?.timeLabel &&
+    prevProps.item?.expiresInHours === nextProps.item?.expiresInHours &&
+    prevProps.item?.viewerIsAttending === nextProps.item?.viewerIsAttending &&
+    prevProps.item?.viewerOwnsPin === nextProps.item?.viewerOwnsPin &&
+    prevProps.item?.text === nextProps.item?.text;
+  return (
+    bookmarkEqual &&
+    attendeeEqual &&
+    metaEqual &&
+    prevProps.onSelectItem === nextProps.onSelectItem &&
+    prevProps.onSelectAuthor === nextProps.onSelectAuthor &&
+    prevProps.showAttendeeAvatars === nextProps.showAttendeeAvatars &&
+    prevProps.showBookmarkButton === nextProps.showBookmarkButton &&
+    prevProps.enableBookmarkToggle === nextProps.enableBookmarkToggle &&
+    prevProps.className === nextProps.className
+  );
+};
+
+export default memo(PinCard, arePinCardPropsEqual);
