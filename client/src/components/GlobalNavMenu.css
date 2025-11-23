@@ -1,10 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600;700&display=swap');
-
 .global-nav-menu {
   position: relative;
   display: inline-flex;
   align-items: center;
-  font-family: "Urbanist", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-family: var(--font-family-base);
   color: #111;
 }
 
@@ -86,8 +84,8 @@
   justify-content: center;
   gap: 0.35rem;
   color: #1f1336;
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-button);
   cursor: pointer;
   transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
 }
@@ -112,7 +110,7 @@
 }
 
 .global-nav-menu__quick-button-label {
-  font-size: 0.85rem;
+  font-size: var(--font-size-caption);
   letter-spacing: 0.01em;
 }
 

@@ -1,0 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap');
+
+:root {
+  --font-family-base: "Urbanist", -apple-system, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --font-size-display: 2.25rem;
+  --font-size-title: 1.6rem;
+  --font-size-subtitle: 1.2rem;
+  --font-size-body: 1rem;
+  --font-size-body-sm: 0.95rem;
+  --font-size-caption: 0.85rem;
+  --font-size-button: 0.95rem;
+
+  --line-height-tight: 1.15;
+  --line-height-snug: 1.25;
+  --line-height-base: 1.5;
+  --line-height-loose: 1.65;
+}
+
+.text-display {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  letter-spacing: -0.01em;
+}
+
+.text-title {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-snug);
+}
+
+.text-subtitle {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-base);
+}
+
+.text-body {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-base);
+}
+
+.text-body-sm {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-base);
+}
+
+.text-caption {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-snug);
+  letter-spacing: 0.01em;
+}
+
+.text-button {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-button);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
+  letter-spacing: 0.01em;
+}

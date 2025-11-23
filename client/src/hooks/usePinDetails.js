@@ -1015,10 +1015,11 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     if (!pin) {
       return [];
     }
+    const creatorAvatarUrl = resolveUserAvatarUrl(pin?.creator);
     if (pin.isSelf === isOwnPin) {
-      return [pin];
+      return [{ ...pin, creatorAvatarUrl }];
     }
-    return [{ ...pin, isSelf: isOwnPin }];
+    return [{ ...pin, isSelf: isOwnPin, creatorAvatarUrl }];
   }, [pin, isOwnPin]);
 
   const coverImageUrl = useMemo(() => {

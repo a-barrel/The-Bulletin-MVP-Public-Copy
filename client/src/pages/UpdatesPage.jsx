@@ -17,6 +17,7 @@ import MainNavBackButton from '../components/MainNavBackButton';
 import UpdatesTabs from '../components/updates/UpdatesTabs';
 import PushNotificationPrompt from '../components/updates/PushNotificationPrompt';
 import UpdatesList from '../components/updates/UpdatesList';
+import { countUnreadByCategory, filterUpdatesByCategory } from '../utils/updatesFilters';
 
 export const pageConfig = {
   id: 'updates',
@@ -42,8 +43,7 @@ const resolveBadgeImageUrl = (value) => {
 };
 
 function UpdatesPage() {
-  const [selectedTab, setSelectedTab] = useState('All');
-  const [secondaryTab, setSecondaryTab] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const pushNotifications = usePushNotifications();
   const [expandedUpdateId, setExpandedUpdateId] = useState(null);
   const handleToggleExpand = (id) => {
@@ -72,76 +72,29 @@ function UpdatesPage() {
   const isLoading = isProfileLoading || isLoadingUpdates;
   const isAnyDeletePending = deletingUpdateIds.length > 0;
 
-  const { unreadDiscussionsCount, unreadEventsCount, unreadBadgesCount, unreadBookmarkCount, unreadTimeCount } = useMemo(() => {
-    const counts = {
-      unreadDiscussionsCount: 0,
-      unreadEventsCount: 0,
-      unreadBadgesCount: 0,
-      unreadBookmarkCount: 0,
-      unreadTimeCount: 0
-    };
+  const {
+    unreadDiscussionsCount,
+    unreadEventsCount,
+    unreadBadgesCount,
+    unreadBookmarkCount,
+    unreadTimeCount
+  } = useMemo(() => countUnreadByCategory(updates), [updates]);
 
-    updates.forEach((update) => {
-      if (update.readAt) {
-        return;
-      }
-      const category = (update.category || '').toLowerCase();
-      if (category === 'discussion') {
-        counts.unreadDiscussionsCount += 1;
-      }
-      if (category === 'event') {
-        counts.unreadEventsCount += 1;
-      }
-      if (category === 'badge') {
-        counts.unreadBadgesCount += 1;
-      }
-      if (category === 'bookmark') {
-        counts.unreadBookmarkCount += 1;
-      }
-      if (category === 'time') {
-        counts.unreadTimeCount += 1;
-      }
-    });
-
-    return counts;
-  }, [updates]);
+  const tabs = useMemo(
+    () => [
+      { label: 'All', count: unreadCount },
+      { label: 'Discussions', count: unreadDiscussionsCount },
+      { label: 'Events', count: unreadEventsCount },
+      { label: 'Badges', count: unreadBadgesCount },
+      { label: 'Bookmarks', count: unreadBookmarkCount },
+      { label: 'Time', count: unreadTimeCount }
+    ],
+    [unreadCount, unreadDiscussionsCount, unreadEventsCount, unreadBadgesCount, unreadBookmarkCount, unreadTimeCount]
+  );
 
   const tabFilteredUpdates = useMemo(() => {
-    const normalizedFilteredUpdates = Array.isArray(filteredUpdates) ? filteredUpdates : [];
-    const primaryFiltered = (() => {
-      if (selectedTab === 'All') {
-        return normalizedFilteredUpdates;
-      }
-      return normalizedFilteredUpdates.filter((update) => {
-        const category = (update.category || '').toLowerCase();
-        if (selectedTab === 'Discussions') {
-          return category === 'discussion';
-        }
-        if (selectedTab === 'Events') {
-          return category === 'event';
-        }
-        return true;
-      });
-    })();
-
-    if (secondaryTab === 'All') {
-      return primaryFiltered;
-    }
-
-    return primaryFiltered.filter((update) => {
-      const category = (update.category || '').toLowerCase();
-      if (secondaryTab === 'Badges') {
-        return category === 'badge';
-      }
-      if (secondaryTab === 'Bookmarks') {
-        return category === 'bookmark';
-      }
-      if (secondaryTab === 'Time') {
-        return category === 'time' || category === 'event' || category === 'discussion';
-      }
-      return true;
-    });
-  }, [filteredUpdates, secondaryTab, selectedTab]);
+    return filterUpdatesByCategory(filteredUpdates, selectedCategory);
+  }, [filteredUpdates, selectedCategory]);
 
   return (
     <Box className="updates-page">
@@ -170,23 +123,10 @@ function UpdatesPage() {
 
         <Box className="updates-content">
         <UpdatesTabs
-          tabs={[
-            { label: 'All', count: unreadCount },
-            { label: 'Discussions', count: unreadDiscussionsCount },
-            { label: 'Events', count: unreadEventsCount }
-          ]}
-          selected={selectedTab}
-          onSelect={setSelectedTab}
-        />
-
-        <UpdatesTabs
-          tabs={[
-            { label: 'Badges', count: unreadBadgesCount },
-            { label: 'Bookmarks', count: unreadBookmarkCount },
-            { label: 'Time', count: unreadTimeCount }
-          ]}
-          selected={secondaryTab}
-          onSelect={setSecondaryTab}
+          tabs={tabs}
+          selected={selectedCategory}
+          onSelect={setSelectedCategory}
+          ariaLabel="Update categories"
         />
 
         {pushNotifications.isSupported &&

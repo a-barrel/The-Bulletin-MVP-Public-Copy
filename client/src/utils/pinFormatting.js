@@ -70,13 +70,16 @@ export const resolveUserAvatarUrl = (user, fallback = DEFAULT_AVATAR_PATH) => {
   const candidates = [
     user?.avatar,
     user?.avatar?.url,
+    user?.avatar?.path,
     user?.avatarUrl,
     user?.photoURL,
     user?.photoUrl,
     user?.profileImage,
     user?.profileImage?.url,
+    user?.profileImage?.path,
     user?.profile?.avatar,
-    user?.profile?.avatar?.url
+    user?.profile?.avatar?.url,
+    user?.profile?.avatar?.path
   ];
 
   for (const candidate of candidates) {

@@ -11,9 +11,9 @@
   background: #CDAEF2;
   color: #000 !important;
   border-bottom: 2px solid #000;
-  font-family: 'Urbanist', sans-serif !important;
-  font-weight: 700 !important;
-  font-size: 1.7rem !important; /* adjust to taste */
+  font-family: var(--font-family-base);
+  font-weight: 700;
+  font-size: 1.7rem; /* adjust to taste */
   letter-spacing: 0.02em;
   padding: 14px 20px !important;
 }
@@ -32,9 +32,9 @@
 
 /* --- Section titles like 'Keyword search', 'Pin types', etc. --- */
 .filters-content .MuiTypography-subtitle2 {
-  font-family: 'Urbanist', sans-serif;
-  font-size: 1.3rem !important;   
-  font-weight: 700 !important;
+  font-family: var(--font-family-base);
+  font-size: 1.3rem;
+  font-weight: 700;
   color: #000 !important;
   letter-spacing: 0.01em;
   margin-bottom: 4px;
@@ -102,11 +102,11 @@
 /* Actions */
 .filters-actions {
   border-top: 1.5px solid rgba(0,0,0,.1);
-  font-family: 'Urbanist', sans-serif !important;
+  font-family: var(--font-family-base);
 }
 
 .filters-actions .MuiButton-root {
-  font-family: 'Urbanist', sans-serif !important;
+  font-family: var(--font-family-base);
   font-weight: 600;
   text-transform: none; /* keeps it title-case instead of uppercase */
   letter-spacing: 0.01em;
@@ -155,7 +155,7 @@
   border: 1.5px solid #3EB8F0 !important;
   background: #ECF8FE !important;
   text-transform: none;
-  font-family: 'Urbanist', sans-serif;
+  font-family: var(--font-family-base);
   font-weight: 600;
 }
 

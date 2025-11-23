@@ -378,7 +378,8 @@ function PinDetails() {
   const [analytics, setAnalytics] = useState(null);
   const [analyticsError, setAnalyticsError] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
-  const showAnalytics = isEventPin && (isOwnPin || canModeratePins);
+  const isHostLike = isOwnPin || canModeratePins;
+  const showAnalytics = isEventPin && isHostLike;
 
   const analyticsSeries = useMemo(() => analytics?.series || [], [analytics]);
   const analyticsTotals = useMemo(() => analytics?.totals || {}, [analytics]);
@@ -448,7 +449,7 @@ function PinDetails() {
   }, [pin, isEditDialogOpen]);
 
   useEffect(() => {
-    if (!showAnalytics || !pinId) {
+    if (!showAnalytics || !pinId || !isHostLike) {
       setAnalytics(null);
       setAnalyticsError(null);
       return;
@@ -461,7 +462,7 @@ function PinDetails() {
     let ignore = false;
     setAnalyticsLoading(true);
     setAnalyticsError(null);
-    fetchPinAnalytics(pinId)
+    fetchPinAnalytics(pinId, { enabled: isHostLike })
       .then((payload) => {
         if (!ignore) {
           setAnalytics(payload);
@@ -469,6 +470,12 @@ function PinDetails() {
       })
       .catch((fetchError) => {
         if (!ignore) {
+          const status = fetchError?.status;
+          if (status === 403) {
+            setAnalytics(null);
+            setAnalyticsError(null);
+            return;
+          }
           setAnalyticsError(fetchError?.message || 'Failed to load analytics');
         }
       })
@@ -481,7 +488,7 @@ function PinDetails() {
     return () => {
       ignore = true;
     };
-  }, [showAnalytics, pinId, isOffline]);
+  }, [showAnalytics, pinId, isOffline, isHostLike]);
 
   const handleOpenEditDialog = useCallback(() => {
     if (!pin) {

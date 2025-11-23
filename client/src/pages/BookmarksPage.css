@@ -14,8 +14,8 @@ body {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-semibold);
   color: #4b208c;
   pointer-events: none;
 }
@@ -26,8 +26,9 @@ body {
 }
 
 .bookmarks-action {
-  font-family: 'Urbanist', sans-serif;
-  font-size: 0.9rem;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-button);
+  font-weight: var(--font-weight-semibold);
   padding: 0.45rem 1rem;
   border-radius: 999px;
   border: 1px solid black;
@@ -78,14 +79,14 @@ body {
 
 .bookmark-empty__title,
 .history-empty__title {
-  font-family: 'Urbanist', sans-serif;
+  font-family: var(--font-family-base);
   color: #3a1f63;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .bookmark-empty__body,
 .history-empty__body {
-  font-family: 'Urbanist', sans-serif;
+  font-family: var(--font-family-base);
   color: #483366;
 }
 
@@ -125,8 +126,8 @@ body {
 }
 
 .history-card__title {
-  font-family: 'Urbanist', sans-serif;
-  font-weight: 700;
+  font-family: var(--font-family-base);
+  font-weight: var(--font-weight-bold);
   color: #432168;
   line-height: 1.25;
 }
@@ -140,14 +141,14 @@ body {
   background: rgba(93, 56, 137, 0.12);
   color: #432168;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: var(--font-size-caption);
   border: 1px solid rgba(93, 56, 137, 0.18);
 }
 
 .history-card__meta {
-  font-family: 'Urbanist', sans-serif;
+  font-family: var(--font-family-base);
   color: #62477d;
-  font-size: 0.92rem;
+  font-size: var(--font-size-body-sm);
 }
 
 .history-card__host {
@@ -166,20 +167,20 @@ body {
 }
 
 .history-card__host-text {
-  font-family: 'Urbanist', sans-serif;
+  font-family: var(--font-family-base);
   color: #2f1f46;
   line-height: 1.25;
 }
 
 .history-card__host-label {
-  font-size: 0.78rem;
+  font-size: var(--font-size-caption);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: #7a5da8;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .history-card__host-name {
-  font-weight: 700;
-  font-size: 0.95rem;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-body);
 }

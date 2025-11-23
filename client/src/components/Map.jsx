@@ -474,7 +474,8 @@ const Map = ({
       const thumbnailAsset = pin?.coverPhoto || (Array.isArray(pin?.photos) ? pin.photos : null);
       const thumbnailUrl = resolveThumbnailUrl(thumbnailAsset);
       const hostName = pin?.creator?.displayName || pin?.creator?.username || null;
-      const hostAvatarUrl = resolveUserAvatarUrl(pin?.creator, AVATAR_FALLBACK) || AVATAR_FALLBACK;
+      const hostAvatarUrl =
+        pin?.creatorAvatarUrl || resolveUserAvatarUrl(pin?.creator, AVATAR_FALLBACK) || AVATAR_FALLBACK;
 
       return (
         <div style={{ minWidth: '208px', maxWidth: '240px' }}>

@@ -62,6 +62,24 @@ const theme = createTheme({
       default: '#0b0c10',
       paper: '#141821'
     }
+  },
+  typography: {
+    fontFamily: '"Urbanist", -apple-system, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif',
+    fontWeightRegular: 400,
+    fontWeightMedium: 500,
+    fontWeightBold: 700,
+    h1: { fontSize: '2.25rem', fontWeight: 700, lineHeight: 1.15, letterSpacing: '-0.01em' },
+    h2: { fontSize: '1.9rem', fontWeight: 700, lineHeight: 1.2 },
+    h3: { fontSize: '1.6rem', fontWeight: 700, lineHeight: 1.25 },
+    h4: { fontSize: '1.4rem', fontWeight: 600, lineHeight: 1.3 },
+    h5: { fontSize: '1.2rem', fontWeight: 600, lineHeight: 1.35 },
+    h6: { fontSize: '1.05rem', fontWeight: 600, lineHeight: 1.4 },
+    subtitle1: { fontSize: '1.2rem', fontWeight: 600, lineHeight: 1.35 },
+    subtitle2: { fontSize: '1rem', fontWeight: 600, lineHeight: 1.4 },
+    body1: { fontSize: '1rem', fontWeight: 400, lineHeight: 1.5 },
+    body2: { fontSize: '0.95rem', fontWeight: 400, lineHeight: 1.5 },
+    button: { fontSize: '0.95rem', fontWeight: 600, textTransform: 'none' },
+    caption: { fontSize: '0.85rem', fontWeight: 500, lineHeight: 1.25, letterSpacing: '0.01em' }
   }
 });
 

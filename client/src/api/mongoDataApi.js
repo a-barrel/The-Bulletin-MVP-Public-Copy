@@ -634,9 +634,12 @@ export async function updatePinAttendance(pinId, { attending }) {
   }
 }
 
-export async function fetchPinAnalytics(pinId) {
+export async function fetchPinAnalytics(pinId, { enabled = true } = {}) {
   if (!pinId) {
     throw new Error('Pin id is required');
+  }
+  if (!enabled) {
+    return null;
   }
 
   const baseUrl = resolveApiBaseUrl();
