@@ -67,3 +67,119 @@ body {
   width: 24px;
   height: 24px;
 }
+
+.bookmark-empty,
+.history-empty {
+  border: 1px solid #e4d9f8;
+  background: linear-gradient(135deg, #f7f2ff 0%, #ffffff 100%);
+  box-shadow: 0 8px 28px rgba(69, 33, 104, 0.08);
+  color: #2f1f46;
+}
+
+.bookmark-empty__title,
+.history-empty__title {
+  font-family: 'Urbanist', sans-serif;
+  color: #3a1f63;
+  font-weight: 700;
+}
+
+.bookmark-empty__body,
+.history-empty__body {
+  font-family: 'Urbanist', sans-serif;
+  color: #483366;
+}
+
+.history-panel {
+  border: 1px solid #e4d9f8;
+  background: linear-gradient(135deg, #f9f5ff 0%, #ffffff 100%);
+  box-shadow: 0 10px 30px rgba(69, 33, 104, 0.08);
+}
+
+.history-card {
+  border: 1px solid rgba(93, 56, 137, 0.18);
+  border-radius: 14px;
+  padding: 1rem;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 120ms ease;
+}
+
+.history-card--clickable {
+  cursor: pointer;
+}
+
+.history-card--clickable:hover {
+  background-color: #f6f1ff;
+  box-shadow: 0 10px 22px rgba(69, 33, 104, 0.1);
+  transform: translateY(-1px);
+  border-color: #d7c2f5;
+}
+
+.history-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.history-card__title {
+  font-family: 'Urbanist', sans-serif;
+  font-weight: 700;
+  color: #432168;
+  line-height: 1.25;
+}
+
+.history-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(93, 56, 137, 0.12);
+  color: #432168;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 1px solid rgba(93, 56, 137, 0.18);
+}
+
+.history-card__meta {
+  font-family: 'Urbanist', sans-serif;
+  color: #62477d;
+  font-size: 0.92rem;
+}
+
+.history-card__host {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.history-card__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(93, 56, 137, 0.28);
+  background-color: #ede3fb;
+}
+
+.history-card__host-text {
+  font-family: 'Urbanist', sans-serif;
+  color: #2f1f46;
+  line-height: 1.25;
+}
+
+.history-card__host-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #7a5da8;
+  font-weight: 700;
+}
+
+.history-card__host-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
