@@ -1,5 +1,5 @@
 /* NOTE: Page exports configuration alongside the component. */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import './PinDetails.css';
 import {
@@ -378,7 +378,8 @@ function PinDetails() {
   const [analytics, setAnalytics] = useState(null);
   const [analyticsError, setAnalyticsError] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
-  const showAnalytics = isEventPin && (isOwnPin || canModeratePins);
+  const isHostLike = isOwnPin || canModeratePins;
+  const showAnalytics = isEventPin && isHostLike;
 
   const analyticsSeries = useMemo(() => analytics?.series || [], [analytics]);
   const analyticsTotals = useMemo(() => analytics?.totals || {}, [analytics]);
@@ -440,6 +441,7 @@ function PinDetails() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [isFlaggingPin, setIsFlaggingPin] = useState(false);
   const [flagStatus, setFlagStatus] = useState(null);
+  const analyticsInFlightRef = useRef(false);
 
   useEffect(() => {
     if (pin && !isEditDialogOpen) {
@@ -448,9 +450,12 @@ function PinDetails() {
   }, [pin, isEditDialogOpen]);
 
   useEffect(() => {
-    if (!showAnalytics || !pinId) {
+    if (!showAnalytics || !pinId || !isHostLike) {
       setAnalytics(null);
       setAnalyticsError(null);
+      return;
+    }
+    if (analyticsInFlightRef.current) {
       return;
     }
     if (isOffline) {
@@ -459,9 +464,10 @@ function PinDetails() {
       return;
     }
     let ignore = false;
+    analyticsInFlightRef.current = true;
     setAnalyticsLoading(true);
     setAnalyticsError(null);
-    fetchPinAnalytics(pinId)
+    fetchPinAnalytics(pinId, { enabled: isHostLike, suppressLogStatuses: [401, 403] })
       .then((payload) => {
         if (!ignore) {
           setAnalytics(payload);
@@ -469,6 +475,12 @@ function PinDetails() {
       })
       .catch((fetchError) => {
         if (!ignore) {
+          const status = fetchError?.status;
+          if (status === 403) {
+            setAnalytics(null);
+            setAnalyticsError(null);
+            return;
+          }
           setAnalyticsError(fetchError?.message || 'Failed to load analytics');
         }
       })
@@ -476,12 +488,13 @@ function PinDetails() {
         if (!ignore) {
           setAnalyticsLoading(false);
         }
+        analyticsInFlightRef.current = false;
       });
 
     return () => {
       ignore = true;
     };
-  }, [showAnalytics, pinId, isOffline]);
+  }, [showAnalytics, pinId, isOffline, isHostLike]);
 
   const handleOpenEditDialog = useCallback(() => {
     if (!pin) {

@@ -624,6 +624,9 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   const [isSharing, setIsSharing] = useState(false);
   const isMountedRef = useRef(true);
   const pinHydrationSourceRef = useRef(initialHydrationSource);
+  const reloadInFlightRef = useRef(false);
+  const pinCacheRef = useRef(new Map());
+  const analyticsInFlightRef = useRef(false);
   const updatePinHydrationSource = useCallback((source) => {
     pinHydrationSourceRef.current = source;
   }, []);
@@ -813,6 +816,9 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   // Fetch latest pin details from the API, respecting offline mode and seed hydration.
   const reloadPin = useCallback(
     async ({ silent } = {}) => {
+      if (reloadInFlightRef.current) {
+        return null;
+      }
       if (IS_DEV) {
         console.debug('[usePinDetails] reload start', { pinId, silent });
       }
@@ -835,6 +841,19 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         return null;
       }
 
+      const cached = pinCacheRef.current.get(pinId);
+      if (cached && Date.now() - cached.ts < 60_000) {
+        setPin(cached.pin);
+        syncBookmarkFromPayload(cached.pin?.viewerHasBookmarked, { coerce: true });
+        syncAttendanceFromPayload(cached.pin?.viewerIsAttending, { coerce: true });
+        updatePinHydrationSource('cache');
+        setIsLoading(false);
+        setError(null);
+        return cached.pin;
+      }
+
+      reloadInFlightRef.current = true;
+
       if (isMountedRef.current && !silent) {
         setIsLoading(true);
       }
@@ -854,6 +873,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         syncBookmarkFromPayload(payload?.viewerHasBookmarked, { coerce: true });
         syncAttendanceFromPayload(payload?.viewerIsAttending, { coerce: true });
         updatePinHydrationSource('api');
+        pinCacheRef.current.set(pinId, { pin: payload, ts: Date.now() });
         if (IS_DEV) {
           console.debug('[usePinDetails] reload success', { pinId, title: payload?.title });
         }
@@ -875,6 +895,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         if (isMountedRef.current && !silent) {
           setIsLoading(false);
         }
+        reloadInFlightRef.current = false;
       }
     },
     [pinId, isOffline, previewMode, setPin, syncAttendanceFromPayload, syncBookmarkFromPayload, updatePinHydrationSource]
@@ -1015,10 +1036,11 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     if (!pin) {
       return [];
     }
+    const creatorAvatarUrl = resolveUserAvatarUrl(pin?.creator);
     if (pin.isSelf === isOwnPin) {
-      return [pin];
+      return [{ ...pin, creatorAvatarUrl }];
     }
-    return [{ ...pin, isSelf: isOwnPin }];
+    return [{ ...pin, isSelf: isOwnPin, creatorAvatarUrl }];
   }, [pin, isOwnPin]);
 
   const coverImageUrl = useMemo(() => {

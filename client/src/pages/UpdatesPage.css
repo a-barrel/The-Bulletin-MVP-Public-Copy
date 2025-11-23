@@ -1,8 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap');
-
-* {
-  font-family: "Urbanist", sans-serif;
-}
+/* Typography inherits from global tokens */
 
 .friend-chip-label {
   display: inline-flex;
@@ -59,7 +55,7 @@
 }
 
 .updates-header-title {
-  font-family: 'Urbanist', sans-serif !important;
+  font-family: var(--font-family-base);
   color: #5D3889;
   font-size: 2rem;
   font-weight: 500;
@@ -69,7 +65,7 @@
 
 .updates-header-back-btn,
 .updates-header-clear-btn {
-  font-family: 'Urbanist', sans-serif !important;
+  font-family: var(--font-family-base);
   color: #4c2670 !important;
   text-transform: none;
   font-weight: 600 !important;
@@ -119,9 +115,8 @@
 
 /* Tabs */
 .updates-tabs-container {
-  font-family: 'Urbanist', sans-serif !important;
   position: sticky;
-  top: var(--header-h);
+  top: var(--updates-tabs-top, var(--header-h));
   display: flex;
   flex-wrap: wrap;
   justify-content: space-around;
@@ -130,10 +125,10 @@
   padding: 4px 0;
   gap: 4px 0;
   z-index: 40;
+  min-height: 52px;
 }
 
 .update-tab {
-  font-family: 'Urbanist', sans-serif !important;
   text-transform: none !important;
   flex: 1;
   background: none;
@@ -147,14 +142,12 @@
 }
 
 .update-tab.active {
-  font-family: 'Urbanist', sans-serif !important;
   color: black !important;
   border-bottom: 4px solid #3EB8F0;
   margin-bottom: -0.65rem;
 }
 
 .unread-badge {
-  font-family: 'Urbanist', sans-serif !important;
   color: #ff736c;
   border-radius: 120px;
   font-size: 0.85rem;
@@ -168,7 +161,7 @@
 }
 
 .loading-bar-label {
-  font-family: 'Urbanist', sans-serif !important;
+  font-family: var(--font-family-base);
 }
 
 .empty-updates-msg-container {
@@ -183,12 +176,12 @@
 }
 
 .empty-updates-msg-title {
-  font-family: 'Urbanist', sans-serif !important;
+  font-family: var(--font-family-base);
   color: black;
 }
 
 .empty-updates-msg-body {
-  font-family: 'Urbanist', sans-serif !important;
+  font-family: var(--font-family-base);
   color: black;
 }
 
@@ -226,7 +219,7 @@
 }
 
 .pull-refresh-label {
-  font-family: 'Urbanist', sans-serif !important;
+  font-family: var(--font-family-base);
   font-size: 0.85rem !important;
   color: #5b3a90;
 }
@@ -264,7 +257,7 @@
 }
 
 .update-time {
-  font-family: 'Urbanist', sans-serif !important;
+  font-family: var(--font-family-base);
   position: absolute;
   top: 8px;
   right: 24px;
@@ -285,7 +278,7 @@
 }
 
 .update-title {
-  font-family: 'Urbanist', sans-serif !important;
+  font-family: var(--font-family-base);
   padding: 4px;
   font-size: 1rem !important;
   font-weight: 500;
@@ -294,7 +287,7 @@
 }
 
 .update-message {
-  font-family: 'Urbanist', sans-serif !important;
+  font-family: var(--font-family-base);
   padding: 4px;
   font-size: 0.9rem !important;
   color: black;
@@ -336,7 +329,7 @@
 }
 
 .read-label {
-  font-family: 'Urbanist', sans-serif !important;
+  font-family: var(--font-family-base);
   color: black !important;
 }
 
@@ -344,7 +337,7 @@
 .view-pin-btn,
 .mark-as-read-btn,
 .delete-update-btn {
-  font-family: 'Urbanist', sans-serif !important;
+  font-family: var(--font-family-base);
   font-size: 0.95rem !important;
   text-transform: none !important;
   border-radius: 12px !important;

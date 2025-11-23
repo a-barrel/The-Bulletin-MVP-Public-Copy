@@ -634,9 +634,12 @@ export async function updatePinAttendance(pinId, { attending }) {
   }
 }
 
-export async function fetchPinAnalytics(pinId) {
+export async function fetchPinAnalytics(pinId, { enabled = true, suppressLogStatuses = [] } = {}) {
   if (!pinId) {
     throw new Error('Pin id is required');
+  }
+  if (!enabled) {
+    return null;
   }
 
   const baseUrl = resolveApiBaseUrl();
@@ -649,6 +652,9 @@ export async function fetchPinAnalytics(pinId) {
 
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
+      if (suppressLogStatuses.includes(response.status)) {
+        return null;
+      }
       const error = createApiError(response, payload, payload?.message || 'Failed to load analytics');
       await logApiError('/api/pins/:pinId/analytics', error, { status: response.status, pinId });
       throw error;
@@ -1950,7 +1956,9 @@ export async function createChatRoom(input) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to create chat room');
+    const error = new Error(payload?.message || 'Failed to create chat room');
+    error.status = response.status;
+    throw error;
   }
 
   return payload;
@@ -1995,7 +2003,9 @@ export async function fetchChatRooms({
 
   const payload = await response.json().catch(() => []);
   if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load chat rooms');
+    const error = new Error(payload?.message || 'Failed to load chat rooms');
+    error.status = response.status;
+    throw error;
   }
 
   return payload;

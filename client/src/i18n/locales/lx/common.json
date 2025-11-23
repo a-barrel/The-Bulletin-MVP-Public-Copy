@@ -1,12 +1,35 @@
 {
-  "app": { "name": "P1nP01nt" },
+  "app": {
+    "name": "P1nP01nt"
+  },
   "tooltips": {
     "reportMessage": "R3p0rt msg",
     "moderateUser": "M0d usr",
     "shareSavedPin": "Sh4r3 p1n",
     "comments": "C0mm3ntz",
     "attendees": "Att3nd33z",
-    "friendsAttending": "Fr13ndz 0n d3ck"
+    "friendsAttending": "Fr13ndz 0n d3ck",
+    "settings": {
+      "accessibility": "Accessibility & cues",
+      "pinDensity": "Pin density",
+      "nearbyRadius": "Nearby radius",
+      "quickActions": "Quick actions",
+      "notificationChannels": "Notification channels",
+      "chatIntensity": "Chat intensity",
+      "digestFrequency": "Digest frequency",
+      "quietHours": "Quiet hours",
+      "channelBundles": "Channel bundles",
+      "dataExports": "Data exports",
+      "apiTokens": "API tokens",
+      "privacySharing": "Privacy & sharing",
+      "profileVisibility": "Profile visibility",
+      "directMessages": "Direct messages",
+      "accountManagement": "Account management",
+      "blockedUsers": "Reconnect to manage blocked users",
+      "generateTokens": "Reconnect to generate tokens",
+      "revokeTokens": "Reconnect to revoke tokens",
+      "requestExport": "Reconnect to request an export"
+    }
   },
   "nav": {
     "menuTitle": "M3nu",
@@ -14,9 +37,409 @@
       "chat": "Ch4t",
       "map": "M4p",
       "list": "L1st",
-      "chatAria": { "default": "Ch4t" },
-      "listAria": { "default": "L1st" }
+      "chatAria": {
+        "default": "Ch4t",
+        "badge_one": "Chat ({{count}} direct message thread)",
+        "badge_other": "Chat ({{count}} direct message threads)"
+      },
+      "listAria": {
+        "default": "L1st",
+        "badge_one": "List ({{count}} friend request)",
+        "badge_other": "List ({{count}} friend requests)"
+      }
+    },
+    "openMenu": "Open navigation menu",
+    "closeMenu": "Close navigation menu",
+    "close": "Close menu",
+    "quickShortcuts": "Quick navigation shortcuts",
+    "items": {
+      "profile": {
+        "label": "Profile",
+        "description": "View your profile"
+      },
+      "settings": {
+        "label": "Settings",
+        "description": "Adjust preferences"
+      },
+      "bookmarks": {
+        "label": "Bookmarks",
+        "description": "See saved pins"
+      },
+      "updates": {
+        "label": "Updates",
+        "description": "Check notifications"
+      },
+      "chat": {
+        "label": "Chat"
+      },
+      "friends": {
+        "label": "Friends"
+      },
+      "map": {
+        "label": "Map"
+      },
+      "list": {
+        "label": "List"
+      },
+      "admin": {
+        "label": "Admin Dashboard",
+        "description": "Moderate reports and audits"
+      },
+      "directMessages": {
+        "label": "Direct messages"
+      }
+    },
+    "friendRequests": {
+      "pending_one": "{{count}} pending",
+      "pending_other": "{{count}} pending",
+      "none": "No pending invites"
+    },
+    "directMessages": {
+      "pending_one": "{{count}} conversation",
+      "pending_other": "{{count}} conversations",
+      "none": "No active conversations yet"
+    },
+    "bookmarksBadge": {
+      "one": "1 unread bookmark update",
+      "other": "{{count}} unread bookmark updates"
+    },
+    "bookmarkQuickNav": {
+      "untitled": "Untitled collection",
+      "all": "All bookmarks",
+      "allDescription": "View your full library",
+      "unsorted": "Unsorted",
+      "unsortedDescription": "Pins saved without a collection",
+      "offline": "Offline — showing cached collections only.",
+      "loadError": "Failed to load bookmark collections."
     }
   },
-  "bookmarks": { "title": "B00km4rkz" }
+  "bookmarks": {
+    "title": "B00km4rkz",
+    "back": "Back",
+    "backAria": "Back to main view",
+    "saved": "{{count}} saved",
+    "subtitle": "Quickly revisit saved pins. Bookmarks are grouped by collection and can be removed at any time.",
+    "refresh": "Refresh",
+    "refreshing": "Loading...",
+    "export": "Export CSV",
+    "exporting": "Exporting...",
+    "offlineRefresh": "Reconnect to refresh bookmarks",
+    "offlineExport": "Reconnect to export bookmarks",
+    "filters": {
+      "title": "Discover pins",
+      "keyword": "Keyword search",
+      "keywordPlaceholder": "Search titles, descriptions, or tags",
+      "pinTypes": "Pin types",
+      "typeOptions": {
+        "event": "Events",
+        "discussion": "Discussions"
+      },
+      "friendActivity": "Friend activity",
+      "friendOptions": {
+        "created": {
+          "label": "Created by my friends",
+          "chip": "Friends created it"
+        },
+        "replied": {
+          "label": "Friends replied",
+          "chip": "Friends replied"
+        },
+        "attending": {
+          "label": "Friends are attending",
+          "chip": "Friends attending"
+        }
+      },
+      "popularPins": "Popular pins",
+      "popularOptions": {
+        "none": "None",
+        "replies": "Most replies",
+        "attending": "Most attending"
+      },
+      "categories": "Categories",
+      "refreshCategories": "Refresh categories",
+      "refreshing": "Refreshing…",
+      "addCategoryLabel": "Add category",
+      "addCategoryPlaceholder": "e.g. Food, Study Group",
+      "addCategory": "Add",
+      "categoryWithCount": "{{name}} ({{count}})",
+      "noCategories": "No categories available yet.",
+      "dateRange": "Date range",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "status": "Status",
+      "statusOptions": {
+        "active": "Active",
+        "expired": "Expired",
+        "all": "All pins"
+      },
+      "chips": {
+        "keyword": "Keyword: \"{{keyword}}\"",
+        "type": "Type: {{type}}",
+        "category": "Category: {{category}}",
+        "friend": "Friends: {{engagement}}",
+        "status": "Status: {{status}}",
+        "dateRange": "Date range",
+        "dateRangeBetween": "Date: {{start}} → {{end}}",
+        "dateFrom": "From {{start}}",
+        "dateUntil": "Until {{end}}",
+        "showingFullEvents": "Showing full events"
+      },
+      "cancel": "Cancel",
+      "clear": "Clear filters",
+      "apply": "Apply filters"
+    }
+  },
+  "notifications": {
+    "quickActionsDescription": "Mute delivery temporarily without changing your preferences.",
+    "mute1h": "Mute 1h",
+    "mute4h": "Mute 4h",
+    "mute24h": "Mute 24h",
+    "clearMute": "Clear mute",
+    "muteActive": "Mute scheduled. Save your settings to keep it active.",
+    "muteInactive": "Muting pauses delivery without changing the toggles below. Save after applying changes.",
+    "channelsDescription": "Choose which updates reach you across the app.",
+    "chatIntensityDescription": "Fine-tune how often direct messages and chat highlights ping you.",
+    "chatIntensityLabel": "Chat notification intensity",
+    "chatIntensityHighlights": "Highlights only",
+    "chatIntensityAll": "All activity",
+    "chatIntensityMuted": "Mute chat alerts",
+    "chatIntensityNote": "“Mute” blocks chat alerts even if the toggle above stays on. “All activity” behaves like Highlights until we surface lower-signal pings.",
+    "digestDescription": "Bundle low-priority updates into daily or weekly recaps.",
+    "digestLabel": "Digest frequency",
+    "digestImmediate": "Send immediately",
+    "digestDaily": "Daily summary",
+    "digestWeekly": "Weekly summary",
+    "digestNever": "Never send digests",
+    "quietDescription": "Pause non-critical notifications on a weekly schedule.",
+    "channelBundlesDescription": "Start from a preset and then tweak individual toggles."
+  },
+  "privacy": {
+    "sharingDescription": "Your location is used only to enable features (radius checks, proximity chat). It is never shared with other users.",
+    "sharingBody": "Location is required to confirm you are in-range for map interactions, but your exact location is never shown to other people.",
+    "visibilityDescription": "Decide how much information other members can see.",
+    "statsPublic": "Allow others to view my stats",
+    "filterCussWords": "Filter explicit language in public chats",
+    "dmDescription": "Choose who can start new conversations with you.",
+    "dmLabel": "Who can DM me?",
+    "dmEveryone": "Everyone",
+    "dmFriends": "Friends & followers",
+    "dmNobody": "No one (mute DMs)",
+    "dmNote": "Friends-only mode also allows people who follow you. Selecting “No one” hides you from new threads.",
+    "accountDescription": "Block someone or jump into admin/profile views.",
+    "manageBlocked": "Manage blocked users",
+    "adminDashboard": "Admin dashboard",
+    "viewProfile": "View profile"
+  },
+  "integrations": {
+    "exportsDescription": "Request a copy of your data and set monthly reminders.",
+    "exportEmail": "We’ll email you a link whenever an export finishes.",
+    "exportReminders": "Remind me to export my data each month",
+    "exportNudge": "We’ll send a gentle nudge inside the app when it’s time for your next export.",
+    "requestExport": "Request data export",
+    "tokensDescription": "Generate personal access tokens for scripts and integrations.",
+    "tokenLabel": "Token label",
+    "tokenPlaceholder": "e.g., CLI client",
+    "generateToken": "Generate API token",
+    "tokenWarning": "API tokens behave like passwords. Revoke any token you no longer use.",
+    "loadingTokens": "Loading tokens...",
+    "untitledToken": "Untitled token",
+    "tokenPreview": "Preview: {{value}}",
+    "tokenCreated": "Created {{date}}",
+    "noTokens": "No active tokens yet."
+  },
+  "profile": {
+    "bio": {
+      "title": "Bio",
+      "empty": "This user hasn't added a bio yet."
+    },
+    "badges": {
+      "title": "Badges & achievements",
+      "defaultDescription": "Earn this badge to uncover its story.",
+      "empty": "No badges yet. They will appear here once this user starts collecting achievements."
+    },
+    "mutual": {
+      "title": "Mutual friends",
+      "friendFallback": "Friend",
+      "friendInitial": "F",
+      "more": "+{{count}} more",
+      "empty": "You have no mutual friends yet. Start connecting!"
+    },
+    "moderation": {
+      "title": "Moderator tools",
+      "description": "Only visible to staff/offline builds. Use responsibly—actions are logged.",
+      "status": "Status: {{status}}",
+      "userId": "User ID: {{id}}",
+      "noAccess": "Moderator privileges required. If you should have access, refresh after updating roles.",
+      "loadingHistory": "Loading history…",
+      "emptyHistory": "No prior moderation actions logged for this user.",
+      "noReason": "No reason provided.",
+      "unknownTime": "Unknown time",
+      "notesLabel": "Moderator notes (optional)",
+      "notesPlaceholder": "Add context for {{name}}",
+      "recent": "Recent moderation",
+      "actions": {
+        "warn": "Warn",
+        "mute15": "Mute 15 min",
+        "mute60": "Mute 1 hr",
+        "ban": "Suspend",
+        "unban": "Reinstate"
+      }
+    }
+  },
+  "offline": {
+    "default": "Offline mode: Some actions are disabled until connection returns."
+  },
+  "location": {
+    "requiredTitle": "L0cat10n n33d3d",
+    "requiredBody": "Turn 0n l0cat10n t0 v13w n3arby p1nz/maps. Adm1nz can sk1p th1s ch3ck.",
+    "retryButton": "R3try l0cat10n",
+    "retryError": "C0uldn’t g3t y0ur l0cat10n. Ch3ck p3rm1zz10nz and try aga1n."
+  },
+  "badge": {
+    "announcement": "You earned {{badge}} badge!",
+    "alt": "Badge celebration"
+  },
+  "auth": {
+    "back": "Go back",
+    "placeholders": {
+      "email": "Enter Email",
+      "password": "Enter Password",
+      "newPassword": "Enter new password",
+      "confirmPassword": "Confirm new password",
+      "username": "Choose a Username",
+      "phone": "Enter your Phone Number"
+    },
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot Password?",
+    "submit": "Submit",
+    "aria": {
+      "showPassword": "Show password",
+      "hidePassword": "Hide password"
+    },
+    "errors": {
+      "emailRequired": "Please enter an email address.",
+      "emailInvalid": "Please enter a valid email address.",
+      "passwordRequired": "Please enter your password.",
+      "passwordConfirmRequired": "Please enter a password and confirm it in the fields.",
+      "passwordMismatch": "Passwords are not matching. Please re-enter them again.",
+      "passwordWeak": "Password is too weak. Make it stronger.",
+      "passwordMin": "Password must be at least 6 characters.",
+      "resetLinkInvalid": "This reset link is invalid or has already been used.",
+      "loginGeneric": "Login failed. Please try again.",
+      "loginNotFound": "No account found with this email.",
+      "loginWrongPassword": "Incorrect password. Try again.",
+      "googleGeneric": "Google sign-in failed. Please try again.",
+      "appleUnavailable": "Apple sign-in is not available in this environment.",
+      "appleLinked": "This email is linked to a different sign-in method. Try logging in with the original provider.",
+      "appleGeneric": "Apple sign-in failed. Please try again.",
+      "resetExpired": "This link has expired. Please request a new password reset.",
+      "resetInvalid": "Invalid action code. Please request a new password reset.",
+      "resetWeakPassword": "Password is too weak. Please choose a stronger password.",
+      "resetGeneric": "Something went wrong. Please try again.",
+      "registrationValidation": "Please fix the highlighted fields.",
+      "registrationDefault": "Failed to create your account. Please try again.",
+      "registrationEmailInUse": "An account already exists with this email.",
+      "registrationNotAllowed": "Email/password sign-up is currently disabled.",
+      "registrationWeakPassword": "Password is too weak. Try adding more characters or symbols.",
+      "networkError": "Network error. Check your connection and try again.",
+      "passwordResetNotFound": "No account found with that email.",
+      "usernameRequired": "Please enter a username.",
+      "phoneRequired": "Please enter a phone number.",
+      "phoneInvalid": "Please enter a valid phone number."
+    },
+    "login": {
+      "title": "Login",
+      "button": "Login",
+      "submitting": "Logging in...",
+      "google": "Sign in with Google",
+      "apple": "Sign in with Apple",
+      "gettingStarted": "Getting started?",
+      "register": "Register Here"
+    },
+    "forgot": {
+      "title": "Forgot Password?",
+      "instruction": "Enter the email of the account you are trying to access.",
+      "success": "If this email is in use, a password reset email has been sent."
+    },
+    "reset": {
+      "title": "Reset Your Password",
+      "strengthLabel": "Password strength: {{strength}}",
+      "strength": {
+        "weak": "Weak",
+        "medium": "Medium",
+        "strong": "Strong"
+      },
+      "requirements": {
+        "uppercase": "Has an uppercase letter",
+        "lowercase": "Has a lowercase letter",
+        "number": "Has a number",
+        "special": "Has a special character",
+        "length": "Is at least 8 characters long"
+      },
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "submitting": "Resetting...",
+      "button": "Reset Password",
+      "success": "Your password has been reset successfully! Redirecting to login..."
+    },
+    "register": {
+      "title": "Registration",
+      "username": "Choose a Username",
+      "phone": "Enter your Phone Number",
+      "password": "Choose a Password",
+      "button": "Register",
+      "submitting": "Registering...",
+      "success": "Your account has been created successfully! Redirecting to login..."
+    }
+  },
+  "settings": {
+    "tabs": {
+      "appearance": "Appearance",
+      "notifications": "Notifications",
+      "privacy": "Privacy",
+      "data": "Data & Integrations"
+    },
+    "language": {
+      "title": "Language",
+      "description": "Pick your preferred language for PinPoint.",
+      "emergency": "Emergency English",
+      "saved": "Language updated",
+      "optionsLabel": "App language"
+    }
+  },
+  "mapHeader": {
+    "title": "Map",
+    "createPin": "Create pin",
+    "offlineCreate": "Reconnect to create a pin",
+    "offlineNotifications": "Reconnect to view updates"
+  },
+  "report": {
+    "title": "Report Content",
+    "messageLabel": "Message:",
+    "commonIssues": "Common issues (select all that apply)",
+    "detailsLabel": "Optional: Tell us what happened",
+    "detailsPlaceholder": "Share additional details here for moderators.",
+    "helperDefault": "Reports are anonymous. Our moderators review every submission.",
+    "cancel": "Cancel",
+    "submit": "Submit report",
+    "submitting": "Sending…",
+    "offenses": {
+      "harassment": "Harassment / bullying",
+      "spam": "Spam or self-promotion",
+      "hate": "Hate speech / discrimination",
+      "nsfw": "NSFW / sexual content",
+      "violence": "Threats or violence",
+      "misinfo": "Misinformation / scam"
+    }
+  },
+  "debugBookmarks": {
+    "title": "Bookmarks",
+    "totalSaved": "Total saved pins:",
+    "countLabel": "Saved pins: {{count}}",
+    "filters": {
+      "all": "All bookmarks",
+      "event": "Events",
+      "discussion": "Discussions"
+    }
+  }
 }

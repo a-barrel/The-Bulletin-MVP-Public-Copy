@@ -4,7 +4,6 @@ import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import CircularProgress from '@mui/material/CircularProgress';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import AddCommentIcon from '@mui/icons-material/AddComment';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 import List from '@mui/material/List';
@@ -22,7 +21,6 @@ function ChatRoomList({
   isRefreshing,
   error,
   onRefresh,
-  onCreateRoom,
   onSelectRoom
 }) {
   return (
@@ -43,14 +41,6 @@ function ChatRoomList({
               <RefreshIcon sx={{ fontSize: 18, color: '#5C48A8' }} />
             )}
           </IconButton>
-
-          <IconButton
-            onClick={onCreateRoom}
-            className="room-create-btn"
-            aria-label="Create room"
-          >
-            <AddCommentIcon sx={{ fontSize: 18 }} />
-          </IconButton>
         </Box>
       </Box>
 
@@ -64,7 +54,7 @@ function ChatRoomList({
           spacing={1}
         >
           <Typography variant="body2" color="text.secondary">
-            {isRefreshing ? 'Loading rooms...' : 'No rooms yet. Create one to get started!'}
+            {isRefreshing ? 'Loading rooms...' : 'No rooms yet.'}
           </Typography>
         </Stack>
       ) : (
@@ -146,7 +136,6 @@ ChatRoomList.propTypes = {
   isRefreshing: PropTypes.bool,
   error: PropTypes.string,
   onRefresh: PropTypes.func,
-  onCreateRoom: PropTypes.func,
   onSelectRoom: PropTypes.func
 };
 
@@ -156,7 +145,6 @@ ChatRoomList.defaultProps = {
   isRefreshing: false,
   error: null,
   onRefresh: undefined,
-  onCreateRoom: undefined,
   onSelectRoom: undefined
 };
 

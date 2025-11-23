@@ -27,6 +27,7 @@ const { timeAsync } = require('../utils/devLogger');
 const { recordAuditEntry } = require('../services/auditLogService');
 const { canViewerModeratePins } = require('../utils/moderation');
 const { viewerHasDeveloperAccess } = require('../utils/roles');
+const { upsertPinRoom, deletePinRoomByPinId } = require('../services/proximityChatService');
 
 const router = express.Router();
 
@@ -116,6 +117,25 @@ const EVENT_ATTENDEE_LIMITS = {
 const DISCUSSION_REPLY_LIMIT_OPTIONS = [50, 75, 100, 150, 200];
 const DEFAULT_DISCUSSION_REPLY_LIMIT = 100;
 const VIEW_HISTORY_MAX = 20;
+const upsertPinChatRoom = async ({ pin, creatorId }) => {
+  if (!pin?._id || !creatorId) {
+    return;
+  }
+  try {
+    await upsertPinRoom({
+      pinId: pin._id,
+      pinType: pin.type,
+      pinTitle: pin.title,
+      ownerId: creatorId,
+      latitude: pin.coordinates?.coordinates?.[1],
+      longitude: pin.coordinates?.coordinates?.[0],
+      expiresAt: pin.expiresAt || pin.endDate || undefined,
+      radiusMeters: pin.proximityRadiusMeters
+    });
+  } catch (error) {
+    console.error('Failed to upsert pin chat room:', { pinId: pin?._id, error });
+  }
+};
 
 const buildHideFullEventsFilter = () => ({
   $or: [
@@ -872,6 +892,7 @@ router.post('/', verifyToken, async (req, res) => {
     broadcastPinCreated(sourcePin).catch((error) => {
       console.error('Failed to queue pin creation updates:', error);
     });
+    upsertPinChatRoom({ pin: sourcePin, creatorId: creatorObjectId });
     res.status(201).json(payload);
   } catch (error) {
     if (error instanceof ZodError) {
@@ -2248,6 +2269,7 @@ router.put('/:pinId', verifyToken, async (req, res) => {
       viewerId,
       viewerHasBookmarked
     });
+    upsertPinChatRoom({ pin: sourcePin, creatorId: creatorObjectId });
     await broadcastPinUpdated({ previous: previousPin, updated: sourcePin, editor: viewer });
     return res.json(payload);
   } catch (error) {
@@ -2281,6 +2303,9 @@ router.delete('/:pinId', verifyToken, async (req, res) => {
     await Reply.deleteMany({ pinId: pin._id });
     await Bookmark.deleteMany({ pinId: pin._id });
     await pin.deleteOne();
+    deletePinRoomByPinId(pin._id).catch((error) => {
+      console.error('Failed to delete pin chat room after pin delete:', error);
+    });
 
     await trackEvent('pin_deleted', {
       pinId: toIdString(pin._id),

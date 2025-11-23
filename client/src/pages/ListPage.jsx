@@ -27,6 +27,8 @@ import useOfflineNavigation from '../hooks/useOfflineNavigation';
 import useViewerProfile from '../hooks/useViewerProfile';
 import useHideFullEventsPreference from '../hooks/useHideFullEventsPreference';
 import { useTranslation } from 'react-i18next';
+import runtimeConfig from '../config/runtime';
+import { viewerHasDeveloperAccess } from '../utils/roles';
 
 export const pageConfig = {
   id: 'list',
@@ -62,7 +64,7 @@ export default function ListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
-  const { location: sharedLocation } = useLocationContext();
+  const { location: sharedLocation, setLocation: setSharedLocation } = useLocationContext();
   const {
     filters,
     defaultFilters,
@@ -87,6 +89,15 @@ export default function ListPage() {
   const [sortByExpiration, setSortByExpiration] = useState(false);
   const [hideOwnPins, setHideOwnPins] = useState(true);
   const { viewer: viewerProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
+  const [locationRequestError, setLocationRequestError] = useState(null);
+  const isAdminViewer = useMemo(
+    () =>
+      viewerHasDeveloperAccess(viewerProfile, {
+        offlineOverride: runtimeConfig.isOffline || isOffline
+      }),
+    [isOffline, viewerProfile]
+  );
+  const locationRequired = !isAdminViewer && !isOffline;
   const {
     hideFullEvents,
     setHideFullEvents,
@@ -103,7 +114,14 @@ export default function ListPage() {
     error,
     locationNotice,
     isUsingFallbackLocation
-  } = useNearbyPinsFeed({ sharedLocation, isOffline, filters, hideFullEvents });
+  } = useNearbyPinsFeed({
+    sharedLocation,
+    isOffline,
+    filters,
+    hideFullEvents,
+    requireLocation: locationRequired,
+    isAdminExempt: isAdminViewer
+  });
   const viewerMongoId = useMemo(
     () => toIdString(viewerProfile?._id) ?? toIdString(viewerProfile?.id) ?? null,
     [viewerProfile]
@@ -120,6 +138,29 @@ export default function ListPage() {
 
   const { unreadCount, refreshUnreadCount } = useUpdates();
   const { navigateIfOnline } = useOfflineNavigation(isOffline);
+  const handleRequestLocation = useCallback(() => {
+    if (isAdminViewer || isOffline) {
+      return;
+    }
+    if (!navigator.geolocation) {
+      setLocationRequestError(t('location.retryError'));
+      return;
+    }
+    setLocationRequestError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setSharedLocation({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          source: 'list-location-retry'
+        });
+      },
+      () => {
+        setLocationRequestError(t('location.retryError'));
+      }
+    );
+  }, [isAdminViewer, isOffline, setSharedLocation, t]);
   useEffect(() => {
     if (!filtersDialogOpen) {
       return;
@@ -168,6 +209,9 @@ export default function ListPage() {
   const handleClearSearch = useCallback(() => {
     clearSearch();
   }, [clearSearch]);
+
+  const locationMessage =
+    locationRequired && !sharedLocation ? t('location.requiredBody') : locationNotice;
 
   const filtersSignature = useMemo(() => {
     return JSON.stringify({
@@ -609,7 +653,21 @@ export default function ListPage() {
         ) : null}
 
         {loading && <p>Loading...</p>}
-        {locationNotice && !loading && <p>{locationNotice}</p>}
+        {locationMessage && !loading && (
+          <div className="location-notice">
+            <p>{locationMessage}</p>
+            {locationRequired && !sharedLocation ? (
+              <button type="button" className="retry-location-button" onClick={handleRequestLocation}>
+                {t('location.retryButton')}
+              </button>
+            ) : null}
+            {locationRequestError ? (
+              <p role="status" className="location-notice-error">
+                {locationRequestError}
+              </p>
+            ) : null}
+          </div>
+        )}
         {error && <p>Error: {error}</p>}
 
         {!loading && !error && (

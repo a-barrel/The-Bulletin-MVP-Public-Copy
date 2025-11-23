@@ -14,8 +14,8 @@ body {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-semibold);
   color: #4b208c;
   pointer-events: none;
 }
@@ -26,8 +26,9 @@ body {
 }
 
 .bookmarks-action {
-  font-family: 'Urbanist', sans-serif;
-  font-size: 0.9rem;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-button);
+  font-weight: var(--font-weight-semibold);
   padding: 0.45rem 1rem;
   border-radius: 999px;
   border: 1px solid black;
@@ -66,4 +67,120 @@ body {
 .bookmark-remove-btn img {
   width: 24px;
   height: 24px;
+}
+
+.bookmark-empty,
+.history-empty {
+  border: 1px solid #e4d9f8;
+  background: linear-gradient(135deg, #f7f2ff 0%, #ffffff 100%);
+  box-shadow: 0 8px 28px rgba(69, 33, 104, 0.08);
+  color: #2f1f46;
+}
+
+.bookmark-empty__title,
+.history-empty__title {
+  font-family: var(--font-family-base);
+  color: #3a1f63;
+  font-weight: var(--font-weight-bold);
+}
+
+.bookmark-empty__body,
+.history-empty__body {
+  font-family: var(--font-family-base);
+  color: #483366;
+}
+
+.history-panel {
+  border: 1px solid #e4d9f8;
+  background: linear-gradient(135deg, #f9f5ff 0%, #ffffff 100%);
+  box-shadow: 0 10px 30px rgba(69, 33, 104, 0.08);
+}
+
+.history-card {
+  border: 1px solid rgba(93, 56, 137, 0.18);
+  border-radius: 14px;
+  padding: 1rem;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 120ms ease;
+}
+
+.history-card--clickable {
+  cursor: pointer;
+}
+
+.history-card--clickable:hover {
+  background-color: #f6f1ff;
+  box-shadow: 0 10px 22px rgba(69, 33, 104, 0.1);
+  transform: translateY(-1px);
+  border-color: #d7c2f5;
+}
+
+.history-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.history-card__title {
+  font-family: var(--font-family-base);
+  font-weight: var(--font-weight-bold);
+  color: #432168;
+  line-height: 1.25;
+}
+
+.history-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(93, 56, 137, 0.12);
+  color: #432168;
+  font-weight: 700;
+  font-size: var(--font-size-caption);
+  border: 1px solid rgba(93, 56, 137, 0.18);
+}
+
+.history-card__meta {
+  font-family: var(--font-family-base);
+  color: #62477d;
+  font-size: var(--font-size-body-sm);
+}
+
+.history-card__host {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.history-card__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(93, 56, 137, 0.28);
+  background-color: #ede3fb;
+}
+
+.history-card__host-text {
+  font-family: var(--font-family-base);
+  color: #2f1f46;
+  line-height: 1.25;
+}
+
+.history-card__host-label {
+  font-size: var(--font-size-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #7a5da8;
+  font-weight: var(--font-weight-bold);
+}
+
+.history-card__host-name {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-body);
 }

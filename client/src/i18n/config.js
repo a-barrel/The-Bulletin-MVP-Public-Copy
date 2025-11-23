@@ -12,7 +12,7 @@ export const DEFAULT_LANGUAGE = 'en';
 export const SUPPORTED_LANGUAGES = [
   { code: 'en', label: 'English' },
   { code: 'es', label: 'Español' },
-  { code: 'pr', label: 'Pirate (demo)' },
+  { code: 'pr', label: 'Pirate (experimental)' },
   { code: 'lx', label: 'Leetspeak (demo)' },
   { code: 'em', label: 'Emoji (demo)' }
 ];

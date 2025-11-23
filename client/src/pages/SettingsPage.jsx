@@ -57,6 +57,7 @@ import BlockedUsersDialog from '../components/settings/BlockedUsersDialog';
 import settingsPalette, { settingsButtonStyles } from '../components/settings/settingsPalette';
 import canAccessModerationTools from '../utils/accessControl';
 import { useTranslation } from 'react-i18next';
+import HelpAbout from '../components/settings/HelpAbout';
 
 export const pageConfig = {
   id: 'settings',
@@ -526,6 +527,7 @@ function SettingsPage() {
               <Tab label={t('settings.tabs.notifications')} value="notifications" />
               <Tab label={t('settings.tabs.privacy')} value="privacy" />
               <Tab label={t('settings.tabs.data')} value="data" />
+              <Tab label={t('settings.tabs.help', 'Help/About')} value="help" />
             </Tabs>
 
             <Divider />
@@ -640,6 +642,10 @@ function SettingsPage() {
                   sx={{ color: settingsPalette.textPrimary }}
                 />
               </Box>
+            </TabPanel>
+
+            <TabPanel value="help" current={activeTab}>
+              <HelpAbout routes={routes} onNavigate={(path) => navigate(path)} />
             </TabPanel>
           </Stack>
         </Paper>

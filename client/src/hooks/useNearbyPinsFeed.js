@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { fetchPinsNearby, fetchPinById, fetchCurrentUserProfile } from '../api/mongoDataApi';
 import reportClientError from '../utils/reportClientError';
@@ -7,6 +7,8 @@ import { resolvePinFetchLimit } from '../utils/pinDensity';
 const DEFAULT_RADIUS_MILES = 10;
 const PIN_FETCH_LIMIT = 50;
 const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
+const FETCH_THROTTLE_MS = 250;
+const CACHE_TTL_MS = 45_000;
 
 const hasValidCoordinates = (coords) =>
   coords &&
@@ -20,28 +22,45 @@ export default function useNearbyPinsFeed({
   distanceMiles = DEFAULT_RADIUS_MILES,
   limit = PIN_FETCH_LIMIT,
   filters = {},
-  hideFullEvents = true
+  hideFullEvents = true,
+  requireLocation = false,
+  isAdminExempt = false
 }) {
   const sharedLatitude = sharedLocation?.latitude ?? null;
   const sharedLongitude = sharedLocation?.longitude ?? null;
+  const shouldRequireLocation = requireLocation && !isOffline && !isAdminExempt;
 
   const hasSharedLocation = hasValidCoordinates(sharedLocation);
   const initialLocation = hasSharedLocation
     ? { latitude: sharedLatitude, longitude: sharedLongitude }
+    : shouldRequireLocation
+    ? null
     : FALLBACK_LOCATION;
 
   const [pins, setPins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [userLocation, setUserLocation] = useState(initialLocation);
-  const [isUsingFallbackLocation, setIsUsingFallbackLocation] = useState(!hasSharedLocation);
+  const [isUsingFallbackLocation, setIsUsingFallbackLocation] = useState(
+    !hasSharedLocation && !shouldRequireLocation
+  );
   const [locationNotice, setLocationNotice] = useState(
-    hasSharedLocation ? null : 'Showing popular pins near Long Beach until you enable location.'
+    hasSharedLocation || shouldRequireLocation
+      ? null
+      : 'Showing popular pins near Long Beach until you enable location.'
   );
   const [viewerProfileId, setViewerProfileId] = useState(null);
   const fallbackLimit = limit ?? PIN_FETCH_LIMIT;
   const [pinDisplayLimit, setPinDisplayLimit] = useState(fallbackLimit);
   const [syncListWithMapLimit, setSyncListWithMapLimit] = useState(true);
+  const filtersRef = useRef(filters);
+  const isLoadingRef = useRef(false);
+  const lastFetchAtRef = useRef(0);
+  const cacheRef = useRef(new Map());
+
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
 
   useEffect(() => {
     if (hasValidCoordinates(sharedLocation)) {
@@ -63,15 +82,20 @@ export default function useNearbyPinsFeed({
       return;
     }
 
-    setIsUsingFallbackLocation(true);
-      setLocationNotice('Showing popular pins near Long Beach until you enable location.');
+    setIsUsingFallbackLocation(!shouldRequireLocation);
+    if (shouldRequireLocation) {
+      setLocationNotice('Location required to view nearby pins. Enable location services.');
+      setUserLocation((previous) => (hasValidCoordinates(previous) ? previous : null));
+      return;
+    }
+    setLocationNotice('Showing popular pins near Long Beach until you enable location.');
     setUserLocation((previous) => {
       if (hasValidCoordinates(previous)) {
         return previous;
       }
       return FALLBACK_LOCATION;
     });
-  }, [sharedLocation]);
+  }, [sharedLocation, shouldRequireLocation]);
 
   useEffect(() => {
     if (isOffline) {
@@ -116,7 +140,17 @@ export default function useNearbyPinsFeed({
   const loadPins = useCallback(
     async (overrideLocation) => {
       const targetLocation = overrideLocation ?? userLocation;
+      if (shouldRequireLocation && !hasValidCoordinates(targetLocation)) {
+        setError('Location required to load nearby pins.');
+        setLoading(false);
+        setPins([]);
+        return;
+      }
       if (!hasValidCoordinates(targetLocation)) {
+        return;
+      }
+
+      if (isLoadingRef.current) {
         return;
       }
 
@@ -126,23 +160,49 @@ export default function useNearbyPinsFeed({
         return;
       }
 
+      const cacheKey = JSON.stringify({
+        loc: {
+          latitude: targetLocation.latitude,
+          longitude: targetLocation.longitude
+        },
+        distanceMiles,
+        limit: pinDisplayLimit,
+        filters: filtersRef.current
+      });
+      const cached = cacheRef.current.get(cacheKey);
+      const now = Date.now();
+      if (cached && now - cached.ts < CACHE_TTL_MS) {
+        setPins(cached.pins);
+        setLoading(false);
+        setError(null);
+        return;
+      }
+
+      const nowTs = Date.now();
+      if (nowTs - lastFetchAtRef.current < FETCH_THROTTLE_MS) {
+        return;
+      }
+      lastFetchAtRef.current = nowTs;
+
+      isLoadingRef.current = true;
       setLoading(true);
       setError(null);
 
       try {
+        const activeFilters = filtersRef.current || {};
         const results = await fetchPinsNearby({
           latitude: targetLocation.latitude,
           longitude: targetLocation.longitude,
           distanceMiles,
           limit: pinDisplayLimit,
-          search: typeof filters.search === 'string' ? filters.search : undefined,
-          types: Array.isArray(filters.types) ? filters.types : undefined,
-          categories: Array.isArray(filters.categories) ? filters.categories : undefined,
-          status: filters.status,
-          startDate: filters.startDate || undefined,
-          endDate: filters.endDate || undefined,
-          friendEngagements: Array.isArray(filters.friendEngagements)
-            ? filters.friendEngagements
+          search: typeof activeFilters.search === 'string' ? activeFilters.search : undefined,
+          types: Array.isArray(activeFilters.types) ? activeFilters.types : undefined,
+          categories: Array.isArray(activeFilters.categories) ? activeFilters.categories : undefined,
+          status: activeFilters.status,
+          startDate: activeFilters.startDate || undefined,
+          endDate: activeFilters.endDate || undefined,
+          friendEngagements: Array.isArray(activeFilters.friendEngagements)
+            ? activeFilters.friendEngagements
             : undefined,
           hideFullEvents
         });
@@ -181,19 +241,21 @@ export default function useNearbyPinsFeed({
         );
 
         setPins(detailResults);
+        cacheRef.current.set(cacheKey, { pins: detailResults, ts: now });
       } catch (err) {
         reportClientError(err, 'Failed to load nearby pins:', {
           source: 'useNearbyPinsFeed.fetchPins',
           location: targetLocation,
-          filters
+          filters: activeFilters
         });
         setPins([]);
         setError(err?.message || 'Failed to load nearby pins.');
       } finally {
+        isLoadingRef.current = false;
         setLoading(false);
       }
     },
-    [distanceMiles, filters, hideFullEvents, isOffline, pinDisplayLimit, userLocation]
+    [distanceMiles, hideFullEvents, isOffline, pinDisplayLimit, shouldRequireLocation, userLocation]
   );
 
   useEffect(() => {

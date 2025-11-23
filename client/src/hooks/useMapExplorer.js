@@ -58,9 +58,12 @@ export default function useMapExplorer({
   sharedLocation,
   setSharedLocation,
   isOffline,
-  hideFullEvents = true
+  hideFullEvents = true,
+  enforceLocation = false,
+  isAdminExempt = false
 }) {
   const [authUser] = useAuthState(auth);
+  const shouldRequireLocation = enforceLocation && !isOffline && !isAdminExempt;
 
   const sharedLatitude = sharedLocation?.latitude ?? null;
   const sharedLongitude = sharedLocation?.longitude ?? null;
@@ -71,11 +74,13 @@ export default function useMapExplorer({
         longitude: sharedLongitude,
         ...(sharedAccuracy !== undefined ? { accuracy: sharedAccuracy } : {})
       }
+    : shouldRequireLocation
+    ? null
     : FALLBACK_LOCATION;
 
   const [userLocation, setUserLocation] = useState(initialLocation);
   const [isUsingFallbackLocation, setIsUsingFallbackLocation] = useState(
-    !hasValidCoordinates(sharedLocation)
+    !hasValidCoordinates(sharedLocation) && !shouldRequireLocation
   );
   const [isSharing, setIsSharing] = useState(false);
   const [error, setError] = useState(null);
@@ -124,6 +129,12 @@ export default function useMapExplorer({
 
   useEffect(() => {
     if (!Number.isFinite(sharedLatitude) || !Number.isFinite(sharedLongitude)) {
+      if (shouldRequireLocation) {
+        setIsUsingFallbackLocation(true);
+        setUserLocation(null);
+        setError((prev) => prev ?? 'Location required to use the map. Enable location services.');
+        return;
+      }
       return;
     }
     setUserLocation((prev) => {
@@ -150,7 +161,10 @@ export default function useMapExplorer({
       };
     });
     setIsUsingFallbackLocation(false);
-  }, [sharedLatitude, sharedLongitude, sharedAccuracy]);
+    setError((prev) =>
+      prev && prev.toLowerCase().includes('location required') ? null : prev
+    );
+  }, [sharedLatitude, sharedLongitude, sharedAccuracy, shouldRequireLocation]);
 
   const updateGlobalLocation = useCallback(
     (next, { source } = {}) => {
@@ -493,6 +507,8 @@ export default function useMapExplorer({
   const shareDisabled = isOffline || !hasValidCoordinates(userLocation);
   const shareHelperText = isOffline
     ? 'Offline mode: reconnect to share your real-time location.'
+    : shouldRequireLocation && !hasValidCoordinates(userLocation)
+    ? 'Location required: enable GPS/location to view and interact with the map.'
     : isUsingFallbackLocation
     ? 'Using default Long Beach location. Enable GPS for precise results.'
     : null;
@@ -508,6 +524,8 @@ export default function useMapExplorer({
     showChatRooms,
     setShowChatRooms,
     isUsingFallbackLocation,
+    locationRequired: shouldRequireLocation,
+    hasResolvedLocation: hasValidCoordinates(userLocation),
     isSharing,
     shareDisabled,
     shareHelperText,

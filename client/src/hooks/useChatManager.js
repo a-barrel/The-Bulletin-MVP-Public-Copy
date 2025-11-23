@@ -10,7 +10,8 @@ export function useChatManager({
   viewerLongitude,
   isOffline,
   refreshUnreadCount,
-  announceBadgeEarned
+  announceBadgeEarned,
+  pinId
 }) {
   const {
     debugMode,
@@ -21,20 +22,13 @@ export function useChatManager({
     loadRooms,
     selectedRoomId,
     handleSelectRoom,
-    isCreateDialogOpen,
-    handleOpenCreateDialog,
-    handleCloseCreateDialog,
-    handleCreateRoom,
-    isCreatingRoom,
-    createForm,
-    setCreateForm,
-    createError,
     locationParams
   } = useChatRoomsData({
     authUser,
     authLoading,
     viewerLatitude,
-    viewerLongitude
+    viewerLongitude,
+    pinId
   });
 
   const {
@@ -158,14 +152,14 @@ export function useChatManager({
     handleGifPreviewCancel,
     handleGifPreviewShuffle,
     composerGifPreview,
-    handleOpenCreateDialog,
-    handleCloseCreateDialog,
-    handleCreateRoom,
-    isCreateDialogOpen,
-    createForm,
-    setCreateForm,
-    isCreatingRoom,
-    createError
+    handleOpenCreateDialog: () => {},
+    handleCloseCreateDialog: () => {},
+    handleCreateRoom: () => {},
+    isCreateDialogOpen: false,
+    createForm: {},
+    setCreateForm: () => {},
+    isCreatingRoom: false,
+    createError: null
   };
 }
 

@@ -7,13 +7,15 @@ import runtimeConfig from '../../config/runtime';
 import { BADGE_METADATA } from '../../utils/badges';
 import ProfileSection from './ProfileSection';
 import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
+import badgePlaceholder from '../../assets/badge-placeholder.svg';
 
 const resolveBadgeImageUrl = (value) => {
   if (!value) {
-    return '—';
+    return null;
   }
   if (/^(?:https?:)?\/\//i.test(value) || value.startsWith('data:')) {
-    return '—';
+    return null;
   }
   const base = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
   const normalized = value.startsWith('/') ? value : `/${value}`;
@@ -23,6 +25,14 @@ const resolveBadgeImageUrl = (value) => {
 function ProfileBadges({ badgeList }) {
   const { t } = useTranslation();
   const safeBadgeList = Array.isArray(badgeList) ? badgeList : [];
+  const [failedBadges, setFailedBadges] = useState({});
+
+  const handleBadgeError = (badgeId) => () => {
+    setFailedBadges((prev) => {
+      if (prev[badgeId]) return prev;
+      return { ...prev, [badgeId]: true };
+    });
+  };
 
   return (
     <ProfileSection title={t('profile.badges.title')}>
@@ -36,6 +46,8 @@ function ProfileBadges({ badgeList }) {
                 image: undefined
               };
             const badgeImageUrl = resolveBadgeImageUrl(badgeInfo.image);
+            const avatarSrc =
+              failedBadges[badgeId] || !badgeImageUrl ? badgePlaceholder : badgeImageUrl;
             return (
               <Tooltip key={badgeId} title={badgeInfo.description} arrow enterTouchDelay={0}>
                 <Box
@@ -51,11 +63,14 @@ function ProfileBadges({ badgeList }) {
                     boxShadow: 2
                   }}
                 >
-                  {badgeImageUrl ? (
-                    <Avatar src={badgeImageUrl} alt={`${badgeInfo.label} badge`} sx={{ width: 72, height: 72 }} />
-                  ) : (
-                    <Avatar sx={{ width: 72, height: 72 }}>{badgeInfo.label.charAt(0)}</Avatar>
-                  )}
+                  <Avatar
+                    src={avatarSrc}
+                    alt={`${badgeInfo.label} badge`}
+                    sx={{ width: 72, height: 72 }}
+                    imgProps={{
+                      onError: handleBadgeError(badgeId)
+                    }}
+                  />
                   <Typography variant="subtitle1" fontWeight={600}>
                     {badgeInfo.label}
                   </Typography>

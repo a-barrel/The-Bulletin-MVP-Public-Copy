@@ -37,6 +37,7 @@ const proximityChatRoomSchema = new mongoose.Schema(
     participantIds: { type: [mongoose.Schema.Types.ObjectId], default: [] },
     moderatorIds: { type: [mongoose.Schema.Types.ObjectId], default: [] },
     pinId: { type: mongoose.Schema.Types.ObjectId, ref: 'Pin' },
+    expiresAt: { type: Date },
     presetKey: { type: String },
     audit: {
       createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -47,6 +48,7 @@ const proximityChatRoomSchema = new mongoose.Schema(
 );
 
 proximityChatRoomSchema.index({ coordinates: '2dsphere' });
+proximityChatRoomSchema.index({ pinId: 1 }, { unique: true, sparse: true });
 
 const proximityChatMessageSchema = new mongoose.Schema(
   {

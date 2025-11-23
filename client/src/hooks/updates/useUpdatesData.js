@@ -95,11 +95,14 @@ export default function useUpdatesData({ profile, unreadCallbacks = {} }) {
       if (!profile?._id) {
         return;
       }
+      if (pendingRefreshRef.current) {
+        return;
+      }
+      pendingRefreshRef.current = true;
       if (!silent) {
         setIsLoadingUpdates(true);
       }
       setUpdatesError(null);
-      pendingRefreshRef.current = true;
       try {
         const result = await fetchUpdates({ userId: profile._id, limit: 100 });
         setUpdates(

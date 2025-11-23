@@ -551,18 +551,17 @@ function BookmarksPage() {
             ) : totalCount === 0 ? (
               <Paper
                 variant="outlined"
+                className="bookmark-empty"
                 sx={{
                   borderRadius: 3,
                   p: 4,
-                  textAlign: 'center',
-                  backgroundColor: '#CDAEF2',
-                  border: '1px solid black'
+                  textAlign: 'center'
                 }}
               >
-                <Typography variant="h6" sx={{ fontFamily: '"Urbanist", sans-serif', color: 'black' }}>
+                <Typography variant="h6" className="bookmark-empty__title">
                   No bookmarks yet
                 </Typography>
-                <Typography variant="body2" sx={{ mt: 1, fontFamily: '"Urbanist", sans-serif', color: 'black' }}>
+                <Typography variant="body2" className="bookmark-empty__body" sx={{ mt: 1 }}>
                   Tap the bookmark icon on a pin to save it. Your collection of favorites will appear here.
                 </Typography>
               </Paper>
@@ -754,27 +753,27 @@ function BookmarksPage() {
           ) : viewHistory.length === 0 ? (
             <Paper
               variant="outlined"
+              className="history-empty"
               sx={{
                 borderRadius: 3,
                 p: 4,
-                textAlign: 'center',
-                backgroundColor: '#E1F5FE',
-                border: '1px solid black'
+                textAlign: 'center'
               }}
             >
-              <Typography variant="h6" sx={{ fontFamily: '"Urbanist", sans-serif', color: 'black' }}>
+              <Typography variant="h6" className="history-empty__title">
                 No viewed pins yet
               </Typography>
-              <Typography variant="body2" sx={{ mt: 1, fontFamily: '"Urbanist", sans-serif', color: 'black' }}>
+              <Typography variant="body2" className="history-empty__body" sx={{ mt: 1 }}>
                 Pins you open will appear here so you can jump back quickly.
               </Typography>
             </Paper>
           ) : (
             <Paper
               variant="outlined"
-              sx={{ borderRadius: 3, p: 2, background: 'linear-gradient(135deg, #F4E8FF 0%, #FFFFFF 100%)' }}
+              className="history-panel"
+              sx={{ borderRadius: 3, p: 2 }}
             >
-              <Stack spacing={1}>
+              <Stack spacing={1.25}>
                 {viewHistory.map((entry) => {
                   const pin = entry.pin;
                   const title = pin?.title || 'Unavailable pin';
@@ -782,46 +781,31 @@ function BookmarksPage() {
                     pin?.type === 'event' ? 'Event' : pin?.type === 'discussion' ? 'Discussion' : 'Pin';
                   const hostName = pin?.creator?.displayName || pin?.creator?.username || 'Unknown host';
                   const hostAvatar = resolveUserAvatarUrl(pin?.creator, DEFAULT_AVATAR_PATH) || DEFAULT_AVATAR_PATH;
+                  const isClickable = Boolean(pin);
                   return (
                     <Box
                       key={`${entry.pinId}-${entry.viewedAt}`}
                       onClick={() => (pin ? handleViewPin(entry.pinId, pin) : undefined)}
-                      sx={{
-                        border: '1px solid rgba(93,56,137,0.35)',
-                        borderRadius: 3,
-                        p: 1.5,
-                        backgroundColor: '#FFFFFF',
-                        cursor: pin ? 'pointer' : 'default',
-                        transition: 'background-color 0.2s ease',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 1,
-                        '&:hover': {
-                          backgroundColor: pin ? 'rgba(93,56,137,0.12)' : 'inherit'
-                        }
-                      }}
+                      className={`history-card${isClickable ? ' history-card--clickable' : ''}`}
                     >
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#5D3889' }}>
-                        {title}
+                      <div className="history-card__row">
+                        <Typography variant="subtitle1" className="history-card__title">
+                          {title}
+                        </Typography>
+                        <span className="history-card__badge">{typeLabel}</span>
+                      </div>
+                      <Typography variant="body2" className="history-card__meta">
+                        Viewed {formatSavedDate(entry.viewedAt)}
                       </Typography>
-                      <Typography variant="body2" sx={{ color: '#3B2A57' }}>
-                        {typeLabel} · Viewed {formatSavedDate(entry.viewedAt)}
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box className="history-card__host">
                         <img
+                          className="history-card__avatar"
                           src={hostAvatar}
                           alt={`${hostName} avatar`}
-                          style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: '50%',
-                            objectFit: 'cover',
-                            border: '2px solid rgba(93,56,137,0.3)'
-                          }}
                         />
-                        <Box sx={{ fontSize: '0.85rem', color: '#2f1f46' }}>
-                          <div style={{ fontWeight: 600 }}>Hosted by</div>
-                          <div>{hostName}</div>
+                        <Box className="history-card__host-text">
+                          <div className="history-card__host-label">Hosted by</div>
+                          <div className="history-card__host-name">{hostName}</div>
                         </Box>
                       </Box>
                     </Box>

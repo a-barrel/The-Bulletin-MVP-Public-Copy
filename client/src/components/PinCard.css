@@ -36,7 +36,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-base);
   color: #a048e6;
 }
 
@@ -44,11 +45,12 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.9rem;
+  font-size: var(--font-size-body-sm);
   color: #333;
+  font-family: var(--font-family-base);
 }
 .meta-right .time {
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 .meta-right .dot {
   opacity: 0.5;
@@ -57,9 +59,9 @@
 /* Body */
 .card-text {
   color: #111;
-  font-family: 'Urbanist', sans-serif;
-  font-weight: 500;
-  font-size: 1.2rem;
+  font-family: var(--font-family-base);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-title);
   line-height: 1.4;
   text-align: left;
   margin: 0.35rem 0 0.2rem;
