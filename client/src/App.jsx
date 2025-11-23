@@ -49,18 +49,58 @@ import { auth } from './firebase';
 import useViewerProfile from './hooks/useViewerProfile';
 import { viewerHasDeveloperAccess } from './utils/roles';
 
+// Style guide palette: background default = Soft Lavender (#F5EFFD), paper = Brand White (#FFFFFF).
+// Reference: docs/style/style-guide.md, docs/style/contrast-audit-playbook.md, docs/style/light_mode_colorpalate.md
 const theme = createTheme({
   palette: {
-    mode: 'dark',
+    mode: 'light',
     primary: {
-      main: '#90caf9'
+      main: '#5D3889'
     },
     secondary: {
-      main: '#f48fb1'
+      main: '#3EB8F0'
     },
     background: {
-      default: '#0b0c10',
-      paper: '#141821'
+      default: '#F5EFFD',
+      paper: '#FFFFFF'
+    },
+    text: {
+      primary: '#1E1E1E',
+      secondary: '#4A3A63'
+    }
+  },
+  components: {
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#FFFFFF',
+          color: '#1E1E1E'
+        }
+      }
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#FFFFFF',
+          color: '#1E1E1E'
+        }
+      }
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          backgroundColor: '#FFFFFF',
+          color: '#1E1E1E'
+        }
+      }
+    },
+    MuiPopover: {
+      styleOverrides: {
+        paper: {
+          backgroundColor: '#FFFFFF',
+          color: '#1E1E1E'
+        }
+      }
     }
   },
   typography: {

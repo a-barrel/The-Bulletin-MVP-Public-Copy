@@ -744,7 +744,13 @@ function BookmarksPage() {
               </>
             )
           ) : isLoading ? (
-            <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ py: 6 }}>
+            <Stack
+              spacing={2}
+              alignItems="center"
+              justifyContent="center"
+              className="history-loading"
+              sx={{ py: 6 }}
+            >
               <CircularProgress />
               <Typography variant="body2" color="text.secondary" sx={{ fontFamily: '"Urbanist", sans-serif' }}>
                 Loading history...
