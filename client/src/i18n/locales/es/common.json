@@ -25,15 +25,25 @@
         "label": "Actualizaciones",
         "description": "Revisar notificaciones"
       },
-      "chat": { "label": "Chat" },
-      "friends": { "label": "Amigos" },
-      "map": { "label": "Mapa" },
-      "list": { "label": "Lista" },
+      "chat": {
+        "label": "Chat"
+      },
+      "friends": {
+        "label": "Amigos"
+      },
+      "map": {
+        "label": "Mapa"
+      },
+      "list": {
+        "label": "Lista"
+      },
       "admin": {
         "label": "Panel de administración",
         "description": "Moderar reportes y auditorías"
       },
-      "directMessages": { "label": "Mensajes directos" }
+      "directMessages": {
+        "label": "Mensajes directos"
+      }
     },
     "friendRequests": {
       "pending_one": "{{count}} pendiente",
@@ -76,6 +86,12 @@
   },
   "offline": {
     "default": "Modo sin conexión: algunas acciones están deshabilitadas hasta que vuelva la conexión."
+  },
+  "location": {
+    "requiredTitle": "Ubicación requerida",
+    "requiredBody": "Activa los servicios de ubicación para ver pines y mapas cercanos. Los administradores pueden omitir este control.",
+    "retryButton": "Reintentar ubicación",
+    "retryError": "No pudimos acceder a tu ubicación. Revisa los permisos e inténtalo de nuevo."
   },
   "badge": {
     "announcement": "¡Has obtenido la insignia {{badge}}!",

@@ -3,6 +3,8 @@ import '../pages/MapPage.css';
 import { useNavigate } from 'react-router-dom';
 import MapIcon from '@mui/icons-material/Map';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
 
 import Map from '../components/Map';
 import Navbar from '../components/Navbar';
@@ -24,6 +26,7 @@ import toIdString from '../utils/ids';
 import { buildPinMeta } from '../utils/mapPinMeta';
 import { viewerHasDeveloperAccess } from '../utils/roles';
 import runtimeConfig from '../config/runtime';
+import { useTranslation } from 'react-i18next';
 
 
 export const pageConfig = {
@@ -37,12 +40,20 @@ export const pageConfig = {
 };
 
 function MapPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
   const { unreadCount, refreshUnreadCount } = useUpdates();
   const { location: sharedLocation, setLocation: setSharedLocation } = useLocationContext();
   const offlineAction = useOfflineAction(isOffline);
   const { viewer: preferenceProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
+  const adminOverride = useMemo(
+    () =>
+      viewerHasDeveloperAccess(preferenceProfile, {
+        offlineOverride: runtimeConfig.isOffline || isOffline
+      }),
+    [isOffline, preferenceProfile]
+  );
   const {
     hideFullEvents,
     setHideFullEvents,
@@ -65,12 +76,21 @@ function MapPage() {
     selectedChatRoomId,
     viewerProfile,
     teleportToLocation,
-    setAdminChatView
+    setAdminChatView,
+    locationRequired,
+    hasResolvedLocation,
+    shareHelperText,
+    handleStartSharing,
+    error,
+    setError,
+    isSharing
   } = useMapExplorer({
     sharedLocation,
     setSharedLocation,
     isOffline,
-    hideFullEvents
+    hideFullEvents,
+    enforceLocation: !adminOverride,
+    isAdminExempt: adminOverride
   });
 
   const FILTER_STORAGE_KEY = 'mapFilterState-v2';
@@ -181,8 +201,8 @@ function MapPage() {
     () =>
       viewerHasDeveloperAccess(viewerProfile, {
         offlineOverride: runtimeConfig.isOffline || isOffline
-      }),
-    [isOffline, viewerProfile]
+      }) || adminOverride,
+    [adminOverride, isOffline, viewerProfile]
   );
 
   useEffect(() => {
@@ -418,6 +438,35 @@ function MapPage() {
   const handleCreatePin = useCallback(() => {
     offlineAction(() => navigate(routes.createPin.base));
   }, [offlineAction, navigate]);
+
+  if (locationRequired && !hasResolvedLocation) {
+    return (
+      <div className="map-page">
+        <Navbar />
+        <Box sx={{ p: 3, display: 'grid', gap: 1 }}>
+          <Typography variant="h6">{t('location.requiredTitle')}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {shareHelperText || t('location.requiredBody')}
+          </Typography>
+          {error ? (
+            <Typography variant="body2" color="error">
+              {error}
+            </Typography>
+          ) : null}
+          <Button
+            variant="contained"
+            onClick={() => {
+              setError?.(null);
+              handleStartSharing();
+            }}
+            disabled={isSharing}
+          >
+            {t('location.retryButton')}
+          </Button>
+        </Box>
+      </div>
+    );
+  }
 
   const handleTapTeleport = useCallback(
     (latlng) => {

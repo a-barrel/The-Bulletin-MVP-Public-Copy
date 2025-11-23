@@ -7,22 +7,52 @@
     "openMenu": "Hoist the nav",
     "closeMenu": "Stow the nav",
     "close": "Close menu",
-    "quickShortcuts": "Swift sails",
+    "quickShortcuts": "Swift sails to key decks",
     "items": {
-      "profile": { "label": "Captain's log" },
-      "settings": { "label": "Rigging" },
-      "bookmarks": { "label": "Stashed loot" },
-      "updates": { "label": "Parrot squawks" },
-      "chat": { "label": "Chatter" },
-      "friends": { "label": "Crew" },
-      "map": { "label": "Chart" },
-      "list": { "label": "Ledger" },
-      "admin": { "label": "Captain's cabin" },
-      "directMessages": { "label": "Secret notes" }
+      "profile": {
+        "label": "Captain's log",
+        "description": "Peek at yer own legend"
+      },
+      "settings": {
+        "label": "Rigging",
+        "description": "Trim yer sails and toggles"
+      },
+      "bookmarks": {
+        "label": "Stashed loot",
+        "description": "Inspect yer hidden chests"
+      },
+      "updates": {
+        "label": "Parrot squawks",
+        "description": "Hear the latest squawks"
+      },
+      "chat": {
+        "label": "Chatter"
+      },
+      "friends": {
+        "label": "Crew"
+      },
+      "map": {
+        "label": "Chart"
+      },
+      "list": {
+        "label": "Ledger"
+      },
+      "admin": {
+        "label": "Captain's cabin",
+        "description": "Keep order in the brig"
+      },
+      "directMessages": {
+        "label": "Secret notes"
+      }
     },
     "bookmarkQuickNav": {
       "all": "All loot",
-      "unsorted": "Loose trinkets"
+      "unsorted": "Loose trinkets",
+      "untitled": "Untitled collection",
+      "allDescription": "View your full library",
+      "unsortedDescription": "Pins saved without a collection",
+      "offline": "Offline — showing cached collections only.",
+      "loadError": "Failed to load bookmark collections."
     },
     "bottomNav": {
       "chat": "Chatter",
@@ -38,10 +68,30 @@
         "badge_one": "Ledger ({{count}} crew request)",
         "badge_other": "Ledger ({{count}} crew requests)"
       }
+    },
+    "friendRequests": {
+      "pending_one": "{{count}} invite off the bow",
+      "pending_other": "{{count}} invites off the bow",
+      "none": "No crew requests at the moment"
+    },
+    "directMessages": {
+      "pending_one": "{{count}} secret note",
+      "pending_other": "{{count}} secret notes",
+      "none": "No secret notes yet"
+    },
+    "bookmarksBadge": {
+      "one": "1 new stash alert",
+      "other": "{{count}} new stash alerts"
     }
   },
   "offline": {
     "default": "Ye be offline—some tricks be locked until ye reconnect."
+  },
+  "location": {
+    "requiredTitle": "Location be required",
+    "requiredBody": "Turn on yer location to spy nearby treasure on the map. Captains may skip this check.",
+    "retryButton": "Try again",
+    "retryError": "Couldn’t fetch yer location. Check permissions and try once more."
   },
   "tooltips": {
     "reportMessage": "Report this scallywag",
@@ -49,7 +99,28 @@
     "shareSavedPin": "Share hidden loot",
     "comments": "Parrot squawks",
     "attendees": "Crew aboard",
-    "friendsAttending": "Mates attending"
+    "friendsAttending": "Mates attending",
+    "settings": {
+      "accessibility": "Accessibility & cues",
+      "pinDensity": "Pin density",
+      "nearbyRadius": "Nearby radius",
+      "quickActions": "Quick actions",
+      "notificationChannels": "Notification channels",
+      "chatIntensity": "Chat intensity",
+      "digestFrequency": "Digest frequency",
+      "quietHours": "Quiet hours",
+      "channelBundles": "Channel bundles",
+      "dataExports": "Data exports",
+      "apiTokens": "API tokens",
+      "privacySharing": "Privacy & sharing",
+      "profileVisibility": "Profile visibility",
+      "directMessages": "Direct messages",
+      "accountManagement": "Account management",
+      "blockedUsers": "Reconnect to manage blocked users",
+      "generateTokens": "Reconnect to generate tokens",
+      "revokeTokens": "Reconnect to revoke tokens",
+      "requestExport": "Reconnect to request an export"
+    }
   },
   "mapHeader": {
     "title": "Chart",
@@ -150,6 +221,226 @@
       "nsfw": "NSFW / sexual content",
       "violence": "Threats or violence",
       "misinfo": "Misinformation / scam"
+    }
+  },
+  "notifications": {
+    "quickActionsDescription": "Mute delivery temporarily without changing your preferences.",
+    "mute1h": "Mute 1h",
+    "mute4h": "Mute 4h",
+    "mute24h": "Mute 24h",
+    "clearMute": "Clear mute",
+    "muteActive": "Mute scheduled. Save your settings to keep it active.",
+    "muteInactive": "Muting pauses delivery without changing the toggles below. Save after applying changes.",
+    "channelsDescription": "Choose which updates reach you across the app.",
+    "chatIntensityDescription": "Fine-tune how often direct messages and chat highlights ping you.",
+    "chatIntensityLabel": "Chat notification intensity",
+    "chatIntensityHighlights": "Highlights only",
+    "chatIntensityAll": "All activity",
+    "chatIntensityMuted": "Mute chat alerts",
+    "chatIntensityNote": "“Mute” blocks chat alerts even if the toggle above stays on. “All activity” behaves like Highlights until we surface lower-signal pings.",
+    "digestDescription": "Bundle low-priority updates into daily or weekly recaps.",
+    "digestLabel": "Digest frequency",
+    "digestImmediate": "Send immediately",
+    "digestDaily": "Daily summary",
+    "digestWeekly": "Weekly summary",
+    "digestNever": "Never send digests",
+    "quietDescription": "Pause non-critical notifications on a weekly schedule.",
+    "channelBundlesDescription": "Start from a preset and then tweak individual toggles."
+  },
+  "privacy": {
+    "sharingDescription": "Your location is used only to enable features (radius checks, proximity chat). It is never shared with other users.",
+    "sharingBody": "Location is required to confirm you are in-range for map interactions, but your exact location is never shown to other people.",
+    "visibilityDescription": "Decide how much information other members can see.",
+    "statsPublic": "Allow others to view my stats",
+    "filterCussWords": "Filter explicit language in public chats",
+    "dmDescription": "Choose who can start new conversations with you.",
+    "dmLabel": "Who can DM me?",
+    "dmEveryone": "Everyone",
+    "dmFriends": "Friends & followers",
+    "dmNobody": "No one (mute DMs)",
+    "dmNote": "Friends-only mode also allows people who follow you. Selecting “No one” hides you from new threads.",
+    "accountDescription": "Block someone or jump into admin/profile views.",
+    "manageBlocked": "Manage blocked users",
+    "adminDashboard": "Admin dashboard",
+    "viewProfile": "View profile"
+  },
+  "integrations": {
+    "exportsDescription": "Request a copy of your data and set monthly reminders.",
+    "exportEmail": "We’ll email you a link whenever an export finishes.",
+    "exportReminders": "Remind me to export my data each month",
+    "exportNudge": "We’ll send a gentle nudge inside the app when it’s time for your next export.",
+    "requestExport": "Request data export",
+    "tokensDescription": "Generate personal access tokens for scripts and integrations.",
+    "tokenLabel": "Token label",
+    "tokenPlaceholder": "e.g., CLI client",
+    "generateToken": "Generate API token",
+    "tokenWarning": "API tokens behave like passwords. Revoke any token you no longer use.",
+    "loadingTokens": "Loading tokens...",
+    "untitledToken": "Untitled token",
+    "tokenPreview": "Preview: {{value}}",
+    "tokenCreated": "Created {{date}}",
+    "noTokens": "No active tokens yet."
+  },
+  "profile": {
+    "bio": {
+      "title": "Bio",
+      "empty": "This user hasn't added a bio yet."
+    },
+    "badges": {
+      "title": "Badges & achievements",
+      "defaultDescription": "Earn this badge to uncover its story.",
+      "empty": "No badges yet. They will appear here once this user starts collecting achievements."
+    },
+    "mutual": {
+      "title": "Mutual friends",
+      "friendFallback": "Friend",
+      "friendInitial": "F",
+      "more": "+{{count}} more",
+      "empty": "You have no mutual friends yet. Start connecting!"
+    },
+    "moderation": {
+      "title": "Moderator tools",
+      "description": "Only visible to staff/offline builds. Use responsibly—actions are logged.",
+      "status": "Status: {{status}}",
+      "userId": "User ID: {{id}}",
+      "noAccess": "Moderator privileges required. If you should have access, refresh after updating roles.",
+      "loadingHistory": "Loading history…",
+      "emptyHistory": "No prior moderation actions logged for this user.",
+      "noReason": "No reason provided.",
+      "unknownTime": "Unknown time",
+      "notesLabel": "Moderator notes (optional)",
+      "notesPlaceholder": "Add context for {{name}}",
+      "recent": "Recent moderation",
+      "actions": {
+        "warn": "Warn",
+        "mute15": "Mute 15 min",
+        "mute60": "Mute 1 hr",
+        "ban": "Suspend",
+        "unban": "Reinstate"
+      }
+    }
+  },
+  "badge": {
+    "announcement": "Ye claimed the {{badge}} badge!",
+    "alt": "Badge celebration"
+  },
+  "auth": {
+    "back": "Back to deck",
+    "placeholders": {
+      "email": "Drop yer email",
+      "password": "Set a secret passphrase",
+      "newPassword": "Chart a new passphrase",
+      "confirmPassword": "Confirm that passphrase",
+      "username": "Choose a crew name",
+      "phone": "Enter yer speaking trumpet number"
+    },
+    "rememberMe": "Keep me signed aboard",
+    "forgotPassword": "Forgot yer passphrase?",
+    "submit": "Sign the log",
+    "aria": {
+      "showPassword": "Show passphrase",
+      "hidePassword": "Hide passphrase"
+    },
+    "errors": {
+      "emailRequired": "Hoist an email address, matey.",
+      "emailInvalid": "That email looks foul. Try again.",
+      "passwordRequired": "Set a passphrase afore ye sail.",
+      "passwordConfirmRequired": "Confirm yer passphrase in both fields.",
+      "passwordMismatch": "Those passphrases don’t match. Try again.",
+      "passwordWeak": "That passphrase be too flimsy. Beef it up.",
+      "passwordMin": "Passphrase must be at least 6 characters.",
+      "resetLinkInvalid": "This reset link be cursed or already used.",
+      "loginGeneric": "Sign-in failed. Hoist again.",
+      "loginNotFound": "No account found with this email.",
+      "loginWrongPassword": "Wrong passphrase. Try again.",
+      "googleGeneric": "Google sign-in failed. Try again.",
+      "appleUnavailable": "Apple sign-in be unavailable in these waters.",
+      "appleLinked": "This email be linked to a different sign-in method. Use the original provider.",
+      "appleGeneric": "Apple sign-in failed. Try again.",
+      "resetExpired": "This link expired. Fetch a fresh reset.",
+      "resetInvalid": "Invalid action code. Request another reset link.",
+      "resetWeakPassword": "Passphrase too weak. Choose a stronger one.",
+      "resetGeneric": "Something went wrong. Try again.",
+      "registrationValidation": "Fix the marked fields afore proceeding.",
+      "registrationDefault": "Couldn’t create yer berth. Try again.",
+      "registrationEmailInUse": "A mate already claimed this email.",
+      "registrationNotAllowed": "Email/password sign-up be locked right now.",
+      "registrationWeakPassword": "Passphrase be too weak. Add more characters or symbols.",
+      "networkError": "Network squall. Check yer connection.",
+      "passwordResetNotFound": "No account tied to that email.",
+      "usernameRequired": "Choose a crew name.",
+      "phoneRequired": "Add a speaking trumpet number.",
+      "phoneInvalid": "That number looks off. Try again."
+    },
+    "login": {
+      "title": "Sign the ship’s log",
+      "button": "Sign in",
+      "submitting": "Hoisting aboard...",
+      "google": "Sign in with Google",
+      "apple": "Sign in with Apple",
+      "passwordLabel": "Passphrase",
+      "gettingStarted": "New to the crew?",
+      "register": "Claim a berth here"
+    },
+    "forgot": {
+      "title": "Forgot yer passphrase?",
+      "instruction": "Drop the email for the berth ye seek to enter.",
+      "success": "If this email be in use, a reset note be on its way."
+    },
+    "reset": {
+      "title": "Reset yer passphrase",
+      "strengthLabel": "Passphrase strength: {{strength}}",
+      "strength": {
+        "weak": "Weak",
+        "medium": "Steady",
+        "strong": "Seaworthy"
+      },
+      "requirements": {
+        "uppercase": "Hoist a capital letter",
+        "lowercase": "Add a lowercase letter",
+        "number": "Add a number",
+        "special": "Add a special mark",
+        "length": "At least 8 characters long"
+      },
+      "newPassword": "New passphrase",
+      "confirmPassword": "Confirm new passphrase",
+      "submitting": "Resetting...",
+      "button": "Reset passphrase",
+      "success": "Passphrase reset! Sending ye back to the log..."
+    },
+    "register": {
+      "title": "Sign aboard",
+      "username": "Choose a crew name",
+      "phone": "Enter yer speaking trumpet",
+      "password": "Choose a passphrase",
+      "button": "Join the crew",
+      "submitting": "Signing aboard...",
+      "success": "Berth created! Redirecting ye to the log..."
+    }
+  },
+  "settings": {
+    "tabs": {
+      "appearance": "Appearance",
+      "notifications": "Notifications",
+      "privacy": "Privacy",
+      "data": "Data & Integrations"
+    },
+    "language": {
+      "title": "Language",
+      "description": "Pick your preferred language for PinPoint.",
+      "emergency": "Emergency English",
+      "saved": "Language updated",
+      "optionsLabel": "App language"
+    }
+  },
+  "debugBookmarks": {
+    "title": "Bookmarks",
+    "totalSaved": "Total saved pins:",
+    "countLabel": "Saved pins: {{count}}",
+    "filters": {
+      "all": "All bookmarks",
+      "event": "Events",
+      "discussion": "Discussions"
     }
   }
 }
