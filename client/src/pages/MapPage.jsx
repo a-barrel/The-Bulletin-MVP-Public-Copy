@@ -441,35 +441,6 @@ function MapPage() {
     offlineAction(() => navigate(routes.createPin.base));
   }, [offlineAction, navigate]);
 
-  if (locationRequired && !hasResolvedLocation) {
-    return (
-      <div className="map-page">
-        <Navbar />
-        <Box sx={{ p: 3, display: 'grid', gap: 1 }}>
-          <Typography variant="h6">{t('location.requiredTitle')}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {shareHelperText || t('location.requiredBody')}
-          </Typography>
-          {error ? (
-            <Typography variant="body2" color="error">
-              {error}
-            </Typography>
-          ) : null}
-          <Button
-            variant="contained"
-            onClick={() => {
-              setError?.(null);
-              handleStartSharing();
-            }}
-            disabled={isSharing}
-          >
-            {t('location.retryButton')}
-          </Button>
-        </Box>
-      </div>
-    );
-  }
-
   const handleTapTeleport = useCallback(
     (latlng) => {
       if (!tapToTeleportEnabled || !canUseAdminTools) {
@@ -671,6 +642,35 @@ function MapPage() {
       { key: 'chat-tools', title: 'Chat overlays & tools', filters: chatFilterItems }
     ].filter((group) => Array.isArray(group.filters) && group.filters.length > 0);
   }, [baseFilterItems, chatFilterItems, highlightFilters]);
+
+  if (locationRequired && !hasResolvedLocation) {
+    return (
+      <div className="map-page">
+        <Navbar />
+        <Box sx={{ p: 3, display: 'grid', gap: 1 }}>
+          <Typography variant="h6">{t('location.requiredTitle')}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {shareHelperText || t('location.requiredBody')}
+          </Typography>
+          {error ? (
+            <Typography variant="body2" color="error">
+              {error}
+            </Typography>
+          ) : null}
+          <Button
+            variant="contained"
+            onClick={() => {
+              setError?.(null);
+              handleStartSharing();
+            }}
+            disabled={isSharing}
+          >
+            {t('location.retryButton')}
+          </Button>
+        </Box>
+      </div>
+    );
+  }
 
   return (
     <div className="map-page">

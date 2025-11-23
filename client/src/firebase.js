@@ -1,4 +1,3 @@
-/* global process */
 import { initializeApp } from 'firebase/app';
 import {
   getAuth,
