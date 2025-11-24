@@ -361,8 +361,8 @@
   height: 32px;
   flex: 0 0 32px;
   border-radius: 50%;
-  border: 1.5px solid black;
-  background: #f4f4f7;
+  border: 1.5px solid rgba(93, 56, 137, 0.35);
+  background: linear-gradient(135deg, #f5effd 0%, #ecf8fe 100%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
