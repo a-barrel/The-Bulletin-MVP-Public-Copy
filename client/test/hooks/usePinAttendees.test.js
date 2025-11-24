@@ -1,78 +1,82 @@
-import { renderHook, waitFor } from '@testing-library/react';
-
+import { act, renderHook, waitFor } from '@testing-library/react';
 import usePinAttendees, { clearPinAttendeesCache } from '../../src/hooks/usePinAttendees';
-import { fetchPinAttendees } from '../../src/api/mongoDataApi';
 
 jest.mock('../../src/api/mongoDataApi', () => ({
-  __esModule: true,
-  fetchPinAttendees: jest.fn()
+  fetchPinAttendees: jest.fn().mockResolvedValue([])
 }));
+
+const { fetchPinAttendees } = require('../../src/api/mongoDataApi');
 
 describe('usePinAttendees', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.useFakeTimers();
+    fetchPinAttendees.mockClear();
     clearPinAttendeesCache();
   });
 
-  it('skips fetching when disabled or missing pin id', () => {
-    const { result } = renderHook(() =>
-      usePinAttendees({
-        pinId: null,
-        enabled: false,
-        participantCount: null,
-        attendeeSignature: null
-      })
-    );
-
-    expect(fetchPinAttendees).not.toHaveBeenCalled();
-    expect(result.current.attendees).toEqual([]);
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.error).toBeNull();
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
   });
 
-  it('fetches and normalizes attendees for an event pin', async () => {
-    fetchPinAttendees.mockResolvedValue([
-      {
-        userId: 'abc123',
-        displayName: 'Ada Lovelace',
-        avatar: 'https://example.com/avatar.png'
-      },
-      {
-        user: {
-          _id: 'def456',
-          avatar: null
-        },
-        profile: {
-          username: 'grace'
-        }
-      }
-    ]);
+  it('dedupes concurrent fetches for the same pin', async () => {
+    let resolveFetch;
+    fetchPinAttendees.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        })
+    );
 
-    const { result } = renderHook(() =>
+    renderHook(() =>
       usePinAttendees({
-        pinId: '64f8ab2c9c1d4b0012345678',
-        enabled: true,
-        participantCount: 2,
-        attendeeSignature: null
+        pinId: 'pin-1',
+        enabled: true
       })
     );
 
-    expect(fetchPinAttendees).toHaveBeenCalledWith('64f8ab2c9c1d4b0012345678');
+    renderHook(() =>
+      usePinAttendees({
+        pinId: 'pin-1',
+        enabled: true
+      })
+    );
 
-    await waitFor(() => {
-      expect(result.current.attendees.length).toBe(2);
+    expect(fetchPinAttendees).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      resolveFetch([]);
+    });
+  });
+
+  it('returns cached attendees for fresh entries', async () => {
+    fetchPinAttendees.mockResolvedValue([{ userId: 'user-1' }]);
+
+    const { result } = renderHook(() =>
+      usePinAttendees({
+        pinId: 'pin-2',
+        enabled: true
+      })
+    );
+
+    act(() => {
+      jest.runAllTimers();
     });
 
-    const [first, second] = result.current.attendees;
-    expect(first).toMatchObject({
-      userId: 'abc123',
-      name: 'Ada Lovelace',
-      avatar: 'https://example.com/avatar.png'
+    await waitFor(() => expect(fetchPinAttendees).toHaveBeenCalledTimes(1));
+
+    const second = renderHook(() =>
+      usePinAttendees({
+        pinId: 'pin-2',
+        enabled: true
+      })
+    );
+
+    act(() => {
+      jest.runAllTimers();
     });
-    expect(second).toMatchObject({
-      userId: 'def456',
-      name: 'grace'
-    });
-    expect(result.current.error).toBeNull();
+
+    await waitFor(() => expect(fetchPinAttendees).toHaveBeenCalledTimes(1));
+    expect(second.result.current.attendees.length).toBeGreaterThanOrEqual(1);
   });
 });

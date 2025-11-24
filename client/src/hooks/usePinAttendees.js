@@ -5,6 +5,8 @@ import toIdString from '../utils/ids';
 import { normalizeAttendeeRecord } from '../utils/feed';
 
 const attendeeCache = new Map();
+const attendeeFetchLocks = new Map();
+const ATTENDEE_CACHE_TTL_MS = 60_000;
 
 export const clearPinAttendeesCache = () => attendeeCache.clear();
 
@@ -19,7 +21,8 @@ export default function usePinAttendees({
   pinId,
   enabled = true,
   participantCount,
-  attendeeSignature
+  attendeeSignature,
+  cacheKey
 }) {
   const [attendees, setAttendees] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,17 +38,25 @@ export default function usePinAttendees({
     const expectedCount = Number.isFinite(participantCount) ? participantCount : null;
     const expectedSignature = attendeeSignature || null;
 
+    const now = Date.now();
     const cachedEntry = attendeeCache.get(normalizedPinId);
     if (cachedEntry) {
+      const isFresh = now - cachedEntry.updatedAt < ATTENDEE_CACHE_TTL_MS;
       setAttendees(Array.isArray(cachedEntry.items) ? cachedEntry.items : []);
       const matchesCount = expectedCount === null || cachedEntry.count === expectedCount;
       const matchesSignature =
         expectedSignature === null || cachedEntry.signature === expectedSignature;
-      if (matchesCount && matchesSignature) {
+      if (matchesCount && matchesSignature && isFresh) {
         setError(null);
         return;
       }
     }
+
+    const lockKey = normalizedPinId;
+    if (attendeeFetchLocks.get(lockKey)) {
+      return;
+    }
+    attendeeFetchLocks.set(lockKey, true);
 
     let cancelled = false;
     setIsLoading(true);
@@ -76,8 +87,10 @@ export default function usePinAttendees({
           updatedAt: Date.now()
         });
 
-        setAttendees(mapped);
-        setError(null);
+        if (!cancelled) {
+          setAttendees(mapped);
+          setError(null);
+        }
       })
       .catch((fetchError) => {
         if (cancelled) {
@@ -90,10 +103,13 @@ export default function usePinAttendees({
           signature: expectedSignature,
           updatedAt: Date.now()
         });
-        setAttendees([]);
-        setError(fetchError?.message || 'Failed to load attendees.');
+        if (!cancelled) {
+          setAttendees([]);
+          setError(fetchError?.message || 'Failed to load attendees.');
+        }
       })
       .finally(() => {
+        attendeeFetchLocks.delete(lockKey);
         if (!cancelled) {
           setIsLoading(false);
         }
@@ -102,7 +118,7 @@ export default function usePinAttendees({
     return () => {
       cancelled = true;
     };
-  }, [pinId, enabled, participantCount, attendeeSignature]);
+  }, [pinId, enabled, participantCount, attendeeSignature, cacheKey]);
 
   return {
     attendees,

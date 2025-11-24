@@ -94,7 +94,10 @@ export default function useChatRoomsData({
       if (resolvedRooms.length > 0) {
         const nextSelectedId = existingPinRoom?._id || resolvedRooms[0]._id;
         setSelectedRoomId((prev) => prev || nextSelectedId);
-        setSelectedRoom(resolvedRooms.find((room) => normalizeId(room._id) === normalizeId(prev || nextSelectedId)) || resolvedRooms[0]);
+        const desiredId = normalizeId(selectedRoomId || nextSelectedId);
+        const match =
+          resolvedRooms.find((room) => normalizeId(room._id) === desiredId) || resolvedRooms[0];
+        setSelectedRoom(match);
       }
     } catch (error) {
       setRooms([]);

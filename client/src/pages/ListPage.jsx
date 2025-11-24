@@ -756,6 +756,7 @@ export default function ListPage() {
               isUsingFallbackLocation={isUsingFallbackLocation}
               onSelectItem={handleFeedItemSelect}
               onSelectAuthor={handleFeedAuthorSelect}
+              cardProps={{ lazyLoadAttendees: true }}
             />
             {totalResults > 0 ? (
               <div className="list-pagination">

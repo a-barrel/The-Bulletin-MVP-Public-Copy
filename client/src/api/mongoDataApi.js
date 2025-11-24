@@ -777,6 +777,12 @@ export async function logClientEvent({
   context,
   timestamp
 } = {}) {
+  const dedupeKey = `${category || 'client'}:${message || ''}`;
+  const now = Date.now();
+  const lastLogged = clientEventCache.get(dedupeKey);
+  if (lastLogged && now - lastLogged < CLIENT_EVENT_TTL_MS) {
+    return;
+  }
   if (!message) {
     return;
   }
@@ -794,6 +800,7 @@ export async function logClientEvent({
         timestamp: timestamp ?? new Date().toISOString()
       })
     });
+    clientEventCache.set(dedupeKey, now);
   } catch (error) {
     if (import.meta.env.DEV) {
       console.warn('Failed to send client log event', error);
@@ -803,6 +810,8 @@ export async function logClientEvent({
 
 const API_ERROR_LOG_FLAG = Symbol('clientApiErrorLogged');
 const apiErrorCache = new Map();
+const clientEventCache = new Map();
+const CLIENT_EVENT_TTL_MS = 10_000;
 
 const buildDedupeKey = (endpoint, context = {}) => {
   try {
