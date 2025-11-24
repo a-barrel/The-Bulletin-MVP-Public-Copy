@@ -1440,12 +1440,15 @@
 }
 
 .pin-details .pin-analytics-card {
-  margin: 16px 0;
+  margin: 0 0;
   padding: 12px;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  /* border-radius: 12px; */
   background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 50%, #f5f7ff 100%);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .pin-details .pin-analytics-header {
@@ -1480,15 +1483,19 @@
   margin: 10px 0 6px;
   overflow-x: auto;
   padding-bottom: 6px;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch; 
+  scrollbar-width: thin; 
 }
 
 .pin-details .pin-analytics-metric {
-  min-width: 120px;
+  min-width: 140px;
   padding: 8px 10px;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   background: #f8f9ff;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .pin-details .pin-analytics-metric .label {
@@ -1567,6 +1574,17 @@
   margin-top: 4px;
   font-size: 0.8rem;
   color: #374151;
+}
+
+.pin-details .pin-analytics-metrics::-webkit-scrollbar {
+  height: 6px;
+}
+.pin-details .pin-analytics-metrics::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+}
+.pin-details .pin-analytics-metrics::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .pin-details .create-comment:disabled {

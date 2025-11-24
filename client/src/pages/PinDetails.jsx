@@ -1039,7 +1039,7 @@ function PinDetails() {
             <div className="pin-analytics-card">
               <div className="pin-analytics-header">
                 <div>
-                  <h3>Attendance insights</h3>
+                  <h3>Attendance Insights</h3>
                   <p className="pin-analytics-subtitle">Host-only view of joins and leaves.</p>
                 </div>
                 <span className="pin-analytics-pill">
