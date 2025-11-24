@@ -21,6 +21,7 @@ import { DEFAULT_MAX_DISTANCE_METERS } from '../utils/mapExplorerConstants';
 import MapHeader from '../components/map/MapHeader';
 import MapFilterPanel from '../components/map/MapFilterPanel';
 import { MAP_FILTERS, MAP_MARKER_ICON_URLS } from '../utils/mapMarkers';
+import { applyPinFilters } from '../utils/pinFilters';
 import useOfflineAction from '../hooks/useOfflineAction';
 import toIdString from '../utils/ids';
 import { buildPinMeta } from '../utils/mapPinMeta';
@@ -284,48 +285,21 @@ function MapPage() {
   }, [pins, friendIdsSet, viewerId]);
 
   const visiblePins = useMemo(() => {
-    return annotatedPins.filter((pin) => {
-      const meta = pin.mapMeta;
-      if (!meta) {
-        return true;
-      }
-      if (meta.isEvent && !showEvents) {
-        return false;
-      }
-      if (meta.isDiscussion && !showDiscussions) {
-        return false;
-      }
-      if (meta.isPersonal && !showPersonalPins) {
-        return false;
-      }
-      if (meta.isFriend && !showFriendPins) {
-        return false;
-      }
-      if (meta.isFull && !showFullEvents) {
-        if (!(meta.isFriend && showFriendPins)) {
-          return false;
-        }
-      }
-      if (meta.discussionExpiresSoon && !showExpiringDiscussions) {
-        return false;
-      }
-      if (meta.startsSoon && !showEventsStartingSoon) {
-        return false;
-      }
-      if (meta.isPopular && !showPopularPins) {
-        return false;
-      }
-      if (meta.isBookmarked && !showBookmarkedPins) {
-        return false;
-      }
-      if (meta.hasOpenSpots && !showOpenSpotPins) {
-        return false;
-      }
-      if (meta.isFeatured && !showFeaturedPins) {
-        return false;
-      }
-      return true;
-    });
+    return annotatedPins.filter((pin) =>
+      applyPinFilters(pin.mapMeta, {
+        showEvents,
+        showDiscussions,
+        showPersonalPins,
+        showFriendPins,
+        showFullEvents,
+        showExpiringDiscussions,
+        showEventsStartingSoon,
+        showPopularPins,
+        showBookmarkedPins,
+        showOpenSpotPins,
+        showFeaturedPins
+      })
+    );
   }, [
     annotatedPins,
     showDiscussions,
@@ -525,11 +499,12 @@ function MapPage() {
       },
       {
         key: 'bookmarked-pins',
-        label: 'Bookmarked pins',
+        label: 'Bookmarked pins (always visible)',
         iconUrl: MAP_MARKER_ICON_URLS.bookmarked,
-        ariaLabel: 'Toggle bookmarked pins',
+        ariaLabel: 'Toggle bookmarked pins (always visible even if types are off)',
         checked: showBookmarkedPins,
-        onChange: () => setShowBookmarkedPins((prev) => !prev)
+        onChange: () => setShowBookmarkedPins((prev) => !prev),
+        helperText: 'When on, all bookmarks stay visible even if pin type filters are off.'
       },
       {
         key: 'open-spots',

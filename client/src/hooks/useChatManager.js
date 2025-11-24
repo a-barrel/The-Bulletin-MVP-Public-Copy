@@ -22,6 +22,7 @@ export function useChatManager({
     loadRooms,
     selectedRoomId,
     handleSelectRoom,
+    selectedRoom,
     locationParams
   } = useChatRoomsData({
     authUser,
@@ -131,7 +132,7 @@ export function useChatManager({
     isLoadingRooms,
     loadRooms,
     selectedRoomId,
-    selectedRoom: rooms.find((room) => room._id === selectedRoomId) ?? null,
+    selectedRoom,
     handleSelectRoom,
     messages,
     uniqueMessages,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchChatRooms, createChatRoom } from '../../api/mongoDataApi';
 import { buildPinRoomPayload } from '../../utils/chatRoomContract';
+import { normalizeId } from '../../utils/mapLocation';
 
 const DEFAULT_COORDINATES = {
   latitude: 33.7838,
@@ -19,6 +20,7 @@ export default function useChatRoomsData({
   const [roomsError, setRoomsError] = useState(null);
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState(pinId || null);
+  const [selectedRoom, setSelectedRoom] = useState(null);
   const pinRoomAttemptedRef = useRef(false);
   const lastLoadKeyRef = useRef(null);
   const isLoadingRef = useRef(false);
@@ -37,6 +39,7 @@ export default function useChatRoomsData({
   useEffect(() => {
     pinRoomAttemptedRef.current = false;
     setSelectedRoomId(pinId || null);
+    setSelectedRoom(null);
   }, [pinId]);
 
   const loadRooms = useCallback(async () => {
@@ -58,8 +61,10 @@ export default function useChatRoomsData({
       });
       let nextRooms = Array.isArray(data) ? data : [];
 
+      const normalizedPinId = normalizeId(pinId);
       const existingPinRoom =
-        pinId && nextRooms.find((room) => room._id === pinId || room.pinId === pinId);
+        normalizedPinId &&
+        nextRooms.find((room) => normalizeId(room._id) === normalizedPinId || normalizeId(room.pinId) === normalizedPinId);
 
       if (!existingPinRoom && nextRooms.length === 0 && pinId && !pinRoomAttemptedRef.current) {
         pinRoomAttemptedRef.current = true;
@@ -87,13 +92,16 @@ export default function useChatRoomsData({
       const resolvedRooms = existingPinRoom ? [existingPinRoom, ...nextRooms.filter((room) => room !== existingPinRoom)] : nextRooms;
       setRooms(resolvedRooms);
       if (resolvedRooms.length > 0) {
-        setSelectedRoomId((prev) => prev || (existingPinRoom?._id || resolvedRooms[0]._id));
+        const nextSelectedId = existingPinRoom?._id || resolvedRooms[0]._id;
+        setSelectedRoomId((prev) => prev || nextSelectedId);
+        setSelectedRoom(resolvedRooms.find((room) => normalizeId(room._id) === normalizeId(prev || nextSelectedId)) || resolvedRooms[0]);
       }
     } catch (error) {
       setRooms([]);
       if (error?.status === 404 || error?.status === 410) {
         setRoomsError('Pin chat has expired.');
         setSelectedRoomId(null);
+        setSelectedRoom(null);
       } else {
         setRoomsError(error?.message || 'Failed to load chat rooms.');
       }
@@ -121,9 +129,33 @@ export default function useChatRoomsData({
     loadRooms();
   }, [authLoading, authUser, loadRooms, locationParams.latitude, locationParams.longitude, pinId]);
 
-  const handleSelectRoom = useCallback((roomId) => {
-    setSelectedRoomId(roomId);
-  }, []);
+  const handleSelectRoom = useCallback(
+    (roomId) => {
+      setSelectedRoomId(roomId);
+      if (Array.isArray(rooms)) {
+        const found = rooms.find((room) => normalizeId(room._id) === normalizeId(roomId));
+        if (found) {
+          setSelectedRoom(found);
+        }
+      }
+    },
+    [rooms]
+  );
+
+  useEffect(() => {
+    if (!Array.isArray(rooms)) {
+      return;
+    }
+    const normalizedSelected = normalizeId(selectedRoomId);
+    if (!normalizedSelected) {
+      setSelectedRoom(null);
+      return;
+    }
+    const match = rooms.find((room) => normalizeId(room._id) === normalizedSelected);
+    if (match) {
+      setSelectedRoom(match);
+    }
+  }, [rooms, selectedRoomId]);
 
   return {
     debugMode,
@@ -133,6 +165,7 @@ export default function useChatRoomsData({
     isLoadingRooms,
     loadRooms,
     selectedRoomId,
+    selectedRoom,
     setSelectedRoomId,
     handleSelectRoom,
     locationParams
