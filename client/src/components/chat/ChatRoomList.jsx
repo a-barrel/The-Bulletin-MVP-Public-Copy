@@ -12,6 +12,7 @@ import ListItemText from '@mui/material/ListItemText';
 import Chip from '@mui/material/Chip';
 import RoomIcon from '@mui/icons-material/Room';
 import PublicIcon from '@mui/icons-material/Public';
+import Button from '@mui/material/Button';
 
 import './ChatRoomList.css'
 
@@ -21,7 +22,8 @@ function ChatRoomList({
   isRefreshing,
   error,
   onRefresh,
-  onSelectRoom
+  onSelectRoom,
+  onCreateRoom
 }) {
   return (
     <Box className="room-list-container">
@@ -29,6 +31,18 @@ function ChatRoomList({
         <Typography className="room-list-title">Select a room below</Typography>
 
         <Box className="room-list-header-action-btns">
+          {typeof onCreateRoom === 'function' ? (
+            <Button
+              variant="contained"
+              size="small"
+              onClick={onCreateRoom}
+              className="room-create-btn"
+              aria-label="Create room"
+              sx={{ textTransform: 'none', borderRadius: 999, mr: 1 }}
+            >
+              Create room
+            </Button>
+          ) : null}
           <IconButton
             onClick={onRefresh}
             disabled={isRefreshing}
@@ -136,7 +150,8 @@ ChatRoomList.propTypes = {
   isRefreshing: PropTypes.bool,
   error: PropTypes.string,
   onRefresh: PropTypes.func,
-  onSelectRoom: PropTypes.func
+  onSelectRoom: PropTypes.func,
+  onCreateRoom: PropTypes.func
 };
 
 ChatRoomList.defaultProps = {
@@ -145,7 +160,8 @@ ChatRoomList.defaultProps = {
   isRefreshing: false,
   error: null,
   onRefresh: undefined,
-  onSelectRoom: undefined
+  onSelectRoom: undefined,
+  onCreateRoom: undefined
 };
 
 export default ChatRoomList;
