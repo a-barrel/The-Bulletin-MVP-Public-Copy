@@ -1439,18 +1439,27 @@ function PinDetails() {
         fullWidth
         maxWidth="sm"
         aria-labelledby="edit-pin-dialog-title"
+        PaperProps={{ className: 'edit-pin-dialog' }}
       >
-        <form onSubmit={handleSubmitEdit}>
-          <DialogTitle id="edit-pin-dialog-title">Edit {pinTypeHeading}</DialogTitle>
-          <DialogContent dividers>
-            <Stack spacing={2} sx={{ mt: 1 }}>
-              {editError ? <Alert severity="error">{editError}</Alert> : null}
+        <form onSubmit={handleSubmitEdit} className="edit-pin-dialog__form">
+          <DialogTitle id="edit-pin-dialog-title" className="edit-pin-dialog__title">
+            Edit {pinTypeHeading}
+          </DialogTitle>
+          <DialogContent dividers className="edit-pin-dialog__content">
+            <Stack spacing={2.25} sx={{ mt: 0.5 }}>
+              {editError ? (
+                <Alert severity="error" className="edit-pin-dialog__alert">
+                  {editError}
+                </Alert>
+              ) : null}
               <TextField
                 label="Title"
                 value={editForm?.title ?? ''}
                 onChange={handleEditFieldChange('title')}
                 required
                 disabled={editDialogBusy}
+                fullWidth
+                className="edit-pin-dialog__field"
               />
               <TextField
                 label="Description"
@@ -1460,6 +1469,8 @@ function PinDetails() {
                 multiline
                 minRows={3}
                 disabled={editDialogBusy}
+                fullWidth
+                className="edit-pin-dialog__field"
               />
               <TextField
                 label="Proximity radius (meters)"
@@ -1469,6 +1480,8 @@ function PinDetails() {
                 inputProps={{ min: 1, step: 1 }}
                 required
                 disabled={editDialogBusy}
+                fullWidth
+                className="edit-pin-dialog__field"
               />
               {isEventPin ? (
                 <>
@@ -1480,6 +1493,8 @@ function PinDetails() {
                     InputLabelProps={{ shrink: true }}
                     required
                     disabled={editDialogBusy}
+                    fullWidth
+                    className="edit-pin-dialog__field"
                   />
                   <TextField
                     label="End time"
@@ -1489,6 +1504,8 @@ function PinDetails() {
                     InputLabelProps={{ shrink: true }}
                     required
                     disabled={editDialogBusy}
+                    fullWidth
+                    className="edit-pin-dialog__field"
                   />
                 </>
               ) : (
@@ -1501,6 +1518,8 @@ function PinDetails() {
                     InputLabelProps={{ shrink: true }}
                     required
                     disabled={editDialogBusy}
+                    fullWidth
+                    className="edit-pin-dialog__field"
                   />
                   <FormControlLabel
                     control={
@@ -1511,24 +1530,40 @@ function PinDetails() {
                       />
                     }
                     label="Automatically remove when expired"
+                    className="edit-pin-dialog__toggle"
                   />
                 </>
               )}
             </Stack>
           </DialogContent>
-          <DialogActions>
+          <DialogActions className="edit-pin-dialog__actions">
             {isOwnPin ? (
               <>
-                <Button color="error" onClick={handleDeletePin} disabled={editDialogBusy}>
+                <Button
+                  color="error"
+                  onClick={handleDeletePin}
+                  disabled={editDialogBusy}
+                  className="edit-pin-dialog__button edit-pin-dialog__button--destructive"
+                >
                   {isDeletingPin ? 'Deleting…' : 'Delete pin'}
                 </Button>
                 <Box sx={{ flexGrow: 1 }} />
               </>
             ) : null}
-            <Button onClick={handleCloseEditDialog} disabled={editDialogBusy}>
+            <Button
+              onClick={handleCloseEditDialog}
+              disabled={editDialogBusy}
+              className="edit-pin-dialog__button edit-pin-dialog__button--secondary"
+              variant="outlined"
+            >
               Cancel
             </Button>
-            <Button type="submit" variant="contained" disabled={editDialogBusy}>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={editDialogBusy}
+              className="edit-pin-dialog__button edit-pin-dialog__button--primary"
+            >
               {isSubmittingEdit ? 'Saving…' : 'Save changes'}
             </Button>
           </DialogActions>

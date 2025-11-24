@@ -149,6 +149,104 @@
     filter: none;
 }
 
+/* Edit Pin dialog palette — primary purple, blue secondary, soft lavender/pink washes.
+   Reference: docs/style/style-guide.md, light_mode_colorpalate.md */
+.edit-pin-dialog {
+    background: linear-gradient(150deg, #ffffff 0%, #f5effd 35%, #ecd7fb 70%, #ecf8fe 100%);
+    border: 1px solid #cdaef2;
+    border-radius: 18px;
+    box-shadow: 0 18px 42px rgba(93, 56, 137, 0.2);
+}
+
+.edit-pin-dialog__form {
+    font-family: "Urbanist", sans-serif;
+}
+
+.edit-pin-dialog__title {
+    font-weight: 700;
+    color: #5d3889;
+    padding: 1.2rem 1.4rem 0.4rem;
+}
+
+.edit-pin-dialog__content {
+    padding: 0 1.4rem 1.6rem;
+}
+
+.edit-pin-dialog__alert {
+    border-radius: 12px;
+}
+
+.edit-pin-dialog__field .MuiOutlinedInput-root {
+    background-color: #f5effd;
+    border-radius: 12px;
+}
+
+.edit-pin-dialog__field .MuiOutlinedInput-notchedOutline {
+    border-color: #cdaef2;
+}
+
+.edit-pin-dialog__field .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+    border-color: #3eb8f0;
+    box-shadow: 0 0 0 2px rgba(62, 184, 240, 0.16);
+}
+
+.edit-pin-dialog__field .MuiInputLabel-root {
+    color: #4a3a63;
+}
+
+.edit-pin-dialog__field .MuiInputLabel-root.Mui-focused {
+    color: #3eb8f0;
+}
+
+.edit-pin-dialog__toggle {
+    color: #1e1e1e;
+}
+
+.edit-pin-dialog__actions {
+    padding: 1rem 1.4rem 1.2rem;
+    display: flex;
+    gap: 0.75rem;
+}
+
+.edit-pin-dialog__button {
+    font-weight: 700;
+    text-transform: none;
+    border-radius: 999px;
+    padding: 0.55rem 1.2rem;
+}
+
+.edit-pin-dialog__button--primary {
+    background-color: #5d3889;
+    color: #ffffff;
+    box-shadow: 0 10px 20px rgba(93, 56, 137, 0.2);
+}
+
+.edit-pin-dialog__button--primary:hover:not(:disabled) {
+    background-color: #4a2c73;
+}
+
+.edit-pin-dialog__button--primary:disabled {
+    opacity: 0.65;
+    box-shadow: none;
+}
+
+.edit-pin-dialog__button--secondary {
+    border-color: #3eb8f0;
+    color: #1d5b89;
+}
+
+.edit-pin-dialog__button--secondary:hover:not(:disabled) {
+    background-color: #ecf8fe;
+    border-color: #1d5b89;
+}
+
+.edit-pin-dialog__button--destructive {
+    border-radius: 999px;
+}
+
+.edit-pin-dialog__button--destructive:hover:not(:disabled) {
+    filter: brightness(0.95);
+}
 .pin-details .flag-button-wrapper {
     display: flex;
 }
