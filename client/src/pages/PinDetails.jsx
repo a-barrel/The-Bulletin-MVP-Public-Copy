@@ -863,7 +863,7 @@ function PinDetails() {
               </button>
             </div>
           ) : null}
-          {canModeratePins ? (
+          {canModeratePins && !isOwnPin ? (
             <div className="flag-button-wrapper">
               <button
                 className={`flag-pin-button${isPinFlagged ? ' flagged' : ''}`}
