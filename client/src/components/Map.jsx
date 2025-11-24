@@ -21,6 +21,7 @@ import {
 } from '../utils/mapMarkers';
 import { resolveUserAvatarUrl } from '../utils/pinFormatting';
 import usePinClusters from './map/usePinClusters';
+import RecenterControl from './map/RecenterControl';
 
 // Fix for default marker icons in Leaflet with React
 delete L.Icon.Default.prototype._getIconUrl;
@@ -747,6 +748,15 @@ const Map = ({
       {teleportEnabled && typeof onTeleportRequest === 'function' ? (
         <TeleportClickHandler enabled={teleportEnabled} onTeleport={onTeleportRequest} />
       ) : null}
+      <RecenterControl
+        onRecenter={(mapInstance) => {
+          const target =
+            toLatLng(userLocation) ?? toLatLng(centerOverride) ?? [0, 0];
+          if (Array.isArray(target) && target.length === 2 && mapInstance) {
+            mapInstance.setView(target, mapInstance.getZoom(), { animate: true });
+          }
+        }}
+      />
       </MapContainer>
       {tilesUnavailable ? (
         <div

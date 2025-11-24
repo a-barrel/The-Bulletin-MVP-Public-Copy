@@ -4,6 +4,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
 import { MapContainer, TileLayer, CircleMarker } from 'react-leaflet';
+import RecenterControl from '../../../components/map/RecenterControl';
 
 import DebugPanel from '../components/DebugPanel';
 import 'leaflet/dist/leaflet.css';
@@ -82,6 +83,11 @@ function PopularLocationsTab() {
                 }}
               />
             ))}
+            <RecenterControl
+              onRecenter={(mapInstance) => {
+                mapInstance.setView(DEFAULT_CENTER, mapInstance.getZoom(), { animate: true });
+              }}
+            />
           </MapContainer>
         </Box>
       </Stack>

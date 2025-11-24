@@ -3,6 +3,7 @@ import { MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from 
 import L from 'leaflet';
 import '../../styles/leaflet.css';
 import { createAvatarMarkerIcon, DEFAULT_MAP_CENTER } from '../../utils/mapMarkers';
+import RecenterControl from '../map/RecenterControl';
 
 function MapClickHandler({ onSelect }) {
   useMapEvents({
@@ -63,6 +64,15 @@ function SelectableLocationMap({ value, onChange, anchor, avatarUrl, viewerName 
         </>
       ) : null}
       {draftLatLng ? <Marker position={draftLatLng} /> : null}
+      <RecenterControl
+        onRecenter={(mapInstance) => {
+          if (trackingPosition && Number.isFinite(trackingPosition.lat) && Number.isFinite(trackingPosition.lng)) {
+            mapInstance.setView([trackingPosition.lat, trackingPosition.lng], mapInstance.getZoom(), { animate: true });
+          } else if (DEFAULT_MAP_CENTER) {
+            mapInstance.setView([DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng], mapInstance.getZoom(), { animate: true });
+          }
+        }}
+      />
     </MapContainer>
   );
 }
