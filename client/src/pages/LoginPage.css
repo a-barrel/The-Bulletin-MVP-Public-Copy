@@ -9,8 +9,8 @@ body, input, button, textarea, p, h1, small, span, label, select, input::placeho
 .page-background {
   width: 100vw;
   min-height: 100vh;
-  background: white;
-  box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(135deg, #f5effd 0%, #ecf8fe 100%);
+  box-shadow: 0 0 25px rgba(93, 56, 137, 0.2);
   text-align: center;
   padding: clamp(0.25rem, 1vw, 1rem) clamp(0.75rem, 4vw, 2rem);
   display: flex;
@@ -59,7 +59,7 @@ body, input, button, textarea, p, h1, small, span, label, select, input::placeho
   left: 0rem;
   background: none;
   border: none;
-  color: #111;
+  color: #5D3889;
   font-size: 2rem;
   cursor: pointer;
   line-height: 1;
@@ -71,7 +71,7 @@ body, input, button, textarea, p, h1, small, span, label, select, input::placeho
   display: flex;
   width: min(85vw, 1020px);
   padding: clamp(0.05rem, 0.35vw, 0.35rem);
-  border: 2px solid black;
+  border: 2px solid #5D3889;
   border-radius: 10px;
   margin-top: 0;
   margin-bottom: 0.75rem;
@@ -239,10 +239,11 @@ input[type="checkbox"] {
 
 .login-page-register-btn {
   background-color: #CDAEF2;
+  color: #1e1e1e;
 }
 
 .login-page-register-btn:hover {
-  background-color: #ad98f8;
+  background-color: #bda2ec;
 }
 
 /* Error Pop-up for authentication errors */
@@ -263,7 +264,7 @@ input[type="checkbox"] {
 /* The actual popup box */
 .error-box {
   background: white;
-  border: 2px solid #f44336;
+  border: 2px solid #FF3B30;
   border-radius: 12px;
   padding: 20px 25px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -274,7 +275,7 @@ input[type="checkbox"] {
 
 /* Text in the pop up */
 .error-box p {
-  color: #d32f2f;
+  color: #FF3B30;
   font-size: 1rem;
   margin: 0;
   font-weight: 500;

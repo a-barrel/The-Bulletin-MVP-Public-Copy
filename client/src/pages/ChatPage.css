@@ -22,14 +22,14 @@
   position: sticky;
   top: 0;
   z-index: 30;
-  background: #d1b4f5;
+  background: linear-gradient(135deg, #cdaef2 0%, #f5effd 100%);
   width: 100vw;
   height: 8vh;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 2px solid #000;
+  border-bottom: 2px solid #5D3889;
 }
 
 .chat-header-menu-nav {
@@ -130,7 +130,7 @@
   height: 22px;
   padding: 0 6px;
   border-radius: 999px;
-  background: #ff4b8b;
+  background: #F15BB5;
   color: #fff;
   font-size: 0.75rem;
   font-weight: 700;

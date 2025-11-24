@@ -9,7 +9,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: black;
+  background: linear-gradient(135deg, #f5effd 0%, #ecf8fe 100%);
   width: 100vw;
   height: 100vh;
 }
@@ -92,7 +92,7 @@
   position: sticky;
   top: 0;
   z-index: 30;
-  background: #d1b4f5;
+  background: linear-gradient(135deg, #cdaef2 0%, #f5effd 100%);
 
   /* stretch edge-to-edge inside .list-frame (which has 0 1rem padding) */
   margin-left: -1rem;
@@ -105,7 +105,7 @@
   align-items: center;
   justify-content: space-between;
 
-  border-bottom: 2px solid #000;
+  border-bottom: 2px solid #5D3889;
   /* transform: translateY(-1px); <-- remove this if you see a 1px jump */
 }
 
@@ -140,7 +140,7 @@
   height: 22px;
   padding: 0 6px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #f15bb5 0%, #ff8c42 100%);
+  background: linear-gradient(135deg, #f15bb5 0%, #9b5de5 100%);
   color: #fff;
   font-size: 0.75rem;
   font-weight: 700;
@@ -279,7 +279,7 @@
   justify-content: center;
   width: 50px;
   height: 28px;
-  background-color: #b68de8;
+  background-color: #cdaef2;
   border-radius: 50px;
   position: relative;
   cursor: pointer;
@@ -297,7 +297,7 @@
   left: 3px;
   transition: left 0.25s ease;
 }
-.toggle-container.active { background-color: #6a25d7; }
+.toggle-container.active { background-color: #5D3889; }
 .toggle-container.active .toggle-circle { left: 25px; }
 
 .toggle-container:focus-visible {

@@ -26,7 +26,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: #d1b4f5;
+  background: linear-gradient(135deg, #cdaef2 0%, #f5effd 100%);
   align-items: center;
 }
 
@@ -62,9 +62,9 @@ body {
   font-weight: var(--font-weight-semibold);
   padding: 0.45rem 1rem;
   border-radius: 999px;
-  border: 1px solid black;
-  background-color: #cdaef2;
-  color: black;
+  border: 1px solid #5D3889;
+  background-color: #f5effd;
+  color: #5D3889;
   cursor: pointer;
   transition: transform 120ms ease, box-shadow 120ms ease;
 }

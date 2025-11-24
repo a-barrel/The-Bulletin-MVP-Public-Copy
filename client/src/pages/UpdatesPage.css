@@ -14,6 +14,7 @@
   overflow: hidden;
   width: 100vw;
   height: 100vh;
+  background: linear-gradient(135deg, #f5effd 0%, #ecf8fe 100%);
 }
 
 .updates-frame {
@@ -26,6 +27,7 @@
   display: flex;
   flex-direction: column;
   padding-bottom: calc(90px + env(safe-area-inset-bottom, 0)); 
+  box-shadow: 0 8px 24px rgba(20, 12, 48, 0.16);
 }
 
 .updates-content {
@@ -37,14 +39,15 @@
   position: fixed;
   top: 0;
   z-index: 300;
-  background: #d1b4f5;
+  background: linear-gradient(135deg, #9B5DE5 0%, #3EB8F0 100%);
   width: 100vw;
   height: 8vh;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 2px solid #000;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 18px rgba(20, 12, 48, 0.18);
 }
 
 .updates-header-actions {
@@ -56,7 +59,7 @@
 
 .updates-header-title {
   font-family: var(--font-family-base);
-  color: #5D3889;
+  color: #ffffff;
   font-size: 2rem;
   font-weight: 500;
   text-align: center;
@@ -66,7 +69,7 @@
 .updates-header-back-btn,
 .updates-header-clear-btn {
   font-family: var(--font-family-base);
-  color: #4c2670 !important;
+  color: #ffffff !important;
   text-transform: none;
   font-weight: 600 !important;
   font-size: 0.95rem;
@@ -133,22 +136,22 @@
   flex: 1;
   background: none;
   border: none;
-  color: gray !important; 
+  color: #5d3889 !important;
   gap: 6px;
-  font-weight: 500;
+  font-weight: 600;
   font-size: 0.95rem;
   padding: 6px 0 !important;
-  transition: color 0.2s ease;
+  transition: color 0.2s ease, border-color 0.2s ease;
 }
 
 .update-tab.active {
-  color: black !important;
+  color: #3EB8F0 !important;
   border-bottom: 4px solid #3EB8F0;
   margin-bottom: -0.65rem;
 }
 
 .unread-badge {
-  color: #ff736c;
+  color: #F15BB5;
   border-radius: 120px;
   font-size: 0.85rem;
   font-weight: 600;
@@ -355,8 +358,8 @@
 }
 
 .delete-update-btn {
-  background-color: #db2e2e !important;
-  color: black !important;
+  background-color: #FF3B30 !important;
+  color: #ffffff !important;
 }
 
 .read-icon {

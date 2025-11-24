@@ -3,7 +3,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: black;
+  background: linear-gradient(135deg, #f5effd 0%, #ecf8fe 100%);
   width: 100vw;
   height: 100vh;
 }
@@ -30,7 +30,7 @@
   width: 100%;
   padding: 0.5rem 1rem;
   box-sizing: border-box;
-  border-bottom: 1px solid black;
+  border-bottom: 1px solid #5D3889;
 }
 
 .create-pin .header-row {
@@ -55,8 +55,8 @@
 }
 
 .create-pin .btn-back {
-  background: linear-gradient(135deg, #2a97c9, #1b5f95);
-  border: none;
+  background: linear-gradient(135deg, #9b5de5, #7f46c2);
+  border: 1px solid #5D3889;
   padding: 0.35rem 0.65rem;
   margin: 0;
   cursor: pointer;
@@ -130,12 +130,14 @@
   min-height: 44px;
   font-weight: 700;
   font-size: 1rem;
-  border: none;
+  border: 1px solid #5D3889;
   border-radius: 1.25rem;
   padding: 0.45rem 1.75rem;
   margin: 0;
   cursor: pointer;
   transition: transform 0.15s ease, opacity 0.15s ease;
+  background: linear-gradient(135deg, #9b5de5, #3eb8f0);
+  color: #ffffff;
 }
 
 .create-pin .btn-submit:hover {
