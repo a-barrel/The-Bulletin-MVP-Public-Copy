@@ -55,6 +55,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   z-index: 0;
+  font-size: clamp(1rem, 5vw, 1.5rem);
 }
 
 .pin-details.event-mode .header {
