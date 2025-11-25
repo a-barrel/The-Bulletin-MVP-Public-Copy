@@ -823,6 +823,9 @@ function PinDetails() {
 
   const editDialogBusy = isSubmittingEdit || isDeletingPin;
 
+  const { viewer } = useViewerProfile();
+  const currentUserId = viewer?._id;
+
   return (
     <div className={`pin-details ${themeClass}`}>
       {interactionOverlay ? (
@@ -1280,16 +1283,18 @@ function PinDetails() {
                   )}
                   <div className="comment-body">
                     <p>{message}</p>
-                    <button
-                      type="button"
-                      className="comment-report-btn"
-                      onClick={() => handleOpenReportReply(reply)}
-                      disabled={isOffline}
-                      aria-label="Report this reply"
-                      title={isOffline ? 'Reconnect to submit a report' : 'Report this reply'}
-                    >
-                      Report
-                    </button>
+                    {reply.author._id !== currentUserId && (
+                      <button
+                        type="button"
+                        className="comment-report-btn"
+                        onClick={() => handleOpenReportReply(reply)}
+                        disabled={isOffline}
+                        aria-label="Report this reply"
+                        title={isOffline ? 'Reconnect to submit a report' : 'Report this reply'}
+                      >
+                        Report
+                      </button>
+                    )}
                   </div>
                 </div>
               );
