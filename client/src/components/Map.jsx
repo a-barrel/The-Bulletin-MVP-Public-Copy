@@ -21,7 +21,7 @@ import {
 } from '../utils/mapMarkers';
 import { resolveUserAvatarUrl } from '../utils/pinFormatting';
 import usePinClusters from './map/usePinClusters';
-import PinCard from './PinCard';
+import PinPreviewCard from './PinPreviewCard';
 
 function PinCardOverlay({ position, children }) {
   const map = useMap();
@@ -655,14 +655,17 @@ const Map = ({
       >
         <Popup className="map-pin-popup">
           <div className="map-popup-card-wrapper">
-            <PinCard
-              item={{
+            <PinPreviewCard
+              pin={{
                 ...pin,
-                distance: distanceLabel ? `${distanceLabel} mi` : null,
-                timeLabel: expirationLabel || null,
-                images: thumbnailUrl ? [thumbnailUrl] : [],
+                photos: pin?.photos || (thumbnailUrl ? [{ url: thumbnailUrl }] : undefined)
               }}
-              onSelectItem={handleViewPin}
+              distanceMiles={pin?.distanceMiles}
+              coordinateLabel={pin?.coordinateLabel}
+              proximityRadiusMeters={pin?.proximityRadiusMeters}
+              createdAt={pin?.createdAt}
+              updatedAt={pin?.updatedAt}
+              onViewPin={handleViewPin}
             />
           </div>
         </Popup>
@@ -797,9 +800,17 @@ const Map = ({
               }
             >
              {isSelected && (
-              <PinCardOverlay position={[latitude, longitude]}>
-                <div style={{ width: "260px" }}>
-                  <PinCard item={pin} onSelectItem={() => onPinView(pin)} />
+            <PinCardOverlay position={[latitude, longitude]}>
+                <div style={{ width: "300px" }}>
+                  <PinPreviewCard
+                    pin={pin}
+                    distanceMiles={pin?.distanceMiles}
+                    coordinateLabel={pin?.coordinateLabel}
+                    proximityRadiusMeters={pin?.proximityRadiusMeters}
+                    createdAt={pin?.createdAt}
+                    updatedAt={pin?.updatedAt}
+                    onViewPin={() => onPinView(pin)}
+                  />
                 </div>
               </PinCardOverlay>
             )}

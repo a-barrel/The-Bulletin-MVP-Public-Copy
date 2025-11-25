@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
-import { MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import '../../styles/leaflet.css';
 import { createAvatarMarkerIcon, DEFAULT_MAP_CENTER } from '../../utils/mapMarkers';
+import PinPreviewCard from '../PinPreviewCard';
 import RecenterControl from '../map/RecenterControl';
 
 function MapClickHandler({ onSelect }) {
@@ -28,7 +29,7 @@ function MapCenterUpdater({ position }) {
   return null;
 }
 
-function SelectableLocationMap({ value, onChange, anchor, avatarUrl, viewerName }) {
+function SelectableLocationMap({ value, onChange, anchor, avatarUrl, viewerName, previewPin }) {
   const center = value ?? anchor ?? DEFAULT_MAP_CENTER;
   const trackingPosition = value ?? anchor ?? null;
   const userLatLng =
@@ -39,17 +40,46 @@ function SelectableLocationMap({ value, onChange, anchor, avatarUrl, viewerName 
     value && Number.isFinite(value.lat) && Number.isFinite(value.lng)
       ? [value.lat, value.lng]
       : null;
-  const userMarkerIcon = useMemo(
-    () => createAvatarMarkerIcon(avatarUrl, viewerName),
-    [avatarUrl, viewerName]
-  );
+  const userMarkerIcon = useMemo(() => {
+    return createAvatarMarkerIcon(avatarUrl, viewerName);
+  }, [avatarUrl, viewerName]);
+  const previewPosition = draftLatLng || null;
 
   return (
-    <MapContainer center={[center.lat, center.lng]} zoom={14} style={{ width: '100%', height: '100%' }} scrollWheelZoom>
+    <MapContainer
+      center={[center.lat, center.lng]}
+      zoom={14}
+      style={{ width: '100%', height: '100%' }}
+      scrollWheelZoom={false}
+    >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      {previewPosition && previewPin ? (
+        <Popup
+          position={previewPosition}
+          closeButton={false}
+          className="pin-preview-popup"
+          autoPan={false}
+          autoClose={false}
+          closeOnClick={false}
+          offset={[0, -20]}
+          keepInView={false}
+          maxWidth={780}
+          minWidth={300}
+        >
+          <div className="pin-card-overlay-inner">
+            <PinPreviewCard
+              pin={previewPin}
+              distanceMiles={previewPin?.distanceMiles}
+              coordinateLabel={previewPin?.coordinateLabel}
+              proximityRadiusMeters={previewPin?.proximityRadiusMeters}
+              disableActions
+            />
+          </div>
+        </Popup>
+      ) : null}
       <MapClickHandler onSelect={onChange} />
       <MapCenterUpdater position={trackingPosition} />
       {userLatLng ? (
