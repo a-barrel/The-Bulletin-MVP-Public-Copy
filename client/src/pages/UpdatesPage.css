@@ -39,27 +39,29 @@
   position: fixed;
   top: 0;
   z-index: 300;
-  background: linear-gradient(135deg, #9B5DE5 0%, #3EB8F0 100%);
+  background: linear-gradient(135deg, #cdaef2 0%, #ecf8fe 100%);
   width: 100vw;
-  height: 8vh;
+  min-height: 64px;
+  height: 9vh;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-bottom: 2px solid rgba(0, 0, 0, 0.1);
   box-shadow: 0 6px 18px rgba(20, 12, 48, 0.18);
+  padding: 0.4rem 0.75rem;
 }
 
 .updates-header-actions {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  padding-left: 0.25rem;
+  padding-left: 0.5rem;
 }
 
 .updates-header-title {
   font-family: var(--font-family-base);
-  color: #ffffff;
+  color: #5D3889;
   font-size: 2rem;
   font-weight: 500;
   text-align: center;
@@ -69,7 +71,7 @@
 .updates-header-back-btn,
 .updates-header-clear-btn {
   font-family: var(--font-family-base);
-  color: #ffffff !important;
+  color: #5D3889 !important;
   text-transform: none;
   font-weight: 600 !important;
   font-size: 0.95rem;
@@ -100,20 +102,38 @@
   text-transform: none !important;
   margin-top: 2rem !important;
   margin-right: 0rem !important; 
+  color: #3b2161 !important;
 }
 
 /* For the 'push notifications' alert */
 .push-notifs-container {
   top: calc(var(--header-h) -8px);
-  background-color: rgb(255, 255, 255) !important;
+  background-color: #f5effd !important;
+  border: 1px solid #cdaef2 !important;
+  color: #1e1e1e;
 }
 
 .push-notifs-info {
-  color: black;
+  color: #1e1e1e;
+  display: flex;
+  gap: 0.5rem;
 }
 
 .push-notifs-description {
   color: black;
+}
+
+.push-notifs-container .MuiAlert-icon {
+  color: #5D3889;
+}
+
+.push-notifs-container .MuiButton-contained {
+  background: #5D3889;
+  color: #ffffff;
+}
+
+.push-notifs-container .MuiButton-text {
+  color: #5D3889;
 }
 
 /* Tabs */
@@ -123,9 +143,9 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: space-around;
-  background-color: white;
-  border-bottom: 2px solid rgb(194, 194, 194);
-  padding: 4px 0;
+  background-color: #f5effd;
+  border-bottom: 2px solid #cdaef2;
+  padding: 6px 0;
   gap: 4px 0;
   z-index: 40;
   min-height: 52px;
@@ -136,17 +156,17 @@
   flex: 1;
   background: none;
   border: none;
-  color: #5d3889 !important;
+  color: #3b2161 !important;
   gap: 6px;
   font-weight: 600;
   font-size: 0.95rem;
-  padding: 6px 0 !important;
+  padding: 8px 0 !important;
   transition: color 0.2s ease, border-color 0.2s ease;
 }
 
 .update-tab.active {
-  color: #3EB8F0 !important;
-  border-bottom: 4px solid #3EB8F0;
+  color: #5D3889 !important;
+  border-bottom: 4px solid #5D3889;
   margin-bottom: -0.65rem;
 }
 
@@ -233,14 +253,14 @@
 
 .update-card {
   overflow: hidden;
-  border-top: 1px solid gray;
-  border-bottom: 1px solid gray;
-  padding: 10px 14px;
-  background-color: white;
-  box-shadow: 0 2px 4px rgba(180, 140, 240, 0.1);
+  border: 1px solid #cdaef2;
+  padding: 14px 16px;
+  background-color: #ffffff;
+  box-shadow: 0 8px 18px rgba(93, 56, 137, 0.12);
   position: relative;
   cursor: pointer;
   transition: all 0.3s ease;
+  border-radius: 12px;
 }
 
 .pin-title {
@@ -248,13 +268,13 @@
 }
 
 .update-header {
-  color: black;
+  color: #5D3889;
 }
 
 .pin-title-chip {
-  background-color: rgba(62, 184, 240, 0.18) !important;
+  background-color: #ecf8fe !important;
   color: #0f172a !important;
-  border: 1px solid rgba(62, 184, 240, 0.35) !important;
+  border: 1px solid #3eb8f0 !important;
   font-weight: 600 !important;
   text-transform: none !important;
 }
@@ -265,7 +285,7 @@
   top: 8px;
   right: 24px;
   font-size: 0.75rem;
-  color: rgb(155, 155, 155);
+  color: #7b7b7b;
 }
 
 .unread-dot {
@@ -276,7 +296,7 @@
   top: 15px;
   right: 8px;
   border-radius: 50%;
-  background-color: #2196f3;
+  background-color: #9B5DE5;
   margin-left: 8px;
 }
 
@@ -348,13 +368,14 @@
 }
 
 .view-pin-btn {
-  background: #d1b4f4 !important;
-  color: #3d1e60 !important;
+  background: #f5effd !important;
+  border: 1px solid #cdaef2 !important;
+  color: #5D3889 !important;
 }
 
 .mark-as-read-btn {
   background-color: #3EB8F0 !important;
-  color: black !important;
+  color: #0f172a !important;
 }
 
 .delete-update-btn {

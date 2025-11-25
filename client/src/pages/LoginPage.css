@@ -12,7 +12,7 @@ body, input, button, textarea, p, h1, small, span, label, select, input::placeho
   background: linear-gradient(135deg, #f5effd 0%, #ecf8fe 100%);
   box-shadow: 0 0 25px rgba(93, 56, 137, 0.2);
   text-align: center;
-  padding: clamp(0.25rem, 1vw, 1rem) clamp(0.75rem, 4vw, 2rem);
+  padding: clamp(0.25rem, 1vw, 1.5rem) clamp(0.75rem, 4vw, 2rem);
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -181,6 +181,7 @@ input[type="checkbox"] {
   border: 0.1rem solid black;
   border-radius: 25px;
   transition: background 0.2s;
+  min-height: 52px;
 }
 
 /* Login button */
@@ -196,9 +197,11 @@ input[type="checkbox"] {
 .login-page-google-sign-in-btn {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 10px;
   margin-top: -0.25rem;
   background-color: #c5ecff;
+  text-align: center;
 }
 
 .login-page-google-sign-in-btn:hover {
@@ -213,11 +216,13 @@ input[type="checkbox"] {
 .login-page-apple-sign-in-btn {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 10px;
   margin-top: -0.25rem;
   margin-bottom: -3.5rem;
   background-color: #1c1c1f;
   color: #fff;
+  text-align: center;
 }
 
 .login-page-apple-sign-in-btn:hover {

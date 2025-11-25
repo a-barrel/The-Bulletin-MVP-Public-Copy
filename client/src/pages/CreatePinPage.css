@@ -31,6 +31,7 @@
   padding: 0.5rem 1rem;
   box-sizing: border-box;
   border-bottom: 1px solid #5D3889;
+  background: #ffffff;
 }
 
 .create-pin .header-row {

@@ -17,6 +17,7 @@
   padding: 8px 1rem calc(10px + env(safe-area-inset-bottom, 0));
   box-sizing: border-box;
   transform: none;
+  padding-top: env(safe-area-inset-top, 0);
 }
 
 .bottom-nav-spacer {
@@ -84,6 +85,7 @@
     bottom: 0;
     transform: none;
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0));
+    padding-top: calc(6px + env(safe-area-inset-top, 0));
   }
 
   .bottom-nav-spacer {

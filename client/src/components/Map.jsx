@@ -20,6 +20,7 @@ import {
   MAP_MARKER_SHADOW_URL
 } from '../utils/mapMarkers';
 import { resolveUserAvatarUrl } from '../utils/pinFormatting';
+import toIdString from '../utils/ids';
 import usePinClusters from './map/usePinClusters';
 import RecenterControl from './map/RecenterControl';
 
@@ -373,7 +374,8 @@ const Map = ({
   currentUserDisplayName,
   showInteractionRadius = true,
   teleportEnabled = false,
-  onTeleportRequest
+  onTeleportRequest,
+  hostPinId
 }) => {
   const tileLayerRef = useRef(null);
   const tileErrorCountRef = useRef(0);
@@ -572,7 +574,13 @@ const Map = ({
       const expirationLabel = formatExpiration(pin);
       const key = pin._id ?? `pin-${latitude}-${longitude}-${pin?.title ?? 'pin'}`;
       const canViewPin = typeof onPinView === 'function';
-      const markerIcon = resolvePinIcon(pin);
+      const isHostPin = hostPinId && toIdString(pin?._id) === toIdString(hostPinId);
+      const hostName = pin?.creator?.displayName || pin?.creator?.username || null;
+      const hostAvatarUrl =
+        pin?.creatorAvatarUrl || resolveUserAvatarUrl(pin?.creator, AVATAR_FALLBACK) || null;
+      const markerIcon = isHostPin
+        ? createAvatarMarkerIcon(hostAvatarUrl, computeInitials(hostName))
+        : resolvePinIcon(pin);
       const markerZIndex = pin?.isSelf ? 1200 : pin._id && pin._id === selectedPinId ? 1100 : 1000;
 
       const handleViewPin = (event) => {

@@ -1,9 +1,11 @@
 import PropTypes from 'prop-types';
 import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
 import GlobalNavMenu from '../GlobalNavMenu';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
 
 function ChatThreadHeader({
+  pageTitle,
   channelLabel,
   isChannelDialogOpen,
   onOpenChannelDialog,
@@ -17,6 +19,11 @@ function ChatThreadHeader({
   return (
     <header className="chat-header-bar">
       <GlobalNavMenu className="chat-header-menu-nav" />
+      {pageTitle ? (
+        <Typography variant="h6" component="h2" className="chat-header-title">
+          {pageTitle}
+        </Typography>
+      ) : null}
       <div className="chat-header-actions">
         <Button
           className={`switch-chat-btn ${isChannelDialogOpen ? 'open' : ''}`}
@@ -47,6 +54,7 @@ function ChatThreadHeader({
 }
 
 ChatThreadHeader.propTypes = {
+  pageTitle: PropTypes.node,
   channelLabel: PropTypes.string.isRequired,
   isChannelDialogOpen: PropTypes.bool,
   onOpenChannelDialog: PropTypes.func.isRequired,
@@ -59,6 +67,7 @@ ChatThreadHeader.propTypes = {
 };
 
 ChatThreadHeader.defaultProps = {
+  pageTitle: null,
   isChannelDialogOpen: false,
   isOffline: false,
   notificationBadge: null,

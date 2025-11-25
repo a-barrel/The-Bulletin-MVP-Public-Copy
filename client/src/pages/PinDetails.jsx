@@ -953,6 +953,7 @@ function PinDetails() {
                   pins={mapPins}
                   selectedPinId={mapPins[0]?._id ?? pin._id}
                   centerOverride={coordinates}
+                  hostPinId={pin?._id}
                 />
                 {coordinateLabel ? (
                   <span className="coordinate-label">Coords: {coordinateLabel}</span>

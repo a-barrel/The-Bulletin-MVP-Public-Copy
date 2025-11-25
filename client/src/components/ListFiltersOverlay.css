@@ -122,6 +122,7 @@
   color: white !important;
   border: 1.5px solid #000 !important;
   background: #F15BB5;
+  height: 46px;
   box-shadow: none !important;
 }
 .filters-actions .MuiButton-colorInherit:hover {
@@ -133,6 +134,7 @@
   background: #9B5DE5 !important;
   color: #fff !important;
   border: 1.5px solid #000 !important;
+  height: 46px;
   box-shadow: none !important;
 }
 .filters-actions .MuiButton-contained:hover {

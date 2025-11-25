@@ -111,8 +111,8 @@
 
 .header-title {
   color: #5D3889;
-  font-size: 2rem;
-  font-weight: 500;
+  font-size: 2.2rem;
+  font-weight: 700;
   text-align: center;
   flex: 1;
 }
@@ -195,6 +195,8 @@
   width: 40px;
   height: 50px;
   background-color: transparent;
+  border: none;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -206,9 +208,10 @@
   border: none;
 }
 .icon-btn img {
-  width: 40px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
+  background: transparent;
 }
 
 .icon-btn.active {
@@ -277,8 +280,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 50px;
-  height: 28px;
+  width: 56px;
+  height: 30px;
   background-color: #cdaef2;
   border-radius: 50px;
   position: relative;
@@ -288,8 +291,8 @@
 .toggle-container:hover { transform: scale(1.03); }
 
 .toggle-circle {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   background-color: #fff;
   border-radius: 50%;
   position: absolute;
@@ -307,12 +310,12 @@
 
 /* Add button (right side of topbar) */
 .add-btn {
-  width: 64px;
-  height: 64px;
-  padding: 6px;
+  width: 72px;
+  height: 72px;
+  padding: 8px;
   border-radius: 999px;
-  background: rgba(93, 56, 137, 0.1);
-  border: 1px solid rgba(93, 56, 137, 0.35);
+  background: rgba(93, 56, 137, 0.14);
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;

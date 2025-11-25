@@ -38,6 +38,7 @@ import toIdString from '../utils/ids';
 import resolveAssetUrl from '../utils/media';
 import { routes } from '../routes';
 import FriendRequestsDialog from '../components/friends/FriendRequestsDialog';
+import { useTranslation } from 'react-i18next';
 import useDirectMessages from '../hooks/useDirectMessages';
 import useAttachmentManager, {
   mapDraftAttachmentPayloads,
@@ -77,6 +78,7 @@ export const pageConfig = {
 function ChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
   const { unreadCount, refreshUnreadCount } = useUpdates();
   const { isOffline } = useNetworkStatusContext();
   const { announceBadgeEarned } = useBadgeSound();
@@ -1776,6 +1778,7 @@ function ChatPage() {
 
         <div className="chat-frame">
           <ChatThreadHeader
+            pageTitle={t('nav.bottomNav.chat')}
             channelLabel={headerChannelLabel}
             isChannelDialogOpen={isChannelDialogOpen}
             onOpenChannelDialog={handleOpenChannelDialog}

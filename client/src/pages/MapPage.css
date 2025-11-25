@@ -53,7 +53,7 @@
 
 @media (max-width: 480px) {
   .map-header { width: calc(100% + 3rem); }
-  .map-title { font-size: 30px; }
+  .map-title { font-size: 30px; text-align: center; width: 100%; }
 }
 
 /* ===== Header ===== */
