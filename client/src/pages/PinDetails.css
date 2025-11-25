@@ -27,14 +27,35 @@
 
 /* header */
 .pin-details .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    padding: 0.25rem 1rem;
-    box-sizing: border-box;
-    border-bottom: 1px solid black;
-    color: #5d3889
+  position: relative; 
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0.25rem 0.5rem; 
+  box-sizing: border-box;
+  border-bottom: 1px solid black;
+}
+
+.pin-details .header-left,
+.pin-details .header-right {
+  display: flex;
+  align-items: center;
+  z-index: 1; 
+  gap: 0.5rem;
+  min-width: 50px;
+}
+
+.pin-details .header-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 0;
+  font-size: clamp(1rem, 5vw, 1.5rem);
 }
 
 .pin-details.event-mode .header {
@@ -101,8 +122,8 @@
 
 .pin-details .header-actions {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .pin-details .pin-header-nav {
@@ -275,10 +296,9 @@
 }
 
 .pin-details .share-button-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .pin-details .share-button {
@@ -557,6 +577,7 @@
 .pin-details .muted {
     color: #7f7f7f;
     font-style: italic;
+    padding-left: 1rem;
 }
 
 .pin-details .error-text {
@@ -1309,20 +1330,6 @@
     outline-offset: 3px;
 }
 
-.pin-details .back-button {
-    transition: transform 150ms ease, filter 150ms ease;
-}
-
-.pin-details .back-button:hover {
-    transform: scale(1.08);
-    filter: brightness(1.05);
-}
-
-.pin-details .back-button:active {
-    transform: scale(0.95);
-}
-
-
 .pin-details .bookmark-button {
     transition: transform 150ms ease, filter 150ms ease;
 }
@@ -1439,12 +1446,15 @@
 }
 
 .pin-details .pin-analytics-card {
-  margin: 16px 0;
+  margin: 0 0;
   padding: 12px;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  /* border-radius: 12px; */
   background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 50%, #f5f7ff 100%);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .pin-details .pin-analytics-header {
@@ -1479,15 +1489,19 @@
   margin: 10px 0 6px;
   overflow-x: auto;
   padding-bottom: 6px;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch; 
+  scrollbar-width: thin; 
 }
 
 .pin-details .pin-analytics-metric {
-  min-width: 120px;
+  min-width: 140px;
   padding: 8px 10px;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   background: #f8f9ff;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .pin-details .pin-analytics-metric .label {
@@ -1568,6 +1582,17 @@
   color: #374151;
 }
 
+.pin-details .pin-analytics-metrics::-webkit-scrollbar {
+  height: 6px;
+}
+.pin-details .pin-analytics-metrics::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+}
+.pin-details .pin-analytics-metrics::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .pin-details .create-comment:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -1601,6 +1626,7 @@
   text-decoration: none;
 }
 
+/* comments mobile */
 @media (max-width: 600px) {
   .pin-details .create-comment {
     width: 60px;
@@ -1619,6 +1645,7 @@
   }
 }
 
+/* pin photos mobile */
 @media (max-width: 600px) {
   .pin-details .pin-photo {
     width: 120px;
@@ -1627,5 +1654,36 @@
 
   .pin-details .pin-photo-item {
     margin: 0 1rem;
+  }
+}
+
+/* header mobile */
+@media (max-width: 600px) {
+  .pin-details .header-actions,
+  .pin-details .share-button-wrapper {
+    flex-wrap: wrap; 
+    gap: 0.25rem;
+  }
+
+  .pin-details .flag-pin-button {
+    padding: 0.25rem 0.5rem; 
+    font-size: 0.8rem; 
+    white-space: nowrap; 
+  }
+
+  .pin-details .edit-pin-button {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .pin-details .header-right {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .pin-details .header-actions {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    justify-content: flex-end; 
   }
 }

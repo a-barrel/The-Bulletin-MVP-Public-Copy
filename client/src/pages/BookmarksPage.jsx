@@ -115,7 +115,7 @@ function BookmarksPage() {
 
   const [highlightedCollectionKey, setHighlightedCollectionKey] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState('all');
-  const [hideOwnPins, setHideOwnPins] = useState(true);
+  const [hideOwnPins, setHideOwnPins] = useState(false);
   const [activeTab, setActiveTab] = useState('bookmarks');
   const [currentPage, setCurrentPage] = useState(1);
   const collectionAnchorsRef = useRef(new Map());

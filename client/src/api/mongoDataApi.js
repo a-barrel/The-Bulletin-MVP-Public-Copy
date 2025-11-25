@@ -636,7 +636,10 @@ export async function updatePinAttendance(pinId, { attending }) {
   }
 }
 
-export async function fetchPinAnalytics(pinId, { enabled = true, suppressLogStatuses = [] } = {}) {
+export async function fetchPinAnalytics(
+  pinId,
+  { enabled = true, suppressLogStatuses = [], timeoutMs = 12000 } = {}
+) {
   if (!pinId) {
     throw new Error('Pin id is required');
   }
@@ -645,29 +648,50 @@ export async function fetchPinAnalytics(pinId, { enabled = true, suppressLogStat
   }
 
   const baseUrl = resolveApiBaseUrl();
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeoutId =
+    controller && Number.isFinite(timeoutMs) && timeoutMs > 0
+      ? setTimeout(() => controller.abort(), timeoutMs)
+      : null;
+
   try {
     const response = await fetch(`${baseUrl}/api/pins/${encodeURIComponent(pinId)}/analytics`, {
       method: 'GET',
       headers: await buildHeaders(),
+      signal: controller?.signal,
       cache: 'no-store'
     });
 
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      if (suppressLogStatuses.includes(response.status)) {
-        return null;
-      }
       const error = createApiError(response, payload, payload?.message || 'Failed to load analytics');
+      if (suppressLogStatuses.includes(response.status)) {
+        error.skipClientLog = true;
+        throw error;
+      }
       await logApiError('/api/pins/:pinId/analytics', error, { status: response.status, pinId });
       throw error;
     }
 
     return payload;
   } catch (error) {
+    if (error?.name === 'AbortError') {
+      const timeoutError = new Error('Attendance analytics request timed out');
+      timeoutError.status = 'timeout';
+      timeoutError.isTimeout = true;
+      throw timeoutError;
+    }
+    if (error?.skipClientLog) {
+      throw error;
+    }
     if (!hasApiErrorBeenLogged(error)) {
       await logApiError('/api/pins/:pinId/analytics', error, { pinId });
     }
     throw error;
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
   }
 }
 
@@ -786,9 +810,12 @@ export async function logClientEvent({
   if (!message) {
     return;
   }
+  if (!auth?.currentUser) {
+    return;
+  }
   try {
     const baseUrl = resolveApiBaseUrl();
-    await fetch(`${baseUrl}/api/dev-logs`, {
+    const response = await fetch(`${baseUrl}/api/dev-logs`, {
       method: 'POST',
       headers: await buildHeaders(),
       body: JSON.stringify({
@@ -800,6 +827,9 @@ export async function logClientEvent({
         timestamp: timestamp ?? new Date().toISOString()
       })
     });
+    if (!response.ok && import.meta.env.DEV) {
+      console.warn('Failed to send client log event', response.status);
+    }
     clientEventCache.set(dedupeKey, now);
   } catch (error) {
     if (import.meta.env.DEV) {

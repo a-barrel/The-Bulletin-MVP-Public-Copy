@@ -43,6 +43,7 @@ import ImageOverlay from '../components/ImageOverlay.jsx'
 import reportClientError from '../utils/reportClientError';
 import useViewerProfile from '../hooks/useViewerProfile';
 import canAccessModerationTools from '../utils/accessControl';
+import { resolveAnalyticsErrorMessage } from '../utils/pinAnalytics';
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
@@ -442,6 +443,7 @@ function PinDetails() {
   const [isFlaggingPin, setIsFlaggingPin] = useState(false);
   const [flagStatus, setFlagStatus] = useState(null);
   const analyticsInFlightRef = useRef(false);
+  const lastAnalyticsPinIdRef = useRef(null);
 
   useEffect(() => {
     if (pin && !isEditDialogOpen) {
@@ -450,9 +452,11 @@ function PinDetails() {
   }, [pin, isEditDialogOpen]);
 
   useEffect(() => {
-    if (!showAnalytics || !pinId || !isHostLike) {
+    if (!showAnalytics || !pinId || !isHostLike || !pin?._id) {
       setAnalytics(null);
       setAnalyticsError(null);
+      setAnalyticsLoading(false);
+      lastAnalyticsPinIdRef.current = null;
       return;
     }
     if (analyticsInFlightRef.current) {
@@ -467,6 +471,9 @@ function PinDetails() {
     analyticsInFlightRef.current = true;
     setAnalyticsLoading(true);
     setAnalyticsError(null);
+    lastAnalyticsPinIdRef.current = pinId;
+    // Important: gate analytics fetch on loaded pin + eligibility and clear loading on cleanup.
+    // Previously, a rerender during pin reload could leave analyticsLoading=true forever.
     fetchPinAnalytics(pinId, { enabled: isHostLike, suppressLogStatuses: [401, 403] })
       .then((payload) => {
         if (!ignore) {
@@ -475,13 +482,8 @@ function PinDetails() {
       })
       .catch((fetchError) => {
         if (!ignore) {
-          const status = fetchError?.status;
-          if (status === 403) {
-            setAnalytics(null);
-            setAnalyticsError(null);
-            return;
-          }
-          setAnalyticsError(fetchError?.message || 'Failed to load analytics');
+          setAnalytics(null);
+          setAnalyticsError(resolveAnalyticsErrorMessage(fetchError));
         }
       })
       .finally(() => {
@@ -493,8 +495,10 @@ function PinDetails() {
 
     return () => {
       ignore = true;
+      analyticsInFlightRef.current = false;
+      setAnalyticsLoading(false);
     };
-  }, [showAnalytics, pinId, isOffline, isHostLike]);
+  }, [showAnalytics, pinId, pin, isOffline, isHostLike]);
 
   const handleOpenEditDialog = useCallback(() => {
     if (!pin) {
@@ -823,6 +827,9 @@ function PinDetails() {
 
   const editDialogBusy = isSubmittingEdit || isDeletingPin;
 
+  const { viewer } = useViewerProfile();
+  const currentUserId = viewer?._id;
+
   return (
     <div className={`pin-details ${themeClass}`}>
       {interactionOverlay ? (
@@ -840,76 +847,82 @@ function PinDetails() {
       ) : null}
 
       <header className="header">
-        <div className="pin-header-nav">
-          <MainNavBackButton className="back-button" iconClassName="back-arrow" aria-label="Go back" />
-          <div className="pin-nav-menu">
-            <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+        <div className='header-left'>
+          <div className="pin-header-nav">
+            <MainNavBackButton className="back-button" iconClassName="back-arrow" aria-label="Go back" />
+            <div className="pin-nav-menu">
+              <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+            </div>
           </div>
         </div>
 
-        <h2>{pinTypeHeading}</h2>
+        <h2 className="header-title">{pinTypeHeading}</h2>
 
-        <div className="header-actions">
-          {isOwnPin ? (
-            <div className="edit-button-wrapper">
+        <div className='header-right'>
+          <div className="header-actions">
+            {isOwnPin ? (
+              <div className="edit-button-wrapper">
+                <button
+                  className="edit-pin-button"
+                  type="button"
+                  onClick={handleOpenEditDialog}
+                  disabled={isOffline || !pin || isLoading || isSubmittingEdit || isDeletingPin}
+                  title={isOffline ? 'Reconnect to edit your pin' : 'Edit this pin'}
+                >
+                  Edit
+                </button>
+              </div>
+            ) : null}
+            {canModeratePins && !isOwnPin ? (
+              <div className="flag-button-wrapper">
+                <button
+                  className={`flag-pin-button${isPinFlagged ? ' flagged' : ''}`}
+                  type="button"
+                  onClick={handleFlagPin}
+                  disabled={isOffline || !pin || isFlaggingPin || isPinFlagged}
+                  title={
+                    isPinFlagged
+                      ? flaggedReason
+                        ? `Flagged: ${flaggedReason}`
+                        : 'This pin has been flagged for removal.'
+                      : isOffline
+                      ? 'Reconnect to flag pins'
+                      : 'Flag this pin for moderator review'
+                  }
+                >
+                  {isPinFlagged ? 'Flagged' : isFlaggingPin ? 'Flagging…' : 'Flag'}
+                </button>
+              </div>
+            ) : null}
+            <div className="share-button-wrapper">
               <button
-                className="edit-pin-button"
+                className="share-button"
                 type="button"
-                onClick={handleOpenEditDialog}
-                disabled={isOffline || !pin || isLoading || isSubmittingEdit || isDeletingPin}
-                title={isOffline ? 'Reconnect to edit your pin' : 'Edit this pin'}
+                onClick={() => handleSharePin()}
+                disabled={isOffline || isSharing || !pin}
+                aria-label="Share this pin"
+                aria-busy={isSharing ? 'true' : 'false'}
+                title={isOffline ? 'Reconnect to share pins' : 'Share pin link'}
               >
-                Edit
+                <ShareOutlinedIcon fontSize="small" />
               </button>
             </div>
-          ) : null}
-          {canModeratePins ? (
-            <div className="flag-button-wrapper">
-              <button
-                className={`flag-pin-button${isPinFlagged ? ' flagged' : ''}`}
-                type="button"
-                onClick={handleFlagPin}
-                disabled={isOffline || !pin || isFlaggingPin || isPinFlagged}
-                title={
-                  isPinFlagged
-                    ? flaggedReason
-                      ? `Flagged: ${flaggedReason}`
-                      : 'This pin has been flagged for removal.'
-                    : isOffline
-                    ? 'Reconnect to flag pins'
-                    : 'Flag this pin for moderator review'
-                }
-              >
-                {isPinFlagged ? 'Flagged' : isFlaggingPin ? 'Flagging…' : 'Flag for deletion'}
-              </button>
+            <div className="bookmark-button-wrapper">
+              <BookmarkButton
+                bookmarked={bookmarked}
+                pending={isUpdatingBookmark}
+                disabled={isOffline || !pin || isInteractionLocked}
+                ownsPin={isOwnPin}
+                attending={attending}
+                onToggle={handleToggleBookmark}
+                disabledLabel={isOffline ? 'Reconnect to manage bookmarks' : undefined}
+              />
+              {bookmarkError ? <span className="error-text bookmark-error">{bookmarkError}</span> : null}
             </div>
-          ) : null}
-          <div className="share-button-wrapper">
-            <button
-              className="share-button"
-              type="button"
-              onClick={() => handleSharePin()}
-              disabled={isOffline || isSharing || !pin}
-              aria-label="Share this pin"
-              aria-busy={isSharing ? 'true' : 'false'}
-              title={isOffline ? 'Reconnect to share pins' : 'Share pin link'}
-            >
-              <ShareOutlinedIcon fontSize="small" />
-            </button>
-          </div>
-          <div className="bookmark-button-wrapper">
-            <BookmarkButton
-              bookmarked={bookmarked}
-              pending={isUpdatingBookmark}
-              disabled={isOffline || !pin || isInteractionLocked}
-              ownsPin={isOwnPin}
-              attending={attending}
-              onToggle={handleToggleBookmark}
-              disabledLabel={isOffline ? 'Reconnect to manage bookmarks' : undefined}
-            />
-            {bookmarkError ? <span className="error-text bookmark-error">{bookmarkError}</span> : null}
           </div>
         </div>
+
+        
       </header>
 
       <div className="name">
@@ -1039,7 +1052,7 @@ function PinDetails() {
             <div className="pin-analytics-card">
               <div className="pin-analytics-header">
                 <div>
-                  <h3>Attendance insights</h3>
+                  <h3>Attendance Insights</h3>
                   <p className="pin-analytics-subtitle">Host-only view of joins and leaves.</p>
                 </div>
                 <span className="pin-analytics-pill">
@@ -1280,16 +1293,18 @@ function PinDetails() {
                   )}
                   <div className="comment-body">
                     <p>{message}</p>
-                    <button
-                      type="button"
-                      className="comment-report-btn"
-                      onClick={() => handleOpenReportReply(reply)}
-                      disabled={isOffline}
-                      aria-label="Report this reply"
-                      title={isOffline ? 'Reconnect to submit a report' : 'Report this reply'}
-                    >
-                      Report
-                    </button>
+                    {reply.author._id !== currentUserId && (
+                      <button
+                        type="button"
+                        className="comment-report-btn"
+                        onClick={() => handleOpenReportReply(reply)}
+                        disabled={isOffline}
+                        aria-label="Report this reply"
+                        title={isOffline ? 'Reconnect to submit a report' : 'Report this reply'}
+                      >
+                        Report
+                      </button>
+                    )}
                   </div>
                 </div>
               );

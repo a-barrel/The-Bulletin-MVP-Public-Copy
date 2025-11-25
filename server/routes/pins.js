@@ -1697,11 +1697,11 @@ router.get('/:pinId/analytics', verifyToken, async (req, res) => {
     const viewerId = toIdString(viewer._id);
     const creatorId = toIdString(pin.creatorId?._id ?? pin.creatorId);
     const isCreator = viewerId && creatorId && viewerId === creatorId;
-    const viewerRoles = Array.isArray(viewer.roles) ? viewer.roles : [];
-    const isAdmin = viewerRoles.some((role) => typeof role === 'string' && role.toLowerCase().includes('admin'));
+    const isElevatedViewer = viewerHasDeveloperAccess(viewer, { offlineOverride: false });
+    const canViewAnalytics = isCreator || isElevatedViewer;
 
-    if (!isCreator && !isAdmin) {
-      return res.status(403).json({ message: 'Only the pin creator can view analytics.' });
+    if (!canViewAnalytics) {
+      return res.status(403).json({ message: 'You do not have permission to view analytics.' });
     }
 
     const events = await AttendanceEvent.find({ pinId })

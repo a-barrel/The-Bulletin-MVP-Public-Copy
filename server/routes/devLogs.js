@@ -21,6 +21,10 @@ const ClientLogSchema = z.object({
 
 router.post('/', verifyToken, (req, res) => {
   try {
+    const body = req.body ?? {};
+    if (!body || Object.keys(body).length === 0) {
+      return res.status(204).send();
+    }
     const payload = ClientLogSchema.parse(req.body ?? {});
     const timestamp = payload.timestamp ? new Date(payload.timestamp) : new Date();
     const contextSuffix = payload.context ? ` | context=${JSON.stringify(payload.context)}` : '';

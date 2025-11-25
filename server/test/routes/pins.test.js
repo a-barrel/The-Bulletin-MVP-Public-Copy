@@ -21,6 +21,10 @@ jest.mock('../../models/User', () => ({
   findOne: jest.fn()
 }));
 
+jest.mock('../../models/AttendanceEvent', () => ({
+  find: jest.fn()
+}));
+
 jest.mock('../../services/analyticsService', () => ({
   trackEvent: jest.fn()
 }));
@@ -28,6 +32,7 @@ jest.mock('../../services/analyticsService', () => ({
 const pinsRouter = require('../../routes/pins');
 const Pin = require('../../models/Pin');
 const User = require('../../models/User');
+const AttendanceEvent = require('../../models/AttendanceEvent');
 const { trackEvent } = require('../../services/analyticsService');
 
 const createApp = () => {
@@ -232,5 +237,78 @@ describe('pins routes', () => {
     expect(queryChain.limit).toHaveBeenCalledWith(5);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].title).toBe('Filtered pin');
+  });
+
+  describe('analytics permissions', () => {
+    const buildAttendanceQuery = (events = []) => ({
+      sort: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue(events)
+    });
+
+    it('allows pin creators to fetch analytics', async () => {
+      const viewerId = new mongoose.Types.ObjectId();
+      const pinId = new mongoose.Types.ObjectId();
+
+      User.findOne.mockResolvedValue({
+        _id: viewerId,
+        roles: [],
+        relationships: { blockedUserIds: [] }
+      });
+
+      Pin.findById.mockReturnValue({
+        populate: jest.fn().mockResolvedValue({
+          _id: pinId,
+          creatorId: viewerId,
+          participantCount: 3,
+          participantLimit: 10
+        })
+      });
+
+      AttendanceEvent.find.mockReturnValue(
+        buildAttendanceQuery([
+          { _id: new mongoose.Types.ObjectId(), action: 'join', createdAt: new Date('2024-01-01T00:00:00Z') },
+          { _id: new mongoose.Types.ObjectId(), action: 'leave', createdAt: new Date('2024-01-01T01:00:00Z') }
+        ])
+      );
+
+      const res = await request(createApp()).get(`/api/pins/${pinId}/analytics`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.totals).toEqual(
+        expect.objectContaining({
+          joins: 1,
+          leaves: 1,
+          current: 3
+        })
+      );
+    });
+
+    it('rejects non-creators without elevated roles', async () => {
+      const viewerId = new mongoose.Types.ObjectId();
+      const pinId = new mongoose.Types.ObjectId();
+      const creatorId = new mongoose.Types.ObjectId();
+
+      User.findOne.mockResolvedValue({
+        _id: viewerId,
+        roles: ['user'],
+        relationships: { blockedUserIds: [] }
+      });
+
+      Pin.findById.mockReturnValue({
+        populate: jest.fn().mockResolvedValue({
+          _id: pinId,
+          creatorId,
+          participantCount: 0,
+          participantLimit: null
+        })
+      });
+
+      AttendanceEvent.find.mockReturnValue(buildAttendanceQuery([]));
+
+      const res = await request(createApp()).get(`/api/pins/${pinId}/analytics`);
+
+      expect(res.status).toBe(403);
+      expect(res.body).toEqual({ message: 'You do not have permission to view analytics.' });
+    });
   });
 });
