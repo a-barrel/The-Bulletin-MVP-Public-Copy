@@ -18,7 +18,7 @@ import CommentsIcon from "../assets/Comments.png";
 import InterestedIcon from "../assets/AttendanceIcon.png";
 import { createPinBookmark, deletePinBookmark } from "../api/mongoDataApi";
 import BookmarkButton from "./BookmarkButton";
-import resolveAssetUrl from "../utils/media";
+import resolveAssetUrl, { resolveThumbnailUrl } from "../utils/media";
 import toIdString from "../utils/ids";
 import usePinAttendees from "../hooks/usePinAttendees";
 import { useNetworkStatusContext } from "../contexts/NetworkStatusContext";
@@ -60,6 +60,7 @@ function PinCard({
   onSelectItem,
   onSelectAuthor,
   showAttendeeAvatars = true,
+  lazyLoadAttendees = false,
   showBookmarkButton = true,
   enableBookmarkToggle = true,
   className = ""
@@ -73,7 +74,15 @@ function PinCard({
       ? "discussion"
       : rawType;
   const visualType = normalizedType === "discussion" ? "discussion" : "pin";
-  const images = Array.isArray(item?.images) ? item.images.filter(Boolean) : [];
+  const images = useMemo(
+    () =>
+      Array.isArray(item?.images)
+        ? item.images
+            .filter(Boolean)
+            .map((src) => resolveThumbnailUrl(src) || src)
+        : [],
+    [item?.images]
+  );
   const authorName = resolveAuthorName(item);
   const pinId =
     toIdString(item?.pinId) ??
@@ -158,7 +167,10 @@ function PinCard({
     [item]
   );
 
-  const attendeesFeatureEnabled = showAttendeeAvatars && isEventPin;
+  const [attendeesExpanded, setAttendeesExpanded] = useState(false);
+
+  const attendeesFeatureEnabled =
+    showAttendeeAvatars && isEventPin && (!lazyLoadAttendees || attendeesExpanded);
   const friendAttendingCount = useMemo(() => {
     if (!isEventPin || !friendLookup.size || attendeeIds.length === 0) {
       return 0;
@@ -169,11 +181,14 @@ function PinCard({
     }, 0);
   }, [attendeeIds, friendLookup, isEventPin]);
 
+  const [attendeeCacheBust, setAttendeeCacheBust] = useState(0);
+
   const { attendees } = usePinAttendees({
     pinId,
     enabled: attendeesFeatureEnabled && isValidPinId,
     participantCount,
-    attendeeSignature
+    attendeeSignature,
+    cacheKey: attendeeCacheBust
   });
 
   const badgeLabel =
@@ -257,7 +272,11 @@ function PinCard({
     ? Number.isFinite(participantCount)
       ? Math.max(participantCount, resolvedAttendees.length)
       : resolvedAttendees.length
+    : Number.isFinite(participantCount)
+    ? participantCount
     : 0;
+
+  const attendeeToggleLabel = attendeesExpanded ? "Hide attendees" : "View attendees";
   const remainingAttendees = Math.max(
     0,
     attendeeTotal - displayAttendees.length
@@ -339,7 +358,6 @@ function PinCard({
       }
       const attendeeId =
         toIdString(attendee.userId) ??
-        toIdString(attendee.id) ??
         toIdString(attendee._id);
       if (typeof onSelectAuthor === "function" && attendeeId) {
         onSelectAuthor(attendeeId, attendee);
@@ -494,9 +512,7 @@ function PinCard({
         </button>
 
         <div
-          className={`interested-row${
-            attendeesRequireScroll ? " scrollable" : ""
-          }`}
+          className={`interested-row${attendeesRequireScroll ? " scrollable" : ""}`}
           ref={attendeesRowRef}
         >
           {shouldShowAttendees &&
@@ -511,9 +527,7 @@ function PinCard({
                   `${baseKey}-attendee-${attendee.name}-${attendeeIndex}`
                 }
                 title={attendee.name}
-                onClick={(event) =>
-                  handleAttendeeClick(event, attendee)
-                }
+                onClick={(event) => handleAttendeeClick(event, attendee)}
               >
                 <img
                   src={attendee.avatar || DEFAULT_AVATAR}
@@ -527,12 +541,26 @@ function PinCard({
                 />
               </button>
             ))}
-          {shouldShowAttendees &&
-            attendeeTotal > resolvedAttendees.length && (
-              <span className="interest-more">
-                +{remainingAttendees}
+          {shouldShowAttendees && attendeeTotal > resolvedAttendees.length && (
+            <span className="interest-more">+{remainingAttendees}</span>
+          )}
+          {attendeeTotal > 0 && lazyLoadAttendees ? (
+            <button
+              type="button"
+              className={`interest-toggle ${attendeesExpanded ? "expanded" : "collapsed"}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                setAttendeesExpanded((next) => !next);
+              }}
+              aria-label={attendeeToggleLabel}
+              title={attendeeToggleLabel}
+            >
+              <span className="interest-toggle__icon" aria-hidden="true">
+                {attendeesExpanded ? "←" : "→"}
               </span>
-            )}
+              <span className="interest-toggle__label">{attendeeToggleLabel}</span>
+            </button>
+          ) : null}
         </div>
 
         <div className="counts">

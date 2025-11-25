@@ -125,7 +125,8 @@ export default function ListPage() {
     filters,
     hideFullEvents,
     requireLocation: locationRequired,
-    isAdminExempt: isAdminViewer
+    isAdminExempt: isAdminViewer,
+    allowPerfLogging: isAdminViewer && !isOffline
   });
   const initialPerfContextRef = useRef(null);
   if (initialPerfContextRef.current === null) {
@@ -240,18 +241,7 @@ export default function ListPage() {
     locationRequired && !sharedLocation ? t('location.requiredBody') : locationNotice;
 
   const filtersSignature = useMemo(() => {
-    return JSON.stringify({
-      search: typeof filters.search === 'string' ? filters.search.trim() : '',
-      status: filters.status ?? '',
-      types: Array.isArray(filters.types) ? [...filters.types].sort() : [],
-      categories: Array.isArray(filters.categories) ? [...filters.categories].sort() : [],
-      friendEngagements: Array.isArray(filters.friendEngagements)
-        ? [...filters.friendEngagements].sort()
-        : [],
-      startDate: filters.startDate ?? '',
-      endDate: filters.endDate ?? '',
-      popularSort: filters.popularSort ?? null
-    });
+    return JSON.stringify(filters);
   }, [filters]);
 
   useEffect(() => {
@@ -766,6 +756,7 @@ export default function ListPage() {
               isUsingFallbackLocation={isUsingFallbackLocation}
               onSelectItem={handleFeedItemSelect}
               onSelectAuthor={handleFeedAuthorSelect}
+              cardProps={{ lazyLoadAttendees: true }}
             />
             {totalResults > 0 ? (
               <div className="list-pagination">

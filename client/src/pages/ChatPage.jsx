@@ -38,6 +38,7 @@ import toIdString from '../utils/ids';
 import resolveAssetUrl from '../utils/media';
 import { routes } from '../routes';
 import FriendRequestsDialog from '../components/friends/FriendRequestsDialog';
+import { useTranslation } from 'react-i18next';
 import useDirectMessages from '../hooks/useDirectMessages';
 import useAttachmentManager, {
   mapDraftAttachmentPayloads,
@@ -60,6 +61,7 @@ import { createContentReport } from '../api/mongoDataApi';
 import { ATTACHMENT_ONLY_PLACEHOLDER, MAX_CHAT_ATTACHMENTS } from '../utils/chatAttachments';
 import { getParticipantId, resolveThreadParticipants } from '../utils/chatParticipants';
 import normalizeObjectId from '../utils/normalizeObjectId';
+import usePinCheckIn from '../hooks/usePinCheckIn';
 import './ChatPage.css';
 
 export const pageConfig = {
@@ -76,6 +78,7 @@ export const pageConfig = {
 function ChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
   const { unreadCount, refreshUnreadCount } = useUpdates();
   const { isOffline } = useNetworkStatusContext();
   const { announceBadgeEarned } = useBadgeSound();
@@ -862,6 +865,14 @@ function ChatPage() {
     },
     [isOffline, processRoomAttachmentFiles, selectedRoomId, setRoomAttachmentStatus]
   );
+
+  const selectedRoomPinId = selectedRoom?.pinId || null;
+  const {
+    data: checkIn,
+    isLoading: isLoadingCheckIn,
+    error: checkInError,
+    toggleCheckIn
+  } = usePinCheckIn({ pinId: selectedRoomPinId, isOffline });
 
   const handleDmAttachmentInputChange = useCallback(
     async (event) => {
@@ -1767,6 +1778,7 @@ function ChatPage() {
 
         <div className="chat-frame">
           <ChatThreadHeader
+            pageTitle={t('nav.bottomNav.chat')}
             channelLabel={headerChannelLabel}
             isChannelDialogOpen={isChannelDialogOpen}
             onOpenChannelDialog={handleOpenChannelDialog}
@@ -1775,6 +1787,29 @@ function ChatPage() {
             isOffline={isOffline}
             notificationBadge={displayBadge}
             updatesIconSrc={updatesIcon}
+            checkInBanner={
+              selectedRoomPinId && checkIn.ready ? (
+                <Box className="chat-checkin-banner">
+                  <div className="chat-checkin-meta">
+                    <strong>Check-ins</strong>
+                    <span>
+                      {checkIn.checkedInCount ?? 0}/{checkIn.attendingCount ?? '—'}
+                    </span>
+                  </div>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => toggleCheckIn(!checkIn.viewerCheckedIn)}
+                    disabled={!checkIn.canCheckIn || isLoadingCheckIn || isOffline}
+                  >
+                    {checkIn.viewerCheckedIn ? 'Checked in' : 'Check in'}
+                  </Button>
+                  {checkInError ? (
+                    <span className="chat-checkin-error">Unable to check in</span>
+                  ) : null}
+                </Box>
+              ) : null
+            }
           />
 
           <Box ref={containerRef} className="chat-messages-field">

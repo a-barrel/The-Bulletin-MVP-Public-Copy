@@ -168,6 +168,22 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
             ? msg.author._id.$oid
             : null;
 
+  if (msg?.isSystem || msg?.messageType === 'system-checkin') {
+    return (
+      <Box className="chat-message system">
+        <Box className="chat-system-text">
+          <Typography className="chat-system-label">
+            {msg?.messageType === 'system-checkin' ? 'Check-in' : 'System'}
+          </Typography>
+          <Typography className="chat-system-body">{rawMessage}</Typography>
+          <Typography className="chat-system-time">
+            {formatFriendlyTimestamp(msg?.createdAt || msg?.timestamp, t)}
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
+
   const profileHref =
     isSelf || (authUser && authorId && authUser.uid === authorId)
       ? '/profile/me'

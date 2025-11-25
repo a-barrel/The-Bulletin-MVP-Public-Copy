@@ -777,6 +777,12 @@ export async function logClientEvent({
   context,
   timestamp
 } = {}) {
+  const dedupeKey = `${category || 'client'}:${message || ''}`;
+  const now = Date.now();
+  const lastLogged = clientEventCache.get(dedupeKey);
+  if (lastLogged && now - lastLogged < CLIENT_EVENT_TTL_MS) {
+    return;
+  }
   if (!message) {
     return;
   }
@@ -794,6 +800,7 @@ export async function logClientEvent({
         timestamp: timestamp ?? new Date().toISOString()
       })
     });
+    clientEventCache.set(dedupeKey, now);
   } catch (error) {
     if (import.meta.env.DEV) {
       console.warn('Failed to send client log event', error);
@@ -803,6 +810,8 @@ export async function logClientEvent({
 
 const API_ERROR_LOG_FLAG = Symbol('clientApiErrorLogged');
 const apiErrorCache = new Map();
+const clientEventCache = new Map();
+const CLIENT_EVENT_TTL_MS = 10_000;
 
 const buildDedupeKey = (endpoint, context = {}) => {
   try {
@@ -1369,6 +1378,45 @@ export async function createContentReport({ contentType, contentId, reason, cont
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw createApiError(response, payload, payload?.message || 'Failed to submit report');
+  }
+
+  return payload;
+}
+
+export async function getPinCheckIns(pinId) {
+  if (!pinId) {
+    throw new Error('pinId is required to fetch check-ins');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/pins/${pinId}/check-ins`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, 'Failed to load check-ins');
+  }
+
+  return payload;
+}
+
+export async function updatePinCheckIn(pinId, { checkedIn }) {
+  if (!pinId) {
+    throw new Error('pinId is required to update check-in');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/pins/${pinId}/check-ins`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ checkedIn })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, 'Failed to update check-in');
   }
 
   return payload;

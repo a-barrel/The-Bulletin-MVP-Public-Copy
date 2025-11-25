@@ -2,16 +2,15 @@ import React, { memo } from "react";
 import "./Feed.css";
 import PinCard from "./PinCard";
 import { resolveAuthorName } from "../utils/feed";
+import EmptyStateCard from "./EmptyStateCard";
 
 // Feed only manages the list container and passes each item to PinCard so every surface shares identical card UX.
 
-function Feed({ items, onSelectItem, onSelectAuthor }) {
+function Feed({ items, onSelectItem, onSelectAuthor, cardProps }) {
   if (!Array.isArray(items) || items.length === 0) {
     return (
       <div className="feed">
-        <div className="card pin-card">
-          <p className="card-text">No nearby pins yet. Check back soon!</p>
-        </div>
+        <EmptyStateCard message="No nearby pins yet. Check back soon!" />
       </div>
     );
   }
@@ -23,6 +22,7 @@ function Feed({ items, onSelectItem, onSelectAuthor }) {
           item={item}
           onSelectItem={onSelectItem}
           onSelectAuthor={onSelectAuthor}
+          {...cardProps}
           key={item?.id || item?._id || `${index}-${resolveAuthorName(item)}`}
         />
       ))}

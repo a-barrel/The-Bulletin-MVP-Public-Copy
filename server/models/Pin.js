@@ -93,6 +93,9 @@ const pinSchema = new mongoose.Schema(
     attendingUserIds: { type: [mongoose.Schema.Types.ObjectId], default: [] },
     attendeeWaitlistIds: { type: [mongoose.Schema.Types.ObjectId], default: [] },
     attendable: { type: Boolean, default: true },
+    checkedInUserIds: { type: [mongoose.Schema.Types.ObjectId], default: [] },
+    checkInCount: { type: Number, default: 0 },
+    lastCheckInAt: { type: Date, default: undefined },
     approximateAddress: {
       city: String,
       state: String,

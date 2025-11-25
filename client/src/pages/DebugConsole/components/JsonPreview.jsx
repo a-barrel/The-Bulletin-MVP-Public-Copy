@@ -8,7 +8,7 @@ function JsonPreview({ data }) {
   }
 
   return (
-    <Box component="pre" sx={JSON_PREVIEW_SX}>
+    <Box component="pre" sx={JSON_PREVIEW_SX} className="debug-json-preview">
       {JSON.stringify(data, null, 2)}
     </Box>
   );

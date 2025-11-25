@@ -3,7 +3,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: black;
+  background: linear-gradient(135deg, #f5effd 0%, #ecf8fe 100%);
   width: 100vw;
   height: 100vh;
   overflow: hidden;
@@ -53,7 +53,7 @@
 
 @media (max-width: 480px) {
   .map-header { width: calc(100% + 3rem); }
-  .map-title { font-size: 30px; }
+  .map-title { font-size: 30px; text-align: center; width: 100%; }
 }
 
 /* ===== Header ===== */
@@ -65,8 +65,8 @@
   position: sticky;
   top: 0;
   z-index: 1100;
-  background: #d1b4f5;
-  border-bottom: 2px solid #000;
+  background: linear-gradient(135deg, #cdaef2 0%, #f5effd 100%);
+  border-bottom: 2px solid #5D3889;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -105,7 +105,7 @@
   height: 22px;
   padding: 0 6px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #f15bb5 0%, #ff8c42 100%);
+  background: linear-gradient(135deg, #f15bb5 0%, #9b5de5 100%);
   color: #fff;
   font-size: 0.75rem;
   font-weight: 700;

@@ -109,6 +109,12 @@ export function resolveAssetUrl(asset, options) {
 
 export default resolveAssetUrl;
 
+export const resolveThumbnailUrl = (asset) =>
+  resolveAssetUrl(asset, {
+    keys: ['thumbnailUrl', 'previewUrl', 'url', 'path', 'src'],
+    fallback: null
+  });
+
 function fallbackTextureFallback() {
   if (runtimeConfig.isOffline) {
     return FALLBACK_TEXTURE_PATH;

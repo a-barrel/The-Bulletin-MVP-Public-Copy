@@ -57,6 +57,8 @@ const proximityChatMessageSchema = new mongoose.Schema(
     authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     replyToMessageId: { type: mongoose.Schema.Types.ObjectId, ref: 'ProximityChatMessage' },
     message: { type: String, required: true },
+    messageType: { type: String },
+    isSystem: { type: Boolean, default: false },
     coordinates: {
       type: {
         type: String,

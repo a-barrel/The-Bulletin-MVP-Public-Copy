@@ -8,6 +8,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import TAB_DEFINITIONS from './tabRegistry';
 import useBadgeAwardOnEntry from '../../hooks/useBadgeAwardOnEntry';
+import '../../styles/debug-console.css';
 
 export function DebugConsolePage() {
   const [activeTabId, setActiveTabId] = useState(TAB_DEFINITIONS[0]?.id ?? 'pin');
@@ -23,6 +24,7 @@ export function DebugConsolePage() {
 
   return (
     <Box
+      className="debug-console-shell"
       sx={{
         height: '100%',
         display: 'flex',
@@ -31,12 +33,21 @@ export function DebugConsolePage() {
         p: { xs: 2, sm: 4 }
       }}
     >
-      <Stack spacing={3} sx={{ width: '100%', maxWidth: 960 }}>
-        <Typography variant="h4" component="h1">
-          DEBUG_CONSOLE
-        </Typography>
+      <Stack spacing={3} sx={{ width: '100%', maxWidth: 1060 }}>
+        <Box className="debug-console-header">
+          <Box>
+            <Typography variant="h4" component="h1" className="debug-console-title">
+              Debug Console
+            </Typography>
+            <Typography variant="body1" className="debug-console-subtitle">
+              Admin-only control room for diagnostics, live chat tools, and data audits.
+            </Typography>
+          </Box>
+          <span className="debug-console-badge">Admin</span>
+        </Box>
 
         <Tabs
+          className="debug-console-tabs"
           value={activeTabId}
           onChange={(_event, value) => setActiveTabId(value)}
           aria-label="Debug console sections"
@@ -46,12 +57,6 @@ export function DebugConsolePage() {
           variant="standard"
           sx={{
             width: '100%',
-            backgroundColor: '#ECF8FE',
-            borderRadius: 2,
-            border: '1px solid #9B5DE5',
-            '& .MuiTabs-indicator': {
-              backgroundColor: '#5D3889'
-            },
             ...(useVerticalTabs
               ? {
                   alignSelf: 'stretch',
@@ -66,11 +71,7 @@ export function DebugConsolePage() {
                     alignItems: 'flex-start',
                     textAlign: 'left',
                     minWidth: 'auto',
-                    color: '#1F1336',
-                    '&.Mui-selected': {
-                      color: '#5D3889',
-                      fontWeight: 600
-                    }
+                    color: '#1F1336'
                   },
                   '& .MuiTabs-indicator': {
                     left: 0
@@ -86,11 +87,7 @@ export function DebugConsolePage() {
                   '& .MuiTab-root': {
                     minWidth: 'auto',
                     flex: '0 0 auto',
-                    color: '#1F1336',
-                    '&.Mui-selected': {
-                      color: '#5D3889',
-                      fontWeight: 600
-                    }
+                    color: '#1F1336'
                   }
                 })
           }}
@@ -100,6 +97,7 @@ export function DebugConsolePage() {
               key={tab.id}
               label={tab.label}
               value={tab.id}
+              className="debug-console-tab"
               id={`debug-tab-${tab.id}`}
               aria-controls={`debug-tabpanel-${tab.id}`}
             />

@@ -11,6 +11,7 @@
 .register-submit {
   background: #CDAEF2;
   margin-top: 2rem;
+  min-height: 52px;
 }
 
 .register-submit:hover { 
@@ -26,8 +27,8 @@
   }
   .register-title { font-size: 1.8rem; }
   .field { width: 90%; }
-  .register-submit { width: 90%; padding: 10px; }
-  .back-btn { top: 28px; left: 5px; width: 44px; height: 44px; font-size: 2rem; }
+  .register-submit { width: 90%; padding: 12px; }
+  .back-btn { top: 28px; left: 10px; width: 48px; height: 48px; font-size: 2.1rem; }
 }
 
 /* Phones */
@@ -52,13 +53,13 @@
   }
 
   .field { width: 90%; }
-  .register-submit { width: 90%; padding: 10px; }
+  .register-submit { width: 90%; padding: 12px; }
 
   .back-btn {
-    top: 10px;
+    top: 14px;
     left: 18px;
-    width: 34px;
-    height: 34px;
+    width: 40px;
+    height: 40px;
     font-size: 2rem;
   }
 }

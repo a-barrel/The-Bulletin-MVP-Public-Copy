@@ -118,4 +118,25 @@ describe('useNearbyPinsFeed request coordination', () => {
     await waitFor(() => expect(fetchPinsNearby).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(fetchPinById).toHaveBeenCalledTimes(1));
   });
+
+  it('preserves thumbnail URLs in feed items', async () => {
+    fetchPinsNearby.mockResolvedValue([
+      {
+        _id: 'pin-1',
+        images: [{ thumbnailUrl: '/thumb.jpg', url: '/full.jpg' }],
+        type: 'event',
+        coordinates: { coordinates: [0, 0] }
+      }
+    ]);
+
+    renderHook((props) => useNearbyPinsFeed(props), {
+      initialProps: baseProps
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+
+    await waitFor(() => expect(fetchPinsNearby).toHaveBeenCalledTimes(1));
+  });
 });

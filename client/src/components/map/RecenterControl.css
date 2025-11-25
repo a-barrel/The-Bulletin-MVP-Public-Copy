@@ -1,0 +1,87 @@
+.map-recenter-control {
+  position: absolute;
+  top: clamp(16px, 15vh, 120px);
+  left: 14px;
+  z-index: 900;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  border: 1px solid rgba(93, 56, 137, 0.55);
+  background: linear-gradient(180deg, rgba(205, 174, 242, 0.94) 0%, rgba(245, 239, 253, 0.92) 100%);
+  color: #4b2b76;
+  font-weight: 700;
+  font-size: 1.05rem;
+  box-shadow:
+    0 12px 28px rgba(20, 12, 48, 0.22),
+    0 4px 12px rgba(20, 12, 48, 0.16);
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(8px);
+}
+
+.map-recenter-control:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 32px rgba(20, 12, 48, 0.26),
+    0 6px 16px rgba(20, 12, 48, 0.18);
+}
+
+.map-recenter-control:active {
+  transform: translateY(0);
+  box-shadow:
+    0 10px 22px rgba(20, 12, 48, 0.2),
+    0 3px 10px rgba(20, 12, 48, 0.16);
+}
+
+.map-recenter-control:focus-visible {
+  outline: 3px solid rgba(155, 93, 229, 0.65);
+  outline-offset: 3px;
+}
+
+.map-recenter-control:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.map-recenter-control__icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.map-recenter-control__tooltip {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 10px);
+  transform: translate(-6px, -50%);
+  background: rgba(16, 9, 32, 0.9);
+  color: #ffffff;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow:
+    0 12px 24px rgba(10, 6, 24, 0.35),
+    0 4px 10px rgba(10, 6, 24, 0.2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+}
+
+.map-recenter-control:hover .map-recenter-control__tooltip,
+.map-recenter-control:focus-visible .map-recenter-control__tooltip {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+@media (max-width: 640px) {
+  .map-recenter-control {
+    top: clamp(12px, 12vh, 84px);
+    left: 10px;
+    width: 44px;
+    height: 44px;
+  }
+}
