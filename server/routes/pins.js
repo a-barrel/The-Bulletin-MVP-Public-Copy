@@ -15,8 +15,11 @@ const {
   broadcastPinUpdated,
   broadcastPinReply,
   broadcastAttendanceChange,
-  broadcastBookmarkCreated
+  broadcastBookmarkCreated,
+  broadcastChatMessage
 } = require('../services/updateFanoutService');
+const { createMessage } = require('../services/proximityChatService');
+const { ProximityChatRoom } = require('../models/ProximityChat');
 const AttendanceEvent = require('../models/AttendanceEvent');
 const { grantBadge } = require('../services/badgeService');
 const { trackEvent } = require('../services/analyticsService');
@@ -104,10 +107,15 @@ const FlagPinSchema = z.object({
   reason: z.string().trim().max(280).optional()
 });
 
+const CheckInUpdateSchema = z.object({
+  checkedIn: z.boolean()
+});
+
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const EVENT_MAX_LEAD_TIME_MS = 14 * MILLISECONDS_PER_DAY;
 const DISCUSSION_MAX_DURATION_MS = 3 * MILLISECONDS_PER_DAY;
 const PAST_TOLERANCE_MS = 60 * 1000;
+const CHECK_IN_WINDOW_MS = 2 * 60 * 60 * 1000;
 
 const EVENT_ATTENDEE_LIMITS = {
   min: 5,
@@ -118,6 +126,36 @@ const EVENT_ATTENDEE_LIMITS = {
 const DISCUSSION_REPLY_LIMIT_OPTIONS = [50, 75, 100, 150, 200];
 const DEFAULT_DISCUSSION_REPLY_LIMIT = 100;
 const VIEW_HISTORY_MAX = 20;
+
+const getCheckInWindowState = (startDate) => {
+  if (!startDate) {
+    return { windowOpen: false, windowOpensAt: null };
+  }
+  const start = new Date(startDate);
+  const windowOpensAt = new Date(start.getTime() - CHECK_IN_WINDOW_MS);
+  const now = Date.now();
+  return { windowOpen: now >= windowOpensAt.getTime(), windowOpensAt };
+};
+
+const buildCheckInPayload = ({ pin, viewerId }) => {
+  const checkedInIds = mapIdList(pin.checkedInUserIds);
+  const attendingIds = mapIdList(pin.attendingUserIds);
+  const viewerCheckedIn = viewerId ? checkedInIds.includes(viewerId) : false;
+  const remainingUserIds = attendingIds.filter((id) => !checkedInIds.includes(id));
+  const { windowOpen, windowOpensAt } = getCheckInWindowState(pin.startDate);
+  return {
+    pinId: toIdString(pin._id),
+    startDate: pin.startDate ? new Date(pin.startDate).toISOString() : null,
+    checkedInUserIds: checkedInIds,
+    checkedInCount: pin.checkInCount ?? checkedInIds.length,
+    attendingCount: attendingIds.length,
+    remainingUserIds,
+    viewerCheckedIn,
+    windowOpen,
+    windowOpensAt: windowOpensAt ? windowOpensAt.toISOString() : null
+  };
+};
+
 const upsertPinChatRoom = async ({ pin, creatorId }) => {
   if (!pin?._id || !creatorId) {
     return;
@@ -1936,6 +1974,142 @@ router.get('/:pinId/attendees', verifyToken, async (req, res) => {
     }
     console.error('Failed to load pin attendees:', error);
     res.status(500).json({ message: 'Failed to load pin attendees' });
+  }
+});
+
+router.get('/:pinId/check-ins', verifyToken, async (req, res) => {
+  try {
+    const { pinId } = PinIdSchema.parse(req.params);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const pin = await Pin.findById(pinId);
+    if (!pin) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
+    if (pin.type !== 'event') {
+      return res.status(400).json({ message: 'Only event pins support check-ins' });
+    }
+    if (!pin.startDate) {
+      return res.status(400).json({ message: 'This event does not have a start date set' });
+    }
+    const payload = buildCheckInPayload({ pin, viewerId: toIdString(viewer._id) });
+    return res.json(payload);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid request', issues: error.errors });
+    }
+    console.error('Failed to load pin check-ins:', error);
+    res.status(500).json({ message: 'Failed to load pin check-ins' });
+  }
+});
+
+router.post('/:pinId/check-ins', verifyToken, async (req, res) => {
+  try {
+    const { pinId } = PinIdSchema.parse(req.params);
+    const { checkedIn } = CheckInUpdateSchema.parse(req.body);
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const pin = await Pin.findById(pinId);
+    if (!pin) {
+      return res.status(404).json({ message: 'Pin not found' });
+    }
+    if (pin.type !== 'event') {
+      return res.status(400).json({ message: 'Only event pins support check-ins' });
+    }
+    if (!pin.startDate) {
+      return res.status(400).json({ message: 'This event does not have a start date set' });
+    }
+
+    if (!Array.isArray(pin.checkedInUserIds)) {
+      pin.checkedInUserIds = [];
+    }
+    if (!Array.isArray(pin.attendingUserIds)) {
+      pin.attendingUserIds = [];
+    }
+
+    const viewerId = toIdString(viewer._id);
+    const attendingIds = mapIdList(pin.attendingUserIds);
+    const isAttending = attendingIds.includes(viewerId) || toIdString(pin.creatorId) === viewerId;
+    if (!isAttending) {
+      return res.status(403).json({ message: 'You must be attending to check in' });
+    }
+
+    const { windowOpen, windowOpensAt } = getCheckInWindowState(pin.startDate);
+    if (!windowOpen && checkedIn) {
+      return res.status(400).json({
+        message: 'Check-in window is not open',
+        windowOpensAt: windowOpensAt ? windowOpensAt.toISOString() : null
+      });
+    }
+
+    const checkedInIds = mapIdList(pin.checkedInUserIds);
+    const alreadyCheckedIn = checkedInIds.includes(viewerId);
+    let modified = false;
+
+    if (checkedIn && !alreadyCheckedIn) {
+      pin.checkedInUserIds.push(viewer._id);
+      modified = true;
+      pin.lastCheckInAt = new Date();
+    } else if (!checkedIn && alreadyCheckedIn) {
+      pin.checkedInUserIds = pin.checkedInUserIds.filter(
+        (id) => toIdString(id) !== viewerId
+      );
+      pin.markModified('checkedInUserIds');
+      modified = true;
+    }
+
+    if (modified) {
+      pin.checkInCount = pin.checkedInUserIds.length;
+      await pin.save();
+
+      // Ensure a chat room exists for this pin and emit a system check-in message on first check-in
+      try {
+        await upsertPinRoom({
+          pinId: pin._id,
+          pinType: pin.type,
+          pinTitle: pin.title,
+          ownerId: pin.creatorId,
+          latitude: pin.coordinates?.coordinates?.[1],
+          longitude: pin.coordinates?.coordinates?.[0],
+          expiresAt: pin.expiresAt || pin.endDate || undefined,
+          radiusMeters: pin.proximityRadiusMeters
+        });
+        const roomDoc =
+          (await ProximityChatRoom.findOne({ pinId: pin._id })) ?? null;
+        if (roomDoc && checkedIn && !alreadyCheckedIn) {
+          const { messageDoc, response } = await createMessage({
+            roomId: roomDoc._id,
+            pinId: pin._id,
+            authorId: viewer._id,
+            message: `${viewer.displayName || viewer.username || 'Someone'} checked in`,
+            messageType: 'system-checkin',
+            isSystem: true
+          });
+          broadcastChatMessage({
+            roomId: roomDoc._id,
+            message: response,
+            rawMessageDoc: messageDoc
+          }).catch((error) => {
+            console.error('Failed to broadcast check-in system message:', error);
+          });
+        }
+      } catch (error) {
+        console.error('Failed to emit check-in chat notification:', error);
+      }
+    }
+
+    const payload = buildCheckInPayload({ pin, viewerId });
+    return res.json(payload);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid check-in payload', issues: error.errors });
+    }
+    console.error('Failed to update pin check-ins:', error);
+    res.status(500).json({ message: 'Failed to update pin check-ins' });
   }
 });
 

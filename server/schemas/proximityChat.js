@@ -35,6 +35,8 @@ const ProximityChatMessageSchema = z.object({
   author: PublicUserSchema.optional(),
   replyToMessageId: ObjectIdSchema.optional(),
   message: z.string().max(2000),
+  messageType: z.string().optional(),
+  isSystem: z.boolean().optional(),
   coordinates: GeoPointSchema.optional(),
   attachments: z.array(MediaAssetSchema).default([]),
   createdAt: IsoDateStringSchema,

@@ -160,10 +160,10 @@ export { METERS_PER_MILE };
 
 export const JSON_PREVIEW_SX = {
   mt: 2,
-  backgroundColor: 'grey.900',
   p: 2,
   borderRadius: 2,
-  overflowX: 'auto'
+  overflowX: 'auto',
+  color: '#1e1e1e'
 };
 
 export const EXPERIMENT_ENABLED =

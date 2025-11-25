@@ -1383,6 +1383,45 @@ export async function createContentReport({ contentType, contentId, reason, cont
   return payload;
 }
 
+export async function getPinCheckIns(pinId) {
+  if (!pinId) {
+    throw new Error('pinId is required to fetch check-ins');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/pins/${pinId}/check-ins`, {
+    method: 'GET',
+    headers: await buildHeaders()
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, 'Failed to load check-ins');
+  }
+
+  return payload;
+}
+
+export async function updatePinCheckIn(pinId, { checkedIn }) {
+  if (!pinId) {
+    throw new Error('pinId is required to update check-in');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/pins/${pinId}/check-ins`, {
+    method: 'POST',
+    headers: await buildHeaders(),
+    body: JSON.stringify({ checkedIn })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw createApiError(response, payload, 'Failed to update check-in');
+  }
+
+  return payload;
+}
+
 export async function listContentReports({ status, limit } = {}) {
   const baseUrl = resolveApiBaseUrl();
   const params = new URLSearchParams();

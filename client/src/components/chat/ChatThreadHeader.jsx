@@ -11,7 +11,8 @@ function ChatThreadHeader({
   onNotifications,
   isOffline,
   notificationBadge,
-  updatesIconSrc
+  updatesIconSrc,
+  checkInBanner
 }) {
   return (
     <header className="chat-header-bar">
@@ -24,6 +25,7 @@ function ChatThreadHeader({
         >
           {channelLabel}
         </Button>
+        {checkInBanner}
       </div>
       <button
         className="updates-icon-btn"
@@ -52,13 +54,15 @@ ChatThreadHeader.propTypes = {
   onNotifications: PropTypes.func.isRequired,
   isOffline: PropTypes.bool,
   notificationBadge: PropTypes.string,
-  updatesIconSrc: PropTypes.string.isRequired
+  updatesIconSrc: PropTypes.string.isRequired,
+  checkInBanner: PropTypes.node
 };
 
 ChatThreadHeader.defaultProps = {
   isChannelDialogOpen: false,
   isOffline: false,
-  notificationBadge: null
+  notificationBadge: null,
+  checkInBanner: null
 };
 
 export default ChatThreadHeader;

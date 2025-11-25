@@ -60,6 +60,7 @@ import { createContentReport } from '../api/mongoDataApi';
 import { ATTACHMENT_ONLY_PLACEHOLDER, MAX_CHAT_ATTACHMENTS } from '../utils/chatAttachments';
 import { getParticipantId, resolveThreadParticipants } from '../utils/chatParticipants';
 import normalizeObjectId from '../utils/normalizeObjectId';
+import usePinCheckIn from '../hooks/usePinCheckIn';
 import './ChatPage.css';
 
 export const pageConfig = {
@@ -862,6 +863,14 @@ function ChatPage() {
     },
     [isOffline, processRoomAttachmentFiles, selectedRoomId, setRoomAttachmentStatus]
   );
+
+  const selectedRoomPinId = selectedRoom?.pinId || null;
+  const {
+    data: checkIn,
+    isLoading: isLoadingCheckIn,
+    error: checkInError,
+    toggleCheckIn
+  } = usePinCheckIn({ pinId: selectedRoomPinId, isOffline });
 
   const handleDmAttachmentInputChange = useCallback(
     async (event) => {
@@ -1775,6 +1784,29 @@ function ChatPage() {
             isOffline={isOffline}
             notificationBadge={displayBadge}
             updatesIconSrc={updatesIcon}
+            checkInBanner={
+              selectedRoomPinId && checkIn.ready ? (
+                <Box className="chat-checkin-banner">
+                  <div className="chat-checkin-meta">
+                    <strong>Check-ins</strong>
+                    <span>
+                      {checkIn.checkedInCount ?? 0}/{checkIn.attendingCount ?? '—'}
+                    </span>
+                  </div>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => toggleCheckIn(!checkIn.viewerCheckedIn)}
+                    disabled={!checkIn.canCheckIn || isLoadingCheckIn || isOffline}
+                  >
+                    {checkIn.viewerCheckedIn ? 'Checked in' : 'Check in'}
+                  </Button>
+                  {checkInError ? (
+                    <span className="chat-checkin-error">Unable to check in</span>
+                  ) : null}
+                </Box>
+              ) : null
+            }
           />
 
           <Box ref={containerRef} className="chat-messages-field">

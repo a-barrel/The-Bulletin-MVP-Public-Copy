@@ -42,6 +42,7 @@ const DebugPanel = ({
 
   return (
     <Paper
+      className="debug-panel"
       component={component}
       sx={{
         p: { xs: 2, sm: 3 },

@@ -90,6 +90,8 @@ const mapMessage = (messageDoc) => {
     author: mapUserToPublic(doc.authorId),
     replyToMessageId: toIdString(doc.replyToMessageId),
     message: doc.message,
+    messageType: doc.messageType,
+    isSystem: Boolean(doc.isSystem),
     coordinates,
     attachments,
     createdAt: messageDoc.createdAt.toISOString(),
@@ -163,6 +165,8 @@ async function createMessage(input) {
     authorId: toObjectId(input.authorId),
     replyToMessageId: toObjectId(input.replyToMessageId),
     message: input.message,
+    messageType: input.messageType,
+    isSystem: Boolean(input.isSystem),
     coordinates,
     attachments
   });
