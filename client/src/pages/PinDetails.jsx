@@ -43,6 +43,7 @@ import ImageOverlay from '../components/ImageOverlay.jsx'
 import reportClientError from '../utils/reportClientError';
 import useViewerProfile from '../hooks/useViewerProfile';
 import canAccessModerationTools from '../utils/accessControl';
+import { resolveAnalyticsErrorMessage } from '../utils/pinAnalytics';
 
 const EXPIRED_PIN_ID = '68e061721329566a22d47fff';
 const SAMPLE_PIN_IDS = [
@@ -442,6 +443,7 @@ function PinDetails() {
   const [isFlaggingPin, setIsFlaggingPin] = useState(false);
   const [flagStatus, setFlagStatus] = useState(null);
   const analyticsInFlightRef = useRef(false);
+  const lastAnalyticsPinIdRef = useRef(null);
 
   useEffect(() => {
     if (pin && !isEditDialogOpen) {
@@ -450,9 +452,11 @@ function PinDetails() {
   }, [pin, isEditDialogOpen]);
 
   useEffect(() => {
-    if (!showAnalytics || !pinId || !isHostLike) {
+    if (!showAnalytics || !pinId || !isHostLike || !pin?._id) {
       setAnalytics(null);
       setAnalyticsError(null);
+      setAnalyticsLoading(false);
+      lastAnalyticsPinIdRef.current = null;
       return;
     }
     if (analyticsInFlightRef.current) {
@@ -467,6 +471,9 @@ function PinDetails() {
     analyticsInFlightRef.current = true;
     setAnalyticsLoading(true);
     setAnalyticsError(null);
+    lastAnalyticsPinIdRef.current = pinId;
+    // Important: gate analytics fetch on loaded pin + eligibility and clear loading on cleanup.
+    // Previously, a rerender during pin reload could leave analyticsLoading=true forever.
     fetchPinAnalytics(pinId, { enabled: isHostLike, suppressLogStatuses: [401, 403] })
       .then((payload) => {
         if (!ignore) {
@@ -475,13 +482,8 @@ function PinDetails() {
       })
       .catch((fetchError) => {
         if (!ignore) {
-          const status = fetchError?.status;
-          if (status === 403) {
-            setAnalytics(null);
-            setAnalyticsError(null);
-            return;
-          }
-          setAnalyticsError(fetchError?.message || 'Failed to load analytics');
+          setAnalytics(null);
+          setAnalyticsError(resolveAnalyticsErrorMessage(fetchError));
         }
       })
       .finally(() => {
@@ -493,8 +495,10 @@ function PinDetails() {
 
     return () => {
       ignore = true;
+      analyticsInFlightRef.current = false;
+      setAnalyticsLoading(false);
     };
-  }, [showAnalytics, pinId, isOffline, isHostLike]);
+  }, [showAnalytics, pinId, pin, isOffline, isHostLike]);
 
   const handleOpenEditDialog = useCallback(() => {
     if (!pin) {
