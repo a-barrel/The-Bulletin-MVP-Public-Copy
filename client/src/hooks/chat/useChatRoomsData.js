@@ -93,10 +93,15 @@ export default function useChatRoomsData({
       setRooms(resolvedRooms);
       if (resolvedRooms.length > 0) {
         const nextSelectedId = existingPinRoom?._id || resolvedRooms[0]._id;
-        setSelectedRoomId((prev) => prev || nextSelectedId);
-        const desiredId = normalizeId(selectedRoomId || nextSelectedId);
+        const desiredId = normalizeId(selectedRoomId);
+        const desiredRoom = desiredId
+          ? resolvedRooms.find((room) => normalizeId(room._id) === desiredId)
+          : null;
+        const finalSelectedId = desiredRoom ? desiredRoom._id : nextSelectedId;
+        setSelectedRoomId(finalSelectedId);
         const match =
-          resolvedRooms.find((room) => normalizeId(room._id) === desiredId) || resolvedRooms[0];
+          resolvedRooms.find((room) => normalizeId(room._id) === normalizeId(finalSelectedId)) ||
+          resolvedRooms[0];
         setSelectedRoom(match);
       }
     } catch (error) {

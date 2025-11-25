@@ -20,6 +20,10 @@ export function applyPinFilters(meta, controls) {
   } = controls;
 
   // If Bookmarked is on, allow bookmarked pins to bypass type gating but still honor highlight toggles.
+  if (meta.isBookmarked && !showBookmarkedPins) {
+    return false;
+  }
+
   if (meta.isBookmarked && showBookmarkedPins) {
     if (meta.isFriend && !showFriendPins) return false;
     if (meta.isFull && !showFullEvents && !(meta.isFriend && showFriendPins)) return false;

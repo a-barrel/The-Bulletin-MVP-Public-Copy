@@ -165,6 +165,9 @@ export default function useBookmarksManager({
     if (cached && Date.now() - cached.ts < BOOKMARK_CACHE_TTL_MS) {
       setBookmarks(cached.bookmarks);
       setCollections(cached.collections);
+      if (Array.isArray(cached.viewHistory)) {
+        setViewHistory(cached.viewHistory);
+      }
       setError(null);
       return;
     }
@@ -182,9 +185,10 @@ export default function useBookmarksManager({
     setIsLoading(true);
     setError(null);
     try {
-      const [bookmarkPayload, collectionPayload] = await Promise.all([
+      const [bookmarkPayload, collectionPayload, historyPayload] = await Promise.all([
         fetchBookmarks({ hideFullEvents }),
-        fetchBookmarkCollections()
+        fetchBookmarkCollections(),
+        fetchBookmarkHistory()
       ]);
       const baseBookmarks = Array.isArray(bookmarkPayload) ? bookmarkPayload : [];
       const enrichedBookmarks = await enrichBookmarksWithPins(baseBookmarks);
@@ -200,10 +204,13 @@ export default function useBookmarksManager({
       });
       setBookmarks(normalizedBookmarks);
       setCollections(Array.isArray(collectionPayload) ? collectionPayload : []);
+      const nextHistory = Array.isArray(historyPayload) ? historyPayload : [];
+      setViewHistory(nextHistory);
       cacheRef.current = {
         ts: Date.now(),
         bookmarks: normalizedBookmarks,
-        collections: Array.isArray(collectionPayload) ? collectionPayload : []
+        collections: Array.isArray(collectionPayload) ? collectionPayload : [],
+        viewHistory: nextHistory
       };
     } catch (err) {
       reportClientError(err, 'Failed to load bookmarks:', {
