@@ -843,76 +843,82 @@ function PinDetails() {
       ) : null}
 
       <header className="header">
-        <div className="pin-header-nav">
-          <MainNavBackButton className="back-button" iconClassName="back-arrow" aria-label="Go back" />
-          <div className="pin-nav-menu">
-            <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+        <div className='header-left'>
+          <div className="pin-header-nav">
+            <MainNavBackButton className="back-button" iconClassName="back-arrow" aria-label="Go back" />
+            <div className="pin-nav-menu">
+              <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+            </div>
           </div>
         </div>
 
-        <h2>{pinTypeHeading}</h2>
+        <h2 className="header-title">{pinTypeHeading}</h2>
 
-        <div className="header-actions">
-          {isOwnPin ? (
-            <div className="edit-button-wrapper">
+        <div className='header-right'>
+          <div className="header-actions">
+            {isOwnPin ? (
+              <div className="edit-button-wrapper">
+                <button
+                  className="edit-pin-button"
+                  type="button"
+                  onClick={handleOpenEditDialog}
+                  disabled={isOffline || !pin || isLoading || isSubmittingEdit || isDeletingPin}
+                  title={isOffline ? 'Reconnect to edit your pin' : 'Edit this pin'}
+                >
+                  Edit
+                </button>
+              </div>
+            ) : null}
+            {canModeratePins && !isOwnPin ? (
+              <div className="flag-button-wrapper">
+                <button
+                  className={`flag-pin-button${isPinFlagged ? ' flagged' : ''}`}
+                  type="button"
+                  onClick={handleFlagPin}
+                  disabled={isOffline || !pin || isFlaggingPin || isPinFlagged}
+                  title={
+                    isPinFlagged
+                      ? flaggedReason
+                        ? `Flagged: ${flaggedReason}`
+                        : 'This pin has been flagged for removal.'
+                      : isOffline
+                      ? 'Reconnect to flag pins'
+                      : 'Flag this pin for moderator review'
+                  }
+                >
+                  {isPinFlagged ? 'Flagged' : isFlaggingPin ? 'Flagging…' : 'Flag'}
+                </button>
+              </div>
+            ) : null}
+            <div className="share-button-wrapper">
               <button
-                className="edit-pin-button"
+                className="share-button"
                 type="button"
-                onClick={handleOpenEditDialog}
-                disabled={isOffline || !pin || isLoading || isSubmittingEdit || isDeletingPin}
-                title={isOffline ? 'Reconnect to edit your pin' : 'Edit this pin'}
+                onClick={() => handleSharePin()}
+                disabled={isOffline || isSharing || !pin}
+                aria-label="Share this pin"
+                aria-busy={isSharing ? 'true' : 'false'}
+                title={isOffline ? 'Reconnect to share pins' : 'Share pin link'}
               >
-                Edit
+                <ShareOutlinedIcon fontSize="small" />
               </button>
             </div>
-          ) : null}
-          {canModeratePins && !isOwnPin ? (
-            <div className="flag-button-wrapper">
-              <button
-                className={`flag-pin-button${isPinFlagged ? ' flagged' : ''}`}
-                type="button"
-                onClick={handleFlagPin}
-                disabled={isOffline || !pin || isFlaggingPin || isPinFlagged}
-                title={
-                  isPinFlagged
-                    ? flaggedReason
-                      ? `Flagged: ${flaggedReason}`
-                      : 'This pin has been flagged for removal.'
-                    : isOffline
-                    ? 'Reconnect to flag pins'
-                    : 'Flag this pin for moderator review'
-                }
-              >
-                {isPinFlagged ? 'Flagged' : isFlaggingPin ? 'Flagging…' : 'Flag for deletion'}
-              </button>
+            <div className="bookmark-button-wrapper">
+              <BookmarkButton
+                bookmarked={bookmarked}
+                pending={isUpdatingBookmark}
+                disabled={isOffline || !pin || isInteractionLocked}
+                ownsPin={isOwnPin}
+                attending={attending}
+                onToggle={handleToggleBookmark}
+                disabledLabel={isOffline ? 'Reconnect to manage bookmarks' : undefined}
+              />
+              {bookmarkError ? <span className="error-text bookmark-error">{bookmarkError}</span> : null}
             </div>
-          ) : null}
-          <div className="share-button-wrapper">
-            <button
-              className="share-button"
-              type="button"
-              onClick={() => handleSharePin()}
-              disabled={isOffline || isSharing || !pin}
-              aria-label="Share this pin"
-              aria-busy={isSharing ? 'true' : 'false'}
-              title={isOffline ? 'Reconnect to share pins' : 'Share pin link'}
-            >
-              <ShareOutlinedIcon fontSize="small" />
-            </button>
-          </div>
-          <div className="bookmark-button-wrapper">
-            <BookmarkButton
-              bookmarked={bookmarked}
-              pending={isUpdatingBookmark}
-              disabled={isOffline || !pin || isInteractionLocked}
-              ownsPin={isOwnPin}
-              attending={attending}
-              onToggle={handleToggleBookmark}
-              disabledLabel={isOffline ? 'Reconnect to manage bookmarks' : undefined}
-            />
-            {bookmarkError ? <span className="error-text bookmark-error">{bookmarkError}</span> : null}
           </div>
         </div>
+
+        
       </header>
 
       <div className="name">

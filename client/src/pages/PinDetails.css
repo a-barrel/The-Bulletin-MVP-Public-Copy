@@ -27,14 +27,34 @@
 
 /* header */
 .pin-details .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    padding: 0.25rem 1rem;
-    box-sizing: border-box;
-    border-bottom: 1px solid black;
-    color: #5d3889
+  position: relative; 
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0.25rem 0.5rem; 
+  box-sizing: border-box;
+  border-bottom: 1px solid black;
+}
+
+.pin-details .header-left,
+.pin-details .header-right {
+  display: flex;
+  align-items: center;
+  z-index: 1; 
+  gap: 0.5rem;
+  min-width: 50px;
+}
+
+.pin-details .header-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 0;
 }
 
 .pin-details.event-mode .header {
@@ -101,8 +121,8 @@
 
 .pin-details .header-actions {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .pin-details .pin-header-nav {
@@ -275,10 +295,9 @@
 }
 
 .pin-details .share-button-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .pin-details .share-button {
@@ -1310,20 +1329,6 @@
     outline-offset: 3px;
 }
 
-.pin-details .back-button {
-    transition: transform 150ms ease, filter 150ms ease;
-}
-
-.pin-details .back-button:hover {
-    transform: scale(1.08);
-    filter: brightness(1.05);
-}
-
-.pin-details .back-button:active {
-    transform: scale(0.95);
-}
-
-
 .pin-details .bookmark-button {
     transition: transform 150ms ease, filter 150ms ease;
 }
@@ -1620,6 +1625,7 @@
   text-decoration: none;
 }
 
+/* comments mobile */
 @media (max-width: 600px) {
   .pin-details .create-comment {
     width: 60px;
@@ -1638,6 +1644,7 @@
   }
 }
 
+/* pin photos mobile */
 @media (max-width: 600px) {
   .pin-details .pin-photo {
     width: 120px;
@@ -1646,5 +1653,36 @@
 
   .pin-details .pin-photo-item {
     margin: 0 1rem;
+  }
+}
+
+/* header mobile */
+@media (max-width: 600px) {
+  .pin-details .header-actions,
+  .pin-details .share-button-wrapper {
+    flex-wrap: wrap; 
+    gap: 0.25rem;
+  }
+
+  .pin-details .flag-pin-button {
+    padding: 0.25rem 0.5rem; 
+    font-size: 0.8rem; 
+    white-space: nowrap; 
+  }
+
+  .pin-details .edit-pin-button {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .pin-details .header-right {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .pin-details .header-actions {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    justify-content: flex-end; 
   }
 }
