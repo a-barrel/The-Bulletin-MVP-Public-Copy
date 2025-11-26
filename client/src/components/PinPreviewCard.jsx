@@ -95,7 +95,7 @@ export default function PinPreviewCard({
     safePin.stats?.participantCount ??
     safePin.participants ??
     safePin.stats?.participants;
-  const participantCount = resolveCount(participantCountRaw) ?? 0;
+  const participantCount = resolveCount(participantCountRaw);
   const bookmarkCountRaw = safePin.bookmarkCount ?? safePin.stats?.bookmarkCount;
   const replyCountRaw = safePin.replyCount ?? safePin.stats?.replyCount;
   const bookmarkCount = resolveCount(bookmarkCountRaw) ?? 0;
@@ -154,16 +154,28 @@ export default function PinPreviewCard({
     safePin.stats?.friendsAttending ??
     safePin.stats?.friendCount ??
     safePin.stats?.viewerFriendsGoing;
-  const friendsGoing = resolveCount(friendsGoingRaw) ?? 0;
+  const friendsGoing = resolveCount(friendsGoingRaw);
+  const friendsGoingPending =
+    Boolean(safePin.friendsGoingPending) ||
+    (friendsGoingRaw === null || typeof friendsGoingRaw === 'undefined') ||
+    friendsGoing === null;
+  const friendsGoingDisplay = friendsGoingPending ? '—' : friendsGoing ?? 0;
+  const attendingPending = participantCount === null && limit === undefined;
+  const attendingDisplay =
+    participantCount !== null
+      ? `${participantCount}${limit ? ` / ${limit}` : ''}`
+      : limit !== undefined
+      ? `— / ${limit}`
+      : '—';
 
   const stats = [
     {
       label: 'Attending',
-      value: `${participantCount}${limit ? ` / ${limit}` : ''}`
+      value: attendingPending ? '—' : attendingDisplay
     },
     {
       label: 'Friends Going',
-      value: friendsGoing ?? 0
+      value: friendsGoingDisplay
     },
     {
       label: 'Bookmarks',
@@ -184,7 +196,12 @@ export default function PinPreviewCard({
   const showBookmarkAction = !disableActions && typeof onBookmark === 'function';
   const hasActions = !disableActions && (actionsSlot || showViewAction || showBookmarkAction);
   const bookmarkLabel = isBookmarked ? 'Unbookmark' : 'Bookmark';
-  const rootClassName = ['pin-preview-card', 'pin-preview-card--postcard', className]
+  const rootClassName = [
+    'pin-preview-card',
+    'pin-preview-card--postcard',
+    isEvent ? 'pin-preview-card--event' : 'pin-preview-card--discussion',
+    className
+  ]
     .filter(Boolean)
     .join(' ');
   const creatorClickable = typeof onCreatorClick === 'function';

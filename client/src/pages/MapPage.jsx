@@ -95,7 +95,14 @@ function MapPage() {
   });
 
   const FILTER_STORAGE_KEY = 'mapFilterState-v2';
-  const LEGACY_FILTER_STORAGE_KEY = 'mapFilterState-v1';
+const LEGACY_FILTER_STORAGE_KEY = 'mapFilterState-v1';
+
+const extractIds = (list) => {
+  if (!Array.isArray(list)) return [];
+  return list
+    .map((entry) => toIdString(entry?._id ?? entry?.id ?? entry?.userId ?? entry))
+    .filter(Boolean);
+};
   const loadStoredFilterState = () => {
     if (typeof window === 'undefined') {
       return null;
@@ -185,6 +192,8 @@ function MapPage() {
     () => toIdString(viewerProfile?._id) ?? toIdString(viewerProfile?.id) ?? null,
     [viewerProfile]
   );
+
+  const friendIdsReady = Array.isArray(viewerProfile?.relationships?.friendIds);
 
   const friendIdsSet = useMemo(() => {
     const friends = viewerProfile?.relationships?.friendIds;
@@ -276,8 +285,57 @@ function MapPage() {
     }
     return pins.map((pin) => {
       const mapMeta = buildPinMeta(pin, { viewerId, friendIds: friendIdsSet });
+      const existingFriendCount =
+        typeof pin?.friendsGoing === 'number'
+          ? pin.friendsGoing
+          : typeof pin?.friendsGoingCount === 'number'
+          ? pin.friendsGoingCount
+          : typeof pin?.friendCount === 'number'
+          ? pin.friendCount
+          : typeof pin?.stats?.friendsGoing === 'number'
+          ? pin.stats.friendsGoing
+          : typeof pin?.stats?.friendsGoingCount === 'number'
+          ? pin.stats.friendsGoingCount
+          : typeof pin?.stats?.friendCount === 'number'
+          ? pin.stats.friendCount
+          : null;
+      const participantIds = [
+        ...extractIds(pin?.participants),
+        ...extractIds(pin?.participantIds),
+        ...extractIds(pin?.attendees),
+        ...extractIds(pin?.attendeeIds),
+        ...extractIds(pin?.attendingUserIds),
+        ...extractIds(pin?.stats?.attendees),
+        ...extractIds(pin?.stats?.attendeeIds),
+        ...extractIds(pin?.stats?.attendingUserIds),
+        ...extractIds(pin?.stats?.participants),
+        ...extractIds(pin?.stats?.participantIds)
+      ];
+      const participantIdSet = participantIds.length ? new Set(participantIds) : null;
+      const friendsFromGraph =
+        friendIdsReady && participantIdSet
+          ? Array.from(participantIdSet).reduce(
+              (count, id) => (friendIdsSet.has(id) ? count + 1 : count),
+              0
+            )
+          : null;
+      const friendsGoingCount =
+        existingFriendCount !== null
+          ? existingFriendCount
+          : friendsFromGraph !== null
+          ? friendsFromGraph
+          : null;
+      const friendsGoingPending = friendsGoingCount === null;
       return {
         ...pin,
+        friendsGoing: friendsGoingCount,
+        friendsGoingCount,
+        friendsGoingPending,
+        stats: {
+          ...(pin?.stats || {}),
+          friendsGoing: friendsGoingCount,
+          friendsGoingCount
+        },
         mapMeta,
         mapColorKey: mapMeta.colorKey
       };
@@ -707,6 +765,7 @@ function MapPage() {
           teleportEnabled={tapToTeleportEnabled && canUseAdminTools}
           showInteractionRadius={showInteractionRadius}
           onTeleportRequest={handleTapTeleport}
+          showRecenterControl
         />
         </Box>
 

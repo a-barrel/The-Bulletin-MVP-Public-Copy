@@ -801,6 +801,10 @@ export async function logClientEvent({
   context,
   timestamp
 } = {}) {
+  // Avoid noisy console errors in local dev when the dev-logs API isn't available.
+  if (import.meta.env.DEV) {
+    return;
+  }
   const dedupeKey = `${category || 'client'}:${message || ''}`;
   const now = Date.now();
   const lastLogged = clientEventCache.get(dedupeKey);
@@ -815,6 +819,9 @@ export async function logClientEvent({
   }
   try {
     const baseUrl = resolveApiBaseUrl();
+    if (!baseUrl) {
+      return;
+    }
     const response = await fetch(`${baseUrl}/api/dev-logs`, {
       method: 'POST',
       headers: await buildHeaders(),

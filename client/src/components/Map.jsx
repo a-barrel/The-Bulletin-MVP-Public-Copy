@@ -24,6 +24,7 @@ import usePinClusters from './map/usePinClusters';
 import PinPreviewCard from './PinPreviewCard';
 import toIdString from '../utils/ids';
 import { flagPinForModeration, createPinBookmark, deletePinBookmark } from '../api/mongoDataApi';
+import RecenterControl from './map/RecenterControl';
 
 function PinCardOverlay({ position, children }) {
   const map = useMap();
@@ -409,7 +410,10 @@ const Map = ({
   currentUserDisplayName,
   showInteractionRadius = true,
   teleportEnabled = false,
-  onTeleportRequest
+  onTeleportRequest,
+  showRecenterControl = false
+  ,
+  scrollWheelZoom = true
 }) => {
   const tileLayerRef = useRef(null);
   const tileErrorCountRef = useRef(0);
@@ -785,6 +789,7 @@ const Map = ({
       <MapContainer
         center={resolvedCenter}
         zoom={13}
+        scrollWheelZoom={scrollWheelZoom}
         style={{ width: '100%', height: '100%' }}
         whenCreated={(map) => {
           window.setTimeout(() => {
@@ -804,6 +809,18 @@ const Map = ({
             tileerror: handleTileError
           }}
         />
+        {showRecenterControl ? (
+          <RecenterControl
+            onRecenter={(mapInstance) => {
+              if (Array.isArray(resolvedCenter) && resolvedCenter.length === 2) {
+                const [lat, lng] = resolvedCenter;
+                if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                  mapInstance.setView([lat, lng], mapInstance.getZoom(), { animate: true });
+                }
+              }
+            }}
+          />
+        ) : null}
       
       {userMarkerPosition && (
         <Marker

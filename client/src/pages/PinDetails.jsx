@@ -289,6 +289,7 @@ function PinDetails() {
     creatorProfileLink,
     creatorAvatarUrl
   } = viewState;
+  const creatorDisplayName = pin?.creator?.displayName || pin?.creator?.username || 'Creator';
   const {
     bookmarked,
     isUpdating: isUpdatingBookmark,
@@ -978,6 +979,10 @@ function PinDetails() {
                   selectedPinId={mapPins[0]?._id ?? pin._id}
                   centerOverride={coordinates}
                   hostPinId={pin?._id}
+                  currentUserAvatar={creatorAvatarUrl}
+                  currentUserDisplayName={creatorDisplayName}
+                  showRecenterControl
+                  scrollWheelZoom={false}
                 />
                 {coordinateLabel ? (
                   <span className="coordinate-label">Coords: {coordinateLabel}</span>
