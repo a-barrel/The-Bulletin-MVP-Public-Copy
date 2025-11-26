@@ -14,7 +14,8 @@ const logListPerf = (...args) => {
   if (!enableListPerfLogs) {
     return;
   }
-  console.debug('[ListPerf]', ...args);
+  // eslint-disable-next-line no-console
+  console.log('[ListPerf]', ...args);
 };
 
 export { enableListPerfLogs, logListPerf, nowMs };

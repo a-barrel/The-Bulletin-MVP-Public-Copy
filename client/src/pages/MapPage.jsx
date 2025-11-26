@@ -6,7 +6,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 
-import Map from '../components/Map';
+import MapComponent from '../components/Map';
 import Navbar from '../components/Navbar';
 import updatesIcon from '../assets/UpdateIcon.svg';
 import addIconPurple from '../assets/AddIconPurple.svg';
@@ -102,6 +102,24 @@ const extractIds = (list) => {
   return list
     .map((entry) => toIdString(entry?._id ?? entry?.id ?? entry?.userId ?? entry))
     .filter(Boolean);
+};
+
+const perfLogCache = new globalThis.Map();
+const logPerf = (label, startedAt = null, meta = {}) => {
+  const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  const duration = startedAt ? now - startedAt : 0;
+  const key = `${label}|${JSON.stringify(meta)}`;
+  const last = perfLogCache.get(key);
+  // Deduplicate identical log payloads that occur back-to-back (e.g., Strict Mode double effects).
+  if (last && now - last < 200) {
+    return;
+  }
+  perfLogCache.set(key, now);
+  // eslint-disable-next-line no-console
+  console.log(`[map-perf] ${label}${startedAt ? '' : ' (instant)'}`, {
+    durationMs: Number.isFinite(duration) ? duration.toFixed(1) : 'n/a',
+    ...meta
+  });
 };
   const loadStoredFilterState = () => {
     if (typeof window === 'undefined') {
@@ -280,10 +298,11 @@ const extractIds = (list) => {
   ]);
 
   const annotatedPins = useMemo(() => {
+    const started = performance.now();
     if (!Array.isArray(pins)) {
       return [];
     }
-    return pins.map((pin) => {
+    const result = pins.map((pin) => {
       const mapMeta = buildPinMeta(pin, { viewerId, friendIds: friendIdsSet });
       const existingFriendCount =
         typeof pin?.friendsGoing === 'number'
@@ -340,10 +359,13 @@ const extractIds = (list) => {
         mapColorKey: mapMeta.colorKey
       };
     });
+    logPerf('annotate pins', started, { count: result.length });
+    return result;
   }, [pins, friendIdsSet, viewerId]);
 
   const visiblePins = useMemo(() => {
-    return annotatedPins.filter((pin) =>
+    const started = performance.now();
+    const filtered = annotatedPins.filter((pin) =>
       applyPinFilters(pin.mapMeta, {
         showEvents,
         showDiscussions,
@@ -358,6 +380,8 @@ const extractIds = (list) => {
         showFeaturedPins
       })
     );
+    logPerf('filter pins', started, { input: annotatedPins.length, output: filtered.length });
+    return filtered;
   }, [
     annotatedPins,
     showDiscussions,
@@ -412,10 +436,20 @@ const extractIds = (list) => {
     return [];
   }, [chatRoomPins, showAllChatRoomsToggle, showMyChatRooms, viewerId]);
 
-  const mapPinsForRender = useMemo(
-    () => [...visiblePins, ...visibleChatRoomPins],
-    [visiblePins, visibleChatRoomPins]
-  );
+  const mapPinsForRender = useMemo(() => {
+    const started = performance.now();
+    const merged = [...visiblePins, ...visibleChatRoomPins];
+    logPerf('merge pins for map', started, { pins: visiblePins.length, chats: visibleChatRoomPins.length, total: merged.length });
+    return merged;
+  }, [visiblePins, visibleChatRoomPins]);
+
+  useEffect(() => {
+    logPerf('map pin counts change', null, {
+      visiblePins: visiblePins.length,
+      chatPins: visibleChatRoomPins.length,
+      total: mapPinsForRender.length
+    });
+  }, [visiblePins.length, visibleChatRoomPins.length, mapPinsForRender.length]);
 
   useEffect(() => {
     if (typeof refreshUnreadCount === 'function' && !isOffline) {
@@ -747,7 +781,7 @@ const extractIds = (list) => {
             backgroundColor: 'background.paper'
           }}
         >
-        <Map
+        <MapComponent
           userLocation={userLocation}
           nearbyUsers={nearbyUsers}
           pins={mapPinsForRender}

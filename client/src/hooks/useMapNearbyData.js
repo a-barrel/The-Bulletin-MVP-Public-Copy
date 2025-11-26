@@ -29,7 +29,8 @@ export default function useMapNearbyData({
     allowFallback: false,
     cacheNamespace: 'map',
     syncLimitWithProfile: false,
-    onErrorChange: setGlobalError
+    onErrorChange: setGlobalError,
+    enablePerfLogging: true
   });
   const viewerId = normalizeId(currentProfileId);
   const normalizedPins = useMemo(() => {
