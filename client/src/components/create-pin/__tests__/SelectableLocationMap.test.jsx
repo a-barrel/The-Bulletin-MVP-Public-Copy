@@ -1,6 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import SelectableLocationMap from '../SelectableLocationMap';
 
+jest.mock('../../PinPreviewCard', () => function MockPinPreviewCard({ pin }) {
+  return <div data-testid="pin-preview" data-title={pin?.title || ''} />;
+});
+
 jest.mock('leaflet', () => ({
   divIcon: jest.fn(() => ({ icon: true })),
   Icon: {
@@ -34,6 +38,7 @@ jest.mock('react-leaflet', () => {
     TileLayer: () => <div data-testid="tile-layer" />,
     Marker,
     Polyline,
+    Popup: ({ children }) => <div data-testid="popup">{children}</div>,
     useMap: () => mapInstance,
     useMapEvents: (events) => {
       handlers.current = events;
@@ -64,12 +69,14 @@ describe('SelectableLocationMap', () => {
         anchor={{ lat: 33, lng: -118.1 }}
         viewerName="Viewer"
         avatarUrl="/avatar.png"
+        previewPin={{ title: 'Draft' }}
       />
     );
     const markers = screen.getAllByTestId('marker');
     expect(markers).toHaveLength(2);
     expect(__mockMap.setView).toHaveBeenCalledWith([34, -118]);
     expect(screen.getByTestId('polyline')).toBeInTheDocument();
+    expect(screen.getByTestId('pin-preview')).toHaveAttribute('data-title', 'Draft');
   });
 
   it('fires onChange when map is clicked', () => {

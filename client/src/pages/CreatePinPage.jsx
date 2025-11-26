@@ -20,7 +20,7 @@ import resolveAssetUrl from '../utils/media';
 import { haversineDistanceMeters, formatDistanceMiles, formatDistanceMetersLabel } from '../utils/geo';
 import SelectableLocationMap from '../components/create-pin/SelectableLocationMap';
 import useViewerProfile from '../hooks/useViewerProfile';
-import PinPreviewCard from '../components/create-pin/PinPreviewCard';
+import PinPreviewCard from '../components/PinPreviewCard';
 import CREATE_PIN_TEMPLATE from '../constants/createPinTemplate';
 
 export const pageConfig = {
@@ -257,37 +257,6 @@ function CreatePinPage() {
             You are offline. Drafts save locally, but publishing and uploads need a connection.
           </div>
         )}
-
-        {status && (
-          <div className={`alert alert-${status.type}`}>
-            <span>{status.message}</span>
-            <button type="button" onClick={clearStatus} className="alert-close">
-              x
-            </button>
-          </div>
-        )}
-
-        {draftStatus && (
-          <div className={`alert alert-${draftStatus.type}`}>
-            <span>{draftStatus.message}</span>
-            <button type="button" onClick={clearDraftStatus} className="alert-close">
-              x
-            </button>
-          </div>
-        )}
-
-        <div className="form-section preview-section">
-          <PinPreviewCard
-            pinType={pinType}
-            formState={formState}
-            viewerName={viewerDisplayName}
-            viewerAvatarUrl={viewerAvatarUrl}
-            photoAssets={photoAssets}
-            coverPhotoId={coverPhotoId}
-            pinDistanceLabel={pinDistanceLabel}
-            activeTheme={activeTheme}
-          />
-        </div>
 
         {/* Pin type toggle */}
         <div className="field-group">
@@ -625,15 +594,6 @@ function CreatePinPage() {
               : 'Tap where the approximate location of the discussion is at.'}
           </p>
 
-          {locationStatus && (
-            <div className={`alert alert-${locationStatus.type}`}>
-              {locationStatus.message}
-              <button type="button" onClick={clearLocationStatus} className="alert-close">
-                x
-              </button>
-            </div>
-          )}
-
           <div className="map-container">
             <SelectableLocationMap
               value={selectedCoordinates}
@@ -641,6 +601,48 @@ function CreatePinPage() {
               anchor={viewerMapAnchor}
               avatarUrl={viewerAvatarUrl}
               viewerName={viewerDisplayName}
+              previewPin={{
+                _id: 'draft',
+                title: formState.title || 'Draft pin',
+                type: pinType,
+                description: formState.description,
+                viewerOwnsPin: true,
+                viewerHasBookmarked: false,
+                participantCount: undefined,
+                participantLimit: undefined,
+                bookmarkCount: undefined,
+                replyCount: undefined,
+                tags: Array.isArray(formState.tags) ? formState.tags : undefined,
+                addressPrecise: formState.addressPrecise,
+                addressCity: formState.addressCity,
+                addressState: formState.addressState,
+                addressCountry: formState.addressCountry,
+                approxFormatted: formState.approxFormatted,
+                approxCity: formState.approxCity,
+                approxState: formState.approxState,
+                approxCountry: formState.approxCountry,
+                startDate: formState.startDate,
+                endDate: formState.endDate,
+                expiresAt: formState.expiresAt,
+                latitude: formState.latitude,
+                longitude: formState.longitude,
+                proximityRadiusMeters: formState.proximityRadiusMiles
+                  ? Number(formState.proximityRadiusMiles) * 1609.34
+                  : undefined,
+                coverPhoto: Array.isArray(photoAssets) && photoAssets[0]
+                  ? { url: photoAssets[0].asset?.url || photoAssets[0].asset?.path }
+                  : undefined,
+                photos: Array.isArray(photoAssets)
+                  ? photoAssets
+                      .map((photo) => ({
+                        url: photo?.asset?.url || photo?.asset?.path
+                      }))
+                      .filter((photo) => !!photo.url)
+                      .slice(0, 3)
+                  : undefined,
+                distanceMiles: undefined,
+                coordinateLabel: undefined
+              }}
             />
           </div>
           {pinDistanceLabel ? (

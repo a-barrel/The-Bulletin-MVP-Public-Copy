@@ -8,10 +8,10 @@ import { enableListPerfLogs, logListPerf, nowMs } from '../utils/listPerfLogger'
 const DEFAULT_RADIUS_MILES = 10;
 const PIN_FETCH_LIMIT = 50;
 const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
-const FETCH_THROTTLE_MS = 250;
-const FETCH_DEBOUNCE_MS = 250;
-const CACHE_TTL_MS = 45_000;
-const DETAIL_CACHE_TTL_MS = 60_000;
+const FETCH_THROTTLE_MS = 0;
+const FETCH_DEBOUNCE_MS = 0;
+const CACHE_TTL_MS = 120_000;
+const DETAIL_CACHE_TTL_MS = 180_000;
 
 const nearbyCacheStores = new Map();
 const detailCacheStores = new Map();
@@ -92,7 +92,7 @@ export default function usePinsFeedCore({
   const [syncListWithMapLimit, setSyncListWithMapLimit] = useState(syncLimitWithProfile);
 
   const cacheRef = useRef(getNamespacedStore(nearbyCacheStores, cacheNamespace));
-  const detailCacheRef = useRef(getNamespacedStore(detailCacheStores, cacheNamespace));
+  const detailCacheRef = useRef(getNamespacedStore(detailCacheStores, `${cacheNamespace}-detail`));
   const isLoadingRef = useRef(false);
   const lastFetchAtRef = useRef(0);
   const activeRequestRef = useRef({ id: 0, controller: null });
