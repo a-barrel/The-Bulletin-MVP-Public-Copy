@@ -22,7 +22,7 @@
   align-items: stretch;
   background: #ffffff;
   border: 1px solid #e3e6ec;
-  padding: 14px;
+  padding: 10px 12px;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
   box-sizing: border-box;
 }
@@ -50,6 +50,76 @@
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
 }
 
+.pin-preview-card.pin-preview-card--map {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  width: clamp(320px, 88vw, 720px);
+  max-height: 70vh;
+  align-items: stretch;
+  overflow: hidden;
+  position: relative;
+}
+
+.pin-preview-card--map .pin-preview-card__media {
+  width: 240px;
+  min-width: 200px;
+  max-width: 260px;
+  min-height: 200px;
+  max-height: 260px;
+  height: clamp(200px, 32vw, 260px);
+  align-self: center;
+  flex-shrink: 0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 0;
+}
+
+.pin-preview-card--map .pin-preview-card__body {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: auto;
+}
+
+.pin-preview-card .bookmark-button--card {
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  color: #8a8a8a;
+  transition: transform 0.1s ease, color 0.15s ease;
+}
+
+.pin-preview-card .bookmark-button--card.bookmark-button--active {
+  color: #9b5de5;
+}
+
+.pin-preview-card .bookmark-button--card .bookmark-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.pin-preview-card .bookmark-button--card.bookmark-button--locked,
+.pin-preview-card .bookmark-button--card.bookmark-button--owner,
+.pin-preview-card .bookmark-button--card.bookmark-button--attending {
+  color: #ffbe3c;
+}
+
+.pin-preview-card .bookmark-button--card:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.pin-preview-card .bookmark-button--card:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .pin-preview-card__media img {
   width: 100%;
   height: 100%;
@@ -70,10 +140,10 @@
 
 .pin-preview-card__body {
   grid-area: body;
-  padding: 18px 22px 16px;
+  padding: 14px 18px 12px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 5px;
   min-width: 0;
 }
 
@@ -168,7 +238,7 @@
 }
 
 .pin-preview-card__description {
-  font-size: 13.5px;
+  font-size: 15px;
   color: #1f2937;
   line-height: 1.6;
   margin: 0;
@@ -205,12 +275,91 @@
   flex-wrap: wrap;
 }
 
+.pin-preview-card--map .pin-preview-card__footer {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.pin-preview-card--map .pin-preview-card__actions {
+  margin-left: auto;
+}
+
+.pin-preview-card__flag-button {
+  border: 1px solid #f4a261;
+  background: #ffecec;
+  border-radius: 10px;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.pin-preview-card__flag-button img {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.pin-preview-card__flag-button:hover:not(:disabled) {
+  background: #ffd4d4;
+  border-color: #f5b5b5;
+}
+
+.pin-preview-card__flag-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pin-preview-card .bookmark-button-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .pin-preview-card__creator {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
+  border-radius: 12px;
 }
+
+.pin-preview-card__creator--clickable {
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+  padding: 4px 6px;
+}
+
+.pin-preview-card__creator--clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+}
+
+.pin-preview-card__creator--clickable .pin-preview-card__creator-avatar {
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.pin-preview-card__creator--clickable:focus-visible,
+.pin-preview-card__creator--clickable:focus-within {
+  outline: none;
+  box-shadow: 0 0 0 2px #6a25d7;
+}
+
+.pin-preview-card__creator--clickable:hover .pin-preview-card__creator-avatar {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.2);
+}
+
+.pin-preview-card__creator--clickable:focus-visible .pin-preview-card__creator-avatar,
+.pin-preview-card__creator--clickable:focus-within .pin-preview-card__creator-avatar {
+  outline: 2px solid #6a25d7;
+  outline-offset: 2px;
+}
+
 
 .pin-preview-card__creator-avatar {
   width: 40px;
@@ -255,6 +404,7 @@
 .pin-preview-card__actions {
   display: flex;
   align-items: center;
+  gap: 10px;
 }
 
 .pin-preview-card__button {
@@ -267,6 +417,13 @@
   color: #fff;
   cursor: pointer;
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+}
+
+.pin-preview-card__button.pin-preview-card__button--ghost {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #0f172a;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
 }
 
 .pin-preview-card__pill {
@@ -347,5 +504,37 @@
 
   .pin-preview-card__title {
     line-height: 1.25;
+  }
+
+  .pin-preview-card.pin-preview-card--map {
+    flex-direction: column;
+    gap: 10px;
+    max-width: 100%;
+    max-height: 85vh;
+    width: 100%;
+    aspect-ratio: auto;
+    overflow: auto;
+  }
+
+  .pin-preview-card--map .pin-preview-card__media {
+    order: -1;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    min-height: 160px;
+    max-height: 200px;
+    height: clamp(160px, 52vw, 200px);
+    border-radius: 14px 14px 12px 12px;
+    align-self: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pin-preview-card--map .pin-preview-card__body {
+    order: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: auto;
   }
 }

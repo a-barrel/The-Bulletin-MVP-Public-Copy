@@ -22,6 +22,8 @@ import {
 import { resolveUserAvatarUrl } from '../utils/pinFormatting';
 import usePinClusters from './map/usePinClusters';
 import PinPreviewCard from './PinPreviewCard';
+import toIdString from '../utils/ids';
+import { flagPinForModeration, createPinBookmark, deletePinBookmark } from '../api/mongoDataApi';
 
 function PinCardOverlay({ position, children }) {
   const map = useMap();
@@ -394,6 +396,9 @@ const Map = ({
   pins = [],
   onPinSelect,
   onPinView,
+  onPinBookmark,
+  onPinAuthorView,
+  onPinFlag,
   onChatRoomView,
   selectedPinId,
   centerOverride,
@@ -500,6 +505,90 @@ const Map = ({
   const safeClusterablePins = clusterablePins || [];
   const resizeSignature = `${resolvedCenter?.[0] ?? 'na'}-${resolvedCenter?.[1] ?? 'na'}-${resolvedPins.length}-${nearbyUsers.length}-${userRadiusMeters ?? 'no-radius'}`;
   const [mapZoom, setMapZoom] = useState(13);
+  const [bookmarkedPinIds, setBookmarkedPinIds] = useState(() => new Set());
+
+  const resolvePinId = useCallback((pin) => {
+    return (
+      toIdString(pin?._id) ||
+      toIdString(pin?.id) ||
+      toIdString(pin?.pinId) ||
+      (typeof pin?._id === 'object' && pin?._id?.$oid ? pin._id.$oid : null)
+    );
+  }, []);
+
+  const handleToggleBookmark = useCallback(
+    async (pin) => {
+      const pinId = resolvePinId(pin);
+      if (!pinId) return;
+      const isOwner = Boolean(pin?.viewerOwnsPin || pin?.viewerIsCreator || pin?.isSelf);
+      const isAttending = Boolean(pin?.viewerIsAttending);
+
+      if (typeof onPinBookmark === 'function') {
+        onPinBookmark(pin);
+        return;
+      }
+      if (isOffline) {
+        // eslint-disable-next-line no-console
+        console.warn('Reconnect to manage bookmarks.');
+        return;
+      }
+      if (isOwner || isAttending) {
+        return;
+      }
+
+      const currentlyBookmarked =
+        pin?.viewerHasBookmarked === true ? true : bookmarkedPinIds.has(pinId);
+      const nextState = !currentlyBookmarked;
+
+      try {
+        if (nextState) {
+          await createPinBookmark(pinId);
+        } else {
+          await deletePinBookmark(pinId);
+        }
+        setBookmarkedPinIds((prev) => {
+          const next = new Set(prev);
+          if (nextState) {
+            next.add(pinId);
+          } else {
+            next.delete(pinId);
+          }
+          return next;
+        });
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to toggle bookmark from map:', error);
+      }
+    },
+    [bookmarkedPinIds, isOffline, onPinBookmark, resolvePinId]
+  );
+
+  const handleFlagPin = useCallback(
+    async (pin) => {
+      if (typeof onPinFlag === 'function') {
+        onPinFlag(pin);
+        return;
+      }
+      const pinId = resolvePinId(pin);
+      if (!pinId || isOffline) return;
+      const confirmed =
+        typeof window === 'undefined' || typeof window.confirm !== 'function'
+          ? true
+          : window.confirm('Flag this pin for moderator review?');
+      if (!confirmed) return;
+      const reason =
+        typeof window !== 'undefined' && typeof window.prompt === 'function'
+          ? window.prompt('Reason for flagging (optional)', '')
+          : '';
+      try {
+        await flagPinForModeration(pinId, { reason });
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to flag pin from map:', error);
+      }
+    },
+    [isOffline, onPinFlag, resolvePinId]
+  );
 
   const renderPinPopup = useCallback(
     (pin, distanceLabel, expirationLabel, canViewPin, canViewChatRoom, handleViewPin) => {
@@ -620,10 +709,16 @@ const Map = ({
         : null);
     const thumbnailUrl = resolveThumbnailUrl(thumbnailAsset);
 
-    const key =
-      pin._id ?? `pin-${latitude}-${longitude}-${pin?.title ?? "pin"}`;
+    const pinId =
+      resolvePinId(pin) ?? `pin-${latitude}-${longitude}-${pin?.title ?? "pin"}`;
 
     const canViewPin = typeof onPinView === "function";
+    const isBookmarked =
+      pin?.viewerHasBookmarked === true
+        ? true
+        : pinId
+          ? bookmarkedPinIds.has(pinId)
+          : false;
     const markerIcon = resolvePinIcon(pin);
     const markerZIndex = pin?.isSelf
       ? 1200
@@ -641,7 +736,7 @@ const Map = ({
 
     return (
       <Marker
-        key={key}
+        key={pinId}
         position={[latitude, longitude]}
         icon={markerIcon}
         zIndexOffset={markerZIndex}
@@ -653,26 +748,36 @@ const Map = ({
             : undefined
         }
       >
-        <Popup className="map-pin-popup">
+        <Popup className="map-pin-popup" offset={[0, -4]}>
           <div className="map-popup-card-wrapper">
             <PinPreviewCard
               pin={{
                 ...pin,
                 photos: pin?.photos || (thumbnailUrl ? [{ url: thumbnailUrl }] : undefined)
               }}
+              viewerOwnsPin={Boolean(pin?.viewerOwnsPin || pin?.viewerIsCreator)}
+              viewerIsAttending={Boolean(pin?.viewerIsAttending)}
+              bookmarkPending={false}
               distanceMiles={pin?.distanceMiles}
               coordinateLabel={pin?.coordinateLabel}
               proximityRadiusMeters={pin?.proximityRadiusMeters}
               createdAt={pin?.createdAt}
               updatedAt={pin?.updatedAt}
-              onViewPin={handleViewPin}
+              onView={handleViewPin}
+              onBookmark={onPinBookmark || handleToggleBookmark}
+              onFlag={handleFlagPin}
+              onCreatorClick={
+                typeof onPinAuthorView === 'function' ? (p) => onPinAuthorView(p) : undefined
+              }
+              isBookmarked={isBookmarked}
+              className="pin-preview-card--map"
             />
           </div>
         </Popup>
       </Marker>
     );
   },
-  [onPinSelect, onPinView, selectedPinId, userMarkerPosition]
+  [bookmarkedPinIds, handleFlagPin, handleToggleBookmark, onPinAuthorView, onPinBookmark, onPinSelect, onPinView, resolvePinId, selectedPinId, userMarkerPosition]
 );
 
   return (

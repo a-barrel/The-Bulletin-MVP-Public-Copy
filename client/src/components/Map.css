@@ -123,19 +123,67 @@
   background: transparent !important;
   border-radius: 0 !important;
   box-shadow: none !important;
+  position: relative;
+  width: auto !important;
+  min-width: 320px !important;
+  max-width: clamp(320px, 88vw, 720px) !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+.map-pin-popup .leaflet-popup-close-button {
+  position: absolute !important;
+  top: 12px !important;
+  right: 12px !important;
+  z-index: 20;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #7f46c2;
+  color: #ffffff;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.16);
+  padding: 0 !important;
+}
+
+.map-pin-popup .leaflet-popup-tip-container {
+  width: 100% !important;
+  position: relative !important;
+  display: block !important;
+  height: auto !important;
+}
+
+.map-pin-popup .leaflet-popup-tip {
+  margin: 0 !important;
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  right: auto !important;
 }
 
 .map-popup-card-wrapper {
-  width: 100%; 
-  max-width: 320px;
+  width: auto;
+  min-width: 320px;
+  max-width: clamp(320px, 88vw, 720px);
   padding: 0;
   overflow: visible;
+  display: flex;
+  justify-content: center;
 }
 
 .map-popup-card-wrapper {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .map-popup-card-wrapper {
+    max-width: clamp(300px, 92vw, 720px);
+    padding: 6px 8px;
+  }
 }
 
 .map-popup-image-wrapper {

@@ -407,6 +407,19 @@ function MapPage() {
     navigate(routes.profile.me);
   }, [navigate]);
 
+  const handleViewPinAuthor = useCallback(
+    (pin) => {
+      const authorId =
+        toIdString(pin?.creator?._id) ||
+        toIdString(pin?.creator?.id) ||
+        toIdString(pin?.creatorId) ||
+        toIdString(pin?.authorId);
+      if (!authorId) return;
+      navigate(routes.profile.byId(authorId));
+    },
+    [navigate]
+  );
+
   const handleNotifications = useCallback(() => {
     offlineAction(() => navigate(routes.updates.base));
   }, [offlineAction, navigate]);
@@ -687,6 +700,7 @@ function MapPage() {
           onPinView={handleViewPinDetails}
           onChatRoomView={handleViewChatRoom}
           onCurrentUserView={handleViewProfile}
+          onPinAuthorView={handleViewPinAuthor}
           isOffline={isOffline}
           currentUserAvatar={viewerProfile?.avatar}
           currentUserDisplayName={viewerProfile?.displayName}

@@ -3,6 +3,8 @@ import './PinPreviewCard.css';
 import resolveAssetUrl, { resolveThumbnailUrl } from '../utils/media';
 import { resolveAuthorAvatar, resolveAuthorName } from '../utils/feed';
 import { formatDistanceMiles } from '../utils/geo';
+import BookmarkButton from './BookmarkButton';
+import FlagIcon from '@mui/icons-material/Flag';
 
 const formatDateLabel = (value) => {
   if (!value) return null;
@@ -23,10 +25,34 @@ const formatDistance = (distanceMiles) => {
   return formatDistanceMiles(distanceMiles, { withUnit: true });
 };
 
+const formatMonthYear = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const resolveCount = (value) => {
+  if (Number.isFinite(value)) return value;
+  if (Array.isArray(value)) return value.length;
+  return null;
+};
+
 const truncate = (value, max = 200) => {
   if (!value) return '';
   return value.length > max ? `${value.slice(0, max)}…` : value;
 };
+
+/**
+ * PinPreviewCard props (reusable):
+ * - pin: pin data object (required for content)
+ * - distanceMiles / coordinateLabel / proximityRadiusMeters: optional geo metadata display
+ * - createdAt / updatedAt: optional timestamps for meta line
+ * - onView: optional handler for the primary View action (defaults to onViewPin legacy prop)
+ * - onBookmark: optional handler for bookmark action (optional future use)
+ * - disableActions: hides actions even if handlers are provided
+ * - actionsSlot: optional custom actions node; if absent and no handlers, actions are hidden by default
+ */
 
 export default function PinPreviewCard({
   pin,
@@ -35,7 +61,17 @@ export default function PinPreviewCard({
   proximityRadiusMeters,
   createdAt,
   updatedAt,
+  isBookmarked = false,
+  bookmarkPending = false,
+  viewerOwnsPin = false,
+  viewerIsAttending = false,
+  onFlag,
+  onView,
+  onBookmark,
+  onCreatorClick,
+  actionsSlot,
   onViewPin,
+  className,
   disableActions = false
 }) {
   const safePin = pin || {};
@@ -54,22 +90,24 @@ export default function PinPreviewCard({
   const avatarUrl = resolveAuthorAvatar(safePin);
   const creatorName = resolveAuthorName(safePin) || safePin.creator?.username || 'Unknown creator';
   const description = typeof safePin.description === 'string' ? safePin.description : '';
-  const bookmarkCount =
-    typeof safePin.bookmarkCount === 'number' ? safePin.bookmarkCount : safePin.stats?.bookmarkCount;
-  const replyCount =
-    typeof safePin.replyCount === 'number' ? safePin.replyCount : safePin.stats?.replyCount;
-  const participantCount =
-    typeof safePin.participantCount === 'number' ? safePin.participantCount : undefined;
+  const participantCountRaw =
+    safePin.participantCount ??
+    safePin.stats?.participantCount ??
+    safePin.participants ??
+    safePin.stats?.participants;
+  const participantCount = resolveCount(participantCountRaw) ?? 0;
+  const bookmarkCountRaw = safePin.bookmarkCount ?? safePin.stats?.bookmarkCount;
+  const replyCountRaw = safePin.replyCount ?? safePin.stats?.replyCount;
+  const bookmarkCount = resolveCount(bookmarkCountRaw) ?? 0;
+  const replyCount = resolveCount(replyCountRaw) ?? 0;
   const limit =
     typeof safePin.participantLimit === 'number'
       ? safePin.participantLimit
       : safePin.milestones?.participantLimit;
   const distance = formatDistance(distanceMiles ?? safePin.distanceMiles);
   const pinId = safePin._id || safePin.id || 'draft';
-  const createdLabel = formatDateLabel(createdAt || safePin.createdAt);
+  const createdLabel = formatMonthYear(createdAt || safePin.createdAt);
   const updatedLabel = formatDateLabel(updatedAt || safePin.updatedAt);
-  const tags = Array.isArray(safePin.tags) ? safePin.tags.filter(Boolean).slice(0, 6) : [];
-
   const locationLabel = (() => {
     if (safePin.addressPrecise) return safePin.addressPrecise;
     if (safePin.approxFormatted) return safePin.approxFormatted;
@@ -100,33 +138,73 @@ export default function PinPreviewCard({
     return expiresLabel ? `Ends ${expiresLabel}` : null;
   })();
 
-  const stats = [
-    typeof participantCount === 'number'
-      ? {
-          label: 'Attending',
-          value: `${participantCount}${limit ? ` / ${limit}` : ''}`
-        }
-      : null,
-    typeof bookmarkCount === 'number'
-      ? {
-          label: 'Bookmarks',
-          value: bookmarkCount
-        }
-      : null,
-    typeof replyCount === 'number'
-      ? {
-          label: 'Replies',
-          value: replyCount
-        }
-      : null
-  ].filter(Boolean);
+  const computedViewerOwnsPin =
+    viewerOwnsPin || Boolean(safePin.viewerOwnsPin || safePin.viewerIsCreator || safePin.isSelf);
+  const computedViewerIsAttending =
+    viewerIsAttending || Boolean(safePin.viewerIsAttending || safePin.viewerIsParticipant);
 
-  const metaLine = [distance ? `Distance ${distance}` : null, createdLabel ? `Created ${createdLabel}` : null, updatedLabel ? `Updated ${updatedLabel}` : null]
+  const friendsGoingRaw =
+    safePin.friendsGoing ??
+    safePin.friendsGoingCount ??
+    safePin.friendsAttending ??
+    safePin.friendCount ??
+    safePin.viewerFriendsGoing ??
+    safePin.stats?.friendsGoing ??
+    safePin.stats?.friendsGoingCount ??
+    safePin.stats?.friendsAttending ??
+    safePin.stats?.friendCount ??
+    safePin.stats?.viewerFriendsGoing;
+  const friendsGoing = resolveCount(friendsGoingRaw) ?? 0;
+
+  const stats = [
+    {
+      label: 'Attending',
+      value: `${participantCount}${limit ? ` / ${limit}` : ''}`
+    },
+    {
+      label: 'Friends Going',
+      value: friendsGoing ?? 0
+    },
+    {
+      label: 'Bookmarks',
+      value: bookmarkCount
+    },
+    {
+      label: 'Replies',
+      value: replyCount
+    }
+  ];
+
+  const metaLine = [distance ? `Distance ${distance}` : null, createdLabel ? `Created ${createdLabel}` : null]
     .filter(Boolean)
     .join(' • ');
 
+  const viewHandler = typeof onView === 'function' ? onView : onViewPin;
+  const showViewAction = !disableActions && typeof viewHandler === 'function';
+  const showBookmarkAction = !disableActions && typeof onBookmark === 'function';
+  const hasActions = !disableActions && (actionsSlot || showViewAction || showBookmarkAction);
+  const bookmarkLabel = isBookmarked ? 'Unbookmark' : 'Bookmark';
+  const rootClassName = ['pin-preview-card', 'pin-preview-card--postcard', className]
+    .filter(Boolean)
+    .join(' ');
+  const creatorClickable = typeof onCreatorClick === 'function';
+
+  const handleCreatorClick = (event) => {
+    if (!creatorClickable) return;
+    event?.stopPropagation?.();
+    onCreatorClick(pin);
+  };
+
+  const handleCreatorKeyDown = (event) => {
+    if (!creatorClickable) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onCreatorClick(pin);
+    }
+  };
+
   return (
-    <div className="pin-preview-card pin-preview-card--postcard">
+    <div className={rootClassName}>
       <div className="pin-preview-card__body">
         <div className="pin-preview-card__title-row">
           <h3 className="pin-preview-card__title">{title}</h3>
@@ -155,16 +233,6 @@ export default function PinPreviewCard({
           ) : null}
         </div>
 
-        {tags.length ? (
-          <div className="pin-preview-card__tags">
-            {tags.map((tag) => (
-              <span className="pin-preview-card__tag" key={tag}>
-                {tag}
-              </span>
-            ))}
-          </div>
-        ) : null}
-
         {description ? (
           <p className="pin-preview-card__description">{truncate(description, 220)}</p>
         ) : null}
@@ -181,7 +249,13 @@ export default function PinPreviewCard({
         ) : null}
 
         <div className="pin-preview-card__footer">
-          <div className="pin-preview-card__creator">
+          <div
+            className={`pin-preview-card__creator${creatorClickable ? ' pin-preview-card__creator--clickable' : ''}`}
+            onClick={handleCreatorClick}
+            role={creatorClickable ? 'button' : undefined}
+            tabIndex={creatorClickable ? 0 : undefined}
+            onKeyDown={handleCreatorKeyDown}
+          >
             {avatarUrl ? (
               <img
                 src={avatarUrl}
@@ -196,15 +270,57 @@ export default function PinPreviewCard({
               ) : null}
             </div>
           </div>
-          {!disableActions && typeof onViewPin === 'function' ? (
+          {hasActions ? (
             <div className="pin-preview-card__actions">
-              <button
-                type="button"
-                className="pin-preview-card__button"
-                onClick={() => onViewPin(pin)}
-              >
-                View pin
-              </button>
+              {actionsSlot}
+              {!actionsSlot && showViewAction ? (
+                <>
+                  <button
+                    type="button"
+                    className="pin-preview-card__flag-button"
+                    onClick={(event) => {
+                      event?.stopPropagation?.();
+                      if (typeof onFlag === 'function' && !computedViewerOwnsPin) {
+                        onFlag(pin);
+                      }
+                    }}
+                    aria-label={
+                      computedViewerOwnsPin ? "You can't flag your own pin" : 'Flag pin'
+                    }
+                    title={computedViewerOwnsPin ? "You can't flag your own pin" : 'Flag pin'}
+                    disabled={computedViewerOwnsPin}
+                    aria-hidden="false"
+                    style={{ color: '#d32f2f' }}
+                  >
+                    <FlagIcon fontSize="small" />
+                  </button>
+                  <button
+                    type="button"
+                    className="pin-preview-card__button"
+                    onClick={() => viewHandler(pin)}
+                  >
+                    View
+                  </button>
+                </>
+              ) : null}
+              {!actionsSlot && showBookmarkAction ? (
+                <div className="bookmark-button-wrapper">
+                  <BookmarkButton
+                    variant="card"
+                    bookmarked={Boolean(isBookmarked)}
+                    pending={bookmarkPending}
+                    ownsPin={computedViewerOwnsPin}
+                    attending={computedViewerIsAttending}
+                    autoLockAttending={false}
+                    ownerLockLabel="You can't unbookmark your own pin"
+                    lockedLabel="You can't unbookmark your own pin"
+                    onToggle={(event) => {
+                      event?.stopPropagation?.();
+                      onBookmark(pin);
+                    }}
+                  />
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

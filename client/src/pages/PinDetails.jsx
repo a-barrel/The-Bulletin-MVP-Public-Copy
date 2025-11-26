@@ -375,11 +375,10 @@ function PinDetails() {
     [attendingFriendItems]
   );
 
-  const canModeratePins = canAccessModerationTools(viewerProfile);
   const [analytics, setAnalytics] = useState(null);
   const [analyticsError, setAnalyticsError] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
-  const isHostLike = isOwnPin || canModeratePins;
+  const isHostLike = Boolean(pin?.viewerOwnsPin || pin?.viewerIsCreator || pin?.isSelf);
   const showAnalytics = isEventPin && isHostLike;
 
   const analyticsSeries = useMemo(() => analytics?.series || [], [analytics]);
@@ -444,6 +443,7 @@ function PinDetails() {
   const [flagStatus, setFlagStatus] = useState(null);
   const analyticsInFlightRef = useRef(false);
   const lastAnalyticsPinIdRef = useRef(null);
+  const suppressedAnalyticsRef = useRef(new Set());
 
   useEffect(() => {
     if (pin && !isEditDialogOpen) {
@@ -460,6 +460,11 @@ function PinDetails() {
       return;
     }
     if (analyticsInFlightRef.current) {
+      return;
+    }
+    if (suppressedAnalyticsRef.current.has(pinId)) {
+      setAnalyticsError('Analytics unavailable for this pin.');
+      setAnalyticsLoading(false);
       return;
     }
     if (isOffline) {
@@ -481,10 +486,16 @@ function PinDetails() {
         }
       })
       .catch((fetchError) => {
-        if (!ignore) {
-          setAnalytics(null);
+        if (ignore) return;
+        const status = fetchError?.status;
+        const isAuthFailure = status === 401 || status === 403;
+        if (isAuthFailure) {
+          suppressedAnalyticsRef.current.add(pinId);
+          setAnalyticsError('Analytics unavailable for this pin.');
+        } else {
           setAnalyticsError(resolveAnalyticsErrorMessage(fetchError));
         }
+        setAnalytics(null);
       })
       .finally(() => {
         if (!ignore) {
@@ -873,7 +884,7 @@ function PinDetails() {
                 </button>
               </div>
             ) : null}
-            {canModeratePins && !isOwnPin ? (
+            {pin?.viewerIsModerator && !isOwnPin ? (
               <div className="flag-button-wrapper">
                 <button
                   className={`flag-pin-button${isPinFlagged ? ' flagged' : ''}`}
