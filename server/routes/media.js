@@ -85,7 +85,8 @@ router.post('/images', processSingleImage, async (req, res) => {
     } else {
       fileName = `${Date.now()}-${identifier}.jpg`;
       const processed = sharp(req.file.buffer).resize(TARGET_DIMENSION, TARGET_DIMENSION, {
-        fit: 'cover',
+        fit: 'contain',
+        background: { r: 255, g: 255, b: 255, alpha: 1 },
         position: 'centre'
       });
       const result = await processed.jpeg({ quality: 82 }).toBuffer({ resolveWithObject: true });
