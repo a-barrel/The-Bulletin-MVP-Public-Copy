@@ -10,6 +10,14 @@ export default function useModerationOverviewData({ dispatch, autoLoad = true })
       dispatch({ type: 'overview/success', payload });
       return payload;
     } catch (error) {
+      if (error?.status === 403) {
+        dispatch({
+          type: 'overview/error',
+          error: 'Moderator privileges required.',
+          status: 403
+        });
+        return null;
+      }
       dispatch({
         type: 'overview/error',
         error:

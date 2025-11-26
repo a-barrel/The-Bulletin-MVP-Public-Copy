@@ -1969,8 +1969,11 @@ function ChatPage() {
               }
               resetDirectSendStatus();
             }}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            sx={{ bottom: `${scrollButtonOffset + 16}px` }}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            sx={{
+              bottom: `${scrollButtonOffset + 72}px`,
+              right: 16
+            }}
           >
             {directSendStatus && (
               <Alert

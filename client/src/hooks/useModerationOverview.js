@@ -21,7 +21,8 @@ export default function useModerationOverview() {
       if (err?.status === 403 && moderationRoleChecksEnabled && !bypassModerationRoleChecks) {
         setAccessDenied(true);
         setOverview(null);
-        setError('Moderator privileges required.');
+        setError(null);
+        return null;
       } else {
         setError(err?.message || 'Failed to load moderation overview.');
       }

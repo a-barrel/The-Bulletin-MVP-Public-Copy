@@ -76,6 +76,7 @@ function SelectableLocationMap({ value, onChange, anchor, avatarUrl, viewerName,
               coordinateLabel={previewPin?.coordinateLabel}
               proximityRadiusMeters={previewPin?.proximityRadiusMeters}
               disableActions
+              className="pin-preview-card--map"
             />
           </div>
         </Popup>
