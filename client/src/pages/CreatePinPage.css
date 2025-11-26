@@ -200,7 +200,7 @@
   padding-top: 1.5rem;
 }
 
-.pin-preview-card {
+.create-pin .pin-preview-card:not(.pin-preview-card--postcard) {
   display: flex;
   flex-direction: column;
   border-radius: 1.25rem;
@@ -216,6 +216,10 @@
   padding-bottom: 56%;
   background-size: cover;
   background-position: center;
+}
+
+.create-pin .pin-preview-card.pin-preview-card--postcard .pin-preview-card__media {
+  padding-bottom: 0;
 }
 
 .pin-preview-card__media--placeholder {
@@ -619,12 +623,51 @@
 /* location section */
 .create-pin .map-container {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 3;
   height: auto;
-  min-height: 240px;
+  min-height: 260px;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid #ccc;
+}
+
+@media (max-width: 640px) {
+  .create-pin .map-container {
+    aspect-ratio: 3 / 2;
+  }
+}
+
+.pin-preview-popup .leaflet-popup-content-wrapper {
+  background: transparent;
+  box-shadow: none;
+  border: none;
+}
+
+.pin-preview-popup .leaflet-popup-content {
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex;
+  justify-content: center;
+}
+
+.pin-preview-popup .pin-card-overlay-inner {
+  width: 100%;
+  max-width: clamp(280px, 78vw, 640px);
+  min-width: 260px;
+}
+
+.pin-preview-popup .pin-preview-card.pin-preview-card--postcard {
+  width: 100%;
+  max-width: 640px;
+}
+
+.pin-preview-popup .pin-preview-card.pin-preview-card--postcard .pin-preview-card__media {
+  width: 260px;
+  min-width: 240px;
+  max-width: 280px;
+  min-height: 200px;
+  max-height: 220px;
+  height: clamp(200px, 32vw, 220px);
 }
 
 .create-pin-avatar-marker {

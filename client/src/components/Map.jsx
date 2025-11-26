@@ -20,10 +20,43 @@ import {
   MAP_MARKER_SHADOW_URL
 } from '../utils/mapMarkers';
 import { resolveUserAvatarUrl } from '../utils/pinFormatting';
-import toIdString from '../utils/ids';
 import usePinClusters from './map/usePinClusters';
+import PinPreviewCard from './PinPreviewCard';
+import toIdString from '../utils/ids';
+import { flagPinForModeration, createPinBookmark, deletePinBookmark } from '../api/mongoDataApi';
 import RecenterControl from './map/RecenterControl';
 
+function PinCardOverlay({ position, children }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || !position) return;
+
+    const container = L.DomUtil.create("div", "pin-card-overlay");
+    container.style.position = "absolute";
+    container.style.transform = "translate(-50%, -100%)";
+
+    const inner = L.DomUtil.create("div", "pin-card-overlay-inner");
+    container.appendChild(inner);
+
+    // Append React children into DOM node
+    const overlay = L.popup({
+      closeButton: false,
+      autoPan: false,
+      className: "no-default-popup"
+    })
+      .setLatLng(position)
+      .setContent(container)
+      .openOn(map);
+
+    // cleanup
+    return () => {
+      map.removeLayer(overlay);
+    };
+  }, [map, position, children]);
+
+  return null;
+}
 // Fix for default marker icons in Leaflet with React
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -364,6 +397,9 @@ const Map = ({
   pins = [],
   onPinSelect,
   onPinView,
+  onPinBookmark,
+  onPinAuthorView,
+  onPinFlag,
   onChatRoomView,
   selectedPinId,
   centerOverride,
@@ -375,7 +411,9 @@ const Map = ({
   showInteractionRadius = true,
   teleportEnabled = false,
   onTeleportRequest,
-  hostPinId
+  showRecenterControl = false
+  ,
+  scrollWheelZoom = true
 }) => {
   const tileLayerRef = useRef(null);
   const tileErrorCountRef = useRef(0);
@@ -471,10 +509,100 @@ const Map = ({
   const safeClusterablePins = clusterablePins || [];
   const resizeSignature = `${resolvedCenter?.[0] ?? 'na'}-${resolvedCenter?.[1] ?? 'na'}-${resolvedPins.length}-${nearbyUsers.length}-${userRadiusMeters ?? 'no-radius'}`;
   const [mapZoom, setMapZoom] = useState(13);
+  const [bookmarkedPinIds, setBookmarkedPinIds] = useState(() => new Set());
+
+  const resolvePinId = useCallback((pin) => {
+    return (
+      toIdString(pin?._id) ||
+      toIdString(pin?.id) ||
+      toIdString(pin?.pinId) ||
+      (typeof pin?._id === 'object' && pin?._id?.$oid ? pin._id.$oid : null)
+    );
+  }, []);
+
+  const handleToggleBookmark = useCallback(
+    async (pin) => {
+      const pinId = resolvePinId(pin);
+      if (!pinId) return;
+      const isOwner = Boolean(pin?.viewerOwnsPin || pin?.viewerIsCreator || pin?.isSelf);
+      const isAttending = Boolean(pin?.viewerIsAttending);
+
+      if (typeof onPinBookmark === 'function') {
+        onPinBookmark(pin);
+        return;
+      }
+      if (isOffline) {
+        // eslint-disable-next-line no-console
+        console.warn('Reconnect to manage bookmarks.');
+        return;
+      }
+      if (isOwner || isAttending) {
+        return;
+      }
+
+      const currentlyBookmarked =
+        pin?.viewerHasBookmarked === true ? true : bookmarkedPinIds.has(pinId);
+      const nextState = !currentlyBookmarked;
+
+      try {
+        if (nextState) {
+          await createPinBookmark(pinId);
+        } else {
+          await deletePinBookmark(pinId);
+        }
+        setBookmarkedPinIds((prev) => {
+          const next = new Set(prev);
+          if (nextState) {
+            next.add(pinId);
+          } else {
+            next.delete(pinId);
+          }
+          return next;
+        });
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to toggle bookmark from map:', error);
+      }
+    },
+    [bookmarkedPinIds, isOffline, onPinBookmark, resolvePinId]
+  );
+
+  const handleFlagPin = useCallback(
+    async (pin) => {
+      if (typeof onPinFlag === 'function') {
+        onPinFlag(pin);
+        return;
+      }
+      const pinId = resolvePinId(pin);
+      if (!pinId || isOffline) return;
+      const confirmed =
+        typeof window === 'undefined' || typeof window.confirm !== 'function'
+          ? true
+          : window.confirm('Flag this pin for moderator review?');
+      if (!confirmed) return;
+      const reason =
+        typeof window !== 'undefined' && typeof window.prompt === 'function'
+          ? window.prompt('Reason for flagging (optional)', '')
+          : '';
+      try {
+        await flagPinForModeration(pinId, { reason });
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to flag pin from map:', error);
+      }
+    },
+    [isOffline, onPinFlag, resolvePinId]
+  );
 
   const renderPinPopup = useCallback(
     (pin, distanceLabel, expirationLabel, canViewPin, canViewChatRoom, handleViewPin) => {
-      const thumbnailAsset = pin?.coverPhoto || (Array.isArray(pin?.photos) ? pin.photos : null);
+      // determine the thumbnail
+      const thumbnailAsset =
+        pin?.coverPhoto ||
+        (Array.isArray(pin?.photos) && pin.photos.length > 0
+          ? pin.photos[0]
+          : null);
+
       const thumbnailUrl = resolveThumbnailUrl(thumbnailAsset);
       const hostName = pin?.creator?.displayName || pin?.creator?.username || null;
       const hostAvatarUrl =
@@ -558,67 +686,110 @@ const Map = ({
   );
 
   const renderRegularPin = useCallback(
-    (pin) => {
-      const coordinates = pin?.coordinates?.coordinates;
-      if (!Array.isArray(coordinates) || coordinates.length < 2) {
-        return null;
-      }
-      const [longitude, latitude] = coordinates;
-      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-        return null;
-      }
-      const providedDistance = typeof pin.distanceMeters === 'number' ? pin.distanceMeters : null;
-      const computedDistance =
-        providedDistance ?? haversineDistanceMeters(userMarkerPosition, [latitude, longitude]);
-      const distanceLabel = formatDistanceMiles(computedDistance, { decimals: 1 });
-      const expirationLabel = formatExpiration(pin);
-      const key = pin._id ?? `pin-${latitude}-${longitude}-${pin?.title ?? 'pin'}`;
-      const canViewPin = typeof onPinView === 'function';
-      const isHostPin = hostPinId && toIdString(pin?._id) === toIdString(hostPinId);
-      const hostName = pin?.creator?.displayName || pin?.creator?.username || null;
-      const hostAvatarUrl =
-        pin?.creatorAvatarUrl || resolveUserAvatarUrl(pin?.creator, AVATAR_FALLBACK) || null;
-      const markerIcon = isHostPin
-        ? createAvatarMarkerIcon(hostAvatarUrl, computeInitials(hostName))
-        : resolvePinIcon(pin);
-      const markerZIndex = pin?.isSelf ? 1200 : pin._id && pin._id === selectedPinId ? 1100 : 1000;
+  (pin) => {
+    const coordinates = pin?.coordinates?.coordinates;
+    if (!Array.isArray(coordinates) || coordinates.length < 2) {
+      return null;
+    }
+    const [longitude, latitude] = coordinates;
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return null;
+    }
 
-      const handleViewPin = (event) => {
-        event?.preventDefault?.();
-        event?.stopPropagation?.();
-        if (canViewPin) {
-          onPinView(pin);
+    // ----- distance / time -----
+    const providedDistance =
+      typeof pin.distanceMeters === "number" ? pin.distanceMeters : null;
+    const computedDistance =
+      providedDistance ??
+      haversineDistanceMeters(userMarkerPosition, [latitude, longitude]);
+    const distanceLabel = formatDistanceMiles(computedDistance, { decimals: 1 });
+    const expirationLabel = formatExpiration(pin);
+
+    // ----- image for the popup -----
+    const thumbnailAsset =
+      pin?.coverPhoto ||
+      (Array.isArray(pin?.photos) && pin.photos.length > 0
+        ? pin.photos[0]
+        : null);
+    const thumbnailUrl = resolveThumbnailUrl(thumbnailAsset);
+
+    const pinId =
+      resolvePinId(pin) ?? `pin-${latitude}-${longitude}-${pin?.title ?? "pin"}`;
+
+    const canViewPin = typeof onPinView === "function";
+    const isBookmarked =
+      pin?.viewerHasBookmarked === true
+        ? true
+        : pinId
+          ? bookmarkedPinIds.has(pinId)
+          : false;
+    const markerIcon = resolvePinIcon(pin);
+    const markerZIndex = pin?.isSelf
+      ? 1200
+      : pin._id && pin._id === selectedPinId
+      ? 1100
+      : 1000;
+
+    const handleViewPin = (event) => {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      if (canViewPin) {
+        onPinView(pin);
+      }
+    };
+
+    return (
+      <Marker
+        key={pinId}
+        position={[latitude, longitude]}
+        icon={markerIcon}
+        zIndexOffset={markerZIndex}
+        eventHandlers={
+          onPinSelect
+            ? {
+                click: () => onPinSelect(pin),
+              }
+            : undefined
         }
-      };
-
-      const popupContent = renderPinPopup(pin, distanceLabel, expirationLabel, canViewPin, false, handleViewPin);
-
-      return (
-        <Marker
-          key={key}
-          position={[latitude, longitude]}
-          icon={markerIcon}
-          zIndexOffset={markerZIndex}
-          eventHandlers={
-            onPinSelect
-              ? {
-                  click: () => onPinSelect(pin)
-                }
-              : undefined
-          }
-        >
-          <Popup>{popupContent}</Popup>
-        </Marker>
-      );
-    },
-    [onPinSelect, onPinView, renderPinPopup, selectedPinId, userMarkerPosition]
-  );
+      >
+        <Popup className="map-pin-popup" offset={[0, -4]}>
+          <div className="map-popup-card-wrapper">
+            <PinPreviewCard
+              pin={{
+                ...pin,
+                photos: pin?.photos || (thumbnailUrl ? [{ url: thumbnailUrl }] : undefined)
+              }}
+              viewerOwnsPin={Boolean(pin?.viewerOwnsPin || pin?.viewerIsCreator)}
+              viewerIsAttending={Boolean(pin?.viewerIsAttending)}
+              bookmarkPending={false}
+              distanceMiles={pin?.distanceMiles}
+              coordinateLabel={pin?.coordinateLabel}
+              proximityRadiusMeters={pin?.proximityRadiusMeters}
+              createdAt={pin?.createdAt}
+              updatedAt={pin?.updatedAt}
+              onView={handleViewPin}
+              onBookmark={onPinBookmark || handleToggleBookmark}
+              onFlag={handleFlagPin}
+              onCreatorClick={
+                typeof onPinAuthorView === 'function' ? (p) => onPinAuthorView(p) : undefined
+              }
+              isBookmarked={isBookmarked}
+              className="pin-preview-card--map"
+            />
+          </div>
+        </Popup>
+      </Marker>
+    );
+  },
+  [bookmarkedPinIds, handleFlagPin, handleToggleBookmark, onPinAuthorView, onPinBookmark, onPinSelect, onPinView, resolvePinId, selectedPinId, userMarkerPosition]
+);
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <MapContainer
         center={resolvedCenter}
         zoom={13}
+        scrollWheelZoom={scrollWheelZoom}
         style={{ width: '100%', height: '100%' }}
         whenCreated={(map) => {
           window.setTimeout(() => {
@@ -638,6 +809,18 @@ const Map = ({
             tileerror: handleTileError
           }}
         />
+        {showRecenterControl ? (
+          <RecenterControl
+            onRecenter={(mapInstance) => {
+              if (Array.isArray(resolvedCenter) && resolvedCenter.length === 2) {
+                const [lat, lng] = resolvedCenter;
+                if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                  mapInstance.setView([lat, lng], mapInstance.getZoom(), { animate: true });
+                }
+              }
+            }}
+          />
+        ) : null}
       
       {userMarkerPosition && (
         <Marker
@@ -738,7 +921,21 @@ const Map = ({
                   : undefined
               }
             >
-              <Popup>{popupContent}</Popup>
+             {isSelected && (
+            <PinCardOverlay position={[latitude, longitude]}>
+                <div style={{ width: "300px" }}>
+                  <PinPreviewCard
+                    pin={pin}
+                    distanceMiles={pin?.distanceMiles}
+                    coordinateLabel={pin?.coordinateLabel}
+                    proximityRadiusMeters={pin?.proximityRadiusMeters}
+                    createdAt={pin?.createdAt}
+                    updatedAt={pin?.updatedAt}
+                    onViewPin={() => onPinView(pin)}
+                  />
+                </div>
+              </PinCardOverlay>
+            )}
             </CircleMarker>
           </Fragment>
         );
@@ -756,15 +953,6 @@ const Map = ({
       {teleportEnabled && typeof onTeleportRequest === 'function' ? (
         <TeleportClickHandler enabled={teleportEnabled} onTeleport={onTeleportRequest} />
       ) : null}
-      <RecenterControl
-        onRecenter={(mapInstance) => {
-          const target =
-            toLatLng(userLocation) ?? toLatLng(centerOverride) ?? [0, 0];
-          if (Array.isArray(target) && target.length === 2 && mapInstance) {
-            mapInstance.setView(target, mapInstance.getZoom(), { animate: true });
-          }
-        }}
-      />
       </MapContainer>
       {tilesUnavailable ? (
         <div
