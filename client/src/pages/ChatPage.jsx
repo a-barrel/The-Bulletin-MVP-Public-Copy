@@ -105,6 +105,7 @@ function ChatPage() {
     messageDraft,
     setMessageDraft,
     handleSendMessage,
+    toggleReaction,
     handleMessageInputKeyDown,
     isSendingMessage,
     gifPreviewError,
@@ -1556,9 +1557,10 @@ function ChatPage() {
           canModerate={canModerateMessages}
           onModerate={handleOpenModerationForMessage}
           onReport={handleOpenReportForRoomMessage}
+          onToggleReaction={toggleReaction}
         />
       )),
-    [authUser, canModerateMessages, getMessageKey, handleOpenModerationForMessage, handleOpenReportForRoomMessage, uniqueMessages]
+    [authUser, canModerateMessages, getMessageKey, handleOpenModerationForMessage, handleOpenReportForRoomMessage, toggleReaction, uniqueMessages]
   );
 
   const directMessageBubbles = useMemo(

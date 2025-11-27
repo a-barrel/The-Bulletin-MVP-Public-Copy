@@ -71,6 +71,8 @@ const proximityChatMessageSchema = new mongoose.Schema(
       accuracy: Number
     },
     attachments: { type: [mediaAssetSchema], default: [] },
+    reactionCounts: { type: Map, of: Number, default: () => ({}) },
+    reactionsByUser: { type: Map, of: [String], default: () => ({}) },
     audit: {
       createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }

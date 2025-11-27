@@ -42,6 +42,7 @@ export function useChatManager({
     messageDraft,
     setMessageDraft,
     sendMessage,
+    toggleReaction,
     isSendingMessage,
     handleRefreshCurrentRoom
   } = useChatRealtime({
@@ -144,6 +145,7 @@ export function useChatManager({
     messageDraft,
     setMessageDraft,
     handleSendMessage,
+    toggleReaction,
     handleMessageInputKeyDown,
     isSendingMessage,
     gifPreview,

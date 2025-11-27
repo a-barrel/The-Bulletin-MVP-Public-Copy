@@ -9,6 +9,7 @@ const DEFAULT_NEARBY_DISTANCE_MILES = Number.isFinite(runtimeConfig.defaultNearb
 const API_ERROR_EXPIRY_MS = 30 * 1000;
 const DEFAULT_RETRY_ATTEMPTS = 1;
 const DEFAULT_RETRY_DELAY_MS = 250;
+const isTestEnv = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -46,7 +47,7 @@ async function withNetworkRetry(fn, { retries = DEFAULT_RETRY_ATTEMPTS, delayMs 
 
 function resolveApiBaseUrl() {
   // In dev we rely on Vite's proxy to avoid CORS and absolute origins.
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV && !isTestEnv) {
     return '';
   }
 
@@ -802,7 +803,7 @@ export async function logClientEvent({
   timestamp
 } = {}) {
   // Avoid noisy console errors in local dev when the dev-logs API isn't available.
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV && !isTestEnv) {
     return;
   }
   const dedupeKey = `${category || 'client'}:${message || ''}`;
@@ -819,10 +820,10 @@ export async function logClientEvent({
   }
   try {
     const baseUrl = resolveApiBaseUrl();
-    if (!baseUrl) {
+    if (!baseUrl && !isTestEnv) {
       return;
     }
-    const response = await fetch(`${baseUrl}/api/dev-logs`, {
+    const response = await fetch(`${baseUrl || ''}/api/dev-logs`, {
       method: 'POST',
       headers: await buildHeaders(),
       body: JSON.stringify({
@@ -834,12 +835,12 @@ export async function logClientEvent({
         timestamp: timestamp ?? new Date().toISOString()
       })
     });
-    if (!response.ok && import.meta.env.DEV) {
+    if (!response.ok && import.meta.env.DEV && !isTestEnv) {
       console.warn('Failed to send client log event', response.status);
     }
     clientEventCache.set(dedupeKey, now);
   } catch (error) {
-    if (import.meta.env.DEV) {
+    if (import.meta.env.DEV && !isTestEnv) {
       console.warn('Failed to send client log event', error);
     }
   }
@@ -2187,6 +2188,36 @@ export async function fetchChatMessages(roomId, { latitude, longitude } = {}) {
   const payload = await response.json().catch(() => []);
   if (!response.ok) {
     throw new Error(payload?.message || 'Failed to load chat messages');
+  }
+
+  return payload;
+}
+
+export async function updateChatMessageReaction(roomId, messageId, emoji, { latitude, longitude } = {}) {
+  if (!roomId || !messageId) {
+    throw new Error('Room id and message id are required to react to a message');
+  }
+
+  const baseUrl = resolveApiBaseUrl();
+  const body = { emoji };
+  if (latitude !== undefined && latitude !== null && !Number.isNaN(latitude)) {
+    body.latitude = latitude;
+  }
+  if (longitude !== undefined && longitude !== null && !Number.isNaN(longitude)) {
+    body.longitude = longitude;
+  }
+  const response = await fetch(
+    `${baseUrl}/api/chats/rooms/${encodeURIComponent(roomId)}/messages/${encodeURIComponent(messageId)}/reactions`,
+    {
+      method: 'PATCH',
+      headers: await buildHeaders(),
+      body: JSON.stringify(body)
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to update reaction');
   }
 
   return payload;

@@ -5,15 +5,26 @@ import "./MessageBubble.css";
 import { formatFriendlyTimestamp, formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
 import GavelIcon from '@mui/icons-material/Gavel';
 import ReportProblemIcon from '@mui/icons-material/ReportProblemOutlined';
+import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotionsOutlined';
 import { ATTACHMENT_ONLY_PLACEHOLDER } from '../utils/chatAttachments';
 import { resolveAvatarSrc } from '../utils/chatParticipants';
 import { ensureImageSrc, withFallbackOnError } from '../utils/imageFallback';
 import FriendBadge from './FriendBadge';
 import { routes } from '../routes';
 import { useTranslation } from 'react-i18next';
+import { CHAT_REACTION_OPTIONS } from '../constants/chatReactions';
+import { useEffect, useMemo, useState } from 'react';
 
 
-function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate, onReport }) {
+function MessageBubble({
+  msg,
+  isSelf,
+  authUser,
+  canModerate = false,
+  onModerate,
+  onReport,
+  onToggleReaction
+}) {
   const { t } = useTranslation();
   const rawMessage = typeof msg?.message === 'string' ? msg.message : '';
   const strippedMessage = rawMessage.replace(/^GIF:\s*/i, '').trim();
@@ -168,6 +179,33 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
             ? msg.author._id.$oid
             : null;
 
+  const reactionCounts =
+    msg?.reactions && typeof msg.reactions === 'object' ? msg.reactions.counts || {} : {};
+  const viewerReactions =
+    msg?.reactions && Array.isArray(msg.reactions.viewerReactions)
+      ? msg.reactions.viewerReactions
+      : msg?.reactions?.viewerReaction
+        ? [msg.reactions.viewerReaction]
+        : [];
+  const hasReactions = useMemo(
+    () => Object.entries(reactionCounts || {}).some(([, value]) => Number(value) > 0),
+    [reactionCounts]
+  );
+  const hasViewerReaction = viewerReactions.length > 0;
+  const [isReactionPickerOpen, setReactionPickerOpen] = useState(false);
+
+  const optionsToRender = useMemo(() => {
+    if (isReactionPickerOpen) {
+      return CHAT_REACTION_OPTIONS;
+    }
+    return CHAT_REACTION_OPTIONS.filter(
+      (option) => Number(reactionCounts?.[option.key]) > 0
+    );
+  }, [isReactionPickerOpen, reactionCounts]);
+
+  const showReactions =
+    isReactionPickerOpen || optionsToRender.length > 0 || hasViewerReaction || hasReactions;
+
   if (msg?.isSystem || msg?.messageType === 'system-checkin') {
     return (
       <Box className="chat-message system">
@@ -192,6 +230,7 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
         : '/profile/me';
 
   const resolvedAvatarSrc = ensureImageSrc(resolveAvatarSrc(msg?.author) || AvatarIcon);
+  const messageId = msg?._id || msg?.id;
 
   return (
     <Box className={`chat-message ${isSelf ? 'self' : ''}`}>
@@ -244,6 +283,31 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
                     }}
                   >
                     <ReportProblemIcon fontSize="inherit" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            ) : null}
+            {typeof onToggleReaction === 'function' ? (
+              <Tooltip title="React to this message">
+                <span>
+                  <IconButton
+                    className="chat-reaction-btn"
+                    size="small"
+                    aria-label="React to this message"
+                    onClick={() => setReactionPickerOpen((prev) => !prev)}
+                    sx={{
+                      ml: 0.5,
+                      color: '#5d3889',
+                      backgroundColor: 'rgba(93, 56, 137, 0.12)',
+                      borderRadius: '8px',
+                      transition: 'color 120ms ease, background-color 120ms ease',
+                      '&:hover, &:focus-visible': {
+                        color: '#7c4dff',
+                        backgroundColor: 'rgba(124, 77, 255, 0.16)'
+                      }
+                    }}
+                  >
+                    <EmojiEmotionsIcon fontSize="inherit" />
                   </IconButton>
                 </span>
               </Tooltip>
@@ -340,6 +404,37 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
             onError={withFallbackOnError}
           />
         ))}
+        {showReactions ? (
+          <Box className="chat-reaction-row">
+            {optionsToRender.map((option) => {
+              const count = Number(reactionCounts?.[option.key]) || 0;
+              const isActive = viewerReactions.includes(option.key);
+              const handleClick = () => {
+                if (typeof onToggleReaction === 'function' && messageId) {
+                  onToggleReaction(messageId, option.key);
+                }
+              };
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  className={`chat-reaction-pill ${isActive ? 'active' : ''}`}
+                  onClick={handleClick}
+                  disabled={typeof onToggleReaction !== 'function'}
+                  aria-pressed={isActive}
+                  aria-label={
+                    count > 0
+                      ? `${option.label} reaction, ${count}`
+                      : `${option.label} reaction`
+                  }
+                >
+                  <span className="chat-reaction-emoji">{option.emoji}</span>
+                  {count > 0 ? <span className="chat-reaction-count">{count}</span> : null}
+                </button>
+              );
+            })}
+          </Box>
+        ) : null}
       </Box>
     </Box>
   );

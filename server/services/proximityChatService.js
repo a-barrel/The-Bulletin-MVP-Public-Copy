@@ -15,6 +15,8 @@ const { toIdString, mapIdList } = require('../utils/ids');
 const { toIsoDateString } = require('../utils/dates');
 const { buildPinRoomPayload } = require('../utils/chatRoomContract');
 
+const REACTION_KEYS = ['surprised', 'angry', 'happy', 'thumbs_up', 'thumbs_down'];
+
 const buildAvatarMedia = (userDoc) => mapUserAvatar(userDoc, { toIdString });
 
 const mapUserToPublic = (user) => {
@@ -65,7 +67,7 @@ const mapRoom = (roomDoc) => {
   });
 };
 
-const mapMessage = (messageDoc) => {
+const mapMessage = (messageDoc, { viewerId } = {}) => {
   const doc = messageDoc.toObject();
   const coordinates =
     doc.coordinates &&
@@ -82,6 +84,41 @@ const mapMessage = (messageDoc) => {
     ? doc.attachments.map((attachment) => mapMediaAssetResponse(attachment, { toIdString })).filter(Boolean)
     : [];
 
+  const reactionCountsMap =
+    doc.reactionCounts instanceof Map
+      ? doc.reactionCounts
+      : new Map(Object.entries(doc.reactionCounts || {}));
+  const reactionsByUserMap =
+    doc.reactionsByUser instanceof Map
+      ? doc.reactionsByUser
+      : new Map(Object.entries(doc.reactionsByUser || {}));
+
+  const counts = {};
+  REACTION_KEYS.forEach((key) => {
+    const raw = reactionCountsMap.get ? reactionCountsMap.get(key) : reactionCountsMap[key];
+    const value = Number(raw);
+    if (Number.isFinite(value) && value > 0) {
+      counts[key] = value;
+    }
+  });
+
+  let viewerReactions = [];
+  if (viewerId) {
+    const raw = reactionsByUserMap.get
+      ? reactionsByUserMap.get(viewerId)
+      : reactionsByUserMap[viewerId];
+    if (Array.isArray(raw)) {
+      viewerReactions = raw.filter((value) => REACTION_KEYS.includes(value));
+    } else if (typeof raw === 'string' && raw) {
+      viewerReactions = REACTION_KEYS.includes(raw) ? [raw] : [];
+    } else if (raw && typeof raw === 'object') {
+      // Handle potential Map-like object
+      const values = Array.from(new Set(Object.values(raw)));
+      viewerReactions = values.filter((value) => REACTION_KEYS.includes(value));
+    }
+  }
+  const viewerReaction = viewerReactions[0];
+
   return ProximityChatMessageSchema.parse({
     _id: toIdString(doc._id),
     roomId: toIdString(doc.roomId),
@@ -94,6 +131,11 @@ const mapMessage = (messageDoc) => {
     isSystem: Boolean(doc.isSystem),
     coordinates,
     attachments,
+    reactions: {
+      counts,
+      viewerReaction: viewerReaction || undefined,
+      viewerReactions
+    },
     createdAt: messageDoc.createdAt.toISOString(),
     updatedAt: messageDoc.updatedAt.toISOString(),
     audit: doc.audit ? buildAudit(doc.audit, messageDoc.createdAt, messageDoc.updatedAt) : undefined
@@ -145,7 +187,7 @@ async function createRoom(input) {
   return mapRoom(room);
 }
 
-async function createMessage(input) {
+async function createMessage(input, { viewerId } = {}) {
   let coordinates;
   if (input.latitude !== undefined && input.longitude !== undefined) {
     coordinates = {
@@ -174,7 +216,7 @@ async function createMessage(input) {
   const populated = await message.populate('authorId');
   return {
     messageDoc: populated,
-    response: mapMessage(populated)
+    response: mapMessage(populated, { viewerId })
   };
 }
 
