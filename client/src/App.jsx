@@ -1,25 +1,7 @@
-import { useMemo, useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
-import {
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-  useNavigate,
-  matchPath
-} from 'react-router-dom';
+import { useMemo, useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate, matchPath } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import Modal from '@mui/material/Modal';
-import Fade from '@mui/material/Fade';
-import Paper from '@mui/material/Paper';
-import Stack from '@mui/material/Stack';
-import Button from '@mui/material/Button';
-import Divider from '@mui/material/Divider';
-import Typography from '@mui/material/Typography';
-import Box from '@mui/material/Box';
-import Alert from '@mui/material/Alert';
-import ArticleIcon from '@mui/icons-material/Article';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LoginPage from './pages/LoginPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
@@ -48,6 +30,9 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from './firebase';
 import useViewerProfile from './hooks/useViewerProfile';
 import { viewerHasDeveloperAccess } from './utils/roles';
+import { useLazyPages, normalizePathValue } from './app/pageLoader';
+import NavConsoleModal from './app/NavConsoleModal';
+import LocationGateOverlay from './app/LocationGateOverlay';
 
 // Style guide palette: background default = Soft Lavender (#F5EFFD), paper = Brand White (#FFFFFF).
 // Reference: docs/style/style-guide.md, docs/style/contrast-audit-playbook.md, docs/style/light_mode_colorpalate.md
@@ -125,81 +110,7 @@ const theme = createTheme({
 
 const AUTH_ROUTES = new Set(['/login', '/forgot-password', '/reset-password']);
 
-const pageModules = import.meta.glob('./pages/**/*.{jsx,tsx}', { eager: true });
-
-const deriveIdFromPath = (path) =>
-  path.replace(/^\.\/pages\//, '').replace(/\.\w+$/, '').replace(/[\\/]+/g, '-');
-
-const deriveLabelFromId = (id) =>
-  id
-    .split(/[-_]/g)
-    .filter(Boolean)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(' ') || 'Page';
-
-const normalizePath = (value) => {
-  if (!value || typeof value !== 'string') {
-    return null;
-  }
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-};
-
-const loadPages = () =>
-  Object.entries(pageModules)
-    .map(([path, module]) => {
-      const Component = module.default;
-      if (typeof Component !== 'function') {
-        return null;
-      }
-
-      const config = module.pageConfig || module.navConfig || {};
-      const id =
-        typeof config.id === 'string' && config.id.trim().length > 0
-          ? config.id.trim()
-          : deriveIdFromPath(path);
-      const label =
-        typeof config.label === 'string' && config.label.trim().length > 0
-          ? config.label.trim()
-          : deriveLabelFromId(id);
-      const order = Number.isFinite(config.order) ? config.order : Number.POSITIVE_INFINITY;
-      const IconComponent = config.icon;
-      const pathValue = normalizePath(config.path ?? `/${id.toLowerCase()}`);
-      const aliases = Array.isArray(config.aliases)
-        ? config.aliases.map(normalizePath).filter(Boolean)
-        : [];
-      const navTargetPath = normalizePath(config.navTargetPath);
-      const navResolver =
-        typeof config.resolveNavTarget === 'function' ? config.resolveNavTarget : null;
-      const showInNav = config.showInNav === true;
-      const isDefault = Boolean(config.isDefault);
-      const isProtected = config.protected !== false;
-
-      return {
-        id,
-        label,
-        order,
-        icon: IconComponent,
-        path: pathValue,
-        aliases,
-        navTargetPath,
-        navResolver,
-        showInNav,
-        isDefault,
-        isProtected,
-        Component
-      };
-    })
-    .filter((page) => Boolean(page?.Component && page.path))
-    .sort((a, b) => {
-      if (a.order !== b.order) {
-        return a.order - b.order;
-      }
-      return a.label.localeCompare(b.label);
-    });
+const normalizePath = normalizePathValue;
 
 const wrapWithProtection = (page, element) =>
   page.isProtected ? <ProtectedRoute>{element}</ProtectedRoute> : element;
@@ -267,7 +178,7 @@ const readStoredFriendBadgePreference = () => {
 };
 
 function AppContent() {
-  const pages = useMemo(loadPages, []);
+  const { pages } = useLazyPages();
   const location = useLocation();
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
@@ -925,107 +836,16 @@ function AppContent() {
                   <ThemeProvider theme={theme}>
                     <CssBaseline />
 
-                    {navOverlayOpen ? (
-                      <Modal open onClose={closeOverlay} closeAfterTransition keepMounted>
-                        <Fade in={navOverlayOpen}>
-                          <Box
-                            sx={{
-                              position: 'fixed',
-                              inset: 0,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              p: 2,
-                              pointerEvents: 'none'
-                            }}
-                          >
-                            <Paper
-                              elevation={16}
-                              sx={(muiTheme) => ({
-                                width: 'min(420px, 90vw)',
-                                maxHeight: '80vh',
-                                overflow: 'hidden',
-                                pointerEvents: 'auto',
-                                outline: 'none',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 2,
-                                p: 3,
-                                borderRadius: 3,
-                                backgroundColor: muiTheme.palette.background.paper
-                              })}
-                            >
-                              <Stack spacing={1.5} sx={{ flex: 1, minHeight: 0 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <Typography variant="h6" component="h2">
-                                    Navigation Console
-                                  </Typography>
-                                  <Typography variant="body2" color="text.secondary">
-                                    Press ` or Esc to close
-                                  </Typography>
-                                </Box>
-                                <Divider />
-                                {navPages.length > 0 ? (
-                                  <Box
-                                    sx={{
-                                      display: 'flex',
-                                      flexDirection: 'column',
-                                      gap: 1,
-                                      flex: 1,
-                                      minHeight: 0
-                                    }}
-                                  >
-                                    {previousNavPath && (
-                                      <Button
-                                        onClick={handleBack}
-                                        variant="contained"
-                                        color="secondary"
-                                        startIcon={<ArrowBackIcon fontSize="small" />}
-                                        sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-                                      >
-                                        {previousNavPage ? `Back to ${previousNavPage.label}` : 'Back'}
-                                      </Button>
-                                    )}
-                                    <Box
-                                      sx={{
-                                        flex: 1,
-                                        minHeight: 0,
-                                        overflowY: 'auto',
-                                        pr: 0.5,
-                                        scrollbarGutter: 'stable'
-                                      }}
-                                    >
-                                      <Stack spacing={1}>
-                                        {navPages.map((page) => {
-                                          const IconComponent = page.icon ?? ArticleIcon;
-                                          const isActive = page.path === currentNavPath;
-                                          return (
-                                            <Button
-                                              key={page.id}
-                                              onClick={() => handleNavigate(page)}
-                                              variant={isActive ? 'contained' : 'outlined'}
-                                              color={isActive ? 'primary' : 'inherit'}
-                                              startIcon={<IconComponent fontSize="small" />}
-                                              sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-                                            >
-                                              {page.label}
-                                            </Button>
-                                          );
-                                        })}
-                                      </Stack>
-                                    </Box>
-                                  </Box>
-                                ) : (
-                                  <Typography variant="body2" color="text.secondary">
-                                    Add a new page under `src/pages` with `showInNav: true` to populate this console.
-                                  </Typography>
-                                )}
-                              </Stack>
-                            </Paper>
-                          </Box>
-                        </Fade>
-                      </Modal>
-                    ) : null}
+                    <NavConsoleModal
+                      open={navOverlayOpen}
+                      onClose={closeOverlay}
+                      navPages={navPages}
+                      previousNavPath={previousNavPath}
+                      previousNavPage={previousNavPage}
+                      currentNavPath={currentNavPath}
+                      onBack={handleBack}
+                      onNavigate={handleNavigate}
+                    />
 
                     {isOffline && !AUTH_ROUTES.has(location.pathname) ? (
                       <OfflineBanner message="You are offline. Data may be stale and actions are temporarily disabled." />
@@ -1069,55 +889,12 @@ function AppContent() {
                         }
                       />
                     </Routes>
-                    {shouldShowLocationGate ? (
-                      <Box
-                        sx={{
-                          position: 'fixed',
-                          inset: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: 'rgba(0, 0, 0, 0.65)',
-                          zIndex: (theme) => theme.zIndex.modal + 10,
-                          p: 2
-                        }}
-                      >
-                        <Paper
-                          role="dialog"
-                          aria-modal="true"
-                          aria-label="Location access required"
-                          sx={{
-                            width: '100%',
-                            maxWidth: 420,
-                            p: 3,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 2
-                          }}
-                        >
-                          <Typography variant="h6">Location access required</Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            PinPoint needs your live location to show nearby pins. Enable location
-                            services in your browser to continue.
-                          </Typography>
-                          {locationPromptError ? (
-                            <Alert severity="error" variant="outlined">
-                              {locationPromptError}
-                            </Alert>
-                          ) : null}
-                          <Stack direction="row" justifyContent="flex-end" spacing={1}>
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={handleRequestLocationAccess}
-                              disabled={isRequestingLocation}
-                            >
-                              {isRequestingLocation ? 'Requesting…' : 'Enable location'}
-                            </Button>
-                          </Stack>
-                        </Paper>
-                      </Box>
-                    ) : null}
+                    <LocationGateOverlay
+                      visible={shouldShowLocationGate}
+                      locationPromptError={locationPromptError}
+                      onRequestLocation={handleRequestLocationAccess}
+                      isRequesting={isRequestingLocation}
+                    />
                     <BadgeCelebrationToast toastState={badgeToast} onClose={handleBadgeToastClose} />
                   </ThemeProvider>
                 </NavOverlayProvider>
