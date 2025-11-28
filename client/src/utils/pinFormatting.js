@@ -138,6 +138,59 @@ export const formatAddress = (address) => {
   if (!address) {
     return null;
   }
+  // Allow simple string addresses.
+  if (typeof address === 'string') {
+    const trimmed = address.trim();
+    return trimmed.length ? trimmed : null;
+  }
+
+  // If "precise" is already a formatted string (like from geocoding), use it.
+  if (typeof address.precise === 'string' && address.precise.trim()) {
+    return address.precise.trim();
+  }
+
+  const formatted =
+    address.formattedAddress ||
+    address.formatted_address ||
+    address.formatted ||
+    address.label ||
+    address.name ||
+    address.description ||
+    address.address ||
+    address.addressString ||
+    address.street ||
+    address.street1 ||
+    address.street2 ||
+    address.city ||
+    address.state ||
+    address.stateCode ||
+    address.province ||
+    address.region ||
+    address.country ||
+    address.countryCode ||
+    address.neighborhood;
+  if (formatted && String(formatted).trim()) {
+    return String(formatted).trim();
+  }
+
+  // Handle component-style payloads like { components: { city, state, postalCode, country } }
+  const components = address.components || {};
+  const componentText = [
+    components.line1,
+    components.line2,
+    components.city,
+    components.state,
+    components.stateCode,
+    components.postalCode,
+    components.country
+  ]
+    .map((entry) => (entry ? String(entry).trim() : ''))
+    .filter(Boolean)
+    .join(', ');
+  if (componentText) {
+    return componentText;
+  }
+
   const text = [
     address.precise?.line1 || address?.line1,
     address.precise?.line2 || address?.line2,

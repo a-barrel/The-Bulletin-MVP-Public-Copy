@@ -26,6 +26,11 @@ import {
   formatViewerDistanceLabel
 } from '../utils/pinFormatting';
 import { metersToMiles } from '../utils/geo';
+import { usePinCache } from '../contexts/PinCacheContext';
+import { resolveExpectedSignature } from './usePinAttendees';
+import { useReplyCache } from '../contexts/ReplyCacheContext';
+import { useAttendeeCache } from '../contexts/AttendeeCacheContext';
+import { normalizeAttendeeRecord } from '../utils/feed';
 
 const FUTURE_SKEW_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const IS_DEV = import.meta.env.DEV;
@@ -98,14 +103,45 @@ const sortRepliesByDateDesc = (list) =>
   [...list].sort((a, b) => resolveReplySortValue(b) - resolveReplySortValue(a));
 
 const parseCoordinates = (coordinates) => {
-  if (!Array.isArray(coordinates) || coordinates.length < 2) {
+  if (!coordinates) {
     return null;
   }
-  const [longitude, latitude] = coordinates;
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+
+  // GeoJSON array [longitude, latitude]
+  if (Array.isArray(coordinates)) {
+    const [lon, lat] = coordinates;
+    const latitude = Number.isFinite(lat) ? lat : Number.isFinite(lon) ? lon : null;
+    const longitude = Number.isFinite(lon) ? lon : Number.isFinite(lat) ? lat : null;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      return { latitude, longitude };
+    }
     return null;
   }
-  return { latitude, longitude };
+
+  // Object with latitude/longitude or lat/lng
+  const latitude =
+    Number.isFinite(coordinates.latitude) ? coordinates.latitude : Number.isFinite(coordinates.lat) ? coordinates.lat : null;
+  const longitude =
+    Number.isFinite(coordinates.longitude)
+      ? coordinates.longitude
+      : Number.isFinite(coordinates.lng)
+      ? coordinates.lng
+      : Number.isFinite(coordinates.lon)
+      ? coordinates.lon
+      : Number.isFinite(coordinates.long)
+      ? coordinates.long
+      : null;
+
+  if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+    return { latitude, longitude };
+  }
+
+  // Nested GeoJSON-style coordinates field
+  if (Array.isArray(coordinates.coordinates)) {
+    return parseCoordinates(coordinates.coordinates);
+  }
+
+  return null;
 };
 
 const formatCoordinateLabel = (coordinates) => {
@@ -415,7 +451,8 @@ const usePinRepliesState = ({
   isOffline,
   pinExpired,
   distanceLockActive,
-  isInteractionLocked
+  isInteractionLocked,
+  replyCache
 }) => {
   const [replies, setReplies] = useState([]);
   const [isLoadingReplies, setIsLoadingReplies] = useState(false);
@@ -444,12 +481,25 @@ const usePinRepliesState = ({
       setIsLoadingReplies(true);
       setRepliesError(null);
 
+      const cached = replyCache?.getReplies(pinId);
+      const cachedReplies =
+        cached && Array.isArray(cached.replies) ? sortRepliesByDateDesc(cached.replies) : null;
+      if (cachedReplies) {
+        setReplies(cachedReplies);
+        setIsLoadingReplies(false);
+        setRepliesError(null);
+        return;
+      }
+
       try {
         const payload = await fetchReplies(pinId);
         if (ignore) {
           return;
         }
         setReplies(Array.isArray(payload) ? sortRepliesByDateDesc(payload) : []);
+        if (Array.isArray(payload) && replyCache) {
+          replyCache.setReplies(pinId, payload);
+        }
       } catch (loadError) {
         if (ignore) {
           return;
@@ -525,6 +575,9 @@ const usePinRepliesState = ({
       setReplies((prev) => sortRepliesByDateDesc([...prev, newReply]));
       setReplyMessage('');
       setReplyComposerOpen(false);
+      if (replyCache) {
+        replyCache.setReplies(pinId, [newReply, ...replies]);
+      }
       setPin((prev) => {
         if (!prev) {
           return prev;
@@ -554,6 +607,8 @@ const usePinRepliesState = ({
     isSubmittingReply,
     pinExpired,
     pinId,
+    replyCache,
+    replies,
     replyMessage,
     setPin
   ]);
@@ -604,9 +659,12 @@ const extractViewerProfileIdFromState = (state) => {
   return null;
 };
 
-export default function usePinDetails({ pinId, location, isOffline }) {
+export default function usePinDetails({ pinId, location, isOffline, initialPin = null }) {
   const locationState = location?.state;
-  const pinFromState = locationState?.pin ?? null;
+  const pinFromState = locationState?.pin ?? initialPin ?? null;
+  const pinCache = usePinCache();
+  const replyCache = useReplyCache();
+  const attendeeCache = useAttendeeCache();
   const { announceBadgeEarned } = useBadgeSound();
   const [viewerProfileId, setViewerProfileId] = useState(() =>
     extractViewerProfileIdFromState(locationState)
@@ -811,7 +869,8 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     isOffline,
     pinExpired,
     distanceLockActive,
-    isInteractionLocked
+    isInteractionLocked,
+    replyCache
   });
   // Fetch latest pin details from the API, respecting offline mode and seed hydration.
   const reloadPin = useCallback(
@@ -841,15 +900,83 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         return null;
       }
 
+      const sharedCached = pinCache.getPin(pinId);
+      if (sharedCached) {
+        pinCacheRef.current.set(pinId, { pin: sharedCached, ts: Date.now() });
+      }
+
       const cached = pinCacheRef.current.get(pinId);
-      if (cached && Date.now() - cached.ts < 60_000) {
+      const hasDetails = (candidate) =>
+        Boolean(
+          candidate?.description ||
+            candidate?.content ||
+            candidate?.body ||
+            candidate?.text ||
+            candidate?.summary ||
+            candidate?.details?.description ||
+            candidate?.details?.content ||
+            candidate?.details?.body ||
+            candidate?.details?.text ||
+            candidate?.details?.summary ||
+            candidate?.details?.longDescription ||
+            candidate?.pin?.description ||
+            candidate?.pin?.content ||
+            candidate?.pin?.body ||
+            candidate?.pin?.text ||
+            candidate?.pin?.summary
+        ) &&
+        Boolean(
+          candidate?.address ||
+            candidate?.approximateAddress ||
+            candidate?.location?.address ||
+            candidate?.location?.label ||
+            candidate?.location?.name ||
+            candidate?.location?.description ||
+            candidate?.locationLabel ||
+            candidate?.locationName ||
+          candidate?.locationText ||
+          candidate?.locationString ||
+          candidate?.location?.addressString ||
+          candidate?.addressString ||
+          candidate?.address?.precise ||
+          candidate?.address?.components ||
+          candidate?.location?.addressString ||
+          candidate?.addressString ||
+          candidate?.street ||
+          candidate?.street1 ||
+          candidate?.street2 ||
+          candidate?.city ||
+          candidate?.state ||
+          candidate?.stateCode ||
+          candidate?.province ||
+          candidate?.region ||
+          candidate?.country ||
+          candidate?.countryCode ||
+          candidate?.neighborhood ||
+          candidate?.place?.name ||
+          candidate?.place?.address ||
+          candidate?.place?.formattedAddress ||
+          candidate?.place?.formatted_address ||
+          candidate?.place?.label ||
+            candidate?.place?.description ||
+            candidate?.place?.vicinity ||
+            candidate?.addressLabel ||
+            candidate?.addressName ||
+            candidate?.addressDescription ||
+            candidate?.addressText ||
+            candidate?.__hasDetails === true
+        );
+      const cacheFresh = cached && Date.now() - cached.ts < 60_000;
+      if (cached && cacheFresh) {
         setPin(cached.pin);
         syncBookmarkFromPayload(cached.pin?.viewerHasBookmarked, { coerce: true });
         syncAttendanceFromPayload(cached.pin?.viewerIsAttending, { coerce: true });
         updatePinHydrationSource('cache');
         setIsLoading(false);
         setError(null);
-        return cached.pin;
+        if (hasDetails(cached.pin)) {
+          return cached.pin;
+        }
       }
 
       reloadInFlightRef.current = true;
@@ -873,7 +1000,9 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         syncBookmarkFromPayload(payload?.viewerHasBookmarked, { coerce: true });
         syncAttendanceFromPayload(payload?.viewerIsAttending, { coerce: true });
         updatePinHydrationSource('api');
-        pinCacheRef.current.set(pinId, { pin: payload, ts: Date.now() });
+        const detailed = { ...payload, __hasDetails: true };
+        pinCacheRef.current.set(pinId, { pin: detailed, ts: Date.now() });
+        pinCache.upsertPin(detailed);
         if (IS_DEV) {
           console.debug('[usePinDetails] reload success', { pinId, title: payload?.title });
         }
@@ -898,7 +1027,7 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         reloadInFlightRef.current = false;
       }
     },
-    [pinId, isOffline, previewMode, setPin, syncAttendanceFromPayload, syncBookmarkFromPayload, updatePinHydrationSource]
+    [pinCache, pinId, isOffline, previewMode, setPin, syncAttendanceFromPayload, syncBookmarkFromPayload, updatePinHydrationSource]
   );
 
   // Rehydrate from the API whenever the seeded pin snapshot changes.
@@ -960,12 +1089,51 @@ export default function usePinDetails({ pinId, location, isOffline }) {
         setIsLoadingAttendees(true);
         setAttendeesError(null);
       }
+
+      const cached = attendeeCache.getAttendees(pinId);
+      const isFresh = cached ? Date.now() - cached.ts < 60_000 : false;
+      if (cached && isFresh) {
+        setAttendees(Array.isArray(cached.items) ? cached.items : []);
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.debug('[attendees-cache] hit (pinDetails)', {
+            pinId,
+            count: cached.items?.length ?? 0,
+            signature: cached.signature
+          });
+        }
+        if (attendeeOverlayOpen) {
+          setIsLoadingAttendees(false);
+        }
+        setAttendeesError(null);
+        if (shouldPrefetchAttendees) {
+          setShouldPrefetchAttendees(false);
+        }
+        return;
+      }
+
       try {
         const payload = await fetchPinAttendees(pinId);
         if (ignore) {
           return;
         }
-        setAttendees(Array.isArray(payload) ? payload : []);
+        const normalizedIds = [];
+        const mapped = Array.isArray(payload)
+          ? payload.map((record, idx) => {
+              const normalized = normalizeAttendeeRecord(record, idx);
+              if (normalized.userId && !normalizedIds.includes(normalized.userId)) {
+                normalizedIds.push(normalized.userId);
+              }
+              return normalized;
+            })
+          : [];
+        const signature = resolveExpectedSignature(normalizedIds, null);
+        attendeeCache.setAttendees(pinId, {
+          items: mapped,
+          count: mapped.length,
+          signature
+        });
+        setAttendees(mapped);
       } catch (loadError) {
         if (ignore) {
           return;
@@ -988,7 +1156,14 @@ export default function usePinDetails({ pinId, location, isOffline }) {
     return () => {
       ignore = true;
     };
-  }, [attendeeOverlayOpen, isEventPin, isOffline, pinId, shouldPrefetchAttendees]);
+  }, [
+    attendeeCache,
+    attendeeOverlayOpen,
+    isEventPin,
+    isOffline,
+    pinId,
+    shouldPrefetchAttendees
+  ]);
 
   const viewerDistanceLabel = useMemo(
     () => formatViewerDistanceLabel(viewerDistanceMeters),
@@ -1083,22 +1258,70 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   }, [pin]);
 
   const coordinates = useMemo(
-    () => parseCoordinates(pin?.coordinates?.coordinates),
+    () => parseCoordinates(pin?.coordinates ?? pin?.location?.coordinates),
     [pin]
   );
   const coordinateLabel = useMemo(
-    () => formatCoordinateLabel(pin?.coordinates?.coordinates),
+    () => formatCoordinateLabel(pin?.coordinates ?? pin?.location?.coordinates),
     [pin]
   );
   const proximityRadius = useMemo(
     () => formatMetersToMiles(pin?.proximityRadiusMeters),
     [pin]
   );
-  const addressLabel = useMemo(() => formatAddress(pin?.address), [pin]);
-  const approximateAddressLabel = useMemo(
-    () => formatApproximateAddress(pin?.approximateAddress),
-    [pin]
-  );
+  const addressLabel = useMemo(() => {
+    const candidates = [
+      formatAddress(pin?.address),
+      formatAddress(pin?.location?.address),
+      pin?.location?.label,
+      pin?.location?.name,
+      pin?.location?.description,
+      pin?.locationLabel,
+      pin?.locationName,
+      pin?.locationText,
+      pin?.locationString,
+      pin?.location?.addressString,
+      pin?.address?.precise,
+      formatAddress(pin?.address?.components),
+      formatAddress(pin?.addressString),
+      pin?.location?.addressString,
+      pin?.addressString,
+      pin?.street,
+      pin?.street1,
+      pin?.street2,
+      pin?.city,
+      pin?.state,
+      pin?.stateCode,
+      pin?.province,
+      pin?.region,
+      pin?.country,
+      pin?.countryCode,
+      pin?.neighborhood,
+      pin?.addressLabel,
+      pin?.addressName,
+      pin?.addressDescription,
+      pin?.addressText,
+      pin?.place?.formattedAddress,
+      pin?.place?.formatted_address,
+      pin?.place?.label,
+      pin?.place?.name,
+      pin?.place?.description,
+      pin?.place?.vicinity,
+      pin?.place?.address
+    ];
+
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && candidate.trim().length > 0) {
+        return candidate.trim();
+      }
+    }
+
+    const approx = formatApproximateAddress(pin?.approximateAddress);
+    if (approx) return approx;
+
+    return null;
+  }, [pin]);
+  const approximateAddressLabel = useMemo(() => formatApproximateAddress(pin?.approximateAddress), [pin]);
   const eventDateRange = useMemo(
     () => formatEventRange(pin?.startDate, pin?.endDate),
     [pin]
@@ -1235,7 +1458,12 @@ export default function usePinDetails({ pinId, location, isOffline }) {
   const attendeeItems = useMemo(
     () =>
       attendees.map((attendee) => {
-        const name = attendee?.displayName || attendee?.username || 'Unknown attendee';
+        const name =
+          attendee?.displayName ||
+          attendee?.username ||
+          attendee?.name ||
+          attendee?.email ||
+          'Unknown attendee';
         const avatar = resolveUserAvatarUrl(attendee);
         return {
           ...attendee,

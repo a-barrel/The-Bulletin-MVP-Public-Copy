@@ -27,6 +27,7 @@ import { hasValidCoordinates } from '../utils/mapLocation';
 import useMapViewerProfile from './useMapViewerProfile';
 import useMapNearbyData from './useMapNearbyData';
 import useMapChatRooms from './useMapChatRooms';
+import { usePinCache } from '../contexts/PinCacheContext';
 
 const requestBrowserLocation = () =>
   new Promise((resolve, reject) => {
@@ -92,6 +93,7 @@ export default function useMapExplorer({
     authUser,
     isOffline
   });
+  const pinCache = usePinCache();
 
   const [adminChatView, setAdminChatView] = useState(false);
 
@@ -109,7 +111,8 @@ export default function useMapExplorer({
     pinFetchLimit,
     currentProfileId,
     setGlobalError: setError,
-    hideFullEvents
+    hideFullEvents,
+    cacheNamespace: 'nearby-shared'
   });
 
   const {
@@ -499,10 +502,13 @@ export default function useMapExplorer({
 
   const combinedPins = useMemo(() => {
     if (!showChatRooms) {
+      pinCache.setPins(pins);
       return pins;
     }
-    return [...pins, ...chatRoomPins];
-  }, [chatRoomPins, pins, showChatRooms]);
+    const merged = [...pins, ...chatRoomPins];
+    pinCache.setPins(merged);
+    return merged;
+  }, [chatRoomPins, pinCache, pins, showChatRooms]);
 
   const shareDisabled = isOffline || !hasValidCoordinates(userLocation);
   const shareHelperText = isOffline

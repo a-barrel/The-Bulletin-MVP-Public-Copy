@@ -20,6 +20,7 @@ import BookmarkedOwnerIcon from '../assets/BookmarkedOwner.svg';
 import resolveAssetUrl from '../utils/media';
 import { fetchPinById } from '../api';
 import toIdString from '../utils/ids';
+import { usePinCache } from '../contexts/PinCacheContext';
 
 function ExpandableBookmarkItem({
   bookmark,
@@ -42,6 +43,7 @@ function ExpandableBookmarkItem({
   const [fullPin, setFullPin] = useState(null);
   const [isLoadingPin, setIsLoadingPin] = useState(false);
   const requestTokenRef = useRef(0);
+  const pinCache = usePinCache();
 
   const handleTitleClick = useCallback(() => {
     setExpanded((prev) => !prev);
@@ -49,6 +51,12 @@ function ExpandableBookmarkItem({
 
   useEffect(() => {
     if (!expanded || !pinId || fullPin || isLoadingPin || pin?.description) {
+      return undefined;
+    }
+
+    const cached = pinCache.getPin(pinId);
+    if (cached) {
+      setFullPin(cached);
       return undefined;
     }
 
@@ -61,6 +69,7 @@ function ExpandableBookmarkItem({
       .then((fetchedPin) => {
         if (!cancelled && requestTokenRef.current === token && fetchedPin) {
           setFullPin(fetchedPin);
+          pinCache.upsertPin(fetchedPin);
         }
       })
       .catch((error) => {
@@ -79,7 +88,7 @@ function ExpandableBookmarkItem({
       requestTokenRef.current += 1;
       setIsLoadingPin(false);
     };
-  }, [expanded, fullPin, isLoadingPin, pin?.description, pinId]);
+  }, [expanded, fullPin, isLoadingPin, pin?.description, pinCache, pinId]);
 
   const displayPin = fullPin || pin;
   const description = displayPin?.description || '';

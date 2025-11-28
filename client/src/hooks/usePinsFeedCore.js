@@ -4,6 +4,7 @@ import { fetchPinsNearby, fetchPinById, fetchCurrentUserProfile } from '../api';
 import reportClientError from '../utils/reportClientError';
 import { resolvePinFetchLimit } from '../utils/pinDensity';
 import { enableListPerfLogs, logListPerf, nowMs } from '../utils/listPerfLogger';
+import { usePinCache } from '../contexts/PinCacheContext';
 
 const DEFAULT_RADIUS_MILES = 10;
 const PIN_FETCH_LIMIT = 50;
@@ -29,6 +30,68 @@ const getNamespacedStore = (storeMap, namespace) => {
     storeMap.set(namespace, new Map());
   }
   return storeMap.get(namespace);
+};
+
+const hasDetailedPinFields = (pin) => {
+  const hasDescription =
+    pin?.description ||
+    pin?.content ||
+    pin?.body ||
+    pin?.text ||
+    pin?.summary ||
+    pin?.details?.description ||
+    pin?.details?.content ||
+    pin?.details?.body ||
+    pin?.details?.text ||
+    pin?.details?.summary ||
+    pin?.details?.longDescription ||
+    pin?.pin?.description ||
+    pin?.pin?.content ||
+    pin?.pin?.body ||
+    pin?.pin?.text ||
+    pin?.pin?.summary;
+
+  const hasAddress =
+    pin?.address ||
+    pin?.approximateAddress ||
+    pin?.location?.address ||
+    pin?.location?.label ||
+    pin?.location?.name ||
+    pin?.location?.description ||
+    pin?.locationLabel ||
+    pin?.locationName ||
+    pin?.locationText ||
+    pin?.locationString ||
+    pin?.location?.addressString ||
+    pin?.addressString ||
+    pin?.address?.precise ||
+    pin?.address?.components ||
+    pin?.street ||
+    pin?.street1 ||
+    pin?.street2 ||
+    pin?.city ||
+    pin?.state ||
+    pin?.stateCode ||
+    pin?.province ||
+    pin?.region ||
+    pin?.country ||
+    pin?.countryCode ||
+    pin?.neighborhood ||
+    pin?.place?.name ||
+    pin?.place?.address ||
+    pin?.place?.formattedAddress ||
+    pin?.place?.formatted_address ||
+    pin?.place?.label ||
+    pin?.place?.description ||
+    pin?.place?.vicinity ||
+    pin?.addressLabel ||
+    pin?.addressName ||
+    pin?.addressDescription ||
+    pin?.addressText;
+
+  // Only treat a pin as detailed if it has text plus some address-ish info,
+  // or was explicitly marked detailed by a full-detail fetch.
+  return Boolean((hasDescription && (hasAddress || pin?.__hasDetails === true)) || pin?.__hasDetails === true);
 };
 
 export const normalizePinFilters = (filters) => {
@@ -95,6 +158,7 @@ export default function usePinsFeedCore({
 
   const cacheRef = useRef(getNamespacedStore(nearbyCacheStores, cacheNamespace));
   const detailCacheRef = useRef(getNamespacedStore(detailCacheStores, `${cacheNamespace}-detail`));
+  const pinCache = usePinCache();
   const isLoadingRef = useRef(false);
   const lastFetchAtRef = useRef(0);
   const activeRequestRef = useRef({ id: 0, controller: null });
@@ -392,6 +456,14 @@ export default function usePinsFeedCore({
           return;
         }
 
+        // Seed shared cache with the basic nearby payloads so other views/pages can reuse them.
+        pinCache.setPins(
+          results.map((pin) => ({
+            ...pin,
+            __hasDetails: hasDetailedPinFields(pin)
+          }))
+        );
+
         let detailNetworkCalls = 0;
         const detailStartedAt = perfEnabled ? nowMs() : null;
         const detailResults = await Promise.all(
@@ -401,17 +473,36 @@ export default function usePinsFeedCore({
             }
             const cachedDetail = detailCacheRef.current.get(pin._id);
             const cacheAgeMs = cachedDetail ? Date.now() - cachedDetail.ts : Number.POSITIVE_INFINITY;
-            if (cachedDetail && cacheAgeMs < DETAIL_CACHE_TTL_MS) {
+            if (
+              cachedDetail &&
+              cacheAgeMs < DETAIL_CACHE_TTL_MS &&
+              hasDetailedPinFields(cachedDetail.data)
+            ) {
               if (perfEnabled) {
                 logListPerf('detail cache hit', { pinId: pin._id });
               }
-              return {
+              const mergedCached = {
                 ...cachedDetail.data,
                 distanceMeters: pin.distanceMeters ?? cachedDetail.data.distanceMeters,
                 startDate: cachedDetail.data.startDate ?? pin.startDate,
                 endDate: cachedDetail.data.endDate ?? pin.endDate,
                 expiresAt: cachedDetail.data.expiresAt ?? pin.expiresAt,
                 type: cachedDetail.data.type ?? pin.type
+              };
+              pinCache.upsertPin(mergedCached);
+              return mergedCached;
+            }
+
+            const sharedCached = pinCache.getPin(pin._id);
+            if (sharedCached && hasDetailedPinFields(sharedCached)) {
+              detailCacheRef.current.set(pin._id, { ts: Date.now(), data: sharedCached });
+              return {
+                ...sharedCached,
+                distanceMeters: pin.distanceMeters ?? sharedCached.distanceMeters,
+                startDate: sharedCached.startDate ?? pin.startDate,
+                endDate: sharedCached.endDate ?? pin.endDate,
+                expiresAt: sharedCached.expiresAt ?? pin.expiresAt,
+                type: sharedCached.type ?? pin.type
               };
             }
             try {
@@ -428,8 +519,10 @@ export default function usePinsFeedCore({
                 expiresAt: detail.expiresAt ?? pin.expiresAt,
                 type: detail.type ?? pin.type
               };
-              detailCacheRef.current.set(pin._id, { ts: Date.now(), data: detail });
-              return merged;
+              const detailed = { ...merged, __hasDetails: true };
+              detailCacheRef.current.set(pin._id, { ts: Date.now(), data: detailed });
+              pinCache.upsertPin(detailed);
+              return detailed;
             } catch (detailError) {
               if (detailError?.name === 'AbortError') {
                 return pin;

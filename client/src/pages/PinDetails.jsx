@@ -21,6 +21,7 @@ import usePinReporting from '../hooks/pin/usePinReporting';
 import usePinAnalytics from '../hooks/pin/usePinAnalytics';
 import usePinEditForm from '../hooks/pin/usePinEditForm';
 import PinEditDialog from '../components/pin/PinEditDialog';
+import { usePinCache } from '../contexts/PinCacheContext';
 import HeaderActions from './pinDetails/HeaderActions';
 import MapSection from './pinDetails/MapSection';
 import AnalyticsCard from './pinDetails/AnalyticsCard';
@@ -55,6 +56,7 @@ function PinDetails() {
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
   const { viewer: viewerProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
+  const pinCache = usePinCache();
 
   const {
     pin,
@@ -66,7 +68,7 @@ function PinDetails() {
     shareState,
     status,
     reloadPin
-  } = usePinDetails({ pinId, location, isOffline });
+  } = usePinDetails({ pinId, location, isOffline, initialPin: pinCache.getPin(pinId) });
   const {
     isEventPin,
     isOwnPin,

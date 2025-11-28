@@ -33,7 +33,7 @@ export default function useNearbyPinsFeed({
     requireLocation,
     isAdminExempt,
     allowFallback: true,
-    cacheNamespace: 'list',
+    cacheNamespace: 'nearby-shared',
     syncLimitWithProfile: true,
     enablePerfLogging: allowPerfLogging
   });

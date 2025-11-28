@@ -44,8 +44,10 @@ import {
 } from '../utils';
 import formatDateTime, { formatRelativeTime } from '../../../utils/dates';
 import DebugPanel from '../components/DebugPanel';
+import { usePinCache } from '../../../contexts/PinCacheContext';
 
 function PinsTab() {
+  const pinCache = usePinCache();
   const [pinType, setPinType] = useState('event');
   const [formState, setFormState] = useState({
     title: '',
@@ -599,6 +601,7 @@ function PinsTab() {
       const result = await createPin(payload);
       setCreatedPin(result);
       setSelectedPinId(result?._id ?? null);
+      pinCache.upsertPin(result);
 
       const resultLocation = extractPinLocation(result);
       if (resultLocation) {
@@ -615,6 +618,7 @@ function PinsTab() {
           const persistedPin = await fetchPinById(result._id);
           setCreatedPin(persistedPin);
           setSelectedPinId(persistedPin?._id ?? null);
+          pinCache.upsertPin(persistedPin);
           const persistedLocation = extractPinLocation(persistedPin);
           if (persistedLocation) {
             setMapFocusLocation(persistedLocation);
@@ -643,9 +647,21 @@ function PinsTab() {
 
     try {
       setIsFetchingPin(true);
+      const cached = pinCache.getPin(pinId);
+      if (cached) {
+        setCreatedPin(cached);
+        setSelectedPinId(cached?._id ?? null);
+        const cachedLocation = extractPinLocation(cached);
+        if (cachedLocation) {
+          setMapFocusLocation(cachedLocation);
+        }
+        setPinStatus({ type: 'success', message: 'Pin loaded from cache.' });
+        return;
+      }
       const pin = await fetchPinById(pinId);
       setCreatedPin(pin);
       setSelectedPinId(pin?._id ?? null);
+      pinCache.upsertPin(pin);
       const pinLocation = extractPinLocation(pin);
       if (pinLocation) {
         setMapFocusLocation(pinLocation);

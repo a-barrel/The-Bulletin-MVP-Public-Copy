@@ -35,6 +35,7 @@ import {
   toIdString
 } from '../utils';
 import reportClientError from '../../../utils/reportClientError';
+import { useUserCache } from '../../../contexts/UserCacheContext';
 
 const formatMilesLabel = (value) => {
   if (!Number.isFinite(value) || value <= 0) {
@@ -49,6 +50,7 @@ const formatMilesLabel = (value) => {
 };
 
 const useChatRoomVisualizationTools = () => {
+  const userCache = useUserCache();
   const [currentUser] = useAuthState(auth);
   const [currentProfile, setCurrentProfile] = useState(null);
   const [profileStatus, setProfileStatus] = useState(null);
@@ -156,8 +158,12 @@ const useChatRoomVisualizationTools = () => {
 
     setProfileStatus(null);
     try {
-      const profile = await fetchCurrentUserProfile();
+      const cached = userCache.getMe();
+      const profile = cached ?? (await fetchCurrentUserProfile());
       setCurrentProfile(profile);
+      if (!cached && profile) {
+        userCache.setMe(profile);
+      }
     } catch (error) {
       reportClientError(error, 'Failed to load current user profile for visualization tab:', {
         source: 'useChatRoomVisualization.loadProfile'

@@ -11,6 +11,7 @@ import {
 import { auth } from '../../../firebase';
 import { ACCOUNT_STATUS_OPTIONS } from '../constants';
 import { parseCommaSeparated, parseOptionalNumber } from '../utils';
+import { useUserCache } from '../../../contexts/UserCacheContext';
 
 export const INITIAL_CREATE_PROFILE_FORM = {
   username: '',
@@ -30,6 +31,7 @@ const buildEditForm = (profile) => ({
 });
 
 const useProfilesTools = () => {
+  const userCache = useUserCache();
   const [currentUser] = useAuthState(auth);
 
   const [createForm, setCreateForm] = useState(INITIAL_CREATE_PROFILE_FORM);
@@ -118,12 +120,33 @@ const useProfilesTools = () => {
 
       try {
         setIsFetching(true);
+        const cacheKey = userId || '__me__';
+        const cached =
+          cacheKey === '__me__' ? userCache.getMe() : userCache.getUser(cacheKey);
+        if (cached) {
+          setFetchedProfile(cached);
+          setEditForm(buildEditForm(cached));
+          setFetchStatus({
+            type: 'success',
+            message: userId ? 'Profile loaded from cache.' : 'Loaded current user profile (cache).'
+          });
+          setIsFetching(false);
+          return;
+        }
+
         const profile = userId ? await fetchUserProfile(userId) : await fetchCurrentUserProfile();
         if (!userId && profile?._id) {
           setFetchUserId(profile._id);
         }
         setFetchedProfile(profile);
         setEditForm(buildEditForm(profile));
+        if (profile) {
+          if (userId) {
+            userCache.upsertUser(profile);
+          } else {
+            userCache.setMe(profile);
+          }
+        }
         setFetchStatus({
           type: 'success',
           message: userId ? 'Profile loaded.' : 'Loaded current user profile.'
@@ -175,6 +198,7 @@ const useProfilesTools = () => {
         const updatedProfile = await updateUserProfile(fetchedProfile._id, payload);
         setFetchedProfile(updatedProfile);
         setEditForm(buildEditForm(updatedProfile));
+        userCache.upsertUser(updatedProfile);
         setUpdateStatus({ type: 'success', message: 'Profile updated.' });
       } catch (error) {
         setUpdateStatus({ type: 'error', message: error.message || 'Failed to update profile.' });

@@ -1,6 +1,7 @@
 import AvatarIcon from '../assets/AvatarIcon.svg';
 import normalizeObjectId from './normalizeObjectId';
 import resolveAssetUrl from './media';
+import { useUserCache } from '../contexts/UserCacheContext';
 
 export const getParticipantId = (participant) => {
   if (!participant) {

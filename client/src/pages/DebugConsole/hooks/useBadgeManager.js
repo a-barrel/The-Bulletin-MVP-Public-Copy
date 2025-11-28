@@ -7,8 +7,10 @@ import {
   debugRevokeBadge,
   fetchCurrentUserProfile
 } from '../../../api';
+import { useUserCache } from '../../../contexts/UserCacheContext';
 
 const useBadgeManager = ({ currentUser } = {}) => {
+  const userCache = useUserCache();
   const [badgeStatus, setBadgeStatus] = useState(null);
   const [status, setStatus] = useState(null);
   const [mutatingBadgeId, setMutatingBadgeId] = useState(null);
@@ -58,9 +60,13 @@ const useBadgeManager = ({ currentUser } = {}) => {
     let cancelled = false;
     (async () => {
       try {
-        const profile = await fetchCurrentUserProfile();
+        const cached = userCache.getMe();
+        const profile = cached ?? (await fetchCurrentUserProfile());
         if (cancelled || !profile?._id) {
           return;
+        }
+        if (!cached && profile) {
+          userCache.setMe(profile);
         }
         setAutoUserId(profile._id);
         await loadBadges(profile._id, { suppressStatus: true });

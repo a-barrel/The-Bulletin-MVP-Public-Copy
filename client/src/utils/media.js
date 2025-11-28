@@ -2,6 +2,7 @@ import runtimeConfig from '../config/runtime';
 
 const DEFAULT_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
 const FALLBACK_TEXTURE_PATH = '/images/UNKNOWN_TEXTURE.jpg';
+const MEDIA_CACHE_LIMIT = 500;
 
 const LEGACY_PROFILE_IMAGE_REGEX = /(\/images\/profile\/profile-\d+)\.png$/i;
 
@@ -52,6 +53,22 @@ const resolveFromObject = (candidate, fallback, options) => {
   return null;
 };
 
+const mediaCache = new Map();
+
+const buildCacheKey = (asset, options) => {
+  try {
+    return JSON.stringify({
+      asset,
+      keys: options?.keys,
+      fallback: options?.fallback,
+      baseUrl: options?.baseUrl ?? DEFAULT_BASE_URL,
+      offline: runtimeConfig.isOffline
+    });
+  } catch {
+    return null;
+  }
+};
+
 export function resolveAssetUrl(asset, options) {
   const optionProvided = arguments.length >= 2;
   const normalizedOptions =
@@ -70,6 +87,11 @@ export function resolveAssetUrl(asset, options) {
     (path.startsWith('/images/') || path.startsWith('/sounds/'));
 
   const fallbackSrc = hasCustomFallback ? fallback : fallbackTextureFallback();
+
+  const cacheKey = buildCacheKey(asset, normalizedOptions);
+  if (cacheKey && mediaCache.has(cacheKey)) {
+    return mediaCache.get(cacheKey);
+  }
 
   if (!asset && asset !== 0) {
     return fallbackSrc;
@@ -104,7 +126,17 @@ export function resolveAssetUrl(asset, options) {
   }
 
   const resolved = resolveFromObject(asset, fallbackSrc, normalizedOptions);
-  return resolved ?? fallbackSrc;
+  const finalValue = resolved ?? fallbackSrc;
+
+  if (cacheKey) {
+    mediaCache.set(cacheKey, finalValue);
+    if (mediaCache.size > MEDIA_CACHE_LIMIT) {
+      const firstKey = mediaCache.keys().next().value;
+      mediaCache.delete(firstKey);
+    }
+  }
+
+  return finalValue;
 }
 
 export default resolveAssetUrl;

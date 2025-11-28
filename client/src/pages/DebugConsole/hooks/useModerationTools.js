@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import useModerationCore from '../../../hooks/useModerationTools';
 import { fetchUsers } from '../../../api';
 import { parseOptionalNumber } from '../utils';
+import { useUserCache } from '../../../contexts/UserCacheContext';
 
 const DEFAULT_ACTION = {
   userId: '',
@@ -12,6 +13,7 @@ const DEFAULT_ACTION = {
 };
 
 const useModerationTools = () => {
+  const userCache = useUserCache();
   const {
     overview,
     overviewStatus,
@@ -113,7 +115,9 @@ const useModerationTools = () => {
       setSearchStatus(null);
       try {
         const results = await fetchUsers({ search: trimmed, limit: 10 });
-        setSearchResults(Array.isArray(results) ? results : []);
+        const normalized = Array.isArray(results) ? results : [];
+        setSearchResults(normalized);
+        userCache.setUsers(normalized);
       } catch (error) {
         setSearchStatus({
           type: 'error',

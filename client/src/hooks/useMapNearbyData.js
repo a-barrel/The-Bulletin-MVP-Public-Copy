@@ -13,7 +13,8 @@ export default function useMapNearbyData({
   pinFetchLimit,
   currentProfileId,
   setGlobalError,
-  hideFullEvents = true
+  hideFullEvents = true,
+  cacheNamespace = 'nearby-shared'
 }) {
   const nearbyUsers = [];
   const { pins, loading: isLoadingPins, refresh: refreshPins } = usePinsFeedCore({
@@ -27,7 +28,7 @@ export default function useMapNearbyData({
     requireLocation: false,
     isAdminExempt: true,
     allowFallback: false,
-    cacheNamespace: 'map',
+    cacheNamespace,
     syncLimitWithProfile: false,
     onErrorChange: setGlobalError,
     enablePerfLogging: true

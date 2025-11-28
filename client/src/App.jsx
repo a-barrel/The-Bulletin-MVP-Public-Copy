@@ -15,10 +15,7 @@ import { BadgeSoundProvider } from './contexts/BadgeSoundContext';
 import { FriendBadgePreferenceProvider } from './contexts/FriendBadgePreferenceContext';
 import { preloadBadgeSound, setBadgeSoundEnabled } from './utils/badgeSound';
 import { LocationProvider, useLocationContext } from './contexts/LocationContext';
-import {
-  BadgeCelebrationToast,
-  useBadgeCelebrationToast
-} from './components/BadgeCelebrationToast';
+import { BadgeCelebrationToast, useBadgeCelebrationToast } from './components/BadgeCelebrationToast';
 import { routes } from './routes';
 import NotFoundPage from './pages/NotFoundPage';
 import { fetchCurrentUserProfile, fetchUpdates } from './api';
@@ -35,6 +32,14 @@ import { useLazyPages, normalizePathValue } from './app/pageLoader';
 import NavConsoleModal from './app/NavConsoleModal';
 import LocationGateOverlay from './app/LocationGateOverlay';
 import CircularProgress from '@mui/material/CircularProgress';
+import { PinCacheProvider } from './contexts/PinCacheContext';
+import { UserCacheProvider } from './contexts/UserCacheContext';
+import { ReplyCacheProvider } from './contexts/ReplyCacheContext';
+import { AttendeeCacheProvider } from './contexts/AttendeeCacheContext';
+import { FriendCacheProvider } from './contexts/FriendCacheContext';
+import { ChatRoomCacheProvider } from './contexts/ChatRoomCacheContext';
+import { GeocodeCacheProvider } from './contexts/GeocodeCacheContext';
+import { UpdatesCacheProvider } from './contexts/UpdatesCacheContext';
 
 // Style guide palette: background default = Soft Lavender (#F5EFFD), paper = Brand White (#FFFFFF).
 // Reference: docs/style/style-guide.md, docs/style/contrast-audit-playbook.md, docs/style/light_mode_colorpalate.md
@@ -1011,9 +1016,25 @@ const MemoizedAppRoutes = memo(AppRoutes);
 
 function App() {
   return (
-    <LocationProvider>
-      <MemoizedAppContent />
-    </LocationProvider>
+    <UserCacheProvider>
+      <PinCacheProvider>
+        <ReplyCacheProvider>
+          <AttendeeCacheProvider>
+            <FriendCacheProvider>
+              <ChatRoomCacheProvider>
+                <GeocodeCacheProvider>
+                  <UpdatesCacheProvider>
+                    <LocationProvider>
+                      <MemoizedAppContent />
+                    </LocationProvider>
+                  </UpdatesCacheProvider>
+                </GeocodeCacheProvider>
+              </ChatRoomCacheProvider>
+            </FriendCacheProvider>
+          </AttendeeCacheProvider>
+        </ReplyCacheProvider>
+      </PinCacheProvider>
+    </UserCacheProvider>
   );
 }
 

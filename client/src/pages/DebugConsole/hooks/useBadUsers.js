@@ -6,8 +6,10 @@ import {
   incrementUserCussCount,
   resetUserCussCount
 } from '../../../api';
+import { useUserCache } from '../../../contexts/UserCacheContext';
 
 const useBadUsers = () => {
+  const userCache = useUserCache();
   const [users, setUsers] = useState([]);
   const [status, setStatus] = useState(null);
   const [profileError, setProfileError] = useState(null);
@@ -35,11 +37,15 @@ const useBadUsers = () => {
     let cancelled = false;
     (async () => {
       try {
-        const profile = await fetchCurrentUserProfile();
+        const cached = userCache.getMe();
+        const profile = cached ?? (await fetchCurrentUserProfile());
         if (cancelled) {
           return;
         }
         const id = profile?._id || profile?.userId || profile?.id || '';
+        if (!cached && profile) {
+          userCache.setMe(profile);
+        }
         if (id) {
           setCurrentUserId(id);
         }

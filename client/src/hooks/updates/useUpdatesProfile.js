@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { fetchCurrentUserProfile } from '../../api';
 import { auth } from '../../firebase';
+import { useUserCache } from '../../contexts/UserCacheContext';
 
 export default function useUpdatesProfile() {
+  const userCache = useUserCache();
   const [firebaseUser, firebaseLoading] = useAuthState(auth);
   const [profile, setProfile] = useState(null);
   const [profileError, setProfileError] = useState(null);
@@ -24,10 +26,21 @@ export default function useUpdatesProfile() {
     async function loadProfile() {
       setIsProfileLoading(true);
       setProfileError(null);
+
+      const cached = userCache.getMe();
+      if (cached) {
+        setProfile(cached);
+        setIsProfileLoading(false);
+        return;
+      }
+
       try {
         const result = await fetchCurrentUserProfile();
         if (!isCancelled) {
           setProfile(result);
+          if (result) {
+            userCache.setMe(result);
+          }
         }
       } catch (error) {
         if (!isCancelled) {

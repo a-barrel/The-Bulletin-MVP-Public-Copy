@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import useDirectMessages from '../../../hooks/useDirectMessages';
 import { fetchUsers } from '../../../api';
 import { parseCommaSeparated } from '../utils';
+import { useUserCache } from '../../../contexts/UserCacheContext';
 
 const INITIAL_THREAD_FORM = {
   participantInput: '',
@@ -12,6 +13,7 @@ const INITIAL_THREAD_FORM = {
 };
 
 const useDirectMessagesTools = () => {
+  const userCache = useUserCache();
   const {
     viewer,
     threads,
@@ -138,7 +140,9 @@ const useDirectMessagesTools = () => {
       setSearchStatus(null);
       try {
         const results = await fetchUsers({ search: trimmed, limit: 15 });
-        setSearchResults(Array.isArray(results) ? results : []);
+        const normalized = Array.isArray(results) ? results : [];
+        setSearchResults(normalized);
+        userCache.setUsers(normalized);
       } catch (error) {
         setSearchStatus({
           type: 'error',

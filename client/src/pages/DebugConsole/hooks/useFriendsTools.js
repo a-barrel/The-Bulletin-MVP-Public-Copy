@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import useFriendGraph from '../../../hooks/useFriendGraph';
 import { fetchUsers } from '../../../api';
+import { useUserCache } from '../../../contexts/UserCacheContext';
 
 const INITIAL_REQUEST_FORM = {
   targetUserId: '',
@@ -9,6 +10,7 @@ const INITIAL_REQUEST_FORM = {
 };
 
 const useFriendsTools = () => {
+  const userCache = useUserCache();
   const {
     graph,
     refresh,
@@ -42,7 +44,9 @@ const useFriendsTools = () => {
       setSearchStatus(null);
       try {
         const results = await fetchUsers({ search: trimmed, limit: 15 });
-        setSearchResults(Array.isArray(results) ? results : []);
+        const normalized = Array.isArray(results) ? results : [];
+        setSearchResults(normalized);
+        userCache.setUsers(normalized);
       } catch (error) {
         setSearchStatus({
           type: 'error',

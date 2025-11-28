@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchChatRooms, createChatRoom } from '../../api';
 import { buildPinRoomPayload } from '../../utils/chatRoomContract';
 import { normalizeId } from '../../utils/mapLocation';
+import { useChatRoomCache } from '../../contexts/ChatRoomCacheContext';
 
 const DEFAULT_COORDINATES = {
   latitude: 33.7838,
@@ -15,6 +16,7 @@ export default function useChatRoomsData({
   viewerLongitude,
   pinId
 }) {
+  const chatRoomCache = useChatRoomCache();
   const [debugMode, setDebugMode] = useState(false);
   const [rooms, setRooms] = useState([]);
   const [roomsError, setRoomsError] = useState(null);
@@ -53,13 +55,21 @@ export default function useChatRoomsData({
     setIsLoadingRooms(true);
     setRoomsError(null);
     try {
-      const data = await fetchChatRooms({
-        pinId: pinId || undefined,
-        latitude: locationParams.latitude,
-        longitude: locationParams.longitude,
-        includeBookmarked: !pinId
-      });
-      let nextRooms = Array.isArray(data) ? data : [];
+      const cacheKey = `${pinId || 'all'}:${locationParams.latitude}:${locationParams.longitude}`;
+      const cached = chatRoomCache.getRooms(cacheKey);
+      const cachedFresh = cached ? Date.now() - cached.ts < 60_000 : false;
+      let nextRooms = null;
+      if (cached && cachedFresh && Array.isArray(cached.rooms)) {
+        nextRooms = cached.rooms;
+      } else {
+        const data = await fetchChatRooms({
+          pinId: pinId || undefined,
+          latitude: locationParams.latitude,
+          longitude: locationParams.longitude,
+          includeBookmarked: !pinId
+        });
+        nextRooms = Array.isArray(data) ? data : [];
+      }
 
       const normalizedPinId = normalizeId(pinId);
       const existingPinRoom =
@@ -91,6 +101,7 @@ export default function useChatRoomsData({
       }
       const resolvedRooms = existingPinRoom ? [existingPinRoom, ...nextRooms.filter((room) => room !== existingPinRoom)] : nextRooms;
       setRooms(resolvedRooms);
+      chatRoomCache.setRooms(cacheKey, { rooms: resolvedRooms, ts: Date.now() });
       if (resolvedRooms.length > 0) {
         const nextSelectedId = existingPinRoom?._id || resolvedRooms[0]._id;
         const desiredId = normalizeId(selectedRoomId);
