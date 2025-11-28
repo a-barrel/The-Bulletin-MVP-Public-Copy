@@ -184,7 +184,8 @@
   width: 100vw;
   height: 100%;
   margin-bottom: 0;
-  padding-bottom: calc(81px + env(safe-area-inset-bottom, 0));
+  /* leave room for composer + bottom nav */
+  padding-bottom: calc(200px + env(safe-area-inset-bottom, 0));
 }
 
 .disabled-dms-container,

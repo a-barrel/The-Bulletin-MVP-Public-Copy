@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { exportBookmarks, removeBookmark } from '../api/mongoDataApi';
+import { exportBookmarks, removeBookmark } from '../api';
 
 export default function useBookmarkActions({ authUser, isOffline, setBookmarks }) {
   const [removalStatus, setRemovalStatus] = useState(null);

@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { submitModerationAction } from '../../api/mongoDataApi';
+import { submitModerationAction } from '../../api';
 import reportClientError from '../../utils/reportClientError';
 import { buildOptimisticAction } from './moderationState';
 

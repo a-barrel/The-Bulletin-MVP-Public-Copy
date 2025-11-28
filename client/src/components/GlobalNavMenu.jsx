@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MenuIcon from '../assets/MenuIcon.svg';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
@@ -13,7 +13,7 @@ import './GlobalNavMenu.css';
 import { routes } from '../routes';
 import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
-import { fetchBookmarkCollections } from '../api/mongoDataApi';
+import { fetchBookmarkCollections } from '../api';
 import { useUpdates } from '../contexts/UpdatesContext';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import useViewerProfile from '../hooks/useViewerProfile';
@@ -139,7 +139,7 @@ function areShortcutListsEqual(a, b) {
   return true;
 }
 
-export default function GlobalNavMenu({
+export default memo(function GlobalNavMenu({
   className = '',
   triggerClassName = 'header-icon-btn',
   triggerAriaLabel,
@@ -679,4 +679,4 @@ export default function GlobalNavMenu({
       )}
     </div>
   );
-}
+});

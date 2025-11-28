@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Box, Typography, IconButton, Tooltip, Button } from '@mui/material';
+import { Box, Typography, IconButton, Button } from '@mui/material';
 import { NavLink, Link } from 'react-router-dom';
 import AvatarIcon from '../assets/AvatarIcon.svg';
 import "./MessageBubble.css";
@@ -225,54 +225,50 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
               {formatFriendlyTimestamp(msg.createdAt) || formatRelativeTime(msg.createdAt) || ''}
             </Typography>
             {!isSelf && typeof onReport === 'function' ? (
-              <Tooltip title={t('tooltips.reportMessage')}>
-                <span>
-                  <IconButton
-                    className="chat-report-btn"
-                    size="small"
-                    aria-label="Report this message"
-                    onClick={() => onReport(msg)}
-                    sx={{
-                      ml: 0.5,
-                      color: '#d84315',
-                      backgroundColor: 'rgba(216, 67, 21, 0.12)',
-                      borderRadius: '8px',
-                      transition: 'color 120ms ease, background-color 120ms ease',
-                      '&:hover, &:focus-visible': {
-                        color: '#ef6c00',
-                        backgroundColor: 'rgba(239, 108, 0, 0.16)'
-                      }
-                    }}
-                  >
-                    <ReportProblemIcon fontSize="inherit" />
-                  </IconButton>
-                </span>
-              </Tooltip>
+              <IconButton
+                className="chat-report-btn"
+                size="small"
+                aria-label="Report this message"
+                title={t('tooltips.reportMessage')}
+                onClick={() => onReport(msg)}
+                disableRipple
+                sx={{
+                  ml: 0.5,
+                  color: '#d84315',
+                  backgroundColor: 'rgba(216, 67, 21, 0.12)',
+                  borderRadius: '8px',
+                  transition: 'color 120ms ease, background-color 120ms ease',
+                  '&:hover, &:focus-visible': {
+                    color: '#ef6c00',
+                    backgroundColor: 'rgba(239, 108, 0, 0.16)'
+                  }
+                }}
+              >
+                <ReportProblemIcon fontSize="inherit" />
+              </IconButton>
             ) : null}
             {canModerate && !isSelf && typeof onModerate === 'function' ? (
-              <Tooltip title={t('tooltips.moderateUser')}>
-                <span>
-                  <IconButton
-                    className="chat-moderation-btn"
-                    size="small"
-                    aria-label="Moderate this user"
-                    onClick={() => onModerate(msg)}
-                    sx={{
-                      ml: 0.5,
-                      color: '#1e6ef5',
-                      backgroundColor: 'rgba(30, 110, 245, 0.12)',
-                      borderRadius: '8px',
-                      transition: 'color 120ms ease, background-color 120ms ease',
-                      '&:hover, &:focus-visible': {
-                        color: '#7c4dff',
-                        backgroundColor: 'rgba(124, 77, 255, 0.16)'
-                      }
-                    }}
-                  >
-                    <GavelIcon fontSize="inherit" />
-                  </IconButton>
-                </span>
-              </Tooltip>
+              <IconButton
+                className="chat-moderation-btn"
+                size="small"
+                aria-label="Moderate this user"
+                title={t('tooltips.moderateUser')}
+                onClick={() => onModerate(msg)}
+                disableRipple
+                sx={{
+                  ml: 0.5,
+                  color: '#1e6ef5',
+                  backgroundColor: 'rgba(30, 110, 245, 0.12)',
+                  borderRadius: '8px',
+                  transition: 'color 120ms ease, background-color 120ms ease',
+                  '&:hover, &:focus-visible': {
+                    color: '#7c4dff',
+                    backgroundColor: 'rgba(124, 77, 255, 0.16)'
+                  }
+                }}
+              >
+                <GavelIcon fontSize="inherit" />
+              </IconButton>
             ) : null}
           </div>
         </div>

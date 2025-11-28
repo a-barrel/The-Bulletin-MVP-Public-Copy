@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import runtimeConfig from '../config/runtime';
-import { fetchModerationOverview } from '../api/mongoDataApi';
+import { fetchModerationOverview } from '../api';
 
 export default function useModerationOverview() {
   const moderationRoleChecksEnabled = runtimeConfig.moderation?.roleChecksEnabled !== false;

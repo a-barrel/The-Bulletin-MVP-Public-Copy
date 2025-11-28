@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react';
-import { fetchModerationOverview } from '../../api/mongoDataApi';
+import { fetchModerationOverview } from '../../api';
 import reportClientError from '../../utils/reportClientError';
 
 export default function useModerationOverviewData({ dispatch, autoLoad = true }) {

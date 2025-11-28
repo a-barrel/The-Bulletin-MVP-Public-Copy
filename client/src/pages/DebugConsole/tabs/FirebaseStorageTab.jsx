@@ -8,7 +8,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
-import { fetchStorageObjects } from '../../../api/mongoDataApi';
+import { fetchStorageObjects } from '../../../api';
 import formatDateTime, { formatRelativeTime } from '../../../utils/dates';
 import DebugPanel from '../components/DebugPanel';
 

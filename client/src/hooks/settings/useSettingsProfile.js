@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchCurrentUserProfile } from '../../api/mongoDataApi';
+import { fetchCurrentUserProfile } from '../../api';
 import reportClientError from '../../utils/reportClientError';
 import { DEFAULT_SETTINGS, roundRadius } from '../useSettingsManager';
+import { useUserCache } from '../../contexts/UserCacheContext';
 
 const QUIET_HOUR_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
@@ -76,6 +77,7 @@ const hydrateSettingsFromProfile = (result) => ({
 });
 
 export default function useSettingsProfile({ authUser, authLoading, isOffline }) {
+  const userCache = useUserCache();
   const [profile, setProfile] = useState(null);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [profileError, setProfileError] = useState(null);
@@ -104,6 +106,15 @@ export default function useSettingsProfile({ authUser, authLoading, isOffline })
     const fetchProfile = async () => {
       setIsFetchingProfile(true);
       setProfileError(null);
+
+      const cached = userCache.getMe();
+      if (cached) {
+        setProfile(cached);
+        setSettings(hydrateSettingsFromProfile(cached));
+        setIsFetchingProfile(false);
+        return;
+      }
+
       try {
         const result = await fetchCurrentUserProfile();
         if (cancelled) {
@@ -111,6 +122,7 @@ export default function useSettingsProfile({ authUser, authLoading, isOffline })
         }
         setProfile(result);
         setSettings(hydrateSettingsFromProfile(result));
+        userCache.setMe(result);
       } catch (error) {
         reportClientError(error, 'Failed to load settings profile.', {
           source: 'useSettingsProfile'

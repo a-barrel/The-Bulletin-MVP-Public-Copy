@@ -4,7 +4,7 @@ import {
   fetchLocationHistory,
   fetchNearbyUsers,
   insertLocationUpdate
-} from '../../../api/mongoDataApi';
+} from '../../../api';
 import {
   LOCATION_SOURCE_OPTIONS
 } from '../constants';

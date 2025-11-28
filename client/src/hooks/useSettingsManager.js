@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import useSettingsProfile from './settings/useSettingsProfile';
 import useBlockedUsersManager from './settings/useBlockedUsersManager';
 import useSettingsPersistence from './settings/useSettingsPersistence';
-import { logClientEvent } from '../api/mongoDataApi';
+import { logClientEvent } from '../api';
 
 export const RADIUS_MIN = 100;
 export const RADIUS_MAX = 80467; // 50 miles

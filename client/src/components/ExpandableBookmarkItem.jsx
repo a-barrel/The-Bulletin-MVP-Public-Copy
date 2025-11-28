@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
   Box,
@@ -18,8 +18,9 @@ import AttendingBookmarksIcon from '../assets/Attending_Bookmarks.svg';
 import BookmarkedIcon from '../assets/Bookmarked.svg';
 import BookmarkedOwnerIcon from '../assets/BookmarkedOwner.svg';
 import resolveAssetUrl from '../utils/media';
-import { fetchPinById } from '../api/mongoDataApi';
+import { fetchPinById } from '../api';
 import toIdString from '../utils/ids';
+import { usePinCache } from '../contexts/PinCacheContext';
 
 function ExpandableBookmarkItem({
   bookmark,
@@ -42,13 +43,20 @@ function ExpandableBookmarkItem({
   const [fullPin, setFullPin] = useState(null);
   const [isLoadingPin, setIsLoadingPin] = useState(false);
   const requestTokenRef = useRef(0);
+  const pinCache = usePinCache();
 
-  const handleTitleClick = () => {
+  const handleTitleClick = useCallback(() => {
     setExpanded((prev) => !prev);
-  };
+  }, []);
 
   useEffect(() => {
     if (!expanded || !pinId || fullPin || isLoadingPin || pin?.description) {
+      return undefined;
+    }
+
+    const cached = pinCache.getPin(pinId);
+    if (cached) {
+      setFullPin(cached);
       return undefined;
     }
 
@@ -61,6 +69,7 @@ function ExpandableBookmarkItem({
       .then((fetchedPin) => {
         if (!cancelled && requestTokenRef.current === token && fetchedPin) {
           setFullPin(fetchedPin);
+          pinCache.upsertPin(fetchedPin);
         }
       })
       .catch((error) => {
@@ -79,7 +88,7 @@ function ExpandableBookmarkItem({
       requestTokenRef.current += 1;
       setIsLoadingPin(false);
     };
-  }, [expanded, fullPin, isLoadingPin, pin?.description, pinId]);
+  }, [expanded, fullPin, isLoadingPin, pin?.description, pinCache, pinId]);
 
   const displayPin = fullPin || pin;
   const description = displayPin?.description || '';
@@ -195,6 +204,38 @@ function ExpandableBookmarkItem({
 
   const cardBackground = pinType === 'discussion' ? '#E6F1FF' : '#F5EFFD';
 
+  const handleViewClick = useCallback(
+    (event) => {
+      event.stopPropagation();
+      onViewPin(pinId, fullPin || pin);
+    },
+    [fullPin, onViewPin, pin, pinId]
+  );
+
+  const handleToggleAttendanceClick = useCallback(
+    (event) => {
+      event.stopPropagation();
+      onToggleAttendance?.(bookmark);
+    },
+    [bookmark, onToggleAttendance]
+  );
+
+  const handleRemoveClick = useCallback(
+    (event) => {
+      event.stopPropagation();
+      if (!removeDisabled) {
+        onRemoveBookmark(bookmark);
+      } else if (removalGuardMessage) {
+        onShowRemovalStatus?.({
+          type: 'info',
+          message: removalGuardMessage,
+          toast: true
+        });
+      }
+    },
+    [bookmark, onRemoveBookmark, onShowRemovalStatus, removalGuardMessage, removeDisabled]
+  );
+
   return (
     <Box
       sx={{
@@ -209,6 +250,7 @@ function ExpandableBookmarkItem({
     >
       <ListItemButton
         onClick={handleTitleClick}
+        disableRipple
         sx={{
           py: 1.5,
           px: { xs: 2, md: 3 },
@@ -319,10 +361,8 @@ function ExpandableBookmarkItem({
                 <Button
                   size="small"
                   variant="outlined"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onViewPin(pinId, fullPin || pin);
-                  }}
+                  onClick={handleViewClick}
+                  disableRipple
                   sx={{
                     color: 'black',
                     backgroundColor: '#CDAEF2',
@@ -346,11 +386,9 @@ function ExpandableBookmarkItem({
                 <Button
                   size="small"
                   variant={attending ? 'contained' : 'outlined'}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onToggleAttendance?.(bookmark);
-                  }}
+                  onClick={handleToggleAttendanceClick}
                   disabled={Boolean(isOffline || isTogglingAttendance)}
+                  disableRipple
                   sx={{
                     color: attending ? '#ffffff' : '#4b208c',
                     backgroundColor: attending ? '#4b208c' : '#ffffff',
@@ -370,18 +408,7 @@ function ExpandableBookmarkItem({
                 <button
                   type="button"
                   disabled={removeDisabled}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    if (!removeDisabled) {
-                      onRemoveBookmark(bookmark);
-                    } else if (removalGuardMessage) {
-                      onShowRemovalStatus?.({
-                        type: 'info',
-                        message: removalGuardMessage,
-                        toast: true
-                      });
-                    }
-                  }}
+                  onClick={handleRemoveClick}
                   title={removeButtonTitle}
                   aria-label={removeButtonTitle}
                   className="bookmark-remove-btn"
@@ -435,4 +462,31 @@ ExpandableBookmarkItem.defaultProps = {
   isTogglingAttendance: false
 };
 
-export default ExpandableBookmarkItem;
+const arePropsEqual = (prev, next) => {
+  return (
+    prev.pinId === next.pinId &&
+    prev.pin === next.pin &&
+    prev.pinTitle === next.pinTitle &&
+    prev.pinType === next.pinType &&
+    prev.tagLabel === next.tagLabel &&
+    prev.savedAt === next.savedAt &&
+    prev.isRemoving === next.isRemoving &&
+    prev.isOffline === next.isOffline &&
+    prev.isTogglingAttendance === next.isTogglingAttendance &&
+    prev.authUser === next.authUser &&
+    prev.bookmark?._id === next.bookmark?._id &&
+    prev.bookmark?.pinId === next.bookmark?.pinId &&
+    prev.bookmark?.viewerIsAttending === next.bookmark?.viewerIsAttending &&
+    prev.onViewPin === next.onViewPin &&
+    prev.onRemoveBookmark === next.onRemoveBookmark &&
+    prev.onShowRemovalStatus === next.onShowRemovalStatus &&
+    prev.onToggleAttendance === next.onToggleAttendance
+  );
+};
+
+const MemoizedExpandableBookmarkItem = memo(ExpandableBookmarkItem, arePropsEqual);
+MemoizedExpandableBookmarkItem.displayName = 'ExpandableBookmarkItem';
+MemoizedExpandableBookmarkItem.propTypes = ExpandableBookmarkItem.propTypes;
+MemoizedExpandableBookmarkItem.defaultProps = ExpandableBookmarkItem.defaultProps;
+
+export default MemoizedExpandableBookmarkItem;

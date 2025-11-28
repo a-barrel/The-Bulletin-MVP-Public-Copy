@@ -1,14 +1,24 @@
 import { useCallback, useEffect } from 'react';
 import reportClientError from '../../utils/reportClientError';
-import { fetchDirectMessageThreads } from '../../api/mongoDataApi';
+import { fetchDirectMessageThreads } from '../../api';
+import { useUserCache } from '../../contexts/UserCacheContext';
 
 const DM_POLL_INTERVAL_MS = 30 * 1000;
 
 export default function useDmThreadsData({ dispatch, autoLoad = true }) {
+  const userCache = useUserCache();
   const loadThreads = useCallback(async () => {
     dispatch({ type: 'threads/pending' });
     try {
       const payload = await fetchDirectMessageThreads();
+      if (Array.isArray(payload?.threads)) {
+        const participants = payload.threads.flatMap((thread) =>
+          Array.isArray(thread.participants) ? thread.participants : []
+        );
+        if (participants.length) {
+          userCache.setUsers(participants);
+        }
+      }
       dispatch({ type: 'threads/success', payload });
       return payload;
     } catch (error) {

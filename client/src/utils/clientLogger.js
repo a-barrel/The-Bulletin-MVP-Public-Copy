@@ -1,4 +1,4 @@
-import { logClientEvent } from '../api/mongoDataApi';
+import { logClientEvent } from '../api';
 
 let listenersInstalled = false;
 

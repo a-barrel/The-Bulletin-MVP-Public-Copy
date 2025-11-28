@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 
-import { createReply, fetchReplies } from '../../../api/mongoDataApi';
+import { createReply, fetchReplies } from '../../../api';
 import { parseCommaSeparated } from '../utils';
+import { useReplyCache } from '../../../contexts/ReplyCacheContext';
 
 const INITIAL_REPLY_FORM = {
   pinId: '',
@@ -12,6 +13,7 @@ const INITIAL_REPLY_FORM = {
 };
 
 const useRepliesTools = () => {
+  const replyCache = useReplyCache();
   const [replyForm, setReplyForm] = useState(INITIAL_REPLY_FORM);
   const [replyStatus, setReplyStatus] = useState(null);
   const [replyResult, setReplyResult] = useState(null);
@@ -76,8 +78,21 @@ const useRepliesTools = () => {
 
       try {
         setIsFetchingReplies(true);
+        const cached = replyCache.getReplies(pinId);
+        if (cached?.replies) {
+          const cachedReplies = cached.replies;
+          setRepliesResult(cachedReplies);
+          setRepliesStatus({
+            type: 'success',
+            message: `Loaded ${cachedReplies.length} repl${cachedReplies.length === 1 ? 'y' : 'ies'} from cache.`
+          });
+          setIsFetchingReplies(false);
+          return;
+        }
+
         const replies = await fetchReplies(pinId);
         setRepliesResult(replies);
+        replyCache.setReplies(pinId, Array.isArray(replies) ? replies : []);
         setRepliesStatus({
           type: 'success',
           message: `Loaded ${replies.length} repl${replies.length === 1 ? 'y' : 'ies'}.`

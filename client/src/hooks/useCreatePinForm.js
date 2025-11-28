@@ -8,6 +8,7 @@ import {
   extractReverseGeocodeFields,
   formatDateTimeLocalInput
 } from '../utils/pinFormValidation';
+import { useGeocodeCache } from '../contexts/GeocodeCacheContext';
 import {
   MAX_PIN_DISTANCE_MILES,
   MAX_PIN_DISTANCE_METERS,
@@ -74,6 +75,7 @@ export default function useCreatePinForm({
   announceBadgeEarned = noop,
   onPinCreated = noop
 } = {}) {
+  const geocodeCache = useGeocodeCache();
   const [pinType, setPinType] = useState('discussion');
   const [formState, setFormState] = useState(() => createInitialFormState());
   const [autoDelete, setAutoDelete] = useState(true);
@@ -265,6 +267,43 @@ export default function useCreatePinForm({
     };
   }, []);
 
+  // Seed geocode cache when we already have address data for the current coordinates (e.g., drafts).
+  useEffect(() => {
+    const latitude = Number.parseFloat(formState.latitude);
+    const longitude = Number.parseFloat(formState.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return;
+    }
+    const key = `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+    if (geocodeCache.get(key)) {
+      return;
+    }
+
+    const formatted =
+      formState.addressPrecise || formState.approxFormatted || DEFAULT_APPROX_MESSAGE;
+    const hasAddress =
+      formatted ||
+      formState.addressCity ||
+      formState.addressState ||
+      formState.addressCountry ||
+      formState.addressPostalCode ||
+      formState.approxCity ||
+      formState.approxState ||
+      formState.approxCountry;
+
+    if (!hasAddress) {
+      return;
+    }
+
+    geocodeCache.set(key, {
+      formatted,
+      city: formState.addressCity || formState.approxCity || '',
+      state: formState.addressState || formState.approxState || '',
+      country: formState.addressCountry || formState.approxCountry || '',
+      postalCode: formState.addressPostalCode || ''
+    });
+  }, [formState.addressCity, formState.addressCountry, formState.addressPostalCode, formState.addressPrecise, formState.addressState, formState.approxCity, formState.approxCountry, formState.approxFormatted, formState.approxState, formState.latitude, formState.longitude, geocodeCache]);
+
   const reverseGeocodeCoordinates = useCallback(
     async (latitude, longitude, options = {}) => {
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
@@ -277,6 +316,32 @@ export default function useCreatePinForm({
       }
 
       lastReverseGeocodeRef.current = key;
+
+      const cached = geocodeCache.get(key);
+      if (cached) {
+        setFormState((prev) => ({
+          ...prev,
+          approxFormatted: cached.formatted ?? prev.approxFormatted,
+          approxCity: cached.city ?? prev.approxCity,
+          approxState: cached.state ?? prev.approxState,
+          approxCountry: cached.country ?? prev.approxCountry,
+          ...(pinType === 'event'
+            ? {
+                addressPrecise: cached.formatted ?? prev.addressPrecise,
+                addressCity: cached.city ?? prev.addressCity,
+                addressState: cached.state ?? prev.addressState,
+                addressPostalCode: cached.postalCode ?? prev.addressPostalCode,
+                addressCountry: cached.country ?? prev.addressCountry
+              }
+            : {})
+        }));
+        setLocationStatus({
+          type: 'success',
+          message: 'Auto-filled location details from the selected point on the map.'
+        });
+        return;
+      }
+
       setIsReverseGeocoding(true);
       try {
         const url = new URL('https://nominatim.openstreetmap.org/reverse');
@@ -305,6 +370,8 @@ export default function useCreatePinForm({
           });
           return;
         }
+
+        geocodeCache.set(key, address);
 
         setFormState((prev) => ({
           ...prev,
@@ -340,7 +407,7 @@ export default function useCreatePinForm({
         setIsReverseGeocoding(false);
       }
     },
-    [pinType]
+    [geocodeCache, pinType]
   );
 
   const handleMapLocationSelect = useCallback(

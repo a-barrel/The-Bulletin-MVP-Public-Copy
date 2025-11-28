@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { uploadPinImage } from '../../api/mongoDataApi';
+import { uploadPinImage } from '../../api';
 
 const DEFAULT_MAX_PHOTOS = 3;
 

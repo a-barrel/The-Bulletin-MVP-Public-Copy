@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { fetchBlockedUsers, unblockUser } from '../../api/mongoDataApi';
+import { fetchBlockedUsers, unblockUser } from '../../api';
 import reportClientError from '../../utils/reportClientError';
 
 export default function useBlockedUsersManager({ isOffline, setProfile }) {

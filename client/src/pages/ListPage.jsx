@@ -1,21 +1,11 @@
 /* NOTE: Page exports configuration alongside the component. */
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef, lazy, Suspense, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ListPage.css';
 import Navbar from '../components/Navbar';
-import SortToggle from '../components/SortToggle';
-import ListFiltersOverlay, { FRIEND_ENGAGEMENT_OPTIONS } from '../components/ListFiltersOverlay';
-import settingsIcon from '../assets/GearIcon.svg';
-import addIcon from '../assets/AddIcon.svg';
-import updatesIcon from '../assets/UpdateIcon.svg';
-import Feed from '../components/Feed';
-import GlobalNavMenu from '../components/GlobalNavMenu';
-import Chip from '@mui/material/Chip';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Checkbox from '@mui/material/Checkbox';
-import Pagination from '@mui/material/Pagination';
-import PaginationItem from '@mui/material/PaginationItem';
 import PlaceIcon from '@mui/icons-material/Place';
+import { FRIEND_ENGAGEMENT_OPTIONS } from '../constants/listFilters';
+import Feed from '../components/Feed';
 import { useUpdates } from '../contexts/UpdatesContext';
 import { routes } from '../routes';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
@@ -32,6 +22,12 @@ import runtimeConfig from '../config/runtime';
 import { viewerHasDeveloperAccess } from '../utils/roles';
 import { enableListPerfLogs, logListPerf } from '../utils/listPerfLogger';
 import { resolvePinFetchLimit } from '../utils/pinDensity';
+import ListHeader from '../components/list/ListHeader';
+import ListTopbar from '../components/list/ListTopbar';
+import ListFilterChips from '../components/list/ListFilterChips';
+import ListLocationNotice from '../components/list/ListLocationNotice';
+import ListPaginationFooter from '../components/list/ListPaginationFooter';
+import useListFeedView from '../hooks/useListFeedView';
 
 export const pageConfig = {
   id: 'list',
@@ -40,7 +36,7 @@ export const pageConfig = {
   path: '/list',
   order: 4,
   showInNav: true,
-  protected: true,
+  protected: true
 };
 
 const LIST_PAGE_SIZE = 10;
@@ -63,7 +59,9 @@ const paginationSx = {
   }
 };
 
-export default function ListPage() {
+const ListFiltersOverlay = lazy(() => import('../components/ListFiltersOverlay'));
+
+function ListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
@@ -142,7 +140,26 @@ export default function ListPage() {
     () => toIdString(viewerProfile?._id) ?? toIdString(viewerProfile?.id) ?? null,
     [viewerProfile]
   );
-  const [currentPage, setCurrentPage] = useState(1);
+
+  const {
+    filteredAndSortedFeed,
+    paginatedFeedItems,
+    currentPage,
+    totalPages,
+    totalResults,
+    startItemNumber,
+    endItemNumber,
+    handlePageChange,
+    filtersSignature
+  } = useListFeedView({
+    feedItems,
+    filters,
+    hideOwnPins,
+    hideFullEvents,
+    viewerMongoId,
+    sortByExpiration,
+    pageSize: LIST_PAGE_SIZE
+  });
 
   const friendEngagementLabels = useMemo(() => {
     const lookup = {};
@@ -223,15 +240,10 @@ export default function ListPage() {
     setFiltersDialogOpen(false);
   }, []);
 
-  const handlePageChange = useCallback((_, page) => {
-    setCurrentPage(page);
-  }, []);
-
   const handleApplyFilters = useCallback(
     (nextFilters) => {
       applyFilters(nextFilters);
       setFiltersDialogOpen(false);
-      setCurrentPage(1);
     },
     [applyFilters]
   );
@@ -246,14 +258,6 @@ export default function ListPage() {
 
   const locationMessage =
     locationRequired && !sharedLocation ? t('location.requiredBody') : locationNotice;
-
-  const filtersSignature = useMemo(() => {
-    return JSON.stringify(filters);
-  }, [filters]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filtersSignature, sortByExpiration, hideOwnPins, hideFullEvents]);
 
   useEffect(() => {
     if (!enableListPerfLogs) {
@@ -283,17 +287,61 @@ export default function ListPage() {
     hideFullEvents
   ]);
 
-  const handleRemoveType = useCallback((typeValue) => {
-    removeType(typeValue);
-  }, [removeType]);
+  useEffect(() => {
+    if (!enableListPerfLogs) {
+      return;
+    }
+    logListPerf('ListPage page changed', {
+      currentPage,
+      totalPages,
+      totalResults
+    });
+  }, [currentPage, totalPages, totalResults]);
 
-  const handleRemoveCategory = useCallback((category) => {
-    removeCategory(category);
-  }, [removeCategory]);
+  useEffect(() => {
+    if (!enableListPerfLogs) {
+      return;
+    }
+    logListPerf('ListPage feed stats', {
+      renderCount: renderCountRef.current,
+      feedItems: feedItems.length,
+      paginatedItems: paginatedFeedItems.length,
+      currentPage,
+      totalPages,
+      totalResults,
+      loading,
+      error: Boolean(error)
+    });
+  }, [
+    currentPage,
+    totalPages,
+    totalResults,
+    feedItems.length,
+    paginatedFeedItems.length,
+    loading,
+    error
+  ]);
 
-  const handleRemoveFriendEngagement = useCallback((engagement) => {
-    removeFriendEngagement(engagement);
-  }, [removeFriendEngagement]);
+  const handleRemoveType = useCallback(
+    (typeValue) => {
+      removeType(typeValue);
+    },
+    [removeType]
+  );
+
+  const handleRemoveCategory = useCallback(
+    (category) => {
+      removeCategory(category);
+    },
+    [removeCategory]
+  );
+
+  const handleRemoveFriendEngagement = useCallback(
+    (engagement) => {
+      removeFriendEngagement(engagement);
+    },
+    [removeFriendEngagement]
+  );
 
   const handleResetDates = useCallback(() => {
     resetDates();
@@ -311,8 +359,7 @@ export default function ListPage() {
   }, [handleClearFilters]);
 
   const handleHideFullEventsToggle = useCallback(
-    (event) => {
-      const nextValue = Boolean(event.target.checked);
+    (nextValue) => {
       if (hideFullPreferenceError) {
         clearPreferenceError();
       }
@@ -320,6 +367,11 @@ export default function ListPage() {
     },
     [clearPreferenceError, hideFullPreferenceError, setHideFullEvents]
   );
+
+  const handleToggleHideOwnPins = useCallback((nextValue) => {
+    setHideOwnPins(nextValue);
+  }, []);
+
   const handleFeedItemSelect = useCallback(
     (pinId, pin) => {
       const normalized = toIdString(pinId);
@@ -444,164 +496,6 @@ export default function ListPage() {
     friendEngagementLabels
   ]);
 
-  const filteredAndSortedFeed = useMemo(() => {
-    const statusFiltered = feedItems.filter((item) => {
-      const hours = Number.isFinite(item.expiresInHours) ? item.expiresInHours : null;
-      if (filters.status === 'expired') {
-        if (hours === null) {
-          return false;
-        }
-        return hours <= 0;
-      }
-      if (filters.status === 'all') {
-        return true;
-      }
-      if (hours === null) {
-        return true;
-      }
-      return hours > 0;
-    });
-
-    const ownerFiltered =
-      hideOwnPins
-        ? statusFiltered.filter((item) => {
-            if (item?.viewerOwnsPin) {
-              return false;
-            }
-            const ownerId =
-              toIdString(item?.creatorId) ??
-              toIdString(item?.creator?._id) ??
-              toIdString(item?.creator?._id?.$oid) ??
-              null;
-            if (viewerMongoId && ownerId && ownerId === viewerMongoId) {
-              return false;
-            }
-            return true;
-          })
-        : statusFiltered;
-
-    const sortedItems = [...ownerFiltered].sort((a, b) => {
-      if (filters.popularSort === 'replies') {
-        const aReplies = Number.isFinite(a?.comments) ? a.comments : 0;
-        const bReplies = Number.isFinite(b?.comments) ? b.comments : 0;
-        if (bReplies !== aReplies) {
-          return bReplies - aReplies;
-        }
-        const aAttending = Number.isFinite(a?.participantCount) ? a.participantCount : 0;
-        const bAttending = Number.isFinite(b?.participantCount) ? b.participantCount : 0;
-        if (bAttending !== aAttending) {
-          return bAttending - aAttending;
-        }
-        const aUpdated = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
-        const bUpdated = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
-        return bUpdated - aUpdated;
-      }
-
-      if (filters.popularSort === 'attending') {
-        const aAttending = Number.isFinite(a?.participantCount) ? a.participantCount : 0;
-        const bAttending = Number.isFinite(b?.participantCount) ? b.participantCount : 0;
-        if (bAttending !== aAttending) {
-          return bAttending - aAttending;
-        }
-        const aReplies = Number.isFinite(a?.comments) ? a.comments : 0;
-        const bReplies = Number.isFinite(b?.comments) ? b.comments : 0;
-        if (bReplies !== aReplies) {
-          return bReplies - aReplies;
-        }
-        const aUpdated = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
-        const bUpdated = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
-        return bUpdated - aUpdated;
-      }
-
-      if (sortByExpiration) {
-        const hoursA = Number.isFinite(a.expiresInHours) ? a.expiresInHours : Number.POSITIVE_INFINITY;
-        const hoursB = Number.isFinite(b.expiresInHours) ? b.expiresInHours : Number.POSITIVE_INFINITY;
-        if (hoursA !== hoursB) {
-          return hoursA - hoursB;
-        }
-      } else {
-        const distanceA = Number.isFinite(a.distanceMiles) ? a.distanceMiles : Number.POSITIVE_INFINITY;
-        const distanceB = Number.isFinite(b.distanceMiles) ? b.distanceMiles : Number.POSITIVE_INFINITY;
-        if (distanceA !== distanceB) {
-          return distanceA - distanceB;
-        }
-      }
-
-      const textA = a.text || '';
-      const textB = b.text || '';
-      return textA.localeCompare(textB);
-    });
-
-    return sortedItems;
-  }, [feedItems, filters.popularSort, filters.status, hideOwnPins, sortByExpiration, viewerMongoId]);
-
-  const totalResults = filteredAndSortedFeed.length;
-  const totalPages = totalResults === 0 ? 1 : Math.ceil(totalResults / LIST_PAGE_SIZE);
-
-  useEffect(() => {
-    setCurrentPage((previous) => {
-      if (previous <= 1) {
-        return totalResults === 0 ? 1 : previous;
-      }
-      return previous > totalPages ? totalPages : previous;
-    });
-  }, [totalPages, totalResults]);
-
-  useEffect(() => {
-    if (!enableListPerfLogs) {
-      return;
-    }
-    logListPerf('ListPage page changed', {
-      currentPage,
-      totalPages,
-      totalResults
-    });
-  }, [currentPage, totalPages, totalResults]);
-
-  const paginatedFeedItems = useMemo(() => {
-    if (totalResults === 0) {
-      return [];
-    }
-    const startIndex = (currentPage - 1) * LIST_PAGE_SIZE;
-    return filteredAndSortedFeed.slice(startIndex, startIndex + LIST_PAGE_SIZE);
-  }, [currentPage, filteredAndSortedFeed, totalResults]);
-
-  const startItemNumber =
-    totalResults === 0 ? 0 : (currentPage - 1) * LIST_PAGE_SIZE + 1;
-  const endItemNumber =
-    totalResults === 0 ? 0 : Math.min(totalResults, currentPage * LIST_PAGE_SIZE);
-
-  useEffect(() => {
-    if (!enableListPerfLogs) {
-      return;
-    }
-    logListPerf('ListPage feed stats', {
-      renderCount: renderCountRef.current,
-      feedItems: feedItems.length,
-      paginatedItems: paginatedFeedItems.length,
-      currentPage,
-      totalPages,
-      totalResults,
-      loading,
-      error: Boolean(error)
-    });
-  }, [
-    currentPage,
-    totalPages,
-    totalResults,
-    feedItems.length,
-    paginatedFeedItems.length,
-    loading,
-    error
-  ]);
-
-  const feedCardProps = useMemo(
-    () => ({
-      lazyLoadAttendees: true
-    }),
-    []
-  );
-
   const slimmedFeedItems = useMemo(() => {
     return paginatedFeedItems.map((item) => ({
       id: item?.id,
@@ -636,127 +530,39 @@ export default function ListPage() {
     }));
   }, [paginatedFeedItems]);
 
-  const notificationsLabel =
-    unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
-  const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
+  const feedCardProps = useMemo(
+    () => ({
+      lazyLoadAttendees: true
+    }),
+    []
+  );
 
   return (
     <div className="list-page">
       <div className="list-frame">
-        {/* Header */}
-        <header className="header-bar">
-          <GlobalNavMenu />
-          <h1 className="header-title">List</h1>
-          <button
-            className="header-icon-btn"
-            type="button"
-            aria-label={notificationsLabel}
-            onClick={handleNotifications}
-            disabled={isOffline}
-            title={isOffline ? 'Reconnect to view updates' : undefined}
-          >
-            <img src={updatesIcon} alt="" className="header-icon" aria-hidden="true" />
-            {displayBadge ? (
-              <span className="header-icon-badge" aria-hidden="true">
-                {displayBadge}
-              </span>
-            ) : null}
-          </button>
-        </header>
+        <ListHeader unreadCount={unreadCount} onNotifications={handleNotifications} isOffline={isOffline} />
 
-        {/* Topbar */}
-        <div className="topbar">
-          <div className="top-left">
-            <button
-              className={`icon-btn ${hasActiveFilters ? 'active' : ''} ${filtersDialogOpen ? 'open' : ''}`.trim()}
-              type="button"
-              aria-label="Filter pins"
-              aria-pressed={filtersDialogOpen}
-              onClick={handleOpenFilters}
-              title={hasActiveFilters ? 'Filters applied. Click to adjust filters.' : 'Filter pins'}
-            >
-              <img src={settingsIcon} alt="Filters" />
-            </button>
-
-            {/* Sort Toggle */}
-            <SortToggle sortByExpiration={sortByExpiration} onToggle={handleSortToggle} />
-
-            <FormControlLabel
-              control={
-                <Checkbox
-                  size="small"
-                  color="secondary"
-                  checked={hideOwnPins}
-                  onChange={(event) => setHideOwnPins(event.target.checked)}
-                  disableRipple
-                  sx={{
-                    color: '#666',
-                    '& .MuiSvgIcon-root': {
-                      stroke: '#666',
-                      strokeWidth: 1.4,
-                      borderRadius: '4px'
-                    },
-                    '&.Mui-checked': {
-                      color: '#5d3889'
-                    }
-                  }}
-                />
-              }
-              label="Hide my pins"
-              className="topbar-hide-own"
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  size="small"
-                  color="secondary"
-                  checked={hideFullEvents}
-                  onChange={handleHideFullEventsToggle}
-                  disabled={isSavingHideFullPreference}
-                  disableRipple
-                  sx={{
-                    color: '#666',
-                    '& .MuiSvgIcon-root': {
-                      stroke: '#666',
-                      strokeWidth: 1.4,
-                      borderRadius: '4px'
-                    },
-                    '&.Mui-checked': {
-                      color: '#5d3889'
-                    }
-                  }}
-                />
-              }
-              label="Hide full events"
-              className="topbar-hide-own"
-              title={hideFullPreferenceError || undefined}
-            />
-            {totalResults > LIST_PAGE_SIZE ? (
-              <div className="top-pagination">
-                <Pagination
-                  count={totalPages}
-                  page={currentPage}
-                  size="small"
-                  shape="rounded"
-                  onChange={handlePageChange}
-                  renderItem={(item) => <PaginationItem disableRipple {...item} />}
-                  sx={paginationSx}
-                />
-              </div>
-            ) : null}
-          </div>
-
-          <button
-            className="add-btn"
-            type="button"
-            aria-label="Create pin"
-            onClick={handleCreatePin}
-            disabled={isOffline}
-            title={isOffline ? 'Reconnect to create a pin' : undefined}
-          >
-            <img src={addIcon} alt="Add" />
-          </button>
-        </div>
+        <ListTopbar
+          hasActiveFilters={hasActiveFilters}
+          filtersDialogOpen={filtersDialogOpen}
+          onOpenFilters={handleOpenFilters}
+          sortByExpiration={sortByExpiration}
+          onToggleSort={handleSortToggle}
+          hideOwnPins={hideOwnPins}
+          onToggleHideOwnPins={handleToggleHideOwnPins}
+          hideFullEvents={hideFullEvents}
+          onToggleHideFullEvents={handleHideFullEventsToggle}
+          isSavingHideFullPreference={isSavingHideFullPreference}
+          hideFullPreferenceError={hideFullPreferenceError}
+          totalResults={totalResults}
+          totalPages={totalPages}
+          currentPage={currentPage}
+          onPageChange={handlePageChange}
+          pageSize={LIST_PAGE_SIZE}
+          paginationSx={paginationSx}
+          onCreatePin={handleCreatePin}
+          isOffline={isOffline}
+        />
 
         {hideFullPreferenceError ? (
           <p className="topbar-pref-error" role="status">
@@ -764,40 +570,19 @@ export default function ListPage() {
           </p>
         ) : null}
 
-        {activeFilterChips.length > 0 ? (
-          <div className="filter-chip-row">
-            {activeFilterChips.map((chip) => (
-              <Chip
-                key={chip.key}
-                label={chip.label}
-                size="small"
-                color="primary"
-                variant="outlined"
-                onDelete={chip.onDelete}
-              />
-            ))}
-            <button type="button" className="clear-filters-link" onClick={handleClearAllFilters}>
-              Clear all
-            </button>
-          </div>
-        ) : null}
+        <ListFilterChips chips={activeFilterChips} onClearAll={handleClearAllFilters} />
 
         {loading && <p>Loading...</p>}
-        {locationMessage && !loading && (
-          <div className="location-notice">
-            <p>{locationMessage}</p>
-            {locationRequired && !sharedLocation ? (
-              <button type="button" className="retry-location-button" onClick={handleRequestLocation}>
-                {t('location.retryButton')}
-              </button>
-            ) : null}
-            {locationRequestError ? (
-              <p role="status" className="location-notice-error">
-                {locationRequestError}
-              </p>
-            ) : null}
-          </div>
-        )}
+        {locationMessage && !loading ? (
+          <ListLocationNotice
+            message={locationMessage}
+            locationRequired={locationRequired}
+            hasLocation={Boolean(sharedLocation)}
+            onRequestLocation={handleRequestLocation}
+            retryLabel={t('location.retryButton')}
+            errorMessage={locationRequestError}
+          />
+        ) : null}
         {error && <p>Error: {error}</p>}
 
         {!loading && !error && (
@@ -810,50 +595,38 @@ export default function ListPage() {
               onSelectAuthor={handleFeedAuthorSelect}
               cardProps={feedCardProps}
             />
-            {process.env.NODE_ENV !== 'test' && (
-              // eslint-disable-next-line no-console
-              console.log('[list-feed] render', {
-                items: paginatedFeedItems.length,
-                page: currentPage,
-                lazyLoadAttendees: true
-              })
-            )}
-            {totalResults > 0 ? (
-              <div className="list-pagination">
-                <span className="list-pagination__summary">
-                  Showing {startItemNumber}–{endItemNumber} of {totalResults} pins
-                </span>
-                {totalResults > LIST_PAGE_SIZE ? (
-                <Pagination
-                  count={totalPages}
-                  page={currentPage}
-                  color="primary"
-                  shape="rounded"
-                  onChange={handlePageChange}
-                  renderItem={(item) => <PaginationItem disableRipple {...item} />}
-                  sx={paginationSx}
-                />
-              ) : null}
-            </div>
-            ) : null}
+            <ListPaginationFooter
+              totalResults={totalResults}
+              startItemNumber={startItemNumber}
+              endItemNumber={endItemNumber}
+              totalPages={totalPages}
+              currentPage={currentPage}
+              onPageChange={handlePageChange}
+              paginationSx={paginationSx}
+              pageSize={LIST_PAGE_SIZE}
+            />
           </>
         )}
 
-        <ListFiltersOverlay
-          open={filtersDialogOpen}
-          onClose={handleCloseFilters}
-          onApply={handleApplyFilters}
-          onClear={handleClearFilters}
-          defaultFilters={defaultFilters}
-          initialFilters={filters}
-          categories={categoryOptions}
-          loadingCategories={isLoadingCategories}
-          onRefreshCategories={refreshCategories}
-          categoryError={categoriesError}
-        />
+        <Suspense fallback={null}>
+          <ListFiltersOverlay
+            open={filtersDialogOpen}
+            onClose={handleCloseFilters}
+            onApply={handleApplyFilters}
+            onClear={handleClearFilters}
+            defaultFilters={defaultFilters}
+            initialFilters={filters}
+            categories={categoryOptions}
+            loadingCategories={isLoadingCategories}
+            onRefreshCategories={refreshCategories}
+            categoryError={categoriesError}
+          />
+        </Suspense>
 
         <Navbar />
       </div>
     </div>
   );
 }
+
+export default memo(ListPage);

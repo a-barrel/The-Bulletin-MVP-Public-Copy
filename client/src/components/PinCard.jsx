@@ -16,7 +16,7 @@ import PinTagIcon from "../assets/Event_Pin.svg";
 import DiscussionTagIcon from "../assets/chat-filled.svg";
 import CommentsIcon from "../assets/Comments.png";
 import InterestedIcon from "../assets/AttendanceIcon.png";
-import { createPinBookmark, deletePinBookmark } from "../api/mongoDataApi";
+import { createPinBookmark, deletePinBookmark } from "../api";
 import BookmarkButton from "./BookmarkButton";
 import resolveAssetUrl, { resolveThumbnailUrl } from "../utils/media";
 import toIdString from "../utils/ids";

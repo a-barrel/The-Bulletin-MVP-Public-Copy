@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { signOut } from 'firebase/auth';
 
 import { auth } from '../firebase';
-import { revokeCurrentSession } from '../api/mongoDataApi';
+import { revokeCurrentSession } from '../api';
 
 export default function useLogoutEffect({ onSuccess, onError }) {
   const [error, setError] = useState(null);

@@ -15,7 +15,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import DoneIcon from '@mui/icons-material/Done';
 import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb';
 
-import { resolveContentReport } from '../api/mongoDataApi';
+import { resolveContentReport } from '../api';
 import runtimeConfig from '../config/runtime';
 import useModerationOverview from '../hooks/useModerationOverview';
 import useContentReports from '../hooks/useContentReports';

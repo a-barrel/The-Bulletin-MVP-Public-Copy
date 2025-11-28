@@ -1,6 +1,6 @@
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { useCallback, useEffect, useState } from 'react';
-import { fetchBookmarks, fetchBookmarkCollections } from '../api/mongoDataApi';
+import { fetchBookmarks, fetchBookmarkCollections } from '../api';
 import { auth } from '../firebase';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
 

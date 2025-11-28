@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchCurrentUserProfile, fetchUserProfile } from '../../api/mongoDataApi';
+import { fetchCurrentUserProfile, fetchUserProfile } from '../../api';
 import reportClientError from '../../utils/reportClientError';
+import { useUserCache } from '../../contexts/UserCacheContext';
 
 export default function useProfileViewerData({ userIdParam, locationState = {}, isOffline }) {
+  const userCache = useUserCache();
   const normalizedUserId = typeof userIdParam === 'string' ? userIdParam.trim() : '';
   const shouldLoadCurrentUser =
     normalizedUserId.length === 0 || normalizedUserId === 'me' || normalizedUserId === ':userId';
@@ -25,11 +27,22 @@ export default function useProfileViewerData({ userIdParam, locationState = {}, 
       };
     }
 
+    const cachedMe = userCache.getMe();
+    if (cachedMe) {
+      setViewerProfile(cachedMe);
+      return () => {
+        ignore = true;
+      };
+    }
+
     async function loadViewerProfile() {
       try {
         const profile = await fetchCurrentUserProfile();
         if (!ignore) {
           setViewerProfile(profile ?? null);
+          if (profile) {
+            userCache.setMe(profile);
+          }
         }
       } catch (error) {
         if (!ignore) {
@@ -72,6 +85,20 @@ export default function useProfileViewerData({ userIdParam, locationState = {}, 
     setIsFetchingProfile(true);
     setFetchError(null);
 
+    const cachedUser = shouldLoadCurrentUser
+      ? userCache.getMe()
+      : targetUserId
+        ? userCache.getUser(targetUserId)
+        : null;
+    if (cachedUser) {
+      setFetchedUser(cachedUser);
+      setIsFetchingProfile(false);
+      setFetchError(null);
+      return () => {
+        ignore = true;
+      };
+    }
+
     async function loadProfile() {
       try {
         const profile = shouldLoadCurrentUser
@@ -81,6 +108,13 @@ export default function useProfileViewerData({ userIdParam, locationState = {}, 
           return;
         }
         setFetchedUser(profile ?? null);
+        if (profile) {
+          if (shouldLoadCurrentUser) {
+            userCache.setMe(profile);
+          } else {
+            userCache.upsertUser(profile);
+          }
+        }
       } catch (error) {
         if (ignore) {
           return;

@@ -10,7 +10,7 @@ import {
   fetchChatRooms,
   fetchCurrentUserProfile,
   insertLocationUpdate
-} from '../../../api/mongoDataApi';
+} from '../../../api';
 import { auth } from '../../../firebase';
 import {
   DEFAULT_AVATAR_PATH,
@@ -24,13 +24,18 @@ import {
   evaluateRoomAccess,
   mongooseObjectIdLike,
   normalizeRoomName,
+  resolveActiveRoomForLocation,
   resolveMediaUrl,
   toIdString
 } from '../utils';
 import reportClientError from '../../../utils/reportClientError';
+import { useUserCache } from '../../../contexts/UserCacheContext';
+import { useChatRoomCache } from '../../../contexts/ChatRoomCacheContext';
 
 const useLiveChatSimulationTools = () => {
   const [currentUser] = useAuthState(auth);
+  const userCache = useUserCache();
+  const chatRoomCache = useChatRoomCache();
   const [currentProfile, setCurrentProfile] = useState(null);
   const [roomsByKey, setRoomsByKey] = useState({});
   const [selectedRoomKey, setSelectedRoomKey] = useState(LIVE_CHAT_ROOM_PRESETS[0].key);
@@ -178,8 +183,12 @@ const useLiveChatSimulationTools = () => {
       return;
     }
     try {
-      const profile = await fetchCurrentUserProfile();
+      const cached = userCache.getMe();
+      const profile = cached ?? (await fetchCurrentUserProfile());
       setCurrentProfile(profile);
+      if (!cached && profile) {
+        userCache.setMe(profile);
+      }
     } catch (error) {
       reportClientError(error, 'Failed to load current user profile:', {
         source: 'useLiveChatSimulation.loadProfile'
@@ -265,11 +274,19 @@ const useLiveChatSimulationTools = () => {
 
       setIsEnsuringRooms(true);
       try {
-        let rooms = await fetchChatRooms({
-          latitude: Number.isFinite(latitude) ? latitude : undefined,
-          longitude: Number.isFinite(longitude) ? longitude : undefined
-        });
-        rooms = dedupeChatRooms(rooms);
+        const cached = chatRoomCache.getRooms();
+        const cachedFresh = cached ? Date.now() - cached.ts < 60_000 : false;
+        let rooms = null;
+        if (cached && cachedFresh && cached.roomsByKey) {
+          rooms = Object.values(cached.roomsByKey);
+          setRoomsByKey(cached.roomsByKey);
+        } else {
+          rooms = await fetchChatRooms({
+            latitude: Number.isFinite(latitude) ? latitude : undefined,
+            longitude: Number.isFinite(longitude) ? longitude : undefined
+          });
+          rooms = dedupeChatRooms(rooms);
+        }
         const remainingRooms = Array.isArray(rooms) ? [...rooms] : [];
         const nextRoomsByKey = {};
 
@@ -319,6 +336,7 @@ const useLiveChatSimulationTools = () => {
           nextRoomsByKey[preset.key] = normalizedRoom;
         }
 
+        chatRoomCache.setRooms(undefined, { roomsByKey: nextRoomsByKey, ts: Date.now() });
         setRoomsByKey(nextRoomsByKey);
 
         const resolveNextKey = () => {
@@ -364,7 +382,15 @@ const useLiveChatSimulationTools = () => {
         setIsEnsuringRooms(false);
       }
     },
-    [currentProfile, currentProfileId, currentUser, effectiveLatitude, effectiveLongitude, lastSpoofedLocation]
+    [
+      chatRoomCache,
+      currentProfile,
+      currentProfileId,
+      currentUser,
+      effectiveLatitude,
+      effectiveLongitude,
+      lastSpoofedLocation
+    ]
   );
 
   useEffect(() => {
