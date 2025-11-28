@@ -64,6 +64,10 @@ import normalizeObjectId from '../utils/normalizeObjectId';
 import usePinCheckIn from '../hooks/usePinCheckIn';
 import './ChatPage.css';
 
+const MAX_RENDERED_MESSAGES = 100;
+const ROOM_LOAD_MORE_STEP = 50;
+const DM_LOAD_MORE_STEP = 50;
+
 export const pageConfig = {
   id: 'chat',
   label: 'Chat',
@@ -246,6 +250,14 @@ function ChatPage() {
     ? directThreadDetail.messages.length
     : 0;
 
+  const handleDirectMessageChange = useCallback((event) => {
+    setDmMessageDraft(event.target.value);
+  }, []);
+
+  const handleRoomMessageChange = useCallback((event) => {
+    setMessageDraft(event.target.value);
+  }, []);
+
   const shareableBookmarks = useMemo(
     () => (Array.isArray(bookmarks) ? bookmarks : []),
     [bookmarks]
@@ -306,6 +318,7 @@ function ChatPage() {
     setAttachmentStatus: setDmAttachmentStatus,
     focusComposerInput: () => focusComposer(dmComposerInputRef)
   });
+
 
 
   useEffect(() => {
@@ -1047,6 +1060,14 @@ function ChatPage() {
     setShareModalContext(null);
   }, []);
 
+  const handleShareDirect = useCallback(() => {
+    handleOpenSharePin('direct');
+  }, [handleOpenSharePin]);
+
+  const handleShareRoom = useCallback(() => {
+    handleOpenSharePin('room');
+  }, [handleOpenSharePin]);
+
   const handleSharePinSelect = useCallback(
     async (pin) => {
       if (!pin) {
@@ -1297,6 +1318,37 @@ function ChatPage() {
     });
   }, [directThreadDetail]);
 
+  const [roomLoadCount, setRoomLoadCount] = useState(MAX_RENDERED_MESSAGES);
+  const [dmLoadCount, setDmLoadCount] = useState(MAX_RENDERED_MESSAGES);
+
+  const handleLoadMoreRoomMessages = useCallback(() => {
+    setRoomLoadCount((prev) => prev + ROOM_LOAD_MORE_STEP);
+  }, []);
+
+  const handleLoadMoreDirectMessages = useCallback(() => {
+    setDmLoadCount((prev) => prev + DM_LOAD_MORE_STEP);
+  }, []);
+
+  const displayedRoomMessages = useMemo(() => {
+    if (!Array.isArray(uniqueMessages)) {
+      return [];
+    }
+    if (uniqueMessages.length <= roomLoadCount) {
+      return uniqueMessages;
+    }
+    return uniqueMessages.slice(uniqueMessages.length - roomLoadCount);
+  }, [roomLoadCount, uniqueMessages]);
+
+  const displayedDirectMessages = useMemo(() => {
+    if (!Array.isArray(directMessageItems)) {
+      return [];
+    }
+    if (directMessageItems.length <= dmLoadCount) {
+      return directMessageItems;
+    }
+    return directMessageItems.slice(directMessageItems.length - dmLoadCount);
+  }, [directMessageItems, dmLoadCount]);
+
   const handleOpenReportForRoomMessage = useCallback(
     (message) => {
       const messageId = getMessageIdForReport(message);
@@ -1523,27 +1575,46 @@ function ChatPage() {
 
   const disableMessageAction = directMessagesHasAccess === false || isCreatingDirectThread;
 
-  const friendPanelProps = {
-    friends,
-    filteredFriends,
-    searchQuery: friendSearchQuery,
-    onSearchChange: setFriendSearchQuery,
-    isLoading: isLoadingFriends,
-    friendStatus,
-    hasAccess: friendHasAccess,
-    notificationsLabel: friendNotificationsLabel,
-    requestBadge: friendRequestBadge,
-    onOpenFriendRequests: handleOpenFriendDialog,
-    onMessageFriend: handleMessageFriend,
-    onRemoveFriend: handleUnfriend,
-    onReportFriend: handleReportFriend,
-    disableMessageAction,
-    disableFriendActions: isProcessingFriendAction
-  };
+  const friendPanelProps = useMemo(
+    () => ({
+      friends,
+      filteredFriends,
+      searchQuery: friendSearchQuery,
+      onSearchChange: setFriendSearchQuery,
+      isLoading: isLoadingFriends,
+      friendStatus,
+      hasAccess: friendHasAccess,
+      notificationsLabel: friendNotificationsLabel,
+      requestBadge: friendRequestBadge,
+      onOpenFriendRequests: handleOpenFriendDialog,
+      onMessageFriend: handleMessageFriend,
+      onRemoveFriend: handleUnfriend,
+      onReportFriend: handleReportFriend,
+      disableMessageAction,
+      disableFriendActions: isProcessingFriendAction
+    }),
+    [
+      disableMessageAction,
+      filteredFriends,
+      friendHasAccess,
+      friendNotificationsLabel,
+      friendRequestBadge,
+      friendSearchQuery,
+      friendStatus,
+      friends,
+      handleMessageFriend,
+      handleOpenFriendDialog,
+      handleReportFriend,
+      handleUnfriend,
+      isLoadingFriends,
+      isProcessingFriendAction,
+      setFriendSearchQuery
+    ]
+  );
 
   const roomMessageBubbles = useMemo(
     () =>
-      uniqueMessages.map((message, index) => (
+      displayedRoomMessages.map((message, index) => (
         <MessageBubble
           key={getMessageKey(message, index)}
           msg={
@@ -1558,12 +1629,19 @@ function ChatPage() {
           onReport={handleOpenReportForRoomMessage}
         />
       )),
-    [authUser, canModerateMessages, getMessageKey, handleOpenModerationForMessage, handleOpenReportForRoomMessage, uniqueMessages]
+    [
+      authUser,
+      canModerateMessages,
+      displayedRoomMessages,
+      getMessageKey,
+      handleOpenModerationForMessage,
+      handleOpenReportForRoomMessage
+    ]
   );
 
   const directMessageBubbles = useMemo(
     () =>
-      directMessageItems.map((message, index) => (
+      displayedDirectMessages.map((message, index) => (
         <MessageBubble
           key={getMessageKey(message, index)}
           msg={
@@ -1577,9 +1655,8 @@ function ChatPage() {
           onReport={handleOpenReportForDirectMessage}
         />
       )),
-    [authUser, directMessageItems, directViewerId, getMessageKey, handleOpenReportForDirectMessage]
+    [authUser, displayedDirectMessages, directViewerId, getMessageKey, handleOpenReportForDirectMessage]
   );
-
 
   const renderRoomMessagesMobile = () => {
     if (!selectedRoom) {
@@ -1646,6 +1723,18 @@ function ChatPage() {
     return (
       <>
         {roomMessageBubbles}
+        {uniqueMessages.length > displayedRoomMessages.length ? (
+          <Box className="chat-load-more">
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleLoadMoreRoomMessages}
+              disableRipple
+            >
+              Load older messages
+            </Button>
+          </Box>
+        ) : null}
       </>
     );
   };
@@ -1746,15 +1835,58 @@ function ChatPage() {
     return (
       <>
         {directMessageBubbles}
+        {directMessageItems.length > displayedDirectMessages.length ? (
+          <Box className="chat-load-more">
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleLoadMoreDirectMessages}
+              disableRipple
+            >
+              Load older messages
+            </Button>
+          </Box>
+        ) : null}
       </>
     );
   };
 
-  const renderFriendsList = ({ variant }) => (
-    <FriendsListPanel
-      {...friendPanelProps}
-      onBack={variant === 'dialog' ? () => setIsChannelDialogOpen(false) : handleActivateFriendsView}
-    />
+  const handleFriendListBackDialog = useCallback(() => {
+    setIsChannelDialogOpen(false);
+  }, []);
+
+  const renderFriendsList = useCallback(
+    ({ variant }) => (
+      <FriendsListPanel
+        {...friendPanelProps}
+        onBack={variant === 'dialog' ? handleFriendListBackDialog : handleActivateFriendsView}
+      />
+    ),
+    [friendPanelProps, handleActivateFriendsView, handleFriendListBackDialog]
+  );
+
+  const roomsTabLabel = useMemo(
+    () => (
+      <Box className="channel-switch-tab-container">
+        <span className="channel-switch-tab-title">Rooms</span>
+        {rooms.length > 0 && (
+          <Typography className="channel-switch-tab-badge">{rooms.length}</Typography>
+        )}
+      </Box>
+    ),
+    [rooms.length]
+  );
+
+  const directTabLabel = useMemo(
+    () => (
+      <Box className="channel-switch-tab-container">
+        <span className="channel-switch-tab-title">Messages</span>
+        {dmThreads.length > 0 && (
+          <Typography className="channel-switch-tab-badge">{dmThreads.length}</Typography>
+        )}
+      </Box>
+    ),
+    [dmThreads.length]
   );
 
   return (
@@ -1801,6 +1933,7 @@ function ChatPage() {
                     size="small"
                     onClick={() => toggleCheckIn(!checkIn.viewerCheckedIn)}
                     disabled={!checkIn.canCheckIn || isLoadingCheckIn || isOffline}
+                    disableRipple
                   >
                     {checkIn.viewerCheckedIn ? 'Checked in' : 'Check in'}
                   </Button>
@@ -1825,7 +1958,7 @@ function ChatPage() {
               variant="modern"
               message={dmMessageDraft}
               placeholder="Send a message"
-              onMessageChange={(event) => setDmMessageDraft(event.target.value)}
+              onMessageChange={handleDirectMessageChange}
               onKeyDown={handleDirectMessageKeyDown}
               onSend={handleSendDirectMessage}
               disabled={
@@ -1846,7 +1979,7 @@ function ChatPage() {
               containerClassName="chat-input-container"
               onAddAttachment={handleOpenDmAttachmentPicker}
               addAttachmentTooltip="Upload image or GIF"
-              onSharePin={() => handleOpenSharePin('direct')}
+              onSharePin={handleShareDirect}
               inputRef={dmComposerInputRef}
               gifPreview={dmComposerGifPreview}
               gifPreviewError={dmGifPreviewError}
@@ -1867,7 +2000,7 @@ function ChatPage() {
               variant="modern"
               message={messageDraft}
               placeholder="Send a message"
-              onMessageChange={(event) => setMessageDraft(event.target.value)}
+              onMessageChange={handleRoomMessageChange}
               onKeyDown={handleRoomMessageKeyDown}
               onSend={handleRoomSendMessage}
               disabled={!authUser || isSendingMessage || isUploadingRoomAttachment}
@@ -1882,7 +2015,7 @@ function ChatPage() {
               containerClassName="chat-input-container"
               onAddAttachment={handleOpenRoomAttachmentPicker}
               addAttachmentTooltip="Upload image or GIF"
-              onSharePin={() => handleOpenSharePin('room')}
+              onSharePin={handleShareRoom}
               inputRef={roomComposerInputRef}
               gifPreview={composerGifPreview}
               gifPreviewError={gifPreviewError}
@@ -2030,6 +2163,7 @@ function ChatPage() {
           <Button 
               className="close-channel-switch-btn"
               onClick={() => setIsChannelDialogOpen(false)}
+              disableRipple
             >
               <CloseIcon
                 className="close-channel-switch-icon"
@@ -2052,45 +2186,21 @@ function ChatPage() {
             <Tab
               className="channel-switch-rooms-tab"
               value="rooms"
+              disableRipple
               icon={<GroupIcon fontSize="small" />}
               iconPosition="start"
-              label={
-                <Box className="channel-switch-tab-container">                
-                  <span className="channel-switch-tab-title">
-                    Rooms 
-                  </span>
-                  {rooms.length > 0 && (
-                    <Typography
-                      className="channel-switch-tab-badge"
-                    >
-                      {rooms.length}
-                    </Typography>
-                  )}
-                </Box>
-              }
+              label={roomsTabLabel}
             >
             </Tab>
               
             <Tab
               className="channel-switch-dm-tab"
               value="direct"
+              disableRipple
               icon={<MarkUnreadChatAltIcon fontSize="small" />}
               iconPosition="start"
               disabled={directMessagesHasAccess === false}
-              label={
-                <Box className="channel-switch-tab-container">
-                  <span className="channel-switch-tab-title">
-                    Messages
-                  </span>
-                  {dmThreads.length > 0 && (
-                    <Typography
-                      className="channel-switch-tab-badge"
-                    >
-                      {dmThreads.length}
-                    </Typography>
-                  )}
-                </Box>
-              }
+              label={directTabLabel}
             />
             {/* Removed friends tab, since handling of it is now on the friends page
             <Tab

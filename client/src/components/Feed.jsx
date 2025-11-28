@@ -33,11 +33,12 @@ function Feed({ items, onSelectItem, onSelectAuthor, cardProps }) {
 const areFeedPropsEqual = (prevProps, nextProps) =>
   prevProps.items === nextProps.items &&
   prevProps.onSelectItem === nextProps.onSelectItem &&
-  prevProps.onSelectAuthor === nextProps.onSelectAuthor;
+  prevProps.onSelectAuthor === nextProps.onSelectAuthor &&
+  prevProps.cardProps === nextProps.cardProps;
+
+Feed.displayName = 'Feed';
 
 export default memo(Feed, areFeedPropsEqual);
-
-
 
 
 

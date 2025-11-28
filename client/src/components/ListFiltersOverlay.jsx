@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import './ListFiltersOverlay.css';
 import PropTypes from 'prop-types';
 import {
@@ -150,7 +150,7 @@ export default function ListFiltersOverlay({
     return options;
   }, [categories, localFilters.categories]);
 
-  const handleToggleType = (value) => {
+  const handleToggleType = useCallback((value) => {
     setLocalFilters((prev) => {
       const types = new Set(prev.types);
       if (types.has(value)) {
@@ -163,9 +163,9 @@ export default function ListFiltersOverlay({
         types: Array.from(types)
       };
     });
-  };
+  }, []);
 
-  const handleToggleFriendEngagement = (value) => {
+  const handleToggleFriendEngagement = useCallback((value) => {
     if (!FRIEND_ENGAGEMENT_VALUE_SET.has(value)) {
       return;
     }
@@ -181,9 +181,9 @@ export default function ListFiltersOverlay({
         friendEngagements: Array.from(current)
       };
     });
-  };
+  }, []);
 
-  const handleToggleCategory = (category) => {
+  const handleToggleCategory = useCallback((category) => {
     setLocalFilters((prev) => {
       const categories = new Set(prev.categories);
       if (categories.has(category)) {
@@ -196,9 +196,9 @@ export default function ListFiltersOverlay({
         categories: Array.from(categories)
       };
     });
-  };
+  }, []);
 
-  const handleAddCategory = () => {
+  const handleAddCategory = useCallback(() => {
     const trimmed = newCategory.trim();
     if (!trimmed) {
       return;
@@ -208,51 +208,58 @@ export default function ListFiltersOverlay({
       categories: uniqueMerge(prev.categories, [trimmed])
     }));
     setNewCategory('');
-  };
+  }, [newCategory]);
 
-  const handleEnterCategory = (event) => {
+  const handleEnterCategory = useCallback((event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
       handleAddCategory();
     }
-  };
+  }, [handleAddCategory]);
 
-  const handlePopularSortChange = (event) => {
+  const handlePopularSortChange = useCallback((event) => {
     const value = event.target.value || null;
     setLocalFilters((prev) => ({
       ...prev,
       popularSort: value === 'replies' || value === 'attending' ? value : null
     }));
-  };
+  }, []);
 
-  const handleStatusChange = (event) => {
+  const handleStatusChange = useCallback((event) => {
     setLocalFilters((prev) => ({
       ...prev,
       status: event.target.value
     }));
-  };
+  }, []);
 
-  const handleDateChange = (key) => (event) => {
-    setLocalFilters((prev) => ({
-      ...prev,
-      [key]: event.target.value
-    }));
-  };
+  const handleDateChange = useCallback(
+    (key) => (event) => {
+      setLocalFilters((prev) => ({
+        ...prev,
+        [key]: event.target.value
+      }));
+    },
+    []
+  );
 
-  const handleSearchChange = (event) => {
+  const handleSearchChange = useCallback((event) => {
     setLocalFilters((prev) => ({
       ...prev,
       search: event.target.value
     }));
-  };
+  }, []);
 
-  const handleClearLocal = () => {
+  const handleNewCategoryChange = useCallback((event) => {
+    setNewCategory(event.target.value);
+  }, []);
+
+  const handleClearLocal = useCallback(() => {
     setLocalFilters(normalizeFilters(defaultFilters, defaultFilters));
     setNewCategory('');
     onClear?.();
-  };
+  }, [defaultFilters, onClear]);
 
-  const handleApply = () => {
+  const handleApply = useCallback(() => {
     const normalized = normalizeFilters(localFilters, defaultFilters);
     const { popularSort, ...rest } = normalized;
     const payload = {
@@ -266,13 +273,13 @@ export default function ListFiltersOverlay({
       ...payload
     });
     onClose();
-  };
+  }, [defaultFilters, localFilters, onApply, onClose]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setLocalFilters(normalizeFilters(initialFilters, defaultFilters));
     setNewCategory('');
     onClose();
-  };
+  }, [defaultFilters, initialFilters, onClose]);
 
   return (
     <Dialog
@@ -402,7 +409,7 @@ export default function ListFiltersOverlay({
               <TextField
                 label={t('bookmarks.filters.addCategoryLabel')}
                 value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
+                onChange={handleNewCategoryChange}
                 onKeyDown={handleEnterCategory}
                 size="small"
                 placeholder={t('bookmarks.filters.addCategoryPlaceholder')}

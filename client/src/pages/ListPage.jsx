@@ -14,6 +14,7 @@ import Chip from '@mui/material/Chip';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 import Pagination from '@mui/material/Pagination';
+import PaginationItem from '@mui/material/PaginationItem';
 import PlaceIcon from '@mui/icons-material/Place';
 import { useUpdates } from '../contexts/UpdatesContext';
 import { routes } from '../routes';
@@ -30,6 +31,7 @@ import { useTranslation } from 'react-i18next';
 import runtimeConfig from '../config/runtime';
 import { viewerHasDeveloperAccess } from '../utils/roles';
 import { enableListPerfLogs, logListPerf } from '../utils/listPerfLogger';
+import { resolvePinFetchLimit } from '../utils/pinDensity';
 
 export const pageConfig = {
   id: 'list',
@@ -122,6 +124,7 @@ export default function ListPage() {
   } = useNearbyPinsFeed({
     sharedLocation,
     isOffline,
+    limit: resolvePinFetchLimit(viewerProfile),
     filters,
     hideFullEvents,
     requireLocation: locationRequired,
@@ -218,6 +221,10 @@ export default function ListPage() {
 
   const handleCloseFilters = useCallback(() => {
     setFiltersDialogOpen(false);
+  }, []);
+
+  const handlePageChange = useCallback((_, page) => {
+    setCurrentPage(page);
   }, []);
 
   const handleApplyFilters = useCallback(
@@ -588,6 +595,13 @@ export default function ListPage() {
     error
   ]);
 
+  const feedCardProps = useMemo(
+    () => ({
+      lazyLoadAttendees: true
+    }),
+    []
+  );
+
   const notificationsLabel =
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
   const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
@@ -640,6 +654,7 @@ export default function ListPage() {
                   color="secondary"
                   checked={hideOwnPins}
                   onChange={(event) => setHideOwnPins(event.target.checked)}
+                  disableRipple
                   sx={{
                     color: '#666',
                     '& .MuiSvgIcon-root': {
@@ -664,6 +679,7 @@ export default function ListPage() {
                   checked={hideFullEvents}
                   onChange={handleHideFullEventsToggle}
                   disabled={isSavingHideFullPreference}
+                  disableRipple
                   sx={{
                     color: '#666',
                     '& .MuiSvgIcon-root': {
@@ -688,7 +704,8 @@ export default function ListPage() {
                   page={currentPage}
                   size="small"
                   shape="rounded"
-                  onChange={(_, page) => setCurrentPage(page)}
+                  onChange={handlePageChange}
+                  renderItem={(item) => <PaginationItem disableRipple {...item} />}
                   sx={paginationSx}
                 />
               </div>
@@ -756,24 +773,33 @@ export default function ListPage() {
               isUsingFallbackLocation={isUsingFallbackLocation}
               onSelectItem={handleFeedItemSelect}
               onSelectAuthor={handleFeedAuthorSelect}
-              cardProps={{ lazyLoadAttendees: true }}
+              cardProps={feedCardProps}
             />
+            {process.env.NODE_ENV !== 'test' && (
+              // eslint-disable-next-line no-console
+              console.log('[list-feed] render', {
+                items: paginatedFeedItems.length,
+                page: currentPage,
+                lazyLoadAttendees: true
+              })
+            )}
             {totalResults > 0 ? (
               <div className="list-pagination">
                 <span className="list-pagination__summary">
                   Showing {startItemNumber}–{endItemNumber} of {totalResults} pins
                 </span>
                 {totalResults > LIST_PAGE_SIZE ? (
-                  <Pagination
-                    count={totalPages}
-                    page={currentPage}
-                    color="primary"
-                    shape="rounded"
-                    onChange={(_, page) => setCurrentPage(page)}
-                    sx={paginationSx}
-                  />
-                ) : null}
-              </div>
+                <Pagination
+                  count={totalPages}
+                  page={currentPage}
+                  color="primary"
+                  shape="rounded"
+                  onChange={handlePageChange}
+                  renderItem={(item) => <PaginationItem disableRipple {...item} />}
+                  sx={paginationSx}
+                />
+              ) : null}
+            </div>
             ) : null}
           </>
         )}

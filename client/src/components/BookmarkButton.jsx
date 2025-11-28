@@ -23,6 +23,7 @@ function BookmarkButton({
   variant = 'default',
   stopPropagation = false,
   type = 'button',
+  disableRipple = false,
   ...rest
 }) {
   const ownerLocked = autoLockOwner && ownsPin;
@@ -85,6 +86,7 @@ function BookmarkButton({
       title={computedLabel}
       disabled={isDisabled}
       onClick={handleClick}
+      data-disable-ripple={disableRipple ? 'true' : undefined}
       {...rest}
     >
       {displayBookmarked ? (
@@ -98,4 +100,6 @@ function BookmarkButton({
   );
 }
 
-export default BookmarkButton;
+BookmarkButton.displayName = 'BookmarkButton';
+
+export default React.memo(BookmarkButton);

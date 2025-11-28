@@ -34,6 +34,14 @@ export default function usePinAttendees({
       setAttendees([]);
       return;
     }
+    // Trace attendee fetch behavior to verify lazy loading on list feed.
+    // Logs are intentionally verbose for performance investigation.
+    // eslint-disable-next-line no-console
+    console.log('[attendees] fetch start', {
+      pinId: normalizedPinId,
+      expectedCount: participantCount ?? null,
+      signature: attendeeSignature || null
+    });
 
     const expectedCount = Number.isFinite(participantCount) ? participantCount : null;
     const expectedSignature = attendeeSignature || null;
@@ -89,6 +97,12 @@ export default function usePinAttendees({
 
         if (!cancelled) {
           setAttendees(mapped);
+          // eslint-disable-next-line no-console
+          console.log('[attendees] fetch success', {
+            pinId: normalizedPinId,
+            count: mapped.length,
+            signature
+          });
           setError(null);
         }
       })
@@ -106,6 +120,11 @@ export default function usePinAttendees({
         if (!cancelled) {
           setAttendees([]);
           setError(fetchError?.message || 'Failed to load attendees.');
+          // eslint-disable-next-line no-console
+          console.log('[attendees] fetch error', {
+            pinId: normalizedPinId,
+            error: fetchError?.message || 'unknown error'
+          });
         }
       })
       .finally(() => {

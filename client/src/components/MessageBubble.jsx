@@ -1,3 +1,4 @@
+import React, { memo } from 'react';
 import { Box, Typography, IconButton, Tooltip, Button } from '@mui/material';
 import { NavLink, Link } from 'react-router-dom';
 import AvatarIcon from '../assets/AvatarIcon.svg';
@@ -345,4 +346,15 @@ function MessageBubble({ msg, isSelf, authUser, canModerate = false, onModerate,
   );
 }
 
-export default MessageBubble;
+const arePropsEqual = (prev, next) => {
+  const sameMsg = prev.msg === next.msg;
+  const sameSelf = prev.isSelf === next.isSelf;
+  const prevAuthId = prev.authUser?.uid || prev.authUser?._id || null;
+  const nextAuthId = next.authUser?.uid || next.authUser?._id || null;
+  const sameAuth = prevAuthId === nextAuthId;
+  const sameModerate = prev.canModerate === next.canModerate && prev.onModerate === next.onModerate;
+  const sameReport = prev.onReport === next.onReport;
+  return sameMsg && sameSelf && sameAuth && sameModerate && sameReport;
+};
+
+export default memo(MessageBubble, arePropsEqual);
