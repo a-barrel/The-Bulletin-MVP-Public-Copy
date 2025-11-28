@@ -1,5 +1,5 @@
 /* NOTE: Page exports navigation config alongside the component. */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
@@ -25,19 +25,15 @@ import updatesIcon from '../assets/UpdateIcon.svg';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
 import Navbar from '../components/Navbar';
 import MessageBubble from '../components/MessageBubble';
-import ReportContentDialog from '../components/ReportContentDialog';
 import ChatThreadHeader from '../components/chat/ChatThreadHeader';
 import ChatRoomList from '../components/chat/ChatRoomList';
 import ChatComposerFooter from '../components/chat/ChatComposerFooter';
-import ChatModerationDialog from '../components/chat/ChatModerationDialog';
 import DirectThreadList from '../components/chat/DirectThreadList';
 import FriendsListPanel from '../components/friends/FriendsListPanel';
-import ChatSharePinModal from '../components/chat/ChatSharePinModal';
 import useBookmarksManager from '../hooks/useBookmarksManager';
 import toIdString from '../utils/ids';
 import resolveAssetUrl from '../utils/media';
 import { routes } from '../routes';
-import FriendRequestsDialog from '../components/friends/FriendRequestsDialog';
 import { useTranslation } from 'react-i18next';
 import useDirectMessages from '../hooks/useDirectMessages';
 import useAttachmentManager, {
@@ -63,6 +59,20 @@ import { getParticipantId, resolveThreadParticipants } from '../utils/chatPartic
 import normalizeObjectId from '../utils/normalizeObjectId';
 import usePinCheckIn from '../hooks/usePinCheckIn';
 import './ChatPage.css';
+import { lazy } from 'react';
+
+const ChatSharePinModal = lazy(() => import('../components/chat/ChatSharePinModal'));
+const ChatModerationDialog = lazy(() => import('../components/chat/ChatModerationDialog'));
+const ReportContentDialog = lazy(() => import('../components/ReportContentDialog'));
+const FriendRequestsDialog = lazy(() => import('../components/friends/FriendRequestsDialog'));
+
+const ChatMessagesSection = memo(function ChatMessagesSection({ containerRef, content }) {
+  return (
+    <Box ref={containerRef} className="chat-messages-field">
+      {content}
+    </Box>
+  );
+});
 
 const MAX_RENDERED_MESSAGES = 100;
 const ROOM_LOAD_MORE_STEP = 50;
@@ -1658,21 +1668,15 @@ function ChatPage() {
     [authUser, displayedDirectMessages, directViewerId, getMessageKey, handleOpenReportForDirectMessage]
   );
 
-  const renderRoomMessagesMobile = () => {
+  const renderRoomMessagesMobile = useCallback(() => {
     if (!selectedRoom) {
       return (
         <Box className="no-room-selected-container">
           <SmsIcon color="primary" sx={{ fontSize: 48 }} />
-          <Typography
-            className="no-room-selected-title" 
-            variant="h6"
-          >
+          <Typography className="no-room-selected-title" variant="h6">
             Choose a chat room to start talking
           </Typography>
-          <Typography 
-            className="no-room-selected-body"
-            variant="body2" 
-          >
+          <Typography className="no-room-selected-body" variant="body2">
             Pick a room from the selector in the header or create a new one.
           </Typography>
         </Box>
@@ -1690,11 +1694,8 @@ function ChatPage() {
     if (isLoadingMessages && uniqueMessages.length === 0) {
       return (
         <Box className="loading-msgs-container">
-          <CircularProgress className="loading-msgs-circle"/>
-          <Typography 
-            className="loading-msgs-body"
-            variant="body2" 
-          >
+          <CircularProgress className="loading-msgs-circle" />
+          <Typography className="loading-msgs-body" variant="body2">
             Loading messages…
           </Typography>
         </Box>
@@ -1704,16 +1705,10 @@ function ChatPage() {
     if (uniqueMessages.length === 0) {
       return (
         <Box className="empty-msgs-container">
-          <Typography
-            className="empty-msgs-title" 
-            variant="h6"
-          >
+          <Typography className="empty-msgs-title" variant="h6">
             No messages yet
           </Typography>
-          <Typography 
-            className="empty-msgs-body"
-            variant="body2" 
-          >
+          <Typography className="empty-msgs-body" variant="body2">
             Start the conversation with everyone in this room.
           </Typography>
         </Box>
@@ -1725,21 +1720,24 @@ function ChatPage() {
         {roomMessageBubbles}
         {uniqueMessages.length > displayedRoomMessages.length ? (
           <Box className="chat-load-more">
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleLoadMoreRoomMessages}
-              disableRipple
-            >
+            <Button variant="outlined" size="small" onClick={handleLoadMoreRoomMessages} disableRipple>
               Load older messages
             </Button>
           </Box>
         ) : null}
       </>
     );
-  };
+  }, [
+    displayedRoomMessages.length,
+    handleLoadMoreRoomMessages,
+    isLoadingMessages,
+    messagesError,
+    roomMessageBubbles,
+    selectedRoom,
+    uniqueMessages.length
+  ]);
 
-  const renderDirectMessagesMobile = () => {
+  const renderDirectMessagesMobile = useCallback(() => {
     if (directMessagesHasAccess === false) {
       return (
         <Box className="disabled-dms-container">
@@ -1754,7 +1752,7 @@ function ChatPage() {
       if (dmThreads.length === 0 && !isLoadingDmThreads) {
         return (
           <Box className="no-dm-selected-container">
-            <Typography className="no-dm-selected-title" variant="h6" >
+            <Typography className="no-dm-selected-title" variant="h6">
               Start a new conversation
             </Typography>
 
@@ -1767,29 +1765,20 @@ function ChatPage() {
       if (isLoadingDmThreads) {
         return (
           <Box className="loading-dms-container">
-          <CircularProgress className="loading-dms-circle"/>
-          <Typography 
-            className="loading-dms-body"
-            variant="body2" 
-          >
-            Loading messages…
-          </Typography>
-        </Box>
+            <CircularProgress className="loading-dms-circle" />
+            <Typography className="loading-dms-body" variant="body2">
+              Loading messages…
+            </Typography>
+          </Box>
         );
       }
       return (
         <Box className="select-dms-container">
-          <Typography 
-            className="select-dms-title"
-            variant="h6" 
-          >
+          <Typography className="select-dms-title" variant="h6">
             Select a direct message
           </Typography>
 
-          <Typography 
-            className="select-dms-body"
-            variant="body2" 
-          >
+          <Typography className="select-dms-body" variant="body2">
             Open the channel picker above and choose a conversation.
           </Typography>
         </Box>
@@ -1807,11 +1796,8 @@ function ChatPage() {
     if (isLoadingDirectThread && directMessageItems.length === 0) {
       return (
         <Box className="loading-dms-container">
-          <CircularProgress className="loading-dms-circle"/>
-          <Typography 
-            className="loading-dms-body"
-            variant="body2" 
-          >
+          <CircularProgress className="loading-dms-circle" />
+          <Typography className="loading-dms-body" variant="body2">
             Loading messages…
           </Typography>
         </Box>
@@ -1821,7 +1807,7 @@ function ChatPage() {
     if (directMessageItems.length === 0) {
       return (
         <Box className="empty-dms-container">
-          <Typography className="empty-dms-title" variant="h6" >
+          <Typography className="empty-dms-title" variant="h6">
             Start a new conversation
           </Typography>
 
@@ -1837,19 +1823,25 @@ function ChatPage() {
         {directMessageBubbles}
         {directMessageItems.length > displayedDirectMessages.length ? (
           <Box className="chat-load-more">
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleLoadMoreDirectMessages}
-              disableRipple
-            >
+            <Button variant="outlined" size="small" onClick={handleLoadMoreDirectMessages} disableRipple>
               Load older messages
             </Button>
           </Box>
         ) : null}
       </>
     );
-  };
+  }, [
+    directMessageBubbles,
+    directMessageItems.length,
+    directMessagesHasAccess,
+    displayedDirectMessages.length,
+    dmThreads.length,
+    handleLoadMoreDirectMessages,
+    isLoadingDirectThread,
+    isLoadingDmThreads,
+    selectedDirectThreadId,
+    directThreadStatus?.message
+  ]);
 
   const handleFriendListBackDialog = useCallback(() => {
     setIsChannelDialogOpen(false);
@@ -1864,6 +1856,16 @@ function ChatPage() {
     ),
     [friendPanelProps, handleActivateFriendsView, handleFriendListBackDialog]
   );
+
+  const messagesContent = useMemo(() => {
+    if (channelTab === 'direct') {
+      return renderDirectMessagesMobile();
+    }
+    if (channelTab === 'friends') {
+      return renderFriendsList({ variant: 'page' });
+    }
+    return renderRoomMessagesMobile();
+  }, [channelTab, renderDirectMessagesMobile, renderFriendsList, renderRoomMessagesMobile]);
 
   const roomsTabLabel = useMemo(
     () => (
@@ -1891,9 +1893,7 @@ function ChatPage() {
 
   return (
     <>
-      <Box
-        className="chat-page"
-      >
+      <Box className="chat-page">
         {showScrollButton && (
           <IconButton
             className="chat-scroll-to-bottom-btn"
@@ -1945,13 +1945,7 @@ function ChatPage() {
             }
           />
 
-          <Box ref={containerRef} className="chat-messages-field">
-            {channelTab === 'direct'
-              ? renderDirectMessagesMobile()
-              : channelTab === 'friends'
-              ? renderFriendsList({ variant: 'page' })
-              : renderRoomMessagesMobile()}
-          </Box>
+          <ChatMessagesSection containerRef={containerRef} content={messagesContent} />
 
           {channelTab === 'direct' ? (
             <ChatComposerFooter
@@ -2039,35 +2033,43 @@ function ChatPage() {
             </Box>
           ) : null}
 
-          <ChatSharePinModal
-            open={Boolean(shareModalContext)}
-            bookmarks={shareableBookmarks}
-            onClose={handleCloseSharePin}
-            onSelect={handleSharePinSelect}
-          />
+          {shareModalContext ? (
+            <Suspense fallback={null}>
+              <ChatSharePinModal
+                open
+                bookmarks={shareableBookmarks}
+                onClose={handleCloseSharePin}
+                onSelect={handleSharePinSelect}
+              />
+            </Suspense>
+          ) : null}
 
-          <ReportContentDialog
-            open={reportDialogOpen}
-            onClose={handleCloseReportDialog}
-            onSubmit={handleSubmitReport}
-            reason={reportReason}
-            onReasonChange={setReportReason}
-            submitting={isSubmittingReport}
-            error={reportError}
-            contentSummary={reportTarget?.summary || ''}
-            context={reportTarget?.context || ''}
-            selectedReasons={reportSelectedOffenses}
-            onToggleReason={handleToggleReportOffense}
-          />
+          <Suspense fallback={null}>
+            <ReportContentDialog
+              open={reportDialogOpen}
+              onClose={handleCloseReportDialog}
+              onSubmit={handleSubmitReport}
+              reason={reportReason}
+              onReasonChange={setReportReason}
+              submitting={isSubmittingReport}
+              error={reportError}
+              contentSummary={reportTarget?.summary || ''}
+              context={reportTarget?.context || ''}
+              selectedReasons={reportSelectedOffenses}
+              onToggleReason={handleToggleReportOffense}
+            />
+          </Suspense>
 
-          <FriendRequestsDialog
-            open={isFriendDialogOpen}
-            onClose={handleCloseFriendDialog}
-            requests={incomingRequests}
-            actionStatus={friendActionStatus}
-            respondingRequestId={respondingRequestId}
-            onRespond={handleRespondToFriendRequest}
-          />
+          <Suspense fallback={null}>
+            <FriendRequestsDialog
+              open={isFriendDialogOpen}
+              onClose={handleCloseFriendDialog}
+              requests={incomingRequests}
+              actionStatus={friendActionStatus}
+              respondingRequestId={respondingRequestId}
+              onRespond={handleRespondToFriendRequest}
+            />
+          </Suspense>
 
           <Snackbar
             open={reportStatus}
@@ -2154,6 +2156,7 @@ function ChatPage() {
         onClose={() => setIsChannelDialogOpen(false)}
         fullWidth
         maxWidth="sm"
+        TransitionProps={{ timeout: { enter: 0, exit: 0 } }}
       >
         <Box className="channel-switch-header">
           <DialogTitle className="channel-switch-title">
@@ -2241,19 +2244,21 @@ function ChatPage() {
         </DialogContent>
       </Dialog>
 
-      <ChatModerationDialog
-        open={Boolean(moderationContext)}
-        context={moderationContext}
-        hasAccess={moderationHasAccess}
-        actionStatus={moderationActionStatus}
-        form={moderationForm}
-        onClose={handleCloseModerationDialog}
-        onSubmit={handleModerationSubmit}
-        onFieldChange={handleModerationFieldChange}
-        onSelectQuickAction={handleSelectModerationAction}
-        disableSubmit={disableModerationSubmit}
-        isSubmitting={isRecordingModerationAction}
-      />
+      <Suspense fallback={null}>
+        <ChatModerationDialog
+          open={Boolean(moderationContext)}
+          context={moderationContext}
+          hasAccess={moderationHasAccess}
+          actionStatus={moderationActionStatus}
+          form={moderationForm}
+          onClose={handleCloseModerationDialog}
+          onSubmit={handleModerationSubmit}
+          onFieldChange={handleModerationFieldChange}
+          onSelectQuickAction={handleSelectModerationAction}
+          disableSubmit={disableModerationSubmit}
+          isSubmitting={isRecordingModerationAction}
+        />
+      </Suspense>
 
       <input
         ref={roomAttachmentInputRef}

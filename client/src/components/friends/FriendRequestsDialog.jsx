@@ -33,6 +33,7 @@ function FriendRequestsDialog({
       }}
       fullWidth
       maxWidth="sm"
+      TransitionProps={{ timeout: { enter: 0, exit: 0 } }}
     >
       <DialogTitle className="friend-dialog-title">Pending Friend Requests</DialogTitle>
       <DialogContent dividers={false} className="friend-dialog-content">

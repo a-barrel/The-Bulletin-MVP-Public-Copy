@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FRIEND_ENGAGEMENT_OPTIONS } from '../components/ListFiltersOverlay';
+import { FRIEND_ENGAGEMENT_OPTIONS } from '../constants/listFilters';
 
 export const DEFAULT_LIST_FILTERS = {
   search: '',

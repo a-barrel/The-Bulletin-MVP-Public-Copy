@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import AttachmentPreview from './AttachmentPreview';
@@ -68,4 +69,4 @@ ChatComposerFooter.defaultProps = {
   onSharePin: undefined
 };
 
-export default ChatComposerFooter;
+export default memo(ChatComposerFooter);

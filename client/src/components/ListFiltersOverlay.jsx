@@ -24,12 +24,11 @@ import {
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useTranslation } from 'react-i18next';
+import { FRIEND_ENGAGEMENT_OPTIONS } from '../constants/listFilters';
 
 const TYPE_OPTIONS = ['event', 'discussion'];
 
 const STATUS_OPTIONS = ['active', 'expired', 'all'];
-
-export const FRIEND_ENGAGEMENT_OPTIONS = ['created', 'replied', 'attending'];
 
 const FRIEND_ENGAGEMENT_VALUE_SET = new Set(FRIEND_ENGAGEMENT_OPTIONS);
 

@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 
-function MapFilterPanel({
+const MapFilterPanel = memo(function MapFilterPanel({
   collapsed,
   onToggleCollapse,
   filterGroups = []
@@ -149,6 +149,6 @@ function MapFilterPanel({
       </div>
     </div>
   );
-}
+});
 
 export default MapFilterPanel;

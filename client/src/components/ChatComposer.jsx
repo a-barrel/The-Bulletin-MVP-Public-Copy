@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { memo } from 'react';
 import {
   Box,
   TextField,
@@ -36,8 +37,8 @@ function ChatComposer({
   onGifPreviewConfirm,
   onGifPreviewCancel,
   onGifPreviewShuffle,
-  onSharePin
-}) {
+      onSharePin
+    }) {
   const { t } = useTranslation();
   const sharedInputProps = {
     value: message,
@@ -45,7 +46,10 @@ function ChatComposer({
     onKeyDown,
     multiline: true,
     minRows: 1,
-    inputRef
+    inputRef,
+    inputProps: {
+      'aria-label': placeholder || t('chat.composer.placeholder', 'Send a message')
+    }
   };
 
   const hasPendingPreview = Boolean(gifPreview || gifPreviewError);
@@ -177,6 +181,7 @@ function ChatComposer({
             onClick={onSharePin}
             disabled={disabled || !onSharePin}
             aria-label={t('tooltips.shareSavedPin')}
+            disableRipple
             sx={{
               color: '#5d3889',
               backgroundColor: 'rgba(93, 56, 137, 0.1)',
@@ -204,6 +209,7 @@ function ChatComposer({
         onClick={onAddAttachment}
         disabled={disabled || !onAddAttachment}
         aria-label={addAttachmentAriaLabel}
+        disableRipple
         sx={{
           color: 'primary.main',
           backgroundColor: 'rgba(124, 77, 255, 0.08)',
@@ -282,60 +288,56 @@ function ChatComposer({
     >
       {renderPreviewPanel('legacy')}
       {onSharePin ? (
-        <Tooltip title={t('tooltips.shareSavedPin')} enterDelay={200} arrow>
-          <span>
-            <IconButton
-              className="share-pin-btn"
-              type="button"
-              onClick={onSharePin}
-              disabled={disabled}
-              aria-label={t('tooltips.shareSavedPin')}
-              sx={{
-                color: '#5d3889',
-                backgroundColor: 'rgba(93, 56, 137, 0.1)',
-                transition: 'background-color 120ms ease, transform 120ms ease',
-                '&:hover, &:focus-visible': {
-                  backgroundColor: 'rgba(93, 56, 137, 0.18)',
-                  transform: 'scale(1.05)'
-                },
-                '&.Mui-disabled': {
-                  backgroundColor: 'transparent',
-                  color: 'action.disabled'
-                }
-              }}
-            >
-              <ShareOutlinedIcon className="share-pin-icon" />
-            </IconButton>
-          </span>
-        </Tooltip>
+        <IconButton
+          className="share-pin-btn"
+          type="button"
+          onClick={onSharePin}
+          disabled={disabled}
+          aria-label={t('tooltips.shareSavedPin')}
+          title={t('tooltips.shareSavedPin')}
+          disableRipple
+          sx={{
+            color: '#5d3889',
+            backgroundColor: 'rgba(93, 56, 137, 0.1)',
+            transition: 'background-color 120ms ease, transform 120ms ease',
+            '&:hover, &:focus-visible': {
+              backgroundColor: 'rgba(93, 56, 137, 0.18)',
+              transform: 'scale(1.05)'
+            },
+            '&.Mui-disabled': {
+              backgroundColor: 'transparent',
+              color: 'action.disabled'
+            }
+          }}
+        >
+          <ShareOutlinedIcon className="share-pin-icon" />
+        </IconButton>
       ) : null}
       {onAddAttachment ? (
-        <Tooltip title={addAttachmentTooltip} enterDelay={200} arrow>
-          <span>
-            <IconButton
-              className="add-img-btn"
-              type="button"
-              onClick={onAddAttachment}
-              disabled={disabled}
-              aria-label={addAttachmentAriaLabel}
-              sx={{
-                color: 'primary.main',
-                transition: 'background-color 120ms ease, transform 120ms ease',
-                backgroundColor: 'rgba(124, 77, 255, 0.08)',
-                '&:hover, &:focus-visible': {
-                  backgroundColor: 'rgba(124, 77, 255, 0.18)',
-                  transform: 'scale(1.05)'
-                },
-                '&.Mui-disabled': {
-                  backgroundColor: 'transparent',
-                  color: 'action.disabled'
-                }
-              }}
-            >
-              <AddIcon className="add-img-icon" />
-            </IconButton>
-          </span>
-        </Tooltip>
+        <IconButton
+          className="add-img-btn"
+          type="button"
+          onClick={onAddAttachment}
+          disabled={disabled}
+          aria-label={addAttachmentAriaLabel}
+          title={addAttachmentTooltip}
+          disableRipple
+          sx={{
+            color: 'primary.main',
+            transition: 'background-color 120ms ease, transform 120ms ease',
+            backgroundColor: 'rgba(124, 77, 255, 0.08)',
+            '&:hover, &:focus-visible': {
+              backgroundColor: 'rgba(124, 77, 255, 0.18)',
+              transform: 'scale(1.05)'
+            },
+            '&.Mui-disabled': {
+              backgroundColor: 'transparent',
+              color: 'action.disabled'
+            }
+          }}
+        >
+          <AddIcon className="add-img-icon" />
+        </IconButton>
       ) : null}
       <TextField
         {...sharedInputProps}
@@ -401,4 +403,4 @@ ChatComposer.propTypes = {
   onGifPreviewShuffle: PropTypes.func
 };
 
-export default ChatComposer;
+export default memo(ChatComposer);

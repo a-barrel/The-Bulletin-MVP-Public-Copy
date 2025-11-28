@@ -106,6 +106,9 @@ const extractIds = (list) => {
 
 const perfLogCache = new globalThis.Map();
 const logPerf = (label, startedAt = null, meta = {}) => {
+  if (process.env.NODE_ENV === 'production') {
+    return;
+  }
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const duration = startedAt ? now - startedAt : 0;
   const key = `${label}|${JSON.stringify(meta)}`;

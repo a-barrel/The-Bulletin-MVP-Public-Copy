@@ -1,10 +1,10 @@
 /* NOTE: Page exports configuration alongside the component. */
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ListPage.css';
 import Navbar from '../components/Navbar';
 import SortToggle from '../components/SortToggle';
-import ListFiltersOverlay, { FRIEND_ENGAGEMENT_OPTIONS } from '../components/ListFiltersOverlay';
+import { FRIEND_ENGAGEMENT_OPTIONS } from '../constants/listFilters';
 import settingsIcon from '../assets/GearIcon.svg';
 import addIcon from '../assets/AddIcon.svg';
 import updatesIcon from '../assets/UpdateIcon.svg';
@@ -62,6 +62,8 @@ const paginationSx = {
     backgroundColor: '#DCCBF4'
   }
 };
+
+const ListFiltersOverlay = lazy(() => import('../components/ListFiltersOverlay'));
 
 export default function ListPage() {
   const { t } = useTranslation();
@@ -810,14 +812,6 @@ export default function ListPage() {
               onSelectAuthor={handleFeedAuthorSelect}
               cardProps={feedCardProps}
             />
-            {process.env.NODE_ENV !== 'test' && (
-              // eslint-disable-next-line no-console
-              console.log('[list-feed] render', {
-                items: paginatedFeedItems.length,
-                page: currentPage,
-                lazyLoadAttendees: true
-              })
-            )}
             {totalResults > 0 ? (
               <div className="list-pagination">
                 <span className="list-pagination__summary">
@@ -839,18 +833,20 @@ export default function ListPage() {
           </>
         )}
 
-        <ListFiltersOverlay
-          open={filtersDialogOpen}
-          onClose={handleCloseFilters}
-          onApply={handleApplyFilters}
-          onClear={handleClearFilters}
-          defaultFilters={defaultFilters}
-          initialFilters={filters}
-          categories={categoryOptions}
-          loadingCategories={isLoadingCategories}
-          onRefreshCategories={refreshCategories}
-          categoryError={categoriesError}
-        />
+        <Suspense fallback={null}>
+          <ListFiltersOverlay
+            open={filtersDialogOpen}
+            onClose={handleCloseFilters}
+            onApply={handleApplyFilters}
+            onClear={handleClearFilters}
+            defaultFilters={defaultFilters}
+            initialFilters={filters}
+            categories={categoryOptions}
+            loadingCategories={isLoadingCategories}
+            onRefreshCategories={refreshCategories}
+            categoryError={categoriesError}
+          />
+        </Suspense>
 
         <Navbar />
       </div>
