@@ -7,7 +7,7 @@ import {
   fetchUserProfile,
   fetchUsers,
   updateUserProfile
-} from '../../../api/mongoDataApi';
+} from '../../../api';
 import { auth } from '../../../firebase';
 import { ACCOUNT_STATUS_OPTIONS } from '../constants';
 import { parseCommaSeparated, parseOptionalNumber } from '../utils';

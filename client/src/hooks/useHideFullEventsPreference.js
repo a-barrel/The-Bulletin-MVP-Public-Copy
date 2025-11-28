@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { updateCurrentUserProfile } from '../api/mongoDataApi';
+import { updateCurrentUserProfile } from '../api';
 
 const coerceBoolean = (value, fallback = true) =>
   typeof value === 'boolean' ? value : fallback;

@@ -4,7 +4,7 @@ import {
   createUpdate,
   fetchCurrentUserProfile,
   fetchUpdates
-} from '../../../api/mongoDataApi';
+} from '../../../api';
 import { UPDATE_TYPE_OPTIONS } from '../constants';
 import {
   parseCommaSeparated,

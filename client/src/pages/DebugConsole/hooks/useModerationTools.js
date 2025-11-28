@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import useModerationCore from '../../../hooks/useModerationTools';
-import { fetchUsers } from '../../../api/mongoDataApi';
+import { fetchUsers } from '../../../api';
 import { parseOptionalNumber } from '../utils';
 
 const DEFAULT_ACTION = {

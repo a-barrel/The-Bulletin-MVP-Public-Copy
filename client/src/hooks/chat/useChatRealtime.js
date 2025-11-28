@@ -4,7 +4,7 @@ import {
   fetchChatPresence,
   createChatMessage,
   upsertChatPresence
-} from '../../api/mongoDataApi';
+} from '../../api';
 import { playBadgeSound } from '../../utils/badgeSound';
 
 const PRESENCE_HEARTBEAT_MS = 30_000;

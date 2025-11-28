@@ -18,7 +18,7 @@ import AttendingBookmarksIcon from '../assets/Attending_Bookmarks.svg';
 import BookmarkedIcon from '../assets/Bookmarked.svg';
 import BookmarkedOwnerIcon from '../assets/BookmarkedOwner.svg';
 import resolveAssetUrl from '../utils/media';
-import { fetchPinById } from '../api/mongoDataApi';
+import { fetchPinById } from '../api';
 import toIdString from '../utils/ids';
 
 function ExpandableBookmarkItem({

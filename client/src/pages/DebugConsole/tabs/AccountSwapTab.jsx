@@ -18,7 +18,7 @@ import { auth } from '../../../firebase';
 import {
   fetchDebugAuthAccounts,
   requestAccountSwap
-} from '../../../api/mongoDataApi';
+} from '../../../api';
 import { applyAuthPersistence, AUTH_PERSISTENCE } from '../../../utils/authPersistence';
 import { deriveInitials, formatReadableTimestamp } from '../utils';
 import DebugPanel from '../components/DebugPanel';

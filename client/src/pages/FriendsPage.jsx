@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -27,7 +27,7 @@ import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constant
 import { getParticipantId } from '../utils/chatParticipants';
 import normalizeObjectId from '../utils/normalizeObjectId';
 import ReportContentDialog from '../components/ReportContentDialog';
-import { createContentReport } from '../api/mongoDataApi';
+import { createContentReport } from '../api';
 import './FriendsPage.css';
 
 export const pageConfig = {
@@ -331,6 +331,12 @@ function FriendsPage() {
     if (!reportTarget?.userId || isSubmittingReport) {
       return;
     }
+    const normalizedReason = typeof reportReason === 'string' ? reportReason.trim() : '';
+    const offensesList = Array.isArray(reportOffenses) ? reportOffenses : [];
+    if (!normalizedReason && offensesList.length === 0) {
+      setReportError('Select at least one issue or add details.');
+      return;
+    }
     setIsSubmittingReport(true);
     setReportError(null);
     try {
@@ -338,8 +344,9 @@ function FriendsPage() {
         contentType: 'user',
         contentId: reportTarget.userId,
         context: `Friends list report: ${reportTarget.displayName || 'User'}`,
-        reason: reportReason,
-        offenses: reportOffenses
+        summary: reportTarget.displayName || 'User',
+        reason: normalizedReason || 'Reported via friends list.',
+        offenses: offensesList
       });
       setReportTarget(null);
       setReportReason('');
@@ -571,4 +578,4 @@ function FriendsPage() {
   );
 }
 
-export default FriendsPage;
+export default memo(FriendsPage);

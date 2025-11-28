@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 
-import { insertLocationUpdate } from '../api/mongoDataApi';
+import { insertLocationUpdate } from '../api';
 import { auth } from '../firebase';
 import {
   clampLatitude,

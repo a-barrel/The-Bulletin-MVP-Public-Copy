@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { createPin } from '../../api/mongoDataApi';
+import { createPin } from '../../api';
 import { haversineDistanceMeters, metersToMiles, METERS_PER_MILE } from '../../utils/geo';
 import { playBadgeSound } from '../../utils/badgeSound';
 import { sanitizeNumberField, sanitizeDateField } from '../../utils/pinFormValidation';

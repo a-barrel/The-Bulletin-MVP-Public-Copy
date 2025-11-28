@@ -3,7 +3,7 @@ import { signOut } from 'firebase/auth';
 import {
   revokeCurrentSession,
   updateCurrentUserProfile
-} from '../../api/mongoDataApi';
+} from '../../api';
 import reportClientError from '../../utils/reportClientError';
 import { auth } from '../../firebase';
 import { DEFAULT_SETTINGS } from '../useSettingsManager';

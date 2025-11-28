@@ -7,7 +7,7 @@ import {
   fetchChatMessages,
   fetchChatPresence,
   fetchChatRooms
-} from '../../../api/mongoDataApi';
+} from '../../../api';
 import {
   parseCommaSeparated,
   parseOptionalDate,

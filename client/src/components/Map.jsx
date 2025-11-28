@@ -23,7 +23,7 @@ import { resolveUserAvatarUrl } from '../utils/pinFormatting';
 import usePinClusters from './map/usePinClusters';
 import PinPreviewCard from './PinPreviewCard';
 import toIdString from '../utils/ids';
-import { flagPinForModeration, createPinBookmark, deletePinBookmark } from '../api/mongoDataApi';
+import { flagPinForModeration, createPinBookmark, deletePinBookmark } from '../api';
 import RecenterControl from './map/RecenterControl';
 
 function PinCardOverlay({ position, children }) {
@@ -417,6 +417,8 @@ const Map = ({
 }) => {
   const tileLayerRef = useRef(null);
   const tileErrorCountRef = useRef(0);
+  const mapRef = useRef(null);
+  const [mapReady, setMapReady] = useState(true);
   const [tilesUnavailable, setTilesUnavailable] = useState(false);
   const userAvatarUrl = useMemo(
     () => resolveThumbnailUrl(currentUserAvatar) ?? AVATAR_FALLBACK,
@@ -789,13 +791,15 @@ const Map = ({
       <MapContainer
         center={resolvedCenter}
         zoom={13}
-        scrollWheelZoom={scrollWheelZoom}
-        style={{ width: '100%', height: '100%' }}
-        whenCreated={(map) => {
-          window.setTimeout(() => {
-            try {
-              map.invalidateSize();
-            } catch {
+      scrollWheelZoom={scrollWheelZoom}
+      style={{ width: '100%', height: '100%' }}
+      whenCreated={(map) => {
+        mapRef.current = map;
+        setMapReady(true);
+        window.setTimeout(() => {
+          try {
+            map.invalidateSize();
+          } catch {
               // ignore
             }
           }, 0);
@@ -809,6 +813,8 @@ const Map = ({
             tileerror: handleTileError
           }}
         />
+        {mapReady ? (
+          <>
         {showRecenterControl ? (
           <RecenterControl
             onRecenter={(mapInstance) => {
@@ -953,6 +959,8 @@ const Map = ({
       {teleportEnabled && typeof onTeleportRequest === 'function' ? (
         <TeleportClickHandler enabled={teleportEnabled} onTeleport={onTeleportRequest} />
       ) : null}
+          </>
+        ) : null}
       </MapContainer>
       {tilesUnavailable ? (
         <div

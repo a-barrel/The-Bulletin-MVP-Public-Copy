@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchCurrentUserProfile, fetchUserProfile } from '../../api/mongoDataApi';
+import { fetchCurrentUserProfile, fetchUserProfile } from '../../api';
 import reportClientError from '../../utils/reportClientError';
 
 export default function useProfileViewerData({ userIdParam, locationState = {}, isOffline }) {

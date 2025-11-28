@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { awardBadge } from '../api/mongoDataApi';
+import { awardBadge } from '../api';
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 

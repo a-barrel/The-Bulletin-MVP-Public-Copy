@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { memo, useMemo } from 'react';
 import Modal from '@mui/material/Modal';
 import Fade from '@mui/material/Fade';
 import Paper from '@mui/material/Paper';
@@ -9,6 +10,7 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import ArticleIcon from '@mui/icons-material/Article';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import './NavConsoleModal.css';
 
 function NavConsoleModal({
   open,
@@ -20,6 +22,19 @@ function NavConsoleModal({
   onBack,
   onNavigate
 }) {
+  const wrapperStyle = useMemo(
+    () => ({
+      position: 'fixed',
+      inset: 0,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 16,
+      pointerEvents: 'none'
+    }),
+    []
+  );
+
   if (!open) {
     return null;
   }
@@ -27,35 +42,13 @@ function NavConsoleModal({
   return (
     <Modal open onClose={onClose} closeAfterTransition keepMounted>
       <Fade in={open}>
-        <Box
-          sx={{
-            position: 'fixed',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            p: 2,
-            pointerEvents: 'none'
-          }}
-        >
+        <Box sx={wrapperStyle}>
           <Paper
             elevation={16}
-            sx={(muiTheme) => ({
-              width: 'min(420px, 90vw)',
-              maxHeight: '80vh',
-              overflow: 'hidden',
-              pointerEvents: 'auto',
-              outline: 'none',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 2,
-              p: 3,
-              borderRadius: 3,
-              backgroundColor: muiTheme.palette.background.paper
-            })}
+            className="nav-console-paper"
           >
-            <Stack spacing={1.5} sx={{ flex: 1, minHeight: 0 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Stack spacing={1.5} className="nav-console-body">
+              <Box className="nav-console-header-row">
                 <Typography variant="h6" component="h2">
                   Navigation Console
                 </Typography>
@@ -65,34 +58,20 @@ function NavConsoleModal({
               </Box>
               <Divider />
               {navPages.length > 0 ? (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 1,
-                    flex: 1,
-                    minHeight: 0
-                  }}
-                >
+                <Box className="nav-console-main">
                   {previousNavPath ? (
                     <Button
                       onClick={onBack}
                       variant="contained"
                       color="secondary"
                       startIcon={<ArrowBackIcon fontSize="small" />}
-                      sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+                      className="nav-console-button"
                     >
                       {previousNavPage ? `Back to ${previousNavPage.label}` : 'Back'}
                     </Button>
                   ) : null}
                   <Box
-                    sx={{
-                      flex: 1,
-                      minHeight: 0,
-                      overflowY: 'auto',
-                      pr: 0.5,
-                      scrollbarGutter: 'stable'
-                    }}
+                    className="nav-console-list-wrapper"
                   >
                     <Stack spacing={1}>
                       {navPages.map((page) => {
@@ -105,7 +84,7 @@ function NavConsoleModal({
                             variant={isActive ? 'contained' : 'outlined'}
                             color={isActive ? 'primary' : 'inherit'}
                             startIcon={<IconComponent fontSize="small" />}
-                            sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+                            className="nav-console-button"
                           >
                             {page.label}
                           </Button>
@@ -153,4 +132,4 @@ NavConsoleModal.defaultProps = {
   currentNavPath: null
 };
 
-export default NavConsoleModal;
+export default memo(NavConsoleModal);

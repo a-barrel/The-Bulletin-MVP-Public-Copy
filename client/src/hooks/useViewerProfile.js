@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchCurrentUserProfile } from '../api/mongoDataApi';
+import { fetchCurrentUserProfile } from '../api';
 
 export default function useViewerProfile({ enabled = true, skip = false } = {}) {
   const mountedRef = useRef(true);

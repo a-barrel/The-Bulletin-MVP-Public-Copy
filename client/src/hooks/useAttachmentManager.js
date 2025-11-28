@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import { uploadImage } from '../api/mongoDataApi';
+import { uploadImage } from '../api';
 import {
   ATTACHMENT_ONLY_PLACEHOLDER,
   MAX_CHAT_ATTACHMENTS,

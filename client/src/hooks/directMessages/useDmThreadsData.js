@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import reportClientError from '../../utils/reportClientError';
-import { fetchDirectMessageThreads } from '../../api/mongoDataApi';
+import { fetchDirectMessageThreads } from '../../api';
 
 const DM_POLL_INTERVAL_MS = 30 * 1000;
 

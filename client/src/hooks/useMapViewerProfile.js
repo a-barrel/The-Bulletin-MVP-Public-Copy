@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchCurrentUserProfile } from '../api/mongoDataApi';
+import { fetchCurrentUserProfile } from '../api';
 import { resolvePinFetchLimit } from '../utils/pinDensity';
 import reportClientError from '../utils/reportClientError';
 

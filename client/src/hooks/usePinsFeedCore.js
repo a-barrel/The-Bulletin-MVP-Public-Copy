@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { fetchPinsNearby, fetchPinById, fetchCurrentUserProfile } from '../api/mongoDataApi';
+import { fetchPinsNearby, fetchPinById, fetchCurrentUserProfile } from '../api';
 import reportClientError from '../utils/reportClientError';
 import { resolvePinFetchLimit } from '../utils/pinDensity';
 import { enableListPerfLogs, logListPerf, nowMs } from '../utils/listPerfLogger';
@@ -8,8 +8,10 @@ import { enableListPerfLogs, logListPerf, nowMs } from '../utils/listPerfLogger'
 const DEFAULT_RADIUS_MILES = 10;
 const PIN_FETCH_LIMIT = 50;
 const FALLBACK_LOCATION = { latitude: 33.7838, longitude: -118.1136 };
-const FETCH_THROTTLE_MS = 0;
-const FETCH_DEBOUNCE_MS = 0;
+// Light smoothing: prevent rapid refetch churn on tiny input changes,
+// but low enough to keep pins responsive when location changes.
+const FETCH_THROTTLE_MS = 120;
+const FETCH_DEBOUNCE_MS = 120;
 const CACHE_TTL_MS = 120_000;
 const DETAIL_CACHE_TTL_MS = 180_000;
 

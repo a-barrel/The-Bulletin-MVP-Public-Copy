@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-import { createReply, fetchReplies } from '../../../api/mongoDataApi';
+import { createReply, fetchReplies } from '../../../api';
 import { parseCommaSeparated } from '../utils';
 
 const INITIAL_REPLY_FORM = {

@@ -27,7 +27,7 @@ import {
   fetchPinsSortedByExpiration,
   fetchExpiredPins,
   listPins
-} from '../../../api/mongoDataApi';
+} from '../../../api';
 import LeafletMap from '../../../components/Map';
 import JsonPreview from '../components/JsonPreview';
 import {

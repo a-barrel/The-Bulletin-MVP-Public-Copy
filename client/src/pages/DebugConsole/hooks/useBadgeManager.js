@@ -6,7 +6,7 @@ import {
   debugResetBadges,
   debugRevokeBadge,
   fetchCurrentUserProfile
-} from '../../../api/mongoDataApi';
+} from '../../../api';
 
 const useBadgeManager = ({ currentUser } = {}) => {
   const [badgeStatus, setBadgeStatus] = useState(null);

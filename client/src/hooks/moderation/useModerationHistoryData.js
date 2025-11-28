@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { fetchModerationHistory } from '../../api/mongoDataApi';
+import { fetchModerationHistory } from '../../api';
 import reportClientError from '../../utils/reportClientError';
 
 export default function useModerationHistoryData({ dispatch }) {

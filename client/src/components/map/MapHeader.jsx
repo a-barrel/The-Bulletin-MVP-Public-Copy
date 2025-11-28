@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import GlobalNavMenu from '../GlobalNavMenu';
 
@@ -61,4 +62,4 @@ function MapHeader({
   );
 }
 
-export default MapHeader;
+export default memo(MapHeader);

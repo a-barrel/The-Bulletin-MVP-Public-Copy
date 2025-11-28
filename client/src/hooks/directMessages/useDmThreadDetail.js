@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import reportClientError from '../../utils/reportClientError';
-import { fetchDirectMessageThread } from '../../api/mongoDataApi';
+import { fetchDirectMessageThread } from '../../api';
 
 export default function useDmThreadDetail({ dispatch }) {
   const loadThreadDetail = useCallback(

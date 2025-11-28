@@ -17,7 +17,7 @@ import {
   fetchPinById,
   removeBookmark,
   updatePinAttendance
-} from '../api/mongoDataApi';
+} from '../api';
 import { formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
 import toIdString from '../utils/ids';
 import reportClientError from '../utils/reportClientError';

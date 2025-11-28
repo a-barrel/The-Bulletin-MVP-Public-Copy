@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchCurrentUserProfile } from '../../api/mongoDataApi';
+import { fetchCurrentUserProfile } from '../../api';
 import reportClientError from '../../utils/reportClientError';
 import { DEFAULT_SETTINGS, roundRadius } from '../useSettingsManager';
 

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 
 import useDirectMessages from '../../../hooks/useDirectMessages';
-import { fetchUsers } from '../../../api/mongoDataApi';
+import { fetchUsers } from '../../../api';
 import { parseCommaSeparated } from '../utils';
 
 const INITIAL_THREAD_FORM = {

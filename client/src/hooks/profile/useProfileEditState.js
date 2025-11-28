@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { updateCurrentUserProfile, uploadImage } from '../../api/mongoDataApi';
+import { updateCurrentUserProfile, uploadImage } from '../../api';
 import { resolveProfileAvatarUrl, resolveProfileBannerUrl } from '../../utils/profileAssets';
 
 const buildMediaAssetPayload = (uploaded, uploadedBy) =>

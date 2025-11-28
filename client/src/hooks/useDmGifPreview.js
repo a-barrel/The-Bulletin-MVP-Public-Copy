@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { previewChatGif } from '../api/mongoDataApi';
+import { previewChatGif } from '../api';
 import { getGifCommandQuery } from '../utils/chatGifCommands';
 
 export default function useDmGifPreview({

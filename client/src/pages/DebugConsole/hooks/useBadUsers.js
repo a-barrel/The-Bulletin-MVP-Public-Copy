@@ -5,7 +5,7 @@ import {
   fetchUsersWithCussCount,
   incrementUserCussCount,
   resetUserCussCount
-} from '../../../api/mongoDataApi';
+} from '../../../api';
 
 const useBadUsers = () => {
   const [users, setUsers] = useState([]);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { fetchPinAttendees } from '../api/mongoDataApi';
+import { fetchPinAttendees } from '../api';
 import toIdString from '../utils/ids';
 import { normalizeAttendeeRecord } from '../utils/feed';
 

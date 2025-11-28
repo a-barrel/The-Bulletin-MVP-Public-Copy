@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { fetchUpdates, markAllUpdatesRead, markUpdateRead, deleteUpdate } from '../../api/mongoDataApi';
+import { fetchUpdates, markAllUpdatesRead, markUpdateRead, deleteUpdate } from '../../api';
 import usePullToRefresh from '../usePullToRefresh';
 
 const noop = () => {};

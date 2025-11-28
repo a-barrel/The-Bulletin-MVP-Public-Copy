@@ -4,7 +4,7 @@ import reportClientError from '../utils/reportClientError';
 import {
   createDirectMessageThread,
   sendDirectMessage
-} from '../api/mongoDataApi';
+} from '../api';
 import { dmReducer, initialState, buildOptimisticMessage } from './directMessages/dmState';
 import useDmThreadsData from './directMessages/useDmThreadsData';
 import useDmThreadDetail from './directMessages/useDmThreadDetail';

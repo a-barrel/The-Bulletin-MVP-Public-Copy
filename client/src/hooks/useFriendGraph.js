@@ -5,7 +5,7 @@ import {
   removeFriendRelationship,
   respondToFriendRequest,
   sendFriendRequest
-} from '../api/mongoDataApi';
+} from '../api';
 
 const initialState = {
   graph: null,

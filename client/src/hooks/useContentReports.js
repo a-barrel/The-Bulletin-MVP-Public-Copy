@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import runtimeConfig from '../config/runtime';
-import { listContentReports } from '../api/mongoDataApi';
+import { listContentReports } from '../api';
 
 export default function useContentReports(initialStatus = 'pending') {
   const moderationRoleChecksEnabled = runtimeConfig.moderation?.roleChecksEnabled !== false;

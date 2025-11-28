@@ -1,8 +1,17 @@
-import fs from 'fs';
-import path from 'path';
-import { transformSync } from '@babel/core';
+import {
+  fetchReplies,
+  fetchPinsNearby,
+  listPins
+} from '../../src/api/modules/pinsApi';
+import {
+  createUpdate,
+  fetchUpdates,
+  markUpdateRead
+} from '../../src/api/modules/updatesApi';
+import { registerPushToken } from '../../src/api/modules/authApi';
+import { auth } from '../../src/firebase';
 
-const runtimeMock = {
+jest.mock('../../src/config/runtime', () => ({
   __esModule: true,
   default: {
     apiBaseUrl: 'https://api.example.com',
@@ -10,54 +19,18 @@ const runtimeMock = {
     isOnline: true,
     firebase: { config: {}, authEmulatorUrl: undefined }
   }
-};
+}));
 
-const mockAuth = {
-  currentUser: null
-};
-
-let apiModule;
-
-beforeAll(() => {
-  const modulePath = path.resolve(__dirname, '../../src/api/mongoDataApi.js');
-  const rawSource = fs.readFileSync(modulePath, 'utf8');
-  const source = rawSource
-    .replace(/import\.meta\.env\.DEV/g, 'false')
-    .replace(/import\.meta\.env/g, '{}')
-    .replace(/import\.meta/g, '{}');
-  const { code } = transformSync(source, {
-    filename: modulePath,
-    presets: [['@babel/preset-env', { targets: { node: 'current' }, modules: 'commonjs' }]],
-    plugins: ['babel-plugin-transform-import-meta', 'babel-plugin-istanbul'],
-    sourceMaps: 'inline',
-    sourceFileName: modulePath,
-    babelrc: false,
-    configFile: false
-  });
-
-  const module = { exports: {} };
-  const localRequire = (request) => {
-    if (request === '../config/runtime') {
-      return runtimeMock;
-    }
-    if (request === '../firebase') {
-      return { auth: mockAuth };
-    }
-    const resolved = path.resolve(path.dirname(modulePath), request);
-    return jest.requireActual(resolved);
-  };
-
-  const factory = new Function('require', 'module', 'exports', code);
-  factory(localRequire, module, module.exports);
-  apiModule = module.exports;
-});
+jest.mock('../../src/firebase', () => ({
+  auth: { currentUser: null }
+}));
 
 describe('mongoDataApi.fetchReplies', () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
     global.fetch = jest.fn();
-    mockAuth.currentUser = null;
+    auth.currentUser = null;
   });
 
   afterAll(() => {
@@ -65,14 +38,14 @@ describe('mongoDataApi.fetchReplies', () => {
   });
 
   it('throws when no pin id is provided', async () => {
-    await expect(apiModule.fetchReplies()).rejects.toThrow('Pin id is required to load replies');
+    await expect(fetchReplies()).rejects.toThrow('Pin id is required to load replies');
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it('fetches replies with authorization headers when a user token is available', async () => {
     const token = 'token-123';
     const mockJson = jest.fn().mockResolvedValue([{ _id: 'reply-1' }]);
-    mockAuth.currentUser = {
+    auth.currentUser = {
       getIdToken: jest.fn().mockResolvedValue(token)
     };
     global.fetch.mockResolvedValue({
@@ -80,7 +53,7 @@ describe('mongoDataApi.fetchReplies', () => {
       json: mockJson
     });
 
-    const result = await apiModule.fetchReplies('pin-123');
+    const result = await fetchReplies('pin-123');
 
     expect(global.fetch).toHaveBeenCalledWith(
       'https://api.example.com/api/pins/pin-123/replies',
@@ -103,7 +76,7 @@ describe('mongoDataApi.fetchReplies', () => {
       json: mockJson
     });
 
-    await expect(apiModule.fetchReplies('pin-999')).rejects.toThrow('Server unavailable');
+    await expect(fetchReplies('pin-999')).rejects.toThrow('Server unavailable');
     expect(global.fetch).toHaveBeenCalledWith(
       'https://api.example.com/api/pins/pin-999/replies',
       expect.any(Object)
@@ -116,7 +89,7 @@ describe('mongoDataApi additional endpoints', () => {
 
   beforeEach(() => {
     global.fetch = jest.fn();
-    mockAuth.currentUser = null;
+    auth.currentUser = null;
   });
 
   afterEach(() => {
@@ -126,7 +99,7 @@ describe('mongoDataApi additional endpoints', () => {
   it('builds query params when fetching nearby pins', async () => {
     const json = jest.fn().mockResolvedValue([]);
     global.fetch.mockResolvedValue({ ok: true, json });
-    await apiModule.fetchPinsNearby({
+    await fetchPinsNearby({
       latitude: 33.7,
       longitude: -118.1,
       distanceMiles: 5,
@@ -161,7 +134,7 @@ describe('mongoDataApi additional endpoints', () => {
     const json = jest.fn().mockResolvedValue([{ _id: 'pin-1' }]);
     global.fetch.mockResolvedValue({ ok: true, json });
 
-    await apiModule.listPins({
+    await listPins({
       search: ' farmers market ',
       types: ['event'],
       categories: ['Food', 'Community'],
@@ -193,7 +166,7 @@ describe('mongoDataApi additional endpoints', () => {
     const successJson = jest.fn().mockResolvedValue({ _id: 'update-1' });
     global.fetch.mockResolvedValueOnce({ ok: true, json: successJson });
 
-    await apiModule.createUpdate({
+    await createUpdate({
       userId: 'user-1',
       payload: { type: 'badge-earned', title: 'Congrats' }
     });
@@ -216,7 +189,7 @@ describe('mongoDataApi additional endpoints', () => {
     global.fetch.mockResolvedValueOnce({ ok: false, json: errorJson });
 
     await expect(
-      apiModule.createUpdate({
+      createUpdate({
         userId: 'user-2',
         payload: { type: 'badge-earned' }
       })
@@ -227,7 +200,7 @@ describe('mongoDataApi additional endpoints', () => {
     const json = jest.fn().mockResolvedValue([{ _id: 'update-1' }]);
     global.fetch.mockResolvedValue({ ok: true, json });
 
-    await apiModule.fetchUpdates({ userId: 'viewer-1', limit: 5 });
+    await fetchUpdates({ userId: 'viewer-1', limit: 5 });
 
     const [url] = global.fetch.mock.calls[0];
     expect(url).toBe('https://api.example.com/api/updates?userId=viewer-1&limit=5');
@@ -237,7 +210,7 @@ describe('mongoDataApi additional endpoints', () => {
     const json = jest.fn().mockResolvedValue({ _id: 'update-1', readAt: '2025-01-01T00:00:00.000Z' });
     global.fetch.mockResolvedValue({ ok: true, json });
 
-    await apiModule.markUpdateRead('update-1');
+    await markUpdateRead('update-1');
 
     const [url] = global.fetch.mock.calls[0];
     expect(url).toBe('https://api.example.com/api/updates/update-1/read');
@@ -251,7 +224,7 @@ describe('mongoDataApi additional endpoints', () => {
     const json = jest.fn().mockResolvedValue({ ok: true });
     global.fetch.mockResolvedValue({ ok: true, json });
 
-    await apiModule.registerPushToken('abc123', { platform: 'web' });
+    await registerPushToken('abc123', { platform: 'web' });
 
     const [url] = global.fetch.mock.calls[0];
     expect(url).toBe('https://api.example.com/api/users/me/push-tokens');

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import useFriendGraph from '../../../hooks/useFriendGraph';
-import { fetchUsers } from '../../../api/mongoDataApi';
+import { fetchUsers } from '../../../api';
 
 const INITIAL_REQUEST_FORM = {
   targetUserId: '',

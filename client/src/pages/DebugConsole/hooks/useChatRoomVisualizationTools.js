@@ -8,7 +8,7 @@ import {
   fetchChatRooms,
   fetchCurrentUserProfile,
   insertLocationUpdate
-} from '../../../api/mongoDataApi';
+} from '../../../api';
 import { auth } from '../../../firebase';
 import {
   DEFAULT_LOCATION_COORDINATES,

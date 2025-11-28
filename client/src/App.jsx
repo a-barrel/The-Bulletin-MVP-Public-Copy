@@ -1,7 +1,8 @@
-import { useMemo, useState, useEffect, useCallback, useRef, Suspense } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate, matchPath } from 'react-router-dom';
+import { useMemo, useState, useEffect, useCallback, useRef, Suspense, memo } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate, matchPath, Outlet } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import Box from '@mui/material/Box';
 import LoginPage from './pages/LoginPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
@@ -20,7 +21,7 @@ import {
 } from './components/BadgeCelebrationToast';
 import { routes } from './routes';
 import NotFoundPage from './pages/NotFoundPage';
-import { fetchCurrentUserProfile, fetchUpdates } from './api/mongoDataApi';
+import { fetchCurrentUserProfile, fetchUpdates } from './api';
 import { useNetworkStatusContext } from './contexts/NetworkStatusContext.jsx';
 import OfflineBanner from './components/OfflineBanner.jsx';
 import { SocialNotificationsProvider } from './contexts/SocialNotificationsContext';
@@ -33,6 +34,7 @@ import { viewerHasDeveloperAccess } from './utils/roles';
 import { useLazyPages, normalizePathValue } from './app/pageLoader';
 import NavConsoleModal from './app/NavConsoleModal';
 import LocationGateOverlay from './app/LocationGateOverlay';
+import CircularProgress from '@mui/material/CircularProgress';
 
 // Style guide palette: background default = Soft Lavender (#F5EFFD), paper = Brand White (#FFFFFF).
 // Reference: docs/style/style-guide.md, docs/style/contrast-audit-playbook.md, docs/style/light_mode_colorpalate.md
@@ -178,7 +180,7 @@ const readStoredFriendBadgePreference = () => {
 };
 
 function AppContent() {
-  const { pages } = useLazyPages();
+  const { pages, ready: pagesReady, error: pagesError } = useLazyPages();
   const location = useLocation();
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
@@ -696,6 +698,11 @@ function AppContent() {
     ]
   );
 
+  const mainNavigationValue = useMemo(
+    () => ({ lastMainPath: lastMainNavPath, lastCorePath: lastCoreNavPath }),
+    [lastCoreNavPath, lastMainNavPath]
+  );
+
   const socialNotificationsContextValue = useMemo(
     () => ({
       friendRequestCount,
@@ -730,6 +737,26 @@ function AppContent() {
       respondToFriendRequest,
       sendFriendRequest
     ]
+  );
+
+  const protectedPages = useMemo(
+    () => filteredPages.filter((page) => page.isProtected !== false),
+    [filteredPages]
+  );
+  const publicPages = useMemo(
+    () => filteredPages.filter((page) => page.isProtected === false),
+    [filteredPages]
+  );
+
+  const protectedProvidersElement = useMemo(
+    () => (
+      <UpdatesProvider value={updatesContextValue}>
+        <SocialNotificationsProvider value={socialNotificationsContextValue}>
+          <Outlet />
+        </SocialNotificationsProvider>
+      </UpdatesProvider>
+    ),
+    [socialNotificationsContextValue, updatesContextValue]
   );
 
   const handleNavigate = useCallback(
@@ -828,88 +855,164 @@ function AppContent() {
 
   return (
     <FriendBadgePreferenceProvider value={friendBadgePreferenceValue}>
-        <BadgeSoundProvider value={badgeSoundContextValue}>
-          <UpdatesProvider value={updatesContextValue}>
-            <SocialNotificationsProvider value={socialNotificationsContextValue}>
-              <MainNavigationProvider value={{ lastMainPath: lastMainNavPath, lastCorePath: lastCoreNavPath }}>
-                <NavOverlayProvider value={navOverlayContextValue}>
-                  <ThemeProvider theme={theme}>
-                    <CssBaseline />
+      <BadgeSoundProvider value={badgeSoundContextValue}>
+        <MainNavigationProvider value={mainNavigationValue}>
+          <NavOverlayProvider value={navOverlayContextValue}>
+            <NavConsoleModal
+              open={navOverlayOpen}
+              onClose={closeOverlay}
+              navPages={navPages}
+              previousNavPath={previousNavPath}
+              previousNavPage={previousNavPage}
+              currentNavPath={currentNavPath}
+              onBack={handleBack}
+              onNavigate={handleNavigate}
+            />
 
-                    <NavConsoleModal
-                      open={navOverlayOpen}
-                      onClose={closeOverlay}
-                      navPages={navPages}
-                      previousNavPath={previousNavPath}
-                      previousNavPage={previousNavPage}
-                      currentNavPath={currentNavPath}
-                      onBack={handleBack}
-                      onNavigate={handleNavigate}
-                    />
-
-                    {isOffline && !AUTH_ROUTES.has(location.pathname) ? (
-                      <OfflineBanner message="You are offline. Data may be stale and actions are temporarily disabled." />
-                    ) : null}
-                    <Routes>
-                      <Route path={routes.auth.login} element={<LoginPage />} />
-                      <Route path={routes.auth.register} element={<RegistrationPage />} />
-                      <Route path={routes.auth.forgotPassword} element={<ForgotPasswordPage />} />
-                      <Route path={routes.auth.resetPassword} element={<ResetPasswordPage />} />
-
-                      {filteredPages.map((page) => (
-                        <Route
-                          key={page.id}
-                          path={page.path}
-                          element={wrapWithProtection(page, <page.Component />)}
-                        />
-                      ))}
-
-                      {filteredPages.map((page) =>
-                        page.aliases.map((alias) => (
-                          <Route
-                            key={`${page.id}-alias-${alias}`}
-                            path={alias}
-                            element={wrapWithProtection(page, <page.Component />)}
-                          />
-                        ))
-                      )}
-
-                      <Route path={routes.root} element={<Navigate to={routes.auth.login} replace />} />
-                      <Route
-                        path="*"
-                        element={
-                          <NotFoundPage
-                            defaultPath={defaultNavPage?.path ?? routes.auth.login}
-                            defaultLabel={
-                              defaultNavPage?.label
-                                ? `Go to ${defaultNavPage.label}`
-                                : 'Go to login'
-                            }
-                          />
-                        }
-                      />
-                    </Routes>
-                    <LocationGateOverlay
-                      visible={shouldShowLocationGate}
-                      locationPromptError={locationPromptError}
-                      onRequestLocation={handleRequestLocationAccess}
-                      isRequesting={isRequestingLocation}
-                    />
-                    <BadgeCelebrationToast toastState={badgeToast} onClose={handleBadgeToastClose} />
-                  </ThemeProvider>
-                </NavOverlayProvider>
-              </MainNavigationProvider>
-            </SocialNotificationsProvider>
-          </UpdatesProvider>
-        </BadgeSoundProvider>
-      </FriendBadgePreferenceProvider>
+            {isOffline && !AUTH_ROUTES.has(location.pathname) ? (
+              <OfflineBanner message="You are offline. Data may be stale and actions are temporarily disabled." />
+            ) : null}
+            <MemoizedThemeRoutes
+              pagesError={pagesError}
+              pagesReady={pagesReady}
+              publicPages={publicPages}
+              protectedPages={protectedPages}
+              protectedProvidersElement={protectedProvidersElement}
+              defaultNavPage={defaultNavPage}
+              shouldShowLocationGate={shouldShowLocationGate}
+              locationPromptError={locationPromptError}
+              handleRequestLocationAccess={handleRequestLocationAccess}
+              isRequestingLocation={isRequestingLocation}
+              badgeToast={badgeToast}
+              handleBadgeToastClose={handleBadgeToastClose}
+            />
+          </NavOverlayProvider>
+        </MainNavigationProvider>
+      </BadgeSoundProvider>
+    </FriendBadgePreferenceProvider>
   );
 }
+
+const MemoizedAppContent = memo(AppContent);
+
+function ThemeRoutesShell({
+  pagesError,
+  pagesReady,
+  publicPages,
+  protectedPages,
+  protectedProvidersElement,
+  defaultNavPage,
+  shouldShowLocationGate,
+  locationPromptError,
+  handleRequestLocationAccess,
+  isRequestingLocation,
+  badgeToast,
+  handleBadgeToastClose
+}) {
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <MemoizedAppRoutes
+        pagesError={pagesError}
+        pagesReady={pagesReady}
+        publicPages={publicPages}
+        protectedPages={protectedPages}
+        protectedProvidersElement={protectedProvidersElement}
+        defaultNavPage={defaultNavPage}
+      />
+      <LocationGateOverlay
+        visible={shouldShowLocationGate}
+        locationPromptError={locationPromptError}
+        onRequestLocation={handleRequestLocationAccess}
+        isRequesting={isRequestingLocation}
+      />
+      <BadgeCelebrationToast toastState={badgeToast} onClose={handleBadgeToastClose} />
+    </ThemeProvider>
+  );
+}
+
+const MemoizedThemeRoutes = memo(ThemeRoutesShell);
+
+function AppRoutes({
+  pagesError,
+  pagesReady,
+  publicPages,
+  protectedPages,
+  protectedProvidersElement,
+  defaultNavPage
+}) {
+  if (pagesError) {
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4 }}>
+        <p>Failed to load pages. Please refresh.</p>
+      </Box>
+    );
+  }
+
+  if (!pagesReady) {
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route path={routes.auth.login} element={<LoginPage />} />
+      <Route path={routes.auth.register} element={<RegistrationPage />} />
+      <Route path={routes.auth.forgotPassword} element={<ForgotPasswordPage />} />
+      <Route path={routes.auth.resetPassword} element={<ResetPasswordPage />} />
+
+      {publicPages.map((page) => (
+        <Route
+          key={page.id}
+          path={page.path}
+          element={wrapWithProtection(page, <page.Component />)}
+        />
+      ))}
+
+      <Route element={protectedProvidersElement}>
+        {protectedPages.map((page) => (
+          <Route
+            key={page.id}
+            path={page.path}
+            element={wrapWithProtection(page, <page.Component />)}
+          />
+        ))}
+        {protectedPages.map((page) =>
+          page.aliases.map((alias) => (
+            <Route
+              key={`${page.id}-alias-${alias}`}
+              path={alias}
+              element={wrapWithProtection(page, <page.Component />)}
+            />
+          ))
+        )}
+      </Route>
+
+      <Route path={routes.root} element={<Navigate to={routes.auth.login} replace />} />
+      <Route
+        path="*"
+        element={
+          <NotFoundPage
+            defaultPath={defaultNavPage?.path ?? routes.auth.login}
+            defaultLabel={
+              defaultNavPage?.label ? `Go to ${defaultNavPage.label}` : 'Go to login'
+            }
+          />
+        }
+      />
+    </Routes>
+  );
+}
+
+const MemoizedAppRoutes = memo(AppRoutes);
 
 function App() {
   return (
     <LocationProvider>
-      <AppContent />
+      <MemoizedAppContent />
     </LocationProvider>
   );
 }

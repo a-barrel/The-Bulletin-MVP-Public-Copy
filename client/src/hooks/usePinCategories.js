@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { fetchPinCategories } from '../api/mongoDataApi';
+import { fetchPinCategories } from '../api';
 
 export default function usePinCategories({ isOffline } = {}) {
   const [categories, setCategories] = useState([]);

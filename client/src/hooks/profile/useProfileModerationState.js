@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { blockUser, unblockUser } from '../../api/mongoDataApi';
+import { blockUser, unblockUser } from '../../api';
 
 export default function useProfileModerationState({
   viewerProfile,

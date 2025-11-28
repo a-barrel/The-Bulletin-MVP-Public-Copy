@@ -121,3 +121,5 @@ export function DebugConsolePage() {
     </Box>
   );
 }
+
+export default DebugConsolePage;

@@ -1,22 +1,8 @@
 /* NOTE: Page exports navigation config alongside the component. */
-import { memo, useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import {
-  Box,
-  Stack,
-  Typography,
-  Button,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  CircularProgress,
-  Alert,
-  Tabs,
-  Tab,
-  Snackbar
-} from '@mui/material';
+import { Box, Stack, Typography, Button, IconButton, CircularProgress, Alert, Tabs, Tab } from '@mui/material';
 import SmsIcon from '@mui/icons-material/Sms';
 import GroupIcon from '@mui/icons-material/Group';
 import MarkUnreadChatAltIcon from '@mui/icons-material/MarkUnreadChatAlt';
@@ -26,9 +12,7 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
 import Navbar from '../components/Navbar';
 import MessageBubble from '../components/MessageBubble';
 import ChatThreadHeader from '../components/chat/ChatThreadHeader';
-import ChatRoomList from '../components/chat/ChatRoomList';
 import ChatComposerFooter from '../components/chat/ChatComposerFooter';
-import DirectThreadList from '../components/chat/DirectThreadList';
 import FriendsListPanel from '../components/friends/FriendsListPanel';
 import useBookmarksManager from '../hooks/useBookmarksManager';
 import toIdString from '../utils/ids';
@@ -36,10 +20,7 @@ import resolveAssetUrl from '../utils/media';
 import { routes } from '../routes';
 import { useTranslation } from 'react-i18next';
 import useDirectMessages from '../hooks/useDirectMessages';
-import useAttachmentManager, {
-  mapDraftAttachmentPayloads,
-  sanitizeAttachmentOnlyMessage
-} from '../hooks/useAttachmentManager';
+import { sanitizeAttachmentOnlyMessage } from '../hooks/useAttachmentManager';
 
 import { auth } from '../firebase';
 import useChatManager from '../hooks/useChatManager';
@@ -50,21 +31,22 @@ import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { useLocationContext } from '../contexts/LocationContext';
 import { useUpdates } from '../contexts/UpdatesContext';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext';
-import useDmGifPreview from '../hooks/useDmGifPreview';
 import useScrollToLatestMessage from '../hooks/useScrollToLatestMessage';
 import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constants/moderationActions';
-import { createContentReport } from '../api/mongoDataApi';
-import { ATTACHMENT_ONLY_PLACEHOLDER, MAX_CHAT_ATTACHMENTS } from '../utils/chatAttachments';
+import { ATTACHMENT_ONLY_PLACEHOLDER } from '../utils/chatAttachments';
 import { getParticipantId, resolveThreadParticipants } from '../utils/chatParticipants';
 import normalizeObjectId from '../utils/normalizeObjectId';
 import usePinCheckIn from '../hooks/usePinCheckIn';
 import './ChatPage.css';
-import { lazy } from 'react';
-
-const ChatSharePinModal = lazy(() => import('../components/chat/ChatSharePinModal'));
-const ChatModerationDialog = lazy(() => import('../components/chat/ChatModerationDialog'));
-const ReportContentDialog = lazy(() => import('../components/ReportContentDialog'));
-const FriendRequestsDialog = lazy(() => import('../components/friends/FriendRequestsDialog'));
+import ChatChannelDialog from '../components/chat/ChatChannelDialog';
+import ChatDialogs from '../components/chat/ChatDialogs';
+import ChatSnackbars from '../components/chat/ChatSnackbars';
+import ChatMessagePane from '../components/chat/ChatMessagePane';
+import useChatReporting from '../hooks/useChatReporting';
+import useFriendRequestDialog from '../hooks/useFriendRequestDialog';
+import useRoomComposer from '../hooks/useRoomComposer';
+import useDirectComposer from '../hooks/useDirectComposer';
+import useChatChannelController from '../hooks/useChatChannelController';
 
 const ChatMessagesSection = memo(function ChatMessagesSection({ containerRef, content }) {
   return (
@@ -214,59 +196,58 @@ function ChatPage() {
     refreshFriendGraph,
     setLastConversationTab
   });
-  const [isChannelDialogOpen, setIsChannelDialogOpen] = useState(false);
-  const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [reportTarget, setReportTarget] = useState(null);
-  const [reportReason, setReportReason] = useState('');
-  const [reportSelectedOffenses, setReportSelectedOffenses] = useState([]);
-  const [reportError, setReportError] = useState(null);
-  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
-  const [reportStatus, setReportStatus] = useState(null);
-  const [friendActionStatus, setFriendActionStatus] = useState(null);
-  const [isFriendDialogOpen, setIsFriendDialogOpen] = useState(false);
-  const [respondingRequestId, setRespondingRequestId] = useState(null);
-  const [dmMessageDraft, setDmMessageDraft] = useState('');
+  const {
+    isChannelDialogOpen,
+    setIsChannelDialogOpen,
+    handleSelectDirectThreadId,
+    handleActivateFriendsView,
+    handleOpenChannelDialog,
+    handleChannelDialogTabChange,
+    handleSelectDirectFromProfile
+  } = useChatChannelController({
+    channelTab,
+    setChannelTab,
+    setChannelDialogTab,
+    lastConversationTab,
+    directMessagesHasAccess,
+    selectDirectThread,
+    handleSelectRoom,
+    refreshDmThreads
+  });
+  const {
+    reportDialogOpen,
+    reportTarget,
+    reportReason,
+    reportSelectedOffenses,
+    reportError,
+    reportStatus,
+    isSubmittingReport,
+    openReportDialog,
+    closeReportDialog,
+    toggleReportOffense,
+    submitReport,
+    setReportReason,
+    setReportStatus,
+    handleReportStatusClose: closeReportStatus
+  } = useChatReporting();
+  const {
+    isFriendDialogOpen,
+    friendActionStatus,
+    respondingRequestId,
+    openFriendDialog,
+    closeFriendDialog,
+    setFriendActionStatus,
+    handleRespondToFriendRequest
+  } = useFriendRequestDialog({
+    respondToFriendRequest,
+    refreshFriendGraph,
+    refreshNotifications
+  });
   const profileDmTargetRef = useRef(null);
-
-  const {
-    attachments: roomAttachments,
-    status: roomAttachmentStatus,
-    setStatus: setRoomAttachmentStatus,
-    isUploading: isUploadingRoomAttachment,
-    uploadProgress: roomUploadProgress,
-    canRetry: canRetryRoomUploads,
-    handleFiles: processRoomAttachmentFiles,
-    retryFailed: retryRoomFailedUploads,
-    removeAttachment: removeRoomAttachment,
-    reset: resetRoomAttachments,
-    canAttachMore: canAttachMoreRoom
-  } = useAttachmentManager();
-
-  const {
-    attachments: dmAttachments,
-    status: dmAttachmentStatus,
-    setStatus: setDmAttachmentStatus,
-    isUploading: isUploadingDmAttachment,
-    uploadProgress: dmUploadProgress,
-    canRetry: canRetryDmUploads,
-    handleFiles: processDmAttachmentFiles,
-    retryFailed: retryDmFailedUploads,
-    removeAttachment: removeDmAttachment,
-    reset: resetDmAttachments,
-    canAttachMore: canAttachMoreDm
-  } = useAttachmentManager();
 
   const directMessageCount = Array.isArray(directThreadDetail?.messages)
     ? directThreadDetail.messages.length
     : 0;
-
-  const handleDirectMessageChange = useCallback((event) => {
-    setDmMessageDraft(event.target.value);
-  }, []);
-
-  const handleRoomMessageChange = useCallback((event) => {
-    setMessageDraft(event.target.value);
-  }, []);
 
   const shareableBookmarks = useMemo(
     () => (Array.isArray(bookmarks) ? bookmarks : []),
@@ -287,11 +268,6 @@ function ChatPage() {
     directMessageCount,
     locationKey: location.pathname
   });
-  const roomAttachmentInputRef = useRef(null);
-  const dmAttachmentInputRef = useRef(null);
-  const roomComposerInputRef = useRef(null);
-  const dmComposerInputRef = useRef(null);
-
   const focusComposer = useCallback((targetRef) => {
     if (!targetRef || !targetRef.current) {
       return;
@@ -310,23 +286,63 @@ function ChatPage() {
   }, []);
 
   const {
-    gifPreview: dmGifPreview,
-    gifPreviewError: dmGifPreviewError,
-    isGifPreviewLoading: isDmGifPreviewLoading,
-    composerGifPreview: dmComposerGifPreview,
-    ensureGifPreviewForMessage,
-    confirmGifPreview: handleDmGifPreviewConfirm,
-    cancelGifPreview: handleDmGifPreviewCancel,
-    shuffleGifPreview: handleDmGifPreviewShuffle
-  } = useDmGifPreview({
-    authUser,
+    attachments: roomAttachments,
+    attachmentStatus: roomAttachmentStatus,
+    setAttachmentStatus: setRoomAttachmentStatus,
+    isUploadingAttachment: isUploadingRoomAttachment,
+    attachmentUploadProgress: roomUploadProgress,
+    canRetryAttachment: canRetryRoomUploads,
+    handleOpenAttachmentPicker: handleOpenRoomAttachmentPicker,
+    handleAttachmentInputChange: handleRoomAttachmentInputChange,
+    handleRemoveAttachment: removeRoomAttachment,
+    handleRetryAttachment: retryRoomFailedUploads,
+    handleMessageChange: handleRoomMessageChange,
+    handleSend: handleRoomSendMessage,
+    handleKeyDown: handleRoomMessageKeyDown,
+    attachmentInputRef: roomAttachmentInputRef,
+    composerInputRef: roomComposerInputRef,
+    resetAttachments: resetRoomAttachments
+  } = useRoomComposer({
+    isOffline,
+    selectedRoomId,
+    messageDraft,
+    setMessageDraft,
+    handleSendMessage,
+    handleMessageInputKeyDown,
+    focusComposer
+  });
+
+  const {
     messageDraft: dmMessageDraft,
     setMessageDraft: setDmMessageDraft,
-    selectedThreadId: selectedDirectThreadId,
-    sendDirectMessage,
-    resetAttachments: resetDmAttachments,
+    attachments: dmAttachments,
+    attachmentStatus: dmAttachmentStatus,
     setAttachmentStatus: setDmAttachmentStatus,
-    focusComposerInput: () => focusComposer(dmComposerInputRef)
+    isUploadingAttachment: isUploadingDmAttachment,
+    attachmentUploadProgress: dmUploadProgress,
+    canRetryAttachment: canRetryDmUploads,
+    handleOpenAttachmentPicker: handleOpenDmAttachmentPicker,
+    handleAttachmentInputChange: handleDmAttachmentInputChange,
+    handleRemoveAttachment: removeDmAttachment,
+    handleRetryAttachment: retryDmFailedUploads,
+    handleMessageChange: handleDirectMessageChange,
+    handleSend: handleSendDirectMessage,
+    attachmentInputRef: dmAttachmentInputRef,
+    composerInputRef: dmComposerInputRef,
+    gifPreview: dmComposerGifPreview,
+    gifPreviewError: dmGifPreviewError,
+    isGifPreviewLoading: isDmGifPreviewLoading,
+    handleGifPreviewConfirm: handleDmGifPreviewConfirm,
+    handleGifPreviewCancel: handleDmGifPreviewCancel,
+    handleGifPreviewShuffle: handleDmGifPreviewShuffle,
+    resetAttachments: resetDmAttachments
+  } = useDirectComposer({
+    authUser,
+    directMessagesHasAccess,
+    selectedDirectThreadId,
+    sendDirectMessage,
+    focusComposer,
+    isOffline
   });
 
 
@@ -526,17 +542,6 @@ function ChatPage() {
     [handleSelectRoom, selectDirectThread, setChannelDialogTab, setChannelTab]
   );
 
-  const handleSelectDirectThreadId = useCallback(
-    (threadId) => {
-      selectDirectThread(threadId);
-      handleSelectRoom(null); // clears room selection
-      setChannelTab('direct');
-      setChannelDialogTab('direct');
-      setIsChannelDialogOpen(false);
-    },
-    [handleSelectRoom, selectDirectThread, setChannelDialogTab, setChannelTab]
-  );
-
   useEffect(() => {
     const state = location.state;
     if (!state || !state.fromProfile) {
@@ -562,127 +567,31 @@ function ChatPage() {
       return;
     }
     const target = profileDmTargetRef.current;
-
-    const openConversation = async () => {
-      setChannelTab('direct');
-      setChannelDialogTab('direct');
-      setIsChannelDialogOpen(false);
-
-      const existingThread = findDirectThreadForUser(target.userId);
-      if (existingThread?.id) {
-        handleSelectDirectThreadId(existingThread.id);
-        profileDmTargetRef.current = null;
-        return;
-      }
-
-      try {
-        const result = await createDirectThread({
-          participantIds: [target.userId]
-        });
-        let newThreadId = result?.thread?.id || '';
-        if (!newThreadId) {
-          const refreshed = await refreshDmThreads().catch(() => null);
-          if (refreshed?.threads) {
-            const fallback = refreshed.threads.find((thread) => {
-              const participants = Array.isArray(thread.participants)
-                ? thread.participants
-                : [];
-              return participants.some(
-                (participant) => getParticipantId(participant) === target.userId
-              );
-            });
-            if (fallback?.id) {
-              newThreadId = fallback.id;
-            }
-          }
-          if (!newThreadId) {
-            const fallback = findDirectThreadForUser(target.userId);
-            if (fallback?.id) {
-              newThreadId = fallback.id;
-            }
-          }
-        }
-        if (newThreadId) {
-          handleSelectDirectThreadId(newThreadId);
-        }
-      } catch (error) {
-        console.error('Failed to open direct message from profile:', error);
-      } finally {
-        profileDmTargetRef.current = null;
-      }
-    };
-
-    openConversation();
+    handleSelectDirectFromProfile({
+      targetUserId: target.userId,
+      displayName: target.displayName,
+      findDirectThreadForUser,
+      createDirectThread
+    }).finally(() => {
+      profileDmTargetRef.current = null;
+    });
   }, [
     createDirectThread,
     directMessagesHasAccess,
-    findDirectThreadForUser,
-    handleSelectDirectThreadId,
-    refreshDmThreads,
+    handleSelectDirectFromProfile,
     setChannelDialogTab,
     setChannelTab,
-    setIsChannelDialogOpen
+    setIsChannelDialogOpen,
+    findDirectThreadForUser
   ]);
 
-  const handleActivateFriendsView = useCallback(() => {
-    if (channelTab === 'friends') {
-      let targetTab = lastConversationTab;
-      if (targetTab === 'direct' && directMessagesHasAccess === false) {
-        targetTab = 'rooms';
-      }
-      setChannelTab(targetTab);
-      setChannelDialogTab(
-        targetTab === 'direct' && directMessagesHasAccess !== false ? 'direct' : 'rooms'
-      );
-      setIsChannelDialogOpen(false);
-      return;
-    }
-    setChannelTab('friends');
-    setChannelDialogTab('friends');
-    setIsChannelDialogOpen(false);
-  }, [channelTab, directMessagesHasAccess, lastConversationTab, setChannelDialogTab, setChannelTab, setIsChannelDialogOpen]);
-
   const handleOpenFriendDialog = useCallback(() => {
-    setFriendActionStatus(null);
-    setIsFriendDialogOpen(true);
-  }, []);
+    openFriendDialog();
+  }, [openFriendDialog]);
 
   const handleCloseFriendDialog = useCallback(() => {
-    if (respondingRequestId) {
-      return;
-    }
-    setIsFriendDialogOpen(false);
-  }, [respondingRequestId]);
-
-  const handleRespondToFriendRequest = useCallback(
-    async (requestId, decision) => {
-      if (!requestId || !decision) {
-        return;
-      }
-      setRespondingRequestId(requestId);
-      setFriendActionStatus(null);
-      try {
-        await respondToFriendRequest({ requestId, decision });
-        setFriendActionStatus({
-          type: 'success',
-          message: decision === 'accept' ? 'Friend request accepted.' : 'Friend request declined.'
-        });
-
-        await Promise.allSettled([
-          refreshNotifications(),
-          refreshFriendGraph().catch(() => {})
-        ]);
-      } catch (error) {
-        setFriendActionStatus({
-          type: 'error',
-          message: error?.message || 'Failed to update friend request.'
-        });
-      } finally {
-        setRespondingRequestId(null);
-      }
-    },
-    [refreshFriendGraph, refreshNotifications, respondToFriendRequest]
-  );
+    closeFriendDialog();
+  }, [closeFriendDialog]);
 
   const handleMessageFriend = useCallback(
     async (friend) => {
@@ -797,98 +706,6 @@ function ChatPage() {
     [setFriendActionStatus, setModerationContext]
   );
 
-  const handleOpenChannelDialog = useCallback(() => {
-    if (channelTab === 'direct') {
-      setChannelDialogTab(directMessagesHasAccess !== false ? 'direct' : 'rooms');
-    } else if (channelTab === 'friends') {
-      setChannelDialogTab('friends');
-    } else {
-      setChannelDialogTab('rooms');
-    }
-    setIsChannelDialogOpen(true);
-  }, [channelTab, directMessagesHasAccess, setChannelDialogTab]);
-
-  const handleChannelDialogTabChange = useCallback(
-    (event, value) => {
-      if (value === 'direct' && directMessagesHasAccess === false) {
-        return;
-      }
-      setChannelDialogTab(value);
-    },
-    [directMessagesHasAccess, setChannelDialogTab]
-  );
-
-  const handleOpenRoomAttachmentPicker = useCallback(() => {
-    if (isOffline) {
-      setRoomAttachmentStatus({ type: 'error', message: 'Reconnect to upload images.' });
-      return;
-    }
-    if (!selectedRoomId) {
-      setRoomAttachmentStatus({ type: 'error', message: 'Select a room before uploading images.' });
-      return;
-    }
-    if (!canAttachMoreRoom) {
-      setRoomAttachmentStatus({
-        type: 'error',
-        message: `You can attach up to ${MAX_CHAT_ATTACHMENTS} images per message.`
-      });
-      return;
-    }
-    roomAttachmentInputRef.current?.click();
-  }, [canAttachMoreRoom, isOffline, selectedRoomId, setRoomAttachmentStatus]);
-
-  const handleOpenDmAttachmentPicker = useCallback(() => {
-    if (isOffline) {
-      setDmAttachmentStatus({ type: 'error', message: 'Reconnect to upload images.' });
-      return;
-    }
-    if (directMessagesHasAccess === false) {
-      setDmAttachmentStatus({ type: 'error', message: 'Direct messages are disabled for your account.' });
-      return;
-    }
-    if (!selectedDirectThreadId) {
-      setDmAttachmentStatus({ type: 'error', message: 'Select a conversation before uploading images.' });
-      return;
-    }
-    if (!canAttachMoreDm) {
-      setDmAttachmentStatus({
-        type: 'error',
-        message: `You can attach up to ${MAX_CHAT_ATTACHMENTS} images per message.`
-      });
-      return;
-    }
-    dmAttachmentInputRef.current?.click();
-  }, [
-    canAttachMoreDm,
-    directMessagesHasAccess,
-    isOffline,
-    selectedDirectThreadId,
-    setDmAttachmentStatus
-  ]);
-
-  const handleRoomAttachmentInputChange = useCallback(
-    async (event) => {
-      const fileList = Array.from(event.target.files ?? []);
-      if (event.target) {
-        event.target.value = '';
-      }
-      if (!fileList.length) {
-        return;
-      }
-      if (isOffline) {
-        setRoomAttachmentStatus({ type: 'error', message: 'Reconnect to upload images.' });
-        return;
-      }
-      if (!selectedRoomId) {
-        setRoomAttachmentStatus({ type: 'error', message: 'Select a room before uploading images.' });
-        return;
-      }
-
-      await processRoomAttachmentFiles(fileList);
-    },
-    [isOffline, processRoomAttachmentFiles, selectedRoomId, setRoomAttachmentStatus]
-  );
-
   const selectedRoomPinId = selectedRoom?.pinId || null;
   const {
     data: checkIn,
@@ -896,162 +713,6 @@ function ChatPage() {
     error: checkInError,
     toggleCheckIn
   } = usePinCheckIn({ pinId: selectedRoomPinId, isOffline });
-
-  const handleDmAttachmentInputChange = useCallback(
-    async (event) => {
-      const fileList = Array.from(event.target.files ?? []);
-      if (event.target) {
-        event.target.value = '';
-      }
-      if (!fileList.length) {
-        return;
-      }
-      if (isOffline) {
-        setDmAttachmentStatus({ type: 'error', message: 'Reconnect to upload images.' });
-        return;
-      }
-      if (directMessagesHasAccess === false) {
-        setDmAttachmentStatus({ type: 'error', message: 'Direct messages are disabled for your account.' });
-        return;
-      }
-      if (!selectedDirectThreadId) {
-        setDmAttachmentStatus({ type: 'error', message: 'Select a conversation before uploading images.' });
-        return;
-      }
-
-      await processDmAttachmentFiles(fileList);
-    },
-    [
-      directMessagesHasAccess,
-      isOffline,
-      processDmAttachmentFiles,
-      selectedDirectThreadId,
-      setDmAttachmentStatus
-    ]
-  );
-
-  const handleRoomSendMessage = useCallback(
-    async (event) => {
-      if (isUploadingRoomAttachment) {
-        event.preventDefault();
-        setRoomAttachmentStatus({ type: 'info', message: 'Please wait for uploads to finish.' });
-        return;
-      }
-      const attachments = mapDraftAttachmentPayloads(roomAttachments);
-      const hasText = messageDraft.trim().length > 0;
-      const options = {
-        attachments,
-        messageOverride: hasText || attachments.length === 0 ? undefined : ATTACHMENT_ONLY_PLACEHOLDER
-      };
-      const sent = await handleSendMessage(event, options);
-      if (sent) {
-        resetRoomAttachments();
-        focusComposer(roomComposerInputRef);
-      }
-    },
-    [
-      focusComposer,
-      handleSendMessage,
-      isUploadingRoomAttachment,
-      messageDraft,
-      resetRoomAttachments,
-      roomAttachments,
-      setRoomAttachmentStatus
-    ]
-  );
-
-  const handleRoomMessageKeyDown = useCallback(
-    (event) => {
-      const isPlainEnter =
-        event.key === 'Enter' &&
-        !event.shiftKey &&
-        !event.ctrlKey &&
-        !event.altKey &&
-        !event.metaKey &&
-        !event.nativeEvent?.isComposing;
-
-      if (isPlainEnter && isUploadingRoomAttachment) {
-        event.preventDefault();
-        setRoomAttachmentStatus({ type: 'info', message: 'Please wait for uploads to finish.' });
-        return;
-      }
-
-      const attachments = mapDraftAttachmentPayloads(roomAttachments);
-      const result = handleMessageInputKeyDown(event, {
-        attachments,
-        messageOverride:
-          messageDraft.trim().length > 0 || attachments.length === 0
-            ? undefined
-            : ATTACHMENT_ONLY_PLACEHOLDER
-      });
-      Promise.resolve(result)
-        .catch(() => {})
-        .finally(() => focusComposer(roomComposerInputRef));
-    },
-    [
-      focusComposer,
-      handleMessageInputKeyDown,
-      isUploadingRoomAttachment,
-      messageDraft,
-      roomAttachments,
-      setRoomAttachmentStatus
-    ]
-  );
-
-  const handleSendDirectMessage = useCallback(
-    async (event) => {
-      event.preventDefault();
-      if (!selectedDirectThreadId || isSendingDirectMessage) {
-        return;
-      }
-      if (isUploadingDmAttachment) {
-        setDmAttachmentStatus({ type: 'info', message: 'Please wait for uploads to finish.' });
-        return;
-      }
-      const trimmed = dmMessageDraft.trim();
-      const attachments = mapDraftAttachmentPayloads(dmAttachments);
-      const hasText = trimmed.length > 0;
-      const hasAttachments = attachments.length > 0;
-      if (!hasText && !hasAttachments) {
-        return;
-      }
-      if (ensureGifPreviewForMessage(dmMessageDraft)) {
-        return;
-      }
-      const handledGif = await handleDmGifPreviewConfirm();
-      if (handledGif) {
-        return;
-      }
-      try {
-        await sendDirectMessage({
-          threadId: selectedDirectThreadId,
-          body: hasText ? dmMessageDraft : ATTACHMENT_ONLY_PLACEHOLDER,
-          attachments
-        });
-        setDmMessageDraft('');
-        resetDmAttachments();
-        handleDmGifPreviewCancel();
-        focusComposer(dmComposerInputRef);
-      } catch {
-        // surfaced via send status
-      }
-    },
-    [
-      dmAttachments,
-      dmMessageDraft,
-      focusComposer,
-      handleDmGifPreviewCancel,
-      handleDmGifPreviewConfirm,
-      ensureGifPreviewForMessage,
-      isSendingDirectMessage,
-      isUploadingDmAttachment,
-      resetDmAttachments,
-      selectedDirectThreadId,
-      sendDirectMessage,
-      setDmAttachmentStatus,
-      setDmMessageDraft
-    ]
-  );
 
   const handleOpenSharePin = useCallback(
     (context) => {
@@ -1185,10 +846,10 @@ function ChatPage() {
         return;
       }
       if (
-        dmGifPreview &&
-        Array.isArray(dmGifPreview.options) &&
-        typeof dmGifPreview.selectedIndex === 'number' &&
-        dmGifPreview.options[dmGifPreview.selectedIndex]?.attachment
+        dmComposerGifPreview &&
+        Array.isArray(dmComposerGifPreview.options) &&
+        typeof dmComposerGifPreview.selectedIndex === 'number' &&
+        dmComposerGifPreview.options[dmComposerGifPreview.selectedIndex]?.attachment
       ) {
         handleDmGifPreviewConfirm();
         return;
@@ -1196,7 +857,7 @@ function ChatPage() {
       handleSendDirectMessage(event);
     },
     [
-      dmGifPreview,
+      dmComposerGifPreview,
       dmGifPreviewError,
       handleDmGifPreviewConfirm,
       handleDmGifPreviewShuffle,
@@ -1370,18 +1031,14 @@ function ChatPage() {
       const contextLabel = selectedRoom
         ? `Room: ${selectedRoom.name || 'Unnamed room'}`
         : 'Proximity chat';
-      setReportTarget({
+      openReportDialog({
         contentType: 'chat-message',
         contentId: messageId,
         summary,
         context: contextLabel
       });
-      setReportReason('');
-      setReportSelectedOffenses([]);
-      setReportError(null);
-      setReportDialogOpen(true);
     },
-    [getMessageIdForReport, getMessageReportSummary, selectedRoom]
+    [getMessageIdForReport, getMessageReportSummary, openReportDialog, selectedRoom, setReportStatus]
   );
 
   const handleOpenReportForDirectMessage = useCallback(
@@ -1395,83 +1052,42 @@ function ChatPage() {
       const contextLabel = selectedDirectNames.length
         ? `Direct thread with ${selectedDirectNames.join(', ')}`
         : 'Direct message thread';
-      setReportTarget({
+      openReportDialog({
         contentType: 'direct-message',
         contentId: messageId,
         summary,
         context: contextLabel,
         threadId: selectedDirectThreadId
       });
-      setReportReason('');
-      setReportSelectedOffenses([]);
-      setReportError(null);
-      setReportDialogOpen(true);
     },
-    [getMessageIdForReport, getMessageReportSummary, selectedDirectNames, selectedDirectThreadId]
+    [
+      getMessageIdForReport,
+      getMessageReportSummary,
+      openReportDialog,
+      selectedDirectNames,
+      selectedDirectThreadId,
+      setReportStatus
+    ]
   );
 
   const handleCloseReportDialog = useCallback(() => {
-    if (isSubmittingReport) {
-      return;
-    }
-    setReportDialogOpen(false);
-    setReportTarget(null);
-    setReportReason('');
-    setReportSelectedOffenses([]);
-    setReportError(null);
-  }, [isSubmittingReport]);
+    closeReportDialog();
+  }, [closeReportDialog]);
 
-  const handleToggleReportOffense = useCallback((offense, checked) => {
-    if (typeof offense !== 'string') {
-      return;
-    }
-    setReportSelectedOffenses((prev) => {
-      const next = new Set(prev);
-      if (checked) {
-        next.add(offense);
-      } else {
-        next.delete(offense);
-      }
-      return Array.from(next);
-    });
-  }, []);
+  const handleToggleReportOffense = useCallback(
+    (offense, checked) => {
+      toggleReportOffense(offense, checked);
+    },
+    [toggleReportOffense]
+  );
 
   const handleSubmitReport = useCallback(async () => {
-    if (!reportTarget?.contentType || !reportTarget?.contentId) {
-      setReportError('Unable to submit this report.');
-      return;
-    }
-    if (isSubmittingReport) {
-      return;
-    }
-    setIsSubmittingReport(true);
-    setReportError(null);
-    try {
-      await createContentReport({
-        contentType: reportTarget.contentType,
-        contentId: reportTarget.contentId,
-        reason: reportReason.trim(),
-        context: reportTarget.context || '',
-        offenses: reportSelectedOffenses
-      });
-      setReportDialogOpen(false);
-      setReportTarget(null);
-      setReportReason('');
-      setReportSelectedOffenses([]);
-      setReportStatus({
-        type: 'success',
-        message: 'Thanks for the report. Our moderators will review it shortly.'
-      });
-    } catch (error) {
-      setReportError(error?.message || 'Failed to submit report. Please try again later.');
-    } finally {
-      setIsSubmittingReport(false);
-    }
-  }, [reportSelectedOffenses, reportTarget, reportReason, isSubmittingReport]);
+    await submitReport();
+  }, [submitReport]);
 
   const handleReportStatusClose = useCallback(() => {
-    setReportStatus(null);
-  }, []);
+    closeReportStatus();
+  }, [closeReportStatus]);
 
   const headerChannelLabel = useMemo(() => {
     if (channelTab === 'direct') {
@@ -1668,181 +1284,6 @@ function ChatPage() {
     [authUser, displayedDirectMessages, directViewerId, getMessageKey, handleOpenReportForDirectMessage]
   );
 
-  const renderRoomMessagesMobile = useCallback(() => {
-    if (!selectedRoom) {
-      return (
-        <Box className="no-room-selected-container">
-          <SmsIcon color="primary" sx={{ fontSize: 48 }} />
-          <Typography className="no-room-selected-title" variant="h6">
-            Choose a chat room to start talking
-          </Typography>
-          <Typography className="no-room-selected-body" variant="body2">
-            Pick a room from the selector in the header or create a new one.
-          </Typography>
-        </Box>
-      );
-    }
-
-    if (messagesError) {
-      return (
-        <Alert severity="error" sx={{ mx: { xs: 2, md: 4 }, my: 2 }}>
-          {messagesError}
-        </Alert>
-      );
-    }
-
-    if (isLoadingMessages && uniqueMessages.length === 0) {
-      return (
-        <Box className="loading-msgs-container">
-          <CircularProgress className="loading-msgs-circle" />
-          <Typography className="loading-msgs-body" variant="body2">
-            Loading messages…
-          </Typography>
-        </Box>
-      );
-    }
-
-    if (uniqueMessages.length === 0) {
-      return (
-        <Box className="empty-msgs-container">
-          <Typography className="empty-msgs-title" variant="h6">
-            No messages yet
-          </Typography>
-          <Typography className="empty-msgs-body" variant="body2">
-            Start the conversation with everyone in this room.
-          </Typography>
-        </Box>
-      );
-    }
-
-    return (
-      <>
-        {roomMessageBubbles}
-        {uniqueMessages.length > displayedRoomMessages.length ? (
-          <Box className="chat-load-more">
-            <Button variant="outlined" size="small" onClick={handleLoadMoreRoomMessages} disableRipple>
-              Load older messages
-            </Button>
-          </Box>
-        ) : null}
-      </>
-    );
-  }, [
-    displayedRoomMessages.length,
-    handleLoadMoreRoomMessages,
-    isLoadingMessages,
-    messagesError,
-    roomMessageBubbles,
-    selectedRoom,
-    uniqueMessages.length
-  ]);
-
-  const renderDirectMessagesMobile = useCallback(() => {
-    if (directMessagesHasAccess === false) {
-      return (
-        <Box className="disabled-dms-container">
-          <Typography className="disabled-dms-body" variant="body2" color="text.secondary" align="center">
-            Direct messages are disabled for your account.
-          </Typography>
-        </Box>
-      );
-    }
-
-    if (!selectedDirectThreadId) {
-      if (dmThreads.length === 0 && !isLoadingDmThreads) {
-        return (
-          <Box className="no-dm-selected-container">
-            <Typography className="no-dm-selected-title" variant="h6">
-              Start a new conversation
-            </Typography>
-
-            <Typography className="no-dm-selected-body" variant="body2" color="text.secondary" align="center">
-              Visit a profile and choose “Message user” to invite them to chat.
-            </Typography>
-          </Box>
-        );
-      }
-      if (isLoadingDmThreads) {
-        return (
-          <Box className="loading-dms-container">
-            <CircularProgress className="loading-dms-circle" />
-            <Typography className="loading-dms-body" variant="body2">
-              Loading messages…
-            </Typography>
-          </Box>
-        );
-      }
-      return (
-        <Box className="select-dms-container">
-          <Typography className="select-dms-title" variant="h6">
-            Select a direct message
-          </Typography>
-
-          <Typography className="select-dms-body" variant="body2">
-            Open the channel picker above and choose a conversation.
-          </Typography>
-        </Box>
-      );
-    }
-
-    if (directThreadStatus && directThreadStatus.message) {
-      return (
-        <Alert severity={directThreadStatus.type} sx={{ mx: { xs: 2, md: 4 }, my: 2 }}>
-          {directThreadStatus.message}
-        </Alert>
-      );
-    }
-
-    if (isLoadingDirectThread && directMessageItems.length === 0) {
-      return (
-        <Box className="loading-dms-container">
-          <CircularProgress className="loading-dms-circle" />
-          <Typography className="loading-dms-body" variant="body2">
-            Loading messages…
-          </Typography>
-        </Box>
-      );
-    }
-
-    if (directMessageItems.length === 0) {
-      return (
-        <Box className="empty-dms-container">
-          <Typography className="empty-dms-title" variant="h6">
-            Start a new conversation
-          </Typography>
-
-          <Typography className="empty-dms-body" variant="body2" color="text.secondary" align="center">
-            Visit a profile and choose “Message user” to invite them to chat.
-          </Typography>
-        </Box>
-      );
-    }
-
-    return (
-      <>
-        {directMessageBubbles}
-        {directMessageItems.length > displayedDirectMessages.length ? (
-          <Box className="chat-load-more">
-            <Button variant="outlined" size="small" onClick={handleLoadMoreDirectMessages} disableRipple>
-              Load older messages
-            </Button>
-          </Box>
-        ) : null}
-      </>
-    );
-  }, [
-    directMessageBubbles,
-    directMessageItems.length,
-    directMessagesHasAccess,
-    displayedDirectMessages.length,
-    dmThreads.length,
-    handleLoadMoreDirectMessages,
-    isLoadingDirectThread,
-    isLoadingDmThreads,
-    selectedDirectThreadId,
-    directThreadStatus?.message
-  ]);
-
   const handleFriendListBackDialog = useCallback(() => {
     setIsChannelDialogOpen(false);
   }, []);
@@ -1857,39 +1298,62 @@ function ChatPage() {
     [friendPanelProps, handleActivateFriendsView, handleFriendListBackDialog]
   );
 
+  const friendsContent = useMemo(() => renderFriendsList({ variant: 'page' }), [renderFriendsList]);
+
   const messagesContent = useMemo(() => {
     if (channelTab === 'direct') {
-      return renderDirectMessagesMobile();
+      return (
+        <ChatMessagePane
+          mode="direct"
+          directMessagesHasAccess={directMessagesHasAccess}
+          selectedDirectThreadId={selectedDirectThreadId}
+          dmThreadsCount={dmThreads.length}
+          isLoadingDmThreads={isLoadingDmThreads}
+          directThreadStatus={directThreadStatus}
+          isLoadingDirectThread={isLoadingDirectThread}
+          directMessageItemsCount={directMessageItems.length}
+          displayedDirectMessagesCount={displayedDirectMessages.length}
+          directMessageBubbles={directMessageBubbles}
+          onLoadMoreDirectMessages={handleLoadMoreDirectMessages}
+        />
+      );
     }
     if (channelTab === 'friends') {
-      return renderFriendsList({ variant: 'page' });
+      return friendsContent;
     }
-    return renderRoomMessagesMobile();
-  }, [channelTab, renderDirectMessagesMobile, renderFriendsList, renderRoomMessagesMobile]);
-
-  const roomsTabLabel = useMemo(
-    () => (
-      <Box className="channel-switch-tab-container">
-        <span className="channel-switch-tab-title">Rooms</span>
-        {rooms.length > 0 && (
-          <Typography className="channel-switch-tab-badge">{rooms.length}</Typography>
-        )}
-      </Box>
-    ),
-    [rooms.length]
-  );
-
-  const directTabLabel = useMemo(
-    () => (
-      <Box className="channel-switch-tab-container">
-        <span className="channel-switch-tab-title">Messages</span>
-        {dmThreads.length > 0 && (
-          <Typography className="channel-switch-tab-badge">{dmThreads.length}</Typography>
-        )}
-      </Box>
-    ),
-    [dmThreads.length]
-  );
+    return (
+      <ChatMessagePane
+        mode="rooms"
+        selectedRoom={selectedRoom}
+        messagesError={messagesError}
+        isLoadingMessages={isLoadingMessages}
+        uniqueMessagesCount={uniqueMessages.length}
+        displayedRoomMessagesCount={displayedRoomMessages.length}
+        roomMessageBubbles={roomMessageBubbles}
+        onLoadMoreRoomMessages={handleLoadMoreRoomMessages}
+      />
+    );
+  }, [
+    channelTab,
+    directMessageBubbles,
+    directMessageItems.length,
+    directMessagesHasAccess,
+    displayedDirectMessages.length,
+    displayedRoomMessages.length,
+    dmThreads.length,
+    friendsContent,
+    handleLoadMoreDirectMessages,
+    handleLoadMoreRoomMessages,
+    isLoadingDirectThread,
+    isLoadingDmThreads,
+    isLoadingMessages,
+    directThreadStatus,
+    messagesError,
+    roomMessageBubbles,
+    selectedDirectThreadId,
+    selectedRoom,
+    uniqueMessages.length
+  ]);
 
   return (
     <>
@@ -2033,232 +1497,75 @@ function ChatPage() {
             </Box>
           ) : null}
 
-          {shareModalContext ? (
-            <Suspense fallback={null}>
-              <ChatSharePinModal
-                open
-                bookmarks={shareableBookmarks}
-                onClose={handleCloseSharePin}
-                onSelect={handleSharePinSelect}
-              />
-            </Suspense>
-          ) : null}
-
-          <Suspense fallback={null}>
-            <ReportContentDialog
-              open={reportDialogOpen}
-              onClose={handleCloseReportDialog}
-              onSubmit={handleSubmitReport}
-              reason={reportReason}
-              onReasonChange={setReportReason}
-              submitting={isSubmittingReport}
-              error={reportError}
-              contentSummary={reportTarget?.summary || ''}
-              context={reportTarget?.context || ''}
-              selectedReasons={reportSelectedOffenses}
-              onToggleReason={handleToggleReportOffense}
-            />
-          </Suspense>
-
-          <Suspense fallback={null}>
-            <FriendRequestsDialog
-              open={isFriendDialogOpen}
-              onClose={handleCloseFriendDialog}
-              requests={incomingRequests}
-              actionStatus={friendActionStatus}
-              respondingRequestId={respondingRequestId}
-              onRespond={handleRespondToFriendRequest}
-            />
-          </Suspense>
-
-          <Snackbar
-            open={reportStatus}
-            autoHideDuration={4000}
-            onClose={(_, reason) => {
-              if (reason === 'clickaway') {
-                return;
-              }
-              handleReportStatusClose();
-            }}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            sx={{ bottom: `${scrollButtonOffset + 72}px` }}
-          >
-            {reportStatus && (
-              <Alert
-                elevation={6}
-                variant="filled"
-                severity={reportStatus.type}
-                onClose={handleReportStatusClose}
-              >
-                {reportStatus.message}
-              </Alert>
-            )}
-          </Snackbar>
-
-          <Snackbar
-            open={channelTab === 'direct' && directSendStatus}
-            autoHideDuration={4000}
-            onClose={(_, reason) => {
-              if (reason === 'clickaway') {
-                return;
-              }
-              resetDirectSendStatus();
-            }}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            sx={{
-              bottom: `${scrollButtonOffset + 72}px`,
-              right: 16
-            }}
-          >
-            {directSendStatus && (
-              <Alert
-                elevation={6}
-                variant="filled"
-                severity={directSendStatus.type}
-                onClose={resetDirectSendStatus}
-              >
-                {directSendStatus.message}
-              </Alert>
-            )}
-          </Snackbar>
-
-          <Snackbar
-            open={friendActionStatus}
-            autoHideDuration={4000}
-            onClose={(_, reason) => {
-              if (reason === 'clickaway') {
-                return;
-              }
-              setFriendActionStatus(null);
-            }}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            sx={{ bottom: `${scrollButtonOffset + 40}px` }}
-          >
-            {friendActionStatus && (
-              <Alert
-                elevation={6}
-                variant="filled"
-                severity={friendActionStatus.type || 'info'}
-                onClose={() => setFriendActionStatus(null)}
-              >
-                {friendActionStatus.message}
-              </Alert>
-            )}
-          </Snackbar>
+          <ChatSnackbars
+            reportStatus={reportStatus}
+            onCloseReportStatus={handleReportStatusClose}
+            directSendStatus={directSendStatus}
+            onCloseDirectSendStatus={resetDirectSendStatus}
+            friendActionStatus={friendActionStatus}
+            onCloseFriendActionStatus={() => setFriendActionStatus(null)}
+            scrollButtonOffset={scrollButtonOffset}
+            channelTab={channelTab}
+          />
 
       <Navbar />
     </div>
   </Box>
 
-      <Dialog
-        className="channel-switch-overlay"
-        open={isChannelDialogOpen}
-        onClose={() => setIsChannelDialogOpen(false)}
-        fullWidth
-        maxWidth="sm"
-        TransitionProps={{ timeout: { enter: 0, exit: 0 } }}
-      >
-        <Box className="channel-switch-header">
-          <DialogTitle className="channel-switch-title">
-            Choose a conversation
-          </DialogTitle>
+          <ChatChannelDialog
+            open={isChannelDialogOpen}
+            onClose={() => setIsChannelDialogOpen(false)}
+            channelDialogTab={channelDialogTab}
+            onTabChange={handleChannelDialogTabChange}
+            rooms={rooms}
+            selectedRoomId={selectedRoomId}
+            isLoadingRooms={isLoadingRooms}
+            roomsError={roomsError}
+            onRefreshRooms={loadRooms}
+            onSelectRoom={handleChooseRoom}
+            dmThreads={dmThreads}
+            selectedDirectThreadId={selectedDirectThreadId}
+            onSelectDirectThreadId={handleSelectDirectThreadId}
+            dmThreadsStatus={dmThreadsStatus}
+            isLoadingDmThreads={isLoadingDmThreads}
+            refreshDmThreads={refreshDmThreads}
+            directMessagesHasAccess={directMessagesHasAccess}
+            directViewerId={directViewerId}
+            dmViewer={dmViewer}
+          />
 
-          <Button 
-              className="close-channel-switch-btn"
-              onClick={() => setIsChannelDialogOpen(false)}
-              disableRipple
-            >
-              <CloseIcon
-                className="close-channel-switch-icon"
-              ></CloseIcon>
-            </Button>
-        </Box>
-        
-        <DialogContent dividers sx={{ p: 0 }}>
-          <Tabs
-            className="channel-switch-tabs-background"
-            value={channelDialogTab}
-            onChange={handleChannelDialogTabChange}
-            variant="fullWidth"
-            slotProps={{
-              indicator: {
-                className: "channel-switch-tab-indicator"
-              },
-            }}
-          >
-            <Tab
-              className="channel-switch-rooms-tab"
-              value="rooms"
-              disableRipple
-              icon={<GroupIcon fontSize="small" />}
-              iconPosition="start"
-              label={roomsTabLabel}
-            >
-            </Tab>
-              
-            <Tab
-              className="channel-switch-dm-tab"
-              value="direct"
-              disableRipple
-              icon={<MarkUnreadChatAltIcon fontSize="small" />}
-              iconPosition="start"
-              disabled={directMessagesHasAccess === false}
-              label={directTabLabel}
-            />
-            {/* Removed friends tab, since handling of it is now on the friends page
-            <Tab
-              value="friends"
-              label="Friends"
-              icon={<PeopleAltIcon fontSize="small" />}
-              iconPosition="start"
-            />
-            */}
-          </Tabs>
-          <Box sx={{ maxHeight: 420, display: 'flex', flexDirection: 'column' }}>
-            {channelDialogTab === 'direct' ? (
-              <DirectThreadList
-                threads={dmThreads}
-                selectedThreadId={selectedDirectThreadId}
-                onSelectThread={handleSelectDirectThreadId}
-                status={dmThreadsStatus}
-                isLoading={isLoadingDmThreads}
-                onRefresh={refreshDmThreads}
-                canAccess={directMessagesHasAccess !== false}
-                viewerId={directViewerId}
-                viewerUsername={dmViewer?.username || null}
-                viewerDisplayName={dmViewer?.displayName || null}
-              />
-            ) : channelDialogTab === 'friends' ? (
-              renderFriendsList({ variant: 'dialog' })
-            ) : (
-              <ChatRoomList
-                rooms={rooms}
-                selectedRoomId={selectedRoomId}
-                isRefreshing={isLoadingRooms}
-                error={roomsError}
-                onRefresh={loadRooms}
-                onSelectRoom={handleChooseRoom}
-              />
-            )}
-          </Box>
-        </DialogContent>
-      </Dialog>
-
-      <Suspense fallback={null}>
-        <ChatModerationDialog
-          open={Boolean(moderationContext)}
-          context={moderationContext}
-          hasAccess={moderationHasAccess}
-          actionStatus={moderationActionStatus}
-          form={moderationForm}
-          onClose={handleCloseModerationDialog}
-          onSubmit={handleModerationSubmit}
-          onFieldChange={handleModerationFieldChange}
-          onSelectQuickAction={handleSelectModerationAction}
-          disableSubmit={disableModerationSubmit}
-          isSubmitting={isRecordingModerationAction}
-        />
-      </Suspense>
+      <ChatDialogs
+        shareModalContext={shareModalContext}
+        shareableBookmarks={shareableBookmarks}
+        onCloseSharePin={handleCloseSharePin}
+        onSelectSharePin={handleSharePinSelect}
+        reportDialogOpen={reportDialogOpen}
+        onCloseReportDialog={handleCloseReportDialog}
+        onSubmitReport={handleSubmitReport}
+        reportReason={reportReason}
+        onReportReasonChange={setReportReason}
+        isSubmittingReport={isSubmittingReport}
+        reportError={reportError}
+        reportTarget={reportTarget}
+        reportSelectedOffenses={reportSelectedOffenses}
+        onToggleReportOffense={handleToggleReportOffense}
+        isFriendDialogOpen={isFriendDialogOpen}
+        onCloseFriendDialog={handleCloseFriendDialog}
+        incomingRequests={incomingRequests}
+        friendActionStatus={friendActionStatus}
+        respondingRequestId={respondingRequestId}
+        onRespondFriendRequest={handleRespondToFriendRequest}
+        moderationContext={moderationContext}
+        moderationHasAccess={moderationHasAccess}
+        moderationActionStatus={moderationActionStatus}
+        moderationForm={moderationForm}
+        onCloseModerationDialog={handleCloseModerationDialog}
+        onSubmitModeration={handleModerationSubmit}
+        onModerationFieldChange={handleModerationFieldChange}
+        onSelectModerationQuickAction={handleSelectModerationAction}
+        disableModerationSubmit={disableModerationSubmit}
+        isRecordingModerationAction={isRecordingModerationAction}
+      />
 
       <input
         ref={roomAttachmentInputRef}
@@ -2280,4 +1587,4 @@ function ChatPage() {
   );
 }
 
-export default ChatPage;
+export default memo(ChatPage);

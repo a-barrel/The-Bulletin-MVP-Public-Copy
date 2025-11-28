@@ -10,7 +10,7 @@ import {
   createPinReply,
   fetchCurrentUserProfile,
   sharePin
-} from '../api/mongoDataApi';
+} from '../api';
 import { playBadgeSound } from '../utils/badgeSound';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
 import { logClientError } from '../utils/clientLogger';

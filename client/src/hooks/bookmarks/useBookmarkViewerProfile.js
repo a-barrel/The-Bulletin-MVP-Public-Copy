@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { fetchCurrentUserProfile } from '../../api/mongoDataApi';
+import { fetchCurrentUserProfile } from '../../api';
 import toIdString from '../../utils/ids';
 
 export default function useBookmarkViewerProfile({ authUser, isOffline }) {

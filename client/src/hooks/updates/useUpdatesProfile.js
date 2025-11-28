@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { fetchCurrentUserProfile } from '../../api/mongoDataApi';
+import { fetchCurrentUserProfile } from '../../api';
 import { auth } from '../../firebase';
 
 export default function useUpdatesProfile() {

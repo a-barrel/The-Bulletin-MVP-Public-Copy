@@ -1,5 +1,5 @@
 import runtimeConfig from '../config/runtime';
-import formatDateTime from './dates';
+import formatDateTime, { formatAbsoluteDateTime, formatRelativeTime } from './dates';
 import { normalizeProfileImagePath, DEFAULT_PROFILE_IMAGE_REGEX } from './media';
 import { metersToMiles, METERS_PER_MILE } from './geo';
 import { routes } from '../routes';
@@ -190,4 +190,17 @@ export const formatViewerDistanceLabel = (meters) => {
     return `${Math.round(meters)} meters`;
   }
   return `${meters.toFixed(1)} meters`;
+};
+
+// Bookmark metadata helper; kept here so list/map views can format consistently.
+export const formatSavedDate = (input) => {
+  if (!input) {
+    return 'Unknown date';
+  }
+  const relative = formatRelativeTime(input);
+  const absolute = formatAbsoluteDateTime(input);
+  if (relative && absolute) {
+    return `${relative} (${absolute})`;
+  }
+  return absolute || relative || 'Unknown date';
 };

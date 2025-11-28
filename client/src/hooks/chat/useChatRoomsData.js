@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { fetchChatRooms, createChatRoom } from '../../api/mongoDataApi';
+import { fetchChatRooms, createChatRoom } from '../../api';
 import { buildPinRoomPayload } from '../../utils/chatRoomContract';
 import { normalizeId } from '../../utils/mapLocation';
 
