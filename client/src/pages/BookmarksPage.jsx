@@ -8,7 +8,7 @@
  *  - UX helpers: Quick-nav prefs + focus handling live locally so we can auto-scroll to a collection
  *    when `?collection=` is present while keeping helpers isolated from the data hook.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
@@ -20,10 +20,10 @@ import {
   FormControl,
   FormControlLabel,
   InputLabel,
-  List,
   ListSubheader,
   MenuItem,
   Pagination,
+  PaginationItem,
   Paper,
   Select,
   Snackbar,
@@ -63,6 +63,194 @@ export const pageConfig = {
 const UNSORTED_COLLECTION_KEY = '__ungrouped__';
 const UNSORTED_LABEL = 'Unsorted';
 const ITEMS_PER_PAGE = 10;
+const HISTORY_RENDER_LIMIT = 40;
+
+const shallowEqualPinPayload = (a, b) => {
+  if (a === b) {
+    return true;
+  }
+  if (!a || !b) {
+    return false;
+  }
+  return (
+    a._id === b._id &&
+    a.title === b.title &&
+    a.type === b.type &&
+    a.description === b.description &&
+    a.creator === b.creator &&
+    a.creatorId === b.creatorId &&
+    a.coverPhoto === b.coverPhoto &&
+    a.mediaAssets === b.mediaAssets &&
+    a.photos === b.photos &&
+    a.images === b.images &&
+    a.viewerIsAttending === b.viewerIsAttending &&
+    a.participantCount === b.participantCount &&
+    (a.stats?.participantCount ?? null) === (b.stats?.participantCount ?? null)
+  );
+};
+
+const GroupSection = memo(
+  function GroupSection({
+    group,
+    highlightedCollectionKey,
+    collectionAnchorsRef,
+    handleViewPin,
+    handleRemoveBookmark,
+    notifyRemovalStatus,
+    handleBookmarkAttendanceToggle,
+    removingPinId,
+    attendancePendingId,
+    isOffline,
+    authUser
+  }) {
+    const { id: collectionId, name, description, items } = group;
+    const groupKey = collectionId ?? UNSORTED_COLLECTION_KEY;
+    const displayName = name || UNSORTED_LABEL;
+    const normalizedName = displayName.trim().toLowerCase();
+    const isHighlighted = highlightedCollectionKey === groupKey;
+    const shouldHideHeader = displayName === 'Weekend Events' || displayName === UNSORTED_LABEL;
+
+    return (
+      <Box key={groupKey}>
+        {!shouldHideHeader && (
+          <>
+            <ListSubheader
+              component="div"
+              ref={(node) => {
+                const anchors = collectionAnchorsRef.current;
+                const keys = [groupKey, normalizedName, `${groupKey}::header`].filter(Boolean);
+                keys.forEach((key) => {
+                  if (!key) {
+                    return;
+                  }
+                  if (node) {
+                    anchors.set(key, node);
+                  } else {
+                    anchors.delete(key);
+                  }
+                });
+              }}
+              sx={{
+                backgroundColor: isHighlighted ? 'rgba(144, 202, 249, 0.12)' : 'background.paper',
+                transition: 'background-color 220ms ease',
+                px: 3,
+                py: 1.5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                borderLeft: isHighlighted ? '3px solid rgba(144, 202, 249, 0.6)' : '3px solid transparent'
+              }}
+            >
+              <Typography variant="subtitle1" fontWeight={600} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
+                {displayName}
+              </Typography>
+              <Chip label={items.length} size="small" variant="outlined" sx={{ fontFamily: '"Urbanist", sans-serif' }} />
+            </ListSubheader>
+            <Divider />
+          </>
+        )}
+        {description ? (
+          <Typography variant="body2" sx={{ px: 3, py: 1, fontFamily: '"Urbanist", sans-serif' }}>
+            {description}
+          </Typography>
+        ) : null}
+        {items.map((bookmark) => {
+          const pin = bookmark.pin;
+          const pinId = bookmark.pinId || pin?._id;
+          const pinTitle = pin?.title ?? 'Untitled Pin';
+          const pinType = pin?.type ?? 'pin';
+          const tagLabel =
+            pinType === 'event' ? 'Event' : pinType === 'discussion' ? 'Discussion' : 'Pin';
+          const savedAt = bookmark.savedAtText || formatSavedDate(bookmark.createdAt);
+          const isRemoving = removingPinId === pinId;
+
+          return (
+            <ExpandableBookmarkItem
+              key={bookmark._id || pinId}
+              bookmark={bookmark}
+              pin={pin}
+              pinId={pinId}
+              pinTitle={pinTitle}
+              pinType={pinType}
+              tagLabel={tagLabel}
+              savedAt={savedAt}
+              isRemoving={isRemoving}
+              isOffline={isOffline}
+              onViewPin={handleViewPin}
+              onRemoveBookmark={handleRemoveBookmark}
+              authUser={authUser}
+              onShowRemovalStatus={notifyRemovalStatus}
+              onToggleAttendance={handleBookmarkAttendanceToggle}
+              isTogglingAttendance={attendancePendingId === pinId}
+            />
+          );
+        })}
+        {!shouldHideHeader && <Divider />}
+      </Box>
+    );
+  },
+  (prev, next) =>
+    prev.group === next.group &&
+    prev.highlightedCollectionKey === next.highlightedCollectionKey &&
+    prev.removingPinId === next.removingPinId &&
+    prev.attendancePendingId === next.attendancePendingId &&
+    prev.isOffline === next.isOffline &&
+    prev.authUser === next.authUser &&
+    prev.handleViewPin === next.handleViewPin &&
+    prev.handleRemoveBookmark === next.handleRemoveBookmark &&
+    prev.notifyRemovalStatus === next.notifyRemovalStatus &&
+    prev.handleBookmarkAttendanceToggle === next.handleBookmarkAttendanceToggle
+);
+
+const BookmarksList = memo(
+  function BookmarksList({
+    groups,
+    highlightedCollectionKey,
+    collectionAnchorsRef,
+    handleViewPin,
+    handleRemoveBookmark,
+    notifyRemovalStatus,
+    handleBookmarkAttendanceToggle,
+    removingPinId,
+    attendancePendingId,
+    isOffline,
+    authUser
+  }) {
+    return (
+      <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden', backgroundColor: 'transparent' }}>
+        <Box component="div" role="list">
+          {groups.map((group) => (
+            <GroupSection
+              key={group.id ?? UNSORTED_COLLECTION_KEY}
+              group={group}
+              highlightedCollectionKey={highlightedCollectionKey}
+              collectionAnchorsRef={collectionAnchorsRef}
+              handleViewPin={handleViewPin}
+              handleRemoveBookmark={handleRemoveBookmark}
+              notifyRemovalStatus={notifyRemovalStatus}
+              handleBookmarkAttendanceToggle={handleBookmarkAttendanceToggle}
+              removingPinId={removingPinId}
+              attendancePendingId={attendancePendingId}
+              isOffline={isOffline}
+              authUser={authUser}
+            />
+          ))}
+        </Box>
+      </Paper>
+    );
+  },
+  (prev, next) =>
+    prev.groups === next.groups &&
+    prev.highlightedCollectionKey === next.highlightedCollectionKey &&
+    prev.removingPinId === next.removingPinId &&
+    prev.attendancePendingId === next.attendancePendingId &&
+    prev.isOffline === next.isOffline &&
+    prev.authUser === next.authUser &&
+    prev.handleViewPin === next.handleViewPin &&
+    prev.handleRemoveBookmark === next.handleRemoveBookmark &&
+    prev.notifyRemovalStatus === next.notifyRemovalStatus &&
+    prev.handleBookmarkAttendanceToggle === next.handleBookmarkAttendanceToggle
+);
 
 function BookmarksPage() {
   const navigate = useNavigate();
@@ -125,6 +313,8 @@ function BookmarksPage() {
     () => (focusParam ? focusParam.trim().toLowerCase() : null),
     [focusParam]
   );
+  const bookmarkItemCacheRef = useRef(new Map());
+  const groupCacheRef = useRef(new Map());
 
   // Resolve ?collection= query to either an ID or a friendly name.
   const resolvedFocus = useMemo(() => {
@@ -326,16 +516,94 @@ function BookmarksPage() {
   const totalPages = Math.ceil(flattenedBookmarks.length / ITEMS_PER_PAGE) || 1;
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const paginatedBookmarks = flattenedBookmarks.slice(startIndex, endIndex);
+  const paginatedBookmarks = useMemo(
+    () => flattenedBookmarks.slice(startIndex, endIndex),
+    [endIndex, flattenedBookmarks, startIndex]
+  );
+
+  const filteredGroupsById = useMemo(() => {
+    const map = new Map();
+    filteredGroups.forEach((group) => {
+      const key = group.id ?? UNSORTED_COLLECTION_KEY;
+      map.set(key, group);
+    });
+    return map;
+  }, [filteredGroups]);
+
+  const stablePaginatedBookmarks = useMemo(() => {
+    const currentCache = bookmarkItemCacheRef.current;
+    const nextCache = new Map();
+    const list = paginatedBookmarks.map((bookmark) => {
+      const pin = bookmark.pin;
+      const pinId = bookmark.pinId || pin?._id;
+      const cacheKey = bookmark._id || pinId || null;
+      const trimmedPin = pin
+        ? {
+            _id: pin._id,
+            title: pin.title,
+            type: pin.type,
+            description: pin.description,
+            creator: pin.creator,
+            creatorId: pin.creatorId,
+            coverPhoto: pin.coverPhoto,
+            mediaAssets: pin.mediaAssets,
+            photos: pin.photos,
+            images: pin.images,
+            viewerIsAttending: pin.viewerIsAttending,
+            participantCount: pin.participantCount,
+            stats:
+              typeof pin?.stats?.participantCount === 'number'
+                ? { participantCount: pin.stats.participantCount }
+                : pin?.stats
+          }
+        : null;
+      const viewerIsAttending =
+        typeof bookmark.viewerIsAttending === 'boolean'
+          ? bookmark.viewerIsAttending
+          : typeof pin?.viewerIsAttending === 'boolean'
+          ? pin.viewerIsAttending
+          : undefined;
+      const savedAtText = bookmark.savedAtText || formatSavedDate(bookmark.createdAt);
+      const payload = {
+        _id: bookmark._id,
+        pinId,
+        pin: trimmedPin,
+        createdAt: bookmark.createdAt,
+        savedAtText,
+        viewerIsAttending,
+        collectionId: bookmark.collectionId,
+        collectionName: bookmark.collectionName
+      };
+
+      if (cacheKey) {
+        const prev = currentCache.get(cacheKey);
+        if (
+          prev &&
+          prev.pinId === payload.pinId &&
+          prev.createdAt === payload.createdAt &&
+          prev.savedAtText === payload.savedAtText &&
+          prev.viewerIsAttending === payload.viewerIsAttending &&
+          shallowEqualPinPayload(prev.pin, payload.pin) &&
+          prev.collectionId === payload.collectionId &&
+          prev.collectionName === payload.collectionName
+        ) {
+          nextCache.set(cacheKey, prev);
+          return prev;
+        }
+        nextCache.set(cacheKey, payload);
+      }
+      return payload;
+    });
+    bookmarkItemCacheRef.current = nextCache;
+    return list;
+  }, [formatSavedDate, paginatedBookmarks]);
 
   const paginatedGroupedBookmarks = useMemo(() => {
     const grouped = new Map();
-    paginatedBookmarks.forEach((bookmark) => {
+    stablePaginatedBookmarks.forEach((bookmark) => {
       const groupKey = bookmark.collectionId ?? UNSORTED_COLLECTION_KEY;
       if (!grouped.has(groupKey)) {
-        const originalGroup = filteredGroups.find(
-          (candidate) => (candidate.id ?? UNSORTED_COLLECTION_KEY) === groupKey
-        );
+        const originalGroup = filteredGroupsById.get(groupKey);
         grouped.set(groupKey, {
           id: originalGroup?.id,
           name: originalGroup?.name,
@@ -345,13 +613,40 @@ function BookmarksPage() {
       }
       grouped.get(groupKey).items.push(bookmark);
     });
-    return Array.from(grouped.values());
-  }, [filteredGroups, paginatedBookmarks]);
+    const nextGroupCache = new Map();
+    const result = Array.from(grouped.entries()).map(([groupKey, group]) => {
+      const prev = groupCacheRef.current.get(groupKey);
+      const prevItems = prev?.items || [];
+      const itemsUnchanged =
+        prevItems.length === group.items.length &&
+        prevItems.every((item, index) => item === group.items[index]);
+      if (
+        prev &&
+        itemsUnchanged &&
+        prev.name === group.name &&
+        prev.description === group.description
+      ) {
+        nextGroupCache.set(groupKey, prev);
+        return prev;
+      }
+      const payload = { ...group, items: group.items };
+      nextGroupCache.set(groupKey, payload);
+      return payload;
+    });
+    groupCacheRef.current = nextGroupCache;
+    return result;
+  }, [filteredGroupsById, stablePaginatedBookmarks]);
 
-  const handlePageChange = useCallback((event, value) => {
-    setCurrentPage(value);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+  const handlePageChange = useCallback(
+    (event, value) => {
+      if (value === currentPage) {
+        return;
+      }
+      setCurrentPage(value);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    [currentPage]
+  );
 
   useEffect(() => {
     const maxPage = Math.ceil(flattenedBookmarks.length / ITEMS_PER_PAGE) || 1;
@@ -416,6 +711,15 @@ function BookmarksPage() {
     [filterCounts]
   );
 
+  const limitedHistory = useMemo(
+    () =>
+      viewHistory.length > HISTORY_RENDER_LIMIT
+        ? viewHistory.slice(0, HISTORY_RENDER_LIMIT)
+        : viewHistory,
+    [viewHistory]
+  );
+  const isHistoryTrimmed = viewHistory.length > HISTORY_RENDER_LIMIT;
+
   return (
     <>
       <div className="back-nav-bar bookmarks-back-button">
@@ -469,6 +773,7 @@ function BookmarksPage() {
               label={`Bookmarks (${totalCount})`}
               variant={activeTab === 'bookmarks' ? 'filled' : 'outlined'}
               onClick={() => handleTabChange('bookmarks')}
+              disableRipple
               sx={{
                 fontWeight: 600,
                 backgroundColor: activeTab === 'bookmarks' ? '#5D3889' : 'rgba(93,56,137,0.1)',
@@ -480,6 +785,7 @@ function BookmarksPage() {
               label={`History (${viewHistory.length})`}
               variant={activeTab === 'history' ? 'filled' : 'outlined'}
               onClick={() => handleTabChange('history')}
+              disableRipple
               sx={{
                 fontWeight: 600,
                 backgroundColor: activeTab === 'history' ? '#5D3889' : 'rgba(93,56,137,0.1)',
@@ -493,6 +799,7 @@ function BookmarksPage() {
                 color="secondary"
                 onClick={handleHistoryClear}
                 disabled={isClearingHistory || viewHistory.length === 0 || isOffline}
+                disableRipple
                 sx={{ fontFamily: '"Urbanist", sans-serif' }}
               >
                 {isClearingHistory ? 'Clearing…' : 'Clear history'}
@@ -611,6 +918,7 @@ function BookmarksPage() {
                       checked={hideOwnPins}
                       onChange={(event) => setHideOwnPins(event.target.checked)}
                       color="secondary"
+                      disableRipple
                     />
                   }
                   label="Hide my pins"
@@ -623,103 +931,26 @@ function BookmarksPage() {
                       onChange={handleHideFullEventsToggle}
                       color="secondary"
                       disabled={isSavingHideFullPreference}
+                      disableRipple
                     />
                   }
                   label="Hide full events"
                   sx={{ fontFamily: '"Urbanist", sans-serif', color: 'black' }}
                 />
               </Stack>
-              <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden', backgroundColor: 'transparent' }}>
-                <List disablePadding>
-                  {paginatedGroupedBookmarks.map((group) => {
-                    const { id: collectionId, name, description, items } = group;
-                    const groupKey = collectionId ?? UNSORTED_COLLECTION_KEY;
-                    const displayName = name || UNSORTED_LABEL;
-                    const normalizedName = displayName.trim().toLowerCase();
-                    const isHighlighted = highlightedCollectionKey === groupKey;
-                    const shouldHideHeader = displayName === 'Weekend Events' || displayName === UNSORTED_LABEL;
-
-                    return (
-                      <Box key={groupKey}>
-                        {!shouldHideHeader && (
-                          <>
-                            <ListSubheader
-                              component="div"
-                              ref={(node) => {
-                                const anchors = collectionAnchorsRef.current;
-                                const keys = [groupKey, normalizedName, `${groupKey}::header`].filter(Boolean);
-                                keys.forEach((key) => {
-                                  if (!key) {
-                                    return;
-                                  }
-                                  if (node) {
-                                    anchors.set(key, node);
-                                  } else {
-                                    anchors.delete(key);
-                                  }
-                                });
-                              }}
-                              sx={{
-                                backgroundColor: isHighlighted ? 'rgba(144, 202, 249, 0.12)' : 'background.paper',
-                                transition: 'background-color 220ms ease',
-                                px: 3,
-                                py: 1.5,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1,
-                                borderLeft: isHighlighted ? '3px solid rgba(144, 202, 249, 0.6)' : '3px solid transparent'
-                              }}
-                            >
-                              <Typography variant="subtitle1" fontWeight={600} sx={{ fontFamily: '"Urbanist", sans-serif' }}>
-                                {displayName}
-                              </Typography>
-                              <Chip label={items.length} size="small" variant="outlined" sx={{ fontFamily: '"Urbanist", sans-serif' }} />
-                            </ListSubheader>
-                            <Divider />
-                          </>
-                        )}
-                        {description ? (
-                          <Typography variant="body2" sx={{ px: 3, py: 1, fontFamily: '"Urbanist", sans-serif' }}>
-                            {description}
-                          </Typography>
-                        ) : null}
-                        {items.map((bookmark) => {
-                          const pin = bookmark.pin;
-                          const pinId = bookmark.pinId || pin?._id;
-                          const pinTitle = pin?.title ?? 'Untitled Pin';
-                          const pinType = pin?.type ?? 'pin';
-                          const tagLabel =
-                            pinType === 'event' ? 'Event' : pinType === 'discussion' ? 'Discussion' : 'Pin';
-                          const savedAt = formatSavedDate(bookmark.createdAt);
-                          const isRemoving = removingPinId === pinId;
-
-                          return (
-                            <ExpandableBookmarkItem
-                              key={bookmark._id || pinId}
-                              bookmark={bookmark}
-                              pin={pin}
-                              pinId={pinId}
-                              pinTitle={pinTitle}
-                              pinType={pinType}
-                              tagLabel={tagLabel}
-                              savedAt={savedAt}
-                              isRemoving={isRemoving}
-                              isOffline={isOffline}
-                              onViewPin={handleViewPin}
-                              onRemoveBookmark={handleRemoveBookmark}
-                              authUser={authUser}
-                              onShowRemovalStatus={notifyRemovalStatus}
-                              onToggleAttendance={handleBookmarkAttendanceToggle}
-                              isTogglingAttendance={attendancePendingId === pinId}
-                            />
-                          );
-                        })}
-                        {!shouldHideHeader && <Divider />}
-                      </Box>
-                    );
-                  })}
-                </List>
-              </Paper>
+              <BookmarksList
+                groups={paginatedGroupedBookmarks}
+                highlightedCollectionKey={highlightedCollectionKey}
+                collectionAnchorsRef={collectionAnchorsRef}
+                handleViewPin={handleViewPin}
+                handleRemoveBookmark={handleRemoveBookmark}
+                notifyRemovalStatus={notifyRemovalStatus}
+                handleBookmarkAttendanceToggle={handleBookmarkAttendanceToggle}
+                removingPinId={removingPinId}
+                attendancePendingId={attendancePendingId}
+                isOffline={isOffline}
+                authUser={authUser}
+              />
               {totalPages > 1 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 2 }}>
                   <Pagination
@@ -727,6 +958,7 @@ function BookmarksPage() {
                     page={currentPage}
                     onChange={handlePageChange}
                     color="primary"
+                    renderItem={(item) => <PaginationItem disableRipple {...item} />}
                     sx={{
                       '& .MuiPaginationItem-root': {
                         fontFamily: '"Urbanist", sans-serif',
@@ -781,8 +1013,13 @@ function BookmarksPage() {
               className="history-panel"
               sx={{ borderRadius: 3, p: 2 }}
             >
+              {isHistoryTrimmed ? (
+                <Typography variant="body2" color="text.secondary" sx={{ fontFamily: '"Urbanist", sans-serif' }}>
+                  Showing latest {limitedHistory.length} of {viewHistory.length}.
+                </Typography>
+              ) : null}
               <Stack spacing={1.25}>
-                {viewHistory.map((entry) => {
+                {limitedHistory.map((entry) => {
                   const pin = entry.pin;
                   const title = pin?.title || 'Unavailable pin';
                   const typeLabel =
