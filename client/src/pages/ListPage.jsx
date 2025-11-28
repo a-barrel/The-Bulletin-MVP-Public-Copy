@@ -770,6 +770,7 @@ export default function ListPage() {
           <>
             <Feed
               items={paginatedFeedItems}
+              maxRenderCount={LIST_PAGE_SIZE}
               isUsingFallbackLocation={isUsingFallbackLocation}
               onSelectItem={handleFeedItemSelect}
               onSelectAuthor={handleFeedAuthorSelect}

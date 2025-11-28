@@ -322,6 +322,7 @@ export default function ListFiltersOverlay({
                     <Checkbox
                       checked={localFilters.types.includes(option.value)}
                       onChange={() => handleToggleType(option.value)}
+                      disableRipple
                     />
                   }
                   label={option.label}
@@ -345,6 +346,7 @@ export default function ListFiltersOverlay({
                     <Checkbox
                       checked={localFilters.friendEngagements.includes(option.value)}
                       onChange={() => handleToggleFriendEngagement(option.value)}
+                      disableRipple
                     />
                   }
                   label={option.label}
@@ -369,7 +371,7 @@ export default function ListFiltersOverlay({
                 <FormControlLabel
                   key={option.value ?? 'none'}
                   value={option.value ?? ''}
-                  control={<Radio />}
+                  control={<Radio disableRipple />}
                   label={option.label}
                 />
               ))}
@@ -504,21 +506,23 @@ export default function ListFiltersOverlay({
                 <FormControlLabel
                   key={option.value}
                   value={option.value}
-                  control={<Radio />}
-                  label={option.label}
-                />
-              ))}
-            </RadioGroup>
+                control={<Radio disableRipple />}
+                label={option.label}
+              />
+            ))}
+          </RadioGroup>
           </Stack>
         </Stack>
       </DialogContent>
 
       <DialogActions className="filters-actions">
-        <Button onClick={handleCancel}>{t('bookmarks.filters.cancel')}</Button>
-        <Button onClick={handleClearLocal} color="inherit">
+        <Button onClick={handleCancel} disableRipple>
+          {t('bookmarks.filters.cancel')}
+        </Button>
+        <Button onClick={handleClearLocal} color="inherit" disableRipple>
           {t('bookmarks.filters.clear')}
         </Button>
-        <Button onClick={handleApply} variant="contained">
+        <Button onClick={handleApply} variant="contained" disableRipple>
           {t('bookmarks.filters.apply')}
         </Button>
       </DialogActions>

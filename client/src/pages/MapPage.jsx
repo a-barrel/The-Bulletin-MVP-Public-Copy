@@ -723,6 +723,10 @@ const logPerf = (label, startedAt = null, meta = {}) => {
     ].filter((group) => Array.isArray(group.filters) && group.filters.length > 0);
   }, [baseFilterItems, chatFilterItems, highlightFilters]);
 
+  const handleToggleFiltersCollapsed = useCallback(() => {
+    setFiltersCollapsed((prev) => !prev);
+  }, []);
+
   if (locationRequired && !hasResolvedLocation) {
     return (
       <div className="map-page">
@@ -806,7 +810,7 @@ const logPerf = (label, startedAt = null, meta = {}) => {
         {/* NEW: Filter FAB (mobile-only) */}
         <MapFilterPanel
           collapsed={filtersCollapsed}
-          onToggleCollapse={() => setFiltersCollapsed((prev) => !prev)}
+          onToggleCollapse={handleToggleFiltersCollapsed}
           filterGroups={filterGroups}
         />
         {hideFullPreferenceError ? (
