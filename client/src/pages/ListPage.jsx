@@ -602,6 +602,40 @@ export default function ListPage() {
     []
   );
 
+  const slimmedFeedItems = useMemo(() => {
+    return paginatedFeedItems.map((item) => ({
+      id: item?.id,
+      _id: item?._id,
+      pinId: item?.pinId,
+      type: item?.type,
+      images: Array.isArray(item?.images) ? item.images : [],
+      creatorId: item?.creatorId,
+      authorId: item?.authorId,
+      creator: item?.creator
+        ? {
+            _id: item.creator?._id,
+            avatar: item.creator?.avatar,
+            displayName: item.creator?.displayName,
+            username: item.creator?.username
+          }
+        : undefined,
+      viewerOwnsPin: item?.viewerOwnsPin,
+      viewerIsAttending: item?.viewerIsAttending,
+      viewerHasBookmarked: item?.viewerHasBookmarked,
+      isBookmarked: item?.isBookmarked,
+      participantCount: item?.participantCount,
+      attendeeIds: Array.isArray(item?.attendeeIds) ? item.attendeeIds : [],
+      attendeeVersion: item?.attendeeVersion,
+      interested: Array.isArray(item?.interested) ? item.interested : [],
+      title: item?.title,
+      text: item?.text,
+      distance: item?.distance,
+      timeLabel: item?.timeLabel,
+      expiresInHours: item?.expiresInHours,
+      comments: item?.comments
+    }));
+  }, [paginatedFeedItems]);
+
   const notificationsLabel =
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
   const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
@@ -769,7 +803,7 @@ export default function ListPage() {
         {!loading && !error && (
           <>
             <Feed
-              items={paginatedFeedItems}
+              items={slimmedFeedItems}
               maxRenderCount={LIST_PAGE_SIZE}
               isUsingFallbackLocation={isUsingFallbackLocation}
               onSelectItem={handleFeedItemSelect}
