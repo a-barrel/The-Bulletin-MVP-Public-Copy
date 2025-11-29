@@ -24,8 +24,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import FeedbackIcon from '@mui/icons-material/FeedbackOutlined';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import GlobalNavMenu from '../components/GlobalNavMenu';
+import PageNavHeader from '../components/PageNavHeader';
 import { auth } from '../firebase';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import { routes } from '../routes';
@@ -267,8 +266,8 @@ function SettingsPage() {
       sx={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, #FFFFFF 0%, #F5EFFD 35%, #CDAEF2 100%)',
-        py: { xs: 3, md: 6 },
-        px: { xs: 1.5, md: 0 }
+        py: 0,
+        px: 0
       }}
     >
       <Box
@@ -277,34 +276,11 @@ function SettingsPage() {
           maxWidth: 960,
           mx: 'auto',
           py: 0,
-          px: { xs: 2, md: 4 }
+          px: { xs: 0, md: 0 }
         }}
       >
       <Stack spacing={3}>
-        <Stack direction="row" alignItems="center" spacing={1.25}>
-          <Button
-            variant="text"
-            startIcon={<ArrowBackIcon fontSize="small" />}
-            onClick={() => navigate(-1)}
-            sx={{
-              alignSelf: 'flex-start',
-              color: settingsPalette.textPrimary,
-              backgroundColor: settingsPalette.pastelBlue,
-              borderRadius: 999,
-              border: `1px solid ${settingsPalette.accentLight}`,
-              px: 2,
-              '&:hover': {
-                backgroundColor: '#d1edff'
-              }
-            }}
-          >
-            Back
-          </Button>
-          <GlobalNavMenu
-            triggerClassName="gnm-trigger-btn"
-            iconClassName="gnm-trigger-btn__icon"
-          />
-        </Stack>
+        <PageNavHeader title="Settings" />
 
         <Stack direction="row" spacing={1.5} alignItems="center" sx={{ color: settingsPalette.textPrimary }}>
           <SettingsIcon sx={{ color: settingsPalette.accent }} />

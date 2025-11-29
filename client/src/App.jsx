@@ -248,8 +248,9 @@ function AppContent() {
   );
 
   const socialNotifications = useSocialNotifications({
-    enabled: !isOffline && !isAuthRoute && isAuthReady,
-    autoLoad: !isAuthRoute && isAuthReady
+    enabled: !isOffline && !isAuthRoute && !!firebaseAuthUser,
+    autoLoad: !isAuthRoute && !!firebaseAuthUser,
+    authUser: firebaseAuthUser
   });
   const {
     friendRequestCount,

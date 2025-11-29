@@ -5,9 +5,12 @@ import { useUserCache } from '../../contexts/UserCacheContext';
 
 const DM_POLL_INTERVAL_MS = 30 * 1000;
 
-export default function useDmThreadsData({ dispatch, autoLoad = true }) {
+export default function useDmThreadsData({ dispatch, autoLoad = true, enabled = true }) {
   const userCache = useUserCache();
   const loadThreads = useCallback(async () => {
+    if (!enabled) {
+      return null;
+    }
     dispatch({ type: 'threads/pending' });
     try {
       const payload = await fetchDirectMessageThreads();
@@ -38,13 +41,13 @@ export default function useDmThreadsData({ dispatch, autoLoad = true }) {
   }, [dispatch]);
 
   useEffect(() => {
-    if (autoLoad) {
+    if (autoLoad && enabled) {
       loadThreads().catch(() => {});
     }
-  }, [autoLoad, loadThreads]);
+  }, [autoLoad, enabled, loadThreads]);
 
   useEffect(() => {
-    if (!autoLoad || typeof window === 'undefined') {
+    if (!autoLoad || !enabled || typeof window === 'undefined') {
       return undefined;
     }
     const intervalId = window.setInterval(() => {

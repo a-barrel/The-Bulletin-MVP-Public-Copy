@@ -20,6 +20,7 @@ import runtimeConfig from '../config/runtime';
 import useModerationOverview from '../hooks/useModerationOverview';
 import useContentReports from '../hooks/useContentReports';
 import LoadingOverlay from '../components/LoadingOverlay';
+import PageNavHeader from '../components/PageNavHeader';
 import ModerationSummaryGrid from '../components/admin/ModerationSummaryGrid';
 import ReportStatusTabs from '../components/admin/ReportStatusTabs';
 import ReportsTable from '../components/admin/ReportsTable';
@@ -280,23 +281,20 @@ function AdminDashboardContent() {
       }}
     >
       <Stack spacing={3}>
-        <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <AdminPanelSettingsIcon color="primary" fontSize="large" />
-            <Typography variant="h4" component="h1">
-              Admin dashboard
-            </Typography>
-          </Stack>
-          <Button
-            type="button"
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={handleRefreshAll}
-            disabled={isLoadingOverview || isLoadingReports}
-          >
-            Refresh
-          </Button>
-        </Stack>
+        <PageNavHeader
+          title="Admin dashboard"
+          rightSlot={
+            <Button
+              type="button"
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={handleRefreshAll}
+              disabled={isLoadingOverview || isLoadingReports}
+            >
+              Refresh
+            </Button>
+          }
+        />
 
         {snackbar ? (
           <Snackbar

@@ -9,6 +9,7 @@ import { useTheme } from '@mui/material/styles';
 import TAB_DEFINITIONS from './tabRegistry';
 import useBadgeAwardOnEntry from '../../hooks/useBadgeAwardOnEntry';
 import '../../styles/debug-console.css';
+import PageNavHeader from '../../components/PageNavHeader';
 
 export function DebugConsolePage() {
   const [activeTabId, setActiveTabId] = useState(TAB_DEFINITIONS[0]?.id ?? 'pin');
@@ -34,17 +35,13 @@ export function DebugConsolePage() {
       }}
     >
       <Stack spacing={3} sx={{ width: '100%', maxWidth: 1060 }}>
-        <Box className="debug-console-header">
-          <Box>
-            <Typography variant="h4" component="h1" className="debug-console-title">
-              Debug Console
-            </Typography>
-            <Typography variant="body1" className="debug-console-subtitle">
-              Admin-only control room for diagnostics, live chat tools, and data audits.
-            </Typography>
-          </Box>
-          <span className="debug-console-badge">Admin</span>
-        </Box>
+        <PageNavHeader
+          title="Debug Console"
+          rightSlot={<span className="debug-console-badge">Admin</span>}
+        />
+        <Typography variant="body1" className="debug-console-subtitle">
+          Admin-only control room for diagnostics, live chat tools, and data audits.
+        </Typography>
 
         <Tabs
           className="debug-console-tabs"

@@ -29,6 +29,8 @@ import normalizeObjectId from '../utils/normalizeObjectId';
 import ReportContentDialog from '../components/ReportContentDialog';
 import { createContentReport } from '../api';
 import './FriendsPage.css';
+import GlobalNavMenu from '../components/GlobalNavMenu';
+import MainNavBackButton from '../components/MainNavBackButton';
 
 export const pageConfig = {
   id: 'friends',
@@ -420,6 +422,21 @@ function FriendsPage() {
     <>
       <Box className="friend-page">
         <div className="friend-frame">
+          <div className="friends-header">
+            <div className="friends-header-left">
+              <MainNavBackButton
+                className="friends-header-back"
+                iconClassName="friends-header-back-icon"
+                ariaLabel="Back"
+                scope="core"
+                onNavigate={handleBack}
+              />
+              <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+              <Typography variant="h5" className="friends-title">
+                Friends
+              </Typography>
+            </div>
+          </div>
           <Box className="friends-list-field">
             <FriendsListPanel
               friends={friends}

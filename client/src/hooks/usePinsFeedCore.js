@@ -458,10 +458,25 @@ export default function usePinsFeedCore({
 
         // Seed shared cache with the basic nearby payloads so other views/pages can reuse them.
         pinCache.setPins(
-          results.map((pin) => ({
-            ...pin,
-            __hasDetails: hasDetailedPinFields(pin)
-          }))
+          results.map((pin) => {
+            const cached = pinCache.getPin(pin?._id);
+            return {
+              ...pin,
+              viewerHasBookmarked:
+                typeof cached?.viewerHasBookmarked === 'boolean'
+                  ? cached.viewerHasBookmarked
+                  : pin?.viewerHasBookmarked,
+              bookmarkCount:
+                typeof cached?.bookmarkCount === 'number'
+                  ? cached.bookmarkCount
+                  : typeof pin?.bookmarkCount === 'number'
+                  ? pin.bookmarkCount
+                  : typeof pin?.stats?.bookmarkCount === 'number'
+                  ? pin.stats.bookmarkCount
+                  : null,
+              __hasDetails: hasDetailedPinFields(pin)
+            };
+          })
         );
 
         let detailNetworkCalls = 0;
@@ -483,6 +498,14 @@ export default function usePinsFeedCore({
               }
               const mergedCached = {
                 ...cachedDetail.data,
+                viewerHasBookmarked:
+                  typeof pin?.viewerHasBookmarked === 'boolean'
+                    ? pin.viewerHasBookmarked
+                    : cachedDetail.data.viewerHasBookmarked,
+                bookmarkCount:
+                  typeof pin?.bookmarkCount === 'number'
+                    ? pin.bookmarkCount
+                    : cachedDetail.data.bookmarkCount,
                 distanceMeters: pin.distanceMeters ?? cachedDetail.data.distanceMeters,
                 startDate: cachedDetail.data.startDate ?? pin.startDate,
                 endDate: cachedDetail.data.endDate ?? pin.endDate,
@@ -498,6 +521,14 @@ export default function usePinsFeedCore({
               detailCacheRef.current.set(pin._id, { ts: Date.now(), data: sharedCached });
               return {
                 ...sharedCached,
+                viewerHasBookmarked:
+                  typeof pin?.viewerHasBookmarked === 'boolean'
+                    ? pin.viewerHasBookmarked
+                    : sharedCached.viewerHasBookmarked,
+                bookmarkCount:
+                  typeof pin?.bookmarkCount === 'number'
+                    ? pin.bookmarkCount
+                    : sharedCached.bookmarkCount,
                 distanceMeters: pin.distanceMeters ?? sharedCached.distanceMeters,
                 startDate: sharedCached.startDate ?? pin.startDate,
                 endDate: sharedCached.endDate ?? pin.endDate,
@@ -513,6 +544,14 @@ export default function usePinsFeedCore({
               }
               const merged = {
                 ...detail,
+                viewerHasBookmarked:
+                  typeof pin?.viewerHasBookmarked === 'boolean'
+                    ? pin.viewerHasBookmarked
+                    : detail.viewerHasBookmarked,
+                bookmarkCount:
+                  typeof detail?.bookmarkCount === 'number'
+                    ? detail.bookmarkCount
+                    : pin?.bookmarkCount ?? detail?.stats?.bookmarkCount ?? pin?.stats?.bookmarkCount,
                 distanceMeters: pin.distanceMeters ?? detail.distanceMeters,
                 startDate: detail.startDate ?? pin.startDate,
                 endDate: detail.endDate ?? pin.endDate,

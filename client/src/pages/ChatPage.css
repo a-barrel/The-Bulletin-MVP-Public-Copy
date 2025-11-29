@@ -1,8 +1,9 @@
 /* ===== Outer Shell ===== */
 .chat-page {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
   overflow: hidden;
   width: 100vw;
   height: 100vh;
@@ -32,6 +33,26 @@
   border-bottom: 2px solid #5D3889;
 }
 
+.chat-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 0.5rem;
+}
+
+.chat-header-back {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  box-shadow: none;
+}
+
+.chat-header-back-icon {
+  color: #4b208c;
+  width: 32px;
+  height: 32px;
+}
+
 .chat-header-title {
   color: #5D3889;
   font-weight: 700 !important;
@@ -39,8 +60,8 @@
 }
 
 .chat-header-menu-nav {
-  margin-left: -1rem;
-  margin-right: -1rem;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .chat-header-actions {

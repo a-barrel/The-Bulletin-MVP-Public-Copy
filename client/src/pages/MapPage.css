@@ -1,19 +1,14 @@
 /* ===== Outer Shell (fullscreen) ===== */
 .map-page {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: stretch;
+  display: block;
   background: linear-gradient(135deg, #f5effd 0%, #ecf8fe 100%);
   width: 100%;
   min-height: 100vh;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 .map-page__body {
-  flex: 1;
-  display: flex;
-  align-items: stretch;
+  min-height: calc(100vh - 82px);
 }
 
 @keyframes popularGlowPulse {
@@ -34,21 +29,25 @@
       drop-shadow(0 0 2px rgba(255, 106, 213, 0.55));
   }
 }
-.map-page, .map-frame {
+.map-page,
+.map-frame {
   overflow-x: hidden;
 }
 
 .map-frame {
-  --header-h: 8vh;
+  --header-h: 72px;
+  --nav-h: 82px;
   --add-btn-img-size: 70px; /* used for spacing filter FAB */
   --gap-below-add: 12px;
   width: 100%;
-  min-height: 100vh;
   flex: 1;
   display: flex;
   flex-direction: column;
   padding: 0;
-  overflow-y: auto;
+  position: relative;
+  min-height: calc(100vh - var(--header-h) - var(--nav-h));
+  height: calc(100vh - var(--header-h) - var(--nav-h));
+  overflow: hidden;
 }
 
 .map-location-gate {
@@ -68,9 +67,44 @@
 
 .map-canvas-wrapper {
   flex: 1;
-  min-height: calc(100vh - var(--header-h));
   width: 100%;
   position: relative;
+  height: 100%;
+  min-height: calc(100vh - var(--header-h) - var(--nav-h));
+}
+
+/* Ensure the Leaflet map itself always fills its parent wrapper */
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Keep Leaflet controls inside the visible map frame */
+.leaflet-bottom {
+  bottom: calc(var(--nav-h) + 8px + env(safe-area-inset-bottom, 0px));
+  right: max(0.5rem, env(safe-area-inset-right, 0px));
+  left: auto;
+}
+
+.map-canvas-wrapper .leaflet-control-container .leaflet-bottom.leaflet-right {
+  bottom: calc(var(--nav-h, 82px) + 8px + env(safe-area-inset-bottom, 0px));
+  right: max(0.75rem, env(safe-area-inset-right, 0px));
+}
+
+.map-canvas-wrapper .leaflet-control-attribution {
+  position: absolute !important;
+  bottom: calc(var(--nav-h, 82px) + 8px);
+  right: max(0.75rem, env(safe-area-inset-right, 0px));
+  margin: 0 !important;
+  display: none !important;
+}
+
+.leaflet-right {
+  right: max(0.5rem, env(safe-area-inset-right, 0px));
+}
+
+.leaflet-left {
+  left: max(0.5rem, env(safe-area-inset-left, 0px));
 }
 
 .map-title {
@@ -181,10 +215,10 @@
 
 /* ===== Filter Panel ===== */
 .map-filter-panel {
-  position: fixed;
-  top: calc(var(--header-h) + env(safe-area-inset-top, 0px) + 8px);
-  right: max(0rem, env(safe-area-inset-right, 0px));
-  z-index: 1040;
+  position: absolute;
+  top: 0;
+  right: max(0.5rem, env(safe-area-inset-right, 0px));
+  z-index: 400;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;

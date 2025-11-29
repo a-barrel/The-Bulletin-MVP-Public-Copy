@@ -17,7 +17,6 @@ import useMapExplorer from '../hooks/useMapExplorer';
 import useViewerProfile from '../hooks/useViewerProfile';
 import useHideFullEventsPreference from '../hooks/useHideFullEventsPreference';
 import { DEFAULT_MAX_DISTANCE_METERS } from '../utils/mapExplorerConstants';
-import MapHeader from '../components/map/MapHeader';
 import MapFilterPanel from '../components/map/MapFilterPanel';
 import { MAP_FILTERS, MAP_MARKER_ICON_URLS } from '../utils/mapMarkers';
 import { applyPinFilters } from '../utils/pinFilters';
@@ -26,6 +25,7 @@ import toIdString from '../utils/ids';
 import { buildPinMeta } from '../utils/mapPinMeta';
 import { viewerHasDeveloperAccess } from '../utils/roles';
 import runtimeConfig from '../config/runtime';
+import { usePinCache } from '../contexts/PinCacheContext';
 import { useTranslation } from 'react-i18next';
 import {
   useMapFilters,
@@ -36,6 +36,7 @@ import {
 import { logMapPerf, nowIfPerf } from '../utils/mapPerfLogger';
 import MapFiltersSection from '../components/map/MapFiltersSection';
 import MapPageLayout from '../components/map/MapPageLayout';
+import PageNavHeader from '../components/PageNavHeader';
 
 
 export const pageConfig = {
@@ -101,6 +102,7 @@ function MapPage() {
     enforceLocation: !adminOverride,
     isAdminExempt: adminOverride
   });
+  const pinCache = usePinCache();
 
   const {
     showEvents,
@@ -230,6 +232,25 @@ function MapPage() {
       return [];
     }
     const result = pins.map((pin) => {
+      const cached = pin?._id ? pinCache.getPin(pin._id) : null;
+      const mergedPin =
+        cached && typeof cached === 'object'
+          ? {
+              ...cached,
+              ...pin,
+              viewerHasBookmarked:
+                typeof cached.viewerHasBookmarked === 'boolean'
+                  ? cached.viewerHasBookmarked
+                  : pin?.viewerHasBookmarked,
+              bookmarkCount:
+                typeof cached.bookmarkCount === 'number'
+                  ? cached.bookmarkCount
+                  : pin?.bookmarkCount ??
+                    cached?.stats?.bookmarkCount ??
+                    pin?.stats?.bookmarkCount ??
+                    null
+            }
+          : pin;
       const mapMeta = buildPinMeta(pin, { viewerId, friendIds: friendIdsSet });
       const existingFriendCount =
         typeof pin?.friendsGoing === 'number'
@@ -273,12 +294,12 @@ function MapPage() {
           : null;
       const friendsGoingPending = friendsGoingCount === null;
       return {
-        ...pin,
+        ...mergedPin,
         friendsGoing: friendsGoingCount,
         friendsGoingCount,
         friendsGoingPending,
         stats: {
-          ...(pin?.stats || {}),
+          ...(mergedPin?.stats || {}),
           friendsGoing: friendsGoingCount,
           friendsGoingCount
         },
@@ -680,6 +701,7 @@ function MapPage() {
   if (locationGateContent) {
     return (
       <MapPageLayout>
+        <PageNavHeader title="Map" />
         {locationGateContent}
       </MapPageLayout>
     );
@@ -687,17 +709,48 @@ function MapPage() {
 
   return (
     <MapPageLayout>
-      <div className="map-frame">
-        <MapHeader
-          onNotifications={handleNotifications}
-          notificationsLabel={notificationsLabel}
-          notificationBadge={displayBadge}
-          notificationsIcon={updatesIcon}
-          isOffline={isOffline}
-          onCreatePin={handleCreatePin}
-          createIcon={addIconPurple}
-        />
+      <PageNavHeader
+        title="Map"
+        rightSlot={
+          <div className="map-header-actions">
+            <button
+              type="button"
+              className="map-icon-btn map-header-create"
+              onClick={handleCreatePin}
+              disabled={isOffline}
+              aria-label={t('mapHeader.createPin')}
+              title={isOffline ? t('mapHeader.offlineCreate') : undefined}
+            >
+              {addIconPurple ? (
+                <img src={addIconPurple} alt="" className="map-icon map-icon--create" aria-hidden="true" />
+              ) : (
+                <span className="map-icon map-icon--create" aria-hidden="true" />
+              )}
+            </button>
 
+            <button
+              className="map-icon-btn"
+              type="button"
+              aria-label={notificationsLabel}
+              onClick={handleNotifications}
+              disabled={isOffline}
+              title={isOffline ? t('mapHeader.offlineNotifications') : undefined}
+            >
+              {updatesIcon ? (
+                <img src={updatesIcon} alt="" className="map-icon" aria-hidden="true" />
+              ) : (
+                <span className="map-icon" aria-hidden="true" />
+              )}
+              {displayBadge ? (
+                <span className="map-icon-badge" aria-hidden="true">
+                  {displayBadge}
+                </span>
+              ) : null}
+            </button>
+          </div>
+        }
+      />
+      <div className="map-frame">
         <Box className="map-canvas-wrapper">
           <MapComponent
             userLocation={userLocation}

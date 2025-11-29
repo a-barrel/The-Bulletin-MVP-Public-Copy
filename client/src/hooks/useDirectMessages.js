@@ -9,10 +9,10 @@ import { dmReducer, initialState, buildOptimisticMessage } from './directMessage
 import useDmThreadsData from './directMessages/useDmThreadsData';
 import useDmThreadDetail from './directMessages/useDmThreadDetail';
 
-export default function useDirectMessages({ autoLoad = true } = {}) {
+export default function useDirectMessages({ autoLoad = true, enabled = true } = {}) {
   const [state, dispatch] = useReducer(dmReducer, initialState);
 
-  const { loadThreads } = useDmThreadsData({ dispatch, autoLoad });
+  const { loadThreads } = useDmThreadsData({ dispatch, autoLoad, enabled });
   const { loadThreadDetail, selectThread } = useDmThreadDetail({ dispatch });
 
   const sendMessageAction = useCallback(
@@ -94,7 +94,7 @@ export default function useDirectMessages({ autoLoad = true } = {}) {
           initialMessage
         });
 
-        const refreshed = await loadThreads();
+        const refreshed = enabled ? await loadThreads() : null;
         const newThreadId = response?.thread?.id;
         let threadDetail = null;
         if (newThreadId) {
@@ -128,7 +128,7 @@ export default function useDirectMessages({ autoLoad = true } = {}) {
         throw error;
       }
     },
-    [loadThreads, loadThreadDetail, state.hasAccess, state.threads, state.selectedThreadId]
+    [enabled, loadThreads, loadThreadDetail, state.hasAccess, state.threads, state.selectedThreadId]
   );
 
   const resetSendStatus = useCallback(() => {

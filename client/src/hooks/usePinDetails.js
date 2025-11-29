@@ -172,7 +172,8 @@ const usePinBookmarkState = ({
   distanceLockActive,
   isOwnPin,
   isOffline,
-  announceBadgeEarned
+  announceBadgeEarned,
+  pinCache
 }) => {
   const [bookmarked, setBookmarked] = useState(false);
   const [isUpdatingBookmark, setIsUpdatingBookmark] = useState(false);
@@ -218,66 +219,63 @@ const usePinBookmarkState = ({
     setBookmarkError(null);
 
     try {
+      const basePin = pin || {};
       if (bookmarked) {
         const response = await deletePinBookmark(pin._id);
-        setPin((prev) => {
-          if (!prev) {
-            return prev;
-          }
-          const currentCount = prev.bookmarkCount ?? 0;
-          const nextBookmarkCount =
-            typeof response?.bookmarkCount === 'number'
-              ? response.bookmarkCount
-              : Math.max(0, currentCount - 1);
-          const nextViewerHasBookmarked =
-            typeof response?.viewerHasBookmarked === 'boolean'
-              ? response.viewerHasBookmarked
-              : false;
-          const nextStats = prev.stats
-            ? { ...prev.stats, bookmarkCount: nextBookmarkCount }
-            : prev.stats;
-          return {
-            ...prev,
-            bookmarkCount: nextBookmarkCount,
-            stats: nextStats,
-            viewerHasBookmarked: nextViewerHasBookmarked
-          };
-        });
-        setBookmarked(
+        const currentCount =
+          typeof basePin?.bookmarkCount === 'number'
+            ? basePin.bookmarkCount
+            : typeof basePin?.stats?.bookmarkCount === 'number'
+            ? basePin.stats.bookmarkCount
+            : 0;
+        const nextBookmarkCount =
+          typeof response?.bookmarkCount === 'number'
+            ? response.bookmarkCount
+            : Math.max(0, currentCount - 1);
+        const nextViewerHasBookmarked =
           typeof response?.viewerHasBookmarked === 'boolean'
             ? response.viewerHasBookmarked
-            : false
-        );
+            : false;
+        const nextStats = basePin.stats
+          ? { ...basePin.stats, bookmarkCount: nextBookmarkCount }
+          : basePin.stats;
+        const updatedPin = {
+          ...basePin,
+          bookmarkCount: nextBookmarkCount,
+          stats: nextStats,
+          viewerHasBookmarked: nextViewerHasBookmarked
+        };
+        setPin(updatedPin);
+        pinCache?.upsertPin(updatedPin);
+        setBookmarked(nextViewerHasBookmarked);
       } else {
         const response = await createPinBookmark(pin._id);
-        setPin((prev) => {
-          if (!prev) {
-            return prev;
-          }
-          const currentCount = prev.bookmarkCount ?? 0;
-          const nextBookmarkCount =
-            typeof response?.bookmarkCount === 'number'
-              ? response.bookmarkCount
-              : currentCount + 1;
-          const nextViewerHasBookmarked =
-            typeof response?.viewerHasBookmarked === 'boolean'
-              ? response.viewerHasBookmarked
-              : true;
-          const nextStats = prev.stats
-            ? { ...prev.stats, bookmarkCount: nextBookmarkCount }
-            : prev.stats;
-          return {
-            ...prev,
-            bookmarkCount: nextBookmarkCount,
-            stats: nextStats,
-            viewerHasBookmarked: nextViewerHasBookmarked
-          };
-        });
-        setBookmarked(
+        const currentCount =
+          typeof basePin?.bookmarkCount === 'number'
+            ? basePin.bookmarkCount
+            : typeof basePin?.stats?.bookmarkCount === 'number'
+            ? basePin.stats.bookmarkCount
+            : 0;
+        const nextBookmarkCount =
+          typeof response?.bookmarkCount === 'number'
+            ? response.bookmarkCount
+            : currentCount + 1;
+        const nextViewerHasBookmarked =
           typeof response?.viewerHasBookmarked === 'boolean'
             ? response.viewerHasBookmarked
-            : true
-        );
+            : true;
+        const nextStats = basePin.stats
+          ? { ...basePin.stats, bookmarkCount: nextBookmarkCount }
+          : basePin.stats;
+        const updatedPin = {
+          ...basePin,
+          bookmarkCount: nextBookmarkCount,
+          stats: nextStats,
+          viewerHasBookmarked: nextViewerHasBookmarked
+        };
+        setPin(updatedPin);
+        pinCache?.upsertPin(updatedPin);
+        setBookmarked(nextViewerHasBookmarked);
         if (response?.badgeEarnedId) {
           playBadgeSound();
           announceBadgeEarned(response.badgeEarnedId);
@@ -825,7 +823,8 @@ export default function usePinDetails({ pinId, location, isOffline, initialPin =
     distanceLockActive,
     isOwnPin,
     isOffline,
-    announceBadgeEarned
+    announceBadgeEarned,
+    pinCache
   });
 
   const isInteractionLocked =

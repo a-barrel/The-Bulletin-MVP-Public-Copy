@@ -542,6 +542,25 @@ function ChatPage() {
     [handleSelectRoom, selectDirectThread, setChannelDialogTab, setChannelTab]
   );
 
+  // Always ensure a room is selected when rooms are available to avoid empty chat state.
+  useEffect(() => {
+    if (isLoadingRooms) return;
+    if (selectedRoomId) return;
+    if (!Array.isArray(rooms) || rooms.length === 0) return;
+    const firstRoomId = toIdString(rooms[0]?.id || rooms[0]?._id);
+    if (!firstRoomId) return;
+    handleSelectRoom(firstRoomId);
+    setChannelTab('rooms');
+    setChannelDialogTab('rooms');
+  }, [
+    handleSelectRoom,
+    isLoadingRooms,
+    rooms,
+    selectedRoomId,
+    setChannelDialogTab,
+    setChannelTab
+  ]);
+
   useEffect(() => {
     const state = location.state;
     if (!state || !state.fromProfile) {
@@ -1375,6 +1394,8 @@ function ChatPage() {
         <div className="chat-frame">
           <ChatThreadHeader
             pageTitle={t('nav.bottomNav.chat')}
+            backAriaLabel={t('common.back', { defaultValue: 'Back' })}
+            onBack={() => navigate(-1)}
             channelLabel={headerChannelLabel}
             isChannelDialogOpen={isChannelDialogOpen}
             onOpenChannelDialog={handleOpenChannelDialog}

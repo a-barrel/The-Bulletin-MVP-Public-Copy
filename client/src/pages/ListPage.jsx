@@ -2,7 +2,6 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef, lazy, Suspense, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ListPage.css';
-import Navbar from '../components/Navbar';
 import PlaceIcon from '@mui/icons-material/Place';
 import { FRIEND_ENGAGEMENT_OPTIONS } from '../constants/listFilters';
 import Feed from '../components/Feed';
@@ -22,12 +21,13 @@ import runtimeConfig from '../config/runtime';
 import { viewerHasDeveloperAccess } from '../utils/roles';
 import { enableListPerfLogs, logListPerf } from '../utils/listPerfLogger';
 import { resolvePinFetchLimit } from '../utils/pinDensity';
-import ListHeader from '../components/list/ListHeader';
 import ListTopbar from '../components/list/ListTopbar';
 import ListFilterChips from '../components/list/ListFilterChips';
 import ListLocationNotice from '../components/list/ListLocationNotice';
 import ListPaginationFooter from '../components/list/ListPaginationFooter';
 import useListFeedView from '../hooks/useListFeedView';
+import PageNavHeader from '../components/PageNavHeader';
+import Navbar from '../components/Navbar';
 
 export const pageConfig = {
   id: 'list',
@@ -540,8 +540,7 @@ function ListPage() {
   return (
     <div className="list-page">
       <div className="list-frame">
-        <ListHeader unreadCount={unreadCount} onNotifications={handleNotifications} isOffline={isOffline} />
-
+        <PageNavHeader title="List" />
         <ListTopbar
           hasActiveFilters={hasActiveFilters}
           filtersDialogOpen={filtersDialogOpen}
@@ -622,7 +621,6 @@ function ListPage() {
             categoryError={categoriesError}
           />
         </Suspense>
-
         <Navbar />
       </div>
     </div>

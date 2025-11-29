@@ -1,6 +1,28 @@
 import { auth } from '../firebase';
 import runtimeConfig from '../config/runtime';
 
+let didForceSignOut = false;
+
+const triggerForcedSignOut = () => {
+  if (didForceSignOut) return;
+  didForceSignOut = true;
+  try {
+    auth.signOut().catch(() => {});
+  } catch {
+    // ignore
+  }
+  if (typeof window !== 'undefined') {
+    // Redirect to login to avoid infinite error loops with stale tokens.
+    window.setTimeout(() => {
+      try {
+        window.location.assign('/login');
+      } catch {
+        // ignore navigation errors
+      }
+    }, 0);
+  }
+};
+
 const API_BASE_URL = (runtimeConfig.apiBaseUrl ?? '').replace(/\/$/, '');
 const DEFAULT_RETRY_ATTEMPTS = 1;
 const DEFAULT_RETRY_DELAY_MS = 250;
@@ -108,13 +130,22 @@ export async function apiFetch(
   const requestBody = shouldSerializeBody ? JSON.stringify(body) : body;
 
   const exec = async () => {
-    const res = await fetch(`${baseUrl}${path}`, {
-      method,
-      headers: fetchHeaders,
-      body: requestBody,
-      signal,
-      cache
-    });
+    let res;
+    try {
+      res = await fetch(`${baseUrl}${path}`, {
+        method,
+        headers: fetchHeaders,
+        body: requestBody,
+        signal,
+        cache
+      });
+    } catch (fetchError) {
+      if (fetchError?.name === 'AbortError') {
+        // Treat aborts as benign: return null so callers can bail quietly.
+        return null;
+      }
+      throw fetchError;
+    }
     if (!res.ok) {
       const error = new Error(res.statusText || 'Request failed');
       error.status = res.status;
@@ -139,6 +170,10 @@ export async function apiFetch(
         }
       } catch {
         // ignore
+      }
+      if (error.status === 401 || error.status === 403) {
+        error.isAuthError = true;
+        triggerForcedSignOut();
       }
       throw error;
     }

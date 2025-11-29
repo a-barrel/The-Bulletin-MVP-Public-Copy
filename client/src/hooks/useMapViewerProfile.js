@@ -44,6 +44,9 @@ export default function useMapViewerProfile({ authUser, isOffline }) {
           }
         }
       } catch (fetchError) {
+        if (fetchError?.name === 'AbortError') {
+          return;
+        }
         reportClientError(fetchError, 'Failed to load current user profile on MapPage:', {
           source: 'useMapViewerProfile'
         });

@@ -1,7 +1,6 @@
 import { lazy, Suspense, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Stack from '@mui/material/Stack';
@@ -14,7 +13,7 @@ import ProfileBlockDialog from '../components/profile/ProfileBlockDialog';
 import ProfileEditForm from '../components/profile/ProfileEditForm';
 import ProfileHero from '../components/profile/ProfileHero';
 import ReportContentDialog from '../components/ReportContentDialog';
-import GlobalNavMenu from '../components/GlobalNavMenu';
+import PageNavHeader from '../components/PageNavHeader';
 import useProfileDetail from '../hooks/useProfileDetail';
 import useProfileFriendActions from '../hooks/useProfileFriendActions';
 import useProfileReporting from '../hooks/useProfileReporting';
@@ -298,30 +297,21 @@ function ProfilePage() {
 
   return (
     <div className="profile-page-container">
-      <div className="back-nav-bar profile-back-nav">
-        <button
-          type="button"
-          className="back-button"
-          aria-label="Go back to previous page"
-          onClick={handleBack}
-        >
-          <ArrowBackIcon className="back-button__icon" />
-        </button>
-        <div className="profile-nav-menu">
-          <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
-        </div>
-        {canEditProfile && !isEditing ? (
-          <Button
-            variant="contained"
-            onClick={handleBeginEditing}
-            disabled={!effectiveUser || isFetchingProfile}
-            className="profile-edit-button"
-            sx={{ marginLeft: 'auto' }}
-          >
-            Edit profile
-          </Button>
-        ) : null}
-      </div>
+      <PageNavHeader
+        title="Profile"
+        rightSlot={
+          canEditProfile && !isEditing ? (
+            <Button
+              variant="contained"
+              onClick={handleBeginEditing}
+              disabled={!effectiveUser || isFetchingProfile}
+              className="profile-edit-button"
+            >
+              Edit profile
+            </Button>
+          ) : null
+        }
+      />
 
       <div className="profile-page-frame">
         <Stack spacing={3}>

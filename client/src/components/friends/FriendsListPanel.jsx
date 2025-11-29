@@ -23,6 +23,7 @@ import ReportFriendIcon from '@mui/icons-material/FlagRounded';
 import SearchIcon from '@mui/icons-material/Search';
 
 import { resolveAvatarSrc } from '../../utils/chatParticipants';
+import GlobalNavMenu from '../GlobalNavMenu';
 
 const FriendRow = memo(function FriendRow({
   friend,
@@ -201,9 +202,12 @@ function FriendsListPanel({
   return (
     <Box className="friends-list" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
       <Box className="friends-list-header" sx={{ px: 2, py: 1.5 }}>
-        <IconButton onClick={onBack} className="friends-list-back-btn" aria-label="Go back" disableRipple>
-          <ArrowBackIcon className="friend-header-back-icon" />
-        </IconButton>
+        <div className="friends-list-header-left">
+          <IconButton onClick={onBack} className="friends-list-back-btn" aria-label="Go back" disableRipple>
+            <ArrowBackIcon className="friend-header-back-icon" />
+          </IconButton>
+          <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+        </div>
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography className="friends-list-title">Friends — {friends.length}</Typography>
         </Stack>

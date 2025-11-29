@@ -30,6 +30,7 @@ import resolveAssetUrl from '../utils/media';
 import BookmarkGroupSection from '../components/bookmarks/BookmarkGroupSection';
 import BookmarksTopbar from '../components/bookmarks/BookmarksTopbar';
 import useBookmarksView from '../hooks/bookmarks/useBookmarksView';
+import PageNavHeader from '../components/PageNavHeader';
 
 export const pageConfig = {
   id: 'bookmarks',
@@ -314,18 +315,7 @@ function BookmarksPage() {
 
   return (
     <>
-      <div className="back-nav-bar bookmarks-back-button">
-        <MainNavBackButton
-          className="back-button"
-          iconClassName="back-button__icon"
-          ariaLabel="Back to main view"
-          scope="core"
-        />
-        <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
-        <Typography className="bookmarks-header-title" component="h1">
-          Bookmarks
-        </Typography>
-      </div>
+      <PageNavHeader title="Bookmarks" />
       <Box
         sx={{
           width: '100%',
