@@ -47,6 +47,8 @@ import useFriendRequestDialog from '../hooks/useFriendRequestDialog';
 import useRoomComposer from '../hooks/useRoomComposer';
 import useDirectComposer from '../hooks/useDirectComposer';
 import useChatChannelController from '../hooks/useChatChannelController';
+import { viewerHasDeveloperAccess } from '../utils/roles';
+import runtimeConfig from '../config/runtime';
 
 const ChatMessagesSection = memo(function ChatMessagesSection({ containerRef, content }) {
   return (
@@ -82,6 +84,16 @@ function ChatPage() {
   const { location: viewerLocation } = useLocationContext();
   const viewerLatitude = viewerLocation?.latitude ?? null;
   const viewerLongitude = viewerLocation?.longitude ?? null;
+  const canAttemptModerationInit = useMemo(
+    () =>
+      viewerHasDeveloperAccess(
+        firebaseAuthUser
+          ? { firebaseUid: firebaseAuthUser.uid, email: firebaseAuthUser.email }
+          : null,
+        { offlineOverride: runtimeConfig.isOffline }
+      ),
+    [firebaseAuthUser]
+  );
 
   const {
     debugMode: _debugMode,
@@ -348,7 +360,7 @@ function ChatPage() {
 
 
   useEffect(() => {
-    if (isOffline || moderationHasAccess === false) {
+    if (isOffline || moderationHasAccess === false || !canAttemptModerationInit) {
       return;
     }
     if (moderationInitAttempted || isLoadingModerationOverview) {
@@ -359,6 +371,7 @@ function ChatPage() {
   }, [
     isOffline,
     moderationHasAccess,
+    canAttemptModerationInit,
     moderationInitAttempted,
     isLoadingModerationOverview,
     loadModerationOverview
