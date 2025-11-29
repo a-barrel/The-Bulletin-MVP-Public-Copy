@@ -6,7 +6,7 @@ function MapPageLayout({ children }) {
   return (
     <div className="map-page">
       <div className="map-page__body">{children}</div>
-      <Navbar />
+      <Navbar disableSpacer />
     </div>
   );
 }

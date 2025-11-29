@@ -37,9 +37,15 @@ function ExpandableBookmarkItem({
   authUser,
   onShowRemovalStatus,
   onToggleAttendance,
-  isTogglingAttendance
+  isTogglingAttendance,
+  defaultExpanded = false,
+  actionsSlot = null
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
+
+  useEffect(() => {
+    setExpanded(defaultExpanded);
+  }, [defaultExpanded]);
   const [fullPin, setFullPin] = useState(null);
   const [isLoadingPin, setIsLoadingPin] = useState(false);
   const requestTokenRef = useRef(0);
@@ -240,12 +246,16 @@ function ExpandableBookmarkItem({
     <Box
       sx={{
         p: '12px',
-        mb: 2,
+        m: 0,
         border: '1px solid black',
         borderRadius: 5,
         backgroundColor: cardBackground,
         color: '#5D3889',
-        fontFamily: '"Urbanist", sans-serif'
+        fontFamily: '"Urbanist", sans-serif',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column'
       }}
     >
       <ListItemButton
@@ -346,83 +356,89 @@ function ExpandableBookmarkItem({
                 minHeight: '40px'
               }}
             >
-              <Box sx={{ flex: '1 1 0', display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 0.5 }}>
-                {pinType === 'event' ? (
-                  <>
-                    <Box component="img" src={AttendingBookmarksIcon} alt="" sx={{ width: 20, height: 20 }} />
-                    <Typography variant="body2" sx={{ color: '#5D3889', fontWeight: 500, fontFamily: '"Urbanist", sans-serif' }}>
-                      {participantCount}
-                    </Typography>
-                  </>
-                ) : null}
-              </Box>
+              {actionsSlot ? (
+                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>{actionsSlot}</Box>
+              ) : (
+                <>
+                  <Box sx={{ flex: '1 1 0', display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 0.5 }}>
+                    {pinType === 'event' ? (
+                      <>
+                        <Box component="img" src={AttendingBookmarksIcon} alt="" sx={{ width: 20, height: 20 }} />
+                        <Typography variant="body2" sx={{ color: '#5D3889', fontWeight: 500, fontFamily: '"Urbanist", sans-serif' }}>
+                          {participantCount}
+                        </Typography>
+                      </>
+                    ) : null}
+                  </Box>
 
-              <Box sx={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', justifyContent: 'center' }}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={handleViewClick}
-                  disableRipple
-                  sx={{
-                    color: 'black',
-                    backgroundColor: '#CDAEF2',
-                    border: '1px solid black',
-                    fontFamily: '"Urbanist", sans-serif',
-                    '&:hover': {
-                      backgroundColor: '#CDAEF2',
-                      border: '1px solid black',
-                      color: 'black'
-                    },
-                    '&.MuiButton-outlined': {
-                      borderColor: 'black'
-                    }
-                  }}
-                >
-                  View
-                </Button>
-              </Box>
+                  <Box sx={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', justifyContent: 'center' }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={handleViewClick}
+                      disableRipple
+                      sx={{
+                        color: 'black',
+                        backgroundColor: '#CDAEF2',
+                        border: '1px solid black',
+                        fontFamily: '"Urbanist", sans-serif',
+                        '&:hover': {
+                          backgroundColor: '#CDAEF2',
+                          border: '1px solid black',
+                          color: 'black'
+                        },
+                        '&.MuiButton-outlined': {
+                          borderColor: 'black'
+                        }
+                      }}
+                    >
+                      View
+                    </Button>
+                  </Box>
 
-              <Box sx={{ flex: '1 1 0', display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                <Button
-                  size="small"
-                  variant={attending ? 'contained' : 'outlined'}
-                  onClick={handleToggleAttendanceClick}
-                  disabled={Boolean(isOffline || isTogglingAttendance)}
-                  disableRipple
-                  sx={{
-                    color: attending ? '#ffffff' : '#4b208c',
-                    backgroundColor: attending ? '#4b208c' : '#ffffff',
-                    borderColor: '#4b208c',
-                    fontFamily: '"Urbanist", sans-serif',
-                    '&:hover': {
-                      backgroundColor: attending ? '#38176c' : '#f5edff'
-                    }
-                  }}
-                >
-                  {isTogglingAttendance
-                    ? 'Updating…'
-                    : attending
-                    ? 'Unattend'
-                    : 'Attend'}
-                </Button>
-                <button
-                  type="button"
-                  disabled={removeDisabled}
-                  onClick={handleRemoveClick}
-                  title={removeButtonTitle}
-                  aria-label={removeButtonTitle}
-                  className="bookmark-remove-btn"
-                >
-                  <img
-                    src={ownsPin ? BookmarkedOwnerIcon : BookmarkedIcon}
-                    alt={
-                      removalGuardMessage
-                        ? removalGuardMessage
-                        : 'Remove bookmark'
-                    }
-                  />
-                </button>
-              </Box>
+                  <Box sx={{ flex: '1 1 0', display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant={attending ? 'contained' : 'outlined'}
+                      onClick={handleToggleAttendanceClick}
+                      disabled={Boolean(isOffline || isTogglingAttendance)}
+                      disableRipple
+                      sx={{
+                        color: attending ? '#ffffff' : '#4b208c',
+                        backgroundColor: attending ? '#4b208c' : '#ffffff',
+                        borderColor: '#4b208c',
+                        fontFamily: '"Urbanist", sans-serif',
+                        '&:hover': {
+                          backgroundColor: attending ? '#38176c' : '#f5edff'
+                        }
+                      }}
+                    >
+                      {isTogglingAttendance
+                        ? 'Updating…'
+                        : attending
+                        ? 'Unattend'
+                        : 'Attend'}
+                    </Button>
+                    <button
+                      type="button"
+                      disabled={removeDisabled}
+                      onClick={handleRemoveClick}
+                      title={removeButtonTitle}
+                      aria-label={removeButtonTitle}
+                      className="bookmark-remove-btn"
+                    >
+                      <img
+                        src={ownsPin ? BookmarkedOwnerIcon : BookmarkedIcon}
+                        alt={
+                          removalGuardMessage
+                            ? removalGuardMessage
+                            : 'Remove bookmark'
+                        }
+                      />
+                    </button>
+                  </Box>
+                </>
+              )}
             </Box>
           </Stack>
         </Box>
@@ -446,7 +462,9 @@ ExpandableBookmarkItem.propTypes = {
   authUser: PropTypes.object,
   onShowRemovalStatus: PropTypes.func,
   onToggleAttendance: PropTypes.func,
-  isTogglingAttendance: PropTypes.bool
+  isTogglingAttendance: PropTypes.bool,
+  defaultExpanded: PropTypes.bool,
+  actionsSlot: PropTypes.node
 };
 
 ExpandableBookmarkItem.defaultProps = {
@@ -459,7 +477,9 @@ ExpandableBookmarkItem.defaultProps = {
   authUser: null,
   onShowRemovalStatus: null,
   onToggleAttendance: null,
-  isTogglingAttendance: false
+  isTogglingAttendance: false,
+  defaultExpanded: false,
+  actionsSlot: null
 };
 
 const arePropsEqual = (prev, next) => {
@@ -480,7 +500,9 @@ const arePropsEqual = (prev, next) => {
     prev.onViewPin === next.onViewPin &&
     prev.onRemoveBookmark === next.onRemoveBookmark &&
     prev.onShowRemovalStatus === next.onShowRemovalStatus &&
-    prev.onToggleAttendance === next.onToggleAttendance
+    prev.onToggleAttendance === next.onToggleAttendance &&
+    prev.defaultExpanded === next.defaultExpanded &&
+    prev.actionsSlot === next.actionsSlot
   );
 };
 

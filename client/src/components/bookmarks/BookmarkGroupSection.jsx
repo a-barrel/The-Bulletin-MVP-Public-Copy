@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import PropTypes from 'prop-types';
 import { Box, Chip, Divider, ListSubheader, Typography } from '@mui/material';
 import ExpandableBookmarkItem from '../ExpandableBookmarkItem';
 import { formatSavedDate } from '../../utils/pinFormatting';
@@ -17,7 +18,8 @@ const BookmarkGroupSection = memo(function BookmarkGroupSection({
   removingPinId,
   attendancePendingId,
   isOffline,
-  authUser
+  authUser,
+  expandAll
 }) {
   const { id: collectionId, name, description, items } = group;
   const groupKey = collectionId ?? UNSORTED_COLLECTION_KEY;
@@ -70,39 +72,75 @@ const BookmarkGroupSection = memo(function BookmarkGroupSection({
           {description}
         </Typography>
       ) : null}
-      {items.map((bookmark) => {
-        const pin = bookmark.pin;
-        const pinId = bookmark.pinId || pin?._id;
-        const pinTitle = pin?.title ?? 'Untitled Pin';
-        const pinType = pin?.type ?? 'pin';
-        const tagLabel = pinType === 'event' ? 'Event' : pinType === 'discussion' ? 'Discussion' : 'Pin';
-        const savedAt = bookmark.savedAtText || formatSavedDate(bookmark.createdAt);
-        const isRemoving = removingPinId === pinId;
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
+          gap: { xs: 2, md: 2.5 },
+          alignItems: 'start'
+        }}
+      >
+        {items.map((bookmark) => {
+          const pin = bookmark.pin;
+          const pinId = bookmark.pinId || pin?._id;
+          const pinTitle = pin?.title ?? 'Untitled Pin';
+          const pinType = pin?.type ?? 'pin';
+          const tagLabel = pinType === 'event' ? 'Event' : pinType === 'discussion' ? 'Discussion' : 'Pin';
+          const savedAt = bookmark.savedAtText || formatSavedDate(bookmark.createdAt);
+          const isRemoving = removingPinId === pinId;
 
-        return (
-          <ExpandableBookmarkItem
-            key={bookmark._id || pinId}
-            bookmark={bookmark}
-            pin={pin}
-            pinId={pinId}
-            pinTitle={pinTitle}
-            pinType={pinType}
-            tagLabel={tagLabel}
-            savedAt={savedAt}
-            isRemoving={isRemoving}
-            isOffline={isOffline}
-            onViewPin={handleViewPin}
-            onRemoveBookmark={handleRemoveBookmark}
-            authUser={authUser}
-            onShowRemovalStatus={notifyRemovalStatus}
-            onToggleAttendance={handleBookmarkAttendanceToggle}
-            isTogglingAttendance={attendancePendingId === pinId}
-          />
-        );
-      })}
+          return (
+            <ExpandableBookmarkItem
+              key={bookmark._id || pinId}
+              bookmark={bookmark}
+              pin={pin}
+              pinId={pinId}
+              pinTitle={pinTitle}
+              pinType={pinType}
+              tagLabel={tagLabel}
+              savedAt={savedAt}
+              isRemoving={isRemoving}
+              isOffline={isOffline}
+              onViewPin={handleViewPin}
+              onRemoveBookmark={handleRemoveBookmark}
+              authUser={authUser}
+              onShowRemovalStatus={notifyRemovalStatus}
+              onToggleAttendance={handleBookmarkAttendanceToggle}
+              isTogglingAttendance={attendancePendingId === pinId}
+              defaultExpanded={expandAll}
+            />
+          );
+        })}
+      </Box>
       {!shouldHideHeader && <Divider />}
     </Box>
   );
 });
 
 export default BookmarkGroupSection;
+
+BookmarkGroupSection.propTypes = {
+  group: PropTypes.object.isRequired,
+  highlightedCollectionKey: PropTypes.string,
+  collectionAnchorsRef: PropTypes.object.isRequired,
+  handleViewPin: PropTypes.func.isRequired,
+  handleRemoveBookmark: PropTypes.func.isRequired,
+  notifyRemovalStatus: PropTypes.func,
+  handleBookmarkAttendanceToggle: PropTypes.func,
+  removingPinId: PropTypes.string,
+  attendancePendingId: PropTypes.string,
+  isOffline: PropTypes.bool,
+  authUser: PropTypes.object,
+  expandAll: PropTypes.bool
+};
+
+BookmarkGroupSection.defaultProps = {
+  highlightedCollectionKey: null,
+  notifyRemovalStatus: null,
+  handleBookmarkAttendanceToggle: null,
+  removingPinId: null,
+  attendancePendingId: null,
+  isOffline: false,
+  authUser: null,
+  expandAll: false
+};
