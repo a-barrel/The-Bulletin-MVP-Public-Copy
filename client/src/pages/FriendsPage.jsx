@@ -13,6 +13,7 @@ import {
   Snackbar,
   Stack,
   TextField,
+  InputAdornment,
   Typography
 } from '@mui/material';
 import SmsIcon from '@mui/icons-material/Sms';
@@ -31,6 +32,8 @@ import { createContentReport } from '../api';
 import './FriendsPage.css';
 import GlobalNavMenu from '../components/GlobalNavMenu';
 import MainNavBackButton from '../components/MainNavBackButton';
+import FriendRequestIcon from '@mui/icons-material/PersonAddRounded';
+import SearchIcon from '@mui/icons-material/Search';
 
 export const pageConfig = {
   id: 'friends',
@@ -413,6 +416,7 @@ function FriendsPage() {
     isRecordingModerationAction;
 
   const disableMessageAction = directMessagesHasAccess === false || isCreatingDirectThread;
+  const disableFriendActions = isProcessingFriendAction || friendHasAccess === false;
 
   const handleBack = useCallback(() => {
     navigate(-1);
@@ -436,13 +440,45 @@ function FriendsPage() {
                 Friends
               </Typography>
             </div>
+            <div className="friends-header-actions">
+              <Button
+                className="friend-request-btn"
+                type="button"
+                aria-label={notificationsLabel}
+                onClick={handleOpenFriendDialog}
+                disabled={disableFriendActions}
+                disableRipple
+              >
+                <FriendRequestIcon className="friend-request-icon" aria-hidden="true" />
+                {requestBadge ? (
+                  <span className="friend-request-icon-badge" aria-hidden="true">
+                    {requestBadge}
+                  </span>
+                ) : null}
+              </Button>
+            </div>
           </div>
+          <Box className="friends-list-search-bar">
+            <TextField
+              className="friends-list-search-bar-input-container"
+              fullWidth
+              size="small"
+              placeholder="Search friends..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon className="friends-search-icon" />
+                  </InputAdornment>
+                )
+              }}
+            />
+          </Box>
           <Box className="friends-list-field">
             <FriendsListPanel
               friends={friends}
               filteredFriends={filteredFriends}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
               isLoading={isLoadingFriends}
               friendStatus={friendStatus}
               hasAccess={friendHasAccess}

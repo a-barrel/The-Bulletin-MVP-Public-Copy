@@ -9,10 +9,11 @@
 .global-nav-menu__overlay {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: 5000;
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 }
 
 .global-nav-menu__backdrop {
@@ -20,7 +21,8 @@
   inset: 0;
   border: none;
   background: rgba(9, 13, 20, 0.35);
-  z-index: 2001;
+  z-index: 5001;
+  pointer-events: auto;
 }
 
 .global-nav-menu__panel {
@@ -38,7 +40,8 @@
     0 24px 60px rgba(0, 0, 0, 0.18),
     0 6px 18px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
-  z-index: 2002;
+  z-index: 5002;
+  pointer-events: auto;
 }
 
 .global-nav-menu__panel--anchored {

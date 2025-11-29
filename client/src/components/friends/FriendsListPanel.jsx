@@ -7,12 +7,10 @@ import {
   Button,
   CircularProgress,
   IconButton,
-  InputAdornment,
   ListItem,
   ListItemAvatar,
   ListItemText,
   Stack,
-  TextField,
   Typography
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -20,8 +18,6 @@ import FriendRequestIcon from '@mui/icons-material/PersonAddRounded';
 import MessageFriendIcon from '@mui/icons-material/ChatBubbleRounded';
 import RemoveFriendIcon from '@mui/icons-material/PersonRemoveRounded';
 import ReportFriendIcon from '@mui/icons-material/FlagRounded';
-import SearchIcon from '@mui/icons-material/Search';
-
 import { resolveAvatarSrc } from '../../utils/chatParticipants';
 import GlobalNavMenu from '../GlobalNavMenu';
 
@@ -154,8 +150,6 @@ const FriendRow = memo(function FriendRow({
 function FriendsListPanel({
   friends,
   filteredFriends,
-  searchQuery,
-  onSearchChange,
   isLoading,
   friendStatus,
   hasAccess,
@@ -201,52 +195,6 @@ function FriendsListPanel({
 
   return (
     <Box className="friends-list" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-      <Box className="friends-list-header" sx={{ px: 2, py: 1.5 }}>
-        <div className="friends-list-header-left">
-          <IconButton onClick={onBack} className="friends-list-back-btn" aria-label="Go back" disableRipple>
-            <ArrowBackIcon className="friend-header-back-icon" />
-          </IconButton>
-          <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
-        </div>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Typography className="friends-list-title">Friends — {friends.length}</Typography>
-        </Stack>
-
-        <Button
-          className="friend-request-btn"
-          type="button"
-          aria-label={notificationsLabel}
-          onClick={onOpenFriendRequests}
-          disabled={disableFriendActions || isLoading}
-          disableRipple
-        >
-          <FriendRequestIcon className="friend-request-icon" aria-hidden="true" />
-          {requestBadge ? (
-            <span className="friend-request-icon-badge" aria-hidden="true">
-              {requestBadge}
-            </span>
-          ) : null}
-        </Button>
-      </Box>
-
-      <Box className="friends-list-search-bar">
-        <TextField
-          className="friends-list-search-bar-input-container"
-          fullWidth
-          size="small"
-          placeholder="Search friends..."
-          value={searchQuery}
-          onChange={(event) => onSearchChange?.(event.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon className="friends-search-icon" />
-              </InputAdornment>
-            )
-          }}
-        />
-      </Box>
-
       {friendStatus && friendStatus.message ? (
         <Box sx={{ px: 2, py: 1.5 }}>
           <Alert severity={friendStatus.type || 'error'}>{friendStatus.message}</Alert>
@@ -323,8 +271,6 @@ function FriendsListPanel({
 FriendsListPanel.propTypes = {
   friends: PropTypes.arrayOf(PropTypes.object).isRequired,
   filteredFriends: PropTypes.arrayOf(PropTypes.object).isRequired,
-  searchQuery: PropTypes.string.isRequired,
-  onSearchChange: PropTypes.func.isRequired,
   isLoading: PropTypes.bool.isRequired,
   friendStatus: PropTypes.shape({
     message: PropTypes.string,

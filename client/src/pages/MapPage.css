@@ -144,7 +144,9 @@
   border: none;
   cursor: pointer;
   line-height: 1;
-  padding: 1rem;
+  padding: 6px;
+  width: 44px;
+  height: 44px;
   transition: transform .2s ease;
   position: relative;
   display: inline-flex;
