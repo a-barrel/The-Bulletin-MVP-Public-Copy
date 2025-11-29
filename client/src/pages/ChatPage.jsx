@@ -559,6 +559,8 @@ function ChatPage() {
   useEffect(() => {
     if (isLoadingRooms) return;
     if (selectedRoomId) return;
+    // Do not auto-select a room if the user is actively in direct messages.
+    if (channelTab === 'direct' || selectedDirectThreadId) return;
     if (!Array.isArray(rooms) || rooms.length === 0) return;
     const firstRoomId = toIdString(rooms[0]?.id || rooms[0]?._id);
     if (!firstRoomId) return;
@@ -567,9 +569,11 @@ function ChatPage() {
     setChannelDialogTab('rooms');
   }, [
     handleSelectRoom,
+    channelTab,
     isLoadingRooms,
     rooms,
     selectedRoomId,
+    selectedDirectThreadId,
     setChannelDialogTab,
     setChannelTab
   ]);
