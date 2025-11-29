@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, memo } from 'react';
+import { useCallback, useEffect, useMemo, useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -34,6 +34,10 @@ import GlobalNavMenu from '../components/GlobalNavMenu';
 import MainNavBackButton from '../components/MainNavBackButton';
 import FriendRequestIcon from '@mui/icons-material/PersonAddRounded';
 import SearchIcon from '@mui/icons-material/Search';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../firebase';
+import { viewerHasDeveloperAccess } from '../utils/roles';
+import runtimeConfig from '../config/runtime';
 
 export const pageConfig = {
   id: 'friends',
@@ -48,6 +52,17 @@ export const pageConfig = {
 
 function FriendsPage() {
   const navigate = useNavigate();
+  const [firebaseAuthUser] = useAuthState(auth);
+  const canAttemptModerationInit = useMemo(
+    () =>
+      viewerHasDeveloperAccess(
+        firebaseAuthUser
+          ? { firebaseUid: firebaseAuthUser.uid, email: firebaseAuthUser.email }
+          : null,
+        { offlineOverride: runtimeConfig.isOffline }
+      ),
+    [firebaseAuthUser]
+  );
   const {
     friends,
     filteredFriends,
@@ -110,7 +125,7 @@ function FriendsPage() {
   }, [friendQueueStatus]);
 
   useEffect(() => {
-    if (isOffline || moderationHasAccess === false) {
+    if (isOffline || moderationHasAccess === false || !canAttemptModerationInit) {
       return;
     }
     if (moderationInitAttempted || isLoadingModerationOverview) {
@@ -123,7 +138,8 @@ function FriendsPage() {
     isLoadingModerationOverview,
     loadModerationOverview,
     moderationHasAccess,
-    moderationInitAttempted
+    moderationInitAttempted,
+    canAttemptModerationInit
   ]);
 
   const handleSelectModerationAction = useCallback((actionType) => {

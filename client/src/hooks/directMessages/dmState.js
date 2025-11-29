@@ -48,7 +48,6 @@ export const dmReducer = (state, action) => {
         ...state,
         isLoadingThreads: false,
         threadsStatus: { type: 'error', message: action.error },
-        hasAccess: action.status === 403 ? false : state.hasAccess,
         lastErrorStatus: action.status ?? state.lastErrorStatus
       };
     case 'thread/select':
@@ -79,7 +78,6 @@ export const dmReducer = (state, action) => {
         ...state,
         isLoadingThread: false,
         threadStatus: { type: 'error', message: action.error },
-        hasAccess: action.status === 403 ? false : state.hasAccess,
         lastErrorStatus: action.status ?? state.lastErrorStatus
       };
     case 'thread/optimistic-message':
@@ -125,7 +123,6 @@ export const dmReducer = (state, action) => {
         ...state,
         isSending: false,
         sendStatus: { type: 'error', message: action.error },
-        hasAccess: action.status === 403 ? false : state.hasAccess,
         lastErrorStatus: action.status ?? state.lastErrorStatus
       };
     case 'send/reset':
@@ -155,7 +152,6 @@ export const dmReducer = (state, action) => {
         ...state,
         isCreating: false,
         createStatus: { type: 'error', message: action.error },
-        hasAccess: action.status === 403 ? false : state.hasAccess,
         lastErrorStatus: action.status ?? state.lastErrorStatus
       };
     case 'create/reset':
