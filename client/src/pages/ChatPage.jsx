@@ -47,8 +47,6 @@ import useFriendRequestDialog from '../hooks/useFriendRequestDialog';
 import useRoomComposer from '../hooks/useRoomComposer';
 import useDirectComposer from '../hooks/useDirectComposer';
 import useChatChannelController from '../hooks/useChatChannelController';
-import useAutoRefreshGeolocation from '../hooks/useAutoRefreshGeolocation';
-import useViewerProfile from '../hooks/useViewerProfile';
 import { viewerHasDeveloperAccess } from '../utils/roles';
 import runtimeConfig from '../config/runtime';
 
@@ -83,26 +81,19 @@ function ChatPage() {
   const { isOffline } = useNetworkStatusContext();
   const { announceBadgeEarned } = useBadgeSound();
   const [firebaseAuthUser, authLoading] = useAuthState(auth);
-  const { location: viewerLocation, setLocation: setSharedLocation } = useLocationContext();
-  const { viewer: viewerProfile, isLoading: isLoadingViewerProfile } = useViewerProfile({
-    enabled: !isOffline
-  });
-  const isAdminViewer = useMemo(
-    () =>
-      viewerHasDeveloperAccess(viewerProfile, {
-        offlineOverride: runtimeConfig.isOffline || isOffline
-      }),
-    [isOffline, viewerProfile]
-  );
-  const shouldAutoRefreshLocation = !isOffline && !isLoadingViewerProfile && !isAdminViewer;
-
-  useAutoRefreshGeolocation({
-    enabled: shouldAutoRefreshLocation,
-    setSharedLocation,
-    source: 'chat-page-auto-refresh'
-  });
+  const { location: viewerLocation } = useLocationContext();
   const viewerLatitude = viewerLocation?.latitude ?? null;
   const viewerLongitude = viewerLocation?.longitude ?? null;
+  const canAttemptModerationInit = useMemo(
+    () =>
+      viewerHasDeveloperAccess(
+        firebaseAuthUser
+          ? { firebaseUid: firebaseAuthUser.uid, email: firebaseAuthUser.email }
+          : null,
+        { offlineOverride: runtimeConfig.isOffline }
+      ),
+    [firebaseAuthUser]
+  );
 
   const {
     debugMode: _debugMode,
@@ -369,7 +360,7 @@ function ChatPage() {
 
 
   useEffect(() => {
-    if (isOffline || moderationHasAccess === false) {
+    if (isOffline || moderationHasAccess === false || !canAttemptModerationInit) {
       return;
     }
     if (moderationInitAttempted || isLoadingModerationOverview) {
@@ -380,6 +371,7 @@ function ChatPage() {
   }, [
     isOffline,
     moderationHasAccess,
+    canAttemptModerationInit,
     moderationInitAttempted,
     isLoadingModerationOverview,
     loadModerationOverview
@@ -567,6 +559,8 @@ function ChatPage() {
   useEffect(() => {
     if (isLoadingRooms) return;
     if (selectedRoomId) return;
+    // Do not auto-select a room if the user is actively in direct messages.
+    if (channelTab === 'direct' || selectedDirectThreadId) return;
     if (!Array.isArray(rooms) || rooms.length === 0) return;
     const firstRoomId = toIdString(rooms[0]?.id || rooms[0]?._id);
     if (!firstRoomId) return;
@@ -575,9 +569,11 @@ function ChatPage() {
     setChannelDialogTab('rooms');
   }, [
     handleSelectRoom,
+    channelTab,
     isLoadingRooms,
     rooms,
     selectedRoomId,
+    selectedDirectThreadId,
     setChannelDialogTab,
     setChannelTab
   ]);
