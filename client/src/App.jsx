@@ -939,6 +939,14 @@ function ThemeRoutesShell({
 
 const MemoizedThemeRoutes = memo(ThemeRoutesShell);
 
+function RoutesSuspenseFallback() {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4 }}>
+      <CircularProgress />
+    </Box>
+  );
+}
+
 function AppRoutes({
   pagesError,
   pagesReady,
@@ -964,52 +972,54 @@ function AppRoutes({
   }
 
   return (
-    <Routes>
-      <Route path={routes.auth.login} element={<LoginPage />} />
-      <Route path={routes.auth.register} element={<RegistrationPage />} />
-      <Route path={routes.auth.forgotPassword} element={<ForgotPasswordPage />} />
-      <Route path={routes.auth.resetPassword} element={<ResetPasswordPage />} />
+    <Suspense fallback={<RoutesSuspenseFallback />}>
+      <Routes>
+        <Route path={routes.auth.login} element={<LoginPage />} />
+        <Route path={routes.auth.register} element={<RegistrationPage />} />
+        <Route path={routes.auth.forgotPassword} element={<ForgotPasswordPage />} />
+        <Route path={routes.auth.resetPassword} element={<ResetPasswordPage />} />
 
-      {publicPages.map((page) => (
-        <Route
-          key={page.id}
-          path={page.path}
-          element={wrapWithProtection(page, <page.Component />)}
-        />
-      ))}
-
-      <Route element={protectedProvidersElement}>
-        {protectedPages.map((page) => (
+        {publicPages.map((page) => (
           <Route
             key={page.id}
             path={page.path}
             element={wrapWithProtection(page, <page.Component />)}
           />
         ))}
-        {protectedPages.map((page) =>
-          page.aliases.map((alias) => (
+
+        <Route element={protectedProvidersElement}>
+          {protectedPages.map((page) => (
             <Route
-              key={`${page.id}-alias-${alias}`}
-              path={alias}
+              key={page.id}
+              path={page.path}
               element={wrapWithProtection(page, <page.Component />)}
             />
-          ))
-        )}
-      </Route>
+          ))}
+          {protectedPages.map((page) =>
+            page.aliases.map((alias) => (
+              <Route
+                key={`${page.id}-alias-${alias}`}
+                path={alias}
+                element={wrapWithProtection(page, <page.Component />)}
+              />
+            ))
+          )}
+        </Route>
 
-      <Route path={routes.root} element={<Navigate to={routes.auth.login} replace />} />
-      <Route
-        path="*"
-        element={
-          <NotFoundPage
-            defaultPath={defaultNavPage?.path ?? routes.auth.login}
-            defaultLabel={
-              defaultNavPage?.label ? `Go to ${defaultNavPage.label}` : 'Go to login'
-            }
-          />
-        }
-      />
-    </Routes>
+        <Route path={routes.root} element={<Navigate to={routes.auth.login} replace />} />
+        <Route
+          path="*"
+          element={
+            <NotFoundPage
+              defaultPath={defaultNavPage?.path ?? routes.auth.login}
+              defaultLabel={
+                defaultNavPage?.label ? `Go to ${defaultNavPage.label}` : 'Go to login'
+              }
+            />
+          }
+        />
+      </Routes>
+    </Suspense>
   );
 }
 

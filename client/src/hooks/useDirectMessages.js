@@ -45,7 +45,7 @@ export default function useDirectMessages({ autoLoad = true, enabled = true } = 
           threadId,
           optimisticId: optimisticMessage.id
         });
-        dispatch({ type: 'send/success', message: 'Message sent.' });
+        dispatch({ type: 'send/success' });
         await loadThreadDetail(threadId);
         return response;
       } catch (error) {

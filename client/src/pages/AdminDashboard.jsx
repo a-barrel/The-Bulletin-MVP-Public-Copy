@@ -260,8 +260,8 @@ function AdminDashboardContent() {
           width: '100%',
           maxWidth: 640,
           mx: 'auto',
-          py: { xs: 3, md: 5 },
-          px: { xs: 2, md: 4 }
+          py: 0,
+          px: 0
         }}
       >
         <Alert severity="warning">Moderator privileges required to view this dashboard.</Alert>
@@ -276,8 +276,8 @@ function AdminDashboardContent() {
         width: '100%',
         maxWidth: 1080,
         mx: 'auto',
-        py: { xs: 3, md: 5 },
-        px: { xs: 2, md: 4 }
+        py: 0,
+        px: 0
       }}
     >
       <Stack spacing={3}>
