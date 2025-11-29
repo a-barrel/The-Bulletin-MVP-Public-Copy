@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 import './LogoutPage.css'; // Same as LoginPage.css
-import { revokeCurrentSession } from '../api/mongoDataApi';
+import { revokeCurrentSession } from '../api';
 import { routes } from '../routes';
 import AuthPageLayout from '../components/AuthPageLayout.jsx';
 import useAuthAlerts from '../hooks/useAuthAlerts';

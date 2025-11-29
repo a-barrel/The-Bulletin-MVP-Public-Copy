@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 const { ensureUserForFirebaseAccount } = require('../services/firebaseUserSync');
 const { logIntegration } = require('../utils/devLogger');
+const runtime = require('../config/runtime');
 
 module.exports = async function verifyToken(req, res, next) {
   const authorizationHeader = req.headers.authorization;
@@ -25,6 +26,27 @@ module.exports = async function verifyToken(req, res, next) {
         token = authorizationHeader.trim();
       }
     }
+  }
+
+  // In offline mode, allow requests without a token by issuing a demo identity.
+  if (!token && runtime.isOffline) {
+    const fallbackUser = {
+      uid: 'OFFLINE_DEMO',
+      user_id: 'OFFLINE_DEMO',
+      email: 'offline-demo@pinpoint.local',
+      name: 'Offline Demo User',
+      firebaseSignInProvider: 'emulator',
+      roles: ['developer', 'user']
+    };
+    req.user = fallbackUser;
+    req.viewer = {
+      _id: 'OFFLINE_DEMO',
+      displayName: fallbackUser.name,
+      email: fallbackUser.email,
+      roles: fallbackUser.roles,
+      accountStatus: 'active'
+    };
+    return next();
   }
 
   if (!token) {
@@ -53,6 +75,29 @@ module.exports = async function verifyToken(req, res, next) {
 
     next();
   } catch (error) {
+    // Offline mode fallback: if the emulator is unreachable, allow a demo token so the app can function.
+    const isNetworkError = error?.errorInfo?.code === 'app/network-error';
+    const isOfflineDemoToken = runtime.isOffline && token === runtime.offlineAuthToken;
+    if (runtime.isOffline && (isNetworkError || isOfflineDemoToken)) {
+      const fallbackUser = {
+        uid: 'OFFLINE_DEMO',
+        user_id: 'OFFLINE_DEMO',
+        email: 'offline-demo@pinpoint.local',
+        name: 'Offline Demo User',
+        firebaseSignInProvider: 'emulator',
+        roles: ['developer', 'user']
+      };
+      req.user = fallbackUser;
+      req.viewer = {
+        _id: 'OFFLINE_DEMO',
+        displayName: fallbackUser.name,
+        email: fallbackUser.email,
+        roles: fallbackUser.roles,
+        accountStatus: 'active'
+      };
+      return next();
+    }
+
     console.error('Error verifying token:', error);
     logIntegration('firebase:verify-token', error);
     res.status(401).json({ message: 'Invalid token' });

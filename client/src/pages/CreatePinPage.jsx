@@ -5,7 +5,6 @@ import L from 'leaflet';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import MapIcon from '@mui/icons-material/Map';
 import EventNoteIcon from '@mui/icons-material/EventNote';
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 
 import { routes } from '../routes';
 import { useBadgeSound } from '../contexts/BadgeSoundContext';
@@ -15,7 +14,7 @@ import { useNavOverlay } from '../contexts/NavOverlayContext';
 import useCreatePinForm from '../hooks/useCreatePinForm';
 import normalizeObjectId from '../utils/normalizeObjectId';
 import './CreatePinPage.css';
-import GlobalNavMenu from '../components/GlobalNavMenu';
+import PageNavHeader from '../components/PageNavHeader';
 import resolveAssetUrl from '../utils/media';
 import { haversineDistanceMeters, formatDistanceMiles, formatDistanceMetersLabel } from '../utils/geo';
 import SelectableLocationMap from '../components/create-pin/SelectableLocationMap';
@@ -206,33 +205,11 @@ function CreatePinPage() {
   return (
     <div className="create-pin-page">
       <div className={`create-pin ${pinType === 'event' ? 'bg-event' : 'bg-discussion'}`}>
-        <div
-          className="header"
-          style={{
-            background: activeTheme.headerBackground,
-            color: activeTheme.headerTextColor
-          }}
-        >
-          <div className="header-row">
-            <div className="header-left">
-              <button
-                type="button"
-                className="btn-back"
-                onClick={handleHeaderBack}
-                aria-label={backButtonLabel}
-              >
-                <ArrowBackIosNewIcon className="back-arrow" aria-hidden="true" />
-              </button>
-              <GlobalNavMenu
-                triggerClassName="gnm-trigger-btn"
-                iconClassName="gnm-trigger-btn__icon"
-              />
-            </div>
-
-            <div className="header-content">
-              <h1>{headerTitle}</h1>
-            </div>
-
+        <PageNavHeader
+          title={headerTitle}
+          backAriaLabel={backButtonLabel}
+          onBack={handleHeaderBack}
+          rightSlot={
             <form id="create-pin-submit-form" className="cta-form" onSubmit={handleSubmit}>
               <button
                 type="submit"
@@ -247,10 +224,9 @@ function CreatePinPage() {
                 {isSubmitting ? 'Posting...' : FIGMA_TEMPLATE.header.cta}
               </button>
             </form>
-          </div>
-
-          <p className="header-subtitle">{eventHeaderSubtitle}</p>
-        </div>
+          }
+        />
+        <p className="header-subtitle">{eventHeaderSubtitle}</p>
         <div className="body">
         {isOffline && (
           <div className="alert alert-warning static-alert">

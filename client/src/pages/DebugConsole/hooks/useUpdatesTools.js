@@ -4,13 +4,14 @@ import {
   createUpdate,
   fetchCurrentUserProfile,
   fetchUpdates
-} from '../../../api/mongoDataApi';
+} from '../../../api';
 import { UPDATE_TYPE_OPTIONS } from '../constants';
 import {
   parseCommaSeparated,
   parseJsonField,
   parseOptionalNumber
 } from '../utils';
+import { useUserCache } from '../../../contexts/UserCacheContext';
 
 const INITIAL_UPDATE_FORM = {
   userId: '',
@@ -67,6 +68,7 @@ const normalizeRelatedEntities = (input) => {
 };
 
 const useUpdatesTools = () => {
+  const userCache = useUserCache();
   const [updateForm, setUpdateForm] = useState(INITIAL_UPDATE_FORM);
   const [updateStatus, setUpdateStatus] = useState(null);
   const [updateResult, setUpdateResult] = useState(null);
@@ -84,7 +86,8 @@ const useUpdatesTools = () => {
     let cancelled = false;
     const load = async () => {
       try {
-        const profile = await fetchCurrentUserProfile();
+        const cached = userCache.getMe();
+        const profile = cached ?? (await fetchCurrentUserProfile());
         if (cancelled) {
           return;
         }
@@ -92,6 +95,9 @@ const useUpdatesTools = () => {
         if (resolved) {
           setCurrentUserId(resolved);
           setUpdatesQuery((prev) => ({ ...prev, userId: prev.userId || resolved }));
+        }
+        if (!cached && profile) {
+          userCache.setMe(profile);
         }
       } catch (error) {
         console.warn('Failed to auto-load current profile for updates tab', error);
@@ -101,7 +107,7 @@ const useUpdatesTools = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userCache]);
 
   const refreshUpdates = useCallback(
     async (userId, limitValue) => {

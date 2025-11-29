@@ -86,7 +86,7 @@ export const normalizeAttendeeRecord = (record, fallbackSeed = 0) => {
     toIdString(record?.profile?.userId) ??
     toIdString(record?.user?._id);
 
-  const name =
+  const displayName =
     record?.displayName ||
     record?.username ||
     record?.profile?.displayName ||
@@ -102,10 +102,14 @@ export const normalizeAttendeeRecord = (record, fallbackSeed = 0) => {
         record?.user?.avatar
     ) ?? resolveLibraryAvatar(fallbackSeed);
 
+  const normalizedName = displayName ? String(displayName) : `Guest ${fallbackSeed + 1}`;
+
   return {
     id: normalizedId ?? `attendee-${fallbackSeed}`,
     userId: normalizedId ?? null,
-    name: name ? String(name) : `Guest ${fallbackSeed + 1}`,
+    name: normalizedName,
+    displayName: normalizedName,
+    username: displayName || normalizedId || `guest-${fallbackSeed + 1}`,
     avatar,
     raw: record
   };

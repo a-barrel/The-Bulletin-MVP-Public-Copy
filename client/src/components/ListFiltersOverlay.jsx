@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import './ListFiltersOverlay.css';
 import PropTypes from 'prop-types';
 import {
@@ -24,12 +24,11 @@ import {
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useTranslation } from 'react-i18next';
+import { FRIEND_ENGAGEMENT_OPTIONS } from '../constants/listFilters';
 
 const TYPE_OPTIONS = ['event', 'discussion'];
 
 const STATUS_OPTIONS = ['active', 'expired', 'all'];
-
-export const FRIEND_ENGAGEMENT_OPTIONS = ['created', 'replied', 'attending'];
 
 const FRIEND_ENGAGEMENT_VALUE_SET = new Set(FRIEND_ENGAGEMENT_OPTIONS);
 
@@ -150,7 +149,7 @@ export default function ListFiltersOverlay({
     return options;
   }, [categories, localFilters.categories]);
 
-  const handleToggleType = (value) => {
+  const handleToggleType = useCallback((value) => {
     setLocalFilters((prev) => {
       const types = new Set(prev.types);
       if (types.has(value)) {
@@ -163,9 +162,9 @@ export default function ListFiltersOverlay({
         types: Array.from(types)
       };
     });
-  };
+  }, []);
 
-  const handleToggleFriendEngagement = (value) => {
+  const handleToggleFriendEngagement = useCallback((value) => {
     if (!FRIEND_ENGAGEMENT_VALUE_SET.has(value)) {
       return;
     }
@@ -181,9 +180,9 @@ export default function ListFiltersOverlay({
         friendEngagements: Array.from(current)
       };
     });
-  };
+  }, []);
 
-  const handleToggleCategory = (category) => {
+  const handleToggleCategory = useCallback((category) => {
     setLocalFilters((prev) => {
       const categories = new Set(prev.categories);
       if (categories.has(category)) {
@@ -196,9 +195,9 @@ export default function ListFiltersOverlay({
         categories: Array.from(categories)
       };
     });
-  };
+  }, []);
 
-  const handleAddCategory = () => {
+  const handleAddCategory = useCallback(() => {
     const trimmed = newCategory.trim();
     if (!trimmed) {
       return;
@@ -208,51 +207,58 @@ export default function ListFiltersOverlay({
       categories: uniqueMerge(prev.categories, [trimmed])
     }));
     setNewCategory('');
-  };
+  }, [newCategory]);
 
-  const handleEnterCategory = (event) => {
+  const handleEnterCategory = useCallback((event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
       handleAddCategory();
     }
-  };
+  }, [handleAddCategory]);
 
-  const handlePopularSortChange = (event) => {
+  const handlePopularSortChange = useCallback((event) => {
     const value = event.target.value || null;
     setLocalFilters((prev) => ({
       ...prev,
       popularSort: value === 'replies' || value === 'attending' ? value : null
     }));
-  };
+  }, []);
 
-  const handleStatusChange = (event) => {
+  const handleStatusChange = useCallback((event) => {
     setLocalFilters((prev) => ({
       ...prev,
       status: event.target.value
     }));
-  };
+  }, []);
 
-  const handleDateChange = (key) => (event) => {
-    setLocalFilters((prev) => ({
-      ...prev,
-      [key]: event.target.value
-    }));
-  };
+  const handleDateChange = useCallback(
+    (key) => (event) => {
+      setLocalFilters((prev) => ({
+        ...prev,
+        [key]: event.target.value
+      }));
+    },
+    []
+  );
 
-  const handleSearchChange = (event) => {
+  const handleSearchChange = useCallback((event) => {
     setLocalFilters((prev) => ({
       ...prev,
       search: event.target.value
     }));
-  };
+  }, []);
 
-  const handleClearLocal = () => {
+  const handleNewCategoryChange = useCallback((event) => {
+    setNewCategory(event.target.value);
+  }, []);
+
+  const handleClearLocal = useCallback(() => {
     setLocalFilters(normalizeFilters(defaultFilters, defaultFilters));
     setNewCategory('');
     onClear?.();
-  };
+  }, [defaultFilters, onClear]);
 
-  const handleApply = () => {
+  const handleApply = useCallback(() => {
     const normalized = normalizeFilters(localFilters, defaultFilters);
     const { popularSort, ...rest } = normalized;
     const payload = {
@@ -266,13 +272,13 @@ export default function ListFiltersOverlay({
       ...payload
     });
     onClose();
-  };
+  }, [defaultFilters, localFilters, onApply, onClose]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setLocalFilters(normalizeFilters(initialFilters, defaultFilters));
     setNewCategory('');
     onClose();
-  };
+  }, [defaultFilters, initialFilters, onClose]);
 
   return (
     <Dialog
@@ -315,6 +321,7 @@ export default function ListFiltersOverlay({
                     <Checkbox
                       checked={localFilters.types.includes(option.value)}
                       onChange={() => handleToggleType(option.value)}
+                      disableRipple
                     />
                   }
                   label={option.label}
@@ -338,6 +345,7 @@ export default function ListFiltersOverlay({
                     <Checkbox
                       checked={localFilters.friendEngagements.includes(option.value)}
                       onChange={() => handleToggleFriendEngagement(option.value)}
+                      disableRipple
                     />
                   }
                   label={option.label}
@@ -362,7 +370,7 @@ export default function ListFiltersOverlay({
                 <FormControlLabel
                   key={option.value ?? 'none'}
                   value={option.value ?? ''}
-                  control={<Radio />}
+                  control={<Radio disableRipple />}
                   label={option.label}
                 />
               ))}
@@ -402,7 +410,7 @@ export default function ListFiltersOverlay({
               <TextField
                 label={t('bookmarks.filters.addCategoryLabel')}
                 value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
+                onChange={handleNewCategoryChange}
                 onKeyDown={handleEnterCategory}
                 size="small"
                 placeholder={t('bookmarks.filters.addCategoryPlaceholder')}
@@ -497,21 +505,23 @@ export default function ListFiltersOverlay({
                 <FormControlLabel
                   key={option.value}
                   value={option.value}
-                  control={<Radio />}
-                  label={option.label}
-                />
-              ))}
-            </RadioGroup>
+                control={<Radio disableRipple />}
+                label={option.label}
+              />
+            ))}
+          </RadioGroup>
           </Stack>
         </Stack>
       </DialogContent>
 
       <DialogActions className="filters-actions">
-        <Button onClick={handleCancel}>{t('bookmarks.filters.cancel')}</Button>
-        <Button onClick={handleClearLocal} color="inherit">
+        <Button onClick={handleCancel} disableRipple>
+          {t('bookmarks.filters.cancel')}
+        </Button>
+        <Button onClick={handleClearLocal} color="inherit" disableRipple>
           {t('bookmarks.filters.clear')}
         </Button>
-        <Button onClick={handleApply} variant="contained">
+        <Button onClick={handleApply} variant="contained" disableRipple>
           {t('bookmarks.filters.apply')}
         </Button>
       </DialogActions>

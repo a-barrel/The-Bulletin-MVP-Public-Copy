@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import '../../styles/leaflet.css';
@@ -30,6 +30,7 @@ function MapCenterUpdater({ position }) {
 }
 
 function SelectableLocationMap({ value, onChange, anchor, avatarUrl, viewerName, previewPin }) {
+  const [mapReady, setMapReady] = useState(true);
   const center = value ?? anchor ?? DEFAULT_MAP_CENTER;
   const trackingPosition = value ?? anchor ?? null;
   const userLatLng =
@@ -51,58 +52,73 @@ function SelectableLocationMap({ value, onChange, anchor, avatarUrl, viewerName,
       zoom={14}
       style={{ width: '100%', height: '100%' }}
       scrollWheelZoom={false}
+      whenCreated={(map) => {
+        setMapReady(true);
+        window.setTimeout(() => {
+          try {
+            map.invalidateSize();
+          } catch {
+            // ignore
+          }
+        }, 0);
+      }}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {previewPosition && previewPin ? (
-        <Popup
-          position={previewPosition}
-          closeButton={false}
-          className="pin-preview-popup"
-          autoPan={false}
-          autoClose={false}
-          closeOnClick={false}
-          offset={[0, -20]}
-          keepInView={false}
-          maxWidth={780}
-          minWidth={300}
-        >
-          <div className="pin-card-overlay-inner">
-            <PinPreviewCard
-              pin={previewPin}
-              distanceMiles={previewPin?.distanceMiles}
-              coordinateLabel={previewPin?.coordinateLabel}
-              proximityRadiusMeters={previewPin?.proximityRadiusMeters}
-              disableActions
-            />
-          </div>
-        </Popup>
-      ) : null}
-      <MapClickHandler onSelect={onChange} />
-      <MapCenterUpdater position={trackingPosition} />
-      {userLatLng ? (
+      {mapReady ? (
         <>
-          <Marker position={userLatLng} icon={userMarkerIcon} />
-          {draftLatLng ? (
-            <Polyline
-              positions={[userLatLng, draftLatLng]}
-              pathOptions={{ color: '#5d3889', weight: 2, dashArray: '6 8', opacity: 0.85 }}
-            />
+          {previewPosition && previewPin ? (
+            <Popup
+              position={previewPosition}
+              closeButton={false}
+              className="pin-preview-popup"
+              autoPan={false}
+              autoClose={false}
+              closeOnClick={false}
+              offset={[0, -20]}
+              keepInView={false}
+              maxWidth={780}
+              minWidth={300}
+            >
+              <div className="pin-card-overlay-inner">
+                <PinPreviewCard
+                  pin={previewPin}
+                  distanceMiles={previewPin?.distanceMiles}
+                  coordinateLabel={previewPin?.coordinateLabel}
+                  proximityRadiusMeters={previewPin?.proximityRadiusMeters}
+                  disableActions
+                  className="pin-preview-card--map"
+                />
+              </div>
+            </Popup>
           ) : null}
+          <MapClickHandler onSelect={onChange} />
+          <MapCenterUpdater position={trackingPosition} />
+          {userLatLng ? (
+            <>
+              <Marker position={userLatLng} icon={userMarkerIcon} />
+              {draftLatLng ? (
+                <Polyline
+                  positions={[userLatLng, draftLatLng]}
+                  pathOptions={{ color: '#5d3889', weight: 2, dashArray: '6 8', opacity: 0.85 }}
+                />
+              ) : null}
+            </>
+          ) : null}
+          {draftLatLng ? <Marker position={draftLatLng} /> : null}
+          <RecenterControl
+            onRecenter={(mapInstance) => {
+              if (trackingPosition && Number.isFinite(trackingPosition.lat) && Number.isFinite(trackingPosition.lng)) {
+                mapInstance.setView([trackingPosition.lat, trackingPosition.lng], mapInstance.getZoom(), { animate: true });
+              } else if (DEFAULT_MAP_CENTER) {
+                mapInstance.setView([DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng], mapInstance.getZoom(), { animate: true });
+              }
+            }}
+          />
         </>
       ) : null}
-      {draftLatLng ? <Marker position={draftLatLng} /> : null}
-      <RecenterControl
-        onRecenter={(mapInstance) => {
-          if (trackingPosition && Number.isFinite(trackingPosition.lat) && Number.isFinite(trackingPosition.lng)) {
-            mapInstance.setView([trackingPosition.lat, trackingPosition.lng], mapInstance.getZoom(), { animate: true });
-          } else if (DEFAULT_MAP_CENTER) {
-            mapInstance.setView([DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng], mapInstance.getZoom(), { animate: true });
-          }
-        }}
-      />
     </MapContainer>
   );
 }

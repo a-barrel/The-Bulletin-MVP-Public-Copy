@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -13,6 +13,7 @@ import {
   Snackbar,
   Stack,
   TextField,
+  InputAdornment,
   Typography
 } from '@mui/material';
 import SmsIcon from '@mui/icons-material/Sms';
@@ -27,8 +28,12 @@ import { MODERATION_ACTION_OPTIONS, QUICK_MODERATION_ACTIONS } from '../constant
 import { getParticipantId } from '../utils/chatParticipants';
 import normalizeObjectId from '../utils/normalizeObjectId';
 import ReportContentDialog from '../components/ReportContentDialog';
-import { createContentReport } from '../api/mongoDataApi';
+import { createContentReport } from '../api';
 import './FriendsPage.css';
+import GlobalNavMenu from '../components/GlobalNavMenu';
+import MainNavBackButton from '../components/MainNavBackButton';
+import FriendRequestIcon from '@mui/icons-material/PersonAddRounded';
+import SearchIcon from '@mui/icons-material/Search';
 
 export const pageConfig = {
   id: 'friends',
@@ -331,6 +336,12 @@ function FriendsPage() {
     if (!reportTarget?.userId || isSubmittingReport) {
       return;
     }
+    const normalizedReason = typeof reportReason === 'string' ? reportReason.trim() : '';
+    const offensesList = Array.isArray(reportOffenses) ? reportOffenses : [];
+    if (!normalizedReason && offensesList.length === 0) {
+      setReportError('Select at least one issue or add details.');
+      return;
+    }
     setIsSubmittingReport(true);
     setReportError(null);
     try {
@@ -338,8 +349,9 @@ function FriendsPage() {
         contentType: 'user',
         contentId: reportTarget.userId,
         context: `Friends list report: ${reportTarget.displayName || 'User'}`,
-        reason: reportReason,
-        offenses: reportOffenses
+        summary: reportTarget.displayName || 'User',
+        reason: normalizedReason || 'Reported via friends list.',
+        offenses: offensesList
       });
       setReportTarget(null);
       setReportReason('');
@@ -404,6 +416,7 @@ function FriendsPage() {
     isRecordingModerationAction;
 
   const disableMessageAction = directMessagesHasAccess === false || isCreatingDirectThread;
+  const disableFriendActions = isProcessingFriendAction || friendHasAccess === false;
 
   const handleBack = useCallback(() => {
     navigate(-1);
@@ -413,12 +426,59 @@ function FriendsPage() {
     <>
       <Box className="friend-page">
         <div className="friend-frame">
+          <div className="friends-header">
+            <div className="friends-header-left">
+              <MainNavBackButton
+                className="friends-header-back"
+                iconClassName="friends-header-back-icon"
+                ariaLabel="Back"
+                scope="core"
+                onNavigate={handleBack}
+              />
+              <GlobalNavMenu triggerClassName="gnm-trigger-btn" iconClassName="gnm-trigger-btn__icon" />
+              <Typography variant="h5" className="friends-title">
+                Friends
+              </Typography>
+            </div>
+            <div className="friends-header-actions">
+              <Button
+                className="friend-request-btn"
+                type="button"
+                aria-label={notificationsLabel}
+                onClick={handleOpenFriendDialog}
+                disabled={disableFriendActions}
+                disableRipple
+              >
+                <FriendRequestIcon className="friend-request-icon" aria-hidden="true" />
+                {requestBadge ? (
+                  <span className="friend-request-icon-badge" aria-hidden="true">
+                    {requestBadge}
+                  </span>
+                ) : null}
+              </Button>
+            </div>
+          </div>
+          <Box className="friends-list-search-bar">
+            <TextField
+              className="friends-list-search-bar-input-container"
+              fullWidth
+              size="small"
+              placeholder="Search friends..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon className="friends-search-icon" />
+                  </InputAdornment>
+                )
+              }}
+            />
+          </Box>
           <Box className="friends-list-field">
             <FriendsListPanel
               friends={friends}
               filteredFriends={filteredFriends}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
               isLoading={isLoadingFriends}
               friendStatus={friendStatus}
               hasAccess={friendHasAccess}
@@ -571,4 +631,4 @@ function FriendsPage() {
   );
 }
 
-export default FriendsPage;
+export default memo(FriendsPage);

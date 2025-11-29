@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 
-import { fetchCurrentUserProfile } from '../../api/mongoDataApi';
+import { fetchCurrentUserProfile } from '../../api';
 import toIdString from '../../utils/ids';
+import { useUserCache } from '../../contexts/UserCacheContext';
 
 export default function useBookmarkViewerProfile({ authUser, isOffline }) {
+  const userCache = useUserCache();
   const [viewerProfile, setViewerProfile] = useState(null);
 
   useEffect(() => {
@@ -14,10 +16,19 @@ export default function useBookmarkViewerProfile({ authUser, isOffline }) {
 
     let cancelled = false;
     (async () => {
+      const cached = userCache.getMe();
+      if (cached) {
+        setViewerProfile(cached);
+        return;
+      }
+
       try {
         const profile = await fetchCurrentUserProfile();
         if (!cancelled) {
           setViewerProfile(profile ?? null);
+          if (profile) {
+            userCache.setMe(profile);
+          }
         }
       } catch (error) {
         if (!cancelled) {

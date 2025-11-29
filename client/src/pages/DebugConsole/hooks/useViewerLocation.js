@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { fetchLocationHistory } from '../../../api/mongoDataApi';
+import { fetchLocationHistory } from '../../../api';
 import { useLocationContext } from '../../../contexts/LocationContext';
 import { DEFAULT_LOCATION_COORDINATES } from '../constants';
 import { coordinatesEqual, mongooseObjectIdLike } from '../utils';

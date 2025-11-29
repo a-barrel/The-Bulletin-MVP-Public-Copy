@@ -65,11 +65,28 @@ const formatTimeLabel = (hoursUntil) => {
 };
 
 const resolveDescription = (pin) => {
-  if (typeof pin?.description === 'string' && pin.description.trim().length > 0) {
-    return pin.description.trim();
-  }
-  if (typeof pin?.text === 'string' && pin.text.trim().length > 0) {
-    return pin.text.trim();
+  const candidates = [
+    pin?.description,
+    pin?.content,
+    pin?.body,
+    pin?.text,
+    pin?.summary,
+    pin?.details?.description,
+    pin?.details?.content,
+    pin?.details?.body,
+    pin?.details?.text,
+    pin?.details?.summary,
+    pin?.details?.longDescription,
+    pin?.pin?.description,
+    pin?.pin?.content,
+    pin?.pin?.body,
+    pin?.pin?.text,
+    pin?.pin?.summary
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
   }
   return null;
 };

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import useFriendGraph from './useFriendGraph';
 import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
+import { useUserCache } from '../contexts/UserCacheContext';
 
 const MAX_SEARCH_LENGTH = 30;
 
@@ -13,6 +14,7 @@ function normalizeQuery(value) {
 }
 
 export default function useFriendsDirectory() {
+  const userCache = useUserCache();
   const {
     graph,
     refresh,
@@ -27,8 +29,14 @@ export default function useFriendsDirectory() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const friends = useMemo(
-    () => (Array.isArray(graph?.friends) ? graph.friends : []),
-    [graph]
+    () => {
+      const list = Array.isArray(graph?.friends) ? graph.friends : [];
+      if (list.length) {
+        userCache.setUsers(list);
+      }
+      return list;
+    },
+    [graph, userCache]
   );
 
   const normalizedQuery = normalizeQuery(searchQuery);

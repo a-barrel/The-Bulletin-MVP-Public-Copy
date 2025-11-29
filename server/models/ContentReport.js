@@ -4,7 +4,7 @@ const contentReportSchema = new mongoose.Schema(
   {
     contentType: {
       type: String,
-      enum: ['pin', 'reply', 'chat-message', 'direct-message'],
+      enum: ['pin', 'reply', 'chat-message', 'direct-message', 'user'],
       required: true
     },
     contentId: {

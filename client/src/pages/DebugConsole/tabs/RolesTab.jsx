@@ -12,7 +12,7 @@ import runtimeConfig from '../../../config/runtime';
 import {
   fetchCurrentUserProfile,
   updateUserProfile
-} from '../../../api/mongoDataApi';
+} from '../../../api';
 import DebugPanel from '../components/DebugPanel';
 import {
   getEffectiveRoleLabel,

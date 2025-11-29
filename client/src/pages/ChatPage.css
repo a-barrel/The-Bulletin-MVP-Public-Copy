@@ -1,8 +1,9 @@
 /* ===== Outer Shell ===== */
 .chat-page {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
   overflow: hidden;
   width: 100vw;
   height: 100vh;
@@ -23,24 +24,75 @@
   top: 0;
   z-index: 30;
   background: linear-gradient(135deg, #cdaef2 0%, #f5effd 100%);
-  width: 100vw;
-  height: 8vh;
+  width: 100%;
+  height: 72px;
+  min-height: 72px;
+  padding: 0 1rem;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 2px solid #5D3889;
+  border-bottom: 1px solid rgba(93, 56, 137, 0.25);
+}
+
+.chat-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.25rem;
+}
+
+.chat-header-back {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  box-shadow: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+
+.chat-header-back-icon {
+  color: #4b208c;
+  width: 32px;
+  height: 32px;
+}
+
+.chat-header-back:hover,
+.chat-header-back:focus-visible {
+  background: rgba(75, 32, 140, 0.12);
+  outline: none;
+  transform: translateY(-1px);
 }
 
 .chat-header-title {
   color: #5D3889;
   font-weight: 700 !important;
   letter-spacing: 0.01em;
+  margin: 0;
 }
 
 .chat-header-menu-nav {
-  margin-left: -1rem;
-  margin-right: -1rem;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.chat-header-back {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  box-shadow: none;
+}
+
+.chat-header-back-icon {
+  color: #4b208c;
+  width: 32px;
+  height: 32px;
 }
 
 .chat-header-actions {
@@ -184,7 +236,8 @@
   width: 100vw;
   height: 100%;
   margin-bottom: 0;
-  padding-bottom: calc(81px + env(safe-area-inset-bottom, 0));
+  /* leave room for composer + bottom nav */
+  padding-bottom: calc(200px + env(safe-area-inset-bottom, 0));
 }
 
 .disabled-dms-container,

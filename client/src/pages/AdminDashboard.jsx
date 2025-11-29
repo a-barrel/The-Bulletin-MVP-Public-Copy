@@ -15,11 +15,12 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import DoneIcon from '@mui/icons-material/Done';
 import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb';
 
-import { resolveContentReport } from '../api/mongoDataApi';
+import { resolveContentReport } from '../api';
 import runtimeConfig from '../config/runtime';
 import useModerationOverview from '../hooks/useModerationOverview';
 import useContentReports from '../hooks/useContentReports';
 import LoadingOverlay from '../components/LoadingOverlay';
+import PageNavHeader from '../components/PageNavHeader';
 import ModerationSummaryGrid from '../components/admin/ModerationSummaryGrid';
 import ReportStatusTabs from '../components/admin/ReportStatusTabs';
 import ReportsTable from '../components/admin/ReportsTable';
@@ -259,8 +260,8 @@ function AdminDashboardContent() {
           width: '100%',
           maxWidth: 640,
           mx: 'auto',
-          py: { xs: 3, md: 5 },
-          px: { xs: 2, md: 4 }
+          py: 0,
+          px: 0
         }}
       >
         <Alert severity="warning">Moderator privileges required to view this dashboard.</Alert>
@@ -275,28 +276,25 @@ function AdminDashboardContent() {
         width: '100%',
         maxWidth: 1080,
         mx: 'auto',
-        py: { xs: 3, md: 5 },
-        px: { xs: 2, md: 4 }
+        py: 0,
+        px: 0
       }}
     >
       <Stack spacing={3}>
-        <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <AdminPanelSettingsIcon color="primary" fontSize="large" />
-            <Typography variant="h4" component="h1">
-              Admin dashboard
-            </Typography>
-          </Stack>
-          <Button
-            type="button"
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={handleRefreshAll}
-            disabled={isLoadingOverview || isLoadingReports}
-          >
-            Refresh
-          </Button>
-        </Stack>
+        <PageNavHeader
+          title="Admin dashboard"
+          rightSlot={
+            <Button
+              type="button"
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={handleRefreshAll}
+              disabled={isLoadingOverview || isLoadingReports}
+            >
+              Refresh
+            </Button>
+          }
+        />
 
         {snackbar ? (
           <Snackbar

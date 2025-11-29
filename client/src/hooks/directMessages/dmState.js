@@ -116,7 +116,7 @@ export const dmReducer = (state, action) => {
       return {
         ...state,
         isSending: false,
-        sendStatus: { type: 'success', message: action.message },
+        sendStatus: null,
         hasAccess: true,
         lastErrorStatus: null
       };

@@ -29,7 +29,8 @@ function ErrorFallback({ onRetry, onReload, error }) {
     if (typeof onReload === 'function') {
       onReload();
     } else if (typeof window !== 'undefined') {
-      window.location.reload();
+      // Avoid infinite reload loops on repeated boundary hits.
+      window.location.href = routes.auth.login;
     }
   }, [onReload]);
 

@@ -17,7 +17,7 @@ const router = express.Router();
 const ReportOffenseEnum = z.enum(REPORT_OFFENSE_OPTIONS);
 
 const ReportContentSchema = z.object({
-  contentType: z.enum(['pin', 'reply', 'chat-message', 'direct-message']),
+  contentType: z.enum(['pin', 'reply', 'chat-message', 'direct-message', 'user']),
   contentId: z.string().trim().min(1),
   reason: z.string().trim().max(500).optional(),
   context: z.string().trim().max(1000).optional(),
@@ -98,7 +98,7 @@ router.post('/', verifyToken, async (req, res) => {
 
     const rateLimitKey = `report:${viewerIdString}:${input.contentType}:${input.contentId}`;
     const now = Date.now();
-    const cooldownMs = 30 * 1000; // 30s per unique content report
+    const cooldownMs = 3 * 1000; // reduced cooldown for demo
     if (!router._rateLimitCache) {
       router._rateLimitCache = new Map();
     }
@@ -200,6 +200,37 @@ router.post('/', verifyToken, async (req, res) => {
         message: message.body || '',
         metadata
       };
+    } else if (input.contentType === 'user') {
+      let reportedUser = null;
+      if (mongoose.Types.ObjectId.isValid(input.contentId)) {
+        reportedUser = await User.findById(input.contentId);
+      }
+
+      if (reportedUser) {
+        authorId = reportedUser._id;
+        metadata = {
+          userId: toIdString(reportedUser._id),
+          displayName: reportedUser.displayName || null,
+          username: reportedUser.username || null
+        };
+        snapshot = {
+          message:
+            reportedUser.bio ||
+            `Reported user: ${reportedUser.displayName || reportedUser.username || 'User'}`,
+          metadata
+        };
+      } else {
+        // Allow reporting non-ObjectId user ids (demo accounts, external ids).
+        authorId = viewer._id;
+        metadata = {
+          userId: input.contentId,
+          displayName: input.context || null
+        };
+        snapshot = {
+          message: input.reason || `Reported user: ${input.contentId}`,
+          metadata
+        };
+      }
     } else {
       return res.status(400).json({ message: 'Unsupported content type.' });
     }

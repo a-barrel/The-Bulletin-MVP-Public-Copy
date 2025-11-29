@@ -5,7 +5,9 @@ import {
   removeFriendRelationship,
   respondToFriendRequest,
   sendFriendRequest
-} from '../api/mongoDataApi';
+} from '../api';
+import { useFriendCache } from '../contexts/FriendCacheContext';
+import { useUserCache } from '../contexts/UserCacheContext';
 
 const initialState = {
   graph: null,
@@ -113,12 +115,25 @@ const addOptimisticOutgoing = (graph, request) => {
 };
 
 export default function useFriendGraph({ autoLoad = true } = {}) {
+  const friendCache = useFriendCache();
+  const userCache = useUserCache();
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const loadGraph = useCallback(async () => {
     dispatch({ type: 'graph/pending' });
     try {
+      const cached = friendCache.getRoster();
+      const now = Date.now();
+      const isFresh = cached ? now - cached.ts < 60_000 : false;
+      if (cached && isFresh) {
+        dispatch({ type: 'graph/success', payload: cached.data });
+        userCache.setUsers(cached.data?.friends || []);
+        return cached.data;
+      }
+
       const payload = await fetchFriendOverview();
+      friendCache.setRoster(undefined, { data: payload });
+      userCache.setUsers(payload?.friends || []);
       dispatch({ type: 'graph/success', payload });
       return payload;
     } catch (error) {
@@ -132,7 +147,7 @@ export default function useFriendGraph({ autoLoad = true } = {}) {
       });
       throw error;
     }
-  }, []);
+  }, [friendCache]);
 
   const sendRequestAction = useCallback(
     async ({ targetUserId, message }) => {

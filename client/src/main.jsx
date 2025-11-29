@@ -1,4 +1,4 @@
-import { StrictMode, Suspense } from 'react';
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import './index.css';
@@ -37,17 +37,15 @@ if (import.meta.hot && typeof window !== 'undefined') {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <Suspense fallback={null}>
-      <I18nextProvider i18n={i18n}>
-        <BrowserRouter>
-          <AppErrorBoundary>
-            <NetworkStatusProvider>
-              <LanguageHotkeys />
-              <App />
-            </NetworkStatusProvider>
-          </AppErrorBoundary>
-        </BrowserRouter>
-      </I18nextProvider>
-    </Suspense>
+    <I18nextProvider i18n={i18n}>
+      <BrowserRouter>
+        <AppErrorBoundary>
+          <NetworkStatusProvider>
+            <LanguageHotkeys />
+            <App />
+          </NetworkStatusProvider>
+        </AppErrorBoundary>
+      </BrowserRouter>
+    </I18nextProvider>
   </StrictMode>
 );

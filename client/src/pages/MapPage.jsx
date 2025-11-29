@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, memo } from 'react';
 import '../pages/MapPage.css';
 import { useNavigate } from 'react-router-dom';
 import MapIcon from '@mui/icons-material/Map';
@@ -7,7 +7,6 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 
 import MapComponent from '../components/Map';
-import Navbar from '../components/Navbar';
 import updatesIcon from '../assets/UpdateIcon.svg';
 import addIconPurple from '../assets/AddIconPurple.svg';
 import { routes } from '../routes';
@@ -18,7 +17,6 @@ import useMapExplorer from '../hooks/useMapExplorer';
 import useViewerProfile from '../hooks/useViewerProfile';
 import useHideFullEventsPreference from '../hooks/useHideFullEventsPreference';
 import { DEFAULT_MAX_DISTANCE_METERS } from '../utils/mapExplorerConstants';
-import MapHeader from '../components/map/MapHeader';
 import MapFilterPanel from '../components/map/MapFilterPanel';
 import { MAP_FILTERS, MAP_MARKER_ICON_URLS } from '../utils/mapMarkers';
 import { applyPinFilters } from '../utils/pinFilters';
@@ -27,7 +25,18 @@ import toIdString from '../utils/ids';
 import { buildPinMeta } from '../utils/mapPinMeta';
 import { viewerHasDeveloperAccess } from '../utils/roles';
 import runtimeConfig from '../config/runtime';
+import { usePinCache } from '../contexts/PinCacheContext';
 import { useTranslation } from 'react-i18next';
+import {
+  useMapFilters,
+  extractIds,
+  FILTER_STORAGE_KEY,
+  LEGACY_FILTER_STORAGE_KEY
+} from '../components/map/useMapFilters';
+import { logMapPerf, nowIfPerf } from '../utils/mapPerfLogger';
+import MapFiltersSection from '../components/map/MapFiltersSection';
+import MapPageLayout from '../components/map/MapPageLayout';
+import PageNavHeader from '../components/PageNavHeader';
 
 
 export const pageConfig = {
@@ -93,117 +102,42 @@ function MapPage() {
     enforceLocation: !adminOverride,
     isAdminExempt: adminOverride
   });
+  const pinCache = usePinCache();
 
-  const FILTER_STORAGE_KEY = 'mapFilterState-v2';
-const LEGACY_FILTER_STORAGE_KEY = 'mapFilterState-v1';
-
-const extractIds = (list) => {
-  if (!Array.isArray(list)) return [];
-  return list
-    .map((entry) => toIdString(entry?._id ?? entry?.id ?? entry?.userId ?? entry))
-    .filter(Boolean);
-};
-
-const perfLogCache = new globalThis.Map();
-const logPerf = (label, startedAt = null, meta = {}) => {
-  const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  const duration = startedAt ? now - startedAt : 0;
-  const key = `${label}|${JSON.stringify(meta)}`;
-  const last = perfLogCache.get(key);
-  // Deduplicate identical log payloads that occur back-to-back (e.g., Strict Mode double effects).
-  if (last && now - last < 200) {
-    return;
-  }
-  perfLogCache.set(key, now);
-  // eslint-disable-next-line no-console
-  console.log(`[map-perf] ${label}${startedAt ? '' : ' (instant)'}`, {
-    durationMs: Number.isFinite(duration) ? duration.toFixed(1) : 'n/a',
-    ...meta
-  });
-};
-  const loadStoredFilterState = () => {
-    if (typeof window === 'undefined') {
-      return null;
-    }
-    const readKey = (storageKey) => {
-      if (!storageKey) {
-        return null;
-      }
-      try {
-        const raw = window.localStorage.getItem(storageKey);
-        if (!raw) {
-          return null;
-        }
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object') {
-          return parsed;
-        }
-      } catch (error) {
-        console.warn(`Failed to parse saved map filters for ${storageKey}:`, error);
-      }
-      return null;
-    };
-
-    const current = readKey(FILTER_STORAGE_KEY);
-    if (current) {
-      return current;
-    }
-    const legacy = readKey(LEGACY_FILTER_STORAGE_KEY);
-    if (legacy) {
-      const { showInteractionRadius: _legacyRadius, ...rest } = legacy;
-      return rest;
-    }
-    return null;
-  };
-  const initialFilterState = loadStoredFilterState();
-  const [showEvents, setShowEvents] = useState(
-    initialFilterState?.showEvents ?? true
-  );
-  const [showDiscussions, setShowDiscussions] = useState(
-    initialFilterState?.showDiscussions ?? true
-  );
-  const [showPersonalPins, setShowPersonalPins] = useState(
-    initialFilterState?.showPersonalPins ?? true
-  );
-  const [showFriendPins, setShowFriendPins] = useState(
-    initialFilterState?.showFriendPins ?? true
-  );
-  const [showExpiringDiscussions, setShowExpiringDiscussions] = useState(
-    initialFilterState?.showExpiringDiscussions ?? true
-  );
-  const [showEventsStartingSoon, setShowEventsStartingSoon] = useState(
-    initialFilterState?.showEventsStartingSoon ?? true
-  );
-  const [showPopularPins, setShowPopularPins] = useState(
-    initialFilterState?.showPopularPins ?? true
-  );
-  const [showBookmarkedPins, setShowBookmarkedPins] = useState(
-    initialFilterState?.showBookmarkedPins ?? true
-  );
-  const [showOpenSpotPins, setShowOpenSpotPins] = useState(
-    initialFilterState?.showOpenSpotPins ?? true
-  );
-  const [showFeaturedPins, setShowFeaturedPins] = useState(
-    initialFilterState?.showFeaturedPins ?? true
-  );
-  const [showMyChatRooms, setShowMyChatRooms] = useState(
-    initialFilterState?.showMyChatRooms ?? false
-  );
-  const [showAllChatRoomsToggle, setShowAllChatRoomsToggle] = useState(
-    initialFilterState?.showAllChatRoomsToggle ?? false
-  );
-  const [tapToTeleportEnabled, setTapToTeleportEnabled] = useState(
-    initialFilterState?.tapToTeleportEnabled ?? false
-  );
-  const [showInteractionRadius, setShowInteractionRadius] = useState(
-    initialFilterState?.showInteractionRadius ?? false
-  );
-  const [clusterPins, setClusterPins] = useState(
-    initialFilterState?.clusterPins ?? true
-  );
-  const [filtersCollapsed, setFiltersCollapsed] = useState(
-    initialFilterState?.filtersCollapsed ?? false
-  );
+  const {
+    showEvents,
+    setShowEvents,
+    showDiscussions,
+    setShowDiscussions,
+    showPersonalPins,
+    setShowPersonalPins,
+    showFriendPins,
+    setShowFriendPins,
+    showExpiringDiscussions,
+    setShowExpiringDiscussions,
+    showEventsStartingSoon,
+    setShowEventsStartingSoon,
+    showPopularPins,
+    setShowPopularPins,
+    showBookmarkedPins,
+    setShowBookmarkedPins,
+    showOpenSpotPins,
+    setShowOpenSpotPins,
+    showFeaturedPins,
+    setShowFeaturedPins,
+    showMyChatRooms,
+    setShowMyChatRooms,
+    showAllChatRoomsToggle,
+    setShowAllChatRoomsToggle,
+    tapToTeleportEnabled,
+    setTapToTeleportEnabled,
+    showInteractionRadius,
+    setShowInteractionRadius,
+    clusterPins,
+    setClusterPins,
+    filtersCollapsed,
+    setFiltersCollapsed
+  } = useMapFilters();
   const showFullEvents = !hideFullEvents;
 
   const viewerId = useMemo(
@@ -218,13 +152,8 @@ const logPerf = (label, startedAt = null, meta = {}) => {
     if (!Array.isArray(friends)) {
       return new Set();
     }
-    return new Set(
-      friends
-        .map((value) => toIdString(value))
-        .filter(Boolean)
-    );
+    return new Set(extractIds(friends));
   }, [viewerProfile]);
-
   const canUseAdminTools = useMemo(
     () =>
       viewerHasDeveloperAccess(viewerProfile, {
@@ -303,6 +232,25 @@ const logPerf = (label, startedAt = null, meta = {}) => {
       return [];
     }
     const result = pins.map((pin) => {
+      const cached = pin?._id ? pinCache.getPin(pin._id) : null;
+      const mergedPin =
+        cached && typeof cached === 'object'
+          ? {
+              ...cached,
+              ...pin,
+              viewerHasBookmarked:
+                typeof cached.viewerHasBookmarked === 'boolean'
+                  ? cached.viewerHasBookmarked
+                  : pin?.viewerHasBookmarked,
+              bookmarkCount:
+                typeof cached.bookmarkCount === 'number'
+                  ? cached.bookmarkCount
+                  : pin?.bookmarkCount ??
+                    cached?.stats?.bookmarkCount ??
+                    pin?.stats?.bookmarkCount ??
+                    null
+            }
+          : pin;
       const mapMeta = buildPinMeta(pin, { viewerId, friendIds: friendIdsSet });
       const existingFriendCount =
         typeof pin?.friendsGoing === 'number'
@@ -346,12 +294,12 @@ const logPerf = (label, startedAt = null, meta = {}) => {
           : null;
       const friendsGoingPending = friendsGoingCount === null;
       return {
-        ...pin,
+        ...mergedPin,
         friendsGoing: friendsGoingCount,
         friendsGoingCount,
         friendsGoingPending,
         stats: {
-          ...(pin?.stats || {}),
+          ...(mergedPin?.stats || {}),
           friendsGoing: friendsGoingCount,
           friendsGoingCount
         },
@@ -359,12 +307,12 @@ const logPerf = (label, startedAt = null, meta = {}) => {
         mapColorKey: mapMeta.colorKey
       };
     });
-    logPerf('annotate pins', started, { count: result.length });
+    logMapPerf('annotate pins', started, { count: result.length });
     return result;
   }, [pins, friendIdsSet, viewerId]);
 
   const visiblePins = useMemo(() => {
-    const started = performance.now();
+    const started = nowIfPerf();
     const filtered = annotatedPins.filter((pin) =>
       applyPinFilters(pin.mapMeta, {
         showEvents,
@@ -380,7 +328,7 @@ const logPerf = (label, startedAt = null, meta = {}) => {
         showFeaturedPins
       })
     );
-    logPerf('filter pins', started, { input: annotatedPins.length, output: filtered.length });
+    logMapPerf('filter pins', started, { input: annotatedPins.length, output: filtered.length });
     return filtered;
   }, [
     annotatedPins,
@@ -437,14 +385,13 @@ const logPerf = (label, startedAt = null, meta = {}) => {
   }, [chatRoomPins, showAllChatRoomsToggle, showMyChatRooms, viewerId]);
 
   const mapPinsForRender = useMemo(() => {
-    const started = performance.now();
+    const started = nowIfPerf();
     const merged = [...visiblePins, ...visibleChatRoomPins];
-    logPerf('merge pins for map', started, { pins: visiblePins.length, chats: visibleChatRoomPins.length, total: merged.length });
+    logMapPerf('merge pins for map', started, { pins: visiblePins.length, chats: visibleChatRoomPins.length, total: merged.length });
     return merged;
   }, [visiblePins, visibleChatRoomPins]);
-
   useEffect(() => {
-    logPerf('map pin counts change', null, {
+    logMapPerf('map pin counts change', null, {
       visiblePins: visiblePins.length,
       chatPins: visibleChatRoomPins.length,
       total: mapPinsForRender.length
@@ -723,103 +670,123 @@ const logPerf = (label, startedAt = null, meta = {}) => {
     ].filter((group) => Array.isArray(group.filters) && group.filters.length > 0);
   }, [baseFilterItems, chatFilterItems, highlightFilters]);
 
-  if (locationRequired && !hasResolvedLocation) {
+  const handleToggleFiltersCollapsed = useCallback(() => {
+    setFiltersCollapsed((prev) => !prev);
+  }, []);
+
+  const locationGateContent = locationRequired && !hasResolvedLocation && (
+    <Box className="map-location-gate">
+      <Typography variant="h6">{t('location.requiredTitle')}</Typography>
+      <Typography variant="body2" color="text.secondary">
+        {shareHelperText || t('location.requiredBody')}
+      </Typography>
+      {error ? (
+        <Typography variant="body2" color="error">
+          {error}
+        </Typography>
+      ) : null}
+      <Button
+        variant="contained"
+        onClick={() => {
+          setError?.(null);
+          handleStartSharing();
+        }}
+        disabled={isSharing}
+      >
+        {t('location.retryButton')}
+      </Button>
+    </Box>
+  );
+
+  if (locationGateContent) {
     return (
-      <div className="map-page">
-        <Navbar />
-        <Box sx={{ p: 3, display: 'grid', gap: 1 }}>
-          <Typography variant="h6">{t('location.requiredTitle')}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {shareHelperText || t('location.requiredBody')}
-          </Typography>
-          {error ? (
-            <Typography variant="body2" color="error">
-              {error}
-            </Typography>
-          ) : null}
-          <Button
-            variant="contained"
-            onClick={() => {
-              setError?.(null);
-              handleStartSharing();
-            }}
-            disabled={isSharing}
-          >
-            {t('location.retryButton')}
-          </Button>
-        </Box>
-      </div>
+      <MapPageLayout>
+        <PageNavHeader title="Map" />
+        {locationGateContent}
+      </MapPageLayout>
     );
   }
 
   return (
-    <div className="map-page">
-      <div className="map-frame">
-        <MapHeader
-          onNotifications={handleNotifications}
-          notificationsLabel={notificationsLabel}
-          notificationBadge={displayBadge}
-          notificationsIcon={updatesIcon}
-          isOffline={isOffline}
-          onCreatePin={handleCreatePin}
-          createIcon={addIconPurple}
-        />
+    <MapPageLayout>
+      <PageNavHeader
+        title="Map"
+        rightSlot={
+          <div className="map-header-actions">
+            <button
+              type="button"
+              className="map-icon-btn map-header-create"
+              onClick={handleCreatePin}
+              disabled={isOffline}
+              aria-label={t('mapHeader.createPin')}
+              title={isOffline ? t('mapHeader.offlineCreate') : undefined}
+            >
+              {addIconPurple ? (
+                <img src={addIconPurple} alt="" className="map-icon map-icon--create" aria-hidden="true" />
+              ) : (
+                <span className="map-icon map-icon--create" aria-hidden="true" />
+              )}
+            </button>
 
-        <Box
-          sx={{
-            width: '100%',
-            height: 'calc(100vh - var(--header-h) - 90px)',
-            position: 'relative',
-            flex: '1 1 auto',
-            maxWidth: '100%',
-            p: 0,
-            m: 0,
-            overflow: 'hidden',
-            boxShadow: 'none',
-            display: 'flex',
-            flexDirection: 'column',
-            backgroundColor: 'background.paper'
-          }}
-        >
-        <MapComponent
-          userLocation={userLocation}
-          nearbyUsers={nearbyUsers}
-          pins={mapPinsForRender}
-          userRadiusMeters={DEFAULT_MAX_DISTANCE_METERS}
-          clusterPins={clusterPins}
-          selectedPinId={showChatRooms ? selectedChatRoomId : undefined}
-          onPinSelect={showChatRooms ? handleMapPinSelect : undefined}
-          onPinView={handleViewPinDetails}
-          onChatRoomView={handleViewChatRoom}
-          onCurrentUserView={handleViewProfile}
-          onPinAuthorView={handleViewPinAuthor}
-          isOffline={isOffline}
-          currentUserAvatar={viewerProfile?.avatar}
-          currentUserDisplayName={viewerProfile?.displayName}
-          teleportEnabled={tapToTeleportEnabled && canUseAdminTools}
-          showInteractionRadius={showInteractionRadius}
-          onTeleportRequest={handleTapTeleport}
-          showRecenterControl
-        />
+            <button
+              className="map-icon-btn"
+              type="button"
+              aria-label={notificationsLabel}
+              onClick={handleNotifications}
+              disabled={isOffline}
+              title={isOffline ? t('mapHeader.offlineNotifications') : undefined}
+            >
+              {updatesIcon ? (
+                <img src={updatesIcon} alt="" className="map-icon" aria-hidden="true" />
+              ) : (
+                <span className="map-icon" aria-hidden="true" />
+              )}
+              {displayBadge ? (
+                <span className="map-icon-badge" aria-hidden="true">
+                  {displayBadge}
+                </span>
+              ) : null}
+            </button>
+          </div>
+        }
+      />
+      <div className="map-frame">
+        <Box className="map-canvas-wrapper">
+          <MapComponent
+            userLocation={userLocation}
+            nearbyUsers={nearbyUsers}
+            pins={mapPinsForRender}
+            userRadiusMeters={DEFAULT_MAX_DISTANCE_METERS}
+            clusterPins={clusterPins}
+            selectedPinId={showChatRooms ? selectedChatRoomId : undefined}
+            onPinSelect={showChatRooms ? handleMapPinSelect : undefined}
+            onPinView={handleViewPinDetails}
+            onChatRoomView={handleViewChatRoom}
+            onCurrentUserView={handleViewProfile}
+            onPinAuthorView={handleViewPinAuthor}
+            isOffline={isOffline}
+            currentUserAvatar={viewerProfile?.avatar}
+            currentUserDisplayName={viewerProfile?.displayName}
+            teleportEnabled={tapToTeleportEnabled && canUseAdminTools}
+            showInteractionRadius={showInteractionRadius}
+            onTeleportRequest={handleTapTeleport}
+            showRecenterControl
+          />
         </Box>
 
-        {/* NEW: Filter FAB (mobile-only) */}
-        <MapFilterPanel
+        <MapFiltersSection
           collapsed={filtersCollapsed}
-          onToggleCollapse={() => setFiltersCollapsed((prev) => !prev)}
+          onToggleCollapse={handleToggleFiltersCollapsed}
           filterGroups={filterGroups}
         />
         {hideFullPreferenceError ? (
-          <Box sx={{ color: '#b3261e', fontSize: '0.85rem', fontWeight: 600, px: 1.5, mt: 0.5 }}>
+          <Box className="map-hide-preference-error">
             {hideFullPreferenceError}
           </Box>
         ) : null}
-
-        {/* Bottom Navigation */}
-        <Navbar />
       </div>
-    </div>
+    </MapPageLayout>
   );
 }
 
-export default MapPage;
+export default memo(MapPage);

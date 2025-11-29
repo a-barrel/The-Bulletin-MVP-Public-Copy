@@ -17,10 +17,11 @@ import {
   fetchPinById,
   removeBookmark,
   updatePinAttendance
-} from '../api/mongoDataApi';
+} from '../api';
 import { formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
 import toIdString from '../utils/ids';
 import reportClientError from '../utils/reportClientError';
+import { usePinCache } from '../contexts/PinCacheContext';
 
 const EMPTY_GROUP = 'Unsorted';
 const BOOKMARK_CACHE_TTL_MS = 45_000;
@@ -84,6 +85,7 @@ export default function useBookmarksManager({
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const cacheRef = useRef(null);
   const isLoadingRef = useRef(false);
+  const pinCache = usePinCache();
 
   // Keep a Map for constant-time lookups when grouping bookmarks by collection.
   const collectionsById = useMemo(() => {
@@ -102,48 +104,59 @@ export default function useBookmarksManager({
   const totalCount = bookmarks.length;
 
   // Fetch bookmarks + collections together so the page can show both the list and the sidebar metadata.
-  const enrichBookmarksWithPins = useCallback(async (bookmarkList) => {
-    if (!Array.isArray(bookmarkList) || bookmarkList.length === 0) {
-      return [];
-    }
-    const uniquePinIds = Array.from(
-      new Set(
-        bookmarkList
-          .map((bookmark) => toIdString(bookmark?.pinId) ?? toIdString(bookmark?.pin?._id))
-          .filter(Boolean)
-      )
-    );
-    if (uniquePinIds.length === 0) {
-      return bookmarkList;
-    }
-    const pinDetails = new Map();
-    await Promise.all(
-      uniquePinIds.map(async (pinId) => {
-        try {
-          const pin = await fetchPinById(pinId, { previewMode: 'bookmark' });
-          pinDetails.set(pinId, pin || null);
-        } catch (err) {
-          reportClientError(err, 'Failed to fetch pin for bookmark:', {
-            source: 'useBookmarksManager.enrichPins',
-            pinId
-          });
-          pinDetails.set(pinId, null);
-        }
-      })
-    );
-    return bookmarkList.map((bookmark) => {
-      const normalizedPinId =
-        toIdString(bookmark?.pinId) ?? toIdString(bookmark?.pin?._id) ?? null;
-      const resolvedPin = normalizedPinId ? pinDetails.get(normalizedPinId) : null;
-      if (!resolvedPin) {
-        return bookmark;
+  const enrichBookmarksWithPins = useCallback(
+    async (bookmarkList) => {
+      if (!Array.isArray(bookmarkList) || bookmarkList.length === 0) {
+        return [];
       }
-      return {
-        ...bookmark,
-        pin: resolvedPin
-      };
-    });
-  }, []);
+      const uniquePinIds = Array.from(
+        new Set(
+          bookmarkList
+            .map((bookmark) => toIdString(bookmark?.pinId) ?? toIdString(bookmark?.pin?._id))
+            .filter(Boolean)
+        )
+      );
+      if (uniquePinIds.length === 0) {
+        return bookmarkList;
+      }
+      const pinDetails = new Map();
+      await Promise.all(
+        uniquePinIds.map(async (pinId) => {
+          const cached = pinCache.getPin(pinId);
+          if (cached) {
+            pinDetails.set(pinId, cached);
+            return;
+          }
+          try {
+            const pin = await fetchPinById(pinId, { previewMode: 'bookmark' });
+            if (pin) {
+              pinCache.upsertPin(pin);
+            }
+            pinDetails.set(pinId, pin || null);
+          } catch (err) {
+            reportClientError(err, 'Failed to fetch pin for bookmark:', {
+              source: 'useBookmarksManager.enrichPins',
+              pinId
+            });
+            pinDetails.set(pinId, null);
+          }
+        })
+      );
+      return bookmarkList.map((bookmark) => {
+        const normalizedPinId =
+          toIdString(bookmark?.pinId) ?? toIdString(bookmark?.pin?._id) ?? null;
+        const resolvedPin = normalizedPinId ? pinDetails.get(normalizedPinId) : null;
+        if (!resolvedPin) {
+          return bookmark;
+        }
+        return {
+          ...bookmark,
+          pin: resolvedPin
+        };
+      });
+    },
+    [pinCache]
+  );
 
   const invalidateCache = useCallback(() => {
     cacheRef.current = null;
@@ -202,6 +215,11 @@ export default function useBookmarksManager({
         }
         return { ...bookmark, viewerIsAttending: pinAttendance };
       });
+      pinCache.setPins(
+        normalizedBookmarks
+          .map((bookmark) => bookmark?.pin)
+          .filter(Boolean)
+      );
       setBookmarks(normalizedBookmarks);
       setCollections(Array.isArray(collectionPayload) ? collectionPayload : []);
       const nextHistory = Array.isArray(historyPayload) ? historyPayload : [];
@@ -224,7 +242,7 @@ export default function useBookmarksManager({
       isLoadingRef.current = false;
       setIsLoading(false);
     }
-  }, [authUser, enrichBookmarksWithPins, hideFullEvents, isOffline, viewHistory]);
+  }, [authUser, enrichBookmarksWithPins, hideFullEvents, isOffline, pinCache, viewHistory]);
 
   // Auto-refresh whenever auth or offline status changes.
   useEffect(() => {

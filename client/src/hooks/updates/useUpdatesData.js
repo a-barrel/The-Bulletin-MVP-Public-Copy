@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { fetchUpdates, markAllUpdatesRead, markUpdateRead, deleteUpdate } from '../../api/mongoDataApi';
+import { fetchUpdates, markAllUpdatesRead, markUpdateRead, deleteUpdate } from '../../api';
 import usePullToRefresh from '../usePullToRefresh';
+import { useUpdatesCache } from '../../contexts/UpdatesCacheContext';
 
 const noop = () => {};
 
@@ -48,6 +49,7 @@ const deriveUpdateCategory = (update) => {
 };
 
 export default function useUpdatesData({ profile, unreadCallbacks = {} }) {
+  const updatesCache = useUpdatesCache();
   const [updates, setUpdates] = useState([]);
   const [isLoadingUpdates, setIsLoadingUpdates] = useState(false);
   const [updatesError, setUpdatesError] = useState(null);
@@ -104,16 +106,33 @@ export default function useUpdatesData({ profile, unreadCallbacks = {} }) {
       }
       setUpdatesError(null);
       try {
+        const cached = updatesCache.get(profile._id);
+        const normalizedCached = Array.isArray(cached)
+          ? cached.map((item) => {
+              const derived = deriveUpdateCategory(item);
+              const category = derived === 'bookmark' ? 'other' : derived;
+              return { ...item, category, derivedCategory: derived };
+            })
+          : null;
+        if (normalizedCached) {
+          setUpdates(normalizedCached);
+          if (!silent) {
+            setIsLoadingUpdates(false);
+          }
+          pendingRefreshRef.current = false;
+          return;
+        }
+
         const result = await fetchUpdates({ userId: profile._id, limit: 100 });
-        setUpdates(
-          Array.isArray(result)
-            ? result.map((item) => {
-                const derived = deriveUpdateCategory(item);
-                const category = derived === 'bookmark' ? 'other' : derived;
-                return { ...item, category, derivedCategory: derived };
-              })
-            : []
-        );
+        const normalized = Array.isArray(result)
+          ? result.map((item) => {
+              const derived = deriveUpdateCategory(item);
+              const category = derived === 'bookmark' ? 'other' : derived;
+              return { ...item, category, derivedCategory: derived };
+            })
+          : [];
+        setUpdates(normalized);
+        updatesCache.set(profile._id, normalized);
       } catch (error) {
         setUpdates([]);
         setUpdatesError(error?.message || 'Failed to load updates.');
@@ -144,20 +163,24 @@ export default function useUpdatesData({ profile, unreadCallbacks = {} }) {
       }
       setPendingUpdateIds((prev) => [...prev, updateId]);
       try {
-        await markUpdateRead(updateId);
-        setUpdates((prev) =>
-          prev.map((update) =>
-            update._id === updateId
-              ? {
-                  ...update,
-                  readAt: new Date().toISOString()
-                }
-              : update
-          )
+      await markUpdateRead(updateId);
+      setUpdates((prev) => {
+        const next = prev.map((update) =>
+          update._id === updateId
+            ? {
+                ...update,
+                readAt: new Date().toISOString()
+              }
+            : update
         );
-      } catch (error) {
-        setUpdatesError(error?.message || 'Failed to mark update as read.');
-      } finally {
+        if (profile?._id) {
+          updatesCache.set(profile._id, next);
+        }
+        return next;
+      });
+    } catch (error) {
+      setUpdatesError(error?.message || 'Failed to mark update as read.');
+    } finally {
         setPendingUpdateIds((prev) => prev.filter((id) => id !== updateId));
       }
     },
@@ -171,7 +194,13 @@ export default function useUpdatesData({ profile, unreadCallbacks = {} }) {
     setIsMarkingAllRead(true);
     try {
       await markAllUpdatesRead();
-      setUpdates((prev) => prev.map((update) => ({ ...update, readAt: new Date().toISOString() })));
+      setUpdates((prev) => {
+        const next = prev.map((update) => ({ ...update, readAt: new Date().toISOString() }));
+        if (profile?._id) {
+          updatesCache.set(profile._id, next);
+        }
+        return next;
+      });
     } catch (error) {
       setUpdatesError(error?.message || 'Failed to mark updates as read.');
     } finally {
@@ -187,7 +216,13 @@ export default function useUpdatesData({ profile, unreadCallbacks = {} }) {
       setDeletingUpdateIds((prev) => [...prev, updateId]);
       try {
         await deleteUpdate(updateId);
-        setUpdates((prev) => prev.filter((update) => update._id !== updateId));
+        setUpdates((prev) => {
+          const next = prev.filter((update) => update._id !== updateId);
+          if (profile?._id) {
+            updatesCache.set(profile._id, next);
+          }
+          return next;
+        });
       } catch (error) {
         setUpdatesError(error?.message || 'Failed to delete update.');
       } finally {

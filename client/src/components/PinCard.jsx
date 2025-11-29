@@ -16,7 +16,7 @@ import PinTagIcon from "../assets/Event_Pin.svg";
 import DiscussionTagIcon from "../assets/chat-filled.svg";
 import CommentsIcon from "../assets/Comments.png";
 import InterestedIcon from "../assets/AttendanceIcon.png";
-import { createPinBookmark, deletePinBookmark } from "../api/mongoDataApi";
+import { createPinBookmark, deletePinBookmark } from "../api";
 import BookmarkButton from "./BookmarkButton";
 import resolveAssetUrl, { resolveThumbnailUrl } from "../utils/media";
 import toIdString from "../utils/ids";
@@ -111,11 +111,15 @@ function PinCard({
   const { isOffline } = useNetworkStatusContext();
 
   const attendeeIds = useMemo(
-    () =>
-      Array.isArray(item?.attendeeIds)
+    () => {
+      if (!showAttendeeAvatars) {
+        return [];
+      }
+      return Array.isArray(item?.attendeeIds)
         ? item.attendeeIds.filter(Boolean)
-        : [],
-    [item?.attendeeIds]
+        : [];
+    },
+    [item?.attendeeIds, showAttendeeAvatars]
   );
 
   const derivedBookmark = useMemo(() => {
@@ -134,6 +138,9 @@ function PinCard({
   const viewerIsAttending = Boolean(item?.viewerIsAttending);
   const socialNotifications = useSocialNotificationsContext();
   const friendLookup = useMemo(() => {
+    if (!showAttendeeAvatars) {
+      return new Set();
+    }
     const entries = Array.isArray(socialNotifications.friendData?.friends)
       ? socialNotifications.friendData.friends
       : [];
@@ -159,7 +166,7 @@ function PinCard({
       }
     }
     return attendeeIds.length > 0 ? attendeeIds.join("|") : null;
-  }, [attendeeIds, item?.attendeeVersion]);
+  }, [attendeeIds, item?.attendeeVersion, showAttendeeAvatars]);
 
   const interestedNames = useMemo(
     () =>
@@ -442,6 +449,7 @@ function PinCard({
               onToggle={handleBookmarkClick}
               stopPropagation
               tooltip={bookmarkError || undefined}
+              disableRipple
               disabledLabel={
                 isOffline
                   ? "Reconnect to manage bookmarks"
@@ -642,5 +650,7 @@ const arePinCardPropsEqual = (prevProps, nextProps) => {
     prevProps.className === nextProps.className
   );
 };
+
+PinCard.displayName = "PinCard";
 
 export default memo(PinCard, arePinCardPropsEqual);

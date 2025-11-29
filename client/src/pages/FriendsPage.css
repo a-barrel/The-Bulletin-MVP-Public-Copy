@@ -25,6 +25,77 @@
   overflow-y: auto;
 }
 
+.friends-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #cdaef2 0%, #f5effd 100%);
+  border-bottom: 1px solid rgba(93, 56, 137, 0.25);
+  height: 72px;
+  min-height: 72px;
+}
+
+.friends-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.friends-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  max-width: 600px;
+}
+
+.friend-request-btn {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  padding: 6px;
+  border-radius: 12px;
+}
+
+.friends-header-back {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  box-shadow: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+
+.friends-header-back-icon {
+  color: #4b208c;
+  width: 32px;
+  height: 32px;
+}
+
+.friends-header-back:hover,
+.friends-header-back:focus-visible {
+  background: rgba(75, 32, 140, 0.12);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.friends-title {
+  color: #5D3889;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em;
+}
+
+.friends-list-search-bar-input-container {
+  flex: 1;
+}
+
 /* ===== Header (purple) ===== */
 .chat-room-chip {
   cursor: pointer;
@@ -72,7 +143,6 @@
 }
 
 .friends-list-field {
-  top: calc(var(--header-h) - 8px) !important;
   background-color: #F5EFFD;
   flex: 1;
   display: flex;
@@ -80,15 +150,17 @@
   overflow-y: auto;
   width: 100vw;
   height: 100%;
-  margin-top: 5rem;
+  margin-top: 0;
   margin-bottom: 0;
+  padding: 0 0 12px;
+  z-index: 1;
 }
 
 .chat-scroll-to-bottom-btn {
   width: 64px !important;
   height: 64px !important;
   right: 0.2rem;
-  z-index: 10;
+  z-index: 1;
 }
 
 .scroll-to-bottom-icon {
@@ -114,7 +186,7 @@
   background: #CDAEF2;
   border-top: 1px solid #ddd;
   margin-bottom: -2px;
-  z-index: 5;
+  z-index: 1;
   box-sizing: border-box;
   transform: none;
 }
@@ -209,12 +281,12 @@
 
 /* Render Friends List */
 .friends-list {
-  position: fixed;
-  top: 0;
-  width: 100vw !important;
-  height: 100vh !important;
+  position: relative;
+  width: 100%;
+  height: auto;
   background-color: #F5EFFD;
   overflow-y: auto;
+  z-index: 1;
 }
 
   /* Header */
@@ -224,8 +296,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 2;
+  gap: 0.75rem;
   background-color: #CDAEF2;
+}
+
+.friends-list-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .friends-list-back-btn {
@@ -399,11 +477,12 @@
 
   /* Search Bar */
 .friends-list-search-bar {
-  position: sticky;
+  position: relative;
   background-color: #CDAEF2;
-  padding: 12px;
-  margin-top: -1rem;
-  z-index: 10;
+  padding: 8px 12px;
+  margin: 0;
+  margin-bottom: 8px;
+  z-index: 2;
 }
 
 .friends-search-icon {
@@ -527,6 +606,24 @@
   border-radius: 20px;
   width: 40px;
   height: 40px;
+}
+
+.friend-action-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.friend-action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .message-friend-icon,

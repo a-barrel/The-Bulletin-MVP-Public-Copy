@@ -1,5 +1,5 @@
 /* NOTE: Page exports configuration alongside the component. */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
@@ -24,8 +24,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import FeedbackIcon from '@mui/icons-material/FeedbackOutlined';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import GlobalNavMenu from '../components/GlobalNavMenu';
+import PageNavHeader from '../components/PageNavHeader';
 import { auth } from '../firebase';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import { routes } from '../routes';
@@ -37,13 +36,7 @@ import useSettingsManager, {
   RADIUS_MIN
 } from '../hooks/useSettingsManager';
 import { metersToMiles } from '../utils/geo';
-import {
-  submitAnonymousFeedback,
-  requestDataExport,
-  fetchApiTokens,
-  createApiToken,
-  revokeApiToken
-} from '../api/mongoDataApi';
+import { requestDataExport } from '../api';
 import reportClientError from '../utils/reportClientError';
 import { formatFriendlyTimestamp, formatRelativeTime } from '../utils/dates';
 import { PIN_DENSITY_LEVELS } from '../utils/pinDensity';
@@ -58,6 +51,8 @@ import settingsPalette, { settingsButtonStyles } from '../components/settings/se
 import canAccessModerationTools from '../utils/accessControl';
 import { useTranslation } from 'react-i18next';
 import HelpAbout from '../components/settings/HelpAbout';
+import useApiTokensManager from '../hooks/settings/useApiTokensManager';
+import useFeedbackForm from '../hooks/settings/useFeedbackForm';
 
 export const pageConfig = {
   id: 'settings',
@@ -151,19 +146,38 @@ function SettingsPage() {
   const autoExportReminders =
     settings.autoExportReminders ?? DEFAULT_SETTINGS.autoExportReminders;
   const betaOptIn = settings.betaOptIn ?? DEFAULT_SETTINGS.betaOptIn;
-  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
-  const [feedbackMessage, setFeedbackMessage] = useState('');
-  const [feedbackContact, setFeedbackContact] = useState('');
-  const [feedbackError, setFeedbackError] = useState(null);
-  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
-  const [feedbackStatus, setFeedbackStatus] = useState(null);
   const [activeTab, setActiveTab] = useState('appearance');
   const [dataStatus, setDataStatus] = useState(null);
-  const [tokenStatus, setTokenStatus] = useState(null);
-  const [generatedToken, setGeneratedToken] = useState(null);
-  const [apiTokens, setApiTokens] = useState([]);
-  const [isLoadingTokens, setIsLoadingTokens] = useState(false);
-  const [tokenLabel, setTokenLabel] = useState('');
+
+  const {
+    feedbackDialogOpen,
+    feedbackMessage,
+    feedbackContact,
+    feedbackError,
+    isSubmittingFeedback,
+    feedbackStatus,
+    handleFeedbackMessageChange,
+    handleFeedbackContactChange,
+    handleClearFeedbackError,
+    handleOpenFeedbackDialog,
+    handleCloseFeedbackDialog,
+    handleSubmitFeedback,
+    handleFeedbackStatusClose
+  } = useFeedbackForm();
+
+  const {
+    tokenStatus,
+    setTokenStatus,
+    generatedToken,
+    setGeneratedToken,
+    apiTokens,
+    isLoadingTokens,
+    tokenLabel,
+    setTokenLabel,
+    loadApiTokens,
+    handleGenerateToken,
+    handleRevokeToken
+  } = useApiTokensManager({ isOffline });
 
   const handleReduceMotionToggle = useCallback(
     (value) => handleDisplayToggle('reduceMotion', value),
@@ -191,21 +205,6 @@ function SettingsPage() {
     (value) => handleDisplayToggle('listSyncsWithMapLimit', value),
     [handleDisplayToggle]
   );
-  const handleTokenLabelChange = useCallback(
-    (event) => setTokenLabel(event.target.value),
-    [setTokenLabel]
-  );
-  const handleFeedbackMessageChange = useCallback(
-    (event) => setFeedbackMessage(event.target.value),
-    [setFeedbackMessage]
-  );
-  const handleFeedbackContactChange = useCallback(
-    (event) => setFeedbackContact(event.target.value),
-    [setFeedbackContact]
-  );
-  const handleClearFeedbackError = useCallback(() => setFeedbackError(null), [setFeedbackError]);
-
-
   const notificationsMutedUntil = settings.notificationsMutedUntil;
   const muteUntilDate = notificationsMutedUntil ? new Date(notificationsMutedUntil) : null;
   const isMuteActive = Boolean(muteUntilDate && muteUntilDate.getTime() > Date.now());
@@ -215,24 +214,6 @@ function SettingsPage() {
   const muteCountdownLabel = isMuteActive
     ? `Ends ${formatRelativeTime(notificationsMutedUntil, { fallback: 'soon' })}`
     : '';
-
-  const loadApiTokens = useCallback(async () => {
-    setIsLoadingTokens(true);
-    try {
-      const response = await fetchApiTokens();
-      setApiTokens(Array.isArray(response?.tokens) ? response.tokens : []);
-    } catch (error) {
-      reportClientError(error, 'Failed to load API tokens', {
-        source: 'SettingsPage.loadApiTokens'
-      });
-      setTokenStatus({
-        type: 'error',
-        message: error?.message || 'Failed to load API tokens.'
-      });
-    } finally {
-      setIsLoadingTokens(false);
-    }
-  }, []);
 
   const handleDataExport = async () => {
     if (isOffline) {
@@ -260,126 +241,7 @@ function SettingsPage() {
     }
   };
 
-  const handleGenerateToken = async () => {
-    if (isOffline) {
-      setTokenStatus({ type: 'warning', message: 'Reconnect to generate API tokens.' });
-      return;
-    }
-    setTokenStatus({ type: 'info', message: 'Generating token...' });
-    try {
-      const response = await createApiToken({
-        label: tokenLabel.trim() || undefined
-      });
-      setTokenLabel('');
-      if (response?.token) {
-        setApiTokens((prev) => [response.token, ...prev]);
-      }
-      const secret = response?.secret;
-      setGeneratedToken(secret || null);
-
-      if (secret && navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(secret);
-        setTokenStatus({
-          type: 'success',
-          message: 'Token created and copied to your clipboard. Store it securely.'
-        });
-      } else {
-        setTokenStatus({
-          type: 'info',
-          message: secret ? `Token generated: ${secret}` : 'Token created.'
-        });
-      }
-    } catch (error) {
-      reportClientError(error, 'Failed to generate API token', {
-        source: 'SettingsPage.createApiToken'
-      });
-      setTokenStatus({
-        type: 'error',
-        message: error?.message || 'Failed to generate API token.'
-      });
-    }
-  };
-
-  const handleRevokeToken = async (tokenId) => {
-    if (!tokenId) {
-      return;
-    }
-    if (isOffline) {
-      setTokenStatus({ type: 'warning', message: 'Reconnect to revoke API tokens.' });
-      return;
-    }
-    try {
-      await revokeApiToken(tokenId);
-      setApiTokens((prev) => prev.filter((token) => token.id !== tokenId));
-      setTokenStatus({
-        type: 'success',
-        message: 'Token revoked.'
-      });
-    } catch (error) {
-      reportClientError(error, 'Failed to revoke API token', {
-        source: 'SettingsPage.revokeApiToken',
-        tokenId
-      });
-      setTokenStatus({
-        type: 'error',
-        message: error?.message || 'Failed to revoke API token.'
-      });
-    }
-  };
-
   const canAccessAdminDashboard = canAccessModerationTools(profile);
-
-  const handleOpenFeedbackDialog = () => {
-    setFeedbackDialogOpen(true);
-    setFeedbackMessage('');
-    setFeedbackContact('');
-    setFeedbackError(null);
-  };
-
-  const handleCloseFeedbackDialog = () => {
-    if (isSubmittingFeedback) {
-      return;
-    }
-    setFeedbackDialogOpen(false);
-    setFeedbackMessage('');
-    setFeedbackContact('');
-    setFeedbackError(null);
-  };
-
-  const handleSubmitFeedback = async () => {
-    const trimmedMessage = feedbackMessage.trim();
-    if (trimmedMessage.length < 10) {
-      setFeedbackError('Please share at least 10 characters.');
-      return;
-    }
-    if (isSubmittingFeedback) {
-      return;
-    }
-    setIsSubmittingFeedback(true);
-    setFeedbackError(null);
-    try {
-      await submitAnonymousFeedback({
-        message: trimmedMessage,
-        contact: feedbackContact.trim() || undefined,
-        category: 'settings-feedback'
-      });
-      setFeedbackStatus({
-        type: 'success',
-        message: 'Thanks for the feedback! We received it safely.'
-      });
-      setFeedbackDialogOpen(false);
-      setFeedbackMessage('');
-      setFeedbackContact('');
-    } catch (error) {
-      setFeedbackError(error?.message || 'Failed to send feedback. Please try again later.');
-    } finally {
-      setIsSubmittingFeedback(false);
-    }
-  };
-
-  const handleFeedbackStatusClose = () => {
-    setFeedbackStatus(null);
-  };
 
   useEffect(() => {
     if (celebrationSounds === badgeSoundEnabled) {
@@ -404,8 +266,8 @@ function SettingsPage() {
       sx={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, #FFFFFF 0%, #F5EFFD 35%, #CDAEF2 100%)',
-        py: { xs: 3, md: 6 },
-        px: { xs: 1.5, md: 0 }
+        py: 0,
+        px: 0
       }}
     >
       <Box
@@ -414,34 +276,11 @@ function SettingsPage() {
           maxWidth: 960,
           mx: 'auto',
           py: 0,
-          px: { xs: 2, md: 4 }
+          px: { xs: 0, md: 0 }
         }}
       >
       <Stack spacing={3}>
-        <Stack direction="row" alignItems="center" spacing={1.25}>
-          <Button
-            variant="text"
-            startIcon={<ArrowBackIcon fontSize="small" />}
-            onClick={() => navigate(-1)}
-            sx={{
-              alignSelf: 'flex-start',
-              color: settingsPalette.textPrimary,
-              backgroundColor: settingsPalette.pastelBlue,
-              borderRadius: 999,
-              border: `1px solid ${settingsPalette.accentLight}`,
-              px: 2,
-              '&:hover': {
-                backgroundColor: '#d1edff'
-              }
-            }}
-          >
-            Back
-          </Button>
-          <GlobalNavMenu
-            triggerClassName="gnm-trigger-btn"
-            iconClassName="gnm-trigger-btn__icon"
-          />
-        </Stack>
+        <PageNavHeader title="Settings" />
 
         <Stack direction="row" spacing={1.5} alignItems="center" sx={{ color: settingsPalette.textPrimary }}>
           <SettingsIcon sx={{ color: settingsPalette.accent }} />
@@ -606,7 +445,7 @@ function SettingsPage() {
                 dataStatus={dataStatus}
                 onDismissDataStatus={() => setDataStatus(null)}
                 tokenLabel={tokenLabel}
-                onTokenLabelChange={handleTokenLabelChange}
+                onTokenLabelChange={setTokenLabel}
                 onGenerateToken={handleGenerateToken}
                 tokenStatus={tokenStatus}
                 onDismissTokenStatus={() => setTokenStatus(null)}
@@ -799,4 +638,4 @@ function SettingsPage() {
   );
 }
 
-export default SettingsPage;
+export default memo(SettingsPage);

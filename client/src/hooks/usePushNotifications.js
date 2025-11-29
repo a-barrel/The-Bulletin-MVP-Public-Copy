@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import { registerPushToken } from '../api/mongoDataApi';
+import { registerPushToken } from '../api';
 import { registerMessagingServiceWorker, requestPushToken } from '../firebaseMessaging';
 import usePushPromptDismissal from './usePushPromptDismissal';
 

@@ -22,14 +22,9 @@
   background: #fff;
   color: #111;
   border-radius: 0;
-
-  /* ⬇ Remove top padding */
-  padding: 0 1rem 1.5rem;
-
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  padding-bottom: 1.5rem;
 }
 
 .list-page .feed {

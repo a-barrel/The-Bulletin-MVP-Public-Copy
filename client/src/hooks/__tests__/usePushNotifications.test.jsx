@@ -7,12 +7,12 @@ jest.mock('../../firebaseMessaging', () => ({
   requestPushToken: jest.fn()
 }));
 
-jest.mock('../../api/mongoDataApi', () => ({
+jest.mock('../../api', () => ({
   registerPushToken: jest.fn()
 }));
 
 const messaging = require('../../firebaseMessaging');
-const api = require('../../api/mongoDataApi');
+const api = require('../../api');
 
 describe('usePushNotifications', () => {
   beforeEach(() => {

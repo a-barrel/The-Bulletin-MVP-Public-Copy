@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import './PinPreviewCard.css';
 import resolveAssetUrl, { resolveThumbnailUrl } from '../utils/media';
 import { resolveAuthorAvatar, resolveAuthorName } from '../utils/feed';
@@ -220,6 +220,12 @@ export default function PinPreviewCard({
     }
   };
 
+  // Stop popup closes from bookmark clicks inside Leaflet popups.
+  const stopPopupPropagation = useCallback((event) => {
+    event?.stopPropagation?.();
+    event?.preventDefault?.();
+  }, []);
+
   return (
     <div className={rootClassName}>
       <div className="pin-preview-card__body">
@@ -321,7 +327,14 @@ export default function PinPreviewCard({
                 </>
               ) : null}
               {!actionsSlot && showBookmarkAction ? (
-                <div className="bookmark-button-wrapper">
+                <div
+                  className="bookmark-button-wrapper"
+                  onMouseDown={stopPopupPropagation}
+                  onMouseUp={stopPopupPropagation}
+                  onTouchStart={stopPopupPropagation}
+                  onTouchEnd={stopPopupPropagation}
+                  onClick={stopPopupPropagation}
+                >
                   <BookmarkButton
                     variant="card"
                     bookmarked={Boolean(isBookmarked)}
@@ -332,7 +345,7 @@ export default function PinPreviewCard({
                     ownerLockLabel="You can't unbookmark your own pin"
                     lockedLabel="You can't unbookmark your own pin"
                     onToggle={(event) => {
-                      event?.stopPropagation?.();
+                      stopPopupPropagation(event);
                       onBookmark(pin);
                     }}
                   />

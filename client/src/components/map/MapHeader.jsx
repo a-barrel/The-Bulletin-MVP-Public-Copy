@@ -1,6 +1,5 @@
+import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import GlobalNavMenu from '../GlobalNavMenu';
-
 function MapHeader({
   onNotifications,
   notificationsLabel,
@@ -16,32 +15,27 @@ function MapHeader({
   const resolvedNotificationsLabel = notificationsLabel || t('nav.items.updates.label');
 
   return (
-    <header className="map-header">
-      <GlobalNavMenu triggerClassName="map-icon-btn" iconClassName="map-icon" />
+    <div className="map-header-actions">
+      <button
+        type="button"
+        className="map-icon-btn map-header-create"
+        onClick={onCreatePin}
+        disabled={isOffline}
+        aria-label={resolvedCreateLabel}
+        title={isOffline ? t('mapHeader.offlineCreate') : undefined}
+      >
+        {createIcon ? (
+          <img src={createIcon} alt="" className="map-icon map-icon--create" aria-hidden="true" />
+        ) : (
+          <span className="map-icon map-icon--create" aria-hidden="true" />
+        )}
+      </button>
 
-      <h1 className="map-title">{t('mapHeader.title')}</h1>
-
-      <div className="map-header-actions">
-        <button
-          type="button"
-          className="map-icon-btn map-header-create"
-          onClick={onCreatePin}
-          disabled={isOffline}
-          aria-label={resolvedCreateLabel}
-          title={isOffline ? t('mapHeader.offlineCreate') : undefined}
-        >
-          {createIcon ? (
-            <img src={createIcon} alt="" className="map-icon map-icon--create" aria-hidden="true" />
-          ) : (
-            <span className="map-icon map-icon--create" aria-hidden="true" />
-          )}
-        </button>
-
-        <button
-          className="map-icon-btn"
-          type="button"
-          aria-label={resolvedNotificationsLabel}
-          onClick={onNotifications}
+      <button
+        className="map-icon-btn"
+        type="button"
+        aria-label={resolvedNotificationsLabel}
+        onClick={onNotifications}
         disabled={isOffline}
         title={isOffline ? t('mapHeader.offlineNotifications') : undefined}
       >
@@ -55,10 +49,9 @@ function MapHeader({
             {notificationBadge}
           </span>
         ) : null}
-        </button>
-      </div>
-    </header>
+      </button>
+    </div>
   );
 }
 
-export default MapHeader;
+export default memo(MapHeader);

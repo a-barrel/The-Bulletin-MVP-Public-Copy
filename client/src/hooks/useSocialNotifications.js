@@ -5,7 +5,8 @@ import useDirectMessages from './useDirectMessages';
 
 const SOCIAL_POLL_INTERVAL_MS = 30 * 1000;
 
-const useSocialNotifications = ({ enabled = true, autoLoad = true } = {}) => {
+const useSocialNotifications = ({ enabled = true, autoLoad = true, authUser = null } = {}) => {
+  const effectiveEnabled = enabled && !!authUser;
   const {
     refresh: refreshFriendGraph,
     graph: friendGraphData,
@@ -22,7 +23,7 @@ const useSocialNotifications = ({ enabled = true, autoLoad = true } = {}) => {
     isLoadingThreads: dmIsLoading,
     threadsStatus: dmStatus,
     hasAccess: dmHasAccess
-  } = useDirectMessages({ autoLoad: false });
+  } = useDirectMessages({ autoLoad: false, enabled: effectiveEnabled });
 
   const didAutoLoadRef = useRef(false);
 
@@ -42,21 +43,21 @@ const useSocialNotifications = ({ enabled = true, autoLoad = true } = {}) => {
   }, [refreshDirectThreads, refreshFriendGraph]);
 
   useEffect(() => {
-    if (!enabled || !autoLoad || didAutoLoadRef.current) {
+    if (!effectiveEnabled || !autoLoad || didAutoLoadRef.current) {
       return;
     }
     didAutoLoadRef.current = true;
     refreshAll().catch(() => {});
-  }, [autoLoad, enabled, refreshAll]);
+  }, [autoLoad, effectiveEnabled, refreshAll]);
 
   useEffect(() => {
-    if (!enabled) {
+    if (!effectiveEnabled) {
       didAutoLoadRef.current = false;
     }
-  }, [enabled]);
+  }, [effectiveEnabled]);
 
   useEffect(() => {
-    if (!enabled || typeof window === 'undefined') {
+    if (!effectiveEnabled || typeof window === 'undefined') {
       return undefined;
     }
     const intervalId = window.setInterval(() => {
@@ -65,7 +66,7 @@ const useSocialNotifications = ({ enabled = true, autoLoad = true } = {}) => {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [enabled, refreshAll]);
+  }, [effectiveEnabled, refreshAll]);
 
   const friendRequestCount = useMemo(() => {
     if (friendHasAccess === false) {

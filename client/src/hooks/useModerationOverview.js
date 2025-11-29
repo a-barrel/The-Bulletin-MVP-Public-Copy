@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import runtimeConfig from '../config/runtime';
-import { fetchModerationOverview } from '../api/mongoDataApi';
+import { fetchModerationOverview } from '../api';
 
 export default function useModerationOverview() {
   const moderationRoleChecksEnabled = runtimeConfig.moderation?.roleChecksEnabled !== false;
@@ -21,7 +21,8 @@ export default function useModerationOverview() {
       if (err?.status === 403 && moderationRoleChecksEnabled && !bypassModerationRoleChecks) {
         setAccessDenied(true);
         setOverview(null);
-        setError('Moderator privileges required.');
+        setError(null);
+        return null;
       } else {
         setError(err?.message || 'Failed to load moderation overview.');
       }

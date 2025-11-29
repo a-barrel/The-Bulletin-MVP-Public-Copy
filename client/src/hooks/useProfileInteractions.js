@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { blockUser, sendFriendRequest, unblockUser } from '../api/mongoDataApi';
+import { blockUser, sendFriendRequest, unblockUser } from '../api';
 
 function normalizeId(value) {
   if (!value) {

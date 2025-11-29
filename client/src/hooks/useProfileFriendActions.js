@@ -3,7 +3,7 @@ import {
   cancelFriendRequest,
   removeFriendRelationship,
   sendFriendRequest
-} from '../api/mongoDataApi';
+} from '../api';
 
 export default function useProfileFriendActions({
   viewerProfile,

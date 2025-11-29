@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 
-import { fetchPinAttendees } from '../api/mongoDataApi';
+import { fetchPinAttendees } from '../api';
 import toIdString from '../utils/ids';
 import { normalizeAttendeeRecord } from '../utils/feed';
+import { useAttendeeCache } from '../contexts/AttendeeCacheContext';
 
-const attendeeCache = new Map();
 const attendeeFetchLocks = new Map();
 const ATTENDEE_CACHE_TTL_MS = 60_000;
+const IS_DEV = import.meta.env.DEV;
+const attendeeCacheStats = { hits: 0, misses: 0 };
 
-export const clearPinAttendeesCache = () => attendeeCache.clear();
-
-const resolveExpectedSignature = (attendeeIds, fallbackSignature) => {
+export const resolveExpectedSignature = (attendeeIds, fallbackSignature) => {
   if (attendeeIds.length > 0) {
     return attendeeIds.join('|');
   }
@@ -24,6 +24,7 @@ export default function usePinAttendees({
   attendeeSignature,
   cacheKey
 }) {
+  const attendeeCache = useAttendeeCache();
   const [attendees, setAttendees] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -34,29 +35,55 @@ export default function usePinAttendees({
       setAttendees([]);
       return;
     }
+    // Trace attendee fetch behavior to verify lazy loading on list feed.
+    // Logs are intentionally verbose for performance investigation.
+    // eslint-disable-next-line no-console
+    console.log('[attendees] fetch start', {
+      pinId: normalizedPinId,
+      expectedCount: participantCount ?? null,
+      signature: attendeeSignature || null
+    });
 
     const expectedCount = Number.isFinite(participantCount) ? participantCount : null;
     const expectedSignature = attendeeSignature || null;
 
     const now = Date.now();
-    const cachedEntry = attendeeCache.get(normalizedPinId);
-    if (cachedEntry) {
-      const isFresh = now - cachedEntry.updatedAt < ATTENDEE_CACHE_TTL_MS;
-      setAttendees(Array.isArray(cachedEntry.items) ? cachedEntry.items : []);
-      const matchesCount = expectedCount === null || cachedEntry.count === expectedCount;
-      const matchesSignature =
-        expectedSignature === null || cachedEntry.signature === expectedSignature;
-      if (matchesCount && matchesSignature && isFresh) {
-        setError(null);
-        return;
+    const cachedEntry = attendeeCache.getAttendees(normalizedPinId);
+      if (cachedEntry) {
+        const isFresh = now - cachedEntry.ts < ATTENDEE_CACHE_TTL_MS;
+        setAttendees(Array.isArray(cachedEntry.items) ? cachedEntry.items : []);
+        const matchesCount = expectedCount === null || cachedEntry.count === expectedCount;
+        const matchesSignature =
+          expectedSignature === null || cachedEntry.signature === expectedSignature;
+        if (matchesCount && matchesSignature && isFresh) {
+          attendeeCacheStats.hits += 1;
+          if (IS_DEV) {
+            // eslint-disable-next-line no-console
+            console.debug('[attendees-cache] hit', {
+              pinId: normalizedPinId,
+              count: cachedEntry.count,
+              signature: cachedEntry.signature,
+              stats: { ...attendeeCacheStats }
+            });
+          }
+          setError(null);
+          return;
+        }
       }
-    }
 
     const lockKey = normalizedPinId;
     if (attendeeFetchLocks.get(lockKey)) {
       return;
     }
     attendeeFetchLocks.set(lockKey, true);
+    attendeeCacheStats.misses += 1;
+    if (IS_DEV) {
+      // eslint-disable-next-line no-console
+      console.debug('[attendees-cache] miss -> fetch', {
+        pinId: normalizedPinId,
+        stats: { ...attendeeCacheStats }
+      });
+    }
 
     let cancelled = false;
     setIsLoading(true);
@@ -80,15 +107,20 @@ export default function usePinAttendees({
 
         const signature = resolveExpectedSignature(normalizedIds, expectedSignature);
 
-        attendeeCache.set(normalizedPinId, {
+        attendeeCache.setAttendees(normalizedPinId, {
           items: mapped,
           count: mapped.length,
-          signature,
-          updatedAt: Date.now()
+          signature
         });
 
         if (!cancelled) {
           setAttendees(mapped);
+          // eslint-disable-next-line no-console
+          console.log('[attendees] fetch success', {
+            pinId: normalizedPinId,
+            count: mapped.length,
+            signature
+          });
           setError(null);
         }
       })
@@ -97,15 +129,19 @@ export default function usePinAttendees({
           return;
         }
 
-        attendeeCache.set(normalizedPinId, {
+        attendeeCache.setAttendees(normalizedPinId, {
           items: [],
           count: 0,
-          signature: expectedSignature,
-          updatedAt: Date.now()
+          signature: expectedSignature
         });
         if (!cancelled) {
           setAttendees([]);
           setError(fetchError?.message || 'Failed to load attendees.');
+          // eslint-disable-next-line no-console
+          console.log('[attendees] fetch error', {
+            pinId: normalizedPinId,
+            error: fetchError?.message || 'unknown error'
+          });
         }
       })
       .finally(() => {
@@ -118,7 +154,7 @@ export default function usePinAttendees({
     return () => {
       cancelled = true;
     };
-  }, [pinId, enabled, participantCount, attendeeSignature, cacheKey]);
+  }, [attendeeCache, pinId, enabled, participantCount, attendeeSignature, cacheKey]);
 
   return {
     attendees,

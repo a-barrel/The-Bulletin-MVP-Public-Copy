@@ -19,38 +19,6 @@ body {
   --history-muted: #4a3a63;
 }
 
-/* Center "Bookmarks" title in back button */
-.bookmarks-back-button.back-nav-bar {
-  justify-content: space-between;
-  gap: 0.5rem;
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  background: linear-gradient(135deg, #cdaef2 0%, #f5effd 100%);
-  align-items: center;
-}
-
-.bookmarks-header-title {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: clamp(1.4rem, 4vw, 1.9rem);
-  font-weight: var(--font-weight-bold);
-  color: #4b208c;
-  margin: 0;
-  text-align: center;
-  pointer-events: none;
-}
-
-@media (max-width: 640px) {
-  .bookmarks-back-button.back-nav-bar {
-    padding: 0 0.75rem;
-  }
-  .bookmarks-header-title {
-    font-size: var(--font-size-body);
-  }
-}
-
 .bookmarks-actions {
   display: flex;
   gap: 0.75rem;

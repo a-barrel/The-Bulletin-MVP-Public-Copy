@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { previewChatGif } from '../../api/mongoDataApi';
+import { previewChatGif } from '../../api';
 
 const getGifCommandQuery = (value) => {
   if (typeof value !== 'string') {

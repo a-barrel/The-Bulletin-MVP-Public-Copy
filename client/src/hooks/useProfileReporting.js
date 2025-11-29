@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { createContentReport } from '../api/mongoDataApi';
+import { createContentReport } from '../api';
 
 export default function useProfileReporting({
   targetProfileId,

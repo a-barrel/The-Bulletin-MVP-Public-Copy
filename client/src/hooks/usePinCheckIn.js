@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { getPinCheckIns, updatePinCheckIn } from '../api/mongoDataApi';
+import { getPinCheckIns, updatePinCheckIn } from '../api';
 
 const EMPTY_STATE = {
   pinId: null,

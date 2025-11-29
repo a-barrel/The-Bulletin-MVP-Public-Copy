@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchChatRooms } from '../api/mongoDataApi';
+import { fetchChatRooms } from '../api';
 import reportClientError from '../utils/reportClientError';
 import { haversineDistanceMeters, formatDistanceMiles } from '../utils/geo';
 import { hasValidCoordinates } from '../utils/mapLocation';

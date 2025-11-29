@@ -5,7 +5,7 @@ import {
   createChatMessage,
   upsertChatPresence,
   updateChatMessageReaction
-} from '../../api/mongoDataApi';
+} from '../../api';
 import { playBadgeSound } from '../../utils/badgeSound';
 import { CHAT_REACTION_OPTIONS } from '../../constants/chatReactions';
 

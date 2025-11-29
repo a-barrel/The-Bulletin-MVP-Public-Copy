@@ -56,7 +56,14 @@ function ReportContentDialog({
   const offenseOptions = useMemo(() => REPORT_OFFENSE_OPTIONS, []);
 
   return (
-    <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth="sm" fullWidth className="report-dialog">
+    <Dialog
+      open={open}
+      onClose={submitting ? undefined : onClose}
+      maxWidth="sm"
+      fullWidth
+      className="report-dialog"
+      TransitionProps={{ timeout: { enter: 0, exit: 0 } }}
+    >
       <DialogTitle className="report-title">{t('report.title')}</DialogTitle>
 
       <DialogContent dividers className="report-content">

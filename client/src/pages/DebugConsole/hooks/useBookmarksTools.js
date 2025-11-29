@@ -6,7 +6,7 @@ import {
   exportBookmarks,
   fetchBookmarkCollections,
   fetchBookmarks
-} from '../../../api/mongoDataApi';
+} from '../../../api';
 import {
   parseCommaSeparated,
   parseOptionalDate,
