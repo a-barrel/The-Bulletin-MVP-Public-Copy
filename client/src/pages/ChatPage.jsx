@@ -47,6 +47,10 @@ import useFriendRequestDialog from '../hooks/useFriendRequestDialog';
 import useRoomComposer from '../hooks/useRoomComposer';
 import useDirectComposer from '../hooks/useDirectComposer';
 import useChatChannelController from '../hooks/useChatChannelController';
+import useAutoRefreshGeolocation from '../hooks/useAutoRefreshGeolocation';
+import useViewerProfile from '../hooks/useViewerProfile';
+import { viewerHasDeveloperAccess } from '../utils/roles';
+import runtimeConfig from '../config/runtime';
 
 const ChatMessagesSection = memo(function ChatMessagesSection({ containerRef, content }) {
   return (
@@ -79,7 +83,24 @@ function ChatPage() {
   const { isOffline } = useNetworkStatusContext();
   const { announceBadgeEarned } = useBadgeSound();
   const [firebaseAuthUser, authLoading] = useAuthState(auth);
-  const { location: viewerLocation } = useLocationContext();
+  const { location: viewerLocation, setLocation: setSharedLocation } = useLocationContext();
+  const { viewer: viewerProfile, isLoading: isLoadingViewerProfile } = useViewerProfile({
+    enabled: !isOffline
+  });
+  const isAdminViewer = useMemo(
+    () =>
+      viewerHasDeveloperAccess(viewerProfile, {
+        offlineOverride: runtimeConfig.isOffline || isOffline
+      }),
+    [isOffline, viewerProfile]
+  );
+  const shouldAutoRefreshLocation = !isOffline && !isLoadingViewerProfile && !isAdminViewer;
+
+  useAutoRefreshGeolocation({
+    enabled: shouldAutoRefreshLocation,
+    setSharedLocation,
+    source: 'chat-page-auto-refresh'
+  });
   const viewerLatitude = viewerLocation?.latitude ?? null;
   const viewerLongitude = viewerLocation?.longitude ?? null;
 
