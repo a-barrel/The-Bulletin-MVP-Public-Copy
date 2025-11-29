@@ -21,6 +21,11 @@ export const buildOptimisticMessage = ({ body, sender }) => ({
   sender: sender || null,
   attachments: [],
   createdAt: new Date().toISOString(),
+  reactions: {
+    counts: {},
+    viewerReactions: [],
+    viewerReaction: undefined
+  },
   optimistic: true
 });
 
@@ -80,6 +85,11 @@ export const dmReducer = (state, action) => {
         threadStatus: { type: 'error', message: action.error },
         lastErrorStatus: action.status ?? state.lastErrorStatus
       };
+    case 'thread/status':
+      return {
+        ...state,
+        threadStatus: action.payload ?? null
+      };
     case 'thread/optimistic-message':
       if (!state.threadDetail || state.threadDetail.id !== action.threadId) {
         return state;
@@ -104,6 +114,25 @@ export const dmReducer = (state, action) => {
           )
         }
       };
+    case 'thread/update-message': {
+      if (!state.threadDetail || state.threadDetail.id !== action.threadId || !action.message) {
+        return state;
+      }
+      const nextMessageId = action.message.id || action.message._id;
+      return {
+        ...state,
+        threadDetail: {
+          ...state.threadDetail,
+          messages: (state.threadDetail.messages || []).map((message) => {
+            const currentId = message.id || message._id;
+            if (currentId && nextMessageId && currentId === nextMessageId) {
+              return action.message;
+            }
+            return message;
+          })
+        }
+      };
+    }
     case 'send/pending':
       return {
         ...state,

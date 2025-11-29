@@ -165,7 +165,8 @@ function ChatPage() {
     sendStatus: directSendStatus,
     resetSendStatus: resetDirectSendStatus,
     isCreating: isCreatingDirectThread,
-    createThread: createDirectThread
+    createThread: createDirectThread,
+    toggleReaction: toggleDirectReaction
   } = useDirectMessages();
 
   const {
@@ -1016,12 +1017,14 @@ function ChatPage() {
       const body = message.body || '';
       const sanitizedBody = sanitizeAttachmentOnlyMessage(body, message.attachments);
       return {
+        id: message.id || message._id,
         _id: message.id || message._id,
         message: sanitizedBody,
         createdAt: message.createdAt,
         authorId,
         author,
-        attachments: Array.isArray(message.attachments) ? message.attachments : []
+        attachments: Array.isArray(message.attachments) ? message.attachments : [],
+        reactions: message.reactions || undefined
       };
     });
   }, [directThreadDetail]);
@@ -1056,6 +1059,16 @@ function ChatPage() {
     }
     return directMessageItems.slice(directMessageItems.length - dmLoadCount);
   }, [directMessageItems, dmLoadCount]);
+
+  const handleToggleDirectReaction = useCallback(
+    (messageId, emojiKey) => {
+      if (!selectedDirectThreadId) {
+        return;
+      }
+      toggleDirectReaction({ threadId: selectedDirectThreadId, messageId, emoji: emojiKey });
+    },
+    [selectedDirectThreadId, toggleDirectReaction]
+  );
 
   const handleOpenReportForRoomMessage = useCallback(
     (message) => {
@@ -1318,9 +1331,17 @@ function ChatPage() {
           authUser={authUser}
           canModerate={false}
           onReport={handleOpenReportForDirectMessage}
+          onToggleReaction={handleToggleDirectReaction}
         />
       )),
-    [authUser, displayedDirectMessages, directViewerId, getMessageKey, handleOpenReportForDirectMessage]
+    [
+      authUser,
+      displayedDirectMessages,
+      directViewerId,
+      getMessageKey,
+      handleOpenReportForDirectMessage,
+      handleToggleDirectReaction
+    ]
   );
 
   const handleFriendListBackDialog = useCallback(() => {

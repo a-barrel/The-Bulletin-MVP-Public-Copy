@@ -5,7 +5,9 @@ const directMessageSchema = new mongoose.Schema(
     senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     body: { type: String, required: true },
     attachments: { type: [mongoose.Schema.Types.Mixed], default: [] },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
+    reactionCounts: { type: Map, of: Number, default: () => ({}) },
+    reactionsByUser: { type: Map, of: [String], default: () => ({}) }
   },
   { _id: true }
 );
