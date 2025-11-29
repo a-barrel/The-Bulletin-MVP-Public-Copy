@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Box, Typography, IconButton, Button } from '@mui/material';
+import { Box, Typography, IconButton, Button, Tooltip } from '@mui/material';
 import { NavLink, Link } from 'react-router-dom';
 import AvatarIcon from '../assets/AvatarIcon.svg';
 import "./MessageBubble.css";
