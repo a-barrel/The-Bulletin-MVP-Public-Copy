@@ -12,7 +12,7 @@ import MapFilled from "../assets/map-filled.svg";
 import ListFilled from "../assets/list-filled.svg";
 import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
 
-export default function Navbar() {
+export default function Navbar({ disableSpacer = false }) {
   const { t } = useTranslation();
   const {
     friendRequestCount,
@@ -39,7 +39,7 @@ export default function Navbar() {
 
   return (
     <>
-      <div className="bottom-nav-spacer" aria-hidden="true" />
+      {disableSpacer ? null : <div className="bottom-nav-spacer" aria-hidden="true" />}
       <nav className="bottom-nav">
         <NavLink
           to="/chat"

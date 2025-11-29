@@ -7,8 +7,6 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 
 import MapComponent from '../components/Map';
-import updatesIcon from '../assets/UpdateIcon.svg';
-import addIconPurple from '../assets/AddIconPurple.svg';
 import { routes } from '../routes';
 import { useLocationContext } from '../contexts/LocationContext';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
@@ -27,6 +25,9 @@ import { viewerHasDeveloperAccess } from '../utils/roles';
 import runtimeConfig from '../config/runtime';
 import { usePinCache } from '../contexts/PinCacheContext';
 import { useTranslation } from 'react-i18next';
+import usePinReporting from '../hooks/pin/usePinReporting';
+import ReportContentDialog from '../components/ReportContentDialog';
+import normalizeObjectId from '../utils/normalizeObjectId';
 import {
   useMapFilters,
   extractIds,
@@ -37,6 +38,7 @@ import { logMapPerf, nowIfPerf } from '../utils/mapPerfLogger';
 import MapFiltersSection from '../components/map/MapFiltersSection';
 import MapPageLayout from '../components/map/MapPageLayout';
 import PageNavHeader from '../components/PageNavHeader';
+import HeaderActionButtons from '../components/HeaderActionButtons';
 
 
 export const pageConfig = {
@@ -103,6 +105,19 @@ function MapPage() {
     isAdminExempt: adminOverride
   });
   const pinCache = usePinCache();
+  const {
+    reportDialogOpen,
+    reportTarget,
+    reportReason,
+    reportSelectedOffenses,
+    reportError,
+    isSubmittingReport,
+    openReportDialog,
+    closeReportDialog,
+    toggleReportOffense,
+    submitReport,
+    setReportReason
+  } = usePinReporting();
 
   const {
     showEvents,
@@ -168,6 +183,29 @@ function MapPage() {
       setTapToTeleportEnabled(false);
     }
   }, [canUseAdminTools]);
+
+  const handleReportPinFromMap = useCallback(
+    (pin) => {
+      const pinId =
+        normalizeObjectId(pin?._id) ||
+        normalizeObjectId(pin?.id) ||
+        normalizeObjectId(pin?.pinId);
+      if (!pinId) {
+        return;
+      }
+      const title =
+        typeof pin?.title === 'string' && pin.title.trim()
+          ? pin.title.trim()
+          : 'Shared pin';
+      openReportDialog({
+        contentType: 'pin',
+        contentId: pinId,
+        summary: title,
+        context: 'Map view'
+      });
+    },
+    [openReportDialog]
+  );
 
   useEffect(() => {
     const enableChatRooms = showAllChatRoomsToggle || showMyChatRooms;
@@ -486,7 +524,6 @@ function MapPage() {
 
   const notificationsLabel =
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
-  const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
 
   const baseFilterItems = useMemo(
     () =>
@@ -701,7 +738,19 @@ function MapPage() {
   if (locationGateContent) {
     return (
       <MapPageLayout>
-        <PageNavHeader title="Map" />
+        <PageNavHeader
+          title="Map"
+          rightSlot={
+            <HeaderActionButtons
+              isOffline={isOffline}
+              unreadCount={unreadCount}
+              onCreatePin={handleCreatePin}
+              onOpenUpdates={handleNotifications}
+              notificationsLabel={notificationsLabel}
+              createLabel={t('mapHeader.createPin')}
+            />
+          }
+        />
         {locationGateContent}
       </MapPageLayout>
     );
@@ -712,42 +761,14 @@ function MapPage() {
       <PageNavHeader
         title="Map"
         rightSlot={
-          <div className="map-header-actions">
-            <button
-              type="button"
-              className="map-icon-btn map-header-create"
-              onClick={handleCreatePin}
-              disabled={isOffline}
-              aria-label={t('mapHeader.createPin')}
-              title={isOffline ? t('mapHeader.offlineCreate') : undefined}
-            >
-              {addIconPurple ? (
-                <img src={addIconPurple} alt="" className="map-icon map-icon--create" aria-hidden="true" />
-              ) : (
-                <span className="map-icon map-icon--create" aria-hidden="true" />
-              )}
-            </button>
-
-            <button
-              className="map-icon-btn"
-              type="button"
-              aria-label={notificationsLabel}
-              onClick={handleNotifications}
-              disabled={isOffline}
-              title={isOffline ? t('mapHeader.offlineNotifications') : undefined}
-            >
-              {updatesIcon ? (
-                <img src={updatesIcon} alt="" className="map-icon" aria-hidden="true" />
-              ) : (
-                <span className="map-icon" aria-hidden="true" />
-              )}
-              {displayBadge ? (
-                <span className="map-icon-badge" aria-hidden="true">
-                  {displayBadge}
-                </span>
-              ) : null}
-            </button>
-          </div>
+          <HeaderActionButtons
+            isOffline={isOffline}
+            unreadCount={unreadCount}
+            onCreatePin={handleCreatePin}
+            onOpenUpdates={handleNotifications}
+            notificationsLabel={notificationsLabel}
+            createLabel={t('mapHeader.createPin')}
+          />
         }
       />
       <div className="map-frame">
@@ -764,6 +785,7 @@ function MapPage() {
             onChatRoomView={handleViewChatRoom}
             onCurrentUserView={handleViewProfile}
             onPinAuthorView={handleViewPinAuthor}
+            onPinFlag={handleReportPinFromMap}
             isOffline={isOffline}
             currentUserAvatar={viewerProfile?.avatar}
             currentUserDisplayName={viewerProfile?.displayName}
@@ -785,6 +807,19 @@ function MapPage() {
           </Box>
         ) : null}
       </div>
+      <ReportContentDialog
+        open={reportDialogOpen}
+        onClose={closeReportDialog}
+        onSubmit={submitReport}
+        reason={reportReason}
+        onReasonChange={setReportReason}
+        selectedReasons={reportSelectedOffenses}
+        onToggleReason={toggleReportOffense}
+        submitting={isSubmittingReport}
+        error={reportError}
+        contentSummary={reportTarget?.summary}
+        context={reportTarget?.context}
+      />
     </MapPageLayout>
   );
 }

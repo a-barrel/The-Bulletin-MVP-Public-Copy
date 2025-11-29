@@ -1,0 +1,60 @@
+.header-action-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.map-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  line-height: 1;
+  padding: 6px;
+  width: 44px;
+  height: 44px;
+  transition: transform .2s ease;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-icon-btn:hover { transform: scale(1.1); }
+
+.map-icon-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.map-icon-btn:disabled:hover {
+  transform: none;
+}
+
+.map-icon-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f15bb5 0%, #9b5de5 100%);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+.map-icon {
+  width: 35px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.map-icon--create {
+  width: 40px;
+  height: 46px;
+}

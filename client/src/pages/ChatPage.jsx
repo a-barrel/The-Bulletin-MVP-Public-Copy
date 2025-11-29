@@ -7,7 +7,6 @@ import SmsIcon from '@mui/icons-material/Sms';
 import GroupIcon from '@mui/icons-material/Group';
 import MarkUnreadChatAltIcon from '@mui/icons-material/MarkUnreadChatAlt';
 import CloseIcon from '@mui/icons-material/Close';
-import updatesIcon from '../assets/UpdateIcon.svg';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
 import Navbar from '../components/Navbar';
 import MessageBubble from '../components/MessageBubble';
@@ -906,7 +905,6 @@ function ChatPage() {
 
   const notificationsLabel =
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
-  const displayBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
 
   const canModerateMessages = !isOffline && moderationHasAccess !== false;
 
@@ -1059,10 +1057,9 @@ function ChatPage() {
   const handleOpenReportForRoomMessage = useCallback(
     (message) => {
       const messageId = getMessageIdForReport(message);
-      if (!messageId) {
-        setReportStatus({ type: 'error', message: 'Unable to report this message.' });
-        return;
-      }
+    if (!messageId) {
+      return;
+    }
       const summary = getMessageReportSummary(message);
       const contextLabel = selectedRoom
         ? `Room: ${selectedRoom.name || 'Unnamed room'}`
@@ -1081,7 +1078,6 @@ function ChatPage() {
     (message) => {
       const messageId = getMessageIdForReport(message);
       if (!messageId) {
-        setReportStatus({ type: 'error', message: 'Unable to report this message.' });
         return;
       }
       const summary = getMessageReportSummary(message);
@@ -1104,6 +1100,23 @@ function ChatPage() {
       selectedDirectThreadId,
       setReportStatus
     ]
+  );
+
+  const handleOpenReportForPinShare = useCallback(
+    (pin, pinId) => {
+      const normalizedId = normalizeObjectId(pinId) || normalizeObjectId(pin?._id) || normalizeObjectId(pin?.id);
+      if (!normalizedId) {
+        return;
+      }
+      const title = typeof pin?.title === 'string' && pin.title.trim() ? pin.title.trim() : 'Shared pin';
+      openReportDialog({
+        contentType: 'pin',
+        contentId: normalizedId,
+        summary: title,
+        context: 'Shared in chat'
+      });
+    },
+    [openReportDialog, setReportStatus]
   );
 
   const handleCloseReportDialog = useCallback(() => {
@@ -1289,6 +1302,7 @@ function ChatPage() {
           canModerate={canModerateMessages}
           onModerate={handleOpenModerationForMessage}
           onReport={handleOpenReportForRoomMessage}
+          onReportPin={handleOpenReportForPinShare}
         />
       )),
     [
@@ -1297,7 +1311,8 @@ function ChatPage() {
       displayedRoomMessages,
       getMessageKey,
       handleOpenModerationForMessage,
-      handleOpenReportForRoomMessage
+      handleOpenReportForRoomMessage,
+      handleOpenReportForPinShare
     ]
   );
 
@@ -1315,9 +1330,17 @@ function ChatPage() {
           authUser={authUser}
           canModerate={false}
           onReport={handleOpenReportForDirectMessage}
+          onReportPin={handleOpenReportForPinShare}
         />
       )),
-    [authUser, displayedDirectMessages, directViewerId, getMessageKey, handleOpenReportForDirectMessage]
+    [
+      authUser,
+      displayedDirectMessages,
+      directViewerId,
+      getMessageKey,
+      handleOpenReportForDirectMessage,
+      handleOpenReportForPinShare
+    ]
   );
 
   const handleFriendListBackDialog = useCallback(() => {
@@ -1413,15 +1436,18 @@ function ChatPage() {
             pageTitle={t('nav.bottomNav.chat')}
             backAriaLabel={t('common.back', { defaultValue: 'Back' })}
             onBack={() => navigate(-1)}
-            channelLabel={headerChannelLabel}
-            isChannelDialogOpen={isChannelDialogOpen}
-            onOpenChannelDialog={handleOpenChannelDialog}
-            notificationsLabel={notificationsLabel}
-            onNotifications={handleNotifications}
-            isOffline={isOffline}
-            notificationBadge={displayBadge}
-            updatesIconSrc={updatesIcon}
-            checkInBanner={
+          channelLabel={headerChannelLabel}
+          isChannelDialogOpen={isChannelDialogOpen}
+          onOpenChannelDialog={handleOpenChannelDialog}
+          notificationsLabel={notificationsLabel}
+          onNotifications={handleNotifications}
+          onCreatePin={() => {
+            if (isOffline) return;
+            navigate(routes.createPin.base);
+          }}
+          isOffline={isOffline}
+          unreadCount={unreadCount}
+          checkInBanner={
               selectedRoomPinId && checkIn.ready ? (
                 <Box className="chat-checkin-banner">
                   <div className="chat-checkin-meta">
@@ -1536,7 +1562,7 @@ function ChatPage() {
           ) : null}
 
           <ChatSnackbars
-            reportStatus={reportStatus}
+            reportStatus={null}
             onCloseReportStatus={handleReportStatusClose}
             directSendStatus={directSendStatus}
             onCloseDirectSendStatus={resetDirectSendStatus}

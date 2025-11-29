@@ -1,4 +1,5 @@
 import { Alert, Box, Button, Chip, Stack } from '@mui/material';
+import PropTypes from 'prop-types';
 
 export default function BookmarksTopbar({
   totalCount,
@@ -13,26 +14,12 @@ export default function BookmarksTopbar({
   onClearHistory,
   isClearingHistory,
   hideFullPreferenceError,
-  onClearPreferenceError
+  onClearPreferenceError,
+  expandAll,
+  onToggleExpandAll
 }) {
   return (
-    <Stack spacing={3}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Box>
-          <h1 className="bookmarks-title">Bookmarks</h1>
-          <p className="bookmarks-subtitle">
-            {totalCount} saved pin{totalCount === 1 ? '' : 's'}
-          </p>
-        </Box>
-        <Box className="bookmarks-actions">
-          <button type="button" className="bookmarks-action" onClick={onRefresh} disabled={isLoading}>
-            Refresh
-          </button>
-          <button type="button" className="bookmarks-action" onClick={onExport} disabled={isExporting}>
-            Export
-          </button>
-        </Box>
-      </Stack>
+    <Stack spacing={2}>
       <Stack direction="row" spacing={1.5} alignItems="center">
         <Chip
           label={`Bookmarks (${totalCount})`}
@@ -70,6 +57,25 @@ export default function BookmarksTopbar({
             {isClearingHistory ? 'Clearing…' : 'Clear history'}
           </Button>
         ) : null}
+        {activeTab === 'bookmarks' ? (
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={onToggleExpandAll}
+            disableRipple
+            sx={{ fontWeight: 700, textTransform: 'none', fontFamily: '"Urbanist", sans-serif' }}
+          >
+            {expandAll ? 'Collapse All' : 'Expand All'}
+          </Button>
+        ) : null}
+        <Box sx={{ marginLeft: 'auto', display: 'flex', gap: 1 }}>
+          <button type="button" className="bookmarks-action" onClick={onRefresh} disabled={isLoading}>
+            Refresh
+          </button>
+          <button type="button" className="bookmarks-action" onClick={onExport} disabled={isExporting}>
+            Export
+          </button>
+        </Box>
       </Stack>
 
       {isOffline ? (
@@ -86,3 +92,31 @@ export default function BookmarksTopbar({
     </Stack>
   );
 }
+
+BookmarksTopbar.propTypes = {
+  totalCount: PropTypes.number.isRequired,
+  activeTab: PropTypes.string.isRequired,
+  onTabChange: PropTypes.func.isRequired,
+  onRefresh: PropTypes.func.isRequired,
+  onExport: PropTypes.func.isRequired,
+  isLoading: PropTypes.bool,
+  isExporting: PropTypes.bool,
+  isOffline: PropTypes.bool,
+  viewHistoryLength: PropTypes.number.isRequired,
+  onClearHistory: PropTypes.func.isRequired,
+  isClearingHistory: PropTypes.bool,
+  hideFullPreferenceError: PropTypes.string,
+  onClearPreferenceError: PropTypes.func,
+  expandAll: PropTypes.bool,
+  onToggleExpandAll: PropTypes.func.isRequired
+};
+
+BookmarksTopbar.defaultProps = {
+  isLoading: false,
+  isExporting: false,
+  isOffline: false,
+  isClearingHistory: false,
+  hideFullPreferenceError: null,
+  onClearPreferenceError: undefined,
+  expandAll: false
+};
