@@ -189,14 +189,14 @@
   z-index: 1;
 }
 
-.chat-scroll-to-bottom-btn {
+.friend-page .chat-scroll-to-bottom-btn {
   width: 64px !important;
   height: 64px !important;
   right: 0.2rem;
   z-index: 1;
 }
 
-.scroll-to-bottom-icon {
+.friend-page .scroll-to-bottom-icon {
   width: 48px !important;
   height: 48px !important;
   background-color: var(--accent-strong);
@@ -204,7 +204,7 @@
   border-radius: 60px;
 }
 
-.chat-input-container {
+.friend-page .chat-input-container {
   position: fixed;
   left: 0;
   right: 0;
@@ -224,25 +224,25 @@
   transform: none;
 }
 
-.chat-page .bottom-nav-spacer {
+.friend-page .bottom-nav-spacer {
   display: none;
   height: 0;
 }
 
 /* ====== Text Field Styling ====== */
-.chat-input {
+.friend-page .chat-input {
   flex: 1;
 }
 
 /* Target the inner textarea within the MUI TextField */
-.chat-input textarea {
+.friend-page .chat-input textarea {
   resize: none;
   overflow-y: auto;  
   max-height: 10rem;     
   transition: all 0.15s ease-in-out;
 }
 
-.chat-input .MuiOutlinedInput-root {
+.friend-page .chat-input .MuiOutlinedInput-root {
   padding-left: 1.5rem;
   padding-right: 1.5rem;
   margin-left: -0.25rem;
@@ -254,7 +254,7 @@
 }
 
 /* Button to add an img (no visual) */
-.add-img-btn {
+.friend-page .add-img-btn {
   position: relative;
   display: flex;
   width: 48px;
@@ -263,7 +263,7 @@
 }
 
 /* Actual visual for add img button */
-.add-img-icon {
+.friend-page .add-img-icon {
   margin-left: -1rem;
   height: 52px !important;
   width: 52px !important;
@@ -271,7 +271,7 @@
 }
 
 /* Button to send a message (no visual) */
-.send-message-btn {
+.friend-page .send-message-btn {
   position: relative;
   bottom: 2px;
   background: linear-gradient(135deg, var(--accent-strong) 0%, var(--accent-primary) 100%);
@@ -289,27 +289,27 @@
   box-shadow: 0 10px 24px color-mix(in srgb, var(--accent-strong) 22%, transparent);
 }
 
-.send-message-btn:hover:not(:disabled),
-.send-message-btn:focus-visible {
+.friend-page .send-message-btn:hover:not(:disabled),
+.friend-page .send-message-btn:focus-visible {
   transform: translateY(-2px) scale(1.02);
   box-shadow: 0 12px 28px color-mix(in srgb, var(--accent-strong) 32%, transparent);
   filter: brightness(1.02);
   outline: none;
 }
 
-.send-message-btn:active:not(:disabled) {
+.friend-page .send-message-btn:active:not(:disabled) {
   transform: translateY(0) scale(0.98);
   box-shadow: 0 8px 18px color-mix(in srgb, var(--accent-strong) 25%, transparent);
 }
 
-.send-message-btn:disabled {
+.friend-page .send-message-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
   box-shadow: none;
   background: linear-gradient(135deg, var(--color-surface-wash-strong) 0%, var(--color-surface-wash) 100%);
 }
 
-.send-message-icon {
+.friend-page .send-message-icon {
   width: 32px !important;
   height: 32px !important;
   color: var(--color-text-on-accent);
