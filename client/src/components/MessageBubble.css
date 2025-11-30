@@ -188,8 +188,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid rgba(93, 56, 137, 0.25);
-  background: rgba(245, 239, 253, 0.8);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong) 25%, transparent);
+  background: color-mix(in srgb, var(--accent-wash) 80%, transparent);
   border-radius: 12px;
   padding: 4px 8px;
   font-size: 0.9rem;
@@ -199,14 +199,14 @@
 
 .chat-reaction-pill:hover:not(:disabled),
 .chat-reaction-pill:focus-visible:not(:disabled) {
-  border-color: rgba(93, 56, 137, 0.5);
-  background: #f2e8ff;
+  border-color: color-mix(in srgb, var(--accent-strong) 50%, transparent);
+  background: color-mix(in srgb, var(--accent-wash-strong) 85%, transparent);
   transform: translateY(-1px);
 }
 
 .chat-reaction-pill.active {
-  border-color: #5d3889;
-  background: rgba(93, 56, 137, 0.12);
+  border-color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent-strong) 12%, transparent);
   font-weight: 700;
 }
 
@@ -221,5 +221,5 @@
 
 .chat-reaction-count {
   font-size: 0.85rem;
-  color: #1e1e1e;
+  color: var(--color-text-primary);
 }
