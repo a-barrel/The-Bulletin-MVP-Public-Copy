@@ -23,7 +23,7 @@ import { resolveUserAvatarUrl } from '../utils/pinFormatting';
 import usePinClusters from './map/usePinClusters';
 import PinPreviewCard from './PinPreviewCard';
 import toIdString from '../utils/ids';
-import { flagPinForModeration, createPinBookmark, deletePinBookmark } from '../api';
+import { createPinBookmark, deletePinBookmark } from '../api';
 import RecenterControl from './map/RecenterControl';
 import { usePinCache } from '../contexts/PinCacheContext';
 
@@ -637,30 +637,12 @@ const Map = ({
   }, [resolvedPins, resolvePinId]);
 
   const handleFlagPin = useCallback(
-    async (pin) => {
+    (pin) => {
       if (typeof onPinFlag === 'function') {
         onPinFlag(pin);
-        return;
-      }
-      const pinId = resolvePinId(pin);
-      if (!pinId || isOffline) return;
-      const confirmed =
-        typeof window === 'undefined' || typeof window.confirm !== 'function'
-          ? true
-          : window.confirm('Flag this pin for moderator review?');
-      if (!confirmed) return;
-      const reason =
-        typeof window !== 'undefined' && typeof window.prompt === 'function'
-          ? window.prompt('Reason for flagging (optional)', '')
-          : '';
-      try {
-        await flagPinForModeration(pinId, { reason });
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('Failed to flag pin from map:', error);
       }
     },
-    [isOffline, onPinFlag, resolvePinId]
+    [onPinFlag]
   );
 
   const renderPinPopup = useCallback(
@@ -842,6 +824,8 @@ const Map = ({
           className="map-pin-popup"
           offset={[0, -4]}
           keepInView
+          closeOnClick={false}
+          autoClose={false}
           eventHandlers={{
             popupopen: (event) => {
               const el = event?.popup?.getElement?.();

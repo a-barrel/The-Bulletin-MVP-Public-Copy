@@ -395,6 +395,15 @@ function PinDetails() {
             : { pinTypeHeading }
         }
         onShare={handleSharePin}
+        onReportPin={() => {
+          if (!pin?._id) return;
+          openReportDialog({
+            contentType: 'pin',
+            contentId: pin._id,
+            summary: pin.title || 'Pin',
+            context: pin.title ? `Pin: ${pin.title}` : 'Pin details'
+          });
+        }}
         shareBusy={isSharing}
         bookmarked={bookmarked}
         bookmarkPending={isUpdatingBookmark}

@@ -25,8 +25,7 @@ export const routes = {
   bookmarks: {
     base: '/bookmarks',
     collection: (collectionId: string | number) =>
-      `/bookmarks?collection=${encodeSegment(collectionId)}`,
-    debug: '/bookmarks-debug'
+      `/bookmarks?collection=${encodeSegment(collectionId)}`
   },
   updates: {
     base: '/updates'

@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography';
 import GlobalNavMenu from '../GlobalNavMenu';
 import MainNavBackButton from '../MainNavBackButton';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
+import HeaderActionButtons from '../HeaderActionButtons';
 
 function ChatThreadHeader({
   pageTitle,
@@ -15,11 +16,13 @@ function ChatThreadHeader({
   onOpenChannelDialog,
   notificationsLabel,
   onNotifications,
+  onCreatePin,
   isOffline,
-  notificationBadge,
-  updatesIconSrc,
+  unreadCount,
   checkInBanner
 }) {
+  const safeUnread = Number.isFinite(unreadCount) ? unreadCount : 0;
+
   return (
     <header className="chat-header-bar">
       <div className="chat-header-left">
@@ -51,21 +54,13 @@ function ChatThreadHeader({
         </Button>
         {checkInBanner}
       </div>
-      <button
-        className="updates-icon-btn"
-        type="button"
-        aria-label={notificationsLabel}
-        onClick={onNotifications}
-        disabled={isOffline}
-        title={isOffline ? 'Reconnect to view updates' : undefined}
-      >
-        <img src={updatesIconSrc} alt="" className="updates-icon" aria-hidden="true" />
-        {notificationBadge ? (
-          <span className="updates-icon-badge" aria-hidden="true">
-            {notificationBadge}
-          </span>
-        ) : null}
-      </button>
+      <HeaderActionButtons
+        isOffline={isOffline}
+        unreadCount={safeUnread}
+        onCreatePin={onCreatePin}
+        onOpenUpdates={onNotifications}
+        notificationsLabel={notificationsLabel}
+      />
     </header>
   );
 }
@@ -80,9 +75,9 @@ ChatThreadHeader.propTypes = {
   onOpenChannelDialog: PropTypes.func.isRequired,
   notificationsLabel: PropTypes.string.isRequired,
   onNotifications: PropTypes.func.isRequired,
+  onCreatePin: PropTypes.func.isRequired,
   isOffline: PropTypes.bool,
-  notificationBadge: PropTypes.string,
-  updatesIconSrc: PropTypes.string.isRequired,
+  unreadCount: PropTypes.number,
   checkInBanner: PropTypes.node
 };
 
@@ -93,7 +88,7 @@ ChatThreadHeader.defaultProps = {
   onBack: undefined,
   isChannelDialogOpen: false,
   isOffline: false,
-  notificationBadge: null,
+  unreadCount: 0,
   checkInBanner: null
 };
 

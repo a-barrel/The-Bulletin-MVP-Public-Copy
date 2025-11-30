@@ -4,6 +4,7 @@ import PropTypes from 'prop-types';
 import BookmarkButton from '../../components/BookmarkButton';
 import GlobalNavMenu from '../../components/GlobalNavMenu';
 import MainNavBackButton from '../../components/MainNavBackButton';
+import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined';
 
 function HeaderActions({
   isOwnPin,
@@ -14,6 +15,7 @@ function HeaderActions({
   handleOpenEditDialog,
   pinFlagProps,
   onShare,
+  onReportPin,
   shareBusy,
   bookmarked,
   bookmarkPending,
@@ -60,6 +62,20 @@ function HeaderActions({
                 title={pinFlagProps.title}
               >
                 {pinFlagProps.label}
+              </button>
+            </div>
+          ) : null}
+          {!isOwnPin ? (
+            <div className="flag-button-wrapper">
+              <button
+                className="flag-pin-button"
+                type="button"
+                onClick={onReportPin}
+                disabled={isOffline || !pin || isInteractionLocked}
+                title={isOffline ? 'Reconnect to report this pin' : 'Report pin'}
+                aria-label="Report pin"
+              >
+                <FlagOutlinedIcon fontSize="small" />
               </button>
             </div>
           ) : null}
@@ -111,6 +127,7 @@ HeaderActions.propTypes = {
     pinTypeHeading: PropTypes.oneOfType([PropTypes.string, PropTypes.node])
   }),
   onShare: PropTypes.func.isRequired,
+  onReportPin: PropTypes.func,
   shareBusy: PropTypes.bool,
   bookmarked: PropTypes.bool,
   bookmarkPending: PropTypes.bool,
@@ -127,6 +144,7 @@ HeaderActions.defaultProps = {
   isLoading: false,
   editDialogBusy: false,
   pinFlagProps: null,
+  onReportPin: undefined,
   shareBusy: false,
   bookmarked: false,
   bookmarkPending: false,
