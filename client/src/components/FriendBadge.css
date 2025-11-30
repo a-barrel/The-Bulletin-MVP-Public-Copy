@@ -3,7 +3,7 @@
   align-items: center;
   justify-content: center;
   margin-left: 0.35rem;
-  color: var(--friend-badge-color, #1bbf72);
+  color: var(--friend-badge-color, var(--color-success));
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   font-weight: 700;
   line-height: 1;
@@ -19,18 +19,18 @@
 }
 
 .friend-badge__face {
-  fill: var(--friend-badge-face-color, #54f2a8);
-  stroke: var(--friend-badge-outline-color, #0b5d33);
+  fill: var(--friend-badge-face-color, var(--color-success));
+  stroke: var(--friend-badge-outline-color, var(--accent-strong));
   stroke-width: 1.3;
 }
 
 .friend-badge__eye {
-  fill: var(--friend-badge-outline-color, #0b5d33);
+  fill: var(--friend-badge-outline-color, var(--accent-strong));
 }
 
 .friend-badge__smile {
   fill: none;
-  stroke: var(--friend-badge-smile-color, #064121);
+  stroke: var(--friend-badge-smile-color, var(--accent-strong));
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2;

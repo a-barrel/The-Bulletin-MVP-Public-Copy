@@ -1,8 +1,8 @@
 /* ===== Scope ===== */
 .admin-dashboard {
   font-family: 'Urbanist', sans-serif;
-  color: black;
-  background: white;
+  color: var(--color-text-primary, #0e0e0e);
+  background: var(--color-surface, #ffffff);
   width: 100%;
   min-height: 100vh;
 }
@@ -24,7 +24,7 @@
 }
 
 /* Ensure the page background fills behind everything */
-html, body, #root { background: #fff; }
+html, body, #root { background: var(--color-surface, #fff); }
 
 /* Page title row */
 .admin-dashboard .MuiTypography-h4 {

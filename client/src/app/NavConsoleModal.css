@@ -11,8 +11,9 @@
   border-radius: 20px;
   background: radial-gradient(circle at 20% 20%, rgba(93, 56, 137, 0.08), transparent 40%),
     radial-gradient(circle at 80% 0%, rgba(62, 184, 240, 0.08), transparent 45%),
-    #ffffff;
+    var(--color-surface);
   box-shadow: 0 24px 48px rgba(16, 9, 32, 0.18), 0 8px 20px rgba(16, 9, 32, 0.12);
+  color: var(--color-text-primary);
 }
 
 .nav-console-body {
@@ -21,6 +22,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  color: var(--color-text-primary);
 }
 
 .nav-console-header-row {
@@ -51,8 +53,8 @@
 }
 
 .nav-console-button.MuiButton-contained {
-  background: linear-gradient(135deg, #5d3889, #7a4bb3);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent-primary));
+  color: var(--color-text-on-accent);
 }
 
 .nav-console-button.MuiButton-outlined {
@@ -61,4 +63,24 @@
 
 .nav-console-button .MuiButton-startIcon svg {
   opacity: 0.85;
+}
+
+.theme-dark .nav-console-paper {
+  background: var(--color-surface) !important;
+  background-image: none !important;
+  color: var(--color-text-primary);
+}
+
+.theme-dark .nav-console-button.MuiButton-contained {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-strong));
+  color: var(--color-text-on-accent);
+}
+
+.theme-dark .nav-console-button.MuiButton-outlined {
+  border-color: var(--accent-border);
+  color: var(--color-text-primary);
+}
+
+.theme-dark .nav-console-button.MuiButton-text {
+  color: var(--color-text-primary);
 }

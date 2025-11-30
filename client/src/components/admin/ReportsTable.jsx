@@ -35,11 +35,11 @@ function ReportsTable({ reports, onResolveReport, resolvingReportId }) {
       <Table size="small">
         <TableHead>
           <TableRow>
-            <TableCell sx={{ color: '#111' }}>Content</TableCell>
-            <TableCell sx={{ color: '#111' }}>Reporter</TableCell>
-            <TableCell sx={{ color: '#111' }}>Author</TableCell>
-            <TableCell sx={{ color: '#111' }}>Status</TableCell>
-            <TableCell sx={{ color: '#111' }}>Submitted</TableCell>
+            <TableCell sx={{ color: 'var(--color-text-primary)' }}>Content</TableCell>
+            <TableCell sx={{ color: 'var(--color-text-primary)' }}>Reporter</TableCell>
+            <TableCell sx={{ color: 'var(--color-text-primary)' }}>Author</TableCell>
+            <TableCell sx={{ color: 'var(--color-text-primary)' }}>Status</TableCell>
+            <TableCell sx={{ color: 'var(--color-text-primary)' }}>Submitted</TableCell>
             <TableCell align="right">Actions</TableCell>
           </TableRow>
         </TableHead>
@@ -85,14 +85,14 @@ function ReportsTable({ reports, onResolveReport, resolvingReportId }) {
                     ) : null}
                   </Stack>
                 </TableCell>
-                <TableCell width="15%" sx={{ color: '#111' }}>
+                <TableCell width="15%" sx={{ color: 'var(--color-text-primary)' }}>
                   {report.reporter?.displayName || report.reporter?.username || 'User'}
                 </TableCell>
-                <TableCell width="15%" sx={{ color: '#111' }}>
+                <TableCell width="15%" sx={{ color: 'var(--color-text-primary)' }}>
                   {report.contentAuthor?.displayName || report.contentAuthor?.username || 'User'}
                 </TableCell>
                 <TableCell width="10%">{statusChip}</TableCell>
-                <TableCell width="15%" sx={{ color: '#111' }}>
+                <TableCell width="15%" sx={{ color: 'var(--color-text-primary)' }}>
                   {createdAt}
                 </TableCell>
                 <TableCell width="10%" align="right">

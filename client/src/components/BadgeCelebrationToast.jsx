@@ -121,7 +121,7 @@ export function BadgeCelebrationToast({ toastState, onClose }) {
       onClose={onClose}
       ContentProps={{
         sx: {
-          backgroundColor: '#3EB8F0',
+          backgroundColor: 'var(--accent-primary)',
           overflow: 'visible',
           display: 'flex',
           justifyContent: 'center',

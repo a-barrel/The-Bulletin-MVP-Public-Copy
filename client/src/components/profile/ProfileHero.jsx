@@ -49,7 +49,7 @@ function ProfileHero({
               sx={{
                 width: '100%',
                 height: '100%',
-                background: 'linear-gradient(135deg, #4B3F72 0%, #2E2157 100%)'
+                background: 'var(--header-bg)'
               }}
             />
           )}

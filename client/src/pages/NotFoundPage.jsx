@@ -46,7 +46,7 @@ function NotFoundPage({ defaultPath = routes.auth.login, defaultLabel = 'Go to M
         justifyContent: 'center',
         px: 2,
         py: 4,
-        backgroundColor: '#fff'
+        backgroundColor: 'var(--color-surface, #fff)'
       }}
     >
       <Paper
@@ -58,7 +58,7 @@ function NotFoundPage({ defaultPath = routes.auth.login, defaultLabel = 'Go to M
           p: { xs: 3, md: 4 },
           textAlign: 'center',
           color: '#000',
-          backgroundColor: '#fff'
+          backgroundColor: 'var(--color-surface, #fff)'
         }}
       >
         <Stack spacing={1.5} alignItems="center">

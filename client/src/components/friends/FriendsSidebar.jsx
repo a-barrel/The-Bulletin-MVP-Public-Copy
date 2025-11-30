@@ -46,7 +46,7 @@ function FriendsSidebar({
 
   if (friendHasAccess === false) {
     return (
-      <Box className="friends-page-text-container" sx={{ color: isOverlay ? 'inherit' : '#111' }}>
+      <Box className="friends-page-text-container" sx={{ color: isOverlay ? 'inherit' : 'var(--color-text-primary)' }}>
         <Typography className="friends-page-title-text" variant="h6">
           Friend access required
         </Typography>
@@ -59,7 +59,7 @@ function FriendsSidebar({
 
   if (isLoading && displayFriends.length === 0) {
     return (
-      <Box className="friends-page-text-container" sx={{ color: isOverlay ? 'inherit' : '#111' }}>
+      <Box className="friends-page-text-container" sx={{ color: isOverlay ? 'inherit' : 'var(--color-text-primary)' }}>
         <CircularProgress className="loading-friends-circle" size={32} />
         <Typography className="friends-page-body-text" variant="body2">
           Loading friends…
@@ -80,7 +80,7 @@ function FriendsSidebar({
         flexGrow: 1,
         display: 'flex',
         flexDirection: 'column',
-        color: isOverlay ? 'inherit' : '#111'
+        color: isOverlay ? 'inherit' : 'var(--color-text-primary)'
       }}
     >
       <Box className="friends-list-header" sx={{ px: 2, py: 1.5 }}>
@@ -144,10 +144,14 @@ function FriendsSidebar({
           spacing={1.5}
           alignItems="center"
           justifyContent="center"
-          sx={{ flexGrow: 1, py: 6, color: isOverlay ? 'inherit' : '#111' }}
+          sx={{ flexGrow: 1, py: 6, color: isOverlay ? 'inherit' : 'var(--color-text-primary)' }}
         >
           <Typography variant="h6">No friends yet</Typography>
-          <Typography variant="body2" align="center" sx={{ color: isOverlay ? 'inherit' : '#555' }}>
+          <Typography
+            variant="body2"
+            align="center"
+            sx={{ color: isOverlay ? 'inherit' : 'var(--color-text-secondary)' }}
+          >
             Add some friends to start direct conversations and plan meetups.
           </Typography>
         </Stack>
@@ -175,7 +179,7 @@ function FriendsSidebar({
                   py: 1.5,
                   px: { xs: 1, sm: 0 },
                   gap: { xs: 1.5, sm: 2 },
-                  color: isOverlay ? 'inherit' : '#111',
+                  color: isOverlay ? 'inherit' : 'var(--color-text-primary)',
                   transition: 'background-color 0.2s ease',
                   '&:hover': {
                     backgroundColor: (theme) => theme.palette.action.hover,

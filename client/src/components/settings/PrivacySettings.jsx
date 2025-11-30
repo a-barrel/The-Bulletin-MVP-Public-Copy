@@ -119,14 +119,14 @@ function PrivacySettings({
             disabled={isOffline || isManagingBlockedUsers}
             title={isOffline ? t('tooltips.settings.blockedUsers') : undefined}
             sx={{
-              borderColor: '#B3261E',
-              color: '#B3261E',
+              borderColor: 'var(--color-danger)',
+              color: 'var(--color-danger)',
               borderRadius: 999,
               fontWeight: 600,
               '&:hover': {
-                borderColor: '#7A2017',
-                backgroundColor: '#FFE5E0',
-                color: '#7A2017'
+                borderColor: 'color-mix(in srgb, var(--color-danger) 80%, transparent)',
+                backgroundColor: 'color-mix(in srgb, var(--color-danger) 12%, var(--color-surface))',
+                color: 'color-mix(in srgb, var(--color-danger) 80%, transparent)'
               },
               '&:disabled': {
                 borderColor: settingsPalette.borderSubtle,

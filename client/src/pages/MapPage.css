@@ -1,7 +1,7 @@
 /* ===== Outer Shell (fullscreen) ===== */
 .map-page {
   display: block;
-  background: linear-gradient(135deg, #f5effd 0%, #ecf8fe 100%);
+  background: var(--page-bg);
   width: 100%;
   min-height: 100vh;
   overflow-x: hidden;
@@ -9,6 +9,7 @@
 
 .map-page__body {
   min-height: calc(100vh - 80px);
+  background: var(--color-surface, #ffffff);
 }
 
 @keyframes popularGlowPulse {
@@ -48,6 +49,7 @@
   min-height: calc(100vh - var(--header-h) - var(--nav-h));
   height: calc(100vh - var(--header-h) - var(--nav-h));
   overflow: hidden;
+  background: var(--color-surface, #fff);
 }
 
 .map-location-gate {
@@ -57,7 +59,7 @@
 }
 
 .map-hide-preference-error {
-  color: #b3261e;
+  color: var(--color-danger);
   font-size: 0.85rem;
   font-weight: 600;
   padding-left: 12px;
@@ -108,7 +110,7 @@
 }
 
 .map-title {
-  color: #5D3889;
+  color: var(--accent-strong);
   font-size: 2rem;
   font-weight: 500;
   text-align: center;
@@ -129,8 +131,8 @@
   position: sticky;
   top: 0;
   z-index: 1100;
-  background: linear-gradient(135deg, #cdaef2 0%, #f5effd 100%);
-  border-bottom: 2px solid #5D3889;
+  background: var(--header-bg);
+  border-bottom: 2px solid var(--accent-strong);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -171,8 +173,8 @@
   height: 22px;
   padding: 0 6px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #f15bb5 0%, #9b5de5 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent-pink) 0%, var(--accent-primary) 100%);
+  color: var(--color-text-on-accent, #fff);
   font-size: 0.75rem;
   font-weight: 700;
   display: inline-flex;

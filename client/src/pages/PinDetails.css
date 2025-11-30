@@ -3,10 +3,10 @@
     display: flex;
     align-items: center;
     flex-direction: column;
-    background-color: #FFFFFF;
-    color: black;
-    width: 100vw;
-    height: 100vh;
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    width: 100%;
+    min-height: 100vh;
     max-width: 100%;
     overflow-x: hidden;
 }
@@ -34,7 +34,7 @@
   width: 100%;
   padding: 0.25rem 0.5rem; 
   box-sizing: border-box;
-  border-bottom: 1px solid black;
+  border-bottom: 1px solid var(--accent-strong);
 }
 
 .pin-details .header-left,
@@ -59,26 +59,26 @@
 }
 
 .pin-details.event-mode .header {
-    background-color: #CDAEF2;
-    color: #5d3889;
+    background-color: var(--color-surface-wash-strong);
+    color: var(--accent-strong);
 }
 
 .pin-details.discussion-mode .header {
-    background-color: #3EB8F0;
-    color: #043c63;
+    background-color: var(--accent-primary);
+    color: var(--color-text-on-accent);
 }
 
 .pin-details .header h2 {
     margin: 0;
-    color: black;
+    color: inherit;
 }
 
 .pin-details .header.event-header {
-    background-color: #CDAEF2;
+    background-color: var(--color-surface-wash-strong);
 }
 
 .pin-details .header.discussion-header {
-    background-color: #3EB8F0;
+    background-color: var(--accent-primary);
 }
 
 
@@ -101,7 +101,7 @@
 }
 
 .pin-details .back-arrow {
-    color: #5d3889;
+    color: var(--accent-strong);
     font-size: 30px;
 }
 
@@ -146,8 +146,8 @@
     padding: 0.4rem 0.9rem;
     border-radius: 999px;
     font-weight: 600;
-    background: linear-gradient(135deg, #5d3889 0%, #a67be9 100%);
-    color: #ffffff;
+    background: linear-gradient(135deg, var(--accent-strong) 0%, var(--accent-primary) 100%);
+    color: var(--color-text-on-accent);
     cursor: pointer;
     transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
 }
@@ -173,8 +173,8 @@
 /* Edit Pin dialog palette — primary purple, blue secondary, soft lavender/pink washes.
    Reference: docs/style/style-guide.md, light_mode_colorpalate.md */
 .edit-pin-dialog {
-    background: linear-gradient(150deg, #ffffff 0%, #f5effd 35%, #ecd7fb 70%, #ecf8fe 100%);
-    border: 1px solid #cdaef2;
+    background: linear-gradient(150deg, var(--color-surface, #ffffff) 0%, var(--color-surface-wash, #f5effd) 35%, var(--color-surface-wash-strong, #ecd7fb) 70%, var(--color-surface-wash, #ecf8fe) 100%);
+    border: 1px solid var(--color-border, #cdaef2);
     border-radius: 18px;
     box-shadow: 0 18px 42px rgba(93, 56, 137, 0.2);
 }
@@ -185,7 +185,7 @@
 
 .edit-pin-dialog__title {
     font-weight: 700;
-    color: #5d3889;
+    color: var(--accent-strong);
     padding: 1.2rem 1.4rem 0.4rem;
 }
 
@@ -198,29 +198,29 @@
 }
 
 .edit-pin-dialog__field .MuiOutlinedInput-root {
-    background-color: #f5effd;
+    background-color: var(--color-surface-wash);
     border-radius: 12px;
 }
 
 .edit-pin-dialog__field .MuiOutlinedInput-notchedOutline {
-    border-color: #cdaef2;
+    border-color: var(--color-border, #cdaef2);
 }
 
 .edit-pin-dialog__field .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
-    border-color: #3eb8f0;
-    box-shadow: 0 0 0 2px rgba(62, 184, 240, 0.16);
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 16%, transparent);
 }
 
 .edit-pin-dialog__field .MuiInputLabel-root {
-    color: #4a3a63;
+    color: var(--color-text-secondary);
 }
 
 .edit-pin-dialog__field .MuiInputLabel-root.Mui-focused {
-    color: #3eb8f0;
+    color: var(--accent-primary);
 }
 
 .edit-pin-dialog__toggle {
-    color: #1e1e1e;
+    color: var(--color-text-primary);
 }
 
 .edit-pin-dialog__actions {
@@ -237,13 +237,13 @@
 }
 
 .edit-pin-dialog__button--primary {
-    background-color: #5d3889;
-    color: #ffffff;
-    box-shadow: 0 10px 20px rgba(93, 56, 137, 0.2);
+    background-color: var(--accent-strong);
+    color: var(--color-text-on-accent);
+    box-shadow: 0 10px 20px color-mix(in srgb, var(--accent-strong) 20%, transparent);
 }
 
 .edit-pin-dialog__button--primary:hover:not(:disabled) {
-    background-color: #4a2c73;
+    background-color: color-mix(in srgb, var(--accent-strong) 90%, transparent);
 }
 
 .edit-pin-dialog__button--primary:disabled {
@@ -252,13 +252,13 @@
 }
 
 .edit-pin-dialog__button--secondary {
-    border-color: #3eb8f0;
-    color: #1d5b89;
+    border-color: var(--accent-primary);
+    color: var(--color-text-secondary);
 }
 
 .edit-pin-dialog__button--secondary:hover:not(:disabled) {
-    background-color: #ecf8fe;
-    border-color: #1d5b89;
+    background-color: var(--color-surface-wash);
+    border-color: var(--accent-primary);
 }
 
 .edit-pin-dialog__button--destructive {
@@ -273,25 +273,25 @@
 }
 
 .pin-details .flag-pin-button {
-    border: 1px solid #f4a261;
+    border: 1px solid var(--color-danger);
     padding: 0.35rem 0.9rem;
     border-radius: 999px;
     font-weight: 600;
-    background-color: #fff2e5;
-    color: #8c3d00;
+    background-color: color-mix(in srgb, var(--color-danger) 12%, var(--color-surface));
+    color: var(--color-text-primary);
     cursor: pointer;
     transition: background-color 150ms ease, color 150ms ease;
 }
 
 .pin-details .flag-pin-button:hover:not(:disabled) {
-    background-color: #ffd6b3;
+    background-color: color-mix(in srgb, var(--color-danger) 16%, var(--color-surface));
 }
 
 .pin-details .flag-pin-button.flagged,
 .pin-details .flag-pin-button:disabled {
-    background-color: #fddfca;
-    border-color: #f5c7a0;
-    color: #a05b20;
+    background-color: color-mix(in srgb, var(--color-danger) 18%, var(--color-surface));
+    border-color: color-mix(in srgb, var(--color-danger) 40%, transparent);
+    color: var(--color-text-secondary);
     cursor: default;
 }
 
@@ -312,7 +312,7 @@
     justify-content: center;
     color: inherit;
     transition: transform 150ms ease, filter 150ms ease;
-    color: #5d3889;
+    color: var(--accent-strong);
 }
 
 .pin-details .share-button:hover {
@@ -383,7 +383,7 @@
 }
 
 .pin-details.event-mode .name {
-    background-color: #F4F0FC;
+    background-color: var(--accent-wash, #F4F0FC);
 }
 
 .pin-details.discussion-mode .name {
@@ -424,7 +424,7 @@
     gap: 0.5rem;
     padding: 0.75rem 1rem;
     box-sizing: border-box;
-    background-color: #FFFFFF;
+    background-color: var(--color-surface, #FFFFFF);
 }
 
 .pin-details .status-container--footer {
@@ -437,7 +437,7 @@
     padding: 0.75rem 1rem;
     border: 1px solid #cdaef2;
     border-radius: 8px;
-    background-color: #f4f0fc;
+    background-color: var(--accent-wash, #f4f0fc);
     color: #5d3889;
     text-align: center;
 }
@@ -457,7 +457,7 @@
 /* map */
 .pin-details .map-section {
     width: 100%;
-    border-bottom: 1px solid black;
+    border-bottom: 1px solid #5d3889;
     padding: 1rem;
     box-sizing: border-box;
 }
@@ -663,7 +663,7 @@
     object-fit: cover;
     border-radius: 10px;
     border: 1px solid #CDAEF2;
-    background-color: #FFFFFF;
+    background-color: var(--color-surface, #FFFFFF);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -819,6 +819,7 @@
     justify-content: center;
     min-width: 0;
     word-break: break-word;
+    color: #5d3889;
 }
 
 .pin-details .attending-icons {
@@ -833,7 +834,7 @@
     border: 1px solid black;
     border-radius: 8px;
     padding: 0.35rem 0.85rem;
-    color: #000000;
+    color: var(--color-text-on-accent, #ffffff);
     font-size: 0.9rem;
     cursor: pointer;
     transition: background-color 0.2s ease, transform 0.2s ease;
@@ -909,7 +910,7 @@
     border-radius: 50%;
     border: 2px solid #5d3889;
     overflow: hidden;
-    background: #fff;
+    background: var(--color-surface, #fff);
 }
 
 .pin-details .attending-friend-avatar img {
@@ -937,10 +938,12 @@
     transition: all 0.2s ease;
     width: calc(100% - 2rem);
     border: 1px solid black;
+    color: var(--color-text-on-accent, #ffffff);
 }
 
 .pin-details .attend-button.attending {
     background-color: #F15BB5;
+    color: var(--color-text-on-accent, #ffffff);
 }
 
 .pin-details .attendance .attendance-error {
@@ -989,7 +992,7 @@
 .pin-details .reply-overlay-header h3 {
     margin: 0;
     font-size: 1.25rem;
-    color: #fdfbff;
+    color: var(--color-text-on-accent, #fdfbff);
 }
 
 .pin-details .reply-overlay-close {
@@ -997,7 +1000,7 @@
     border: 1px solid #4a2c73;
     border-radius: 6px;
     padding: 0.35rem 0.75rem;
-    color: #f4f0fc;
+    color: var(--color-text-on-accent, #f4f0fc);
     cursor: pointer;
     font-size: 0.85rem;
     transition: background-color 0.2s ease, color 0.2s ease;
@@ -1005,7 +1008,7 @@
 
 .pin-details .reply-overlay-close:hover:not(:disabled) {
     background-color: #F15BB5;
-    color: #ffffff;
+    color: var(--color-text-on-accent, #ffffff);
 }
 
 .pin-details .reply-overlay-close:disabled {
@@ -1018,12 +1021,12 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    color: #fdfbff;
+    color: var(--color-text-on-accent, #fdfbff);
 }
 
 .pin-details .reply-overlay-label {
     font-size: 0.9rem;
-    color: #f5effd;
+    color: var(--color-text-on-accent, #f5effd);
 }
 
 .pin-details .reply-overlay-textarea {
@@ -1032,8 +1035,8 @@
     resize: vertical;
     border-radius: 8px;
     border: 1px solid #5d3889;
-    background-color: #CDAEF2;
-    color: black;
+    background-color: var(--color-surface-wash-strong, #CDAEF2);
+    color: var(--color-text-primary, #000000);
     padding: 0.75rem;
     font-size: 0.95rem;
     outline: none;
@@ -1066,7 +1069,7 @@
     border: 1px solid #4a2c73;
     border-radius: 8px;
     padding: 0.45rem 1rem;
-    color: #FFFFFF;
+    color: var(--color-text-on-accent, #FFFFFF);
     font-size: 0.95rem;
     cursor: pointer;
     transition: background-color 0.2s ease, transform 0.2s ease;
@@ -1124,7 +1127,7 @@
 .pin-details .attendee-overlay-header h3 {
     margin: 0;
     font-size: 1.25rem;
-    color: #fdfbff;
+    color: var(--color-text-on-accent, #fdfbff);
 }
 
 .pin-details .attendee-overlay-close {
@@ -1132,7 +1135,7 @@
     border: 1px solid #4a2c73;
     border-radius: 6px;
     padding: 0.35rem 0.75rem;
-    color: #f4f0fc;
+    color: var(--color-text-on-accent, #f4f0fc);
     cursor: pointer;
     font-size: 0.85rem;
     transition: background-color 0.2s ease, color 0.2s ease;
@@ -1140,7 +1143,7 @@
 
 .pin-details .attendee-overlay-close:hover {
     background-color: #F15BB5;
-    color: #ffffff;
+    color: var(--color-text-on-accent, #ffffff);
 }
 
 .pin-details .attendee-overlay-body {
@@ -1149,7 +1152,7 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    color: #fdfbff;
+    color: var(--color-text-on-accent, #fdfbff);
 }
 
 .pin-details .attendee-list {

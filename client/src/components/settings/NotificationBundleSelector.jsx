@@ -36,7 +36,7 @@ function NotificationBundleSelector({ bundles, onApplyBundle, disabled }) {
               alignItems: { sm: 'center' },
               justifyContent: 'space-between',
               borderColor: settingsPalette.borderSubtle,
-              backgroundColor: '#FFFFFF'
+              backgroundColor: 'var(--color-surface)'
             }}
           >
             <Stack spacing={0.5}>

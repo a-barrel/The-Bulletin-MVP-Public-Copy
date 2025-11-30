@@ -42,36 +42,37 @@ import { GeocodeCacheProvider } from './contexts/GeocodeCacheContext';
 import { UpdatesCacheProvider } from './contexts/UpdatesCacheContext';
 import { useThemePreference } from './contexts/ThemePreferenceContext';
 
-const buildTheme = (mode = 'light') => {
-  const isDark = mode === 'dark';
-  const backgroundDefault = isDark ? '#0F0A1E' : '#F5EFFD';
-  const backgroundPaper = isDark ? '#1B1230' : '#FFFFFF';
-  const textPrimary = isDark ? '#F3EFFF' : '#1E1E1E';
-  const textSecondary = isDark ? '#CABAF0' : '#4A3A63';
+const readCssVar = (name, fallback) => {
+  if (typeof window === 'undefined') {
+    return fallback;
+  }
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name);
+  return value ? value.trim() : fallback;
+};
+
+const buildTheme = (tokens) => {
+  const {
+    surface,
+    surfaceWash,
+    surfacePaper,
+    textPrimary,
+    textSecondary,
+    accentPrimary,
+    accentSecondary
+  } = tokens;
 
   return createTheme({
     palette: {
-      mode,
-      primary: {
-        main: '#9B5DE5'
-      },
-      secondary: {
-        main: '#3EB8F0'
-      },
-      background: {
-        default: backgroundDefault,
-        paper: backgroundPaper
-      },
-      text: {
-        primary: textPrimary,
-        secondary: textSecondary
-      }
+      primary: { main: accentPrimary },
+      secondary: { main: accentSecondary },
+      background: { default: surfaceWash, paper: surfacePaper },
+      text: { primary: textPrimary, secondary: textSecondary }
     },
     components: {
       MuiPaper: {
         styleOverrides: {
           root: {
-            backgroundColor: backgroundPaper,
+            backgroundColor: surfacePaper,
             color: textPrimary
           }
         }
@@ -79,7 +80,7 @@ const buildTheme = (mode = 'light') => {
       MuiCard: {
         styleOverrides: {
           root: {
-            backgroundColor: backgroundPaper,
+            backgroundColor: surfacePaper,
             color: textPrimary
           }
         }
@@ -87,7 +88,7 @@ const buildTheme = (mode = 'light') => {
       MuiDialog: {
         styleOverrides: {
           paper: {
-            backgroundColor: backgroundPaper,
+            backgroundColor: surfacePaper,
             color: textPrimary
           }
         }
@@ -95,7 +96,7 @@ const buildTheme = (mode = 'light') => {
       MuiPopover: {
         styleOverrides: {
           paper: {
-            backgroundColor: backgroundPaper,
+            backgroundColor: surfacePaper,
             color: textPrimary
           }
         }
@@ -820,7 +821,7 @@ function AppContent() {
         return;
       }
 
-      if (event.key === '`' || event.key === '~') {
+      if ((event.key === '`' || event.key === '~') && !event.altKey && !event.metaKey && !event.ctrlKey) {
         if (AUTH_ROUTES.has(location.pathname) || navPages.length === 0) {
           return;
         }
@@ -867,7 +868,26 @@ function AppContent() {
     );
   }, [setLocation]);
 
-  const appTheme = useMemo(() => buildTheme(resolvedMode), [resolvedMode]);
+  const appTheme = useMemo(() => {
+    const surface = readCssVar('--color-surface', 'var(--color-surface)');
+    const surfaceWash = readCssVar('--color-surface-wash', 'var(--color-surface-wash)');
+    const surfaceWashStrong = readCssVar('--color-surface-wash-strong', 'var(--color-surface-wash-strong)');
+    const surfacePaper = readCssVar('--color-surface', 'var(--color-surface)');
+    const textPrimary = readCssVar('--color-text-primary', 'var(--color-text-primary)');
+    const textSecondary = readCssVar('--color-text-secondary', 'var(--color-text-secondary)');
+    const accentPrimary = readCssVar('--accent-primary', 'var(--accent-primary)');
+    const accentSecondary = readCssVar('--accent-blue', 'var(--accent-blue)');
+
+    return buildTheme({
+      surface,
+      surfaceWash: surfaceWashStrong || surfaceWash,
+      surfacePaper,
+      textPrimary,
+      textSecondary,
+      accentPrimary,
+      accentSecondary
+    });
+  }, [resolvedMode]);
 
   return (
     <FriendBadgePreferenceProvider value={friendBadgePreferenceValue}>

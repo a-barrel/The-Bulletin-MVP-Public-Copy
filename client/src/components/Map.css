@@ -56,12 +56,12 @@
   height: 44px;
   border-radius: 50%;
   overflow: hidden;
-  border: 3px solid #ff6f3c;
-  background: linear-gradient(135deg, #ffb347, #ffcc33);
+  border: 3px solid var(--accent-warn);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-warn) 82%, transparent), var(--accent-warn));
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #1f1336;
+  color: var(--color-text-strong);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -82,8 +82,13 @@
 }
 
 .pin-cluster-marker {
-  background: radial-gradient(circle at 30% 30%, #c59cf0 0%, #b37be9 55%, #8a4fd0 100%);
-  color: #fff;
+  background: radial-gradient(
+    circle at 30% 30%,
+    color-mix(in srgb, var(--accent-primary) 85%, transparent) 0%,
+    color-mix(in srgb, var(--accent-primary) 70%, var(--accent-strong)) 55%,
+    var(--accent-strong) 100%
+  );
+  color: var(--color-text-on-accent);
   font-weight: 700;
   border-radius: 999px;
   display: grid;
@@ -94,6 +99,12 @@
 
 .pin-cluster-marker span {
   font-size: 0.95rem;
+}
+
+/* Popup shells inherit map theme; keep overlays transparent */
+.map-pin-popup .leaflet-popup-content-wrapper,
+.map-pin-popup .leaflet-popup-content {
+  background: transparent !important;
 }
 
 .no-default-popup .leaflet-popup-content,
@@ -142,15 +153,15 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #ffffff !important;
+  background: var(--color-surface) !important;
   background-image: none !important;
-  color: #3c1053;
+  color: var(--accent-strong);
   font-size: 18px;
   font-weight: 800;
-  border: 1px solid rgba(60, 16, 83, 0.35) !important;
+  border: 1px solid color-mix(in srgb, var(--accent-strong) 35%, transparent) !important;
   box-shadow:
     0 10px 20px rgba(0, 0, 0, 0.35),
-    0 0 0 2px rgba(255, 255, 255, 0.55);
+    0 0 0 2px color-mix(in srgb, var(--color-surface) 55%, transparent);
   padding: 0 !important;
   opacity: 1;
   mix-blend-mode: normal;

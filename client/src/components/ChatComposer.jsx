@@ -183,7 +183,7 @@ function ChatComposer({
         aria-label={t('tooltips.shareSavedPin')}
         disableRipple
         sx={{
-          color: '#5d3889',
+          color: 'var(--accent-strong)',
           padding: 0,
           backgroundColor: 'transparent',
           transition: 'background-color 120ms ease, transform 120ms ease',
@@ -297,11 +297,11 @@ function ChatComposer({
           title={t('tooltips.shareSavedPin')}
           disableRipple
           sx={{
-            color: '#5d3889',
-            backgroundColor: 'rgba(93, 56, 137, 0.1)',
+            color: 'var(--accent-strong)',
+            backgroundColor: 'color-mix(in srgb, var(--accent-strong) 10%, transparent)',
             transition: 'background-color 120ms ease, transform 120ms ease',
             '&:hover, &:focus-visible': {
-              backgroundColor: 'rgba(93, 56, 137, 0.18)',
+              backgroundColor: 'color-mix(in srgb, var(--accent-strong) 18%, transparent)',
               transform: 'scale(1.05)'
             },
             '&.Mui-disabled': {
@@ -325,9 +325,9 @@ function ChatComposer({
           sx={{
             color: 'primary.main',
             transition: 'background-color 120ms ease, transform 120ms ease',
-            backgroundColor: 'rgba(124, 77, 255, 0.08)',
+            backgroundColor: 'color-mix(in srgb, var(--accent-primary) 12%, transparent)',
             '&:hover, &:focus-visible': {
-              backgroundColor: 'rgba(124, 77, 255, 0.18)',
+              backgroundColor: 'color-mix(in srgb, var(--accent-primary) 22%, transparent)',
               transform: 'scale(1.05)'
             },
             '&.Mui-disabled': {

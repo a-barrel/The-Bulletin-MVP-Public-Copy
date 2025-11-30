@@ -63,7 +63,7 @@ export default function SettingsDataSection({
               p: 2.5,
               borderRadius: 3,
               border: `1px solid ${settingsPalette.borderSubtle}`,
-              backgroundColor: '#fff'
+              backgroundColor: 'var(--color-surface)'
             }}
           >
             <Typography variant="h6" sx={{ color: settingsPalette.accent, fontWeight: 700, mb: 1 }}>

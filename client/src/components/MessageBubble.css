@@ -3,8 +3,8 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  background-color: #F5EFFD;
-  border-bottom: 0.1rem solid black;
+  background-color: var(--color-surface);
+  border-bottom: 0.1rem solid var(--color-border-strong, black);
   padding-bottom: 1rem;
 }
 
@@ -34,7 +34,7 @@
 
 /* Area to the right of avatar icon; where all the text is */
 .chat-text-area {
-  background-color: #F5EFFD;
+  background-color: var(--color-surface);
   padding: 10px 14px;
   max-width: 80%;
   word-wrap: break-word;
@@ -59,7 +59,7 @@
 
 .chat-message.self .chat-text-area {
   font-family: var(--font-family-base);
-  background-color: #d1b2f5;
+  background-color: var(--accent-wash-strong);
   text-align: right;
 }
 
@@ -67,13 +67,13 @@
   font-family: var(--font-family-base);
   font-weight: 600;
   font-size: 0.85rem;
-  color: #F15BB5;
+  color: var(--accent-pink);
 }
 
 .chat-time {
   font-family: var(--font-family-base);
   font-size: 0.8rem;
-  color: #b6b6b6;
+  color: var(--color-text-secondary);
   margin-top: 3px;
 }
 
@@ -85,8 +85,8 @@
 }
 
 .chat-system-text {
-  background: linear-gradient(135deg, #ecf8fe, #f5effd);
-  border: 1px solid rgba(93, 56, 137, 0.2);
+  background: linear-gradient(135deg, var(--accent-wash), var(--accent-wash-strong));
+  border: 1px solid var(--accent-border, rgba(93, 56, 137, 0.2));
   border-radius: 12px;
   padding: 0.5rem 0.75rem;
   min-width: 220px;
@@ -96,25 +96,25 @@
 
 .chat-system-label {
   font-weight: 700;
-  color: #5D3889;
+  color: var(--accent-strong);
   font-size: 0.85rem;
 }
 
 .chat-system-body {
   margin: 0.2rem 0 0.1rem;
-  color: #1e1e1e;
+  color: var(--color-text-primary);
   font-size: 0.95rem;
 }
 
 .chat-system-time {
   font-size: 0.75rem;
-  color: #757575;
+  color: var(--color-text-secondary);
 }
 
 .chat-moderation-btn {
   padding: 4px;
-  color: #1e6ef5;
-  background-color: rgba(30, 110, 245, 0.12);
+  color: var(--accent-blue);
+  background-color: color-mix(in srgb, var(--accent-blue) 12%, transparent);
   border-radius: 8px;
   transition: color 120ms ease, background-color 120ms ease;
 }
@@ -125,8 +125,8 @@
 
 .chat-moderation-btn:hover,
 .chat-moderation-btn:focus-visible {
-  color: #7c4dff;
-  background-color: rgba(124, 77, 255, 0.16);
+  color: var(--accent-primary);
+  background-color: color-mix(in srgb, var(--accent-primary) 16%, transparent);
 }
 
 
@@ -134,7 +134,7 @@
   font-family: var(--font-family-base);
   margin-top: 2px;
   font-size: 0.9rem;
-  color: black;
+  color: var(--color-text-primary);
   white-space: pre-wrap;
   word-break: break-word;
 }

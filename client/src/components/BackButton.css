@@ -7,8 +7,8 @@
   z-index: 1000;
   
   height: 60px;
-  background: #d1b4f5;
-  border-bottom: 2px solid #000;
+  background: var(--header-bg, var(--color-surface));
+  border-bottom: 2px solid var(--color-border-strong);
   
   display: flex;
   justify-content: flex-start;
@@ -28,7 +28,7 @@
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: #4b208c;
+  color: var(--accent-strong);
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
@@ -39,7 +39,7 @@
 .back-button:hover {
   background: rgba(255, 255, 255, 0.2);
   transform: translateY(-2px);
-  color: #2d0068;
+  color: var(--accent-strong);
 }
 
 .back-button:active {
@@ -47,7 +47,7 @@
 }
 
 .back-button:focus-visible {
-  outline: 2px solid #4b208c;
+  outline: 2px solid var(--accent-strong);
   outline-offset: 3px;
 }
 
@@ -102,7 +102,7 @@
 .back-button:disabled:hover {
   background: transparent;
   transform: none;
-  color: #4b208c;
+  color: var(--accent-strong);
 }
 
 /* ===== Responsive Adjustments ===== */

@@ -1,14 +1,89 @@
 @import './styles/typography.css';
 
 :root {
+  /* Light theme tokens */
+  --color-surface: #ffffff;
+  --color-surface-wash: #f5effd;
+  --color-surface-wash-strong: #cdaef2;
+  --accent-primary: #9b5de5;
+  --accent-strong: #5d3889;
+  --accent-blue: #3eb8f0;
+  --accent-pink: #f15bb5;
+  --accent-wash: #f5effd;
+  --accent-wash-strong: #cdaef2;
+  --accent-border: rgba(93, 56, 137, 0.25);
+  --border-strong: rgba(93, 56, 137, 0.35);
+  --color-border-strong: var(--border-strong);
+  --danger: #ff3b30;
+  --accent-warn: #f5b25a;
+  --color-success: #10b981;
+  --page-bg: linear-gradient(135deg, var(--accent-wash) 0%, #ecf8fe 100%);
+  --header-bg: linear-gradient(135deg, var(--accent-wash-strong) 0%, var(--accent-wash) 100%);
+  --color-accent-primary: #9b5de5;
+  --color-accent-strong: #5d3889;
+  --color-accent-blue: #3eb8f0;
+  --color-accent-pink: #f15bb5;
+  --color-border-subtle: #d9cce9;
+  --color-text-primary: #0e0e0e;
+  --color-text-secondary: #4a3a63;
+  --color-text-strong: #0b0f16;
+  --color-text-on-accent: #ffffff;
+
   line-height: var(--line-height-base);
   font-weight: var(--font-weight-regular);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   background-color: #f9fafc;
-  color: #1b122a;
+  color: var(--color-text-primary);
   font-family: var(--font-family-base);
+}
+
+/* Explicit theme scopes so JS can flip classes for theme cycling */
+.theme-light {
+  --color-surface: #ffffff;
+  --color-surface-wash: #f5effd;
+  --color-surface-wash-strong: #cdaef2;
+  --accent-primary: #9b5de5;
+  --accent-strong: #5d3889;
+  --accent-blue: #3eb8f0;
+  --accent-pink: #f15bb5;
+  --accent-wash: #f5effd;
+  --accent-wash-strong: #cdaef2;
+  --accent-border: rgba(93, 56, 137, 0.25);
+  --border-strong: rgba(93, 56, 137, 0.35);
+  --color-border-strong: var(--border-strong);
+  --danger: #ff3b30;
+  --accent-warn: #f5b25a;
+  --color-success: #10b981;
+  --color-text-primary: #0e0e0e;
+  --color-text-secondary: #4a3a63;
+  --color-text-strong: #0b0f16;
+  --color-text-on-accent: #ffffff;
+}
+
+.theme-dark {
+  --color-surface: #1b1230;
+  --color-surface-wash: #0f0a1e;
+  --color-surface-wash-strong: #25183c;
+  --accent-primary: #c7a8ff;
+  --accent-strong: #a57be9;
+  --accent-blue: #7fd3ff;
+  --accent-pink: #ff8acb;
+  --accent-wash: #1f1536;
+  --accent-wash-strong: #2b1c4a;
+  --accent-border: rgba(199, 168, 255, 0.35);
+  --border-strong: rgba(199, 168, 255, 0.55);
+  --color-border-strong: var(--border-strong);
+  --danger: #ff6b6b;
+  --accent-warn: #f7c46c;
+  --color-success: #5ce4b5;
+  --color-text-primary: #f3efff;
+  --color-text-secondary: #cabaf0;
+  --color-text-strong: #f7f4ff;
+  --color-text-on-accent: #0e0a16;
+  --page-bg: radial-gradient(circle at 20% 20%, rgba(93, 56, 137, 0.12), transparent 45%), var(--color-surface, #1b1230);
+  --header-bg: linear-gradient(135deg, #2b1c4a 0%, #1f1536 100%);
 }
 
 a {
@@ -26,7 +101,7 @@ body {
   min-height: 100vh;
   display: block;
   background-color: #f9fafc;
-  color: #1b122a;
+  color: var(--color-text-primary);
   font-family: var(--font-family-base);
 }
 

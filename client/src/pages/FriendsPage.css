@@ -10,15 +10,16 @@
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  min-height: 100vh;
+  background: var(--page-bg, linear-gradient(135deg, #f5effd 0%, #ecf8fe 100%));
 }
 
 .friend-frame {
   --header-h: 72px;
-  width: 100vw;
-  height: 100vh;
-  background: white;
+  width: 100%;
+  min-height: 100vh;
+  background: var(--color-surface, #ffffff);
   border-radius: 0;
   display: flex;
   flex-direction: column;
@@ -31,8 +32,8 @@
   justify-content: space-between;
   padding: 0 1.5rem;
   gap: 0.5rem;
-  background: linear-gradient(135deg, #cdaef2 0%, #f5effd 100%);
-  border-bottom: 1px solid rgba(93, 56, 137, 0.25);
+  background: linear-gradient(135deg, var(--accent-wash-strong, #cdaef2) 0%, var(--accent-wash, #f5effd) 100%);
+  border-bottom: 1px solid var(--accent-border, rgba(93, 56, 137, 0.25));
   height: 72px;
   min-height: 72px;
 }
@@ -112,7 +113,7 @@
   padding: 2px 6px;
   border-radius: 999px;
   background: linear-gradient(135deg, #f15bb5 0%, #9b5de5 100%);
-  color: #ffffff;
+  color: var(--color-text-on-accent, #ffffff);
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1;
@@ -156,7 +157,13 @@
 .chat-friends-btn.MuiButton-contained {
   background: #9B5DE5;
   border-color: #9B5DE5;
-  color: #fff;
+  color: var(--color-text-on-accent, #fff);
+}
+
+.friends-list-search-bar-input-container input,
+.friends-list-search-bar-input-container .MuiOutlinedInput-root {
+  background: var(--color-surface, #fff);
+  color: var(--color-text-primary, #0e0e0e);
 }
 
 .chat-friends-btn.MuiButton-contained:hover {

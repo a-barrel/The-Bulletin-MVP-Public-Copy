@@ -1,8 +1,8 @@
 .debug-console-shell {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, #f5effd 0%, #ecf8fe 100%);
-  color: #1e1e1e;
+  background: var(--page-bg, var(--color-surface));
+  color: var(--color-text-primary, var(--color-text));
 }
 
 .debug-console-shell::before {
@@ -14,20 +14,20 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  background: #ffffff;
-  border: 1px solid #cdaef2;
-  box-shadow: 0 10px 24px rgba(93, 56, 137, 0.08);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent-strong) 10%, transparent);
   padding: 1.1rem 1.3rem;
   border-radius: 16px;
 }
 
 .debug-console-title {
-  color: #5d3889;
+  color: var(--accent-strong);
   letter-spacing: 0.01em;
 }
 
 .debug-console-subtitle {
-  color: #3b2161;
+  color: var(--color-text-secondary);
   margin-top: 0.2rem;
 }
 
@@ -37,22 +37,22 @@
   justify-content: center;
   padding: 0.35rem 0.75rem;
   border-radius: 999px;
-  background: #5d3889;
-  color: #ffffff;
+  background: var(--accent-strong);
+  color: var(--color-text-on-accent);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  box-shadow: 0 8px 16px rgba(93, 56, 137, 0.2);
+  box-shadow: 0 8px 16px color-mix(in srgb, var(--accent-strong) 18%, transparent);
 }
 
 .debug-console-tabs {
-  background: #ffffff;
-  border: 1px solid #cdaef2;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
 }
 
 .debug-console-tabs .MuiTabs-indicator {
-  background: #5d3889;
+  background: var(--accent-strong);
   height: 3px;
   border-radius: 999px;
 }
@@ -62,32 +62,32 @@
   padding: 10px 14px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: #1f1336 !important;
+  color: var(--color-text-primary) !important;
   transition: background 120ms ease, color 120ms ease;
 }
 
 .debug-console-tab.Mui-selected {
-  color: #5d3889 !important;
-  background: rgba(93, 56, 137, 0.08);
+  color: var(--accent-strong) !important;
+  background: color-mix(in srgb, var(--accent-strong) 12%, transparent);
   font-weight: 700;
 }
 
 .debug-console-tab:hover {
-  background: rgba(93, 56, 137, 0.12);
+  background: color-mix(in srgb, var(--accent-strong) 16%, transparent);
 }
 
 .debug-console-tab:focus-visible {
-  outline: 2px solid #3eb8f0;
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
 
 .debug-panel {
   position: relative;
-  background: #ffffff;
-  border: 1px solid #e6d6fa;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
   border-radius: 14px;
-  color: #1e1e1e;
+  color: var(--color-text-primary);
 }
 
 .debug-panel::after {
@@ -95,110 +95,110 @@
 }
 
 .debug-panel h6 {
-  color: #5d3889;
+  color: var(--accent-strong);
   letter-spacing: 0.01em;
 }
 
 .debug-panel .MuiTypography-root {
-  color: #1e1e1e;
+  color: var(--color-text-primary);
 }
 
 .debug-panel .MuiButton-contained {
-  background: #5d3889;
-  color: #ffffff;
-  box-shadow: 0 6px 14px rgba(93, 56, 137, 0.25);
+  background: var(--accent-strong);
+  color: var(--color-text-on-accent);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--accent-strong) 24%, transparent);
   font-weight: 700;
 }
 
 .debug-panel .MuiButton-contained:hover {
-  background: #4a2c73;
+  background: color-mix(in srgb, var(--accent-strong) 90%, transparent);
 }
 
 .debug-panel .MuiButton-outlined {
-  border-color: #5d3889;
-  color: #5d3889;
+  border-color: var(--accent-strong);
+  color: var(--accent-strong);
 }
 
 .debug-panel .MuiButton-outlined:hover {
-  border-color: #3b2161;
-  background: rgba(93, 56, 137, 0.08);
+  border-color: color-mix(in srgb, var(--accent-strong) 80%, transparent);
+  background: color-mix(in srgb, var(--accent-strong) 12%, transparent);
 }
 
 .debug-panel .MuiButton-text {
-  color: #5d3889;
+  color: var(--accent-strong);
 }
 
 .debug-panel .MuiFormLabel-root.Mui-focused {
-  color: #5d3889;
+  color: var(--accent-strong);
 }
 
 .debug-panel .MuiInputBase-root {
-  background: #f5effd;
+  background: var(--color-surface-wash);
   border-radius: 10px;
-  color: #1e1e1e;
+  color: var(--color-text-primary);
 }
 
 .debug-panel .MuiInputBase-input::placeholder {
-  color: #757575;
+  color: var(--color-text-secondary);
   opacity: 1;
 }
 
 .debug-panel .MuiOutlinedInput-notchedOutline {
-  border-color: #cdaef2;
+  border-color: var(--color-border);
 }
 
 .debug-panel .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
-  border-color: #5d3889;
-  box-shadow: 0 0 0 2px rgba(93, 56, 137, 0.16);
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-strong) 16%, transparent);
 }
 
 .debug-panel .MuiInputBase-root.Mui-focused {
-  box-shadow: 0 0 0 2px rgba(93, 56, 137, 0.1);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-strong) 12%, transparent);
 }
 
 .debug-panel .MuiSelect-icon {
-  color: #5d3889;
+  color: var(--accent-strong);
 }
 
 .debug-panel .MuiAlert-root {
   border-radius: 12px;
-  border: 1px solid #cdaef2;
-  background: #f5effd;
-  color: #1e1e1e;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-wash);
+  color: var(--color-text-primary);
 }
 
 .debug-panel .MuiAlert-standardInfo {
-  border-color: #3eb8f0;
-  background: #ecf8fe;
-  color: #043c63;
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 12%, var(--color-surface));
+  color: var(--color-text-primary);
 }
 
 .debug-panel .MuiAlert-standardSuccess {
-  border-color: #34c759;
-  background: #e6f9ee;
-  color: #0f5132;
+  border-color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface));
+  color: var(--color-text-primary);
 }
 
 .debug-panel .MuiAlert-standardWarning {
-  border-color: #ffcc00;
-  background: #fff7d6;
-  color: #7a5c00;
+  border-color: var(--accent-warn);
+  background: color-mix(in srgb, var(--accent-warn) 12%, var(--color-surface));
+  color: var(--color-text-primary);
 }
 
 .debug-panel .MuiAlert-standardError {
-  border-color: #ff3b30;
-  background: #ffe9e6;
-  color: #8c1f16;
+  border-color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
+  color: var(--color-text-primary);
 }
 
 .debug-panel .MuiLink-root {
-  color: #3eb8f0;
+  color: var(--accent-primary);
 }
 
 .debug-json-preview {
-  background: #f5effd;
-  border: 1px solid #cdaef2;
-  color: #1e1e1e;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
   font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 0.9rem;
   border-radius: 12px;

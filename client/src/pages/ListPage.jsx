@@ -564,15 +564,14 @@ function ListPage() {
           onToggleHideFullEvents={handleHideFullEventsToggle}
           isSavingHideFullPreference={isSavingHideFullPreference}
           hideFullPreferenceError={hideFullPreferenceError}
-          totalResults={totalResults}
-          totalPages={totalPages}
-          currentPage={currentPage}
-          onPageChange={handlePageChange}
-          pageSize={LIST_PAGE_SIZE}
-          paginationSx={paginationSx}
-          onCreatePin={handleCreatePin}
-          isOffline={isOffline}
-        />
+        totalResults={totalResults}
+        totalPages={totalPages}
+        currentPage={currentPage}
+        onPageChange={handlePageChange}
+        pageSize={LIST_PAGE_SIZE}
+        paginationSx={paginationSx}
+        isOffline={isOffline}
+      />
 
         {hideFullPreferenceError ? (
           <p className="topbar-pref-error" role="status">

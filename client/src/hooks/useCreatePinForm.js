@@ -55,7 +55,7 @@ const PIN_TYPE_THEMES = {
     headerSubtitleColor: 'rgba(18, 10, 36, 0.75)',
     ctaBackground: '#3EB8F0',
     ctaHoverBackground: '#2A97C9',
-    ctaTextColor: '#FFFFFF'
+    ctaTextColor: 'var(--color-text-on-accent, #FFFFFF)'
   },
   discussion: {
     headerBackground: 'linear-gradient(135deg, #ECF8FE 0%, #3EB8F0 100%)',
@@ -63,7 +63,7 @@ const PIN_TYPE_THEMES = {
     headerSubtitleColor: 'rgba(4, 30, 51, 0.75)',
     ctaBackground: '#F15BB5',
     ctaHoverBackground: '#D9489D',
-    ctaTextColor: '#FFFFFF'
+    ctaTextColor: 'var(--color-text-on-accent, #FFFFFF)'
   }
 };
 

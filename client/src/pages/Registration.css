@@ -9,13 +9,13 @@
 
 /* Submit */
 .register-submit {
-  background: #CDAEF2;
+  background: var(--color-surface-wash-strong);
   margin-top: 2rem;
   min-height: 52px;
 }
 
 .register-submit:hover { 
-  background: #9a7fff; 
+  background: color-mix(in srgb, var(--accent-primary) 65%, transparent); 
 }
 
 /* Tablets */
@@ -36,7 +36,7 @@
   .register-page {
     justify-content: flex-start;      
     align-items: center; 
-    background: #111;
+    background: var(--color-surface-wash);
     height: 100vh;
     overflow: hidden;        
     margin-top: -1.5vh;

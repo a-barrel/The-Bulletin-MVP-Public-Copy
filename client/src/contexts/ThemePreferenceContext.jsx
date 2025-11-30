@@ -1,29 +1,22 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 const ThemePreferenceContext = createContext({
-  theme: 'system',
+  theme: 'light',
   resolvedMode: 'light',
   setTheme: () => {},
   cycleTheme: () => {},
-  themeOrder: ['system', 'light', 'dark']
+  themeOrder: ['light', 'dark']
 });
 
-const THEME_ORDER = ['system', 'light', 'dark'];
+const THEME_ORDER = ['light', 'dark'];
 const STORAGE_KEY = 'pinpoint:themePreference';
 
-const readSystemMode = () => {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-    return 'light';
-  }
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-};
-
-const normalizeThemeValue = (value) => (THEME_ORDER.includes(value) ? value : 'system');
+const normalizeThemeValue = (value) => (THEME_ORDER.includes(value) ? value : 'light');
 
 export function ThemePreferenceProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
     if (typeof window === 'undefined') {
-      return 'system';
+      return 'light';
     }
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -33,22 +26,8 @@ export function ThemePreferenceProvider({ children }) {
     } catch {
       // ignore storage failures
     }
-    return 'system';
+    return 'light';
   });
-
-  const [systemMode, setSystemMode] = useState(readSystemMode);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
-      const media = window.matchMedia('(prefers-color-scheme: dark)');
-      const handler = (event) => {
-        setSystemMode(event.matches ? 'dark' : 'light');
-      };
-      media.addEventListener('change', handler);
-      return () => media.removeEventListener('change', handler);
-    }
-    return undefined;
-  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -80,7 +59,11 @@ export function ThemePreferenceProvider({ children }) {
         (event.ctrlKey || event.metaKey) &&
         event.altKey &&
         (event.key === 't' || event.key === 'T');
+      const isAlternateHotkey = !event.ctrlKey && !event.metaKey && event.altKey && (event.key === '`' || event.code === 'Backquote');
       if (isThemeHotkey) {
+        event.preventDefault();
+        cycleTheme();
+      } else if (isAlternateHotkey) {
         event.preventDefault();
         cycleTheme();
       }
@@ -89,7 +72,16 @@ export function ThemePreferenceProvider({ children }) {
     return () => window.removeEventListener('keydown', handler);
   }, [cycleTheme]);
 
-  const resolvedMode = theme === 'system' ? systemMode : theme;
+  const resolvedMode = theme;
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    const lightClass = 'theme-light';
+    const darkClass = 'theme-dark';
+    root.classList.remove(lightClass, darkClass);
+    root.classList.add(resolvedMode === 'dark' ? darkClass : lightClass);
+  }, [resolvedMode]);
 
   const value = useMemo(
     () => ({

@@ -9,14 +9,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: white;
+  background-color: var(--color-surface);
   padding: 0.2rem 1rem !important;
 }
 
 .dm-header-title {
   font-family: 'Urbanist', sans-serif !important;
   font-weight: 600 !important;
-  color: black !important;
+  color: var(--color-text-primary) !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
@@ -31,7 +31,7 @@
 .dm-refresh-btn {
   width: 34px;
   height: 34px;
-  color: #5D3889 !important;
+  color: var(--accent-strong) !important;
   margin-left: 0.25rem !important;
 }
 
@@ -40,7 +40,7 @@
   margin: 4px 8px;
   padding: 8px 12px !important;
   transition: background-color 0.2s ease;
-  background-color: white !important;
+  background-color: var(--color-surface) !important;
 }
 
 .dm-avatar {
@@ -48,7 +48,7 @@
 }
 
 .dm-card.Mui-selected {
-  background-color: #d9f2ffff !important; 
+  background-color: var(--color-surface-wash) !important;
 }
 
 .dm-card .MuiListItemAvatar-root {
@@ -62,7 +62,7 @@
 .dm-card-name {
   font-family: 'Urbanist', sans-serif !important;
   font-weight: 600 !important;
-  color: black !important;
+  color: var(--color-text-primary) !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
@@ -76,13 +76,13 @@
 
 .dm-card-timestamp {
   font-size: 0.7rem !important;
-  color: gray !important;
+  color: var(--color-text-secondary) !important;
 }
 
 .dm-card-active-label {
   font-size: 0.7rem !important;
   font-weight: 600;
-  color: #3EB8F0; 
+  color: var(--accent-primary);
 }
 
 .has-no-dms-container {
@@ -92,10 +92,10 @@
   text-align: center !important;
   justify-content: center !important;
   padding: 12px !important;
-  background-color: white !important;
+  background-color: var(--color-surface) !important;
 }
 
 .has-no-dms-body-text {
   font-family: 'Urbanist', sans-serif !important;
-  color: black !important;
+  color: var(--color-text-primary) !important;
 }

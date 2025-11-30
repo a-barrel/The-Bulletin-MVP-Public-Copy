@@ -1,5 +1,5 @@
 body {
-  background-color: #ffffff;
+  background-color: var(--color-surface, #ffffff);
 }
 
 /* History tab palette/spacing (Style Guide: docs/style/style-guide.md, docs/style/light_mode_colorpalate.md)
@@ -96,7 +96,7 @@ body {
   border: 1px solid var(--history-border);
   border-radius: 14px;
   padding: 1.1rem 1.1rem 1.1rem 1.25rem;
-  background: #ffffff;
+  background: var(--color-surface, #ffffff);
   display: flex;
   flex-direction: row;
   align-items: stretch;

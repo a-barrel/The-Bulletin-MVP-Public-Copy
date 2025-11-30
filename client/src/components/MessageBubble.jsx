@@ -249,13 +249,13 @@ function MessageBubble({
                 disableRipple
                 sx={{
                   ml: 0.5,
-                  color: '#d84315',
-                  backgroundColor: 'rgba(216, 67, 21, 0.12)',
+                  color: 'var(--color-danger)',
+                  backgroundColor: 'color-mix(in srgb, var(--color-danger) 12%, transparent)',
                   borderRadius: '8px',
                   transition: 'color 120ms ease, background-color 120ms ease',
                   '&:hover, &:focus-visible': {
-                    color: '#ef6c00',
-                    backgroundColor: 'rgba(239, 108, 0, 0.16)'
+                    color: 'color-mix(in srgb, var(--color-danger) 85%, var(--color-danger))',
+                    backgroundColor: 'color-mix(in srgb, var(--color-danger) 16%, transparent)'
                   }
                 }}
               >
@@ -272,13 +272,13 @@ function MessageBubble({
                 disableRipple
                 sx={{
                   ml: 0.5,
-                  color: '#1e6ef5',
-                  backgroundColor: 'rgba(30, 110, 245, 0.12)',
+                  color: 'var(--accent-primary)',
+                  backgroundColor: 'color-mix(in srgb, var(--accent-primary) 12%, transparent)',
                   borderRadius: '8px',
                   transition: 'color 120ms ease, background-color 120ms ease',
                   '&:hover, &:focus-visible': {
-                    color: '#7c4dff',
-                    backgroundColor: 'rgba(124, 77, 255, 0.16)'
+                    color: 'var(--accent-strong)',
+                    backgroundColor: 'color-mix(in srgb, var(--accent-strong) 16%, transparent)'
                   }
                 }}
               >

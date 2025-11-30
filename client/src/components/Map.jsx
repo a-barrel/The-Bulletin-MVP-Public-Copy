@@ -702,7 +702,7 @@ const Map = ({
                   height: '32px',
                   borderRadius: '50%',
                   objectFit: 'cover',
-                  border: '2px solid rgba(93,56,137,0.35)'
+                  border: '2px solid var(--border-strong)'
                 }}
               />
               <div style={{ fontSize: '0.85rem', lineHeight: 1.2 }}>
@@ -720,8 +720,8 @@ const Map = ({
                   padding: '0.35rem 0.75rem',
                   borderRadius: '999px',
                   border: 'none',
-                  backgroundColor: '#3EB8F0',
-                  color: '#fff',
+                  backgroundColor: 'var(--accent-primary)',
+                  color: 'var(--color-text-on-accent)',
                   fontSize: '0.85rem',
                   cursor: 'pointer'
                 }}
@@ -926,7 +926,7 @@ const Map = ({
         <Circle
           center={userMarkerPosition}
           radius={userRadiusMeters}
-          pathOptions={{ color: '#2196f3', fillColor: '#2196f3', fillOpacity: 0.15, weight: 1.5 }}
+          pathOptions={{ color: 'var(--accent-primary)', fillColor: 'var(--accent-primary)', fillOpacity: 0.15, weight: 1.5 }}
         />
       )}
 
@@ -967,11 +967,11 @@ const Map = ({
           }
         };
         const popupContent = renderPinPopup(pin, null, null, false, canViewChatRoom, handleViewChatRoom);
-        let color = '#ff7043';
+        let color = 'var(--accent-strong)';
         if (pin.chatRoomCategory === 'mine') {
-          color = '#3EB8F0';
+          color = 'var(--accent-primary)';
         } else if (pin.type === 'global-chat-room') {
-          color = '#ffb300';
+          color = 'var(--accent-warn)';
         }
         const isSelected = pin._id && pin._id === selectedPinId;
         const radius = isSelected ? 12 : 8;
@@ -1050,7 +1050,7 @@ const Map = ({
             position: 'absolute',
             inset: 0,
             backgroundColor: 'rgba(9, 13, 20, 0.85)',
-            color: '#fff',
+            color: 'var(--color-text-on-accent)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -1072,8 +1072,8 @@ const Map = ({
               onClick={handleRetryTiles}
               style={{
                 border: 'none',
-                backgroundColor: '#90caf9',
-                color: '#0b0f16',
+                backgroundColor: 'var(--accent-primary)',
+                color: 'var(--color-text-strong)',
                 fontWeight: 600,
                 padding: '8px 18px',
                 borderRadius: '999px',

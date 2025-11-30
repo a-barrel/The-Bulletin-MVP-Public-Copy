@@ -32,16 +32,16 @@
   font-size: 0.9rem;
   font-weight: 500;
   white-space: nowrap;
-  color: #333;
+  color: var(--color-text-secondary);
 }
 
 .distance-text {
-  color: #5D3889;
+  color: var(--accent-strong);
   font-weight: 600;
 }
 
 .expiration-text {
-  color: #F15BB5;
+  color: var(--accent-primary);
   font-weight: 600;
 }
 

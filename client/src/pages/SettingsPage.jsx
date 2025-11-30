@@ -346,7 +346,7 @@ function SettingsPage() {
           sx={{
             p: { xs: 2, md: 3 },
             borderRadius: 4,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: 'var(--color-surface, #FFFFFF)',
             border: `1px solid ${settingsPalette.borderSubtle}`,
             boxShadow: '0 25px 65px rgba(93, 56, 137, 0.15)'
           }}
@@ -474,7 +474,7 @@ function SettingsPage() {
                   p: 2.5,
                   borderRadius: 3,
                   border: `1px solid ${settingsPalette.borderSubtle}`,
-                  backgroundColor: '#fff'
+                  backgroundColor: 'var(--color-surface, #fff)'
                 }}
               >
                 <Typography variant="h6" sx={{ color: settingsPalette.accent, fontWeight: 700, mb: 1 }}>

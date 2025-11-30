@@ -123,7 +123,7 @@ function HelpAbout({ routes, onNavigate }) {
               p: 2,
               borderRadius: 3,
               border: `1px solid ${settingsPalette.borderSubtle}`,
-              backgroundColor: '#fff',
+              backgroundColor: 'var(--color-surface)',
               boxShadow: settingsPalette.shadowSoft
             }}
           >

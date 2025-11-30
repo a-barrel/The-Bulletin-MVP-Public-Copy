@@ -142,7 +142,6 @@ function AppearanceSettings({
               '& .MuiSelect-icon': { color: settingsPalette.accentHover }
             }}
           >
-            <MenuItem value="system">Match system</MenuItem>
             <MenuItem value="light">Light</MenuItem>
             <MenuItem value="dark">Dark</MenuItem>
           </Select>

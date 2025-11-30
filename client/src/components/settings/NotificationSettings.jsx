@@ -107,22 +107,22 @@ function NotificationSettings({
             </Typography>
           )}
         </Stack>
-        <Chip
-          icon={<AccessTimeIcon fontSize="small" />}
-          label={muteStatusLabel}
-          size="small"
-          sx={{
-            alignSelf: 'flex-start',
-            mt: 2,
-            backgroundColor: isMuteActive ? '#FFE5E0' : settingsPalette.pastelBlue,
-            border: `1px solid ${isMuteActive ? '#FF3B30' : settingsPalette.accentLight}`,
-            color: isMuteActive ? '#B3261E' : settingsPalette.textPrimary,
-            fontWeight: 600,
-            '& .MuiChip-icon': {
-              color: isMuteActive ? '#B3261E' : settingsPalette.accent
-            }
-          }}
-        />
+          <Chip
+            icon={<AccessTimeIcon fontSize="small" />}
+            label={muteStatusLabel}
+            size="small"
+            sx={{
+              alignSelf: 'flex-start',
+              mt: 2,
+              backgroundColor: isMuteActive ? 'color-mix(in srgb, var(--danger) 12%, var(--color-surface))' : settingsPalette.pastelBlue,
+              border: `1px solid ${isMuteActive ? 'var(--danger)' : settingsPalette.accentLight}`,
+              color: isMuteActive ? 'var(--danger)' : settingsPalette.textPrimary,
+              fontWeight: 600,
+              '& .MuiChip-icon': {
+                color: isMuteActive ? 'var(--danger)' : settingsPalette.accent
+              }
+            }}
+          />
       </SettingsAccordion>
 
       <SettingsAccordion
@@ -157,7 +157,7 @@ function NotificationSettings({
               sx={{
                 borderRadius: 2,
                 color: settingsPalette.textPrimary,
-                '& .MuiSelect-select': { borderRadius: 2, backgroundColor: '#FFFFFF' },
+                '& .MuiSelect-select': { borderRadius: 2, backgroundColor: 'var(--color-surface)' },
                 '& fieldset': { borderColor: settingsPalette.borderSubtle, borderRadius: 2 }
               }}
             >
@@ -191,7 +191,7 @@ function NotificationSettings({
               sx={{
                 borderRadius: 2,
                 color: settingsPalette.textPrimary,
-                '& .MuiSelect-select': { borderRadius: 2, backgroundColor: '#FFFFFF' },
+                '& .MuiSelect-select': { borderRadius: 2, backgroundColor: 'var(--color-surface)' },
                 '& fieldset': { borderColor: settingsPalette.borderSubtle, borderRadius: 2 }
               }}
             >

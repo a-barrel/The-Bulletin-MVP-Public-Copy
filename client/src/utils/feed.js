@@ -1,17 +1,29 @@
 import resolveAssetUrl from './media';
 import toIdString from './ids';
 
-const PLACEHOLDER_COLORS = [
-  '#7c3aed',
-  '#f97316',
-  '#22d3ee',
-  '#facc15',
-  '#10b981',
-  '#f43f5e',
-  '#38bdf8',
-  '#a855f7',
-  '#f59e0b'
+const readCssVar = (name, fallback) => {
+  if (typeof window !== 'undefined' && window.getComputedStyle) {
+    const val = window
+      .getComputedStyle(document.documentElement)
+      .getPropertyValue(name)
+      .trim();
+    if (val) return val;
+  }
+  return fallback;
+};
+
+const PLACEHOLDER_COLOR_ENTRIES = [
+  { varName: '--accent-strong', fallback: 'var(--accent-strong)' },
+  { varName: '--accent-warn', fallback: 'var(--accent-warn)' },
+  { varName: '--accent-blue', fallback: 'var(--accent-blue)' },
+  { varName: '--color-success', fallback: 'var(--color-success)' },
+  { varName: '--accent-pink', fallback: 'var(--accent-pink)' },
+  { varName: '--accent-primary', fallback: 'var(--accent-primary)' }
 ];
+
+const PLACEHOLDER_COLORS = PLACEHOLDER_COLOR_ENTRIES.map((entry) =>
+  readCssVar(entry.varName, entry.fallback)
+);
 
 const buildPlaceholderAvatar = (seed = 0) => {
   const normalizedSeed = Number.isFinite(seed) ? Math.abs(Math.floor(seed)) : 0;
