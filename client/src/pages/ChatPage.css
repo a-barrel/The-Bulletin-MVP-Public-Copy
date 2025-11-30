@@ -492,8 +492,20 @@
 
 /* Select Chatroom/DM overlay */
 .channel-switch-overlay {
-  background-color: none;
-} 
+  z-index: 2100;
+}
+
+.channel-switch-overlay .MuiBackdrop-root {
+  z-index: 2100;
+}
+
+.channel-switch-overlay .MuiDialog-container {
+  z-index: 2101;
+}
+
+.channel-switch-overlay .MuiPaper-root {
+  z-index: 2102;
+}
 
 .channel-switch-header {
   display: flex;
