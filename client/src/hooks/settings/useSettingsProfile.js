@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchCurrentUserProfile } from '../../api';
 import reportClientError from '../../utils/reportClientError';
-import { DEFAULT_SETTINGS, roundRadius } from '../useSettingsManager';
+import { DEFAULT_SETTINGS, SUPPORTED_THEMES, roundRadius } from '../useSettingsManager';
 import { useUserCache } from '../../contexts/UserCacheContext';
 
 const QUIET_HOUR_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
@@ -28,7 +28,9 @@ const normalizeQuietHours = (input) => {
 };
 
 const hydrateSettingsFromProfile = (result) => ({
-  theme: result?.preferences?.theme ?? DEFAULT_SETTINGS.theme,
+  theme: SUPPORTED_THEMES.includes(result?.preferences?.theme)
+    ? result?.preferences?.theme
+    : DEFAULT_SETTINGS.theme,
   radiusPreferenceMeters: roundRadius(result?.preferences?.radiusPreferenceMeters),
   locationSharingEnabled: false,
   filterCussWords: result?.preferences?.filterCussWords ?? DEFAULT_SETTINGS.filterCussWords,

@@ -58,25 +58,45 @@ function PinCardOverlay({ position, children }) {
 
   return null;
 }
-// Fix for default marker icons in Leaflet with React
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+const markerStyleMap = {
+  default: { fill: 'var(--accent-primary)', stroke: 'var(--accent-strong)' },
+  event: { fill: 'var(--accent-primary)', stroke: 'var(--accent-strong)' },
+  discussion: { fill: 'var(--accent-pink)', stroke: 'var(--accent-strong)' },
+  personal: { fill: 'var(--accent-warn)', stroke: 'var(--accent-warn)' },
+  full: { fill: 'var(--danger)', stroke: 'var(--danger)' },
+  friend: { fill: 'var(--color-success)', stroke: 'var(--color-success)' },
+  nearby: { fill: 'var(--accent-warn)', stroke: 'var(--accent-warn)' },
+  discussionSoon: { fill: 'var(--color-text-on-accent)', stroke: 'var(--accent-strong)' },
+  eventSoon: { fill: 'var(--accent-warn)', stroke: 'var(--accent-warn)' },
+  popular: { fill: 'var(--accent-pink)', stroke: 'var(--accent-strong)' },
+  open: { fill: 'var(--accent-warn)', stroke: 'var(--accent-warn)' },
+  featured: { fill: 'var(--accent-primary)', stroke: 'var(--accent-strong)' },
+  bookmarked: { fill: 'var(--accent-strong)', stroke: 'var(--accent-strong)' },
+  chatMine: { fill: 'var(--accent-primary)', stroke: 'var(--accent-strong)' },
+  chatAdmin: { fill: 'var(--accent-primary)', stroke: 'var(--accent-strong)' },
+  teleport: { fill: 'var(--color-text-strong)', stroke: 'var(--color-surface)' }
+};
 
-// Custom marker icons
-const createMarkerIcon = (key, extraClassName) =>
-  new L.Icon({
-    iconUrl: MAP_MARKER_ICON_URLS[key] ?? MAP_MARKER_ICON_URLS.default,
-    shadowUrl: MAP_MARKER_SHADOW_URL,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
-    className: ['leaflet-marker-icon', extraClassName].filter(Boolean).join(' ')
+// Custom marker icons (theme-aware div icons)
+const createMarkerIcon = (key, extraClassName) => {
+  const palette = markerStyleMap[key] || markerStyleMap.default;
+  const classNames = ['leaflet-marker-icon', 'theme-pin-marker', `theme-pin-marker--${key || 'default'}`, extraClassName]
+    .filter(Boolean)
+    .join(' ');
+  return L.divIcon({
+    className: classNames,
+    html: `<span class="theme-pin-marker__dot" style="--pin-fill:${palette.fill};--pin-stroke:${palette.stroke};"></span>`,
+    iconSize: [28, 36],
+    iconAnchor: [14, 34],
+    popupAnchor: [0, -30],
+    shadowSize: [0, 0],
+    tooltipAnchor: [0, -28],
+    bgPos: null,
+    // pass through fill/stroke via CSS vars
+    extraClasses: undefined,
+    ...(palette ? { options: {} } : {})
   });
+};
 
 const markerIconCache = new globalThis.Map();
 const getMarkerIconByKey = (key, extraClassName) => {
@@ -337,7 +357,7 @@ const resolvePinIcon = (pin) => {
   }
   const normalizedType = typeof pin?.type === 'string' ? pin.type.toLowerCase() : '';
   const colorKey =
-    typeof pin?.mapColorKey === 'string' && MAP_MARKER_ICON_URLS[pin.mapColorKey]
+    typeof pin?.mapColorKey === 'string' && markerStyleMap[pin.mapColorKey]
       ? pin.mapColorKey
       : null;
   const extraClass = pin?.mapMeta?.isPopular ? 'popular-pin-icon' : undefined;

@@ -9,7 +9,7 @@
   display: flex;
   justify-content: center;
   align-items: stretch;
-  background: var(--page-bg, linear-gradient(135deg, #f5effd 0%, #ecf8fe 100%));
+  background: var(--page-bg));
   width: 100%;
   min-height: 100vh;
 }
@@ -19,13 +19,14 @@
   width: 100%;
   max-width: none;
   min-height: 100vh;
-  background: var(--color-surface, #fff);
-  color: var(--color-text-primary, #111);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
   border-radius: 0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  padding-bottom: 96px; /* space for bottom nav */
+  padding-bottom: calc(130px + env(safe-area-inset-bottom, 0)); /* space for bottom nav */
+  scroll-padding-bottom: calc(130px + env(safe-area-inset-bottom, 0));
 }
 
 .list-page .feed {
@@ -34,6 +35,7 @@
   gap: 1.1rem;
   width: 100%;
   margin: 0 auto;
+  padding-bottom: calc(130px + env(safe-area-inset-bottom, 0)); /* keep clear of bottom nav */
 }
 
 .list-pagination {
@@ -47,7 +49,7 @@
 
 .list-pagination__summary {
   font-weight: 600;
-  color: var(--accent-strong, #5D3889);
+  color: var(--accent-strong);
   font-size: 0.95rem;
 }
 
@@ -59,7 +61,7 @@
 
 .topbar-pref-error {
   font-size: 0.8rem;
-  color: var(--color-danger, #b3261e);
+  color: var(--danger);
   font-weight: 600;
   margin: 0 0 0.5rem 0.25rem;
 }
@@ -88,7 +90,7 @@
   position: sticky;
   top: 0;
   z-index: 30;
-  background: var(--header-bg, linear-gradient(135deg, #cdaef2 0%, #f5effd 100%));
+  background: var(--header-bg));
 
   /* stretch edge-to-edge inside .list-frame (which has 0 1rem padding) */
   margin-left: -1rem;
@@ -101,12 +103,12 @@
   align-items: center;
   justify-content: space-between;
 
-  border-bottom: 2px solid var(--accent-strong, #5D3889);
+  border-bottom: 2px solid var(--accent-strong);
   /* transform: translateY(-1px); <-- remove this if you see a 1px jump */
 }
 
 .header-title {
-  color: var(--accent-strong, #5D3889);
+  color: var(--accent-strong);
   font-size: 2.2rem;
   font-weight: 700;
   text-align: center;
@@ -136,8 +138,8 @@
   height: 22px;
   padding: 0 6px;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--accent-pink, #f15bb5) 0%, var(--accent-primary, #9b5de5) 100%);
-  color: var(--color-text-on-accent, #fff);
+  background: linear-gradient(135deg, var(--accent-pink) 0%, var(--accent-primary) 100%);
+  color: var(--color-text-on-accent);
   font-size: 0.75rem;
   font-weight: 700;
   display: inline-flex;
@@ -157,7 +159,7 @@
   position: sticky;
   top: calc(var(--header-h) - 0px);  /* sit right below header */
   z-index: 25;
-  background: var(--color-surface, #fff);
+  background: var(--color-surface);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -171,7 +173,7 @@
 
 .topbar-hide-own {
   margin-left: 0.75rem;
-  color: #111;
+  color: var(--color-text-primary);
 }
 
 .topbar-hide-own .MuiTypography-root {
@@ -184,6 +186,7 @@
   width: 40px;
   height: 50px;
   background-color: transparent;
+  color: var(--color-text-primary);
   border: none;
   border-radius: 12px;
   display: flex;
@@ -191,6 +194,9 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.15s ease;
+}
+.icon-btn svg {
+  color: inherit;
 }
 .icon-btn:hover {
   transform: scale(1.05);
@@ -204,12 +210,12 @@
 }
 
 .icon-btn.active {
-  background-color: rgba(93, 56, 137, 0.12);
+  background-color: color-mix(in srgb, var(--accent-strong) 12%, transparent);
   border-radius: 12px;
 }
 
 .icon-btn.open {
-  box-shadow: 0 0 0 2px rgba(93, 56, 137, 0.25);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-strong) 25%, transparent);
   border-radius: 12px;
 }
 
@@ -224,7 +230,7 @@
 .clear-filters-link {
   background: none;
   border: none;
-  color: #5d3889;
+  color: var(--accent-strong);
   cursor: pointer;
   font-size: 0.85rem;
   text-decoration: underline;
@@ -232,7 +238,7 @@
 
 .clear-filters-link:hover,
 .clear-filters-link:focus-visible {
-  color: #2d1b44;
+  color: color-mix(in srgb, var(--accent-strong) 80%, transparent);
 }
 
 /* Sort section */
@@ -244,7 +250,7 @@
 }
 
 .sort-label {
-  color: #333;
+  color: var(--color-text-primary);
   font-weight: 600;
   margin-right: -15px; /* ⬅️ bring “Distance” closer */
 }
@@ -252,7 +258,7 @@
 .sort-link {
   border: none;
   background: transparent;
-  color: black;
+  color: var(--color-text-primary);
   font-size: 1.2rem;
   font-weight: 600;
   cursor: pointer;
@@ -271,7 +277,7 @@
   justify-content: center;
   width: 56px;
   height: 30px;
-  background-color: #cdaef2;
+  background-color: var(--accent-wash-strong);
   border-radius: 50px;
   position: relative;
   cursor: pointer;
@@ -282,18 +288,18 @@
 .toggle-circle {
   width: 24px;
   height: 24px;
-  background-color: #fff;
+  background-color: var(--color-surface);
   border-radius: 50%;
   position: absolute;
   top: 3px;
   left: 3px;
   transition: left 0.25s ease;
 }
-.toggle-container.active { background-color: #5D3889; }
+.toggle-container.active { background-color: var(--accent-strong); }
 .toggle-container.active .toggle-circle { left: 25px; }
 
 .toggle-container:focus-visible {
-  outline: 2px solid #d1b4f5;
+  outline: 2px solid var(--color-border-strong);
   outline-offset: 3px;
 }
 

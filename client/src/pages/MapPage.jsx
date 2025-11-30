@@ -547,7 +547,7 @@ function MapPage() {
       {
         key: 'full-events',
         label: 'Full events',
-        iconUrl: MAP_MARKER_ICON_URLS.full,
+        iconClassName: 'full',
         ariaLabel: showFullEvents ? 'Showing full events' : 'Hiding full events',
         checked: showFullEvents,
         onChange: handleToggleFullEventsFilter,
@@ -556,7 +556,7 @@ function MapPage() {
       {
         key: 'friend-pins',
         label: 'Friend pins',
-        iconUrl: MAP_MARKER_ICON_URLS.friend,
+        iconClassName: 'friend',
         ariaLabel: 'Toggle friend pins',
         checked: showFriendPins,
         onChange: () => setShowFriendPins((prev) => !prev)
@@ -564,7 +564,7 @@ function MapPage() {
       {
         key: 'expiring-discussions',
         label: 'Discussions expiring soon',
-        iconUrl: MAP_MARKER_ICON_URLS.discussionSoon,
+        iconClassName: 'discussion',
         ariaLabel: 'Toggle discussions expiring within 24 hours',
         checked: showExpiringDiscussions,
         onChange: () => setShowExpiringDiscussions((prev) => !prev)
@@ -572,7 +572,7 @@ function MapPage() {
       {
         key: 'events-soon',
         label: 'Events starting soon',
-        iconUrl: MAP_MARKER_ICON_URLS.eventSoon,
+        iconClassName: 'event',
         ariaLabel: 'Toggle events starting soon',
         checked: showEventsStartingSoon,
         onChange: () => setShowEventsStartingSoon((prev) => !prev)
@@ -589,7 +589,7 @@ function MapPage() {
       {
         key: 'bookmarked-pins',
         label: 'Bookmarked pins (always visible)',
-        iconUrl: MAP_MARKER_ICON_URLS.bookmarked,
+        iconClassName: 'bookmarked',
         ariaLabel: 'Toggle bookmarked pins (always visible even if types are off)',
         checked: showBookmarkedPins,
         onChange: () => setShowBookmarkedPins((prev) => !prev),
@@ -598,7 +598,7 @@ function MapPage() {
       {
         key: 'open-spots',
         label: 'Open spots',
-        iconUrl: MAP_MARKER_ICON_URLS.open,
+        iconClassName: 'open',
         ariaLabel: 'Toggle pins with open spots',
         checked: showOpenSpotPins,
         onChange: () => setShowOpenSpotPins((prev) => !prev)
@@ -606,7 +606,7 @@ function MapPage() {
       {
         key: 'featured-pins',
         label: 'Featured pins',
-        iconUrl: MAP_MARKER_ICON_URLS.featured,
+        iconClassName: 'featured',
         ariaLabel: 'Toggle featured pins',
         checked: showFeaturedPins,
         onChange: () => setShowFeaturedPins((prev) => !prev)
@@ -631,7 +631,7 @@ function MapPage() {
       {
         key: 'cluster-pins',
         label: 'Supercluster',
-        iconUrl: MAP_MARKER_ICON_URLS.clusterToggle,
+        iconClassName: 'cluster',
         ariaLabel: clusterPins ? 'Supercluster on' : 'Supercluster off',
         checked: clusterPins,
         onChange: () => setClusterPins((prev) => !prev)
@@ -639,9 +639,7 @@ function MapPage() {
       {
         key: 'interaction-radius',
         label: 'Show interaction radius',
-        iconUrl: showInteractionRadius
-          ? MAP_MARKER_ICON_URLS.interactionRadiusOn
-          : MAP_MARKER_ICON_URLS.interactionRadiusOff,
+        iconClassName: 'radius',
         ariaLabel: 'Toggle interaction radius circle',
         checked: showInteractionRadius,
         onChange: () => setShowInteractionRadius((prev) => !prev)
@@ -649,7 +647,7 @@ function MapPage() {
       {
         key: 'my-chat-rooms',
         label: 'My chat rooms',
-        iconUrl: MAP_MARKER_ICON_URLS.chatMine,
+        iconClassName: 'personal',
         ariaLabel: 'Toggle visualizing chat rooms you belong to',
         checked: showMyChatRooms,
         onChange: () => setShowMyChatRooms((prev) => !prev)
@@ -657,7 +655,7 @@ function MapPage() {
       {
         key: 'all-chat-rooms',
         label: 'All chat rooms (admin)',
-        iconUrl: MAP_MARKER_ICON_URLS.chatAdmin,
+        iconClassName: 'discussion',
         ariaLabel: 'Toggle all chat rooms',
         checked: showAllChatRoomsToggle,
         onChange: () => {
@@ -671,7 +669,7 @@ function MapPage() {
       {
         key: 'tap-teleport',
         label: 'Tap to teleport (admin)',
-        iconUrl: MAP_MARKER_ICON_URLS.teleport,
+        iconClassName: 'teleport',
         ariaLabel: tapToTeleportEnabled ? 'Disable tap to teleport' : 'Enable tap to teleport',
         checked: tapToTeleportEnabled && canUseAdminTools,
         onChange: () => {

@@ -1,7 +1,7 @@
-import AvatarIcon from '../assets/AvatarIcon.svg';
 import normalizeObjectId from './normalizeObjectId';
 import resolveAssetUrl from './media';
 import { useUserCache } from '../contexts/UserCacheContext';
+import { DEFAULT_AVATAR } from './feed';
 
 export const getParticipantId = (participant) => {
   if (!participant) {
@@ -35,7 +35,7 @@ export const getParticipantDisplayName = (participant) => {
 
 export const resolveAvatarSrc = (participant) => {
   if (!participant || typeof participant === 'string') {
-    return AvatarIcon;
+    return DEFAULT_AVATAR;
   }
 
   const candidate =
@@ -47,8 +47,8 @@ export const resolveAvatarSrc = (participant) => {
     participant.profile?.photoUrl ||
     null;
 
-  const resolved = resolveAssetUrl(candidate, { fallback: AvatarIcon });
-  return resolved || AvatarIcon;
+  const resolved = resolveAssetUrl(candidate, { fallback: DEFAULT_AVATAR });
+  return resolved || DEFAULT_AVATAR;
 };
 
 export const resolveThreadParticipants = (thread, viewerId) => {

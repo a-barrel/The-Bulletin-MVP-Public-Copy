@@ -173,10 +173,16 @@
 /* Edit Pin dialog palette — primary purple, blue secondary, soft lavender/pink washes.
    Reference: docs/style/style-guide.md, light_mode_colorpalate.md */
 .edit-pin-dialog {
-    background: linear-gradient(150deg, var(--color-surface, #ffffff) 0%, var(--color-surface-wash, #f5effd) 35%, var(--color-surface-wash-strong, #ecd7fb) 70%, var(--color-surface-wash, #ecf8fe) 100%);
-    border: 1px solid var(--color-border, #cdaef2);
+    background: linear-gradient(
+        150deg,
+        var(--color-surface) 0%,
+        var(--color-surface-wash) 35%,
+        var(--color-surface-wash-strong) 70%,
+        var(--color-surface-wash) 100%
+    );
+    border: 1px solid var(--color-border-strong);
     border-radius: 18px;
-    box-shadow: 0 18px 42px rgba(93, 56, 137, 0.2);
+    box-shadow: 0 18px 42px color-mix(in srgb, var(--accent-strong) 20%, transparent);
 }
 
 .edit-pin-dialog__form {
@@ -203,7 +209,7 @@
 }
 
 .edit-pin-dialog__field .MuiOutlinedInput-notchedOutline {
-    border-color: var(--color-border, #cdaef2);
+    border-color: var(--color-border, var(--accent-wash-strong));
 }
 
 .edit-pin-dialog__field .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
@@ -342,28 +348,28 @@
 
 .pin-details .bookmark-icon {
     font-size: 30px;
-    color: #5d3889;
+    color: var(--accent-strong);
     transition: color 150ms ease, transform 150ms ease;
 }
 
 .pin-details .bookmark-button.bookmark-button--active .bookmark-icon {
-    color: #9b5de5;
+    color: var(--accent-primary);
 }
 
 .pin-details .bookmark-icon--locked {
-    color: #ffb347;
+    color: var(--accent-warn);
 }
 
 .pin-details .bookmark-button--owner .bookmark-icon {
-    color: #ffbe3c;
+    color: var(--accent-warn);
 }
 
 .pin-details .bookmark-button--owner .bookmark-icon--locked {
-    color: #ffbe3c;
+    color: var(--accent-warn);
 }
 
 .pin-details .bookmark-button--attending .bookmark-icon {
-    color: #5d3889;
+    color: var(--accent-strong);
 }
 
 /* pin name */
@@ -383,36 +389,36 @@
 }
 
 .pin-details.event-mode .name {
-    background-color: var(--accent-wash, #F4F0FC);
+    background-color: var(--accent-wash, var(--accent-wash));
 }
 
 .pin-details.discussion-mode .name {
-    background-color: #EFF8FC;
+    background-color: var(--color-surface-wash);
 }
 
 .pin-details .name.event-name {
-    background-color: #F4F0FC;
+    background-color: var(--accent-wash);
 }
 
 .pin-details .name.discussion-name {
-    background-color: #EFF8FC;
+    background-color: var(--color-surface-wash);
 }
 
 .pin-details .pin-id {
     font-size: 0.9rem;
-    color: #5d3889;
+    color: var(--accent-strong);
     margin-top: 0.25rem;
 }
 
 .pin-details .pin-radius {
     font-size: 0.9rem;
-    color: #5d3889;
+    color: var(--accent-strong);
     margin-top: 0.15rem;
 }
 
 .pin-details .pin-timestamps {
     font-size: 0.85rem;
-    color: #7b68b5;
+    color: var(--color-text-secondary);
     margin-top: 0.25rem;
 }
 
@@ -424,7 +430,7 @@
     gap: 0.5rem;
     padding: 0.75rem 1rem;
     box-sizing: border-box;
-    background-color: var(--color-surface, #FFFFFF);
+    background-color: var(--color-surface, var(--color-surface));
 }
 
 .pin-details .status-container--footer {
@@ -435,57 +441,57 @@
     width: 100%;
     max-width: 720px;
     padding: 0.75rem 1rem;
-    border: 1px solid #cdaef2;
+    border: 1px solid var(--accent-wash-strong);
     border-radius: 8px;
-    background-color: var(--accent-wash, #f4f0fc);
-    color: #5d3889;
+    background-color: var(--accent-wash, var(--accent-wash));
+    color: var(--accent-strong);
     text-align: center;
 }
 
 .pin-details.discussion-mode .status-message {
-    border-color: #3EB8F0;
-    background-color: #EFF8FC;
-    color: #0b4a6e;
+    border-color: var(--accent-blue);
+    background-color: var(--color-surface-wash);
+    color: var(--accent-strong);
 }
 
 .pin-details .status-message.error {
-    border-color: #f15bb5;
-    background-color: #ffe4f0;
-    color: #9b2960;
+    border-color: var(--accent-pink);
+    background-color: var(--accent-wash);
+    color: var(--accent-strong);
 }
 
 /* map */
 .pin-details .map-section {
     width: 100%;
-    border-bottom: 1px solid #5d3889;
+    border-bottom: 1px solid var(--accent-strong);
     padding: 1rem;
     box-sizing: border-box;
 }
 
 .pin-details.event-mode .map-section {
-    background-color: #F4F0FC;
+    background-color: var(--accent-wash);
 }
 
 .pin-details.discussion-mode .map-section {
-    background-color: #EFF8FC;
+    background-color: var(--color-surface-wash);
 }
 
 .pin-details .map-section.event-map {
-  background-color: #F4F0FC; 
+  background-color: var(--accent-wash); 
 }
 
 .pin-details .map-section.discussion-map {
-  background-color: #EFF8FC; 
+  background-color: var(--color-surface-wash); 
 }
 
 
 .pin-details .map-wrapper {
     width: 100%;
     height: 320px;
-    border: 1px solid #CDAEF2;
+    border: 1px solid var(--accent-wash-strong);
     border-radius: 8px;
     overflow: hidden;
-    background-color: #FFFFFF;
+    background-color: var(--color-surface);
     position: relative;
     isolation: isolate; /* keep map panes inside this stacking context so app overlays/backdrops sit above */
     z-index: 0;
@@ -509,14 +515,14 @@
     width: 100%;
     max-height: 320px;
     object-fit: cover;
-    border: 1px solid #CDAEF2;
+    border: 1px solid var(--accent-wash-strong);
     border-radius: 8px;
-    background-color: #FFFFFF;
+    background-color: var(--color-surface);
 }
 
 .pin-details .map-placeholder {
     padding: 1.5rem;
-    border: 1px dashed #CDAEF2;
+    border: 1px dashed var(--accent-wash-strong);
     border-radius: 8px;
     text-align: center;
 }
@@ -528,27 +534,27 @@
     width: 100%;
     padding: 0 1rem;
     box-sizing: border-box;
-    color: #F15BB5;
+    color: var(--accent-pink);
     gap: 0.5rem;
     font-weight: bold;
 }
 
 .pin-details.event-mode .post-creator {
-    background-color: #F4F0FC;
-    color: #F15BB5;
+    background-color: var(--accent-wash);
+    color: var(--accent-pink);
 }
 
 .pin-details.discussion-mode .post-creator {
-    background-color: #EFF8FC;
-    color: #0569a5;
+    background-color: var(--color-surface-wash);
+    color: var(--accent-blue);
 }
 
 .pin-details .post-creator.event-creator {
-  background-color: #F4F0FC; 
+  background-color: var(--accent-wash); 
 }
 
 .pin-details .post-creator.discussion-creator {
-  background-color: #EFF8FC; 
+  background-color: var(--color-surface-wash); 
 }
 
 .pin-details .user-link {
@@ -558,7 +564,7 @@
 }
 
 .pin-details .user-link:focus-visible {
-    outline: 2px solid #5d3889;
+    outline: 2px solid var(--accent-strong);
     outline-offset: 2px;
     border-radius: 12px;
 }
@@ -573,7 +579,7 @@
     height: 40px;
     border-radius: 50%;
     object-fit: cover;
-    background-color: #FFFFFF;
+    background-color: var(--color-surface);
 }
 
 .pin-details .post-creator-details {
@@ -582,23 +588,23 @@
 }
 
 .pin-details .creator-name {
-    color: #5d3889;
+    color: var(--accent-strong);
     font-weight: 600;
 }
 
 .pin-details .creator-username {
-    color: #7b68b5;
+    color: var(--color-text-secondary);
     font-size: 0.85rem;
 }
 
 .pin-details .muted {
-    color: #7f7f7f;
+    color: var(--color-text-secondary);
     font-style: italic;
     padding-left: 1rem;
 }
 
 .pin-details .error-text {
-    color: #b00020;
+    color: var(--danger);
 }
 
 /* post-description */
@@ -610,11 +616,11 @@
     padding-left: 1rem;
     padding-right: 1rem;
     padding-bottom: 1rem;
-    background-color: #F4F0FC;
+    background-color: var(--accent-wash);
 }
 
 .pin-details.discussion-mode .post-description {
-  background-color: #EFF8FC;
+  background-color: var(--color-surface-wash);
 }
 
 /* post-images */
@@ -622,11 +628,11 @@
     width: 100%;
     padding: 0.5rem 0;
     box-sizing: border-box;
-    background-color: #F4F0FC;
+    background-color: var(--accent-wash);
 }
 
 .pin-details.discussion-mode .post-images {
-  background-color: #EFF8FC;
+  background-color: var(--color-surface-wash);
 }
 
 .pin-details .photo-grid {
@@ -642,10 +648,10 @@
   height: 0;
 }
 .pin-details .photo-grid::-webkit-scrollbar-thumb {
-  background-color: #F4F0FC;
+  background-color: var(--accent-wash);
 }
 .pin-details .photo-grid::-webkit-scrollbar-track {
-  background-color: #F4F0FC;
+  background-color: var(--accent-wash);
 }
 
 .pin-details .pin-photo-item {
@@ -662,8 +668,8 @@
     height: 160px;
     object-fit: cover;
     border-radius: 10px;
-    border: 1px solid #CDAEF2;
-    background-color: var(--color-surface, #FFFFFF);
+    border: 1px solid var(--accent-wash-strong);
+    background-color: var(--color-surface, var(--color-surface));
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -681,36 +687,36 @@
     width: 100%;
     margin: 0;
     padding: 1rem;
-    background-color: #F4F0FC;
+    background-color: var(--accent-wash);
 }
 
 .pin-details.discussion-mode .post-info {
-  background-color: #EFF8FC; 
+  background-color: var(--color-surface-wash); 
 }
 
 /* post-location */
 .pin-details .post-location {
     display: flex;
     align-items: center;
-    color: #5d3889;
+    color: var(--accent-strong);
     font-weight: bold;
     width: 100%;
 }
 
 .pin-details .post-location .event-text {
-  background-color: #CDAEF2;
-  color: #5d3889; 
+  background-color: var(--accent-wash-strong);
+  color: var(--accent-strong); 
 }
 
 .pin-details .post-location .discussion-text {
-  background-color: #3EB8F0;
-  color: #003f5c; 
+  background-color: var(--accent-blue);
+  color: var(--accent-strong); 
 }
 
 .pin-details .pin-icon {
     width: 40px;
     height: 40px;
-    color: #5d3889;
+    color: var(--accent-strong);
     margin-right: 0.5rem;
     flex-shrink: 0;
 }
@@ -724,7 +730,7 @@
 }
 
 .pin-details .location-text {
-    background-color: #CDAEF2;
+    background-color: var(--accent-wash-strong);
     padding: 0.2rem 0.5rem;
     border: 1px solid black;
     border-radius: 8px;
@@ -735,19 +741,19 @@
 .pin-details .post-occurance {
     display: flex;
     align-items: center;
-    color: #000000;
+    color: var(--color-text-primary);
     font-weight: bold;
     width: 100%;
 }
 
 .pin-details .post-occurance .event-text {
-  background-color: #CDAEF2;
-  color: #5d3889;
+  background-color: var(--accent-wash-strong);
+  color: var(--accent-strong);
 }
 
 .pin-details .post-occurance .discussion-text {
-  background-color: #3EB8F0;
-  color: #003f5c;
+  background-color: var(--accent-blue);
+  color: var(--accent-strong);
 }
 
 .pin-details .calendar-icon {
@@ -764,19 +770,19 @@
 }
 
 .pin-details .occurance-text {
-    background-color: #CDAEF2;
+    background-color: var(--accent-wash-strong);
     padding: 0.2rem 0.5rem;
     border: 1px solid black;
     border-radius: 8px;
     flex: 1;
-    color: #5d3889;
+    color: var(--accent-strong);
 }
 
 /* post-attendance */
 .pin-details .post-attendance {
     display: flex;
     align-items: center;
-    color: #5d3889;
+    color: var(--accent-strong);
     font-weight: bold;
     width: 100%;
     gap: 0;
@@ -785,13 +791,13 @@
 }
 
 .pin-details .post-attendance .event-text {
-  background-color: #CDAEF2;
-  color: #5d3889;
+  background-color: var(--accent-wash-strong);
+  color: var(--accent-strong);
 }
 
 .pin-details .post-attendance .discussion-text {
-  background-color: #3EB8F0;
-  color: #003f5c;
+  background-color: var(--accent-blue);
+  color: var(--accent-strong);
 }
 
 .pin-details .attendance-icon {
@@ -808,7 +814,7 @@
 }
 
 .pin-details .attendance-text {
-    background-color: #CDAEF2;
+    background-color: var(--accent-wash-strong);
     padding: 0.2rem 0.5rem;
     border: 1px solid black;
     border-radius: 8px;
@@ -819,7 +825,7 @@
     justify-content: center;
     min-width: 0;
     word-break: break-word;
-    color: #5d3889;
+    color: var(--accent-strong);
 }
 
 .pin-details .attending-icons {
@@ -830,11 +836,11 @@
 }
 
 .pin-details .view-attendees-button {
-    background-color: #9B5DE5;
+    background-color: var(--accent-primary);
     border: 1px solid black;
     border-radius: 8px;
     padding: 0.35rem 0.85rem;
-    color: var(--color-text-on-accent, #ffffff);
+    color: var(--color-text-on-accent, var(--color-surface)fff);
     font-size: 0.9rem;
     cursor: pointer;
     transition: background-color 0.2s ease, transform 0.2s ease;
@@ -844,7 +850,7 @@
 }
 
 .pin-details .view-attendees-button:hover:not(:disabled) {
-    background-color: #7f47c3;
+    background-color: var(--accent-strong);
     transform: translateY(-1px);
 }
 
@@ -864,7 +870,7 @@
 
 .pin-details .friends-label {
   flex-shrink: 0; 
-  color: #5d3889;
+  color: var(--accent-strong);
   white-space: nowrap; 
 }
 
@@ -899,7 +905,7 @@
 }
 
 .pin-details .attending-friend-link:focus-visible {
-    outline: 2px solid #5d3889;
+    outline: 2px solid var(--accent-strong);
     outline-offset: 3px;
 }
 
@@ -908,9 +914,9 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    border: 2px solid #5d3889;
+    border: 2px solid var(--accent-strong);
     overflow: hidden;
-    background: var(--color-surface, #fff);
+    background: var(--color-surface, var(--color-surface));
 }
 
 .pin-details .attending-friend-avatar img {
@@ -921,7 +927,7 @@
 
 /* attendance button */
 .pin-details .attendance {
-    background-color: #F4F0FC;
+    background-color: var(--accent-wash);
     display: flex;
     justify-content: center;
     padding-bottom: 1rem;
@@ -929,7 +935,7 @@
 }
 
 .pin-details .attend-button {
-    background-color: #9B5DE5;
+    background-color: var(--accent-primary);
     border: none;
     padding: 0.5rem 1.5rem;
     border-radius: 8px;
@@ -938,12 +944,12 @@
     transition: all 0.2s ease;
     width: calc(100% - 2rem);
     border: 1px solid black;
-    color: var(--color-text-on-accent, #ffffff);
+    color: var(--color-text-on-accent, var(--color-surface)fff);
 }
 
 .pin-details .attend-button.attending {
-    background-color: #F15BB5;
-    color: var(--color-text-on-accent, #ffffff);
+    background-color: var(--accent-pink);
+    color: var(--color-text-on-accent, var(--color-surface)fff);
 }
 
 .pin-details .attendance .attendance-error {
@@ -970,14 +976,14 @@
 
 .pin-details .reply-overlay-content {
     position: relative;
-    background-color: #9B5DE5;
+    background-color: var(--accent-primary);
     border-radius: 16px;
     width: min(480px, 90vw);
     max-height: 80vh;
     display: flex;
     flex-direction: column;
     pointer-events: auto;
-    border: 1px solid #5d3889;
+    border: 1px solid var(--accent-strong);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
@@ -992,23 +998,23 @@
 .pin-details .reply-overlay-header h3 {
     margin: 0;
     font-size: 1.25rem;
-    color: var(--color-text-on-accent, #fdfbff);
+    color: var(--color-text-on-accent, var(--color-text-on-accent));
 }
 
 .pin-details .reply-overlay-close {
-    background: #5d3889;
-    border: 1px solid #4a2c73;
+    background: var(--accent-strong);
+    border: 1px solid var(--accent-strong);
     border-radius: 6px;
     padding: 0.35rem 0.75rem;
-    color: var(--color-text-on-accent, #f4f0fc);
+    color: var(--color-text-on-accent, var(--accent-wash));
     cursor: pointer;
     font-size: 0.85rem;
     transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .pin-details .reply-overlay-close:hover:not(:disabled) {
-    background-color: #F15BB5;
-    color: var(--color-text-on-accent, #ffffff);
+    background-color: var(--accent-pink);
+    color: var(--color-text-on-accent, var(--color-surface)fff);
 }
 
 .pin-details .reply-overlay-close:disabled {
@@ -1021,12 +1027,12 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    color: var(--color-text-on-accent, #fdfbff);
+    color: var(--color-text-on-accent, var(--color-text-on-accent));
 }
 
 .pin-details .reply-overlay-label {
     font-size: 0.9rem;
-    color: var(--color-text-on-accent, #f5effd);
+    color: var(--color-text-on-accent, var(--accent-wash));
 }
 
 .pin-details .reply-overlay-textarea {
@@ -1034,9 +1040,9 @@
     min-height: 140px;
     resize: vertical;
     border-radius: 8px;
-    border: 1px solid #5d3889;
-    background-color: var(--color-surface-wash-strong, #CDAEF2);
-    color: var(--color-text-primary, #000000);
+    border: 1px solid var(--accent-strong);
+    background-color: var(--color-surface-wash-strong, var(--accent-wash-strong));
+    color: var(--color-text-primary, var(--color-text-primary));
     padding: 0.75rem;
     font-size: 0.95rem;
     outline: none;
@@ -1044,7 +1050,7 @@
 }
 
 .pin-details .reply-overlay-textarea:focus {
-    border-color: #9B5DE5;
+    border-color: var(--accent-primary);
 }
 
 .pin-details .reply-overlay-textarea:disabled {
@@ -1061,22 +1067,22 @@
 
 .pin-details .reply-overlay-count {
     font-size: 0.8rem;
-    color: #e8e0fa;
+    color: var(--color-text-secondary);
 }
 
 .pin-details .reply-overlay-submit {
-    background-color: #5d3889;
-    border: 1px solid #4a2c73;
+    background-color: var(--accent-strong);
+    border: 1px solid var(--accent-strong);
     border-radius: 8px;
     padding: 0.45rem 1rem;
-    color: var(--color-text-on-accent, #FFFFFF);
+    color: var(--color-text-on-accent, var(--color-surface));
     font-size: 0.95rem;
     cursor: pointer;
     transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 .pin-details .reply-overlay-submit:hover:not(:disabled) {
-    background-color: #f15bb5;
+    background-color: var(--accent-pink);
     transform: translateY(-1px);
 }
 
@@ -1105,14 +1111,14 @@
 
 .pin-details .attendee-overlay-content {
     position: relative;
-    background-color: #9B5DE5;
+    background-color: var(--accent-primary);
     border-radius: 16px;
     width: min(480px, 90vw);
     max-height: 80vh;
     display: flex;
     flex-direction: column;
     pointer-events: auto;
-    border: 1px solid #5d3889;
+    border: 1px solid var(--accent-strong);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
@@ -1127,23 +1133,23 @@
 .pin-details .attendee-overlay-header h3 {
     margin: 0;
     font-size: 1.25rem;
-    color: var(--color-text-on-accent, #fdfbff);
+    color: var(--color-text-on-accent, var(--color-text-on-accent));
 }
 
 .pin-details .attendee-overlay-close {
-    background: #5d3889;
-    border: 1px solid #4a2c73;
+    background: var(--accent-strong);
+    border: 1px solid var(--accent-strong);
     border-radius: 6px;
     padding: 0.35rem 0.75rem;
-    color: var(--color-text-on-accent, #f4f0fc);
+    color: var(--color-text-on-accent, var(--accent-wash));
     cursor: pointer;
     font-size: 0.85rem;
     transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .pin-details .attendee-overlay-close:hover {
-    background-color: #F15BB5;
-    color: var(--color-text-on-accent, #ffffff);
+    background-color: var(--accent-pink);
+    color: var(--color-text-on-accent, var(--color-surface)fff);
 }
 
 .pin-details .attendee-overlay-body {
@@ -1152,7 +1158,7 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    color: var(--color-text-on-accent, #fdfbff);
+    color: var(--color-text-on-accent, var(--color-text-on-accent));
 }
 
 .pin-details .attendee-list {
@@ -1169,7 +1175,7 @@
     align-items: center;
     gap: 0.75rem;
     padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid #5d3889;
+    border-bottom: 1px solid var(--accent-strong);
     border-radius: 10px 10px 0 0;
     background-color: none;
     color: inherit;
@@ -1178,8 +1184,8 @@
 }
 
 .pin-details .attendee-list-item:hover {
-    background-color: #CDAEF2;
-    border-color: #9B5DE5;
+    background-color: var(--accent-wash-strong);
+    border-color: var(--accent-primary);
     border-radius: 10px;
 }
 
@@ -1193,8 +1199,8 @@
     height: 40px;
     border-radius: 50%;
     object-fit: cover;
-    background-color: #FFFFFF;
-    border: 1px solid #2b2c3f;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-strong);
 }
 
 .pin-details .attendee-avatar-badge {
@@ -1205,12 +1211,12 @@
 
 .pin-details .attendee-name {
     font-weight: 600;
-    color: #f4f0fc;
+    color: var(--accent-wash);
 }
 
 /* comments-header */
 .pin-details .comments-header {
-    background-color: #FFFFFF;
+    background-color: var(--color-surface);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -1237,7 +1243,7 @@
     padding-left: 1rem;
     padding-right: 1rem;
     box-sizing: border-box;
-    background-color: #FFFFFF;
+    background-color: var(--color-surface);
     padding-bottom: 120px;
 }
 
@@ -1248,12 +1254,12 @@
   border: 1px solid black;
   border-radius: 8px;
   overflow: hidden; 
-  background-color: #CDAEF2;
+  background-color: var(--accent-wash-strong);
 }
 
 .pin-details.discussion-mode .comment {
-  background-color: #D4EEFF;
-  border-color: #0b4a6e;
+  background-color: var(--color-surface-wash);
+  border-color: var(--accent-strong);
 }
 
 .pin-details .comment-header {
@@ -1265,12 +1271,12 @@
 }
 
 .pin-details.event-mode .comment-header {
-  background-color: #F4F0FC;
+  background-color: var(--accent-wash);
 }
 
 .pin-details.discussion-mode .comment-header {
-  background-color: #EFF8FC;
-  border-color: #0b4a6e;
+  background-color: var(--color-surface-wash);
+  border-color: var(--accent-strong);
 }
 
 .pin-details .commenter-pfp {
@@ -1278,7 +1284,7 @@
     height: 40px;
     border-radius: 50%;
     object-fit: cover;
-    background-color: #FFFFFF;
+    background-color: var(--color-surface);
 }
 
 .pin-details .commenter-info {
@@ -1288,11 +1294,11 @@
 
 .pin-details .comment-timestamp {
     font-size: 0.75rem;
-    color: #5d3889;
+    color: var(--accent-strong);
 }
 
 .pin-details.discussion-mode .comment-timestamp {
-    color: #0b4a6e;
+    color: var(--accent-strong);
 }
 
 .pin-details .comment-body {
@@ -1315,7 +1321,7 @@
     height: 80px;
     border: none;
     border-radius: 50%;
-    background: linear-gradient(135deg, #f15bb5 0%, #9b5de5 100%);
+    background: linear-gradient(135deg, var(--accent-pink) 0%, var(--accent-primary) 100%);
     padding: 0;
     margin: 0;
     cursor: pointer;
@@ -1329,7 +1335,7 @@
 .pin-details .create-comment-button {
     font-size: 42px;
     pointer-events: none;
-    color: #ffffff;
+    color: var(--color-surface)fff;
     transition: transform 160ms ease;
 }
 
@@ -1374,11 +1380,11 @@
 }
 
 .pin-details .bookmark-button:hover .bookmark-icon:not(.bookmark-icon--locked) {
-    color: #5d3889;
+    color: var(--accent-strong);
 }
 
 .pin-details .bookmark-button:hover .bookmark-icon--locked {
-    color: #e68a00;
+    color: var(--accent-warn);
 }
 
 .pin-details .bookmark-button:active {
@@ -1417,7 +1423,7 @@
 }
 
 .pin-details .pin-expired-modal {
-    background-color: #9B5DE5;
+    background-color: var(--accent-primary);
     border-radius: 24px;
     padding: 2.25rem 2rem;
     max-width: 420px;
@@ -1425,19 +1431,19 @@
     text-align: center;
     box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(10px);
-    color: #ffffff;
+    color: var(--color-surface)fff;
 }
 
 .pin-details .pin-expired-modal h3 {
     font-size: 1.5rem;
     margin-bottom: 1rem;
-    color: #ffffff;
+    color: var(--color-surface)fff;
 }
 
 .pin-details .pin-expired-modal p {
     font-size: 0.95rem;
     line-height: 1.6;
-    color: #ffffff;
+    color: var(--color-surface)fff;
 }
 
 .pin-details .expired-actions {
@@ -1452,8 +1458,8 @@
     justify-content: center;
     padding: 0.75rem 1.75rem;
     border-radius: 999px;
-    background: #5d3889;
-    color: #ffffff;
+    background: var(--accent-strong);
+    color: var(--color-surface)fff;
     font-weight: 600;
     text-decoration: none;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -1468,9 +1474,9 @@
 .pin-details .pin-analytics-card {
   margin: 0 0;
   padding: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border-subtle);
   /* border-radius: 12px; */
-  background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 50%, #f5f7ff 100%);
+  background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface)fff 50%, var(--color-surface) 100%);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
   width: 100%;
   max-width: 100%;
@@ -1491,13 +1497,13 @@
 
 .pin-details .pin-analytics-subtitle {
   margin: 4px 0 0;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   font-size: 0.9rem;
 }
 
 .pin-details .pin-analytics-pill {
-  background: #111827;
-  color: #ffffff;
+  background: var(--color-text-primary);
+  color: var(--color-surface)fff;
   padding: 6px 10px;
   border-radius: 999px;
   font-size: 0.85rem;
@@ -1517,9 +1523,9 @@
 .pin-details .pin-analytics-metric {
   min-width: 140px;
   padding: 8px 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border-subtle);
   border-radius: 10px;
-  background: #f8f9ff;
+  background: var(--color-surface);
   white-space: nowrap;
   flex: 0 0 auto;
 }
@@ -1527,27 +1533,27 @@
 .pin-details .pin-analytics-metric .label {
   display: block;
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   margin-bottom: 4px;
 }
 
 .pin-details .pin-analytics-metric .value {
   display: block;
   font-size: 1.2rem;
-  color: #111827;
+  color: var(--color-text-primary);
 }
 
 .pin-details .pin-analytics-metric .value.tiny {
   font-size: 0.95rem;
-  color: #111827;
+  color: var(--color-text-primary);
 }
 
 .pin-details .pin-analytics-metric .value.success {
-  color: #0f9d58;
+  color: var(--color-success);
 }
 
 .pin-details .pin-analytics-metric .value.muted-text {
-  color: #6b7280;
+  color: var(--color-text-secondary);
 }
 
 .pin-details .pin-analytics-sparkline-wrapper {
@@ -1561,7 +1567,7 @@
 
 .pin-details .pin-analytics-sparkline polyline {
   fill: none;
-  stroke: #2563eb;
+  stroke: var(--accent-blue);
   stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -1571,7 +1577,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   margin-top: 4px;
 }
 
@@ -1591,7 +1597,7 @@
   width: 100%;
   min-height: 6px;
   border-radius: 8px 8px 4px 4px;
-  background: linear-gradient(180deg, #22c55e 0%, #f59e0b 60%, #ef4444 100%);
+  background: linear-gradient(180deg, var(--color-success) 0%, var(--accent-warn) 60%, var(--danger) 100%);
   transition: height 0.25s ease;
 }
 
@@ -1599,7 +1605,7 @@
   display: block;
   margin-top: 4px;
   font-size: 0.8rem;
-  color: #374151;
+  color: var(--color-text-primary);
 }
 
 .pin-details .pin-analytics-metrics::-webkit-scrollbar {
@@ -1623,7 +1629,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: #d84315;
+  color: var(--danger);
   font-size: 0.85rem;
   cursor: pointer;
   text-decoration: underline;
@@ -1632,7 +1638,7 @@
 
 .comment-report-btn:hover,
 .comment-report-btn:focus-visible {
-  color: #ef6c00;
+  color: var(--accent-warn);
 }
 
 .pin-details .comment-friend-badge {
@@ -1641,7 +1647,7 @@
 }
 
 .comment-report-btn:disabled {
-  color: #9e9e9e;
+  color: var(--color-text-secondary);
   cursor: not-allowed;
   text-decoration: none;
 }

@@ -8,7 +8,6 @@ import { BADGE_METADATA } from '../../utils/badges';
 import ProfileSection from './ProfileSection';
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
-import badgePlaceholder from '../../assets/badge-placeholder.svg';
 
 const resolveBadgeImageUrl = (value) => {
   if (!value) {
@@ -46,8 +45,7 @@ function ProfileBadges({ badgeList }) {
                 image: undefined
               };
             const badgeImageUrl = resolveBadgeImageUrl(badgeInfo.image);
-            const avatarSrc =
-              failedBadges[badgeId] || !badgeImageUrl ? badgePlaceholder : badgeImageUrl;
+            const avatarSrc = failedBadges[badgeId] ? undefined : badgeImageUrl;
             return (
               <Tooltip key={badgeId} title={badgeInfo.description} arrow enterTouchDelay={0}>
                 <Box
@@ -70,7 +68,9 @@ function ProfileBadges({ badgeList }) {
                     imgProps={{
                       onError: handleBadgeError(badgeId)
                     }}
-                  />
+                  >
+                    {badgeInfo.label?.charAt(0) ?? '?'}
+                  </Avatar>
                   <Typography variant="subtitle1" fontWeight={600}>
                     {badgeInfo.label}
                   </Typography>

@@ -77,7 +77,7 @@ body, input, button, textarea, p, h1, small, span, label, select, input::placeho
   margin-bottom: 0.75rem;
   align-items: center;
   justify-content: center;
-  background-color: var(--color-surface, #fff);
+  background-color: var(--color-surface);
 }
 
 .bulletin-image img {
@@ -200,12 +200,12 @@ input[type="checkbox"] {
   align-items: center;
   gap: 10px;
   margin-top: -0.25rem;
-  background-color: #c5ecff;
+  background-color: color-mix(in srgb, var(--accent-blue) 20%, var(--color-surface));
   text-align: center;
 }
 
 .login-page-google-sign-in-btn:hover {
-  background-color: #8fb6f3;
+  background-color: color-mix(in srgb, var(--accent-blue) 35%, var(--color-surface));
 }
 
 .google-icon{
@@ -220,13 +220,13 @@ input[type="checkbox"] {
   gap: 10px;
   margin-top: -0.25rem;
   margin-bottom: -3.5rem;
-  background-color: #1c1c1f;
-  color: var(--color-text-on-accent, #fff);
+  background-color: var(--color-surface);
+  color: var(--color-text-on-accent);
   text-align: center;
 }
 
 .login-page-apple-sign-in-btn:hover {
-  background-color: #2c2c31;
+  background-color: var(--color-surface-wash);
 }
 
 .apple-icon {
@@ -238,17 +238,17 @@ input[type="checkbox"] {
 .getting-started-text {
   margin-top: -0.15rem;
   margin-bottom: -0.35rem;
-  color: #666;
+  color: var(--color-text-secondary);
   font-size: 1.1rem;
 }
 
 .login-page-register-btn {
-  background-color: #CDAEF2;
-  color: #1e1e1e;
+  background-color: var(--accent-wash-strong);
+  color: var(--color-text-primary);
 }
 
 .login-page-register-btn:hover {
-  background-color: #bda2ec;
+  background-color: var(--accent-wash-strong);
 }
 
 /* Error Pop-up for authentication errors */
@@ -269,7 +269,7 @@ input[type="checkbox"] {
 /* The actual popup box */
 .error-box {
   background: white;
-  border: 2px solid #FF3B30;
+  border: 2px solid var(--danger);
   border-radius: 12px;
   padding: 20px 25px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -280,7 +280,7 @@ input[type="checkbox"] {
 
 /* Text in the pop up */
 .error-box p {
-  color: #FF3B30;
+  color: var(--danger);
   font-size: 1rem;
   margin: 0;
   font-weight: 500;
@@ -304,7 +304,7 @@ input[type="checkbox"] {
 
 /* The actual popup box */
 .message-box {
-  background: var(--color-surface, #ffffff);
+  background: var(--color-surface);
   width: 85vw;
   border-radius: 18px;
   padding: 1.25rem 1.5rem;
@@ -317,7 +317,7 @@ input[type="checkbox"] {
 .message-box p {
   font-size: 1rem;
   font-weight: 600;
-  color: #222;
+  color: var(--color-text-primary);
   line-height: 1.4;
   white-space: pre-line;
 }

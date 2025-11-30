@@ -655,3 +655,41 @@ svg.leaflet-image-layer.leaflet-interactive path {
 		print-color-adjust: exact;
 		}
 	}
+
+/* ===== App theme overrides ===== */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent-strong) 18%, transparent);
+  border: 1px solid var(--color-border-strong);
+}
+
+.leaflet-control-container .leaflet-top,
+.leaflet-control-container .leaflet-bottom {
+  color: var(--color-text-primary);
+}
+
+.leaflet-bar a,
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out,
+.leaflet-control-layers,
+.leaflet-control-layers-base,
+.leaflet-control-layers-overlays {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--accent-strong) 12%, transparent);
+}
+
+.leaflet-bar a:hover,
+.leaflet-control-zoom-in:hover,
+.leaflet-control-zoom-out:hover {
+  background: color-mix(in srgb, var(--accent-wash) 60%, transparent);
+}
+
+.leaflet-bar a:active,
+.leaflet-control-zoom-in:active,
+.leaflet-control-zoom-out:active {
+  background: color-mix(in srgb, var(--accent-wash-strong) 60%, transparent);
+}

@@ -17,13 +17,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: var(--color-text-primary);
 }
 
-.map-icon-btn:hover { transform: scale(1.1); }
+.map-icon-btn:hover {
+  transform: scale(1.1);
+  color: var(--accent-strong);
+}
 
 .map-icon-btn:disabled {
   cursor: default;
   opacity: 0.6;
+  color: var(--color-text-secondary);
 }
 .map-icon-btn:disabled:hover {
   transform: none;
@@ -52,6 +57,7 @@
   width: 35px;
   height: 40px;
   object-fit: contain;
+  color: currentColor;
 }
 
 .map-icon--create {

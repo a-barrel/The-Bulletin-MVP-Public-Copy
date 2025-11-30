@@ -107,17 +107,17 @@ export const MAP_MARKER_ICON_URLS = {
 };
 
 export const MAP_FILTERS = [
-  { key: 'event', label: 'Events', iconUrl: MAP_MARKER_ICON_URLS.event, ariaLabel: 'Toggle event pins' },
+  { key: 'event', label: 'Events', iconClassName: 'event', ariaLabel: 'Toggle event pins' },
   {
     key: 'discussion',
     label: 'Discussions',
-    iconUrl: MAP_MARKER_ICON_URLS.discussion,
+    iconClassName: 'discussion',
     ariaLabel: 'Toggle discussion pins'
   },
   {
     key: 'personal',
     label: 'Personal pins',
-    iconUrl: MAP_MARKER_ICON_URLS.personal,
+    iconClassName: 'personal',
     ariaLabel: 'Toggle your pins'
   }
 ];

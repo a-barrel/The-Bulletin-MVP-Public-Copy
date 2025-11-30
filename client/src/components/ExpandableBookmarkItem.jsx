@@ -9,14 +9,12 @@ import {
   Stack,
   Typography
 } from '@mui/material';
-
-import PlusIcon from '../assets/Plus.svg';
-import MinusIcon from '../assets/Minus.svg';
-import DiscussionBookmarkIcon from '../assets/Discussion_Bookmarks.svg';
-import EventBookmarkIcon from '../assets/Event_Bookmarks.svg';
-import AttendingBookmarksIcon from '../assets/Attending_Bookmarks.svg';
-import BookmarkedIcon from '../assets/Bookmarked.svg';
-import BookmarkedOwnerIcon from '../assets/BookmarkedOwner.svg';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import GroupsIcon from '@mui/icons-material/Groups';
+import BookmarkRemoveIcon from '@mui/icons-material/BookmarkRemove';
 import resolveAssetUrl from '../utils/media';
 import { fetchPinById } from '../api';
 import toIdString from '../utils/ids';
@@ -114,12 +112,12 @@ function ExpandableBookmarkItem({
       ? displayPin.participantCount
       : 0;
 
-  const iconSrc =
+  const iconElement =
     pinType === 'discussion'
-      ? DiscussionBookmarkIcon
+      ? <ForumOutlinedIcon sx={{ width: 28, height: 28, color: 'var(--accent-strong)' }} />
       : pinType === 'event'
-        ? EventBookmarkIcon
-        : null;
+        ? <EventAvailableIcon sx={{ width: 28, height: 28, color: 'var(--accent-strong)' }} />
+        : <GroupsIcon sx={{ width: 28, height: 28, color: 'var(--accent-strong)' }} />;
 
   const mediaAssets = useMemo(() => {
     const list = [];
@@ -276,7 +274,7 @@ function ExpandableBookmarkItem({
         }}
       >
         <Box sx={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {iconSrc ? <Box component="img" src={iconSrc} alt={`${pinType} bookmark icon`} sx={{ width: 28, height: 28 }} /> : null}
+          {iconElement}
         </Box>
         <Typography
           variant="subtitle1"
@@ -286,10 +284,9 @@ function ExpandableBookmarkItem({
           {pinTitle}
         </Typography>
         <Box
-          component="img"
-          src={expanded ? MinusIcon : PlusIcon}
-          alt={expanded ? 'Collapse' : 'Expand'}
-          sx={{ width: 20, height: 20, justifySelf: 'end' }}
+          component={expanded ? RemoveCircleOutlineIcon : AddCircleOutlineIcon}
+          sx={{ width: 20, height: 20, justifySelf: 'end', color: 'var(--accent-strong)' }}
+          aria-hidden
         />
       </ListItemButton>
 
@@ -374,17 +371,17 @@ function ExpandableBookmarkItem({
               ) : (
                 <>
                   <Box sx={{ flex: '1 1 0', display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 0.5 }}>
-                    {pinType === 'event' ? (
-                      <>
-                        <Box component="img" src={AttendingBookmarksIcon} alt="" sx={{ width: 20, height: 20 }} />
-                        <Typography
-                          variant="body2"
-                          sx={{ color: 'var(--color-text-primary)', fontWeight: 500, fontFamily: '"Urbanist", sans-serif' }}
-                        >
-                          {participantCount}
-                        </Typography>
-                      </>
-                    ) : null}
+                {pinType === 'event' ? (
+                  <>
+                    <GroupsIcon sx={{ width: 20, height: 20, color: 'var(--accent-strong)' }} />
+                    <Typography
+                      variant="body2"
+                      sx={{ color: 'var(--color-text-primary)', fontWeight: 500, fontFamily: '"Urbanist", sans-serif' }}
+                    >
+                      {participantCount}
+                    </Typography>
+                  </>
+                ) : null}
                   </Box>
 
                   <Box sx={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', justifyContent: 'center' }}>
@@ -445,13 +442,9 @@ function ExpandableBookmarkItem({
                       aria-label={removeButtonTitle}
                       className="bookmark-remove-btn"
                     >
-                      <img
-                        src={ownsPin ? BookmarkedOwnerIcon : BookmarkedIcon}
-                        alt={
-                          removalGuardMessage
-                            ? removalGuardMessage
-                            : 'Remove bookmark'
-                        }
+                      <BookmarkRemoveIcon
+                        sx={{ color: 'var(--accent-strong)', width: 22, height: 22 }}
+                        aria-hidden
                       />
                     </button>
                   </Box>

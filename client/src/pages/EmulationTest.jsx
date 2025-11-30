@@ -85,14 +85,14 @@ function EmulationTestPage() {
           py: 1.5,
           borderRadius: 2,
           backgroundColor: 'rgba(15, 15, 15, 0.75)',
-          border: '2px solid #000',
-          boxShadow: '0 0 15px rgba(255, 170, 34, 0.9)',
+          border: '2px solid var(--color-border-strong)',
+          boxShadow: '0 0 15px color-mix(in srgb, var(--accent-warn) 90%, transparent)',
           textTransform: 'uppercase',
           letterSpacing: '0.35rem',
           fontFamily: '"Trebuchet MS", Verdana, sans-serif',
           fontSize: { xs: '1.75rem', sm: '2.75rem' },
-          color: '#ffe97f',
-          textShadow: '2px 2px #824b00, -2px -2px #000000, 4px 4px 6px rgba(0, 0, 0, 0.6)'
+          color: 'var(--accent-warn)',
+          textShadow: '2px 2px var(--accent-strong), -2px -2px var(--color-surface), 4px 4px 6px rgba(0, 0, 0, 0.6)'
         }}
       >
         LMAO GOTTEM
@@ -103,4 +103,3 @@ function EmulationTestPage() {
 }
 
 export default EmulationTestPage;
-

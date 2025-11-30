@@ -50,20 +50,20 @@ export const INITIAL_FORM_STATE = {
 
 const PIN_TYPE_THEMES = {
   event: {
-    headerBackground: 'linear-gradient(135deg, #CDAEF2 0%, #9B5DE5 100%)',
-    headerTextColor: '#120A24',
-    headerSubtitleColor: 'rgba(18, 10, 36, 0.75)',
-    ctaBackground: '#3EB8F0',
-    ctaHoverBackground: '#2A97C9',
-    ctaTextColor: 'var(--color-text-on-accent, #FFFFFF)'
+    headerBackground: 'linear-gradient(135deg, var(--accent-wash-strong) 0%, var(--accent-primary) 100%)',
+    headerTextColor: 'var(--color-text-strong)',
+    headerSubtitleColor: 'color-mix(in srgb, var(--color-text-strong) 75%, transparent)',
+    ctaBackground: 'var(--accent-blue)',
+    ctaHoverBackground: 'color-mix(in srgb, var(--accent-blue) 80%, transparent)',
+    ctaTextColor: 'var(--color-text-on-accent)'
   },
   discussion: {
-    headerBackground: 'linear-gradient(135deg, #ECF8FE 0%, #3EB8F0 100%)',
-    headerTextColor: '#041E33',
-    headerSubtitleColor: 'rgba(4, 30, 51, 0.75)',
-    ctaBackground: '#F15BB5',
-    ctaHoverBackground: '#D9489D',
-    ctaTextColor: 'var(--color-text-on-accent, #FFFFFF)'
+    headerBackground: 'linear-gradient(135deg, var(--color-surface-wash) 0%, var(--accent-blue) 100%)',
+    headerTextColor: 'var(--color-text-primary)',
+    headerSubtitleColor: 'color-mix(in srgb, var(--color-text-primary) 75%, transparent)',
+    ctaBackground: 'var(--accent-pink)',
+    ctaHoverBackground: 'color-mix(in srgb, var(--accent-pink) 82%, transparent)',
+    ctaTextColor: 'var(--color-text-on-accent)'
   }
 };
 

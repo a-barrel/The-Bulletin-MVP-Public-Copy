@@ -3,8 +3,7 @@ import Checkbox from '@mui/material/Checkbox';
 import Pagination from '@mui/material/Pagination';
 import PaginationItem from '@mui/material/PaginationItem';
 import SortToggle from '../SortToggle';
-import settingsIcon from '../../assets/GearIcon.svg';
-import addIcon from '../../assets/AddIcon.svg';
+import FilterListIcon from '@mui/icons-material/FilterList';
 
 export default function ListTopbar({
   hasActiveFilters,
@@ -38,7 +37,7 @@ export default function ListTopbar({
         onClick={onOpenFilters}
         title={hasActiveFilters ? 'Filters applied. Click to adjust filters.' : 'Filter pins'}
       >
-        <img src={settingsIcon} alt="Filters" />
+        <FilterListIcon aria-hidden="true" />
       </button>
 
       <SortToggle sortByExpiration={sortByExpiration} onToggle={onToggleSort} />

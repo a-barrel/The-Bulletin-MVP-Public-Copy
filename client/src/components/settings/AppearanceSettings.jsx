@@ -9,9 +9,12 @@ import {
   Radio,
   Slider,
   Switch,
+  Button,
+  Box,
+  Grid,
+  Typography as MuiTypography,
   Select,
-  MenuItem,
-  Button
+  MenuItem
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import SettingsAccordion from './SettingsAccordion';
@@ -73,6 +76,25 @@ function AppearanceSettings({
     setLanguageStatus(t('settings.language.saved'));
   };
 
+  const themeOptions = [
+    { value: 'light', label: 'Light', preview: 'linear-gradient(135deg,#f5effd,#ffffff)' },
+    { value: 'dark', label: 'Dark', preview: 'linear-gradient(135deg,#1b1230,#2b1c4a)' },
+    { value: 'neon', label: 'Neon Flux', preview: 'linear-gradient(135deg,#00eaff,#ff2fb3)' },
+    { value: 'sunset', label: 'Sunset Pop', preview: 'linear-gradient(135deg,#ffb35c,#ff7a5c,#c83f70)' },
+    { value: 'forest', label: 'Forest Mist', preview: 'linear-gradient(135deg,#1c261f,#3d8f6f,#6bdd9f)' },
+    { value: 'ocean', label: 'Oceanic', preview: 'linear-gradient(135deg,#0f2230,#1f4f73,#4fd3ff)' },
+    { value: 'candy', label: 'Candyland', preview: 'linear-gradient(135deg,#ff7bd5,#b94bff,#70d6ff)' },
+    { value: 'glitch', label: 'Glitch Punk', preview: 'linear-gradient(135deg,#00eaff,#ff008c,#6a7dff)' },
+    { value: 'plasma', label: 'Plasma Bloom', preview: 'linear-gradient(135deg,#7aff7a,#7f3bff,#6fffdc)' },
+    { value: 'rainbow', label: 'Midnight Rainbow', preview: 'linear-gradient(135deg,#5ce1ff,#ff9a00,#ff4d8d,#c77dff)' },
+    { value: 'aurora', label: 'Aurora Motion', preview: 'linear-gradient(135deg,#7cf0ff,#6a7dff,#9b7bff)' },
+    { value: 'rainbow-animated', label: 'Rainbow Burst (Animated)', preview: 'linear-gradient(120deg,#5ce1ff,#ff9a00,#ff4d8d,#c77dff,#5ce1ff)' }
+  ];
+
+  const handleThemeSelect = (value) => {
+    onThemeChange({ target: { value } });
+  };
+
   return (
     <Stack spacing={2}>
       <SettingsAccordion
@@ -129,22 +151,55 @@ function AppearanceSettings({
           <FormLabel component="legend" sx={{ fontSize: '0.875rem', color: settingsPalette.accent }}>
             {t('settings.tabs.appearance')}
           </FormLabel>
-          <Select
-            value={theme}
-            onChange={onThemeChange}
-            size="small"
-            sx={{
-              maxWidth: 260,
-              color: settingsPalette.textPrimary,
-              '& .MuiOutlinedInput-notchedOutline': { borderColor: settingsPalette.accentHover },
-              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: settingsPalette.accentHover },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: settingsPalette.accent },
-              '& .MuiSelect-icon': { color: settingsPalette.accentHover }
-            }}
-          >
-            <MenuItem value="light">Light</MenuItem>
-            <MenuItem value="dark">Dark</MenuItem>
-          </Select>
+          <Grid container spacing={1.5}>
+            {themeOptions.map((option) => {
+              const isActive = theme === option.value;
+              return (
+                <Grid item xs={12} sm={6} md={4} key={option.value}>
+                  <Button
+                    type="button"
+                    onClick={() => handleThemeSelect(option.value)}
+                    variant={isActive ? 'contained' : 'outlined'}
+                    fullWidth
+                    sx={{
+                      justifyContent: 'flex-start',
+                      textTransform: 'none',
+                      borderRadius: 3,
+                      p: 1.25,
+                      gap: 1,
+                      backgroundColor: isActive ? settingsPalette.accent : 'transparent',
+                      color: isActive ? 'var(--color-text-on-accent)' : settingsPalette.textPrimary,
+                      borderColor: isActive ? settingsPalette.accent : settingsPalette.borderSubtle,
+                      boxShadow: isActive ? '0 10px 24px rgba(0,0,0,0.18)' : 'none',
+                      '&:hover': {
+                        backgroundColor: isActive ? settingsPalette.accentHover : 'color-mix(in srgb, var(--accent-wash) 60%, transparent)'
+                      }
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: 2,
+                        background: option.preview,
+                        border: `1px solid ${settingsPalette.borderSubtle}`,
+                        boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.12), 0 6px 12px rgba(0,0,0,0.12)'
+                      }}
+                      aria-hidden
+                    />
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <MuiTypography variant="body1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                        {option.label}
+                      </MuiTypography>
+                      <MuiTypography variant="caption" sx={{ color: isActive ? 'inherit' : 'var(--color-text-secondary)' }}>
+                        {option.value}
+                      </MuiTypography>
+                    </Box>
+                  </Button>
+                </Grid>
+              );
+            })}
+          </Grid>
         </FormControl>
         <Stack spacing={1}>
           <Typography variant="body2" sx={mutedTextSx}>

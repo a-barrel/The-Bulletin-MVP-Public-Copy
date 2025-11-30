@@ -119,22 +119,29 @@ const MapFilterPanel = memo(function MapFilterPanel({
               {Array.isArray(group.filters)
                 ? group.filters.map((filter) => (
                   <label className="map-filter-toggle" key={filter.key}>
-                    <img
-                      src={filter.iconUrl}
-                      alt=""
-                      className={`map-filter-icon ${filter.iconClassName || ''}`.trim()}
-                      aria-hidden="true"
-                    />
-                      <span className="map-filter-label">{filter.label}</span>
-                      <input
-                        type="checkbox"
-                        checked={filter.checked}
-                        onChange={filter.onChange}
-                        aria-label={filter.ariaLabel}
-                        disabled={filter.disabled}
+                    {filter.iconClassName ? (
+                      <span
+                        className={`map-filter-icon-dot ${filter.iconClassName}`.trim()}
+                        aria-hidden="true"
                       />
-                      <span className="map-filter-slider" aria-hidden="true" />
-                    </label>
+                    ) : (
+                      <img
+                        src={filter.iconUrl}
+                        alt=""
+                        className={`map-filter-icon ${filter.iconClassName || ''}`.trim()}
+                        aria-hidden="true"
+                      />
+                    )}
+                    <span className="map-filter-label">{filter.label}</span>
+                    <input
+                      type="checkbox"
+                      checked={filter.checked}
+                      onChange={filter.onChange}
+                      aria-label={filter.ariaLabel}
+                      disabled={filter.disabled}
+                    />
+                    <span className="map-filter-slider" aria-hidden="true" />
+                  </label>
                   ))
                 : null}
             </div>

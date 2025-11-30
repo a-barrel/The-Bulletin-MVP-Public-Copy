@@ -5,19 +5,19 @@
 @keyframes popularGlowPulse {
   0% {
     filter:
-      drop-shadow(0 0 4px rgba(255, 255, 255, 0.45))
-      drop-shadow(0 0 1px rgba(255, 106, 213, 0.5));
+      drop-shadow(0 0 4px color-mix(in srgb, var(--color-surface) 45%, transparent))
+      drop-shadow(0 0 1px color-mix(in srgb, var(--accent-pink) 50%, transparent));
   }
   50% {
     filter:
-      drop-shadow(0 0 16px rgba(255, 255, 255, 0.95))
-      drop-shadow(0 0 8px rgba(255, 106, 213, 0.85))
-      drop-shadow(0 0 2px rgba(255, 255, 255, 0.9));
+      drop-shadow(0 0 16px color-mix(in srgb, var(--color-surface) 95%, transparent))
+      drop-shadow(0 0 8px color-mix(in srgb, var(--accent-pink) 85%, transparent))
+      drop-shadow(0 0 2px color-mix(in srgb, var(--color-surface) 90%, transparent));
   }
   100% {
     filter:
-      drop-shadow(0 0 6px rgba(255, 222, 249, 0.75))
-      drop-shadow(0 0 2px rgba(255, 106, 213, 0.55));
+      drop-shadow(0 0 6px color-mix(in srgb, var(--accent-wash) 75%, transparent))
+      drop-shadow(0 0 2px color-mix(in srgb, var(--accent-pink) 55%, transparent));
   }
 }
 
@@ -44,10 +44,10 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.2) 65%, transparent 100%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-surface) 95%, transparent) 0%, color-mix(in srgb, var(--color-surface) 20%, transparent) 65%, transparent 100%);
   box-shadow:
-    0 8px 20px rgba(15, 23, 42, 0.2),
-    0 0 0 3px rgba(255, 255, 255, 0.75);
+    0 8px 20px color-mix(in srgb, var(--color-border-strong) 20%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--color-surface) 75%, transparent);
 }
 
 .user-avatar-marker__avatar {
@@ -93,12 +93,39 @@
   border-radius: 999px;
   display: grid;
   place-items: center;
-  box-shadow: 0 8px 24px rgba(13, 6, 35, 0.45);
-  border: 2px solid rgba(255, 255, 255, 0.82);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--accent-strong) 45%, transparent);
+  border: 2px solid color-mix(in srgb, var(--color-surface) 82%, transparent);
 }
 
 .pin-cluster-marker span {
   font-size: 0.95rem;
+}
+
+.theme-pin-marker {
+  display: grid !important;
+  place-items: center;
+}
+
+.theme-pin-marker__dot {
+  width: 26px;
+  height: 32px;
+  border-radius: 14px;
+  background: var(--pin-fill, var(--accent-primary));
+  border: 2px solid var(--pin-stroke, var(--accent-strong));
+  box-shadow:
+    0 6px 14px color-mix(in srgb, var(--pin-stroke, var(--accent-strong)) 28%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--color-surface) 45%, transparent);
+  transform: translateY(-2px);
+}
+
+.theme-pin-marker__dot::after {
+  content: '';
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-text-on-accent) 72%, transparent);
+  margin: 6px auto 0;
 }
 
 /* Popup shells inherit map theme; keep overlays transparent */

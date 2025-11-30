@@ -7,13 +7,13 @@
   overflow: hidden;
   width: 100%;
   min-height: 100vh;
-  background: var(--page-bg, var(--color-surface, #ffffff));
+  background: var(--page-bg));
 }
 
 .chat-frame {
   width: 100%;
   min-height: 100vh;
-  background: var(--color-surface, #ffffff);
+  background: var(--color-surface);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -24,7 +24,7 @@
   position: sticky;
   top: 0;
   z-index: 30;
-  background: var(--header-bg, linear-gradient(135deg, #cdaef2 0%, #f5effd 100%));
+  background: var(--header-bg));
   width: 100%;
   height: 72px;
   min-height: 72px;
@@ -59,7 +59,7 @@
 }
 
 .chat-header-back-icon {
-  color: var(--accent-strong, #4b208c);
+  color: var(--accent-strong);
   width: 32px;
   height: 32px;
 }
@@ -72,7 +72,7 @@
 }
 
 .chat-header-title {
-  color: var(--accent-strong, #5D3889);
+  color: var(--accent-strong);
   font-weight: 700 !important;
   letter-spacing: 0.01em;
   margin: 0;
@@ -91,7 +91,7 @@
 }
 
 .chat-header-back-icon {
-  color: #4b208c;
+  color: var(--accent-strong);
   width: 32px;
   height: 32px;
 }
@@ -117,17 +117,17 @@
   display: flex;
   flex-direction: column;
   font-size: 0.85rem;
-  color: var(--color-text-primary, #3d1e60);
+  color: var(--color-text-primary);
 }
 
 .chat-checkin-meta strong {
   font-size: 0.85rem;
-  color: var(--accent-strong, #5D3889);
+  color: var(--accent-strong);
   line-height: 1.2;
 }
 
 .chat-checkin-error {
-  color: var(--color-danger, #FF3B30);
+  color: var(--danger);
   font-size: 0.8rem;
 }
 
@@ -136,8 +136,8 @@
   font-size: 1rem;
   font-weight: 500;
   text-transform: none !important;
-  color: var(--color-text-on-accent, #fff) !important;
-  background-color: var(--accent-strong, #5D3889) !important;
+  color: var(--color-text-on-accent) !important;
+  background-color: var(--accent-strong) !important;
   border-radius: 10px !important;
   white-space: nowrap !important;
 }
@@ -157,7 +157,7 @@
 .chat-room-chip.MuiChip-root {
   background: var(--accent-wash, rgba(255, 255, 255, 0.45));
   border-color: var(--accent-border, rgba(45, 0, 104, 0.3));
-  color: var(--accent-strong, #2d0068);
+  color: var(--accent-strong);
   font-weight: 600;
 }
 
@@ -171,7 +171,7 @@
   border-radius: 999px;
   padding: 0.25rem 0.9rem;
   border-color: var(--accent-border, rgba(45, 0, 104, 0.3));
-  color: var(--accent-strong, #2d0068);
+  color: var(--accent-strong);
   background: var(--color-surface-wash, var(--accent-wash));
 }
 
@@ -181,14 +181,14 @@
 }
 
 .chat-friends-btn.MuiButton-contained {
-  background: var(--accent-primary, #9B5DE5);
-  border-color: var(--accent-primary, #9B5DE5);
-  color: var(--color-text-on-accent, #fff);
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--color-text-on-accent);
 }
 
 .chat-friends-btn.MuiButton-contained:hover {
-  background: #7f46c2;
-  border-color: #7f46c2;
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
 }
 
 .updates-icon-btn {
@@ -217,8 +217,8 @@
   height: 22px;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--accent-primary, #F15BB5);
-  color: var(--color-text-on-accent, #fff);
+  background: var(--accent-primary);
+  color: var(--color-text-on-accent);
   font-size: 0.75rem;
   font-weight: 700;
   display: inline-flex;
@@ -229,7 +229,7 @@
 }
 
 .chat-messages-field {
-  background-color: var(--color-surface, #ffffff);
+  background-color: var(--color-surface);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -242,7 +242,7 @@
 }
 
 .message-bubble__actions {
-  color: var(--color-text-primary, #0e0e0e);
+  color: var(--color-text-primary);
 }
 
 .disabled-dms-container,
@@ -276,12 +276,12 @@
 .empty-dms-body
 {
   font-family: 'Urbanist', sans-serif !important;
-  color: var(--color-text-primary, #111) !important;
+  color: var(--color-text-primary) !important;
 }
 
 .loading-msgs-circle,
 .loading-dms-circle {
-  color: var(--accent-primary, #F15BB5);
+  color: var(--accent-primary);
 }
 
 .chat-scroll-to-bottom-btn {
@@ -294,8 +294,8 @@
 .scroll-to-bottom-icon {
   width: 48px !important;
   height: 48px !important;
-  background-color: var(--accent-primary, #9B5DE5);
-  color: var(--color-text-on-accent, #ffffff);
+  background-color: var(--accent-primary);
+  color: var(--color-text-on-accent);
   border-radius: 60px;
 }
 
@@ -303,7 +303,7 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(env(safe-area-inset-bottom, 0) + 82px);
+  bottom: calc(env(safe-area-inset-bottom, 0) + 92px);
   width: 100%;
   display: flex;
   align-items: center;
@@ -311,9 +311,8 @@
   gap: 4px;
   padding: 8px 12px;
   overflow-y: hidden;  
-  background: var(--color-surface-wash-strong, #CDAEF2);
-  border-top: 1px solid var(--color-border, #ddd);
-  margin-bottom: -2px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border-strong);
   z-index: 5;
   box-sizing: border-box;
   transform: none;
@@ -344,8 +343,8 @@
   font-family:'Urbanist', sans-serif;
   font-weight: 500;
   border-radius: 45px;
-  background: var(--color-surface, #ffffff);
-  color: var(--color-text-primary, #111);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
 }
 
 /* Button to add an img (no visual) */
@@ -372,7 +371,7 @@
   width: 40px !important;
   display: block;
   margin: 0;
-  color: var(--accent-strong, #5D3889);
+  color: var(--accent-strong);
 }
 
 .share-pin-btn {
@@ -387,14 +386,14 @@
 .share-pin-icon {
   width: 40px;
   height: 40px;
-  color: var(--accent-strong, #5D3889);
+  color: var(--accent-strong);
 }
 
 /* Button to send a message (no visual) */
 .send-message-btn {
   position: relative;
   bottom: 2px;
-  background: linear-gradient(135deg, var(--accent-strong, #5d3889) 0%, var(--accent-primary, #9b5de5) 100%);
+  background: linear-gradient(135deg, var(--accent-strong) 0%, var(--accent-primary) 100%);
   border: none;
   border-radius: 50%;
   width: 48px;
@@ -426,7 +425,7 @@
   opacity: 0.65;
   cursor: not-allowed;
   box-shadow: none;
-  background: linear-gradient(135deg, var(--accent-wash-strong, #cdaef2) 0%, color-mix(in srgb, var(--accent-wash) 90%, transparent) 100%);
+  background: linear-gradient(135deg, var(--accent-wash-strong) 0%, color-mix(in srgb, var(--accent-wash) 90%, transparent) 100%);
 }
 
 .send-message-icon {
@@ -443,24 +442,24 @@
 .channel-switch-header {
   display: flex;
   justify-content: space-between;
-  background-color: var(--color-surface-wash-strong, #CDAEF2) !important;
-  border-bottom: 1px solid var(--color-border-strong, #111) !important;
+  background-color: var(--color-surface-wash-strong) !important;
+  border-bottom: 1px solid var(--color-border-strong, var(--color-text-primary)) !important;
 }
 
 .channel-switch-title {
   font-family: 'Urbanist', sans-serif !important;
   font-weight: 600 !important; 
-  color: var(--color-text-strong, #111);
+  color: var(--color-text-strong, var(--color-text-primary));
 }
 
 .close-channel-switch-btn {
   font-family: 'Urbanist', sans-serif !important;
   text-transform: none !important;
-  color: var(--accent-strong, #5D3889) !important;
+  color: var(--accent-strong) !important;
 }
 
 .channel-switch-tabs-background {
-  background-color: var(--color-surface-wash, #F5EFFD) !important;
+  background-color: var(--color-surface-wash) !important;
   border-bottom: 1px solid var(--color-border, gray) !important;
 }
 
@@ -476,7 +475,7 @@
 }
 
 .channel-switch-tab-indicator {
-  background-color: var(--accent-primary, #F15BB5) !important;
+  background-color: var(--accent-primary) !important;
   height: 4px !important;
 }
 
@@ -484,7 +483,7 @@
 .channel-switch-dm-tab {
   font-family: 'Urbanist', sans-serif !important;
   text-transform: none !important;
-  color: var(--color-text-primary, #111) !important;
+  color: var(--color-text-primary) !important;
 }
 
 .channel-switch-tab-container {
@@ -497,14 +496,14 @@
   font-family: 'Urbanist', sans-serif !important;
   font-weight: 500 !important;
   font-size: 0.8rem !important;
-  color: var(--color-text-primary, #111) !important;
+  color: var(--color-text-primary) !important;
 }
 
 .channel-switch-tab-badge {
   font-family: 'Urbanist', sans-serif !important;
   font-weight: 500 !important;
   font-size: 0.8rem !important;
-  color: var(--accent-primary, #F15BB5) !important;
+  color: var(--accent-primary) !important;
 }
 
 .room-tab-text,
@@ -518,5 +517,5 @@
 .room-tab-text-badge {
   font-family: 'Urbanist', sans-serif !important;
   font-weight: 600 !important;
-  color: var(--accent-primary, #F15BB5) !important;
+  color: var(--accent-primary) !important;
 }

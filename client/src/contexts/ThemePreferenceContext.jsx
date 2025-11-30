@@ -8,7 +8,7 @@ const ThemePreferenceContext = createContext({
   themeOrder: ['light', 'dark']
 });
 
-const THEME_ORDER = ['light', 'dark'];
+const THEME_ORDER = ['light', 'dark', 'neon', 'sunset', 'forest', 'ocean', 'candy', 'glitch', 'plasma', 'rainbow', 'aurora', 'rainbow-animated'];
 const STORAGE_KEY = 'pinpoint:themePreference';
 
 const normalizeThemeValue = (value) => (THEME_ORDER.includes(value) ? value : 'light');
@@ -77,10 +77,9 @@ export function ThemePreferenceProvider({ children }) {
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
-    const lightClass = 'theme-light';
-    const darkClass = 'theme-dark';
-    root.classList.remove(lightClass, darkClass);
-    root.classList.add(resolvedMode === 'dark' ? darkClass : lightClass);
+    const classes = THEME_ORDER.map((t) => `theme-${t}`);
+    root.classList.remove(...classes);
+    root.classList.add(`theme-${resolvedMode}`);
   }, [resolvedMode]);
 
   const value = useMemo(

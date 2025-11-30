@@ -46,7 +46,7 @@ function NotFoundPage({ defaultPath = routes.auth.login, defaultLabel = 'Go to M
         justifyContent: 'center',
         px: 2,
         py: 4,
-        backgroundColor: 'var(--color-surface, #fff)'
+        backgroundColor: 'var(--color-surface)'
       }}
     >
       <Paper
@@ -57,8 +57,8 @@ function NotFoundPage({ defaultPath = routes.auth.login, defaultLabel = 'Go to M
           borderRadius: 3,
           p: { xs: 3, md: 4 },
           textAlign: 'center',
-          color: '#000',
-          backgroundColor: 'var(--color-surface, #fff)'
+          color: 'var(--color-text-primary)',
+          backgroundColor: 'var(--color-surface)'
         }}
       >
         <Stack spacing={1.5} alignItems="center">
@@ -86,8 +86,8 @@ function NotFoundPage({ defaultPath = routes.auth.login, defaultLabel = 'Go to M
               fontWeight: 600,
               textTransform: 'none',
               borderWidth: 1.5,
-              borderColor: '#000',
-              color: '#000'
+              borderColor: 'var(--color-border-strong)',
+              color: 'var(--color-text-primary)'
             }}
           >
             Go Back
@@ -101,8 +101,8 @@ function NotFoundPage({ defaultPath = routes.auth.login, defaultLabel = 'Go to M
             sx={{
               fontWeight: 600,
               textTransform: 'none',
-              backgroundColor: '#9B5DE5',
-              '&:hover': { backgroundColor: '#6c3bd8' }
+              backgroundColor: 'var(--accent-primary)',
+              '&:hover': { backgroundColor: 'color-mix(in srgb, var(--accent-strong) 70%, transparent)' }
             }}
           >
             {defaultLabel}

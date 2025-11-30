@@ -284,7 +284,7 @@ function SettingsPage() {
     <Box
       sx={{
         minHeight: '100vh',
-        background: 'linear-gradient(180deg, #FFFFFF 0%, #F5EFFD 35%, #CDAEF2 100%)',
+        background: 'var(--page-bg)',
         py: 0,
         px: 0
       }}
@@ -346,7 +346,7 @@ function SettingsPage() {
           sx={{
             p: { xs: 2, md: 3 },
             borderRadius: 4,
-            backgroundColor: 'var(--color-surface, #FFFFFF)',
+            backgroundColor: 'var(--color-surface)',
             border: `1px solid ${settingsPalette.borderSubtle}`,
             boxShadow: '0 25px 65px rgba(93, 56, 137, 0.15)'
           }}
@@ -372,7 +372,7 @@ function SettingsPage() {
                 },
                 '& .Mui-selected': {
                   backgroundColor: settingsPalette.accent,
-                  color: '#FFFFFF !important'
+                  color: 'var(--color-text-on-accent) !important'
                 }
               }}
             >
@@ -474,7 +474,7 @@ function SettingsPage() {
                   p: 2.5,
                   borderRadius: 3,
                   border: `1px solid ${settingsPalette.borderSubtle}`,
-                  backgroundColor: 'var(--color-surface, #fff)'
+                  backgroundColor: 'var(--color-surface)'
                 }}
               >
                 <Typography variant="h6" sx={{ color: settingsPalette.accent, fontWeight: 700, mb: 1 }}>
@@ -539,7 +539,7 @@ function SettingsPage() {
           sx={{
             p: { xs: 2, md: 3 },
             borderRadius: 4,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: 'var(--color-surface)',
             border: `1px solid ${settingsPalette.borderSubtle}`,
             boxShadow: '0 12px 30px rgba(93, 56, 137, 0.1)'
           }}
@@ -557,15 +557,15 @@ function SettingsPage() {
                 variant="outlined"
                 startIcon={<LogoutIcon />}
                 sx={{
-                  borderColor: '#B3261E',
-                  color: '#B3261E',
+                  borderColor: 'var(--danger)',
+                  color: 'var(--danger)',
                   borderRadius: 999,
                   fontWeight: 600,
                   textTransform: 'none',
                   '&:hover': {
-                    borderColor: '#7A2017',
-                    backgroundColor: '#FFE5E0',
-                    color: '#7A2017'
+                    borderColor: 'color-mix(in srgb, var(--danger) 80%, transparent)',
+                    backgroundColor: 'color-mix(in srgb, var(--danger) 16%, transparent)',
+                    color: 'var(--danger)'
                   }
                 }}
               >

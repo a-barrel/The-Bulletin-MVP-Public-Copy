@@ -4,7 +4,7 @@
   align-items: flex-start;
   gap: 8px;
   background-color: var(--color-surface);
-  border-bottom: 0.1rem solid var(--color-border-strong, black);
+  border-bottom: 0.1rem solid var(--color-border-strong);
   padding-bottom: 1rem;
 }
 

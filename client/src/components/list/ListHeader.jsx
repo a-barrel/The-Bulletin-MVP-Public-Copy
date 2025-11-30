@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import GlobalNavMenu from '../GlobalNavMenu';
-import updatesIcon from '../../assets/UpdateIcon.svg';
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 
 function buildBadge(unreadCount) {
   if (!unreadCount) return null;
@@ -24,7 +24,7 @@ function ListHeader({ unreadCount, onNotifications, isOffline }) {
         disabled={isOffline}
         title={isOffline ? 'Reconnect to view updates' : undefined}
       >
-        <img src={updatesIcon} alt="" className="header-icon" aria-hidden="true" />
+        <NotificationsNoneIcon className="header-icon" aria-hidden="true" />
         {displayBadge ? (
           <span className="header-icon-badge" aria-hidden="true">
             {displayBadge}

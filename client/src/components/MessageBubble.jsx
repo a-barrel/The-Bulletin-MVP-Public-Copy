@@ -1,7 +1,6 @@
 import React, { memo, useMemo, useState, useCallback } from 'react';
 import { Box, Typography, IconButton } from '@mui/material';
 import { NavLink, useNavigate } from 'react-router-dom';
-import AvatarIcon from '../assets/AvatarIcon.svg';
 import "./MessageBubble.css";
 import { formatFriendlyTimestamp, formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
 import GavelIcon from '@mui/icons-material/Gavel';
@@ -207,7 +206,7 @@ function MessageBubble({
         ? `/profile/${authorId}`
         : '/profile/me';
 
-  const resolvedAvatarSrc = ensureImageSrc(resolveAvatarSrc(msg?.author) || AvatarIcon);
+  const resolvedAvatarSrc = ensureImageSrc(resolveAvatarSrc(msg?.author));
 
   return (
     <Box className={`chat-message ${isSelf ? 'self' : ''}`}>

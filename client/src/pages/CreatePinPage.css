@@ -310,7 +310,7 @@
 
 .pin-preview-card__detail-value {
   font-weight: 600;
-  color: #1f1640;
+  color: var(--color-text-strong);
 }
 
 .create-pin .form-section h2 {
@@ -338,36 +338,36 @@
 .create-pin .input-group textarea,
 .create-pin .input-group select {
   width: 100%;
-  border: 1px solid #ccc;
+  border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
   padding: 0.5rem;
   box-sizing: border-box;
-  color: #0b0c10;
-  background-color: var(--color-surface, #ffffff);
+  color: var(--color-text-primary);
+  background-color: var(--color-surface);
 }
 
 .create-pin .two-col input,
 .create-pin .two-col textarea,
 .create-pin .two-col select {
   width: 100%;
-  border: 1px solid #ccc;
+  border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
   padding: 0.5rem;
   box-sizing: border-box;
-  color: #0b0c10;
-  background-color: var(--color-surface, #ffffff);
+  color: var(--color-text-primary);
+  background-color: var(--color-surface);
 }
 
 .create-pin .map-coords input,
 .create-pin .map-coords textarea,
 .create-pin .map-coords select {
   width: 100%;
-  border: 1px solid #ccc;
+  border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
   padding: 0.5rem;
   box-sizing: border-box;
-  color: #0b0c10;
-  background-color: var(--color-surface, #ffffff);
+  color: var(--color-text-primary);
+  background-color: var(--color-surface);
 }
 
 .create-pin textarea { 
@@ -406,15 +406,15 @@
   border: none;
   padding: 0.75rem;
   border-radius: 0.75rem;
-  background-color: #eee;
+  background-color: var(--color-surface-wash);
   cursor: pointer;
   font-weight: 600;
 }
 
 .create-pin .toggle-btn.selected {
-  background-color: #0073e6;
-  color: var(--color-text-on-accent, #ffffff);
-  box-shadow: 0 5px 15px rgba(0,115,230,0.3);
+  background-color: var(--accent-blue);
+  color: var(--color-text-on-accent);
+  box-shadow: 0 5px 15px color-mix(in srgb, var(--accent-blue) 30%, transparent);
 }
 
 /* status alerts */
@@ -426,18 +426,18 @@
 }
 
 .create-pin .alert-success { 
-  background: #e6f4ea; 
-  color: #256029; 
+  background: color-mix(in srgb, var(--color-success) 18%, transparent); 
+  color: var(--color-success); 
 }
 
 .create-pin .alert-error { 
-  background: #fdecea; 
-  color: #611a15; 
+  background: color-mix(in srgb, var(--danger) 16%, transparent); 
+  color: var(--danger); 
 }
 
 .create-pin .alert-info { 
-  background: #e8f4fd; 
-  color: #0c5460; 
+  background: color-mix(in srgb, var(--accent-blue) 18%, transparent); 
+  color: color-mix(in srgb, var(--accent-blue) 85%, var(--color-text-primary) 15%); 
 }
 
 .create-pin .alert-close {
@@ -489,7 +489,7 @@
   display: block;
   margin-top: 0.35rem;
   font-size: 0.8rem;
-  color: #666;
+  color: var(--color-text-secondary);
 }
 
 .create-pin .switch-group input[type="checkbox"],
@@ -505,7 +505,7 @@
 
 .create-pin .switch-group input[type="checkbox"] {
   vertical-align: middle;
-  accent-color: #007bff; /* optional: change checkbox color */
+  accent-color: var(--accent-blue);
   width: 18px;
   height: 18px;
   transform: scale(1.2);
@@ -517,10 +517,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
   padding: 0.75rem 1rem;
-  background-color: #FFFFFF;
+  background-color: var(--color-surface);
 }
 
 .create-pin .toggle-inline label {
@@ -532,7 +532,7 @@
 .create-pin .toggle-inline input[type="checkbox"] {
   width: 20px;
   height: 20px;
-  accent-color: #0073e6;
+  accent-color: var(--accent-blue);
   margin: 0;
 }
 
@@ -555,10 +555,10 @@
   padding: 0.5rem 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  border: 1px solid #ccc;
+  border: 1px solid var(--color-border-subtle);
   background: none;
   box-sizing: border-box;
-  background-color: #FFFFFF;
+  background-color: var(--color-surface);
 }
 
 /* Disabled look for offline upload button */
@@ -568,13 +568,13 @@
 }
 
 .create-pin .btn-danger { 
-  color: #e74c3c; 
-  border-color: #e74c3c; 
+  color: var(--danger); 
+  border-color: var(--danger); 
 }
 
 .create-pin .btn-selected { 
-  background: #0073e6; 
-  color: white; 
+  background: var(--accent-blue); 
+  color: var(--color-text-on-accent); 
   border: none; 
 }
 
@@ -607,7 +607,7 @@
   top: 8px;
   left: 8px;
   background: rgba(0,0,0,0.65);
-  color: var(--color-text-on-accent, #ffffff);
+  color: var(--color-text-on-accent);
   padding: 0.25rem 0.5rem;
   border-radius: 999px;
   font-size: 0.75rem;
@@ -628,7 +628,7 @@
   min-height: 260px;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid #ccc;
+  border: 1px solid var(--color-border-subtle);
 }
 
 @media (max-width: 640px) {
@@ -696,13 +696,13 @@
   inset: 6px;
   border-radius: 50%;
   overflow: hidden;
-  border: 3px solid #5d3889;
-  background: linear-gradient(135deg, #f8f1ff, #d5c4ff);
+  border: 3px solid var(--accent-strong);
+  background: linear-gradient(135deg, var(--accent-wash) 0%, var(--color-surface-wash-strong) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  color: #1f1336;
+  color: var(--color-text-strong);
 }
 
 .create-pin-avatar-marker__avatar img {
@@ -714,21 +714,21 @@
 .create-pin .distance-indicator {
   margin-top: 0.5rem;
   font-size: 0.9rem;
-  color: #1f1336;
+  color: var(--color-text-strong);
 }
 
 .create-pin .distance-indicator.hint {
-  color: #5d6470;
+  color: var(--color-text-secondary);
   font-weight: 400;
 }
 
 .create-pin .loading-text {
-  color: #0073e6;
+  color: var(--accent-blue);
   font-weight: 500;
 }
 
 .create-pin .note-text {
-  color: #777;
+  color: var(--color-text-secondary);
   font-size: 0.9rem;
 }
 
@@ -748,11 +748,11 @@
 
 /* background color */
 .create-pin.bg-event {
-  background-color: #F4F0FC;
+  background-color: var(--accent-wash);
 }
 
 .create-pin.bg-discussion {
-  background-color: #EFF8FC;
+  background-color: var(--color-surface-wash);
 }
 
 /* footer actions */
@@ -765,9 +765,9 @@
 
 /* Reset button now re-uses old outline styles */
 .create-pin .footer-actions .btn-reset {
-  background-color: #e74c3c;
-  color: var(--color-text-on-accent, #ffffff);
-  border-color: #e74c3c;
+  background-color: var(--danger);
+  color: var(--color-text-on-accent);
+  border-color: var(--danger);
 }
 
 /* Save draft pill (replaces MUI buttons from main) */
@@ -779,8 +779,8 @@
   font-weight: 600;
   cursor: pointer;
   border: none;
-  background-color: #0073e6;
-  color: var(--color-text-on-accent, #ffffff);
+  background-color: var(--accent-blue);
+  color: var(--color-text-on-accent);
   box-sizing: border-box;
 }
 

@@ -9,10 +9,12 @@
   gap: 16px;
   padding: 24px;
   border-radius: 20px;
-  background: radial-gradient(circle at 20% 20%, rgba(93, 56, 137, 0.08), transparent 40%),
-    radial-gradient(circle at 80% 0%, rgba(62, 184, 240, 0.08), transparent 45%),
+  border: 1px solid var(--color-border-strong);
+  background: radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--accent-strong) 8%, transparent), transparent 40%),
+    radial-gradient(circle at 80% 0%, color-mix(in srgb, var(--accent-blue) 8%, transparent), transparent 45%),
     var(--color-surface);
-  box-shadow: 0 24px 48px rgba(16, 9, 32, 0.18), 0 8px 20px rgba(16, 9, 32, 0.12);
+  box-shadow: 0 24px 48px color-mix(in srgb, var(--accent-strong) 18%, transparent),
+    0 8px 20px color-mix(in srgb, var(--accent-strong) 12%, transparent);
   color: var(--color-text-primary);
 }
 
@@ -29,6 +31,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+.nav-console-header-row .MuiTypography-body2 {
+  color: var(--color-text-secondary);
 }
 
 .nav-console-main {
@@ -50,6 +55,7 @@
 .nav-console-button {
   justify-content: flex-start;
   text-transform: none;
+  color: var(--color-text-primary);
 }
 
 .nav-console-button.MuiButton-contained {
@@ -58,11 +64,20 @@
 }
 
 .nav-console-button.MuiButton-outlined {
-  border-color: rgba(93, 56, 137, 0.3);
+  border-color: color-mix(in srgb, var(--accent-strong) 40%, transparent);
+  color: var(--color-text-primary) !important;
+  background: color-mix(in srgb, var(--accent-wash) 55%, transparent);
+}
+
+.nav-console-button.MuiButton-outlined:hover,
+.nav-console-button.MuiButton-outlined.Mui-focusVisible {
+  border-color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent-strong) 12%, transparent);
 }
 
 .nav-console-button .MuiButton-startIcon svg {
   opacity: 0.85;
+  color: currentColor;
 }
 
 .theme-dark .nav-console-paper {
