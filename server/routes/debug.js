@@ -102,6 +102,42 @@ const describeDmRestriction = (user) => {
   return 'This user is not accepting direct messages right now.';
 };
 
+const REACTION_KEYS = ['surprised', 'angry', 'happy', 'thumbs_up', 'thumbs_down'];
+const REACTION_GLYPHS = {
+  surprised: '😲',
+  angry: '😡',
+  happy: '🙂',
+  thumbs_up: '👍',
+  thumbs_down: '👎'
+};
+
+const normalizeReactionInput = (value) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  const stringValue = `${value}`.trim();
+  if (!stringValue) {
+    return null;
+  }
+  const lowered = stringValue.toLowerCase();
+  if (REACTION_KEYS.includes(lowered)) {
+    return lowered;
+  }
+  const underscored = lowered.replace(/[\s-]+/g, '_');
+  if (REACTION_KEYS.includes(underscored)) {
+    return underscored;
+  }
+  const glyphEntry = Object.entries(REACTION_GLYPHS).find(([, glyph]) => glyph === stringValue);
+  if (glyphEntry) {
+    return glyphEntry[0];
+  }
+  return null;
+};
+
+const DmReactionMutationSchema = z.object({
+  emoji: z.string().trim().optional().nullable()
+});
+
 const resolveViewerUser = async (req) => {
   if (req?.viewer) {
     return req.viewer;
@@ -243,11 +279,16 @@ const mapFriendRequestRecord = (requestDoc) => {
   };
 };
 
-const mapDirectMessageThread = (threadDoc, userLookup = new Map(), { includeMessages = false } = {}) => {
+const mapDirectMessageThread = (
+  threadDoc,
+  userLookup = new Map(),
+  { includeMessages = false, viewerId } = {}
+) => {
   if (!threadDoc) {
     return null;
   }
 
+  const viewerIdString = viewerId ? toIdString(viewerId) : null;
   const participants = (threadDoc.participants || []).map((participant) => {
     const id = toIdString(participant);
     return userLookup.get(id) || { id };
@@ -276,12 +317,51 @@ const mapDirectMessageThread = (threadDoc, userLookup = new Map(), { includeMess
     ...base,
     messages: (threadDoc.messages || []).map((message) => {
       const senderId = toIdString(message.senderId);
+      const countsMap =
+        message.reactionCounts instanceof Map
+          ? message.reactionCounts
+          : new Map(Object.entries(message.reactionCounts || {}));
+      const reactionsByUserMap =
+        message.reactionsByUser instanceof Map
+          ? message.reactionsByUser
+          : new Map(Object.entries(message.reactionsByUser || {}));
+
+      const counts = {};
+      REACTION_KEYS.forEach((key) => {
+        const raw = countsMap.get ? countsMap.get(key) : countsMap[key];
+        const value = Number(raw);
+        if (Number.isFinite(value) && value > 0) {
+          counts[key] = value;
+        }
+      });
+
+      let viewerReactions = [];
+      if (viewerIdString) {
+        const raw = reactionsByUserMap.get
+          ? reactionsByUserMap.get(viewerIdString)
+          : reactionsByUserMap[viewerIdString];
+        if (Array.isArray(raw)) {
+          viewerReactions = raw.filter((value) => REACTION_KEYS.includes(value));
+        } else if (typeof raw === 'string' && raw) {
+          viewerReactions = REACTION_KEYS.includes(raw) ? [raw] : [];
+        } else if (raw && typeof raw === 'object') {
+          const values = Array.from(new Set(Object.values(raw)));
+          viewerReactions = values.filter((value) => REACTION_KEYS.includes(value));
+        }
+      }
+      const viewerReaction = viewerReactions[0];
+
       return {
         id: toIdString(message._id),
         sender: userLookup.get(senderId) || { id: senderId },
         body: message.body,
         attachments: Array.isArray(message.attachments) ? message.attachments : [],
-        createdAt: message.createdAt ? message.createdAt.toISOString() : null
+        createdAt: message.createdAt ? message.createdAt.toISOString() : null,
+        reactions: {
+          counts,
+          viewerReaction: viewerReaction || undefined,
+          viewerReactions
+        }
       };
     })
   };
@@ -1977,7 +2057,10 @@ router.get('/direct-messages/threads/:threadId', async (req, res) => {
     );
 
     res.json({
-      thread: mapDirectMessageThread(thread, userLookup, { includeMessages: true })
+      thread: mapDirectMessageThread(thread, userLookup, {
+        includeMessages: true,
+        viewerId: viewer._id
+      })
     });
   } catch (error) {
     console.error('Failed to load direct message thread', error);
@@ -2069,7 +2152,10 @@ router.post('/direct-messages/threads', async (req, res) => {
     userLookup.set(toIdString(viewer._id), mapUserSummary(viewer));
 
     res.status(201).json({
-      thread: mapDirectMessageThread(thread.toObject(), userLookup, { includeMessages: true })
+      thread: mapDirectMessageThread(thread.toObject(), userLookup, {
+        includeMessages: true,
+        viewerId: viewer._id
+      })
     });
   } catch (error) {
     if (error instanceof ZodError) {
@@ -2157,6 +2243,204 @@ router.post('/direct-messages/threads/:threadId/messages', async (req, res) => {
     }
     console.error('Failed to send direct message', error);
     res.status(500).json({ message: 'Failed to send direct message' });
+  }
+});
+
+router.patch('/direct-messages/threads/:threadId/messages/:messageId/reactions', async (req, res) => {
+  const { threadId, messageId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(threadId) || !mongoose.Types.ObjectId.isValid(messageId)) {
+    return res.status(400).json({ message: 'Invalid thread or message id' });
+  }
+
+  try {
+    const input = DmReactionMutationSchema.parse(req.body);
+    const desiredReaction = normalizeReactionInput(input.emoji);
+    if (input.emoji !== undefined && input.emoji !== null && !desiredReaction) {
+      return res.status(400).json({ message: 'Unsupported reaction emoji.' });
+    }
+
+    const viewer = await ensureFriendAdminAccess(req, res);
+    if (!viewer) {
+      return;
+    }
+    const viewerIdString = toIdString(viewer._id);
+
+    const thread = await DirectMessageThread.findById(threadId);
+    if (!thread) {
+      return res.status(404).json({ message: 'Thread not found.' });
+    }
+
+    const participantIds = thread.participants.map((participant) => toIdString(participant));
+    if (!participantIds.includes(viewerIdString)) {
+      return res.status(403).json({ message: 'You are not a participant in this thread.' });
+    }
+
+    const participants = await User.find({ _id: { $in: thread.participants } })
+      .select({
+        username: 1,
+        displayName: 1,
+        roles: 1,
+        accountStatus: 1,
+        avatar: 1,
+        stats: 1,
+        relationships: 1,
+        preferences: 1
+      })
+      .lean();
+
+    const viewerBlockedSet = new Set(mapIdList(viewer?.relationships?.blockedUserIds));
+    for (const participant of participants) {
+      const participantId = toIdString(participant._id);
+      if (!participantId || participantId === viewerIdString) {
+        continue;
+      }
+      if (viewerBlockedSet.has(participantId)) {
+        return res
+          .status(403)
+          .json({ message: 'You have blocked one or more participants in this conversation.' });
+      }
+      const participantBlocked = new Set(mapIdList(participant.relationships?.blockedUserIds));
+      if (participantBlocked.has(viewerIdString)) {
+        return res.status(403).json({ message: 'One or more participants has blocked you.' });
+      }
+      if (!canViewerMessageTarget(viewer, participant)) {
+        return res.status(403).json({ message: describeDmRestriction(participant) });
+      }
+    }
+
+    const messageDoc =
+      typeof thread.messages?.id === 'function'
+        ? thread.messages.id(messageId)
+        : (thread.messages || []).find((msg) => toIdString(msg._id) === toIdString(messageId));
+    if (!messageDoc) {
+      return res.status(404).json({ message: 'Message not found.' });
+    }
+
+    const countsMap =
+      messageDoc.reactionCounts instanceof Map
+        ? messageDoc.reactionCounts
+        : new Map(Object.entries(messageDoc.reactionCounts || {}));
+    const reactionsByUserMap =
+      messageDoc.reactionsByUser instanceof Map
+        ? messageDoc.reactionsByUser
+        : new Map(Object.entries(messageDoc.reactionsByUser || {}));
+
+    const rawExisting = viewerIdString
+      ? reactionsByUserMap.get
+        ? reactionsByUserMap.get(viewerIdString)
+        : reactionsByUserMap[viewerIdString]
+      : null;
+    const existingSet = new Set(
+      Array.isArray(rawExisting)
+        ? rawExisting
+        : typeof rawExisting === 'string' && rawExisting
+          ? [rawExisting]
+          : []
+    );
+
+    if (desiredReaction) {
+      if (existingSet.has(desiredReaction)) {
+        const prevCount = Number(
+          countsMap.get ? countsMap.get(desiredReaction) : countsMap[desiredReaction]
+        );
+        const nextCount = Math.max(0, Number.isFinite(prevCount) ? prevCount - 1 : 0);
+        if (countsMap.set) {
+          countsMap.set(desiredReaction, nextCount);
+        } else {
+          countsMap[desiredReaction] = nextCount;
+        }
+        existingSet.delete(desiredReaction);
+      } else {
+        const current = Number(
+          countsMap.get ? countsMap.get(desiredReaction) : countsMap[desiredReaction]
+        );
+        const nextCount = Math.max(0, Number.isFinite(current) ? current : 0) + 1;
+        if (countsMap.set) {
+          countsMap.set(desiredReaction, nextCount);
+        } else {
+          countsMap[desiredReaction] = nextCount;
+        }
+        existingSet.add(desiredReaction);
+      }
+    }
+
+    const nextViewerReactions = Array.from(existingSet).filter((value) =>
+      REACTION_KEYS.includes(value)
+    );
+    if (nextViewerReactions.length) {
+      if (reactionsByUserMap.set) {
+        reactionsByUserMap.set(viewerIdString, nextViewerReactions);
+      } else {
+        reactionsByUserMap[viewerIdString] = nextViewerReactions;
+      }
+    } else if (viewerIdString) {
+      reactionsByUserMap.delete
+        ? reactionsByUserMap.delete(viewerIdString)
+        : delete reactionsByUserMap[viewerIdString];
+    }
+
+    const normalizedCounts = {};
+    REACTION_KEYS.forEach((key) => {
+      const raw = countsMap.get ? countsMap.get(key) : countsMap[key];
+      const value = Number(raw);
+      if (Number.isFinite(value) && value > 0) {
+        normalizedCounts[key] = value;
+      }
+    });
+    const normalizedReactionsByUser = {};
+    if (reactionsByUserMap.forEach) {
+      reactionsByUserMap.forEach((value, key) => {
+        if (!key) return;
+        const list = Array.isArray(value)
+          ? value
+          : typeof value === 'string'
+            ? [value]
+            : [];
+        const filtered = list.filter((entry) => REACTION_KEYS.includes(entry));
+        if (filtered.length) {
+          normalizedReactionsByUser[key] = filtered;
+        }
+      });
+    } else {
+      Object.entries(reactionsByUserMap || {}).forEach(([key, value]) => {
+        if (!key) return;
+        const list = Array.isArray(value)
+          ? value
+          : typeof value === 'string'
+            ? [value]
+            : [];
+        const filtered = list.filter((entry) => REACTION_KEYS.includes(entry));
+        if (filtered.length) {
+          normalizedReactionsByUser[key] = filtered;
+        }
+      });
+    }
+
+    messageDoc.reactionCounts = normalizedCounts;
+    messageDoc.reactionsByUser = normalizedReactionsByUser;
+    messageDoc.markModified('reactionCounts');
+    messageDoc.markModified('reactionsByUser');
+    thread.markModified('messages');
+    await thread.save();
+
+    const userLookup = new Map(
+      participants.map((doc) => [toIdString(doc._id), mapUserSummary(doc)])
+    );
+    userLookup.set(toIdString(viewer._id), mapUserSummary(viewer));
+    const mappedThread = mapDirectMessageThread(thread.toObject(), userLookup, {
+      includeMessages: true,
+      viewerId: viewer._id
+    });
+    const mappedMessage =
+      mappedThread?.messages?.find((msg) => msg.id === toIdString(messageId)) || null;
+
+    return res.json({ message: mappedMessage });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid reaction payload', issues: error.errors });
+    }
+    console.error('Failed to toggle direct message reaction:', error);
+    res.status(500).json({ message: 'Failed to update reaction' });
   }
 });
 

@@ -8,6 +8,8 @@ const {
 } = require('./common');
 const { PublicUserSchema } = require('./user');
 
+const ReactionCountsSchema = z.record(z.string(), z.number().int().nonnegative());
+
 const ProximityChatRoomSchema = z.object({
   _id: ObjectIdSchema,
   ownerId: ObjectIdSchema,
@@ -39,6 +41,13 @@ const ProximityChatMessageSchema = z.object({
   isSystem: z.boolean().optional(),
   coordinates: GeoPointSchema.optional(),
   attachments: z.array(MediaAssetSchema).default([]),
+  reactions: z
+    .object({
+      counts: ReactionCountsSchema.default({}),
+      viewerReaction: z.string().optional(),
+      viewerReactions: z.array(z.string()).default([])
+    })
+    .default({ counts: {}, viewerReaction: undefined }),
   createdAt: IsoDateStringSchema,
   updatedAt: IsoDateStringSchema,
   audit: AuditMetadataSchema.optional()

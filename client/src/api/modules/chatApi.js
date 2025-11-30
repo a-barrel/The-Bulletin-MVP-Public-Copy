@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from '../httpClient';
+import { apiGet, apiPatch, apiPost } from '../httpClient';
 
 export const createProximityChatRoom = (input) => apiPost('/api/debug/chat-rooms', input);
 export const createChatRoom = (input) => apiPost('/api/chats/rooms', input);
@@ -32,6 +32,19 @@ export const fetchChatMessages = (roomId, { latitude, longitude } = {}) => {
     ? `/api/chats/rooms/${encodeURIComponent(roomId)}/messages?${query}`
     : `/api/chats/rooms/${encodeURIComponent(roomId)}/messages`;
   return apiGet(path);
+};
+
+export const updateChatMessageReaction = (roomId, messageId, emoji, { latitude, longitude } = {}) => {
+  if (!roomId || !messageId) {
+    throw new Error('Room id and message id are required to react to a message');
+  }
+  const body = { emoji };
+  if (latitude !== undefined && latitude !== null && !Number.isNaN(latitude)) body.latitude = latitude;
+  if (longitude !== undefined && longitude !== null && !Number.isNaN(longitude)) body.longitude = longitude;
+  return apiPatch(
+    `/api/chats/rooms/${encodeURIComponent(roomId)}/messages/${encodeURIComponent(messageId)}/reactions`,
+    body
+  );
 };
 
 export const createProximityChatPresence = (input) => apiPost('/api/debug/chat-presence', input);
