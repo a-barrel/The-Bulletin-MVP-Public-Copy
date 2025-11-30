@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiDelete } from '../httpClient';
+import { apiGet, apiPost, apiDelete, apiPatch } from '../httpClient';
 
 export const fetchFriendOverview = () => apiGet('/api/debug/friends/overview');
 
@@ -36,4 +36,15 @@ export const sendDirectMessage = (threadId, { body, attachments }) => {
     body,
     attachments
   });
+};
+
+export const updateDirectMessageReaction = (threadId, messageId, emoji) => {
+  if (!threadId) throw new Error('threadId is required to react to a direct message');
+  if (!messageId) throw new Error('messageId is required to react to a direct message');
+  return apiPatch(
+    `/api/debug/direct-messages/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(
+      messageId
+    )}/reactions`,
+    { emoji }
+  );
 };

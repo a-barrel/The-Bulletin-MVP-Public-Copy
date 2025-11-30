@@ -1,13 +1,55 @@
 import { useCallback, useReducer } from 'react';
 import reportClientError from '../utils/reportClientError';
+import { CHAT_REACTION_OPTIONS } from '../constants/chatReactions';
 
 import {
   createDirectMessageThread,
-  sendDirectMessage
+  sendDirectMessage,
+  updateDirectMessageReaction
 } from '../api';
 import { dmReducer, initialState, buildOptimisticMessage } from './directMessages/dmState';
 import useDmThreadsData from './directMessages/useDmThreadsData';
 import useDmThreadDetail from './directMessages/useDmThreadDetail';
+
+const ALLOWED_REACTION_KEYS = new Set(CHAT_REACTION_OPTIONS.map((option) => option.key));
+
+const toggleReactionLocally = (message, emojiKey) => {
+  if (!message) {
+    return message;
+  }
+  const allowedReaction = emojiKey && ALLOWED_REACTION_KEYS.has(emojiKey) ? emojiKey : null;
+  const existingReactions = Array.isArray(message?.reactions?.viewerReactions)
+    ? message.reactions.viewerReactions
+    : message?.reactions?.viewerReaction
+      ? [message.reactions.viewerReaction]
+      : [];
+  const counts = { ...(message?.reactions?.counts || {}) };
+
+  const nextSet = new Set(existingReactions);
+  if (allowedReaction) {
+    if (nextSet.has(allowedReaction)) {
+      counts[allowedReaction] = Math.max(0, Number(counts[allowedReaction] || 0) - 1);
+      nextSet.delete(allowedReaction);
+    } else {
+      counts[allowedReaction] = Math.max(0, Number(counts[allowedReaction] || 0)) + 1;
+      nextSet.add(allowedReaction);
+    }
+  }
+
+  const normalizedCounts = Object.fromEntries(
+    Object.entries(counts).filter(([, value]) => Number.isFinite(value) && value > 0)
+  );
+  const viewerReactions = Array.from(nextSet);
+
+  return {
+    ...message,
+    reactions: {
+      counts: normalizedCounts,
+      viewerReaction: viewerReactions[0],
+      viewerReactions
+    }
+  };
+};
 
 export default function useDirectMessages({ autoLoad = true, enabled = true } = {}) {
   const [state, dispatch] = useReducer(dmReducer, initialState);
@@ -131,6 +173,76 @@ export default function useDirectMessages({ autoLoad = true, enabled = true } = 
     [enabled, loadThreads, loadThreadDetail, state.hasAccess, state.threads, state.selectedThreadId]
   );
 
+  const toggleReaction = useCallback(
+    async ({ threadId, messageId, emoji }) => {
+      const normalizedMessageId = messageId ? String(messageId) : '';
+      if (!threadId || !normalizedMessageId) {
+        dispatch({
+          type: 'thread/status',
+          payload: { type: 'error', message: 'Select a message before reacting.' }
+        });
+        return false;
+      }
+      if (state.hasAccess === false) {
+        dispatch({
+          type: 'thread/status',
+          payload: { type: 'error', message: 'Friend management privileges required.' }
+        });
+        return false;
+      }
+
+      const currentMessage =
+        state.threadDetail && state.threadDetail.id === threadId
+          ? (state.threadDetail.messages || []).find((message) => {
+              const currentId = message.id || message._id;
+              return currentId && String(currentId) === normalizedMessageId;
+            })
+          : null;
+
+      const rollbackMessage = currentMessage || null;
+      if (currentMessage) {
+        dispatch({
+          type: 'thread/update-message',
+          threadId,
+          message: toggleReactionLocally(currentMessage, emoji)
+        });
+      }
+
+      dispatch({ type: 'thread/status', payload: null });
+      try {
+        const response = await updateDirectMessageReaction(threadId, normalizedMessageId, emoji);
+        const nextMessage = response?.message || null;
+        if (nextMessage) {
+          dispatch({ type: 'thread/update-message', threadId, message: nextMessage });
+        } else if (!currentMessage) {
+          await loadThreadDetail(threadId);
+        }
+        return true;
+      } catch (error) {
+        reportClientError(error, 'Failed to update direct message reaction', {
+          source: 'useDirectMessages.toggleReaction',
+          threadId,
+          messageId: normalizedMessageId
+        });
+        if (rollbackMessage) {
+          dispatch({ type: 'thread/update-message', threadId, message: rollbackMessage });
+        }
+        dispatch({
+          type: 'thread/status',
+          payload: {
+            type: 'error',
+            message:
+              error?.status === 403
+                ? 'Friend management privileges required.'
+                : error?.message || 'Failed to update reaction.'
+          }
+        });
+        return false;
+      }
+    },
+    [loadThreadDetail, state.hasAccess, state.threadDetail]
+  );
+
   const resetSendStatus = useCallback(() => {
     dispatch({ type: 'send/reset' });
   }, []);
@@ -160,6 +272,7 @@ export default function useDirectMessages({ autoLoad = true, enabled = true } = 
     isCreating: state.isCreating,
     createStatus: state.createStatus,
     createThread,
-    resetCreateStatus
+    resetCreateStatus,
+    toggleReaction
   };
 }

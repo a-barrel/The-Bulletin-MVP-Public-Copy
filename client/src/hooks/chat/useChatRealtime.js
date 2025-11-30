@@ -3,12 +3,53 @@ import {
   fetchChatMessages,
   fetchChatPresence,
   createChatMessage,
-  upsertChatPresence
+  upsertChatPresence,
+  updateChatMessageReaction
 } from '../../api';
 import { playBadgeSound } from '../../utils/badgeSound';
+import { CHAT_REACTION_OPTIONS } from '../../constants/chatReactions';
 
 const PRESENCE_HEARTBEAT_MS = 30_000;
 const MESSAGES_REFRESH_MS = 7_000;
+const ALLOWED_REACTION_KEYS = new Set(CHAT_REACTION_OPTIONS.map((option) => option.key));
+
+const toggleReactionLocally = (message, emojiKey) => {
+  if (!message) {
+    return message;
+  }
+  const allowedReaction = emojiKey && ALLOWED_REACTION_KEYS.has(emojiKey) ? emojiKey : null;
+  const existingReactions = Array.isArray(message?.reactions?.viewerReactions)
+    ? message.reactions.viewerReactions
+    : message?.reactions?.viewerReaction
+      ? [message.reactions.viewerReaction]
+      : [];
+  const counts = { ...(message?.reactions?.counts || {}) };
+
+  const nextSet = new Set(existingReactions);
+  if (allowedReaction) {
+    if (nextSet.has(allowedReaction)) {
+      counts[allowedReaction] = Math.max(0, Number(counts[allowedReaction] || 0) - 1);
+      nextSet.delete(allowedReaction);
+    } else {
+      counts[allowedReaction] = Math.max(0, Number(counts[allowedReaction] || 0)) + 1;
+      nextSet.add(allowedReaction);
+    }
+  }
+
+  const normalizedCounts = Object.fromEntries(
+    Object.entries(counts).filter(([, value]) => Number.isFinite(value) && value > 0)
+  );
+  const viewerReactions = Array.from(nextSet);
+
+  return {
+    ...message,
+    reactions: {
+      counts: normalizedCounts,
+      viewerReaction: viewerReactions[0],
+      viewerReactions
+    }
+  };
+};
 
 export default function useChatRealtime({
   authUser,
@@ -25,6 +66,8 @@ export default function useChatRealtime({
 
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [messageDraft, setMessageDraft] = useState('');
+
+  const resolveMessageId = useCallback((message) => message?._id || message?.id, []);
 
   const messageIntervalRef = useRef(null);
   const presenceIntervalRef = useRef(null);
@@ -126,6 +169,54 @@ export default function useChatRealtime({
     setMessageDraft('');
   }, [announceBadgeEarned]);
 
+  const toggleReaction = useCallback(
+    async (messageId, emojiKey) => {
+      if (!selectedRoomId || !authUser || !messageId) {
+        return false;
+      }
+
+      let rollbackMessage = null;
+      setMessages((prev) =>
+        prev.map((message) => {
+          if (resolveMessageId(message) !== messageId) {
+            return message;
+          }
+          rollbackMessage = message;
+          return toggleReactionLocally(message, emojiKey);
+        })
+      );
+
+      try {
+        const payload = await updateChatMessageReaction(
+          selectedRoomId,
+          messageId,
+          emojiKey,
+          locationPayload
+        );
+        setMessages((prev) =>
+          prev.map((message) => {
+            const currentId = resolveMessageId(message);
+            const payloadId = resolveMessageId(payload);
+            return currentId && payloadId && currentId === payloadId ? payload : message;
+          })
+        );
+        return true;
+      } catch (error) {
+        setMessages((prev) =>
+          prev.map((message) => {
+            if (resolveMessageId(message) !== messageId) {
+              return message;
+            }
+            return rollbackMessage || message;
+          })
+        );
+        setMessagesError(error?.message || 'Failed to update reaction.');
+        return false;
+      }
+    },
+    [authUser, locationPayload, resolveMessageId, selectedRoomId]
+  );
+
   const sendMessage = useCallback(async ({ message, attachments = [] }) => {
     if (!selectedRoomId || !authUser) {
       return false;
@@ -187,6 +278,7 @@ export default function useChatRealtime({
     messageDraft,
     setMessageDraft,
     sendMessage,
+    toggleReaction,
     isSendingMessage,
     handleRefreshCurrentRoom
   };

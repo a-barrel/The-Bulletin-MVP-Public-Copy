@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { mapPinToFeedItem } from '../utils/pinFeedItem';
 import usePinsFeedCore from './usePinsFeedCore';
@@ -22,7 +22,7 @@ export default function useNearbyPinsFeed({
     isUsingFallbackLocation,
     viewerProfileId,
     normalizedFilters,
-    refresh
+    refresh: coreRefresh
   } = usePinsFeedCore({
     sharedLocation,
     isOffline,
@@ -41,6 +41,11 @@ export default function useNearbyPinsFeed({
   const feedItems = useMemo(
     () => (Array.isArray(pins) ? pins.map((pin) => mapPinToFeedItem(pin, { viewerProfileId })) : []),
     [pins, viewerProfileId]
+  );
+
+  const refresh = useCallback(
+    (overrideLocation, options) => coreRefresh(overrideLocation, { ...options, force: true }),
+    [coreRefresh]
   );
 
   return {

@@ -2081,14 +2081,17 @@ router.post('/:pinId/check-ins', verifyToken, async (req, res) => {
         const roomDoc =
           (await ProximityChatRoom.findOne({ pinId: pin._id })) ?? null;
         if (roomDoc && checkedIn && !alreadyCheckedIn) {
-          const { messageDoc, response } = await createMessage({
-            roomId: roomDoc._id,
-            pinId: pin._id,
-            authorId: viewer._id,
-            message: `${viewer.displayName || viewer.username || 'Someone'} checked in`,
-            messageType: 'system-checkin',
-            isSystem: true
-          });
+          const { messageDoc, response } = await createMessage(
+            {
+              roomId: roomDoc._id,
+              pinId: pin._id,
+              authorId: viewer._id,
+              message: `${viewer.displayName || viewer.username || 'Someone'} checked in`,
+              messageType: 'system-checkin',
+              isSystem: true
+            },
+            { viewerId: viewerId }
+          );
           broadcastChatMessage({
             roomId: roomDoc._id,
             message: response,
