@@ -80,6 +80,11 @@
     min-width: 0;
   }
   
+  /* Keep controls group from shrinking */
+  .topbar-controls-group {
+    flex-shrink: 0;
+  }
+  
   /* Keep checkboxes container from shrinking */
   .topbar-checkboxes {
     flex-shrink: 0;
@@ -199,6 +204,15 @@
   box-sizing: border-box;
 }
 
+/* Group sort toggle and checkboxes together */
+.topbar-controls-group {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+}
+
 .topbar-checkboxes {
   display: flex;
   align-items: center;
@@ -288,7 +302,12 @@
   display: inline-flex;
   align-items: center;
   gap: 0; /* remove gap entirely */
-  margin-left: 0.5rem;
+  margin-left: 0;
+  flex-shrink: 0;
+}
+
+/* Ensure sort toggle container stays inline with checkboxes */
+.sort-toggle-container {
   flex-shrink: 0;
 }
 
@@ -365,6 +384,13 @@ button:focus-visible {
     margin-right: -1rem;
     padding: 0.5rem 1rem;
     gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .topbar-controls-group {
+    width: 100%;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
     flex-wrap: wrap;
   }
 
