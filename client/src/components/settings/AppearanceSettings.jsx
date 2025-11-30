@@ -125,23 +125,27 @@ function AppearanceSettings({
         title={t('settings.tabs.appearance')}
         description="Match the system palette or lock in your favorite look."
       >
-        <FormControl component="fieldset">
+        <FormControl component="fieldset" sx={{ gap: 1 }}>
           <FormLabel component="legend" sx={{ fontSize: '0.875rem', color: settingsPalette.accent }}>
             {t('settings.tabs.appearance')}
           </FormLabel>
-          <RadioGroup
-            row
+          <Select
             value={theme}
             onChange={onThemeChange}
+            size="small"
             sx={{
+              maxWidth: 260,
               color: settingsPalette.textPrimary,
-              '& .MuiFormControlLabel-label': { color: settingsPalette.textPrimary }
+              '& .MuiOutlinedInput-notchedOutline': { borderColor: settingsPalette.accentHover },
+              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: settingsPalette.accentHover },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: settingsPalette.accent },
+              '& .MuiSelect-icon': { color: settingsPalette.accentHover }
             }}
           >
-            <FormControlLabel value="system" control={<Radio />} label="Match system" />
-            <FormControlLabel value="light" control={<Radio />} label="Light" />
-            <FormControlLabel value="dark" control={<Radio />} label="Dark" />
-          </RadioGroup>
+            <MenuItem value="system">Match system</MenuItem>
+            <MenuItem value="light">Light</MenuItem>
+            <MenuItem value="dark">Dark</MenuItem>
+          </Select>
         </FormControl>
         <Stack spacing={1}>
           <Typography variant="body2" sx={mutedTextSx}>
