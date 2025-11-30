@@ -49,9 +49,10 @@ import useChatChannelController from '../hooks/useChatChannelController';
 import { viewerHasDeveloperAccess } from '../utils/roles';
 import runtimeConfig from '../config/runtime';
 
-const ChatMessagesSection = memo(function ChatMessagesSection({ containerRef, content }) {
+const ChatMessagesSection = memo(function ChatMessagesSection({ containerRef, content, overlay = null }) {
   return (
     <Box ref={containerRef} className="chat-messages-field">
+      {overlay}
       {content}
     </Box>
   );
@@ -112,6 +113,7 @@ function ChatPage() {
     messageDraft,
     setMessageDraft,
     handleSendMessage,
+    toggleReaction,
     handleMessageInputKeyDown,
     isSendingMessage,
     gifPreviewError,
@@ -163,7 +165,8 @@ function ChatPage() {
     sendStatus: directSendStatus,
     resetSendStatus: resetDirectSendStatus,
     isCreating: isCreatingDirectThread,
-    createThread: createDirectThread
+    createThread: createDirectThread,
+    toggleReaction: toggleDirectReaction
   } = useDirectMessages();
 
   const {
@@ -522,6 +525,11 @@ function ChatPage() {
   const handleNotifications = useCallback(() => {
     navigate('/updates');
   }, [navigate]);
+
+  const handleCreatePin = useCallback(() => {
+    if (isOffline) return;
+    navigate(routes.createPin.base);
+  }, [isOffline, navigate]);
 
   const findDirectThreadForUser = useCallback(
     (rawUserId) => {
@@ -1013,12 +1021,14 @@ function ChatPage() {
       const body = message.body || '';
       const sanitizedBody = sanitizeAttachmentOnlyMessage(body, message.attachments);
       return {
+        id: message.id || message._id,
         _id: message.id || message._id,
         message: sanitizedBody,
         createdAt: message.createdAt,
         authorId,
         author,
-        attachments: Array.isArray(message.attachments) ? message.attachments : []
+        attachments: Array.isArray(message.attachments) ? message.attachments : [],
+        reactions: message.reactions || undefined
       };
     });
   }, [directThreadDetail]);
@@ -1053,6 +1063,16 @@ function ChatPage() {
     }
     return directMessageItems.slice(directMessageItems.length - dmLoadCount);
   }, [directMessageItems, dmLoadCount]);
+
+  const handleToggleDirectReaction = useCallback(
+    (messageId, emojiKey) => {
+      if (!selectedDirectThreadId) {
+        return;
+      }
+      toggleDirectReaction({ threadId: selectedDirectThreadId, messageId, emoji: emojiKey });
+    },
+    [selectedDirectThreadId, toggleDirectReaction]
+  );
 
   const handleOpenReportForRoomMessage = useCallback(
     (message) => {
@@ -1302,6 +1322,7 @@ function ChatPage() {
           canModerate={canModerateMessages}
           onModerate={handleOpenModerationForMessage}
           onReport={handleOpenReportForRoomMessage}
+          onToggleReaction={toggleReaction}
           onReportPin={handleOpenReportForPinShare}
         />
       )),
@@ -1312,7 +1333,8 @@ function ChatPage() {
       getMessageKey,
       handleOpenModerationForMessage,
       handleOpenReportForRoomMessage,
-      handleOpenReportForPinShare
+      handleOpenReportForPinShare,
+      toggleReaction
     ]
   );
 
@@ -1330,6 +1352,7 @@ function ChatPage() {
           authUser={authUser}
           canModerate={false}
           onReport={handleOpenReportForDirectMessage}
+          onToggleReaction={handleToggleDirectReaction}
           onReportPin={handleOpenReportForPinShare}
         />
       )),
@@ -1339,7 +1362,8 @@ function ChatPage() {
       directViewerId,
       getMessageKey,
       handleOpenReportForDirectMessage,
-      handleOpenReportForPinShare
+      handleOpenReportForPinShare,
+      handleToggleDirectReaction
     ]
   );
 
@@ -1414,6 +1438,45 @@ function ChatPage() {
     uniqueMessages.length
   ]);
 
+  const checkInBanner =
+    selectedRoomPinId && checkIn.ready ? (
+      <Box className="chat-checkin-banner">
+        <div className="chat-checkin-meta">
+          <strong>Check-ins</strong>
+          <span>
+            {checkIn.checkedInCount ?? 0}/{checkIn.attendingCount ?? '—'}
+          </span>
+        </div>
+        <Button
+          variant="contained"
+          size="small"
+          onClick={() => toggleCheckIn(!checkIn.viewerCheckedIn)}
+          disabled={!checkIn.canCheckIn || isLoadingCheckIn || isOffline}
+          disableRipple
+        >
+          {checkIn.viewerCheckedIn ? 'Checked in' : 'Check in'}
+        </Button>
+        {checkInError ? <span className="chat-checkin-error">Unable to check in</span> : null}
+      </Box>
+    ) : null;
+
+  const floatingControls = (
+    <div className="chat-floating-toolbar">
+      <div className="chat-floating-card">
+        <div className="chat-floating-left">
+          <Button
+            className={`switch-chat-btn ${isChannelDialogOpen ? 'open' : ''}`}
+            onClick={handleOpenChannelDialog}
+            endIcon={<ArrowDownwardIcon className="switch-chat-arrow" />}
+          >
+            {headerChannelLabel}
+          </Button>
+          {checkInBanner}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <Box className="chat-page">
@@ -1436,44 +1499,18 @@ function ChatPage() {
             pageTitle={t('nav.bottomNav.chat')}
             backAriaLabel={t('common.back', { defaultValue: 'Back' })}
             onBack={() => navigate(-1)}
-          channelLabel={headerChannelLabel}
-          isChannelDialogOpen={isChannelDialogOpen}
-          onOpenChannelDialog={handleOpenChannelDialog}
-          notificationsLabel={notificationsLabel}
-          onNotifications={handleNotifications}
-          onCreatePin={() => {
-            if (isOffline) return;
-            navigate(routes.createPin.base);
-          }}
-          isOffline={isOffline}
-          unreadCount={unreadCount}
-          checkInBanner={
-              selectedRoomPinId && checkIn.ready ? (
-                <Box className="chat-checkin-banner">
-                  <div className="chat-checkin-meta">
-                    <strong>Check-ins</strong>
-                    <span>
-                      {checkIn.checkedInCount ?? 0}/{checkIn.attendingCount ?? '—'}
-                    </span>
-                  </div>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    onClick={() => toggleCheckIn(!checkIn.viewerCheckedIn)}
-                    disabled={!checkIn.canCheckIn || isLoadingCheckIn || isOffline}
-                    disableRipple
-                  >
-                    {checkIn.viewerCheckedIn ? 'Checked in' : 'Check in'}
-                  </Button>
-                  {checkInError ? (
-                    <span className="chat-checkin-error">Unable to check in</span>
-                  ) : null}
-                </Box>
-              ) : null
-            }
+            onCreatePin={handleCreatePin}
+            onNotifications={handleNotifications}
+            notificationsLabel={notificationsLabel}
+            isOffline={isOffline}
+            unreadCount={unreadCount}
           />
 
-          <ChatMessagesSection containerRef={containerRef} content={messagesContent} />
+          <ChatMessagesSection
+            containerRef={containerRef}
+            overlay={floatingControls}
+            content={messagesContent}
+          />
 
           {channelTab === 'direct' ? (
             <ChatComposerFooter

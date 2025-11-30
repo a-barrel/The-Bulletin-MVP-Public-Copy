@@ -1,9 +1,7 @@
 import PropTypes from 'prop-types';
-import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import GlobalNavMenu from '../GlobalNavMenu';
 import MainNavBackButton from '../MainNavBackButton';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownwardRounded';
 import HeaderActionButtons from '../HeaderActionButtons';
 
 function ChatThreadHeader({
@@ -11,15 +9,11 @@ function ChatThreadHeader({
   backAriaLabel,
   backScope,
   onBack,
-  channelLabel,
-  isChannelDialogOpen,
-  onOpenChannelDialog,
-  notificationsLabel,
-  onNotifications,
-  onCreatePin,
   isOffline,
   unreadCount,
-  checkInBanner
+  onCreatePin,
+  onNotifications,
+  notificationsLabel
 }) {
   const safeUnread = Number.isFinite(unreadCount) ? unreadCount : 0;
 
@@ -44,23 +38,15 @@ function ChatThreadHeader({
           </Typography>
         ) : null}
       </div>
-      <div className="chat-header-actions">
-        <Button
-          className={`switch-chat-btn ${isChannelDialogOpen ? 'open' : ''}`}
-          onClick={onOpenChannelDialog}
-          endIcon={<ArrowDownwardIcon className="switch-chat-arrow" />}
-        >
-          {channelLabel}
-        </Button>
-        {checkInBanner}
+      <div className="chat-header-right">
+        <HeaderActionButtons
+          isOffline={isOffline}
+          unreadCount={safeUnread}
+          onCreatePin={onCreatePin}
+          onOpenUpdates={onNotifications}
+          notificationsLabel={notificationsLabel}
+        />
       </div>
-      <HeaderActionButtons
-        isOffline={isOffline}
-        unreadCount={safeUnread}
-        onCreatePin={onCreatePin}
-        onOpenUpdates={onNotifications}
-        notificationsLabel={notificationsLabel}
-      />
     </header>
   );
 }
@@ -70,15 +56,11 @@ ChatThreadHeader.propTypes = {
   backAriaLabel: PropTypes.string,
   backScope: PropTypes.string,
   onBack: PropTypes.func,
-  channelLabel: PropTypes.string.isRequired,
-  isChannelDialogOpen: PropTypes.bool,
-  onOpenChannelDialog: PropTypes.func.isRequired,
-  notificationsLabel: PropTypes.string.isRequired,
-  onNotifications: PropTypes.func.isRequired,
-  onCreatePin: PropTypes.func.isRequired,
   isOffline: PropTypes.bool,
   unreadCount: PropTypes.number,
-  checkInBanner: PropTypes.node
+  onCreatePin: PropTypes.func.isRequired,
+  onNotifications: PropTypes.func.isRequired,
+  notificationsLabel: PropTypes.string
 };
 
 ChatThreadHeader.defaultProps = {
@@ -86,10 +68,9 @@ ChatThreadHeader.defaultProps = {
   backAriaLabel: 'Back',
   backScope: 'core',
   onBack: undefined,
-  isChannelDialogOpen: false,
   isOffline: false,
   unreadCount: 0,
-  checkInBanner: null
+  notificationsLabel: 'View updates'
 };
 
 export default ChatThreadHeader;

@@ -72,6 +72,15 @@ const FRUITS = [
 
 const PROFANITY_REGEX = new RegExp(`\\b(${PROFANITY_WORDS.join('|')})\\b`, 'gi');
 
+const REACTION_KEYS = ['surprised', 'angry', 'happy', 'thumbs_up', 'thumbs_down'];
+const REACTION_GLYPHS = {
+  surprised: '😲',
+  angry: '😡',
+  happy: '🙂',
+  thumbs_up: '👍',
+  thumbs_down: '👎'
+};
+
 const normalizeFruit = (fruit, original) => {
   if (original === original.toUpperCase()) {
     return fruit.toUpperCase();
@@ -129,6 +138,29 @@ const parseBooleanParam = (value, fallback) => {
   return fallback;
 };
 
+const normalizeReactionInput = (value) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  const stringValue = `${value}`.trim();
+  if (!stringValue) {
+    return null;
+  }
+  const lowered = stringValue.toLowerCase();
+  if (REACTION_KEYS.includes(lowered)) {
+    return lowered;
+  }
+  const underscored = lowered.replace(/[\s-]+/g, '_');
+  if (REACTION_KEYS.includes(underscored)) {
+    return underscored;
+  }
+  const glyphEntry = Object.entries(REACTION_GLYPHS).find(([, glyph]) => glyph === stringValue);
+  if (glyphEntry) {
+    return glyphEntry[0];
+  }
+  return null;
+};
+
 const RoomQuerySchema = z.object({
   pinId: z.string().optional(),
   ownerId: z.string().optional(),
@@ -141,6 +173,15 @@ const RoomQuerySchema = z.object({
 const RoomIdSchema = z.object({
   roomId: z.string().refine((value) => mongoose.Types.ObjectId.isValid(value), {
     message: 'Invalid room id'
+  })
+});
+
+const MessageIdSchema = z.object({
+  roomId: z.string().refine((value) => mongoose.Types.ObjectId.isValid(value), {
+    message: 'Invalid room id'
+  }),
+  messageId: z.string().refine((value) => mongoose.Types.ObjectId.isValid(value), {
+    message: 'Invalid message id'
   })
 });
 
@@ -198,6 +239,19 @@ const AccessQuerySchema = z.object({
   latitude: z.coerce.number().min(-90).max(90).optional(),
   longitude: z.coerce.number().min(-180).max(180).optional()
 });
+
+const ReactionMutationSchema = z
+  .object({
+    emoji: z.string().trim().optional().nullable(),
+    latitude: z.number().min(-90).max(90).optional(),
+    longitude: z.number().min(-180).max(180).optional()
+  })
+  .refine(
+    (value) =>
+      (value.latitude === undefined && value.longitude === undefined) ||
+      (value.latitude !== undefined && value.longitude !== undefined),
+    { message: 'Latitude and longitude must both be provided together.' }
+  );
 
 const resolveViewerUser = async (req) => {
   if (!req?.user?.uid) {
@@ -598,17 +652,20 @@ router.post('/rooms/:roomId/messages', verifyToken, async (req, res) => {
     const profanityCount = countProfanityInstances(messageForStorage);
     const sanitizedMessage = replaceProfanityWithFruit(messageForStorage);
 
-    const { messageDoc, response } = await createMessage({
-      roomId,
-      authorId: viewer._id.toString(),
-      message: sanitizedMessage,
-      pinId: input.pinId,
-      replyToMessageId: input.replyToMessageId,
-      latitude: input.latitude,
-      longitude: input.longitude,
-      accuracy: input.accuracy,
-      attachments
-    });
+    const { messageDoc, response } = await createMessage(
+      {
+        roomId,
+        authorId: viewer._id.toString(),
+        message: sanitizedMessage,
+        pinId: input.pinId,
+        replyToMessageId: input.replyToMessageId,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        accuracy: input.accuracy,
+        attachments
+      },
+      { viewerId: viewer._id.toString() }
+    );
 
     let chatBadgeResult = null;
     try {
@@ -656,6 +713,164 @@ router.post('/rooms/:roomId/messages', verifyToken, async (req, res) => {
     }
     console.error('Failed to create chat message:', error);
     res.status(500).json({ message: 'Failed to create chat message' });
+  }
+});
+
+router.patch('/rooms/:roomId/messages/:messageId/reactions', verifyToken, async (req, res) => {
+  try {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { roomId, messageId } = MessageIdSchema.parse(req.params);
+    const input = ReactionMutationSchema.parse(req.body);
+    const desiredReaction = normalizeReactionInput(input.emoji);
+    if (input.emoji !== undefined && input.emoji !== null && !desiredReaction) {
+      return res.status(400).json({ message: 'Unsupported reaction emoji.' });
+    }
+
+    const room = await ProximityChatRoom.findById(roomId);
+    if (!room) {
+      return res.status(404).json({ message: 'Chat room not found' });
+    }
+
+    const accessContext = await buildViewerAccessContext({
+      viewer,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      includeBookmarked: true
+    });
+    const access = evaluateRoomAccess(room, accessContext);
+    if (!access.allowed) {
+      return res
+        .status(403)
+        .json({ message: buildAccessDeniedMessage(access.reason) });
+    }
+
+    const message = await ProximityChatMessage.findOne({ _id: messageId, roomId }).populate({
+      path: 'authorId',
+      select: 'username displayName roles accountStatus avatar stats relationships.blockedUserIds'
+    });
+    if (!message) {
+      return res.status(404).json({ message: 'Chat message not found' });
+    }
+
+    const viewerIdString = toIdString(viewer._id);
+    const countsMap =
+      message.reactionCounts instanceof Map
+        ? message.reactionCounts
+        : new Map(Object.entries(message.reactionCounts || {}));
+    const reactionsByUserMap =
+      message.reactionsByUser instanceof Map
+        ? message.reactionsByUser
+        : new Map(Object.entries(message.reactionsByUser || {}));
+
+    const rawExisting = viewerIdString
+      ? reactionsByUserMap.get
+        ? reactionsByUserMap.get(viewerIdString)
+        : reactionsByUserMap[viewerIdString]
+      : null;
+    const existingSet = new Set(
+      Array.isArray(rawExisting)
+        ? rawExisting
+        : typeof rawExisting === 'string' && rawExisting
+          ? [rawExisting]
+          : []
+    );
+
+    if (desiredReaction) {
+      if (existingSet.has(desiredReaction)) {
+        const prevCount = Number(
+          countsMap.get ? countsMap.get(desiredReaction) : countsMap[desiredReaction]
+        );
+        const nextCount = Math.max(0, Number.isFinite(prevCount) ? prevCount - 1 : 0);
+        if (countsMap.set) {
+          countsMap.set(desiredReaction, nextCount);
+        } else {
+          countsMap[desiredReaction] = nextCount;
+        }
+        existingSet.delete(desiredReaction);
+      } else {
+        const current = Number(
+          countsMap.get ? countsMap.get(desiredReaction) : countsMap[desiredReaction]
+        );
+        const nextCount = Math.max(0, Number.isFinite(current) ? current : 0) + 1;
+        if (countsMap.set) {
+          countsMap.set(desiredReaction, nextCount);
+        } else {
+          countsMap[desiredReaction] = nextCount;
+        }
+        existingSet.add(desiredReaction);
+      }
+    }
+
+    const nextViewerReactions = Array.from(existingSet).filter((value) =>
+      REACTION_KEYS.includes(value)
+    );
+    if (nextViewerReactions.length) {
+      if (reactionsByUserMap.set) {
+        reactionsByUserMap.set(viewerIdString, nextViewerReactions);
+      } else {
+        reactionsByUserMap[viewerIdString] = nextViewerReactions;
+      }
+    } else if (viewerIdString) {
+      reactionsByUserMap.delete
+        ? reactionsByUserMap.delete(viewerIdString)
+        : delete reactionsByUserMap[viewerIdString];
+    }
+
+    const normalizedCounts = {};
+    REACTION_KEYS.forEach((key) => {
+      const raw = countsMap.get ? countsMap.get(key) : countsMap[key];
+      const value = Number(raw);
+      if (Number.isFinite(value) && value > 0) {
+        normalizedCounts[key] = value;
+      }
+    });
+    const normalizedReactionsByUser = {};
+    if (reactionsByUserMap.forEach) {
+      reactionsByUserMap.forEach((value, key) => {
+        if (!key) return;
+        const list = Array.isArray(value)
+          ? value
+          : typeof value === 'string'
+            ? [value]
+            : [];
+        const filtered = list.filter((entry) => REACTION_KEYS.includes(entry));
+        if (filtered.length) {
+          normalizedReactionsByUser[key] = filtered;
+        }
+      });
+    } else {
+      Object.entries(reactionsByUserMap || {}).forEach(([key, value]) => {
+        if (!key) return;
+        const list = Array.isArray(value)
+          ? value
+          : typeof value === 'string'
+            ? [value]
+            : [];
+        const filtered = list.filter((entry) => REACTION_KEYS.includes(entry));
+        if (filtered.length) {
+          normalizedReactionsByUser[key] = filtered;
+        }
+      });
+    }
+
+    message.reactionCounts = normalizedCounts;
+    message.reactionsByUser = normalizedReactionsByUser;
+    message.markModified('reactionCounts');
+    message.markModified('reactionsByUser');
+    await message.save();
+
+    const payload = mapMessage(message, { viewerId: viewerIdString });
+    res.json(payload);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: 'Invalid reaction payload', issues: error.errors });
+    }
+    console.error('Failed to toggle chat reaction:', error);
+    res.status(500).json({ message: 'Failed to update reaction' });
   }
 });
 
@@ -849,7 +1064,9 @@ router.get('/rooms/:roomId/messages', verifyToken, async (req, res) => {
       return true;
     });
 
-    const payload = filteredMessages.map((message) => mapMessage(message));
+    const payload = filteredMessages.map((message) =>
+      mapMessage(message, { viewerId: viewerIdString })
+    );
     res.json(payload);
   } catch (error) {
     if (error instanceof ZodError) {
