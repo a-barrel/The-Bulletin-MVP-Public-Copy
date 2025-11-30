@@ -396,6 +396,7 @@ function MessageBubble({
               const handleClick = () => {
                 if (typeof onToggleReaction === 'function' && messageId) {
                   onToggleReaction(messageId, option.key);
+                  setReactionPickerOpen(false);
                 }
               };
               return (

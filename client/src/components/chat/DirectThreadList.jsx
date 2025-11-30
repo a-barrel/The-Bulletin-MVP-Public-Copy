@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { useMemo } from 'react';
 import {
   Alert,
   Avatar,
@@ -39,18 +40,44 @@ function DirectThreadList({
   viewerUsername,
   viewerDisplayName
 }) {
-  if (canAccess === false) {
-    return (
-      <Box sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="body2" color="black">
-          Direct messages are disabled for your account.
-        </Typography>
-      </Box>
-    );
-  }
-
   const safeThreads = Array.isArray(threads) ? threads : [];
-  const threadCount = safeThreads.length;
+  const dedupedThreads = useMemo(() => {
+    const bySignature = new Map();
+    const normalizeId = (value) => {
+      const normalized = normalizeObjectId(value);
+      return normalized || (typeof value === 'string' ? value.trim() : null);
+    };
+    const normalizeName = (value) =>
+      typeof value === 'string' && value.trim() ? value.trim().toLowerCase() : '';
+
+    safeThreads.forEach((thread) => {
+      const participantsArray = Array.isArray(thread.participants) ? thread.participants : [];
+      const ids = participantsArray
+        .map((participant) => getParticipantId(participant) || normalizeId(participant))
+        .filter(Boolean);
+      const signature =
+        ids.sort().join('|') ||
+        normalizeName(thread.topic) ||
+        thread.id ||
+        `thread-${Math.random().toString(36).slice(2)}`;
+
+      if (!bySignature.has(signature)) {
+        bySignature.set(signature, thread);
+      } else {
+        // prefer thread with the latest activity
+        const existing = bySignature.get(signature);
+        const existingTime = existing?.lastMessageAt ? new Date(existing.lastMessageAt).getTime() : 0;
+        const candidateTime = thread?.lastMessageAt ? new Date(thread.lastMessageAt).getTime() : 0;
+        if (candidateTime > existingTime) {
+          bySignature.set(signature, thread);
+        }
+      }
+    });
+
+    return Array.from(bySignature.values());
+  }, [safeThreads]);
+
+  const threadCount = dedupedThreads.length;
   const normalizedViewerId = normalizeObjectId(viewerId);
   const normalizedViewerUsername =
     typeof viewerUsername === 'string' && viewerUsername.trim()
@@ -104,8 +131,15 @@ function DirectThreadList({
         </Box>
       ) : null}
 
-      <List dense sx={{ overflowY: 'auto', flexGrow: 1, backgroundColor: 'white' }}>
-        {safeThreads.map((thread) => {
+      <List
+        dense
+        sx={{
+          overflowY: 'auto',
+          flexGrow: 1,
+          backgroundColor: 'var(--color-surface)'
+        }}
+      >
+        {dedupedThreads.map((thread) => {
           const isActive = thread.id === selectedThreadId;
           const participantsArray = Array.isArray(thread.participants) ? thread.participants : [];
 

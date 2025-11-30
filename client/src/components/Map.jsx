@@ -58,7 +58,7 @@ function PinCardOverlay({ position, children }) {
 
   return null;
 }
-const darker = '#0a0c14';
+const darker = 'var(--accent-wash-strong, #0a0c14)';
 const markerStyleMap = {
   default: {
     fill: 'var(--accent-primary)',
@@ -117,7 +117,12 @@ const createMarkerIcon = (key, extraClassName) => {
     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40" aria-hidden="true" focusable="false">
       <path d="M16 2C9.373 2 4 7.373 4 14c0 7.616 8.287 17.24 11.032 20.25a1.5 1.5 0 0 0 2.247 0C20.975 31.24 28 21.616 28 14 28 7.373 22.627 2 16 2Z"
         fill="${palette.fill}" stroke="${palette.stroke}" stroke-width="3" />
-      <circle cx="16" cy="13" r="5.5" fill="color-mix(in srgb, #ffffff 80%, transparent)" />
+      <circle
+        cx="16"
+        cy="13"
+        r="5.5"
+        fill="color-mix(in srgb, var(--color-text-strong, #ffffff) 80%, transparent)"
+      />
     </svg>`;
   return L.divIcon({
     className: classNames,

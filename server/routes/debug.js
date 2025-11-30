@@ -102,15 +102,6 @@ const describeDmRestriction = (user) => {
   return 'This user is not accepting direct messages right now.';
 };
 
-const REACTION_KEYS = ['surprised', 'angry', 'happy', 'thumbs_up', 'thumbs_down'];
-const REACTION_GLYPHS = {
-  surprised: '😲',
-  angry: '😡',
-  happy: '🙂',
-  thumbs_up: '👍',
-  thumbs_down: '👎'
-};
-
 const normalizeReactionInput = (value) => {
   if (value === undefined || value === null) {
     return null;
@@ -119,19 +110,14 @@ const normalizeReactionInput = (value) => {
   if (!stringValue) {
     return null;
   }
-  const lowered = stringValue.toLowerCase();
-  if (REACTION_KEYS.includes(lowered)) {
-    return lowered;
+  const isEmoji =
+    /\p{Extended_Pictographic}/u.test(stringValue) ||
+    Array.from(stringValue).length === 1;
+  if (isEmoji) {
+    return stringValue;
   }
-  const underscored = lowered.replace(/[\s-]+/g, '_');
-  if (REACTION_KEYS.includes(underscored)) {
-    return underscored;
-  }
-  const glyphEntry = Object.entries(REACTION_GLYPHS).find(([, glyph]) => glyph === stringValue);
-  if (glyphEntry) {
-    return glyphEntry[0];
-  }
-  return null;
+  const underscored = stringValue.toLowerCase().replace(/[\s-]+/g, '_');
+  return underscored.slice(0, 64);
 };
 
 const DmReactionMutationSchema = z.object({
@@ -327,13 +313,21 @@ const mapDirectMessageThread = (
           : new Map(Object.entries(message.reactionsByUser || {}));
 
       const counts = {};
-      REACTION_KEYS.forEach((key) => {
-        const raw = countsMap.get ? countsMap.get(key) : countsMap[key];
-        const value = Number(raw);
-        if (Number.isFinite(value) && value > 0) {
-          counts[key] = value;
-        }
-      });
+      if (countsMap.forEach) {
+        countsMap.forEach((raw, key) => {
+          const value = Number(raw);
+          if (typeof key === 'string' && key && Number.isFinite(value) && value > 0) {
+            counts[key] = value;
+          }
+        });
+      } else {
+        Object.entries(countsMap || {}).forEach(([key, raw]) => {
+          const value = Number(raw);
+          if (typeof key === 'string' && key && Number.isFinite(value) && value > 0) {
+            counts[key] = value;
+          }
+        });
+      }
 
       let viewerReactions = [];
       if (viewerIdString) {
@@ -341,12 +335,12 @@ const mapDirectMessageThread = (
           ? reactionsByUserMap.get(viewerIdString)
           : reactionsByUserMap[viewerIdString];
         if (Array.isArray(raw)) {
-          viewerReactions = raw.filter((value) => REACTION_KEYS.includes(value));
+          viewerReactions = raw.filter((value) => typeof value === 'string' && value.trim());
         } else if (typeof raw === 'string' && raw) {
-          viewerReactions = REACTION_KEYS.includes(raw) ? [raw] : [];
+          viewerReactions = [raw];
         } else if (raw && typeof raw === 'object') {
           const values = Array.from(new Set(Object.values(raw)));
-          viewerReactions = values.filter((value) => REACTION_KEYS.includes(value));
+          viewerReactions = values.filter((value) => typeof value === 'string' && value.trim());
         }
       }
       const viewerReaction = viewerReactions[0];
@@ -2364,8 +2358,8 @@ router.patch('/direct-messages/threads/:threadId/messages/:messageId/reactions',
       }
     }
 
-    const nextViewerReactions = Array.from(existingSet).filter((value) =>
-      REACTION_KEYS.includes(value)
+    const nextViewerReactions = Array.from(existingSet).filter(
+      (value) => typeof value === 'string' && value.trim()
     );
     if (nextViewerReactions.length) {
       if (reactionsByUserMap.set) {
@@ -2380,13 +2374,21 @@ router.patch('/direct-messages/threads/:threadId/messages/:messageId/reactions',
     }
 
     const normalizedCounts = {};
-    REACTION_KEYS.forEach((key) => {
-      const raw = countsMap.get ? countsMap.get(key) : countsMap[key];
-      const value = Number(raw);
-      if (Number.isFinite(value) && value > 0) {
-        normalizedCounts[key] = value;
-      }
-    });
+    if (countsMap.forEach) {
+      countsMap.forEach((raw, key) => {
+        const value = Number(raw);
+        if (typeof key === 'string' && key && Number.isFinite(value) && value > 0) {
+          normalizedCounts[key] = value;
+        }
+      });
+    } else {
+      Object.entries(countsMap || {}).forEach(([key, raw]) => {
+        const value = Number(raw);
+        if (typeof key === 'string' && key && Number.isFinite(value) && value > 0) {
+          normalizedCounts[key] = value;
+        }
+      });
+    }
     const normalizedReactionsByUser = {};
     if (reactionsByUserMap.forEach) {
       reactionsByUserMap.forEach((value, key) => {
@@ -2396,10 +2398,8 @@ router.patch('/direct-messages/threads/:threadId/messages/:messageId/reactions',
           : typeof value === 'string'
             ? [value]
             : [];
-        const filtered = list.filter((entry) => REACTION_KEYS.includes(entry));
-        if (filtered.length) {
-          normalizedReactionsByUser[key] = filtered;
-        }
+        const filtered = list.filter((entry) => typeof entry === 'string' && entry.trim());
+        if (filtered.length) normalizedReactionsByUser[key] = filtered;
       });
     } else {
       Object.entries(reactionsByUserMap || {}).forEach(([key, value]) => {
@@ -2409,10 +2409,8 @@ router.patch('/direct-messages/threads/:threadId/messages/:messageId/reactions',
           : typeof value === 'string'
             ? [value]
             : [];
-        const filtered = list.filter((entry) => REACTION_KEYS.includes(entry));
-        if (filtered.length) {
-          normalizedReactionsByUser[key] = filtered;
-        }
+        const filtered = list.filter((entry) => typeof entry === 'string' && entry.trim());
+        if (filtered.length) normalizedReactionsByUser[key] = filtered;
       });
     }
 
