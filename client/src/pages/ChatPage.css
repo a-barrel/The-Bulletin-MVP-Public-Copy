@@ -1,5 +1,9 @@
 /* ===== Outer Shell ===== */
 .chat-page {
+  --chat-composer-height: 72px;
+  --bottom-bar-offset: calc(env(safe-area-inset-bottom, 0) + 92px);
+  --chat-thread-footer-guard: calc(var(--bottom-bar-offset) + var(--chat-composer-height) + 8px);
+
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -21,7 +25,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  padding-bottom: calc(120px + env(safe-area-inset-bottom, 0)); /* leave space for bottom nav */
+  padding-bottom: 0;
 }
 
 /* ===== Header (purple) ===== */
@@ -304,7 +308,8 @@
   height: 100%;
   margin-bottom: 0;
   /* leave room for composer + bottom nav */
-  padding-bottom: calc(200px + env(safe-area-inset-bottom, 0));
+  padding-bottom: var(--chat-thread-footer-guard);
+  scroll-padding-bottom: var(--chat-thread-footer-guard);
 }
 
 .message-bubble__actions {
@@ -369,7 +374,7 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(env(safe-area-inset-bottom, 0) + 92px);
+  bottom: var(--bottom-bar-offset);
   width: 100%;
   display: flex;
   align-items: center;
