@@ -80,14 +80,15 @@
     min-width: 0;
   }
   
-  /* Keep controls group from shrinking */
+  /* Allow controls group to shrink but keep on one line */
   .topbar-controls-group {
-    flex-shrink: 0;
+    flex-shrink: 1;
+    flex-wrap: nowrap;
+    gap: 0.35rem;
   }
   
-  /* Keep checkboxes container from shrinking */
-  .topbar-checkboxes {
-    flex-shrink: 0;
+  .topbar-hide-own .MuiTypography-root {
+    font-size: 0.75rem;
   }
 }
 
@@ -204,37 +205,32 @@
   box-sizing: border-box;
 }
 
-/* Group sort toggle and checkboxes together */
+/* Group sort toggle and checkboxes together - inline with icon-btn */
 .topbar-controls-group {
   display: flex;
   align-items: center;
-  flex-shrink: 0;
+  flex: 1;
   flex-wrap: nowrap;
   gap: 0.5rem;
-}
-
-.topbar-checkboxes {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  flex-wrap: nowrap;
-  gap: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .topbar-hide-own {
-  margin-left: 0.75rem;
-  color: var(--color-text-primary);
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.topbar-hide-own:first-of-type {
   margin-left: 0;
+  color: var(--color-text-primary);
+  flex-shrink: 1;
+  white-space: nowrap;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .topbar-hide-own .MuiTypography-root {
   font-size: 0.85rem;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Icon buttons in topbar */
@@ -306,10 +302,6 @@
   flex-shrink: 0;
 }
 
-/* Ensure sort toggle container stays inline with checkboxes */
-.sort-toggle-container {
-  flex-shrink: 0;
-}
 
 .sort-label {
   color: var(--color-text-primary);
@@ -388,16 +380,12 @@ button:focus-visible {
   }
 
   .topbar-controls-group {
-    width: 100%;
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
   }
-
-  .topbar-checkboxes {
-    width: 100%;
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
+  
+  .topbar-hide-own .MuiTypography-root {
+    font-size: 0.7rem;
   }
 
   .top-left { gap: 0.35rem; }
