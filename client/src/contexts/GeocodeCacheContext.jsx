@@ -2,7 +2,8 @@ import { createContext, useContext, useMemo, useRef } from 'react';
 
 const IS_DEV = import.meta.env.DEV;
 const cacheStats = { hits: 0, misses: 0 };
-let defaultTtlMs = 120_000;
+// Keep geocode results for the entire session (no expiry)
+let defaultTtlMs = Number.POSITIVE_INFINITY;
 
 export const setGeocodeDefaultTtlMs = (ttlMs) => {
   if (Number.isFinite(ttlMs) && ttlMs > 0) {
@@ -20,16 +21,13 @@ export function GeocodeCacheProvider({ children }) {
       get: (key) => {
         if (!key) return null;
         const entry = cacheRef.current.get(key);
-        if (entry && Date.now() - entry.ts < (entry.ttl ?? defaultTtlMs)) {
+        if (entry) {
           cacheStats.hits += 1;
           if (IS_DEV) {
             // eslint-disable-next-line no-console
             console.debug('[geocode-cache] hit', { key, stats: { ...cacheStats } });
           }
           return entry.value;
-        }
-        if (entry) {
-          cacheRef.current.delete(key);
         }
         cacheStats.misses += 1;
         return null;

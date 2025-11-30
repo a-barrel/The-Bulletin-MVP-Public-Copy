@@ -5,6 +5,7 @@ DARREL - This may be incorrect at some spots
 * **Font:** Urbanist
 * **Main Text/Headings:** `#000000` (Black)
 * **Sub Text:** `#8E7A9C` (Using a corrected version, as `#E7A9C` from the image is an invalid hex code).
+* **Rule of thumb:** In light mode, keep text dark. Only use the `text-on-accent` token on clearly dark accent fills (e.g., a Dark Purple CTA). No ad-hoc white-on-wash treatments.
 
 ### Primary Palette
 

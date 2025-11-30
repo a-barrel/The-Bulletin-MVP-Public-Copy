@@ -210,7 +210,11 @@ export default function useDirectMessages({ autoLoad = true, enabled = true } = 
 
       dispatch({ type: 'thread/status', payload: null });
       try {
-        const response = await updateDirectMessageReaction(threadId, normalizedMessageId, emoji);
+        const response = await updateDirectMessageReaction(
+          threadId,
+          normalizedMessageId,
+          emoji
+        );
         const nextMessage = response?.message || null;
         if (nextMessage) {
           dispatch({ type: 'thread/update-message', threadId, message: nextMessage });

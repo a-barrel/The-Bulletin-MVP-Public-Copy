@@ -15,6 +15,8 @@ export default function useSettingsPersistence({
   isOffline,
   setProfile
 }) {
+  const serverSupportedThemes = ['light', 'dark'];
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
 
@@ -38,7 +40,7 @@ export default function useSettingsPersistence({
     try {
       const payload = {
         preferences: {
-          theme: settings.theme,
+          theme: serverSupportedThemes.includes(settings.theme) ? settings.theme : 'light',
           radiusPreferenceMeters: settings.radiusPreferenceMeters,
           filterCussWords: settings.filterCussWords,
           statsPublic: settings.statsPublic,

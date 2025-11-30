@@ -12,10 +12,10 @@
 
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./PinCard.css";
-import PinTagIcon from "../assets/Event_Pin.svg";
-import DiscussionTagIcon from "../assets/chat-filled.svg";
-import CommentsIcon from "../assets/Comments.png";
-import InterestedIcon from "../assets/AttendanceIcon.png";
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
+import ModeCommentOutlinedIcon from '@mui/icons-material/ModeCommentOutlined';
+import GroupsIcon from '@mui/icons-material/Groups';
 import { createPinBookmark, deletePinBookmark } from "../api";
 import BookmarkButton from "./BookmarkButton";
 import resolveAssetUrl, { resolveThumbnailUrl } from "../utils/media";
@@ -36,11 +36,11 @@ import { useTranslation } from "react-i18next";
 const TAG_ICON_MAP = {
   pin: {
     label: "Event",
-    icon: PinTagIcon
+    icon: EventAvailableIcon
   },
   discussion: {
     label: "Discussion",
-    icon: DiscussionTagIcon
+    icon: ForumOutlinedIcon
   }
 };
 
@@ -94,6 +94,7 @@ function PinCard({
     toIdString(item?.creator?._id);
   const baseKey = pinId || item?.id || item?._id || authorName || "item";
   const tagBadge = resolveTagBadge(normalizedType);
+  const TagIcon = tagBadge.icon;
   const cardClassName = [
     "card",
     "pin-card",
@@ -420,12 +421,7 @@ function PinCard({
     >
       <header className={`card-header ${visualType}`}>
         <div className="tag" title={badgeTitle}>
-          <img
-            src={tagBadge.icon}
-            className="tag-icon"
-            alt=""
-            aria-hidden="true"
-          />
+          {TagIcon ? <TagIcon className="tag-icon" aria-hidden="true" /> : null}
           <span>{badgeLabel}</span>
         </div>
         <div className="meta-right">
@@ -574,35 +570,20 @@ function PinCard({
         <div className="counts">
           {typeof item?.comments === "number" && (
             <span className="count-item" title={t('tooltips.comments')}>
-              <img
-                src={CommentsIcon}
-                alt=""
-                className="count-icon"
-                aria-hidden="true"
-              />
+              <ModeCommentOutlinedIcon className="count-icon" aria-hidden="true" />
               <span>{item.comments}</span>
             </span>
           )}
 
           {isEventPin && attendeeTotal > 0 && (
             <span className="count-item" title={t('tooltips.attendees')}>
-              <img
-                src={InterestedIcon}
-                alt=""
-                className="count-icon"
-                aria-hidden="true"
-              />
+              <GroupsIcon className="count-icon" aria-hidden="true" />
               <span>{attendeeTotal}</span>
             </span>
           )}
           {isEventPin && friendAttendingCount > 0 && (
             <span className="count-item friend-count" title={t('tooltips.friendsAttending')}>
-              <img
-                src={InterestedIcon}
-                alt=""
-                className="count-icon friend-count-icon"
-                aria-hidden="true"
-              />
+              <GroupsIcon className="count-icon friend-count-icon" aria-hidden="true" />
               <span>{friendAttendingCount}</span>
             </span>
           )}

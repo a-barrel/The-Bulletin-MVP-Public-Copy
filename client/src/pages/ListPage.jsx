@@ -43,20 +43,20 @@ export const pageConfig = {
 const LIST_PAGE_SIZE = 10;
 const paginationSx = {
   '& .MuiPaginationItem-root': {
-    backgroundColor: '#EBE4F8',
-    color: '#5D3889',
+    backgroundColor: 'var(--accent-wash)',
+    color: 'var(--accent-strong)',
     fontWeight: 600,
     borderRadius: 999,
-    border: '1px solid rgba(93, 56, 137, 0.25)',
+    border: '1px solid color-mix(in srgb, var(--accent-strong) 25%, transparent)',
     minWidth: 36,
     height: 36
   },
   '& .MuiPaginationItem-root.Mui-selected': {
-    backgroundColor: '#5D3889',
-    color: '#FFFFFF'
+    backgroundColor: 'var(--accent-strong)',
+    color: 'var(--color-text-on-accent)'
   },
   '& .MuiPaginationItem-root:hover': {
-    backgroundColor: '#DCCBF4'
+    backgroundColor: 'color-mix(in srgb, var(--accent-wash-strong) 75%, transparent)'
   }
 };
 
@@ -564,15 +564,14 @@ function ListPage() {
           onToggleHideFullEvents={handleHideFullEventsToggle}
           isSavingHideFullPreference={isSavingHideFullPreference}
           hideFullPreferenceError={hideFullPreferenceError}
-          totalResults={totalResults}
-          totalPages={totalPages}
-          currentPage={currentPage}
-          onPageChange={handlePageChange}
-          pageSize={LIST_PAGE_SIZE}
-          paginationSx={paginationSx}
-          onCreatePin={handleCreatePin}
-          isOffline={isOffline}
-        />
+        totalResults={totalResults}
+        totalPages={totalPages}
+        currentPage={currentPage}
+        onPageChange={handlePageChange}
+        pageSize={LIST_PAGE_SIZE}
+        paginationSx={paginationSx}
+        isOffline={isOffline}
+      />
 
         {hideFullPreferenceError ? (
           <p className="topbar-pref-error" role="status">

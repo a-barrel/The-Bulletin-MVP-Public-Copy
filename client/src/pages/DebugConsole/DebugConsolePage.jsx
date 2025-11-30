@@ -68,7 +68,7 @@ export function DebugConsolePage() {
                     alignItems: 'flex-start',
                     textAlign: 'left',
                     minWidth: 'auto',
-                    color: '#1F1336'
+                    color: 'var(--color-text-primary)'
                   },
                   '& .MuiTabs-indicator': {
                     left: 0
@@ -84,7 +84,7 @@ export function DebugConsolePage() {
                   '& .MuiTab-root': {
                     minWidth: 'auto',
                     flex: '0 0 auto',
-                    color: '#1F1336'
+                    color: 'var(--color-text-primary)'
                   }
                 })
           }}

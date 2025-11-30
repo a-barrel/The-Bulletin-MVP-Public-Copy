@@ -6,9 +6,26 @@ import { logClientEvent } from '../api';
 
 export const RADIUS_MIN = 100;
 export const RADIUS_MAX = 80467; // 50 miles
+export const SUPPORTED_THEMES = [
+  'light',
+  'dark',
+  'neon',
+  'sunset',
+  'forest',
+  'ocean',
+  'candy',
+  'glitch',
+  'plasma',
+  'rainbow',
+  'aurora',
+  'rainbow-animated',
+  'noir',
+  'retro',
+  'tropical'
+];
 
 export const DEFAULT_SETTINGS = {
-  theme: 'system',
+  theme: 'light',
   radiusPreferenceMeters: 16093,
   filterCussWords: false,
   statsPublic: true,
@@ -112,9 +129,10 @@ export default function useSettingsManager({ authUser, authLoading, isOffline })
 
   const handleThemeChange = useCallback((event) => {
     const value = event.target.value;
+    const nextTheme = SUPPORTED_THEMES.includes(value) ? value : 'light';
     setSettings((prev) => ({
       ...prev,
-      theme: value
+      theme: nextTheme
     }));
   }, [setSettings]);
 

@@ -78,7 +78,7 @@ function NotificationQuietHoursEditor({ quietHours, onChange, disabled }) {
               borderRadius: 1,
               border: '1px solid',
               borderColor: settingsPalette.borderSubtle,
-              backgroundColor: '#FFFFFF'
+              backgroundColor: 'var(--color-surface)'
             }}
           >
             <FormControlLabel

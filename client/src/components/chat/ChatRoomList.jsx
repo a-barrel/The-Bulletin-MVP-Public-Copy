@@ -52,7 +52,7 @@ function ChatRoomList({
             {isRefreshing ? (
               <CircularProgress size={18} />
             ) : (
-              <RefreshIcon sx={{ fontSize: 18, color: '#5C48A8' }} />
+              <RefreshIcon sx={{ fontSize: 18, color: 'var(--accent-strong)' }} />
             )}
           </IconButton>
         </Box>
@@ -87,7 +87,7 @@ function ChatRoomList({
                 selected={isActive}
                 sx={{
                   transition: 'background-color 0.2s ease',
-                  backgroundColor: isActive ? '#d9f2ffff !important' : 'white'
+                  backgroundColor: isActive ? 'var(--color-surface-wash) !important' : 'var(--color-surface)'
                 }}
               >
                 <ListItemText

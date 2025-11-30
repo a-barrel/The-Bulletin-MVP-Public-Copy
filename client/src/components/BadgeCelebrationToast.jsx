@@ -87,6 +87,9 @@ export function BadgeCelebrationToast({ toastState, onClose }) {
       key={key}
       open={open}
       TransitionComponent={SlideDownTransition}
+      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      resumeHideDuration={10000}
+      disableWindowBlurListener
       message={
         <Box
           className="badge-wrapper"
@@ -116,15 +119,17 @@ export function BadgeCelebrationToast({ toastState, onClose }) {
           </Typography>
         </Box>
       }
-      anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      autoHideDuration={3000}
+      autoHideDuration={10000}
       onClose={onClose}
       ContentProps={{
         sx: {
-          backgroundColor: '#3EB8F0',
+          backgroundColor: 'transparent',
           overflow: 'visible',
           display: 'flex',
-          justifyContent: 'center',
+          justifyContent: 'flex-end',
+          boxShadow: 'none',
+          p: 0,
+          m: 0
         }
       }}
     />

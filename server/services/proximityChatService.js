@@ -15,8 +15,6 @@ const { toIdString, mapIdList } = require('../utils/ids');
 const { toIsoDateString } = require('../utils/dates');
 const { buildPinRoomPayload } = require('../utils/chatRoomContract');
 
-const REACTION_KEYS = ['surprised', 'angry', 'happy', 'thumbs_up', 'thumbs_down'];
-
 const buildAvatarMedia = (userDoc) => mapUserAvatar(userDoc, { toIdString });
 
 const mapUserToPublic = (user) => {
@@ -94,13 +92,21 @@ const mapMessage = (messageDoc, { viewerId } = {}) => {
       : new Map(Object.entries(doc.reactionsByUser || {}));
 
   const counts = {};
-  REACTION_KEYS.forEach((key) => {
-    const raw = reactionCountsMap.get ? reactionCountsMap.get(key) : reactionCountsMap[key];
-    const value = Number(raw);
-    if (Number.isFinite(value) && value > 0) {
-      counts[key] = value;
-    }
-  });
+  if (reactionCountsMap.forEach) {
+    reactionCountsMap.forEach((raw, key) => {
+      const value = Number(raw);
+      if (typeof key === 'string' && key && Number.isFinite(value) && value > 0) {
+        counts[key] = value;
+      }
+    });
+  } else {
+    Object.entries(reactionCountsMap || {}).forEach(([key, raw]) => {
+      const value = Number(raw);
+      if (typeof key === 'string' && key && Number.isFinite(value) && value > 0) {
+        counts[key] = value;
+      }
+    });
+  }
 
   let viewerReactions = [];
   if (viewerId) {
@@ -108,13 +114,12 @@ const mapMessage = (messageDoc, { viewerId } = {}) => {
       ? reactionsByUserMap.get(viewerId)
       : reactionsByUserMap[viewerId];
     if (Array.isArray(raw)) {
-      viewerReactions = raw.filter((value) => REACTION_KEYS.includes(value));
+      viewerReactions = raw.filter((value) => typeof value === 'string' && value.trim());
     } else if (typeof raw === 'string' && raw) {
-      viewerReactions = REACTION_KEYS.includes(raw) ? [raw] : [];
+      viewerReactions = [raw];
     } else if (raw && typeof raw === 'object') {
-      // Handle potential Map-like object
       const values = Array.from(new Set(Object.values(raw)));
-      viewerReactions = values.filter((value) => REACTION_KEYS.includes(value));
+      viewerReactions = values.filter((value) => typeof value === 'string' && value.trim());
     }
   }
   const viewerReaction = viewerReactions[0];

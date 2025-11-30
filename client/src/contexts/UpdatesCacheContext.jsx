@@ -2,7 +2,8 @@ import { createContext, useContext, useMemo, useRef } from 'react';
 
 const IS_DEV = import.meta.env.DEV;
 const cacheStats = { hits: 0, misses: 0 };
-const DEFAULT_TTL_MS = 60_000;
+// Keep updates cached for the entire session (no expiry)
+const DEFAULT_TTL_MS = Number.POSITIVE_INFINITY;
 
 const UpdatesCacheContext = createContext(null);
 
@@ -14,16 +15,13 @@ export function UpdatesCacheProvider({ children }) {
       get: (userId) => {
         if (!userId) return null;
         const entry = cacheRef.current.get(userId);
-        if (entry && Date.now() - entry.ts < (entry.ttl ?? DEFAULT_TTL_MS)) {
+        if (entry) {
           cacheStats.hits += 1;
           if (IS_DEV) {
             // eslint-disable-next-line no-console
             console.debug('[updates-cache] hit', { userId, stats: { ...cacheStats } });
           }
           return entry.data;
-        }
-        if (entry) {
-          cacheRef.current.delete(userId);
         }
         cacheStats.misses += 1;
         return null;

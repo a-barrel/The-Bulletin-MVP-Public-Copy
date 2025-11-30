@@ -53,6 +53,7 @@ import { useTranslation } from 'react-i18next';
 import HelpAbout from '../components/settings/HelpAbout';
 import useApiTokensManager from '../hooks/settings/useApiTokensManager';
 import useFeedbackForm from '../hooks/settings/useFeedbackForm';
+import { useThemePreference } from '../contexts/ThemePreferenceContext';
 
 export const pageConfig = {
   id: 'settings',
@@ -79,6 +80,7 @@ function SettingsPage() {
     profileError,
     isFetchingProfile,
     settings,
+    setSettings,
     saveStatus,
     setSaveStatus,
     isSaving,
@@ -164,6 +166,7 @@ function SettingsPage() {
     handleSubmitFeedback,
     handleFeedbackStatusClose
   } = useFeedbackForm();
+  const { theme: themePreference, setTheme: setThemePreference } = useThemePreference();
 
   const {
     tokenStatus,
@@ -193,6 +196,22 @@ function SettingsPage() {
       setBadgeSoundEnabled(value);
     },
     [handleDisplayToggle, setBadgeSoundEnabled]
+  );
+  useEffect(() => {
+    if (themePreference && themePreference !== settings.theme) {
+      setSettings((prev) => ({ ...prev, theme: themePreference }));
+    }
+  }, [setSettings, settings.theme, themePreference]);
+
+  const handleThemeChangeSynced = useCallback(
+    (event) => {
+      handleThemeChange(event);
+      const value = event?.target?.value;
+      if (value) {
+        setThemePreference(value);
+      }
+    },
+    [handleThemeChange, setThemePreference]
   );
   const handleFriendBadgesPreference = useCallback(
     (value) => {
@@ -265,7 +284,7 @@ function SettingsPage() {
     <Box
       sx={{
         minHeight: '100vh',
-        background: 'linear-gradient(180deg, #FFFFFF 0%, #F5EFFD 35%, #CDAEF2 100%)',
+        background: 'var(--page-bg)',
         py: 0,
         px: 0
       }}
@@ -273,36 +292,31 @@ function SettingsPage() {
       <Box
         sx={{
           width: '100%',
-          maxWidth: 960,
-          mx: 'auto',
           py: 0,
-          px: { xs: 0, md: 0 }
+          px: 0
         }}
       >
       <Stack spacing={3}>
-        <PageNavHeader title="Settings" />
-
-        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ color: settingsPalette.textPrimary }}>
-          <SettingsIcon sx={{ color: settingsPalette.accent }} />
-          <Typography variant="h4" component="h1" sx={{ color: 'inherit', fontWeight: 700 }}>
-            Settings
-          </Typography>
-          {authUser ? (
-            <Chip
-              variant="outlined"
-              icon={<ManageAccountsIcon />}
-              label={authUser.email ?? 'Authenticated'}
-              size="small"
-              sx={{
-                backgroundColor: settingsPalette.pastelBlue,
-                borderColor: settingsPalette.accentLight,
-                color: settingsPalette.textPrimary,
-                fontWeight: 600,
-                '.MuiChip-icon': { color: settingsPalette.accent }
-              }}
-            />
-          ) : null}
-        </Stack>
+        <PageNavHeader
+          title="Settings"
+          rightSlot={
+            authUser ? (
+              <Chip
+                variant="outlined"
+                icon={<ManageAccountsIcon />}
+                label={authUser.email ?? 'Authenticated'}
+                size="small"
+                sx={{
+                  backgroundColor: settingsPalette.pastelBlue,
+                  borderColor: settingsPalette.accentLight,
+                  color: settingsPalette.textPrimary,
+                  fontWeight: 600,
+                  '.MuiChip-icon': { color: settingsPalette.accent }
+                }}
+              />
+            ) : null
+          }
+        />
 
         {saveStatus ? (
           <Alert severity={saveStatus.type} onClose={() => setSaveStatus(null)}>
@@ -332,7 +346,7 @@ function SettingsPage() {
           sx={{
             p: { xs: 2, md: 3 },
             borderRadius: 4,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: 'var(--color-surface)',
             border: `1px solid ${settingsPalette.borderSubtle}`,
             boxShadow: '0 25px 65px rgba(93, 56, 137, 0.15)'
           }}
@@ -358,7 +372,7 @@ function SettingsPage() {
                 },
                 '& .Mui-selected': {
                   backgroundColor: settingsPalette.accent,
-                  color: '#FFFFFF !important'
+                  color: 'var(--color-text-on-accent) !important'
                 }
               }}
             >
@@ -374,7 +388,7 @@ function SettingsPage() {
             <TabPanel value="appearance" current={activeTab}>
               <AppearanceSettings
                 theme={theme}
-                onThemeChange={handleThemeChange}
+                onThemeChange={handleThemeChangeSynced}
                 textScale={textScale}
                 onTextScaleChange={handleTextScaleChange}
                 reduceMotion={reduceMotion}
@@ -460,7 +474,7 @@ function SettingsPage() {
                   p: 2.5,
                   borderRadius: 3,
                   border: `1px solid ${settingsPalette.borderSubtle}`,
-                  backgroundColor: '#fff'
+                  backgroundColor: 'var(--color-surface)'
                 }}
               >
                 <Typography variant="h6" sx={{ color: settingsPalette.accent, fontWeight: 700, mb: 1 }}>
@@ -525,7 +539,7 @@ function SettingsPage() {
           sx={{
             p: { xs: 2, md: 3 },
             borderRadius: 4,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: 'var(--color-surface)',
             border: `1px solid ${settingsPalette.borderSubtle}`,
             boxShadow: '0 12px 30px rgba(93, 56, 137, 0.1)'
           }}
@@ -543,15 +557,15 @@ function SettingsPage() {
                 variant="outlined"
                 startIcon={<LogoutIcon />}
                 sx={{
-                  borderColor: '#B3261E',
-                  color: '#B3261E',
+                  borderColor: 'var(--danger)',
+                  color: 'var(--danger)',
                   borderRadius: 999,
                   fontWeight: 600,
                   textTransform: 'none',
                   '&:hover': {
-                    borderColor: '#7A2017',
-                    backgroundColor: '#FFE5E0',
-                    color: '#7A2017'
+                    borderColor: 'color-mix(in srgb, var(--danger) 80%, transparent)',
+                    backgroundColor: 'color-mix(in srgb, var(--danger) 16%, transparent)',
+                    color: 'var(--danger)'
                   }
                 }}
               >

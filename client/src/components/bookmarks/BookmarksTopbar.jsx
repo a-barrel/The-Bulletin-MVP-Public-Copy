@@ -28,9 +28,9 @@ export default function BookmarksTopbar({
           disableRipple
           sx={{
             fontWeight: 600,
-            backgroundColor: activeTab === 'bookmarks' ? '#5D3889' : 'rgba(93,56,137,0.1)',
-            color: activeTab === 'bookmarks' ? '#fff' : '#5D3889',
-            borderColor: '#5D3889'
+            backgroundColor: activeTab === 'bookmarks' ? 'var(--accent-strong)' : 'color-mix(in srgb, var(--accent-strong) 12%, transparent)',
+            color: activeTab === 'bookmarks' ? 'var(--color-text-on-accent)' : 'var(--accent-strong)',
+            borderColor: 'var(--accent-strong)'
           }}
         />
         <Chip
@@ -40,9 +40,9 @@ export default function BookmarksTopbar({
           disableRipple
           sx={{
             fontWeight: 600,
-            backgroundColor: activeTab === 'history' ? '#5D3889' : 'rgba(93,56,137,0.1)',
-            color: activeTab === 'history' ? '#fff' : '#5D3889',
-            borderColor: '#5D3889'
+            backgroundColor: activeTab === 'history' ? 'var(--accent-strong)' : 'color-mix(in srgb, var(--accent-strong) 12%, transparent)',
+            color: activeTab === 'history' ? 'var(--color-text-on-accent)' : 'var(--accent-strong)',
+            borderColor: 'var(--accent-strong)'
           }}
         />
         {activeTab === 'history' ? (

@@ -40,80 +40,88 @@ import { FriendCacheProvider } from './contexts/FriendCacheContext';
 import { ChatRoomCacheProvider } from './contexts/ChatRoomCacheContext';
 import { GeocodeCacheProvider } from './contexts/GeocodeCacheContext';
 import { UpdatesCacheProvider } from './contexts/UpdatesCacheContext';
+import { useThemePreference } from './contexts/ThemePreferenceContext';
 
-// Style guide palette: background default = Soft Lavender (#F5EFFD), paper = Brand White (#FFFFFF).
-// Reference: docs/style/style-guide.md, docs/style/contrast-audit-playbook.md, docs/style/light_mode_colorpalate.md
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#5D3889'
-    },
-    secondary: {
-      main: '#3EB8F0'
-    },
-    background: {
-      default: '#F5EFFD',
-      paper: '#FFFFFF'
-    },
-    text: {
-      primary: '#1E1E1E',
-      secondary: '#4A3A63'
-    }
-  },
-  components: {
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          backgroundColor: '#FFFFFF',
-          color: '#1E1E1E'
-        }
-      }
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          backgroundColor: '#FFFFFF',
-          color: '#1E1E1E'
-        }
-      }
-    },
-    MuiDialog: {
-      styleOverrides: {
-        paper: {
-          backgroundColor: '#FFFFFF',
-          color: '#1E1E1E'
-        }
-      }
-    },
-    MuiPopover: {
-      styleOverrides: {
-        paper: {
-          backgroundColor: '#FFFFFF',
-          color: '#1E1E1E'
-        }
-      }
-    }
-  },
-  typography: {
-    fontFamily: '"Urbanist", -apple-system, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif',
-    fontWeightRegular: 400,
-    fontWeightMedium: 500,
-    fontWeightBold: 700,
-    h1: { fontSize: '2.25rem', fontWeight: 700, lineHeight: 1.15, letterSpacing: '-0.01em' },
-    h2: { fontSize: '1.9rem', fontWeight: 700, lineHeight: 1.2 },
-    h3: { fontSize: '1.6rem', fontWeight: 700, lineHeight: 1.25 },
-    h4: { fontSize: '1.4rem', fontWeight: 600, lineHeight: 1.3 },
-    h5: { fontSize: '1.2rem', fontWeight: 600, lineHeight: 1.35 },
-    h6: { fontSize: '1.05rem', fontWeight: 600, lineHeight: 1.4 },
-    subtitle1: { fontSize: '1.2rem', fontWeight: 600, lineHeight: 1.35 },
-    subtitle2: { fontSize: '1rem', fontWeight: 600, lineHeight: 1.4 },
-    body1: { fontSize: '1rem', fontWeight: 400, lineHeight: 1.5 },
-    body2: { fontSize: '0.95rem', fontWeight: 400, lineHeight: 1.5 },
-    button: { fontSize: '0.95rem', fontWeight: 600, textTransform: 'none' },
-    caption: { fontSize: '0.85rem', fontWeight: 500, lineHeight: 1.25, letterSpacing: '0.01em' }
+const readCssVar = (name, fallback) => {
+  if (typeof window === 'undefined') {
+    return fallback;
   }
-});
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name);
+  return value ? value.trim() : fallback;
+};
+
+const buildTheme = (tokens) => {
+  const {
+    surface,
+    surfaceWash,
+    surfacePaper,
+    textPrimary,
+    textSecondary,
+    accentPrimary,
+    accentSecondary
+  } = tokens;
+
+  return createTheme({
+    palette: {
+      primary: { main: accentPrimary },
+      secondary: { main: accentSecondary },
+      background: { default: surfaceWash, paper: surfacePaper },
+      text: { primary: textPrimary, secondary: textSecondary }
+    },
+    components: {
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            backgroundColor: surfacePaper,
+            color: textPrimary
+          }
+        }
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            backgroundColor: surfacePaper,
+            color: textPrimary
+          }
+        }
+      },
+      MuiDialog: {
+        styleOverrides: {
+          paper: {
+            backgroundColor: surfacePaper,
+            color: textPrimary
+          }
+        }
+      },
+      MuiPopover: {
+        styleOverrides: {
+          paper: {
+            backgroundColor: surfacePaper,
+            color: textPrimary
+          }
+        }
+      }
+    },
+    typography: {
+      fontFamily: '"Urbanist", -apple-system, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif',
+      fontWeightRegular: 400,
+      fontWeightMedium: 500,
+      fontWeightBold: 700,
+      h1: { fontSize: '2.25rem', fontWeight: 700, lineHeight: 1.15, letterSpacing: '-0.01em' },
+      h2: { fontSize: '1.9rem', fontWeight: 700, lineHeight: 1.2 },
+      h3: { fontSize: '1.6rem', fontWeight: 700, lineHeight: 1.25 },
+      h4: { fontSize: '1.4rem', fontWeight: 600, lineHeight: 1.3 },
+      h5: { fontSize: '1.2rem', fontWeight: 600, lineHeight: 1.35 },
+      h6: { fontSize: '1.05rem', fontWeight: 600, lineHeight: 1.4 },
+      subtitle1: { fontSize: '1.2rem', fontWeight: 600, lineHeight: 1.35 },
+      subtitle2: { fontSize: '1rem', fontWeight: 600, lineHeight: 1.4 },
+      body1: { fontSize: '1rem', fontWeight: 400, lineHeight: 1.5 },
+      body2: { fontSize: '0.95rem', fontWeight: 400, lineHeight: 1.5 },
+      button: { fontSize: '0.95rem', fontWeight: 600, textTransform: 'none' },
+      caption: { fontSize: '0.85rem', fontWeight: 500, lineHeight: 1.25, letterSpacing: '0.01em' }
+    }
+  });
+};
 
 const AUTH_ROUTES = new Set(['/login', '/forgot-password', '/reset-password']);
 
@@ -189,6 +197,7 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
+  const { resolvedMode } = useThemePreference();
   const [firebaseAuthUser, authLoading] = useAuthState(auth);
   const [navOverlayOpen, setNavOverlayOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -812,7 +821,7 @@ function AppContent() {
         return;
       }
 
-      if (event.key === '`' || event.key === '~') {
+      if ((event.key === '`' || event.key === '~') && !event.altKey && !event.metaKey && !event.ctrlKey) {
         if (AUTH_ROUTES.has(location.pathname) || navPages.length === 0) {
           return;
         }
@@ -859,6 +868,27 @@ function AppContent() {
     );
   }, [setLocation]);
 
+  const appTheme = useMemo(() => {
+    const surface = readCssVar('--color-surface', 'var(--color-surface)');
+    const surfaceWash = readCssVar('--color-surface-wash', 'var(--color-surface-wash)');
+    const surfaceWashStrong = readCssVar('--color-surface-wash-strong', 'var(--color-surface-wash-strong)');
+    const surfacePaper = readCssVar('--color-surface', 'var(--color-surface)');
+    const textPrimary = readCssVar('--color-text-primary', 'var(--color-text-primary)');
+    const textSecondary = readCssVar('--color-text-secondary', 'var(--color-text-secondary)');
+    const accentPrimary = readCssVar('--accent-primary', 'var(--accent-primary)');
+    const accentSecondary = readCssVar('--accent-blue', 'var(--accent-blue)');
+
+    return buildTheme({
+      surface,
+      surfaceWash: surfaceWashStrong || surfaceWash,
+      surfacePaper,
+      textPrimary,
+      textSecondary,
+      accentPrimary,
+      accentSecondary
+    });
+  }, [resolvedMode]);
+
   return (
     <FriendBadgePreferenceProvider value={friendBadgePreferenceValue}>
       <BadgeSoundProvider value={badgeSoundContextValue}>
@@ -891,6 +921,7 @@ function AppContent() {
               isRequestingLocation={isRequestingLocation}
               badgeToast={badgeToast}
               handleBadgeToastClose={handleBadgeToastClose}
+              appTheme={appTheme}
             />
           </NavOverlayProvider>
         </MainNavigationProvider>
@@ -913,10 +944,11 @@ function ThemeRoutesShell({
   handleRequestLocationAccess,
   isRequestingLocation,
   badgeToast,
-  handleBadgeToastClose
+  handleBadgeToastClose,
+  appTheme
 }) {
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={appTheme}>
       <CssBaseline />
       <MemoizedAppRoutes
         pagesError={pagesError}

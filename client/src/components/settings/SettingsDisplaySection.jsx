@@ -31,7 +31,7 @@ export default function SettingsDisplaySection({
       sx={{
         p: { xs: 2, md: 3 },
         borderRadius: 4,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: 'var(--color-surface)',
         border: `1px solid ${settingsPalette.borderSubtle}`,
         boxShadow: settingsPalette.shadowSoft
       }}

@@ -135,12 +135,12 @@ function DataIntegrationsSettings({
                     disabled={isOffline}
                     title={isOffline ? t('tooltips.settings.revokeTokens') : undefined}
                     sx={{
-                      color: '#B3261E',
+                      color: 'var(--danger)',
                       fontWeight: 600,
                       textTransform: 'none',
                       '&:hover': {
-                        backgroundColor: '#FFE5E0',
-                        color: '#7A2017'
+                        backgroundColor: 'color-mix(in srgb, var(--danger) 14%, transparent)',
+                        color: 'var(--danger)'
                       },
                       '&:disabled': {
                         color: settingsPalette.borderSubtle

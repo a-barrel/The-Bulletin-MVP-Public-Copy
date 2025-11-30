@@ -32,7 +32,7 @@ function ProfileEditForm({
         maxWidth: 720,
         width: '100%',
         margin: '1.5rem auto 0',
-        backgroundColor: '#ECF8FE',
+        backgroundColor: 'var(--color-surface-wash)',
         borderRadius: 3,
         boxShadow: '0 18px 40px rgba(93, 56, 137, 0.15)',
         p: { xs: 2, md: 3 }
@@ -71,7 +71,7 @@ function ProfileEditForm({
         sx={{
           p: 2,
           borderRadius: 2,
-          backgroundColor: '#ECF8FE',
+          backgroundColor: 'var(--color-surface-wash)',
           boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)'
         }}
       >
@@ -110,7 +110,11 @@ function ProfileEditForm({
             variant="outlined"
             size="small"
             disabled={isSaving}
-            sx={{ borderWidth: 2, borderColor: '#000', color: '#000' }}
+            sx={{
+              borderWidth: 2,
+              borderColor: 'var(--color-border-strong)',
+              color: 'var(--color-text-strong)'
+            }}
           >
             Upload banner
             <input type="file" hidden accept="image/*" onChange={onBannerFileChange} />
@@ -124,7 +128,7 @@ function ProfileEditForm({
             disabled={
               isSaving || (formState.bannerCleared && !formState.bannerFile && !editingBannerSrc)
             }
-            sx={{ color: '#5D3889' }}
+            sx={{ color: 'var(--accent-strong)' }}
           >
             Remove banner
           </Button>
@@ -145,7 +149,11 @@ function ProfileEditForm({
               variant="outlined"
               size="small"
               disabled={isSaving}
-              sx={{ borderWidth: 2, borderColor: '#000', color: '#000' }}
+              sx={{
+                borderWidth: 2,
+                borderColor: 'var(--color-border-strong)',
+                color: 'var(--color-text-strong)'
+              }}
             >
               Upload avatar
               <input type="file" hidden accept="image/*" onChange={onAvatarFileChange} />
@@ -159,7 +167,7 @@ function ProfileEditForm({
               disabled={
                 isSaving || (formState.avatarCleared && !formState.avatarFile && !editingAvatarSrc)
               }
-              sx={{ color: '#5D3889' }}
+              sx={{ color: 'var(--accent-strong)' }}
             >
               Remove avatar
             </Button>
@@ -173,8 +181,15 @@ function ProfileEditForm({
           required
           disabled={isSaving}
           fullWidth
-          InputProps={{ sx: { '& .MuiOutlinedInput-notchedOutline': { borderWidth: 2, borderColor: '#000' } } }}
-          InputLabelProps={{ sx: { color: '#1f1336' } }}
+          InputProps={{
+            sx: {
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderWidth: 2,
+                borderColor: 'var(--color-border-strong)'
+              }
+            }
+          }}
+          InputLabelProps={{ sx: { color: 'var(--color-text-strong)' } }}
         />
 
         <TextField
@@ -187,8 +202,15 @@ function ProfileEditForm({
           disabled={isSaving}
           inputProps={{ maxLength: 500 }}
           fullWidth
-          InputProps={{ sx: { '& .MuiOutlinedInput-notchedOutline': { borderWidth: 2, borderColor: '#000' } } }}
-          InputLabelProps={{ sx: { color: '#1f1336' } }}
+          InputProps={{
+            sx: {
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderWidth: 2,
+                borderColor: 'var(--color-border-strong)'
+              }
+            }
+          }}
+          InputLabelProps={{ sx: { color: 'var(--color-text-strong)' } }}
         />
 
         <TextField
@@ -198,8 +220,8 @@ function ProfileEditForm({
           select
           disabled={isSaving}
           fullWidth
-          InputProps={{ sx: { '& .MuiOutlinedInput-notchedOutline': { borderWidth: 2, borderColor: '#000' } } }}
-          InputLabelProps={{ sx: { color: '#1f1336' } }}
+          InputProps={{ sx: { '& .MuiOutlinedInput-notchedOutline': { borderWidth: 2, borderColor: 'var(--color-border-strong, #000)' } } }}
+          InputLabelProps={{ sx: { color: 'var(--color-text-strong, #1f1336)' } }}
         >
           <MenuItem value="system">System default</MenuItem>
           <MenuItem value="light">Light</MenuItem>

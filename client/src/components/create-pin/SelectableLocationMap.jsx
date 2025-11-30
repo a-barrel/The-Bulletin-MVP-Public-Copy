@@ -102,7 +102,7 @@ function SelectableLocationMap({ value, onChange, anchor, avatarUrl, viewerName,
               {draftLatLng ? (
                 <Polyline
                   positions={[userLatLng, draftLatLng]}
-                  pathOptions={{ color: '#5d3889', weight: 2, dashArray: '6 8', opacity: 0.85 }}
+                  pathOptions={{ color: 'var(--accent-strong)', weight: 2, dashArray: '6 8', opacity: 0.85 }}
                 />
               ) : null}
             </>

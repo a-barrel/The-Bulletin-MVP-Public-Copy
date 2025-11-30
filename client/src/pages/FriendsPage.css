@@ -10,15 +10,16 @@
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  min-height: 100vh;
+  background: var(--page-bg);
 }
 
 .friend-frame {
   --header-h: 72px;
-  width: 100vw;
-  height: 100vh;
-  background: white;
+  width: 100%;
+  min-height: 100vh;
+  background: var(--color-surface);
   border-radius: 0;
   display: flex;
   flex-direction: column;
@@ -31,8 +32,8 @@
   justify-content: space-between;
   padding: 0 1.5rem;
   gap: 0.5rem;
-  background: linear-gradient(135deg, #cdaef2 0%, #f5effd 100%);
-  border-bottom: 1px solid rgba(93, 56, 137, 0.25);
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--accent-border);
   height: 72px;
   min-height: 72px;
 }
@@ -81,20 +82,20 @@
 }
 
 .friends-header-back-icon {
-  color: #4b208c;
+  color: var(--accent-strong);
   width: 32px;
   height: 32px;
 }
 
 .friends-header-back:hover,
 .friends-header-back:focus-visible {
-  background: rgba(75, 32, 140, 0.12);
+  background: color-mix(in srgb, var(--accent-strong) 15%, transparent);
   outline: none;
   transform: translateY(-1px);
 }
 
 .friends-title {
-  color: #5D3889;
+  color: var(--accent-strong);
   font-weight: 700 !important;
   letter-spacing: 0.01em;
 }
@@ -102,7 +103,7 @@
 .friend-request-icon {
   width: 28px;
   height: 28px;
-  color: #5D3889 !important;
+  color: var(--accent-strong) !important;
 }
 
 .friend-request-icon-badge {
@@ -111,8 +112,8 @@
   right: -4px;
   padding: 2px 6px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #f15bb5 0%, #9b5de5 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--accent-pink) 0%, var(--accent-primary) 100%);
+  color: var(--color-text-on-accent);
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1;
@@ -128,9 +129,9 @@
 }
 
 .chat-room-chip.MuiChip-root {
-  background: rgba(255, 255, 255, 0.45);
-  border-color: rgba(45, 0, 104, 0.3);
-  color: #2d0068;
+  background: color-mix(in srgb, var(--color-surface) 45%, transparent);
+  border-color: var(--accent-border);
+  color: var(--color-text-primary);
   font-weight: 600;
 }
 
@@ -143,25 +144,31 @@
   font-weight: 600;
   border-radius: 999px;
   padding: 0.25rem 0.9rem;
-  border-color: rgba(45, 0, 104, 0.3);
-  color: #2d0068;
-  background: rgba(255, 255, 255, 0.45);
+  border-color: var(--accent-border);
+  color: var(--accent-strong);
+  background: color-mix(in srgb, var(--color-surface) 45%, transparent);
 }
 
 .chat-friends-btn.MuiButton-root:hover {
-  background: rgba(255, 255, 255, 0.65);
-  border-color: rgba(45, 0, 104, 0.5);
+  background: color-mix(in srgb, var(--color-surface) 65%, transparent);
+  border-color: var(--accent-border);
 }
 
 .chat-friends-btn.MuiButton-contained {
-  background: #9B5DE5;
-  border-color: #9B5DE5;
-  color: #fff;
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: var(--color-text-on-accent);
+}
+
+.friends-list-search-bar-input-container input,
+.friends-list-search-bar-input-container .MuiOutlinedInput-root {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
 }
 
 .chat-friends-btn.MuiButton-contained:hover {
-  background: #7f46c2;
-  border-color: #7f46c2;
+  background: color-mix(in srgb, var(--accent-strong) 85%, transparent);
+  border-color: var(--accent-strong);
 }
 
 .friend-requests-container {
@@ -169,7 +176,7 @@
 }
 
 .friends-list-field {
-  background-color: #F5EFFD;
+  background-color: var(--accent-wash);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -192,8 +199,8 @@
 .scroll-to-bottom-icon {
   width: 48px !important;
   height: 48px !important;
-  background-color: #9B5DE5;
-  color: white;
+  background-color: var(--accent-strong);
+  color: var(--color-text-on-accent);
   border-radius: 60px;
 }
 
@@ -209,8 +216,8 @@
   gap: 4px;
   padding: 8px 12px;
   overflow: visible;
-  background: #CDAEF2;
-  border-top: 1px solid #ddd;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border-strong);
   margin-bottom: -2px;
   z-index: 1;
   box-sizing: border-box;
@@ -242,8 +249,8 @@
   font-family:'Urbanist', sans-serif;
   font-weight: 500;
   border-radius: 45px;
-  background: white;
-  color: black;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
 }
 
 /* Button to add an img (no visual) */
@@ -260,14 +267,14 @@
   margin-left: -1rem;
   height: 52px !important;
   width: 52px !important;
-  color: #5D3889;
+  color: var(--accent-strong);
 }
 
 /* Button to send a message (no visual) */
 .send-message-btn {
   position: relative;
   bottom: 2px;
-  background: linear-gradient(135deg, #5d3889 0%, #9b5de5 100%);
+  background: linear-gradient(135deg, var(--accent-strong) 0%, var(--accent-primary) 100%);
   border: none;
   border-radius: 50%;
   width: 48px;
@@ -279,33 +286,33 @@
   margin-left: 0.25rem;
   padding: 0;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(93, 56, 137, 0.22);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent-strong) 22%, transparent);
 }
 
 .send-message-btn:hover:not(:disabled),
 .send-message-btn:focus-visible {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 12px 28px rgba(93, 56, 137, 0.32);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--accent-strong) 32%, transparent);
   filter: brightness(1.02);
   outline: none;
 }
 
 .send-message-btn:active:not(:disabled) {
   transform: translateY(0) scale(0.98);
-  box-shadow: 0 8px 18px rgba(93, 56, 137, 0.25);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent-strong) 25%, transparent);
 }
 
 .send-message-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
   box-shadow: none;
-  background: linear-gradient(135deg, #cdaef2 0%, #e5d5f6 100%);
+  background: linear-gradient(135deg, var(--color-surface-wash-strong) 0%, var(--color-surface-wash) 100%);
 }
 
 .send-message-icon {
   width: 32px !important;
   height: 32px !important;
-  color: white;
+  color: var(--color-text-on-accent);
 }
 
 .friends-page-text-container {
@@ -317,7 +324,7 @@
 }
 
 .loading-friends-circle {
-  color: #F15BB5 !important;
+  color: var(--accent-pink) !important;
 }
 
 .friends-page-title-text,
@@ -325,7 +332,7 @@
   font-family: 'Urbanist', sans-serif !important;
   font-weight: 500 !important;
   font-size: 1.15rem !important;
-  color: black !important;
+  color: var(--color-text-primary) !important;
   margin-top: 1rem !important;
 }
 
@@ -334,7 +341,7 @@
   position: relative;
   width: 100%;
   height: auto;
-  background-color: #F5EFFD;
+  background-color: var(--accent-wash);
   overflow-y: auto;
   z-index: 1;
 }
@@ -342,12 +349,12 @@
   /* Header */
 .friends-list-header {
   position: sticky;
-  border-bottom: 1px solid black;
+  border-bottom: 1px solid var(--color-border-strong);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  background-color: #CDAEF2;
+  background-color: var(--accent-wash-strong);
 }
 
 .friends-list-header-left {
@@ -358,7 +365,7 @@
 
 .friends-list-back-btn {
   font-family: 'Urbanist', sans-serif !important;
-  color: #4c2670 !important;
+  color: var(--accent-strong) !important;
   text-transform: none;
   font-weight: 600 !important;
   font-size: 0.95rem;
@@ -370,7 +377,7 @@
   font-family:'Urbanist', sans-serif !important;
   font-size: 2rem !important;
   font-weight: 500 !important;
-  color: #5D3889;
+  color: var(--accent-strong);
   text-align: center;
   flex: 1;
 }
@@ -392,7 +399,7 @@
 .friend-request-icon {
   width: 28px !important;
   height: 28px !important;
-  color: #5D3889 !important;
+  color: var(--accent-strong) !important;
   cursor: pointer;
 }
 
@@ -404,8 +411,8 @@
   height: 20px;
   padding: 0 6px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #f15bb5 0%, #9b5de5 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent-pink) 0%, var(--accent-primary) 100%);
+  color: var(--color-text-on-accent);
   font-size: 0.75rem;
   font-weight: 700;
   display: inline-flex;
@@ -425,23 +432,23 @@
   font-weight: 700 !important;
   font-size: 1.4rem !important;
   text-align: center;
-  color: #111 !important;
-  background-color: #CDAEF2 !important;
-  border-bottom: 2px solid black !important;
+  color: var(--color-text-primary) !important;
+  background-color: var(--accent-wash-strong) !important;
+  border-bottom: 2px solid var(--color-border-strong) !important;
 }
 
 .friend-dialog-content {
   font-family: 'Urbanist', sans-serif !important;
   font-weight: 300 !important;
   font-size: 1rem !important;
-  background-color: white !important;
+  background-color: var(--color-surface) !important;
   padding: 1.5rem !important;
 }
 
 .friend-dialog-alert {
   font-family: 'Urbanist', sans-serif !important;
   border-radius: 10px !important;
-  background-color: white !important;
+  background-color: var(--color-surface) !important;
 }
 
 .friend-dialog-empty-container {
@@ -451,7 +458,7 @@
 
 .friend-dialog-empty-icon {
   align-self: center;
-  color: gray;
+  color: var(--color-text-secondary);
 }
 
 .friend-dialog-empty-desc {
@@ -459,60 +466,60 @@
   font-weight: 500 !important;
   font-size: 0.95rem !important;
   text-align: center !important;
-  color: #555 !important;
+  color: var(--color-text-secondary) !important;
   padding: 1rem 0 !important;
 }
 
 .friend-dialog-request-card {
   padding: 1rem !important;
   border-radius: 12px !important;
-  background-color: white !important;
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  background-color: var(--color-surface) !important;
+  border: 1px solid var(--color-border-strong) !important;
 }
 
 .friend-dialog-request-name {
   font-family: 'Urbanist', sans-serif !important;
   font-weight: 700 !important;
-  color: black !important;
+  color: var(--color-text-primary) !important;
 }
 
 .friend-dialog-request-time {
   font-family: 'Urbanist', sans-serif !important;
   font-size: 0.85rem !important;
-  color: gray !important;
+  color: var(--color-text-secondary) !important;
 }
 
 .friend-dialog-request-message {
   font-family: 'Urbanist', sans-serif !important;
   font-style: italic !important;
-  color: gray !important;
+  color: var(--color-text-secondary) !important;
 }
 
 .friend-dialog-accept-btn {
   font-family: 'Urbanist', sans-serif !important;
   text-transform: none !important;
-  background-color: #3EB8F0 !important;
-  color: #fff !important;
+  background-color: var(--accent-blue) !important;
+  color: var(--color-text-on-accent) !important;
 }
 
 .friend-dialog-accept-btn:hover {
-  background-color: #2EA0D5 !important;
+  background-color: color-mix(in srgb, var(--accent-blue) 80%, transparent) !important;
 }
 
 .friend-dialog-decline-btn {
   font-family: 'Urbanist', sans-serif !important;
   text-transform: none !important;
-  border-color: #E53935 !important;
-  color: #E53935 !important;
+  border-color: var(--danger) !important;
+  color: var(--danger) !important;
 }
 
 .friend-dialog-decline-btn:hover {
-  background-color: rgba(229, 57, 53, 0.08) !important;
+  background-color: color-mix(in srgb, var(--danger) 12%, transparent) !important;
 }
 
 .friend-dialog-actions-container {
-  background-color: #CDAEF2 !important;
-  border-top: 2px solid black !important;
+  background-color: var(--accent-wash-strong) !important;
+  border-top: 2px solid var(--color-border-strong) !important;
   justify-content: center !important;
 }
 
@@ -520,20 +527,20 @@
   font-family: 'Urbanist', sans-serif !important;
   font-size: 0.95rem !important;
   text-transform: none !important;
-  background-color: white !important;
-  color: black !important;
+  background-color: var(--color-surface) !important;
+  color: var(--color-text-primary) !important;
   border-radius: 12px !important;
   padding: 0.5rem 1.5rem !important;
 }
 
 .friend-dialog-close-btn:hover {
-  background-color: #f1f1f1 !important;
+  background-color: var(--color-surface-wash) !important;
 }
 
   /* Search Bar */
 .friends-list-search-bar {
   position: relative;
-  background-color: #CDAEF2;
+  background-color: var(--accent-wash-strong);
   padding: 8px 12px;
   margin: 0;
   margin-bottom: 8px;
@@ -545,11 +552,11 @@
   height: 28px !important;
   margin-left: -0.25rem;
   margin-right: -0.5rem;
-  color: #F15BB5;
+  color: var(--accent-pink);
 }
 
 .friends-list-search-bar-input-container {
-  background: white;
+  background: var(--color-surface);
   border-radius: 10px;
 }
 
@@ -557,12 +564,13 @@
   font-family:'Urbanist', sans-serif;
   font-size: 1rem;
   font-weight: 600;
-  color: black;
+  color: var(--color-text-primary);
   padding: 8px 10px;
 }
 
 .friends-list-search-bar-input-container .MuiInputBase-input::placeholder {
   font-weight: 600;
+  color: var(--color-text-secondary);
 }
 
 .friends-search-none-text {
@@ -579,7 +587,7 @@
   flex-direction: row;
   align-items: center;
   position: relative;
-  border-bottom: 1px solid black;
+  border-bottom: 1px solid var(--color-border-strong);
 }
 
 .friends-profile-trigger {
@@ -597,7 +605,7 @@
 }
 
 .friends-profile-trigger:focus-visible {
-  outline: 2px solid #5d3889;
+  outline: 2px solid var(--accent-strong);
   border-radius: 999px;
 }
 .friends-profile-trigger--name:focus-visible {
@@ -630,19 +638,19 @@
   font-family:'Urbanist', sans-serif !important;
   font-size: 1rem !important;
   font-weight: 600 !important;
-  color: black;
+  color: var(--color-text-primary);
   transition: color 0.2s ease, text-shadow 0.2s ease;
 }
 
 .friends-list-user-name {
   font-family:'Urbanist', sans-serif !important;
   font-size: 0.8rem !important;
-  color: gray;
+  color: var(--color-text-secondary);
 }
 
 .friends-profile-trigger--name:hover:not(:disabled) .friends-list-display-name {
-  color: #5d3889;
-  text-shadow: 0 0 8px rgba(93, 56, 137, 0.3);
+  color: var(--accent-strong);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--accent-strong) 35%, transparent);
 }
 
   /* friend action buttons */
@@ -690,13 +698,13 @@
 }
 
 .message-friend-icon {
-  color: #3EB8F0;
+  color: var(--accent-blue);
 }
 
 .remove-friend-icon {
-  color: rgb(209, 118, 133);
+  color: var(--danger);
 }
 
 .report-friend-icon {
-  color: red;
+  color: var(--danger);
 }

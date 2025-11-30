@@ -35,14 +35,17 @@ function ChatSharePinModal({ open, onClose, bookmarks = [], onSelect }) {
       PaperProps={{
         sx: {
           borderRadius: 2.5,
-          border: '1px solid rgba(93,56,137,0.24)',
+          border: '1px solid var(--color-border-strong)',
           boxShadow: '0 18px 44px rgba(17, 12, 34, 0.22)',
-          backgroundColor: '#ffffff',
+          backgroundColor: 'var(--color-surface)',
           maxHeight: '85vh'
         }
       }}
     >
-      <DialogTitle id="chat-share-pin-title" sx={{ fontWeight: 700, color: '#2e2157' }}>
+      <DialogTitle
+        id="chat-share-pin-title"
+        sx={{ fontWeight: 700, color: 'var(--color-text-strong)' }}
+      >
         Share a saved pin
       </DialogTitle>
       <DialogContent dividers sx={{ backgroundColor: 'transparent', pb: 1 }}>
