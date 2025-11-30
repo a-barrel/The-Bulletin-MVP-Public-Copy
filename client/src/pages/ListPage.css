@@ -304,28 +304,6 @@
 }
 
 /* Add button (right side of topbar) */
-.add-btn {
-  width: 72px;
-  height: 72px;
-  padding: 8px;
-  border-radius: 999px;
-  background: rgba(93, 56, 137, 0.14);
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-left: auto;
-}
-
-.add-btn:hover { transform: scale(1.08); border: none; }
-
-.add-btn img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
 
 /* Remove default button focus ring across page */
 button:focus,

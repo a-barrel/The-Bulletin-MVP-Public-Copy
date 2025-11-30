@@ -8,7 +8,7 @@
 }
 
 .map-page__body {
-  min-height: calc(100vh - 82px);
+  min-height: calc(100vh - 80px);
 }
 
 @keyframes popularGlowPulse {
@@ -36,7 +36,7 @@
 
 .map-frame {
   --header-h: 72px;
-  --nav-h: 82px;
+  --nav-h: 80px;
   --add-btn-img-size: 70px; /* used for spacing filter FAB */
   --gap-below-add: 12px;
   width: 100%;
@@ -165,8 +165,8 @@
 
 .map-icon-badge {
   position: absolute;
-  top: 0.75rem;
-  right: 0.8rem;
+  top: -6px;
+  right: -6px;
   min-width: 22px;
   height: 22px;
   padding: 0 6px;

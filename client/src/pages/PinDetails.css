@@ -486,6 +486,23 @@
     border-radius: 8px;
     overflow: hidden;
     background-color: #FFFFFF;
+    position: relative;
+    isolation: isolate; /* keep map panes inside this stacking context so app overlays/backdrops sit above */
+    z-index: 0;
+}
+
+.pin-details .map-wrapper .leaflet-container,
+.pin-details .map-wrapper .leaflet-pane,
+.pin-details .map-wrapper .leaflet-tile-pane,
+.pin-details .map-wrapper .leaflet-overlay-pane,
+.pin-details .map-wrapper .leaflet-shadow-pane,
+.pin-details .map-wrapper .leaflet-marker-pane {
+    z-index: 0 !important;
+}
+
+.pin-details .map-wrapper .leaflet-popup-pane,
+.pin-details .map-wrapper .leaflet-tooltip-pane {
+    z-index: 10 !important;
 }
 
 .pin-details .cover-photo {
@@ -934,7 +951,7 @@
 .pin-details .reply-overlay {
     position: fixed;
     inset: 0;
-    z-index: 1200;
+    z-index: 6000; /* keep reply UI above floating buttons/nav chrome */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1290,7 +1307,7 @@
     position: fixed;
     bottom: 25px;
     right: 25px;
-    z-index: 1000;
+    z-index: 10; /* keep below global nav/backdrops while still above page content */
     width: 80px;
     height: 80px;
     border: none;

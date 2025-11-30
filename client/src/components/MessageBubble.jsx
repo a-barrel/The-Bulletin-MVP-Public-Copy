@@ -1,8 +1,8 @@
-import React, { memo } from 'react';
-import { Box, Typography, IconButton, Button, Tooltip } from '@mui/material';
-import { NavLink, Link } from 'react-router-dom';
+import React, { memo, useCallback, useMemo, useState } from 'react';
+import { Box, Typography, IconButton, Tooltip } from '@mui/material';
+import { NavLink, useNavigate } from 'react-router-dom';
 import AvatarIcon from '../assets/AvatarIcon.svg';
-import "./MessageBubble.css";
+import './MessageBubble.css';
 import { formatFriendlyTimestamp, formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
 import GavelIcon from '@mui/icons-material/Gavel';
 import ReportProblemIcon from '@mui/icons-material/ReportProblemOutlined';
@@ -13,9 +13,10 @@ import { ensureImageSrc, withFallbackOnError } from '../utils/imageFallback';
 import FriendBadge from './FriendBadge';
 import { routes } from '../routes';
 import { useTranslation } from 'react-i18next';
+import PinPreviewCard from './PinPreviewCard';
+import { usePinCache } from '../contexts/PinCacheContext';
+import normalizeObjectId from '../utils/normalizeObjectId';
 import { CHAT_REACTION_OPTIONS } from '../constants/chatReactions';
-import { useEffect, useMemo, useState } from 'react';
-
 
 function MessageBubble({
   msg,
@@ -24,9 +25,13 @@ function MessageBubble({
   canModerate = false,
   onModerate,
   onReport,
-  onToggleReaction
+  onToggleReaction,
+  onReportPin
 }) {
   const { t } = useTranslation();
+  const pinCache = usePinCache();
+  const navigate = useNavigate();
+  const [bookmarkState, setBookmarkState] = useState({});
   const rawMessage = typeof msg?.message === 'string' ? msg.message : '';
   const strippedMessage = rawMessage.replace(/^GIF:\s*/i, '').trim();
   const isAttachmentOnly = rawMessage === ATTACHMENT_ONLY_PLACEHOLDER;
@@ -104,70 +109,71 @@ function MessageBubble({
     return strippedMessage;
   })();
 
-  const formatLocation = (pin) => {
-    const approx = pin?.approximateAddress;
-    if (approx && typeof approx === 'object') {
-      if (typeof approx.formatted === 'string' && approx.formatted.trim()) {
-        return approx.formatted.trim();
-      }
-      const parts = [approx.city, approx.state, approx.country].filter(
-        (part) => typeof part === 'string' && part.trim()
-      );
-      if (parts.length) {
-        return parts.join(', ');
-      }
-    }
-    const addr = pin?.address;
-    if (!addr) {
-      const loc = pin?.location || null;
-      if (typeof loc === 'string' && loc.trim()) {
-        return loc.trim();
-      }
-      if (loc && typeof loc === 'object') {
-        if (typeof loc.formatted === 'string' && loc.formatted.trim()) {
-          return loc.formatted.trim();
-        }
-        const parts = [loc.line1, loc.city, loc.state, loc.country, loc.postalCode].filter(
-          (part) => typeof part === 'string' && part.trim()
-        );
-        if (!parts.length && loc.components && typeof loc.components === 'object') {
-          const nested = [loc.components.line1, loc.components.city, loc.components.state, loc.components.country]
-            .filter((part) => typeof part === 'string' && part.trim());
-          if (nested.length) {
-            return nested.join(', ');
-          }
-        }
-        if (parts.length) {
-          return parts.join(', ');
-        }
-      }
-      if (typeof pin?.locationLabel === 'string' && pin.locationLabel.trim()) {
-        return pin.locationLabel.trim();
-      }
-      return null;
-    }
-    if (typeof addr === 'string' && addr.trim()) {
-      return addr.trim();
-    }
-    if (typeof addr === 'object') {
-      if (typeof addr.formatted === 'string' && addr.formatted.trim()) {
-        return addr.formatted.trim();
-      }
-      const parts = [addr.line1, addr.city, addr.state, addr.country, addr.postalCode]
-        .filter((part) => typeof part === 'string' && part.trim());
-      if (!parts.length && addr.components && typeof addr.components === 'object') {
-        const nested = [addr.components.line1, addr.components.city, addr.components.state, addr.components.country]
-          .filter((part) => typeof part === 'string' && part.trim());
-        if (nested.length) {
-          return nested.join(', ');
-        }
-      }
-      if (parts.length) {
-        return parts.join(', ');
-      }
-    }
-    return null;
+  const hydratedPinShares = useMemo(() => {
+    return pinShares.map((share) => {
+      const pin = share.pin || {};
+      const rawPinId =
+        pin?.pinId ||
+        pin?._id ||
+        (typeof pin?.id === 'string' ? pin.id : null) ||
+        (typeof pin?.pin_id === 'string' ? pin.pin_id : null);
+      const normalizedPinId = normalizeObjectId(rawPinId) || rawPinId;
+      const cachedPin =
+        normalizedPinId ? pinCache.getPin(normalizedPinId) : rawPinId ? pinCache.getPin(rawPinId) : null;
+      const thumb = share.thumb || pin.thumb || null;
+      const mergedPin = cachedPin ? { ...pin, ...cachedPin } : pin;
+      const effectivePin =
+        thumb && !mergedPin?.coverPhoto
+          ? { ...mergedPin, coverPhoto: { url: thumb }, photos: mergedPin?.photos || [{ url: thumb }] }
+          : mergedPin;
+      return { ...share, pin: effectivePin, pinId: normalizedPinId || rawPinId };
+    });
+  }, [pinCache, pinShares]);
+
+  const handleViewSharedPin = (pinId, pin) => {
+    if (!pinId) return;
+    navigate(routes.pin.byId(pinId), { state: { pin } });
   };
+
+  const handleToggleBookmark = useCallback((pinId) => {
+    if (!pinId) return;
+    setBookmarkState((prev) => ({
+      ...prev,
+      [pinId]: !(prev[pinId] ?? false)
+    }));
+  }, []);
+
+  const handleFlagPin = useCallback(
+    (pin, pinId) => {
+      if (typeof onReportPin === 'function') {
+        onReportPin(pin, pinId);
+        return;
+      }
+      if (typeof onReport === 'function') {
+        const syntheticMessage = {
+          _id: pinId || msg?._id || msg?.id || msg?.messageId,
+          message: pin?.title || 'Shared pin',
+          attachments: msg?.attachments || []
+        };
+        onReport(syntheticMessage);
+      }
+    },
+    [msg, onReport, onReportPin]
+  );
+
+  const handleCreatorClick = useCallback(
+    (pin) => {
+      const creatorId =
+        normalizeObjectId(pin?.creatorId) ||
+        normalizeObjectId(pin?.creator?._id) ||
+        normalizeObjectId(pin?.creator?.id);
+      if (!creatorId) {
+        return;
+      }
+      navigate(routes.profile.byId(creatorId));
+    },
+    [navigate]
+  );
 
   const authorId =
     typeof msg?.authorId === 'string'
@@ -199,9 +205,7 @@ function MessageBubble({
     if (isReactionPickerOpen) {
       return CHAT_REACTION_OPTIONS;
     }
-    return CHAT_REACTION_OPTIONS.filter(
-      (option) => Number(reactionCounts?.[option.key]) > 0
-    );
+    return CHAT_REACTION_OPTIONS.filter((option) => Number(reactionCounts?.[option.key]) > 0);
   }, [isReactionPickerOpen, reactionCounts]);
 
   const showReactions =
@@ -231,7 +235,7 @@ function MessageBubble({
         : '/profile/me';
 
   const resolvedAvatarSrc = ensureImageSrc(resolveAvatarSrc(msg?.author) || AvatarIcon);
-  const messageId = msg?._id || msg?.id;
+  const messageId = msg?._id || msg?.id || msg?.messageId;
 
   return (
     <Box className={`chat-message ${isSelf ? 'self' : ''}`}>
@@ -339,53 +343,29 @@ function MessageBubble({
         {displayMessage ? (
           <Typography className="chat-text">{displayMessage}</Typography>
         ) : null}
-        {pinShares.length > 0 ? (
+        {hydratedPinShares.length > 0 ? (
           <Box className="chat-pin-share-stack">
-            {pinShares.map((share, index) => {
+            {hydratedPinShares.map((share, index) => {
               const pin = share.pin || share;
-              const pinId =
-                pin?.pinId ||
-                pin?._id ||
-                (typeof pin?.id === 'string' ? pin.id : null) ||
-                (typeof pin?.pin_id === 'string' ? pin.pin_id : null);
-              const href = pinId ? routes.pin.byId(pinId) : null;
-              const locationLabel = formatLocation(pin);
+              const pinId = share.pinId;
               const thumb = share.thumb || pin.thumb || null;
+              const isBookmarked = bookmarkState[pinId] ?? Boolean(pin?.viewerHasBookmarked);
               return (
                 <Box key={share._id || pinId || index} className="chat-pin-share-card">
-                  <Box className="chat-pin-card-row">
-                    <Box className="chat-pin-card-body">
-                      <Typography variant="subtitle2" fontWeight={700} className="chat-pin-title">
-                        {pin?.title || 'Shared pin'}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: '#0f172a' }}>
-                        {pin?.type === 'event' ? 'Event' : 'Discussion'}
-                        {locationLabel ? ` · ${locationLabel}` : ''}
-                      </Typography>
-                      {href ? (
-                        <Button
-                          component={Link}
-                          to={href}
-                          variant="outlined"
-                          size="small"
-                          className="chat-pin-view-btn"
-                          sx={{
-                            color: '#1d4ed8',
-                            borderColor: '#1d4ed8',
-                            fontWeight: 700,
-                            textTransform: 'none'
-                          }}
-                        >
-                          View pin
-                        </Button>
-                      ) : null}
-                    </Box>
-                    {thumb ? (
-                      <Box className="chat-pin-thumb-wrapper">
-                        <Box component="img" src={thumb} alt="" className="chat-pin-thumb-vertical" />
-                      </Box>
-                    ) : null}
-                  </Box>
+                  <PinPreviewCard
+                    pin={
+                      thumb && !pin?.coverPhoto
+                        ? { ...pin, coverPhoto: { url: thumb }, photos: pin?.photos || [{ url: thumb }] }
+                        : pin
+                    }
+                    onView={() => handleViewSharedPin(pinId, pin)}
+                    isBookmarked={isBookmarked}
+                    onBookmark={() => handleToggleBookmark(pinId)}
+                    onFlag={() => handleFlagPin(pin, pinId)}
+                    onCreatorClick={() => handleCreatorClick(pin)}
+                    disableActions={false}
+                    className="pin-preview-card--map pin-preview-card--chat-share"
+                  />
                 </Box>
               );
             })}
@@ -420,9 +400,7 @@ function MessageBubble({
                   disabled={typeof onToggleReaction !== 'function'}
                   aria-pressed={isActive}
                   aria-label={
-                    count > 0
-                      ? `${option.label} reaction, ${count}`
-                      : `${option.label} reaction`
+                    count > 0 ? `${option.label} reaction, ${count}` : `${option.label} reaction`
                   }
                 >
                   <span className="chat-reaction-emoji">{option.emoji}</span>
@@ -445,7 +423,17 @@ const arePropsEqual = (prev, next) => {
   const sameAuth = prevAuthId === nextAuthId;
   const sameModerate = prev.canModerate === next.canModerate && prev.onModerate === next.onModerate;
   const sameReport = prev.onReport === next.onReport;
-  return sameMsg && sameSelf && sameAuth && sameModerate && sameReport;
+  const sameReportPin = prev.onReportPin === next.onReportPin;
+  const sameToggleReaction = prev.onToggleReaction === next.onToggleReaction;
+  return (
+    sameMsg &&
+    sameSelf &&
+    sameAuth &&
+    sameModerate &&
+    sameReport &&
+    sameReportPin &&
+    sameToggleReaction
+  );
 };
 
 export default memo(MessageBubble, arePropsEqual);

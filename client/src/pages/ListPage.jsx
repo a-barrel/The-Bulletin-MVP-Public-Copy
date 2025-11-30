@@ -28,6 +28,7 @@ import ListPaginationFooter from '../components/list/ListPaginationFooter';
 import useListFeedView from '../hooks/useListFeedView';
 import PageNavHeader from '../components/PageNavHeader';
 import Navbar from '../components/Navbar';
+import HeaderActionButtons from '../components/HeaderActionButtons';
 
 export const pageConfig = {
   id: 'list',
@@ -540,7 +541,17 @@ function ListPage() {
   return (
     <div className="list-page">
       <div className="list-frame">
-        <PageNavHeader title="List" />
+        <PageNavHeader
+          title="List"
+          rightSlot={
+            <HeaderActionButtons
+              isOffline={isOffline}
+              unreadCount={unreadCount}
+              onCreatePin={handleCreatePin}
+              onOpenUpdates={handleNotifications}
+            />
+          }
+        />
         <ListTopbar
           hasActiveFilters={hasActiveFilters}
           filtersDialogOpen={filtersDialogOpen}

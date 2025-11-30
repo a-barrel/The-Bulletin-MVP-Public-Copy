@@ -175,25 +175,26 @@ function ChatComposer({
     const sharePinButton = (
       <Tooltip title={t('tooltips.shareSavedPin')} enterDelay={200} arrow>
         <span>
-          <IconButton
-            className="share-pin-btn"
-            type="button"
-            onClick={onSharePin}
-            disabled={disabled || !onSharePin}
-            aria-label={t('tooltips.shareSavedPin')}
-            disableRipple
-            sx={{
-              color: '#5d3889',
-              backgroundColor: 'rgba(93, 56, 137, 0.1)',
-              transition: 'background-color 120ms ease, transform 120ms ease',
-              '&:hover, &:focus-visible': {
-                backgroundColor: 'rgba(93, 56, 137, 0.18)',
-                transform: 'scale(1.05)'
-              },
-              '&.Mui-disabled': {
-                backgroundColor: 'transparent',
-                color: 'action.disabled'
-              }
+      <IconButton
+        className="share-pin-btn"
+        type="button"
+        onClick={onSharePin}
+        disabled={disabled || !onSharePin}
+        aria-label={t('tooltips.shareSavedPin')}
+        disableRipple
+        sx={{
+          color: '#5d3889',
+          padding: 0,
+          backgroundColor: 'transparent',
+          transition: 'background-color 120ms ease, transform 120ms ease',
+          '&:hover, &:focus-visible': {
+            backgroundColor: 'transparent',
+            transform: 'none'
+          },
+          '&.Mui-disabled': {
+            backgroundColor: 'transparent',
+            color: 'action.disabled'
+          }
             }}
           >
             <ShareOutlinedIcon className="share-pin-icon" />
@@ -212,11 +213,10 @@ function ChatComposer({
         disableRipple
         sx={{
           color: 'primary.main',
-          backgroundColor: 'rgba(124, 77, 255, 0.08)',
-          transition: 'background-color 120ms ease, transform 120ms ease',
+          padding: 0,
           '&:hover, &:focus-visible': {
-            backgroundColor: 'rgba(124, 77, 255, 0.18)',
-            transform: 'scale(1.05)'
+            backgroundColor: 'transparent',
+            transform: 'none'
           },
           '&.Mui-disabled': {
             backgroundColor: 'transparent',
