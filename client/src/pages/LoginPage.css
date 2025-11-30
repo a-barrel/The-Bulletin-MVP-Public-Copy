@@ -9,6 +9,7 @@ body, input, button, textarea, p, h1, small, span, label, select, input::placeho
 .page-background {
   width: 100%;
   min-height: 100vh;
+  overflow: hidden !important;
   background: var(--page-bg);
   box-shadow: 0 0 25px rgba(93, 56, 137, 0.2);
   text-align: center;
@@ -21,26 +22,32 @@ body, input, button, textarea, p, h1, small, span, label, select, input::placeho
 }
 
 /* To encapsulate page title and anything in the top nav bar. 
-   Keeps things next to each other.
-   Currently only tested with back arrow. */
+  Keeps things next to each other.
+  Currently only tested with back arrow. */
 .page-header {
   position: sticky;
   background: rgba(255, 255, 255, 0); 
   z-index: 0;
-  padding: 0.75rem 0;
+  padding: 0 1rem;
   width: 100vw;
   height: 10vh;
   display: flex;
-  justify-content: center;
+  flex-direction: row;
   align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 /* Title */
 .page-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: clamp(1.3rem, 4vw, 1.8rem);
+  font-weight: 700;
   color: var(--color-text-primary);
-  font-weight: 300;
-  font-size: 2rem;
-  margin-top: 0rem;
+  margin: 0;
+  pointer-events: none;
 }
 
 /* Smaller Title for sub-menus */
@@ -55,26 +62,35 @@ body, input, button, textarea, p, h1, small, span, label, select, input::placeho
 
 /* back arrow */
 .page-back-btn {
-  position: absolute;
-  left: 0rem;
-  background: none;
+  background: transparent;
+  padding: 4px;
   border: none;
-  color: var(--accent-strong);
-  font-size: 2rem;
+  box-shadow: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 120ms ease, transform 120ms ease;
   cursor: pointer;
-  line-height: 1;
-  transition: transform 0.15s ease, color 0.2s ease;
+}
+
+.page-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 /* Image placeholder */
 .bulletin-image {
   display: flex;
-  width: min(85vw, 1020px);
+  width: min(65vw, 820px) !important;
   padding: clamp(0.05rem, 0.35vw, 0.35rem);
   border: 2px solid var(--accent-strong);
   border-radius: 10px;
-  margin-top: 0;
-  margin-bottom: 0.75rem;
+  margin-top: 2rem !important;
+  margin-bottom: 2rem !important;
   align-items: center;
   justify-content: center;
   background-color: var(--color-surface);
@@ -84,7 +100,7 @@ body, input, button, textarea, p, h1, small, span, label, select, input::placeho
   display: block;
   width: 100%;
   max-width: none;
-  height: auto;
+  height: 20vh !important;
   object-fit: contain;
 }
 
@@ -119,11 +135,11 @@ body, input, button, textarea, p, h1, small, span, label, select, input::placeho
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
-  width: 100%;
+  width: 100% !important;
   max-width: 420px;
-  gap: 1.25rem;
+  gap: 1.25rem !important;
   font-size: 1rem;
-  margin-top: 0.25rem;
+  margin-top: 0.25rem !important;
   margin-bottom: 1rem;
   margin-left: auto;
   margin-right: auto;
@@ -182,6 +198,7 @@ input[type="checkbox"] {
   border-radius: 25px;
   transition: background 0.2s;
   min-height: 52px;
+  margin-top: 0.25rem !important;
 }
 
 /* Login button */
@@ -221,7 +238,7 @@ input[type="checkbox"] {
   margin-top: -0.25rem;
   margin-bottom: -3.5rem;
   background-color: var(--color-surface);
-  color: var(--color-text-on-accent);
+  color: var(--color-text-primary);
   text-align: center;
 }
 
@@ -236,7 +253,7 @@ input[type="checkbox"] {
 
 /* "Getting Started" & Register Button*/
 .getting-started-text {
-  margin-top: -0.15rem;
+  margin-top: 6rem !important;
   margin-bottom: -0.35rem;
   color: var(--color-text-secondary);
   font-size: 1.1rem;

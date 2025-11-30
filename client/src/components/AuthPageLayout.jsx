@@ -1,5 +1,6 @@
 import React from 'react';
 import '../styles/AuthForm.css';
+import MainNavBackButton from '../components/MainNavBackButton';
 
 const renderOverlayContent = (content) =>
   typeof content === 'string' || typeof content === 'number' ? <p>{content}</p> : content;
@@ -9,12 +10,11 @@ function AuthPageLayout({
   className = '',
   baseClassName = 'page-background',
   title,
-  titleClassName = 'page-sub-title',
+  titleClassName = 'page-title',
   headerClassName = 'page-header',
   onBack,
-  backButtonAriaLabel = 'Go back',
-  backButtonContent = '←',
-  backButtonClassName = 'page-back-btn',
+  backAriaLabel = 'Back',
+  backScope,
   headerContent = null,
   alerts = [],
   children
@@ -77,16 +77,17 @@ function AuthPageLayout({
 
       {hasHeader && (
         <div className={headerClassName}>
-          {onBack ? (
-            <button
-              type="button"
-              className={backButtonClassName}
-              onClick={onBack}
-              aria-label={backButtonAriaLabel}
-            >
-              {backButtonContent}
-            </button>
+          <div className="page-header-left">
+            {onBack ? (
+            <MainNavBackButton
+              className="page-back-btn"
+              iconClassName="chat-header-back-icon"
+              ariaLabel={backAriaLabel}
+              scope={backScope}
+              onNavigate={onBack}
+            />
           ) : null}
+          </div>  
           {title ? <h1 className={titleClassName}>{title}</h1> : null}
           {headerContent}
         </div>
