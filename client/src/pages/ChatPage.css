@@ -32,6 +32,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
   border-bottom: 1px solid rgba(93, 56, 137, 0.25);
 }
 
@@ -100,6 +101,65 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.chat-header-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.chat-floating-toolbar {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 10;
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.chat-floating-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.65rem 0.85rem;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(93, 56, 137, 0.18);
+  box-shadow: 0 10px 24px rgba(93, 56, 137, 0.16);
+  border-radius: 14px;
+  max-width: 100%;
+}
+
+.chat-floating-left,
+.chat-floating-right {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.chat-floating-right {
+  gap: 0.35rem;
+}
+
+@media (max-width: 720px) {
+  .chat-floating-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chat-floating-left,
+  .chat-floating-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .chat-floating-right {
+    justify-content: flex-end;
+  }
 }
 
 .chat-checkin-banner {
