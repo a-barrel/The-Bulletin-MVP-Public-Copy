@@ -42,56 +42,58 @@ export default function ListTopbar({
 
       <SortToggle sortByExpiration={sortByExpiration} onToggle={onToggleSort} />
 
-      <FormControlLabel
-        control={
-          <Checkbox
-            size="small"
-            color="secondary"
-            checked={hideOwnPins}
-            onChange={(event) => onToggleHideOwnPins(event.target.checked)}
-            disableRipple
-            sx={{
-              color: 'var(--color-text-secondary)',
-              '& .MuiSvgIcon-root': {
-                stroke: 'var(--color-text-secondary)',
-                strokeWidth: 1.4,
-                borderRadius: '4px'
-              },
-              '&.Mui-checked': {
-                color: 'var(--accent-strong)'
-              }
-            }}
-          />
-        }
-        label="Hide my pins"
-        className="topbar-hide-own"
-      />
-      <FormControlLabel
-        control={
-          <Checkbox
-            size="small"
-            color="secondary"
-            checked={hideFullEvents}
-            onChange={(event) => onToggleHideFullEvents(event.target.checked)}
-            disabled={isSavingHideFullPreference}
-            disableRipple
-            sx={{
-              color: 'var(--color-text-secondary)',
-              '& .MuiSvgIcon-root': {
-                stroke: 'var(--color-text-secondary)',
-                strokeWidth: 1.4,
-                borderRadius: '4px'
-              },
-              '&.Mui-checked': {
-                color: 'var(--accent-strong)'
-              }
-            }}
-          />
-        }
-        label="Hide full events"
-        className="topbar-hide-own"
-        title={hideFullPreferenceError || undefined}
-      />
+      <div className="topbar-checkboxes">
+        <FormControlLabel
+          control={
+            <Checkbox
+              size="small"
+              color="secondary"
+              checked={hideOwnPins}
+              onChange={(event) => onToggleHideOwnPins(event.target.checked)}
+              disableRipple
+              sx={{
+                color: 'var(--color-text-secondary)',
+                '& .MuiSvgIcon-root': {
+                  stroke: 'var(--color-text-secondary)',
+                  strokeWidth: 1.4,
+                  borderRadius: '4px'
+                },
+                '&.Mui-checked': {
+                  color: 'var(--accent-strong)'
+                }
+              }}
+            />
+          }
+          label="Hide my pins"
+          className="topbar-hide-own"
+        />
+        <FormControlLabel
+          control={
+            <Checkbox
+              size="small"
+              color="secondary"
+              checked={hideFullEvents}
+              onChange={(event) => onToggleHideFullEvents(event.target.checked)}
+              disabled={isSavingHideFullPreference}
+              disableRipple
+              sx={{
+                color: 'var(--color-text-secondary)',
+                '& .MuiSvgIcon-root': {
+                  stroke: 'var(--color-text-secondary)',
+                  strokeWidth: 1.4,
+                  borderRadius: '4px'
+                },
+                '&.Mui-checked': {
+                  color: 'var(--accent-strong)'
+                }
+              }}
+            />
+          }
+          label="Hide full events"
+          className="topbar-hide-own"
+          title={hideFullPreferenceError || undefined}
+        />
+      </div>
       {showTopPagination ? (
         <div className="top-pagination">
           <Pagination
