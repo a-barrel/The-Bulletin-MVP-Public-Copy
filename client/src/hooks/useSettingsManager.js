@@ -18,7 +18,10 @@ export const SUPPORTED_THEMES = [
   'plasma',
   'rainbow',
   'aurora',
-  'rainbow-animated'
+  'rainbow-animated',
+  'noir',
+  'retro',
+  'tropical'
 ];
 
 export const DEFAULT_SETTINGS = {

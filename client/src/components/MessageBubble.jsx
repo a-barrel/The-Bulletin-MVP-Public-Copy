@@ -248,13 +248,13 @@ function MessageBubble({
                 disableRipple
                 sx={{
                   ml: 0.5,
-                  color: 'var(--color-danger)',
-                  backgroundColor: 'color-mix(in srgb, var(--color-danger) 12%, transparent)',
+                  color: 'var(--danger)',
+                  backgroundColor: 'color-mix(in srgb, var(--danger) 12%, transparent)',
                   borderRadius: '8px',
                   transition: 'color 120ms ease, background-color 120ms ease',
                   '&:hover, &:focus-visible': {
-                    color: 'color-mix(in srgb, var(--color-danger) 85%, var(--color-danger))',
-                    backgroundColor: 'color-mix(in srgb, var(--color-danger) 16%, transparent)'
+                    color: 'color-mix(in srgb, var(--danger) 85%, var(--danger))',
+                    backgroundColor: 'color-mix(in srgb, var(--danger) 16%, transparent)'
                   }
                 }}
               >

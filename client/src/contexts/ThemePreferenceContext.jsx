@@ -8,7 +8,23 @@ const ThemePreferenceContext = createContext({
   themeOrder: ['light', 'dark']
 });
 
-const THEME_ORDER = ['light', 'dark', 'neon', 'sunset', 'forest', 'ocean', 'candy', 'glitch', 'plasma', 'rainbow', 'aurora', 'rainbow-animated'];
+const THEME_ORDER = [
+  'light',
+  'dark',
+  'neon',
+  'sunset',
+  'forest',
+  'ocean',
+  'candy',
+  'glitch',
+  'plasma',
+  'rainbow',
+  'aurora',
+  'rainbow-animated',
+  'noir',
+  'retro',
+  'tropical'
+];
 const STORAGE_KEY = 'pinpoint:themePreference';
 
 const normalizeThemeValue = (value) => (THEME_ORDER.includes(value) ? value : 'light');

@@ -313,7 +313,11 @@ export default function PinPreviewCard({
                     title={computedViewerOwnsPin ? "You can't flag your own pin" : 'Flag pin'}
                     disabled={computedViewerOwnsPin}
                     aria-hidden="false"
-                    style={{ color: 'var(--color-danger)' }}
+                    style={{
+                      color: 'var(--danger)',
+                      backgroundColor: 'color-mix(in srgb, var(--danger) 12%, transparent)',
+                      borderRadius: '8px'
+                    }}
                   >
                     <FlagIcon fontSize="small" />
                   </button>

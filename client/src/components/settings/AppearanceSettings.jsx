@@ -88,7 +88,10 @@ function AppearanceSettings({
     { value: 'plasma', label: 'Plasma Bloom', preview: 'linear-gradient(135deg,#7aff7a,#7f3bff,#6fffdc)' },
     { value: 'rainbow', label: 'Midnight Rainbow', preview: 'linear-gradient(135deg,#5ce1ff,#ff9a00,#ff4d8d,#c77dff)' },
     { value: 'aurora', label: 'Aurora Motion', preview: 'linear-gradient(135deg,#7cf0ff,#6a7dff,#9b7bff)' },
-    { value: 'rainbow-animated', label: 'Rainbow Burst (Animated)', preview: 'linear-gradient(120deg,#5ce1ff,#ff9a00,#ff4d8d,#c77dff,#5ce1ff)' }
+    { value: 'rainbow-animated', label: 'Rainbow Burst (Animated)', preview: 'linear-gradient(120deg,#5ce1ff,#ff9a00,#ff4d8d,#c77dff,#5ce1ff)' },
+    { value: 'noir', label: 'Noir Glass', preview: 'linear-gradient(135deg,#0d0f14,#1b1d26,#2a2d3a)' },
+    { value: 'retro', label: 'Retro Mint', preview: 'linear-gradient(135deg,#aef1d0,#ff8fb1,#5c7cfa)' },
+    { value: 'tropical', label: 'Tropical Tide', preview: 'linear-gradient(135deg,#0f766e,#14b8a6,#ffb347)' }
   ];
 
   const handleThemeSelect = (value) => {

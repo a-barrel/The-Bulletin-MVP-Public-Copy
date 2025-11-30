@@ -334,6 +334,86 @@
   animation: rainbowBurstFlow 5.3s ease-in-out infinite, rainbowBurstPulse 8s ease-in-out infinite;
 }
 
+/* Noir Glass: charcoal neutrals with cyan accents */
+.theme-noir {
+  --color-surface: #0f1118;
+  --color-surface-wash: #121522;
+  --color-surface-wash-strong: #181c2e;
+  --accent-primary: #5de1ff;
+  --accent-strong: #3ab4d4;
+  --accent-blue: #7ae7ff;
+  --accent-pink: #ff8cb4;
+  --accent-wash: #131722;
+  --accent-wash-strong: #1b2234;
+  --accent-border: rgba(90, 146, 179, 0.45);
+  --border-strong: rgba(90, 146, 179, 0.55);
+  --color-border-strong: var(--border-strong);
+  --danger: #ff6b6b;
+  --accent-warn: #f7c46c;
+  --color-success: #5ce4b5;
+  --color-text-primary: #e8f0ff;
+  --color-text-secondary: #b7c4d9;
+  --color-text-strong: #ffffff;
+  --color-text-on-accent: #071019;
+  --page-bg: radial-gradient(circle at 20% 18%, rgba(93, 225, 255, 0.12), transparent 42%),
+    radial-gradient(circle at 82% 8%, rgba(255, 140, 180, 0.16), transparent 40%),
+    var(--color-surface);
+  --header-bg: linear-gradient(135deg, #161a29 0%, #0f1118 100%);
+}
+
+/* Retro Mint: pastel mint, cherry pink, electric blue */
+.theme-retro {
+  --color-surface: #f6f9f7;
+  --color-surface-wash: #eef7f1;
+  --color-surface-wash-strong: #e3f2eb;
+  --accent-primary: #5c7cfa;
+  --accent-strong: #2f55d1;
+  --accent-blue: #4ac8ff;
+  --accent-pink: #ff8fb1;
+  --accent-wash: #e9f7f0;
+  --accent-wash-strong: #dff2e8;
+  --accent-border: rgba(92, 124, 250, 0.28);
+  --border-strong: rgba(92, 124, 250, 0.42);
+  --color-border-strong: var(--border-strong);
+  --danger: #ff6b81;
+  --accent-warn: #f7c46c;
+  --color-success: #46d39f;
+  --color-text-primary: #0f1b2a;
+  --color-text-secondary: #41566e;
+  --color-text-strong: #0a1320;
+  --color-text-on-accent: #fefefe;
+  --page-bg: radial-gradient(circle at 16% 12%, rgba(90, 255, 195, 0.16), transparent 38%),
+    radial-gradient(circle at 80% 10%, rgba(255, 143, 177, 0.18), transparent 42%),
+    #f6f9f7;
+  --header-bg: linear-gradient(135deg, #5c7cfa 0%, #ff8fb1 100%);
+}
+
+/* Tropical Tide: deep teal with citrus/orange pops */
+.theme-tropical {
+  --color-surface: #081b1d;
+  --color-surface-wash: #0c2427;
+  --color-surface-wash-strong: #123033;
+  --accent-primary: #14b8a6;
+  --accent-strong: #0f766e;
+  --accent-blue: #22d3ee;
+  --accent-pink: #ff9f7a;
+  --accent-wash: #0a2024;
+  --accent-wash-strong: #0f2a2f;
+  --accent-border: rgba(20, 184, 166, 0.4);
+  --border-strong: rgba(20, 184, 166, 0.55);
+  --color-border-strong: var(--border-strong);
+  --danger: #ff6b6b;
+  --accent-warn: #ffb347;
+  --color-success: #6ee7b7;
+  --color-text-primary: #e6fffa;
+  --color-text-secondary: #9ae6e5;
+  --color-text-strong: #ffffff;
+  --color-text-on-accent: #052224;
+  --page-bg: radial-gradient(circle at 18% 20%, rgba(34, 211, 238, 0.16), transparent 38%),
+    radial-gradient(circle at 82% 12%, rgba(255, 179, 71, 0.2), transparent 42%),
+    #081b1d;
+  --header-bg: linear-gradient(135deg, #0f766e 0%, #14b8a6 60%, #ffb347 100%);
+}
 @keyframes rainbowBurstFlow {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
