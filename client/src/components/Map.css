@@ -2,29 +2,6 @@
   filter: saturate(220%) hue-rotate(-8deg);
 }
 
-@keyframes popularGlowPulse {
-  0% {
-    filter:
-      drop-shadow(0 0 4px color-mix(in srgb, var(--color-surface) 45%, transparent))
-      drop-shadow(0 0 1px color-mix(in srgb, var(--accent-pink) 50%, transparent));
-  }
-  50% {
-    filter:
-      drop-shadow(0 0 16px color-mix(in srgb, var(--color-surface) 95%, transparent))
-      drop-shadow(0 0 8px color-mix(in srgb, var(--accent-pink) 85%, transparent))
-      drop-shadow(0 0 2px color-mix(in srgb, var(--color-surface) 90%, transparent));
-  }
-  100% {
-    filter:
-      drop-shadow(0 0 6px color-mix(in srgb, var(--accent-wash) 75%, transparent))
-      drop-shadow(0 0 2px color-mix(in srgb, var(--accent-pink) 55%, transparent));
-  }
-}
-
-.leaflet-marker-icon.popular-pin-icon {
-  animation: popularGlowPulse 2s ease-in-out infinite;
-}
-
 .user-avatar-marker {
   border: none !important;
   background: transparent !important;
@@ -106,27 +83,32 @@
   place-items: center;
 }
 
-.theme-pin-marker__dot {
-  width: 26px;
-  height: 32px;
-  border-radius: 14px;
-  background: var(--pin-fill, var(--accent-primary));
-  border: 2px solid var(--pin-stroke, var(--accent-strong));
-  box-shadow:
-    0 6px 14px color-mix(in srgb, var(--pin-stroke, var(--accent-strong)) 28%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, var(--color-surface) 45%, transparent);
-  transform: translateY(-2px);
+.theme-pin-marker svg {
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(8, 9, 14, 0.35));
 }
 
-.theme-pin-marker__dot::after {
-  content: '';
-  display: block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--color-text-on-accent) 72%, transparent);
-  margin: 6px auto 0;
+.bookmarked-pin-icon svg path {
+  stroke: var(--accent-strong) !important;
+  stroke-width: 6;
 }
+
+.bookmarked-pin-icon svg {
+  filter:
+    drop-shadow(0 0 0 3px color-mix(in srgb, var(--accent-strong) 70%, transparent))
+    drop-shadow(0 10px 22px color-mix(in srgb, var(--accent-strong) 30%, transparent));
+}
+
+.popular-pin-icon svg {
+  filter: drop-shadow(0 2px 4px rgba(8, 9, 14, 0.35));
+}
+
+.popular-pin-icon {
+  position: relative;
+  overflow: visible !important;
+}
+
+/* No extra halo; keep a simple, sharp shadow */
 
 /* Popup shells inherit map theme; keep overlays transparent */
 .map-pin-popup .leaflet-popup-content-wrapper,

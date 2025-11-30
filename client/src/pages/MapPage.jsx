@@ -15,8 +15,7 @@ import useMapExplorer from '../hooks/useMapExplorer';
 import useViewerProfile from '../hooks/useViewerProfile';
 import useHideFullEventsPreference from '../hooks/useHideFullEventsPreference';
 import { DEFAULT_MAX_DISTANCE_METERS } from '../utils/mapExplorerConstants';
-import MapFilterPanel from '../components/map/MapFilterPanel';
-import { MAP_FILTERS, MAP_MARKER_ICON_URLS } from '../utils/mapMarkers';
+import { MAP_FILTERS } from '../utils/mapMarkers';
 import { applyPinFilters } from '../utils/pinFilters';
 import useOfflineAction from '../hooks/useOfflineAction';
 import toIdString from '../utils/ids';
@@ -153,6 +152,7 @@ function MapPage() {
     filtersCollapsed,
     setFiltersCollapsed
   } = useMapFilters();
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const showFullEvents = !hideFullEvents;
 
   const viewerId = useMemo(
@@ -480,6 +480,67 @@ function MapPage() {
     setHideFullEvents(!hideFullEvents);
   }, [clearPreferenceError, hideFullPreferenceError, hideFullEvents, setHideFullEvents]);
 
+  const handleToggleAlerts = useCallback(
+    (checked) => {
+      if (hideFullPreferenceError) {
+        clearPreferenceError();
+      }
+      setHideFullEvents(!checked);
+      setShowExpiringDiscussions(checked);
+      setShowEventsStartingSoon(checked);
+    },
+    [clearPreferenceError, hideFullPreferenceError, setHideFullEvents, setShowEventsStartingSoon, setShowExpiringDiscussions]
+  );
+
+  const handleToggleBoosted = useCallback(
+    (checked) => {
+      setShowFeaturedPins(checked);
+      setShowPopularPins(checked);
+      setShowOpenSpotPins(checked);
+    },
+    [setShowFeaturedPins, setShowOpenSpotPins, setShowPopularPins]
+  );
+
+  const handleResetFilters = useCallback(() => {
+    setShowEvents(true);
+    setShowDiscussions(true);
+    setShowPersonalPins(true);
+    setShowFriendPins(true);
+    setHideFullEvents(true);
+    setShowExpiringDiscussions(true);
+    setShowEventsStartingSoon(true);
+    setShowPopularPins(true);
+    setShowBookmarkedPins(true);
+    setShowOpenSpotPins(true);
+    setShowFeaturedPins(true);
+    setShowMyChatRooms(false);
+    setShowAllChatRoomsToggle(false);
+    setTapToTeleportEnabled(false);
+    setShowInteractionRadius(false);
+    setClusterPins(true);
+    setFiltersCollapsed(false);
+    setShowAdvancedFilters(false);
+  }, [
+    setClusterPins,
+    setFiltersCollapsed,
+    setHideFullEvents,
+    setShowAllChatRoomsToggle,
+    setShowBookmarkedPins,
+    setShowDiscussions,
+    setShowEvents,
+    setShowEventsStartingSoon,
+    setShowExpiringDiscussions,
+    setShowFeaturedPins,
+    setShowFriendPins,
+    setShowInteractionRadius,
+    setShowMyChatRooms,
+    setShowOpenSpotPins,
+    setShowPersonalPins,
+    setShowPopularPins,
+    setTapToTeleportEnabled,
+    setShowAdvancedFilters
+  ]);
+
   const handleViewProfile = useCallback(() => {
     navigate(routes.profile.me);
   }, [navigate]);
@@ -564,7 +625,7 @@ function MapPage() {
       {
         key: 'expiring-discussions',
         label: 'Discussions expiring soon',
-        iconClassName: 'discussion',
+        iconClassName: 'alert',
         ariaLabel: 'Toggle discussions expiring within 24 hours',
         checked: showExpiringDiscussions,
         onChange: () => setShowExpiringDiscussions((prev) => !prev)
@@ -580,7 +641,6 @@ function MapPage() {
       {
         key: 'popular-pins',
         label: 'Popular pins',
-        iconUrl: MAP_MARKER_ICON_URLS.popular,
         iconClassName: 'popular-filter-icon',
         ariaLabel: 'Toggle popular pins',
         checked: showPopularPins,
@@ -691,19 +751,76 @@ function MapPage() {
     ]
   );
 
-  const filterGroups = useMemo(() => {
-    const reorderedHighlights = Array.isArray(highlightFilters) ? [...highlightFilters] : [];
-    const bookmarkedIndex = reorderedHighlights.findIndex((entry) => entry.key === 'bookmarked-pins');
-    if (bookmarkedIndex > 0) {
-      const [bookmarked] = reorderedHighlights.splice(bookmarkedIndex, 1);
-      reorderedHighlights.unshift(bookmarked);
-    }
-    return [
+  const { filterGroups, hasAdvancedFilters } = useMemo(() => {
+    const highlights = Array.isArray(highlightFilters) ? [...highlightFilters] : [];
+    const bookmarks = highlights.filter((entry) => entry.key === 'bookmarked-pins');
+    const people = highlights.filter((entry) => entry.key === 'friend-pins');
+    const status = highlights.filter(
+      (entry) => entry.key !== 'bookmarked-pins' && entry.key !== 'friend-pins'
+    );
+
+    const alertsEnabled = !hideFullEvents && showExpiringDiscussions && showEventsStartingSoon;
+    const boostedEnabled = showFeaturedPins && showPopularPins && showOpenSpotPins;
+
+    const quickFilters = [
+      {
+        key: 'alerts-toggle',
+        label: 'Alerts (full / expiring / soon)',
+        iconClassName: 'alert',
+        checked: alertsEnabled,
+        onChange: (event) => handleToggleAlerts(Boolean(event?.target?.checked))
+      },
+      {
+        key: 'boosted-toggle',
+        label: 'Boosted pins (featured / popular / open)',
+        iconClassName: 'featured',
+        checked: boostedEnabled,
+        onChange: (event) => handleToggleBoosted(Boolean(event?.target?.checked))
+      }
+    ];
+
+    const clusters = chatFilterItems.filter((entry) =>
+      ['cluster-pins', 'interaction-radius'].includes(entry.key)
+    );
+    const adminChat = canUseAdminTools
+      ? chatFilterItems.filter((entry) => !['cluster-pins', 'interaction-radius'].includes(entry.key))
+      : [];
+
+    const groups = [
       { key: 'pin-types', title: 'Pin types', filters: baseFilterItems },
-      { key: 'highlights', title: 'Highlights & alerts', filters: reorderedHighlights },
-      { key: 'chat-tools', title: 'Chat overlays & tools', filters: chatFilterItems }
-    ].filter((group) => Array.isArray(group.filters) && group.filters.length > 0);
-  }, [baseFilterItems, chatFilterItems, highlightFilters]);
+      { key: 'bookmarks', title: 'Bookmarks', filters: bookmarks },
+      { key: 'people', title: 'People', filters: people },
+      { key: 'quick-status', title: 'Status & highlights', filters: quickFilters }
+    ];
+
+    if (showAdvancedFilters && status.length) {
+      groups.push({ key: 'advanced-status', title: 'Advanced status toggles', filters: status });
+    }
+
+    if (clusters.length || adminChat.length) {
+      const tools = [...clusters, ...adminChat];
+      groups.push({ key: 'admin-chat', title: 'Tools', filters: tools });
+    }
+
+    return {
+      filterGroups: groups.filter((group) => Array.isArray(group.filters) && group.filters.length > 0),
+      hasAdvancedFilters: status.length > 0
+    };
+  }, [
+    baseFilterItems,
+    canUseAdminTools,
+    chatFilterItems,
+    handleToggleAlerts,
+    handleToggleBoosted,
+    highlightFilters,
+    hideFullEvents,
+    showAdvancedFilters,
+    showEventsStartingSoon,
+    showExpiringDiscussions,
+    showFeaturedPins,
+    showOpenSpotPins,
+    showPopularPins
+  ]);
 
   const handleToggleFiltersCollapsed = useCallback(() => {
     setFiltersCollapsed((prev) => !prev);
@@ -798,6 +915,10 @@ function MapPage() {
           collapsed={filtersCollapsed}
           onToggleCollapse={handleToggleFiltersCollapsed}
           filterGroups={filterGroups}
+          onResetFilters={handleResetFilters}
+          onToggleAdvanced={hasAdvancedFilters ? () => setShowAdvancedFilters((prev) => !prev) : undefined}
+          advancedVisible={showAdvancedFilters}
+          hasAdvancedFilters={hasAdvancedFilters}
         />
         {hideFullPreferenceError ? (
           <Box className="map-hide-preference-error">

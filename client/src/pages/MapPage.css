@@ -263,7 +263,7 @@
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
-  height: calc(100% - 48px);
+  height: auto;
   overflow: hidden;
 }
 
@@ -373,18 +373,23 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-surface) 80%, transparent);
 }
 .map-filter-icon-dot.event { background: var(--accent-primary); }
-.map-filter-icon-dot.discussion { background: var(--accent-pink); }
-.map-filter-icon-dot.personal { background: var(--accent-warn); }
+.map-filter-icon-dot.discussion { background: var(--accent-blue); }
+.map-filter-icon-dot.personal { background: color-mix(in srgb, var(--accent-warn) 85%, transparent); }
 .map-filter-icon-dot.full { background: var(--danger); }
 .map-filter-icon-dot.friend { background: var(--color-success); }
 .map-filter-icon-dot.featured { background: var(--accent-primary); }
 .map-filter-icon-dot.popular { background: var(--accent-pink); }
 .map-filter-icon-dot.bookmarked { background: var(--accent-strong); }
-.map-filter-icon-dot.open { background: var(--accent-warn); }
-.map-filter-icon-dot.soon { background: var(--accent-warn); }
+.map-filter-icon-dot.open { background: var(--danger); }
+.map-filter-icon-dot.soon { background: var(--danger); }
 .map-filter-icon-dot.cluster { background: var(--accent-primary); }
 .map-filter-icon-dot.radius { background: var(--accent-blue); }
 .map-filter-icon-dot.teleport { background: var(--color-text-strong); }
+.map-filter-icon-dot.alert {
+  background: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 65%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger) 45%, transparent);
+}
 
 .map-filter-icon.popular-filter-icon {
   animation: popularGlowPulse 2s ease-in-out infinite;
@@ -433,6 +438,32 @@
 
 .map-filter-toggle input:checked + .map-filter-slider::after {
   transform: translateX(20px);
+}
+
+.map-filters-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-border-strong) 35%, transparent);
+}
+
+.map-filter-action {
+  flex: 1;
+  border: 1px solid var(--color-border-strong);
+  background: color-mix(in srgb, var(--accent-wash) 60%, transparent);
+  color: var(--color-text-primary);
+  border-radius: 10px;
+  padding: 0.45rem 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.map-filter-action:hover {
+  background: color-mix(in srgb, var(--accent-wash-strong) 60%, transparent);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--accent-strong) 16%, transparent);
 }
 
 /* Small-screen adjustments */
