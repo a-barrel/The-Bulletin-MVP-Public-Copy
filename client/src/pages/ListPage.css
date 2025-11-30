@@ -80,7 +80,7 @@
     min-width: 0;
   }
   
-  /* Allow controls group to shrink but keep on one line */
+  /* Allow controls group to shrink but keep elements on one line */
   .topbar-controls-group {
     flex-shrink: 1;
     flex-wrap: nowrap;
@@ -213,24 +213,22 @@
   flex-wrap: nowrap;
   gap: 0.5rem;
   min-width: 0;
-  overflow: hidden;
 }
 
 .topbar-hide-own {
   margin-left: 0;
   color: var(--color-text-primary);
   flex-shrink: 1;
-  white-space: nowrap;
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
 }
 
 .topbar-hide-own .MuiTypography-root {
   font-size: 0.85rem;
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-wrap: break-word;
+  line-height: 1.2;
 }
 
 /* Icon buttons in topbar */

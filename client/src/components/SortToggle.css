@@ -12,6 +12,8 @@
   flex-shrink: 1;
   justify-content: center;
   margin-left: 0;
+  white-space: normal;
+  text-align: center;
 }
 
 .sort-toggle:hover {
@@ -28,12 +30,12 @@
 .sort-text {
   font-size: 0.9rem;
   font-weight: 500;
-  white-space: nowrap;
   color: var(--color-text-secondary);
   flex-shrink: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-wrap: break-word;
+  line-height: 1.2;
 }
 
 .distance-text {
