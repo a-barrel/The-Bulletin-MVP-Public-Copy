@@ -22,7 +22,7 @@
 .chat-header-bar {
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: 2000;
   background: linear-gradient(135deg, #cdaef2 0%, #f5effd 100%);
   width: 100%;
   height: 72px;
