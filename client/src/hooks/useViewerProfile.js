@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { auth } from '../firebase';
 import { fetchCurrentUserProfile } from '../api';
 import { useUserCache } from '../contexts/UserCacheContext';
 
@@ -31,7 +32,15 @@ export default function useViewerProfile({ enabled = true, skip = false } = {}) 
     }
 
     const cached = userCache.getMe();
-    if (cached) {
+    const authUid = auth.currentUser?.uid || null;
+    const cachedUid =
+      cached?.firebaseUid || cached?.firebaseUID || cached?.authUid || null;
+
+    if (cached && cachedUid && authUid && cachedUid !== authUid) {
+      if (typeof userCache?.clearAll === 'function') {
+        userCache.clearAll();
+      }
+    } else if (cached && authUid && cachedUid === authUid) {
       safeSetState(() => {
         setViewer(cached);
         setError(null);

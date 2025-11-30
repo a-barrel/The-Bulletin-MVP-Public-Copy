@@ -27,13 +27,13 @@ import runtimeConfig from './config/runtime';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from './firebase';
 import useViewerProfile from './hooks/useViewerProfile';
-import { viewerHasDeveloperAccess } from './utils/roles';
+import { setStoredRoleOverride, viewerHasDeveloperAccess } from './utils/roles';
 import { useLazyPages, normalizePathValue } from './app/pageLoader';
 import NavConsoleModal from './app/NavConsoleModal';
 import LocationGateOverlay from './app/LocationGateOverlay';
 import CircularProgress from '@mui/material/CircularProgress';
 import { PinCacheProvider } from './contexts/PinCacheContext';
-import { UserCacheProvider } from './contexts/UserCacheContext';
+import { UserCacheProvider, useUserCache } from './contexts/UserCacheContext';
 import { ReplyCacheProvider } from './contexts/ReplyCacheContext';
 import { AttendeeCacheProvider } from './contexts/AttendeeCacheContext';
 import { FriendCacheProvider } from './contexts/FriendCacheContext';
@@ -198,6 +198,7 @@ function AppContent() {
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
   const { resolvedMode } = useThemePreference();
+  const userCache = useUserCache();
   const [firebaseAuthUser, authLoading] = useAuthState(auth);
   const [navOverlayOpen, setNavOverlayOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -255,6 +256,21 @@ function AppContent() {
     () => viewerHasDeveloperAccess(viewerProfile, { offlineOverride: runtimeConfig.isOffline }),
     [viewerProfile]
   );
+
+  const previousAuthUidRef = useRef(null);
+  useEffect(() => {
+    const currentUid = firebaseAuthUser?.uid || null;
+    const previousUid = previousAuthUidRef.current;
+
+    if (!currentUid || (previousUid && previousUid !== currentUid)) {
+      if (typeof userCache?.clearAll === 'function') {
+        userCache.clearAll();
+      }
+      setStoredRoleOverride(null);
+    }
+
+    previousAuthUidRef.current = currentUid;
+  }, [firebaseAuthUser?.uid, userCache]);
 
   const socialNotifications = useSocialNotifications({
     enabled: !isOffline && !isAuthRoute && !!firebaseAuthUser,

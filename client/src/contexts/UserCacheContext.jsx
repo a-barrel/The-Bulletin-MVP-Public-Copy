@@ -65,6 +65,9 @@ export function UserCacheProvider({ children }) {
             cacheRef.current.set(id, user);
           }
         }
+      },
+      clearAll: () => {
+        cacheRef.current = new Map();
       }
     }),
     []
