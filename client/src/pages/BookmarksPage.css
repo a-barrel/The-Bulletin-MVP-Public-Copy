@@ -282,27 +282,3 @@
   color: var(--accent-strong);
   font-family: var(--font-family-base);
 }
-
-/* Make MuiStack wrap on mobile for button layouts */
-@media (max-width: 768px) {
-  .MuiStack-root {
-    flex-wrap: wrap !important;
-    align-content: flex-start !important;
-    row-gap: 0.75rem;
-  }
-  
-  .MuiStack-root > * {
-    flex-shrink: 0;
-  }
-  
-  /* Override marginLeft: auto on mobile so wrapped items align left */
-  /* Target any element with auto margin that's inside a row Stack */
-  .MuiStack-root[style*="flex-direction: row"] > * {
-    margin-left: 0 !important;
-  }
-  
-  /* Ensure the Box containing Refresh/Export buttons takes full width on wrap */
-  .MuiStack-root > .MuiBox-root {
-    margin-left: 0 !important;
-  }
-}
