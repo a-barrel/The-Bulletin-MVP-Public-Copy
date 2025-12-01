@@ -1,3 +1,10 @@
+.register-form {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center !important;
+}
+
 /* Adjust spacing for auth inputs on the registration form */
 .register-form .auth-input-container input {
   margin-bottom: 2.5rem;
