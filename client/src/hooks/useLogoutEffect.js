@@ -3,6 +3,7 @@ import { signOut } from 'firebase/auth';
 
 import { auth } from '../firebase';
 import { revokeCurrentSession } from '../api';
+import clearClientCaches from '../utils/clearClientCaches';
 
 export default function useLogoutEffect({ onSuccess, onError }) {
   const [error, setError] = useState(null);
@@ -22,6 +23,7 @@ export default function useLogoutEffect({ onSuccess, onError }) {
           }
         }
         await signOut(auth);
+        await clearClientCaches();
         if (!cancelled) {
           setError(null);
           if (typeof onSuccess === 'function') {
