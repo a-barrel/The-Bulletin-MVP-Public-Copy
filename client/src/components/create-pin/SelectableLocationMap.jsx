@@ -29,7 +29,15 @@ function MapCenterUpdater({ position }) {
   return null;
 }
 
-function SelectableLocationMap({ value, onChange, anchor, avatarUrl, viewerName, previewPin }) {
+function SelectableLocationMap({
+  value,
+  onChange,
+  anchor,
+  avatarUrl,
+  viewerName,
+  previewPin,
+  showPreviewCard = true
+}) {
   const [mapReady, setMapReady] = useState(true);
   const center = value ?? anchor ?? DEFAULT_MAP_CENTER;
   const trackingPosition = value ?? anchor ?? null;
@@ -69,7 +77,7 @@ function SelectableLocationMap({ value, onChange, anchor, avatarUrl, viewerName,
       />
       {mapReady ? (
         <>
-          {previewPosition && previewPin ? (
+          {showPreviewCard && previewPosition && previewPin ? (
             <Popup
               position={previewPosition}
               closeButton={false}

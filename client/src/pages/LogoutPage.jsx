@@ -6,6 +6,7 @@ import { signOut } from 'firebase/auth';
 import './LogoutPage.css'; // Same as LoginPage.css
 import { revokeCurrentSession } from '../api';
 import { routes } from '../routes';
+import clearClientCaches from '../utils/clearClientCaches';
 import AuthPageLayout from '../components/AuthPageLayout.jsx';
 import useAuthAlerts from '../hooks/useAuthAlerts';
 
@@ -50,6 +51,7 @@ function LogoutPage() {
         }
       }
       await signOut(auth);
+      await clearClientCaches();
       navigate(redirectTarget, { replace: true });
     } catch (logoutError) {
       console.error('Error signing out:', logoutError);

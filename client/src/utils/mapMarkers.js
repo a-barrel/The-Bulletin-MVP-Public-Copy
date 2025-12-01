@@ -154,7 +154,7 @@ export const createAvatarMarkerIcon = (avatarUrl, viewerName) =>
       </div>
     `,
     iconSize: [56, 56],
-    iconAnchor: [28, 48],
+    iconAnchor: [28, 28],
     popupAnchor: [0, -32]
   });
 

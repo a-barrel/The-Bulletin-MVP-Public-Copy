@@ -889,8 +889,8 @@ const Map = ({
           className="map-pin-popup"
           offset={[0, -4]}
           keepInView
-          closeOnClick={false}
-          autoClose={false}
+          closeOnClick
+          autoClose
           eventHandlers={{
             popupopen: (event) => {
               const el = event?.popup?.getElement?.();

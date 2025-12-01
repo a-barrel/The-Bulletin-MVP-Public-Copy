@@ -18,6 +18,7 @@ import useShake from "../hooks/useShake.js";
 import useRememberPreference from "../hooks/useRememberPreference";
 import useAuthAlerts from "../hooks/useAuthAlerts";
 import useProviderSignIn from "../hooks/useProviderSignIn";
+import clearClientCaches from "../utils/clearClientCaches";
 import GoogleIcon from "@mui/icons-material/Google";
 import AppleIcon from "@mui/icons-material/Apple";
 
@@ -64,6 +65,7 @@ function LoginPage() {
       const persistenceMode = remember ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION;
       await applyAuthPersistence(auth, persistenceMode);
       await signInWithEmailAndPassword(auth, email, password);
+      await clearClientCaches();
       navigate(routes.map.base);
     } catch (error) {
       switch (error.code) {
@@ -93,6 +95,7 @@ function LoginPage() {
     setError(null);
     try {
       await signInWithProvider(() => new GoogleAuthProvider());
+      await clearClientCaches();
       navigate(routes.map.base);
     } catch (popupError) {
       if (popupError?.message) {
@@ -107,6 +110,7 @@ function LoginPage() {
     setError(null);
     try {
       await signInWithProvider(() => new OAuthProvider("apple.com"));
+      await clearClientCaches();
       navigate(routes.map.base);
     } catch (signupError) {
       if (signupError?.code === "auth/operation-not-supported-in-this-environment") {
