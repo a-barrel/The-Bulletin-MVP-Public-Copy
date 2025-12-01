@@ -575,6 +575,7 @@ function CreatePinPage() {
               value={selectedCoordinates}
               onChange={handleMapLocationSelect}
               anchor={viewerMapAnchor}
+              showPreviewCard={false}
               avatarUrl={viewerAvatarUrl}
               viewerName={viewerDisplayName}
               previewPin={{
