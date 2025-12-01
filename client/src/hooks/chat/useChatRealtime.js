@@ -9,8 +9,8 @@ import {
 import { playBadgeSound } from '../../utils/badgeSound';
 import { CHAT_REACTION_OPTIONS } from '../../constants/chatReactions';
 
-const PRESENCE_HEARTBEAT_MS = 30_000;
-const MESSAGES_REFRESH_MS = 7_000;
+const PRESENCE_HEARTBEAT_MS = 5_000;
+const MESSAGES_REFRESH_MS = 2_000;
 const ALLOWED_REACTION_KEYS = new Set(CHAT_REACTION_OPTIONS.map((option) => option.key));
 
 const toggleReactionLocally = (message, emojiKey) => {

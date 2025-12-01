@@ -363,7 +363,7 @@ export default function useMapExplorer({
     if (!isSharing || isOffline) {
       return undefined;
     }
-    const intervalId = window.setInterval(refreshNearby, 60000);
+    const intervalId = window.setInterval(refreshNearby, 5_000);
     return () => window.clearInterval(intervalId);
   }, [isOffline, isSharing, refreshNearby]);
 

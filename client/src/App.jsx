@@ -681,7 +681,7 @@ function AppContent() {
     }
     const intervalId = window.setInterval(() => {
       refreshUnreadCount({ silent: true });
-    }, 180_000);
+    }, 5_000);
     return () => {
       window.clearInterval(intervalId);
     };
