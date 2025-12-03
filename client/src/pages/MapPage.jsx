@@ -14,7 +14,8 @@ import { useUpdates } from '../contexts/UpdatesContext';
 import useMapExplorer from '../hooks/useMapExplorer';
 import useViewerProfile from '../hooks/useViewerProfile';
 import useHideFullEventsPreference from '../hooks/useHideFullEventsPreference';
-import { DEFAULT_MAX_DISTANCE_METERS } from '../utils/mapExplorerConstants';
+import useAutoRefreshGeolocation from '../hooks/useAutoRefreshGeolocation';
+import { DEFAULT_MAX_DISTANCE_METERS, FALLBACK_LOCATION } from '../utils/mapExplorerConstants';
 import { MAP_FILTERS } from '../utils/mapMarkers';
 import { applyPinFilters } from '../utils/pinFilters';
 import useOfflineAction from '../hooks/useOfflineAction';
@@ -37,6 +38,7 @@ import { logMapPerf, nowIfPerf } from '../utils/mapPerfLogger';
 import MapFiltersSection from '../components/map/MapFiltersSection';
 import MapPageLayout from '../components/map/MapPageLayout';
 import PageNavHeader from '../components/PageNavHeader';
+import MyLocationIcon from '@mui/icons-material/MyLocation';
 import HeaderActionButtons from '../components/HeaderActionButtons';
 
 
@@ -57,7 +59,10 @@ function MapPage() {
   const { unreadCount, refreshUnreadCount } = useUpdates();
   const { location: sharedLocation, setLocation: setSharedLocation } = useLocationContext();
   const offlineAction = useOfflineAction(isOffline);
-  const { viewer: preferenceProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
+  const { viewer: preferenceProfile, isLoading: isLoadingViewerProfile } = useViewerProfile({
+    enabled: !isOffline,
+    skip: isOffline
+  });
   const adminOverride = useMemo(
     () =>
       viewerHasDeveloperAccess(preferenceProfile, {
@@ -65,6 +70,13 @@ function MapPage() {
       }),
     [isOffline, preferenceProfile]
   );
+  const shouldAutoRefreshLocation = !isOffline && !isLoadingViewerProfile && !adminOverride;
+
+  useAutoRefreshGeolocation({
+    enabled: shouldAutoRefreshLocation,
+    setSharedLocation,
+    source: 'map-page-auto-refresh'
+  });
   const {
     hideFullEvents,
     setHideFullEvents,
@@ -566,6 +578,46 @@ function MapPage() {
     offlineAction(() => navigate(routes.createPin.base));
   }, [offlineAction, navigate]);
 
+  const handleResetLocation = useCallback(() => {
+    if (!canUseAdminTools) {
+      return;
+    }
+    const applyFallback = () => {
+      setSharedLocation({
+        latitude: FALLBACK_LOCATION.latitude,
+        longitude: FALLBACK_LOCATION.longitude,
+        accuracy: FALLBACK_LOCATION.accuracy,
+        source: 'developer-reset-fallback'
+      });
+      setError?.(null);
+    };
+
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      applyFallback();
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setSharedLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          source: 'developer-reset-browser'
+        });
+        setError?.(null);
+      },
+      () => {
+        applyFallback();
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  }, [canUseAdminTools, setError, setSharedLocation]);
+
   const handleTapTeleport = useCallback(
     (latlng) => {
       if (!tapToTeleportEnabled || !canUseAdminTools) {
@@ -585,6 +637,28 @@ function MapPage() {
 
   const notificationsLabel =
     unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications';
+  const headerActions = (
+    <HeaderActionButtons
+      isOffline={isOffline}
+      unreadCount={unreadCount}
+      onCreatePin={handleCreatePin}
+      onOpenUpdates={handleNotifications}
+      notificationsLabel={notificationsLabel}
+      createLabel={t('mapHeader.createPin')}
+    >
+      {canUseAdminTools ? (
+        <button
+          type="button"
+          className="map-icon-btn"
+          aria-label="Reset location to default"
+          onClick={handleResetLocation}
+          title="Reset location to default debug coordinates"
+        >
+          <MyLocationIcon fontSize="small" />
+        </button>
+      ) : null}
+    </HeaderActionButtons>
+  );
 
   const baseFilterItems = useMemo(
     () =>
@@ -853,19 +927,7 @@ function MapPage() {
   if (locationGateContent) {
     return (
       <MapPageLayout>
-        <PageNavHeader
-          title="Map"
-          rightSlot={
-            <HeaderActionButtons
-              isOffline={isOffline}
-              unreadCount={unreadCount}
-              onCreatePin={handleCreatePin}
-              onOpenUpdates={handleNotifications}
-              notificationsLabel={notificationsLabel}
-              createLabel={t('mapHeader.createPin')}
-            />
-          }
-        />
+        <PageNavHeader title="Map" rightSlot={headerActions} />
         {locationGateContent}
       </MapPageLayout>
     );
@@ -873,19 +935,7 @@ function MapPage() {
 
   return (
     <MapPageLayout>
-      <PageNavHeader
-        title="Map"
-        rightSlot={
-          <HeaderActionButtons
-            isOffline={isOffline}
-            unreadCount={unreadCount}
-            onCreatePin={handleCreatePin}
-            onOpenUpdates={handleNotifications}
-            notificationsLabel={notificationsLabel}
-            createLabel={t('mapHeader.createPin')}
-          />
-        }
-      />
+      <PageNavHeader title="Map" rightSlot={headerActions} />
       <div className="map-frame">
         <Box className="map-canvas-wrapper">
           <MapComponent

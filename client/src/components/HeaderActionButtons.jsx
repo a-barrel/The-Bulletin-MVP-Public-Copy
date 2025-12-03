@@ -9,7 +9,8 @@ function HeaderActionButtons({
   onCreatePin,
   onOpenUpdates,
   notificationsLabel = 'View updates',
-  createLabel = 'Create pin'
+  createLabel = 'Create pin',
+  children
 }) {
   const badge =
     typeof unreadCount === 'number' && unreadCount > 0
@@ -30,6 +31,7 @@ function HeaderActionButtons({
       >
         <AddCircleOutlineIcon className="map-icon map-icon--create" aria-hidden="true" />
       </button>
+      {children}
       <button
         className="map-icon-btn"
         type="button"
@@ -55,14 +57,16 @@ HeaderActionButtons.propTypes = {
   onCreatePin: PropTypes.func.isRequired,
   onOpenUpdates: PropTypes.func.isRequired,
   notificationsLabel: PropTypes.string,
-  createLabel: PropTypes.string
+  createLabel: PropTypes.string,
+  children: PropTypes.node
 };
 
 HeaderActionButtons.defaultProps = {
   isOffline: false,
   unreadCount: 0,
   notificationsLabel: 'View updates',
-  createLabel: 'Create pin'
+  createLabel: 'Create pin',
+  children: null
 };
 
 export default HeaderActionButtons;

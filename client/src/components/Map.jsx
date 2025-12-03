@@ -186,8 +186,8 @@ const createAvatarMarkerIcon = (avatarUrl, initials) =>
       </div>
     `,
     iconSize: [56, 56],
-    iconAnchor: [28, 48],
-    popupAnchor: [0, -44]
+    iconAnchor: [28, 28],
+    popupAnchor: [0, -28]
   });
 
 // Component to handle map center updates

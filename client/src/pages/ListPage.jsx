@@ -28,6 +28,7 @@ import ListPaginationFooter from '../components/list/ListPaginationFooter';
 import useListFeedView from '../hooks/useListFeedView';
 import PageNavHeader from '../components/PageNavHeader';
 import Navbar from '../components/Navbar';
+import useAutoRefreshGeolocation from '../hooks/useAutoRefreshGeolocation';
 import HeaderActionButtons from '../components/HeaderActionButtons';
 
 export const pageConfig = {
@@ -94,7 +95,10 @@ function ListPage() {
 
   const [sortByExpiration, setSortByExpiration] = useState(false);
   const [hideOwnPins, setHideOwnPins] = useState(true);
-  const { viewer: viewerProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
+  const { viewer: viewerProfile, isLoading: isLoadingViewerProfile } = useViewerProfile({
+    enabled: !isOffline,
+    skip: isOffline
+  });
   const [locationRequestError, setLocationRequestError] = useState(null);
   const isAdminViewer = useMemo(
     () =>
@@ -172,6 +176,19 @@ function ListPage() {
 
   const { unreadCount, refreshUnreadCount } = useUpdates();
   const { navigateIfOnline } = useOfflineNavigation(isOffline);
+  const handleAutoLocationError = useCallback(
+    (message) => {
+      setLocationRequestError(message ? t('location.retryError') : null);
+    },
+    [setLocationRequestError, t]
+  );
+  const shouldAutoRefreshLocation = !isOffline && !isAdminViewer && !isLoadingViewerProfile;
+  useAutoRefreshGeolocation({
+    enabled: shouldAutoRefreshLocation,
+    setSharedLocation,
+    source: 'list-page-auto-refresh',
+    onError: handleAutoLocationError
+  });
   const handleRequestLocation = useCallback(() => {
     if (isAdminViewer || isOffline) {
       return;
