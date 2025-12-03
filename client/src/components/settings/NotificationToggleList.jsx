@@ -20,7 +20,7 @@ function NotificationToggleList({ toggles, values, onToggle, disabled }) {
             borderRadius: 2,
             border: '1px solid',
             borderColor: settingsPalette.borderSubtle,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: 'var(--color-surface)',
             px: 2,
             py: 1.5
           }}

@@ -3,7 +3,7 @@ import reportClientError from '../../utils/reportClientError';
 import { fetchDirectMessageThreads } from '../../api';
 import { useUserCache } from '../../contexts/UserCacheContext';
 
-const DM_POLL_INTERVAL_MS = 30 * 1000;
+const DM_POLL_INTERVAL_MS = 5 * 1000;
 
 export default function useDmThreadsData({ dispatch, autoLoad = true, enabled = true }) {
   const userCache = useUserCache();

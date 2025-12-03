@@ -1,24 +1,16 @@
 import React from 'react';
-import toggleLeftSolo from '../assets/toggle_left_solo.svg';
-import toggleRightSolo from '../assets/toggle_right_solo.svg';
+import SwapVertIcon from '@mui/icons-material/SwapVert';
 import './SortToggle.css';
 
 function SortToggle({ sortByExpiration, onToggle }) {
+  const label = sortByExpiration ? 'Expiration' : 'Distance';
   return (
-    <div className="sort-toggle-container">
-      <div className="sort-toggle" onClick={onToggle}>
-        <img 
-          src={sortByExpiration ? toggleRightSolo : toggleLeftSolo} 
-          alt={sortByExpiration ? "Sort by Expiration" : "Sort by Distance"} 
-          className="sort-icon" 
-        />
-        <span className="sort-text">
-          Sort by: <span className={sortByExpiration ? "expiration-text" : "distance-text"}>
-            {sortByExpiration ? "Expiration" : "Distance"}
-          </span>
-        </span>
-      </div>
-    </div>
+    <button className="sort-toggle" onClick={onToggle} type="button">
+      <SwapVertIcon className="sort-icon" />
+      <span className="sort-text">
+        Sort by: <span className={sortByExpiration ? 'expiration-text' : 'distance-text'}>{label}</span>
+      </span>
+    </button>
   );
 }
 

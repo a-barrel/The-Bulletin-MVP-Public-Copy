@@ -212,10 +212,10 @@ function FriendsListPanel({
 
       {!isLoading && friends.length === 0 ? (
         <Stack spacing={1.5} alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 6 }}>
-          <Typography variant="h6" sx={{ color: '#111' }}>
+          <Typography variant="h6" sx={{ color: 'var(--color-text-primary)' }}>
             No friends yet
           </Typography>
-          <Typography variant="body2" align="center" sx={{ color: '#555' }}>
+          <Typography variant="body2" align="center" sx={{ color: 'var(--color-text-secondary)' }}>
             Add some friends to start direct conversations and plan meetups.
           </Typography>
         </Stack>

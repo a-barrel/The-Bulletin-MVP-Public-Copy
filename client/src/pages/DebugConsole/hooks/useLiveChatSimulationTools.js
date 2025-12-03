@@ -518,7 +518,7 @@ const useLiveChatSimulationTools = () => {
     loadMessages(activeRoom);
     const interval = window.setInterval(() => {
       loadMessages(activeRoom);
-    }, 10000);
+    }, 2_000);
 
     return () => window.clearInterval(interval);
   }, [activeRoom, loadMessages]);

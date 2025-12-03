@@ -1,45 +1,65 @@
 export const PASSWORD_REQUIREMENTS = [
-  { key: 'uppercase', label: 'Has an uppercase letter', test: (pw) => /[A-Z]/.test(pw) },
-  { key: 'lowercase', label: 'Has a lowercase letter', test: (pw) => /[a-z]/.test(pw) },
-  { key: 'number', label: 'Has a number', test: (pw) => /\d/.test(pw) },
-  { key: 'special', label: 'Has a special character', test: (pw) => /[^A-Za-z0-9]/.test(pw) },
-  { key: 'length', label: 'Is at least 8 characters long', test: (pw) => pw.length >= 8 }
+  {
+    key: "length",
+    label: "At least 8 characters",
+    test: (pw) => pw.length >= 8,
+    weight: 1,
+  },
+  {
+    key: "uppercase",
+    label: "One uppercase letter (A–Z)",
+    test: (pw) => /[A-Z]/.test(pw),
+    weight: 1,
+  },
+  {
+    key: "lowercase",
+    label: "One lowercase letter (a–z)",
+    test: (pw) => /[a-z]/.test(pw),
+    weight: 1,
+  },
+  {
+    key: "number",
+    label: "One number (0–9)",
+    test: (pw) => /\d/.test(pw),
+    weight: 1,
+  },
+  {
+    key: "special",
+    label: "One special character",
+    test: (pw) => /[^A-Za-z0-9]/.test(pw),
+    weight: 1,
+  }
 ];
+
+export const MAX_PASSWORD_SCORE = PASSWORD_REQUIREMENTS.reduce(
+  (sum, req) => sum + req.weight,
+  0
+);
 
 export const PASSWORD_STRENGTH_STEPS = PASSWORD_REQUIREMENTS.length + 1;
 
 export const getPasswordStrength = (password) => {
   if (!password) {
-    return { score: 0, label: 'Weak' };
+    return { score: 0, label: "Weak" };
   }
-  let score = 0;
-  if (password.length >= 8) score += 1;
-  if (password.length >= 12) score += 1;
-  if (/[a-z]/.test(password)) score += 1;
-  if (/[A-Z]/.test(password)) score += 1;
-  if (/\d/.test(password)) score += 1;
-  if (/[^A-Za-z0-9]/.test(password)) score += 1;
 
-  let label = 'Weak';
-  if (score <= 2) {
-    label = 'Weak';
-  } else if (score <= 4) {
-    label = 'Medium';
-  } else {
-    label = 'Strong';
+  let score = 0;
+  for (const req of PASSWORD_REQUIREMENTS) {
+    if (req.test(password)) score += req.weight;
   }
-  return { score, label };
+
+  let label = "Weak";
+
+  const percent = score / MAX_PASSWORD_SCORE;
+
+  if (percent >= 0.8) label = "Strong";
+  else if (percent >= 0.4) label = "Medium";
+
+  return { score, label, percent };
 };
 
-export const getPasswordStrengthColor = (score) => {
-  if (!score) {
-    return 'grey';
-  }
-  if (score <= 2) {
-    return 'red';
-  }
-  if (score <= 4) {
-    return 'orange';
-  }
-  return 'green';
+export const getPasswordStrengthColor = (percent) => {
+  if (percent >= 0.8) return "green"; 
+  if (percent >= 0.4) return "orange";  
+  return "red";  
 };

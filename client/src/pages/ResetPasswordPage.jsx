@@ -152,22 +152,7 @@ function ResetPasswordPage() {
       alerts={alerts}
     >
       <form onSubmit={handlePasswordReset} className={"page-form"}>
-        <div className="password-strength">
-          <div className="strength-bar">
-            <div
-              className="strength-fill"
-              style={{ width: `${fillPercent}%`, backgroundColor: fillColor }}
-            />
-          </div>
-          <p className="strength-label">
-            {t("auth.reset.strengthLabel", {
-              strength: t(
-                `auth.reset.strength.${(strength.label || "Weak").toLowerCase()}`,
-                { defaultValue: strength.label || "Weak" }
-              )
-            })}
-          </p>
-        </div>
+        <div className="password-input-spacer"/>
 
         <PasswordField
           label={t("auth.reset.newPassword")}
@@ -194,16 +179,41 @@ function ResetPasswordPage() {
           showPasswordLabel={t("auth.aria.showPassword")}
           hidePasswordLabel={t("auth.aria.hidePassword")}
         />
+        <p className="password-requirements-label">
+        Make sure your password meets the following requirements:
+        </p>
 
         <ul className="password-requirements">
           {PASSWORD_REQUIREMENTS.map((req) => (
-            <li key={req.key} className={req.test(newPassword) ? "met" : "unmet"}>
-              {t(`auth.reset.requirements.${req.key}`, { defaultValue: req.label })}
+            <li
+              key={req.key}
+              className={req.test(newPassword) ? "met" : "unmet"}
+            >
+              {t(`auth.reset.requirements.${req.key}`, {
+                defaultValue: req.label,
+              })}
             </li>
           ))}
         </ul>
 
-        <button type="submit" className="reset-password-btn" disabled={isSubmitting}>
+        <div className="password-strength-container">
+          <p className="password-strength-text">
+            {t("auth.reset.strengthLabel", {
+              strength: t(`auth.reset.strength.${strength.label.toLowerCase()}`)
+            })}
+          </p>
+          <div className="password-strength-bar">
+            <div
+              className="password-strength-fill"
+              style={{
+                width: `${strength.percent * 100}%`,
+                backgroundColor: getPasswordStrengthColor(strength.percent),
+              }}
+            />
+          </div>
+        </div>
+
+        <button type="submit" className="reset-password-page-submit-btn" disabled={isSubmitting}>
           {isSubmitting ? t("auth.reset.submitting") : t("auth.reset.button")}
         </button>
       </form>

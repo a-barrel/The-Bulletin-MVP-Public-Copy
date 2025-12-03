@@ -1,11 +1,15 @@
 .empty-card {
-  background: linear-gradient(135deg, #f5effd 0%, #ecf8fe 100%);
-  color: #1e1e1e;
+  background: linear-gradient(
+    135deg,
+    var(--accent-wash) 0%,
+    color-mix(in srgb, var(--accent-blue) 14%, var(--accent-wash)) 100%
+  );
+  color: var(--color-text-primary);
   min-height: 160px;
   display: grid;
   place-items: center;
   text-align: center;
-  border: 1px dashed rgba(93, 56, 137, 0.25);
+  border: 1px dashed var(--accent-border, rgba(93, 56, 137, 0.25));
 }
 
 .empty-card .card-text {

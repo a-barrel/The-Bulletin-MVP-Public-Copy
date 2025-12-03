@@ -163,7 +163,7 @@ export const JSON_PREVIEW_SX = {
   p: 2,
   borderRadius: 2,
   overflowX: 'auto',
-  color: '#1e1e1e'
+  color: 'var(--color-text-primary)'
 };
 
 export const EXPERIMENT_ENABLED =

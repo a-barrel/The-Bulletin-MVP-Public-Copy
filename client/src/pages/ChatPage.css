@@ -1,29 +1,39 @@
 /* ===== Outer Shell ===== */
 .chat-page {
+  --chat-composer-height: 72px;
+  --bottom-bar-offset: calc(env(safe-area-inset-bottom, 0) + 92px);
+  --chat-thread-footer-guard: calc(var(--bottom-bar-offset) + var(--chat-composer-height) + 8px);
+
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   align-items: stretch;
-  overflow: hidden;
-  width: 100vw;
+  overflow: auto;
+  width: 100%;
+  min-height: 100vh;
   height: 100vh;
+  background: var(--page-bg);
 }
 
 .chat-frame {
-  width: 100vw;
-  height: 100vh;
-  background: white;
-  overflow: hidden;
+  width: 100%;
+  min-height: 100%;
+  height: 100%;
+  background: var(--color-surface);
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
   display: flex;
   flex-direction: column;
+  padding-bottom: 0;
 }
 
 /* ===== Header (purple) ===== */
 .chat-header-bar {
   position: sticky;
   top: 0;
-  z-index: 30;
-  background: linear-gradient(135deg, #cdaef2 0%, #f5effd 100%);
+  z-index: 2000;
+  background: var(--header-bg);
   width: 100%;
   height: 72px;
   min-height: 72px;
@@ -32,7 +42,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(93, 56, 137, 0.25);
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--color-border-strong);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
 }
 
 .chat-header-left {
@@ -58,7 +70,7 @@
 }
 
 .chat-header-back-icon {
-  color: #4b208c;
+  color: var(--accent-strong);
   width: 32px;
   height: 32px;
 }
@@ -71,7 +83,7 @@
 }
 
 .chat-header-title {
-  color: #5D3889;
+  color: var(--accent-strong);
   font-weight: 700 !important;
   letter-spacing: 0.01em;
   margin: 0;
@@ -90,7 +102,7 @@
 }
 
 .chat-header-back-icon {
-  color: #4b208c;
+  color: var(--accent-strong);
   width: 32px;
   height: 32px;
 }
@@ -102,31 +114,90 @@
   gap: 0.75rem;
 }
 
+.chat-header-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.chat-floating-toolbar {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 10;
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.chat-floating-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.65rem 0.85rem;
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong) 30%, transparent);
+  box-shadow: none;
+  border-radius: 14px;
+  max-width: 100%;
+}
+
+.chat-floating-left,
+.chat-floating-right {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.chat-floating-right {
+  gap: 0.35rem;
+}
+
+@media (max-width: 720px) {
+  .chat-floating-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chat-floating-left,
+  .chat-floating-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .chat-floating-right {
+    justify-content: flex-end;
+  }
+}
+
 .chat-checkin-banner {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem 0.6rem;
   border-radius: 10px;
-  background: linear-gradient(135deg, #ecf8fe 0%, #f5effd 100%);
-  border: 1px solid rgba(93, 56, 137, 0.2);
+  background: var(--color-surface-wash, var(--accent-wash));
+  border: 1px solid var(--accent-border, rgba(93, 56, 137, 0.2));
 }
 
 .chat-checkin-meta {
   display: flex;
   flex-direction: column;
   font-size: 0.85rem;
-  color: #3d1e60;
+  color: var(--color-text-primary);
 }
 
 .chat-checkin-meta strong {
   font-size: 0.85rem;
-  color: #5D3889;
+  color: var(--accent-strong);
   line-height: 1.2;
 }
 
 .chat-checkin-error {
-  color: #FF3B30;
+  color: var(--danger);
   font-size: 0.8rem;
 }
 
@@ -135,8 +206,8 @@
   font-size: 1rem;
   font-weight: 500;
   text-transform: none !important;
-  color: white !important;
-  background-color: #5D3889 !important;
+  color: var(--color-text-on-accent) !important;
+  background-color: var(--accent-strong) !important;
   border-radius: 10px !important;
   white-space: nowrap !important;
 }
@@ -154,9 +225,9 @@
 }
 
 .chat-room-chip.MuiChip-root {
-  background: rgba(255, 255, 255, 0.45);
-  border-color: rgba(45, 0, 104, 0.3);
-  color: #2d0068;
+  background: var(--accent-wash, rgba(255, 255, 255, 0.45));
+  border-color: var(--accent-border, rgba(45, 0, 104, 0.3));
+  color: var(--accent-strong);
   font-weight: 600;
 }
 
@@ -169,25 +240,25 @@
   font-weight: 600;
   border-radius: 999px;
   padding: 0.25rem 0.9rem;
-  border-color: rgba(45, 0, 104, 0.3);
-  color: #2d0068;
-  background: rgba(255, 255, 255, 0.45);
+  border-color: var(--accent-border, rgba(45, 0, 104, 0.3));
+  color: var(--accent-strong);
+  background: var(--color-surface-wash, var(--accent-wash));
 }
 
 .chat-friends-btn.MuiButton-root:hover {
-  background: rgba(255, 255, 255, 0.65);
-  border-color: rgba(45, 0, 104, 0.5);
+  background: color-mix(in srgb, var(--color-surface-wash) 70%, transparent);
+  border-color: color-mix(in srgb, var(--accent-strong) 40%, transparent);
 }
 
 .chat-friends-btn.MuiButton-contained {
-  background: #9B5DE5;
-  border-color: #9B5DE5;
-  color: #fff;
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--color-text-on-accent);
 }
 
 .chat-friends-btn.MuiButton-contained:hover {
-  background: #7f46c2;
-  border-color: #7f46c2;
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
 }
 
 .updates-icon-btn {
@@ -216,8 +287,8 @@
   height: 22px;
   padding: 0 6px;
   border-radius: 999px;
-  background: #F15BB5;
-  color: #fff;
+  background: var(--accent-primary);
+  color: var(--color-text-on-accent);
   font-size: 0.75rem;
   font-weight: 700;
   display: inline-flex;
@@ -228,16 +299,21 @@
 }
 
 .chat-messages-field {
-  background-color: #F5EFFD;
+  background-color: var(--color-surface);
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  width: 100vw;
+  width: 100%;
   height: 100%;
   margin-bottom: 0;
   /* leave room for composer + bottom nav */
-  padding-bottom: calc(200px + env(safe-area-inset-bottom, 0));
+  padding-bottom: var(--chat-thread-footer-guard);
+  scroll-padding-bottom: var(--chat-thread-footer-guard);
+}
+
+.message-bubble__actions {
+  color: var(--color-text-primary);
 }
 
 .disabled-dms-container,
@@ -271,12 +347,12 @@
 .empty-dms-body
 {
   font-family: 'Urbanist', sans-serif !important;
-  color: black !important;
+  color: var(--color-text-primary) !important;
 }
 
 .loading-msgs-circle,
 .loading-dms-circle {
-  color: #F15BB5;
+  color: var(--accent-primary);
 }
 
 .chat-scroll-to-bottom-btn {
@@ -289,8 +365,8 @@
 .scroll-to-bottom-icon {
   width: 48px !important;
   height: 48px !important;
-  background-color: #9B5DE5;
-  color: white;
+  background-color: var(--accent-primary);
+  color: var(--color-text-on-accent);
   border-radius: 60px;
 }
 
@@ -298,7 +374,7 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(env(safe-area-inset-bottom, 0) + 82px);
+  bottom: var(--bottom-bar-offset);
   width: 100%;
   display: flex;
   align-items: center;
@@ -306,9 +382,9 @@
   gap: 4px;
   padding: 8px 12px;
   overflow-y: hidden;  
-  background: #CDAEF2;
-  border-top: 1px solid #ddd;
-  margin-bottom: -2px;
+  background: var(--header-bg);
+  border-top: 1px solid var(--color-border-strong);
+  box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.08);
   z-index: 5;
   box-sizing: border-box;
   transform: none;
@@ -339,8 +415,8 @@
   font-family:'Urbanist', sans-serif;
   font-weight: 500;
   border-radius: 45px;
-  background: white;
-  color: black;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
 }
 
 /* Button to add an img (no visual) */
@@ -353,7 +429,7 @@
   height: 48px;
   padding: 0;
   border-radius: 14px;
-  background: rgba(124, 77, 255, 0.08);
+  background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
   transition: background-color 120ms ease, transform 120ms ease;
 }
 
@@ -367,7 +443,7 @@
   width: 40px !important;
   display: block;
   margin: 0;
-  color: #5D3889;
+  color: var(--accent-strong);
 }
 
 .share-pin-btn {
@@ -382,14 +458,14 @@
 .share-pin-icon {
   width: 40px;
   height: 40px;
-  color: #5D3889;
+  color: var(--accent-strong);
 }
 
 /* Button to send a message (no visual) */
 .send-message-btn {
   position: relative;
   bottom: 2px;
-  background: linear-gradient(135deg, #5d3889 0%, #9b5de5 100%);
+  background: linear-gradient(135deg, var(--accent-strong) 0%, var(--accent-primary) 100%);
   border: none;
   border-radius: 50%;
   width: 48px;
@@ -401,62 +477,78 @@
   margin-left: 0.25rem;
   padding: 0;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(93, 56, 137, 0.22);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent-strong) 24%, transparent);
 }
 
 .send-message-btn:hover:not(:disabled),
 .send-message-btn:focus-visible {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 12px 28px rgba(93, 56, 137, 0.32);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--accent-strong) 32%, transparent);
   filter: brightness(1.02);
   outline: none;
 }
 
 .send-message-btn:active:not(:disabled) {
   transform: translateY(0) scale(0.98);
-  box-shadow: 0 8px 18px rgba(93, 56, 137, 0.25);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent-strong) 26%, transparent);
 }
 
 .send-message-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
   box-shadow: none;
-  background: linear-gradient(135deg, #cdaef2 0%, #e5d5f6 100%);
+  background: linear-gradient(135deg, var(--accent-wash-strong) 0%, color-mix(in srgb, var(--accent-wash) 90%, transparent) 100%);
 }
 
 .send-message-icon {
   width: 32px !important;
   height: 32px !important;
-  color: white;
+  color: var(--color-text-on-accent);
 }
 
 /* Select Chatroom/DM overlay */
 .channel-switch-overlay {
-  background-color: none;
-} 
+  background-color: transparent;
+  z-index: 2100;
+}
+
+.channel-switch-overlay .MuiBackdrop-root {
+  z-index: 2100;
+}
+
+.channel-switch-overlay .MuiDialog-container {
+  z-index: 2101;
+}
+
+.channel-switch-overlay .MuiPaper-root {
+  z-index: 2102;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
+}
 
 .channel-switch-header {
   display: flex;
   justify-content: space-between;
-  background-color: #CDAEF2 !important;
-  border-bottom: 1px solid black !important;
+  background-color: var(--color-surface-wash-strong) !important;
+  border-bottom: 1px solid var(--color-border-strong, var(--color-text-primary)) !important;
 }
 
 .channel-switch-title {
   font-family: 'Urbanist', sans-serif !important;
   font-weight: 600 !important; 
-  color: black;
+  color: var(--color-text-strong, var(--color-text-primary));
 }
 
 .close-channel-switch-btn {
   font-family: 'Urbanist', sans-serif !important;
   text-transform: none !important;
-  color: #5D3889 !important;
+  color: var(--accent-strong) !important;
 }
 
 .channel-switch-tabs-background {
-  background-color: #F5EFFD !important;
-  border-bottom: 1px solid gray !important;
+  background-color: var(--color-surface-wash) !important;
+  border-bottom: 1px solid var(--color-border, gray) !important;
 }
 
 .channel-switch-tabs-background .MuiTab-root {
@@ -471,7 +563,7 @@
 }
 
 .channel-switch-tab-indicator {
-  background-color: #F15BB5 !important;
+  background-color: var(--accent-primary) !important;
   height: 4px !important;
 }
 
@@ -479,7 +571,7 @@
 .channel-switch-dm-tab {
   font-family: 'Urbanist', sans-serif !important;
   text-transform: none !important;
-  color: black !important;
+  color: var(--color-text-primary) !important;
 }
 
 .channel-switch-tab-container {
@@ -492,14 +584,14 @@
   font-family: 'Urbanist', sans-serif !important;
   font-weight: 500 !important;
   font-size: 0.8rem !important;
-  color: black !important;
+  color: var(--color-text-primary) !important;
 }
 
 .channel-switch-tab-badge {
   font-family: 'Urbanist', sans-serif !important;
   font-weight: 500 !important;
   font-size: 0.8rem !important;
-  color: #F15BB5 !important;
+  color: var(--accent-primary) !important;
 }
 
 .room-tab-text,
@@ -513,5 +605,5 @@
 .room-tab-text-badge {
   font-family: 'Urbanist', sans-serif !important;
   font-weight: 600 !important;
-  color: #F15BB5 !important;
+  color: var(--accent-primary) !important;
 }

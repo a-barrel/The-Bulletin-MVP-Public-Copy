@@ -329,7 +329,7 @@ function BookmarksPage() {
           minHeight: '100vh',
           py: { xs: 3, md: 5 },
           px: { xs: 2, md: 4 },
-          backgroundColor: '#ffffff',
+          backgroundColor: 'var(--page-bg)',
           fontFamily: '"Urbanist", sans-serif'
         }}
       >
@@ -418,16 +418,16 @@ function BookmarksPage() {
                     onChange={handleFilterChange}
                     sx={{
                       '& .MuiSelect-select': {
-                        color: 'black',
+                        color: 'var(--color-text-primary)',
                         fontFamily: '"Urbanist", sans-serif'
                       },
                       '& fieldset': {
-                        borderColor: 'black'
+                        borderColor: 'var(--color-border-strong)'
                       }
                     }}
                     MenuProps={{
                       PaperProps: {
-                        sx: { backgroundColor: '#E6F1FF' }
+                        sx: { backgroundColor: 'var(--color-surface)' }
                       }
                     }}
                   >
@@ -435,7 +435,7 @@ function BookmarksPage() {
                       <MenuItem
                         key={option.value}
                         value={option.value}
-                        sx={{ color: 'black', fontFamily: '"Urbanist", sans-serif' }}
+                        sx={{ color: 'var(--color-text-primary)', fontFamily: '"Urbanist", sans-serif' }}
                       >
                         {option.label}
                       </MenuItem>
@@ -493,13 +493,13 @@ function BookmarksPage() {
                     sx={{
                       '& .MuiPaginationItem-root': {
                         fontFamily: '"Urbanist", sans-serif',
-                        color: 'black'
+                        color: 'var(--color-text-primary)'
                       },
                       '& .MuiPaginationItem-root.Mui-selected': {
-                        backgroundColor: '#4b208c',
-                        color: 'white',
+                        backgroundColor: 'var(--accent-strong)',
+                        color: 'var(--color-text-on-accent)',
                         '&:hover': {
-                          backgroundColor: '#6b2fa8'
+                          backgroundColor: 'color-mix(in srgb, var(--accent-strong) 85%, transparent)'
                         }
                       }
                     }}

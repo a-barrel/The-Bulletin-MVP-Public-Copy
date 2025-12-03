@@ -3,13 +3,9 @@ import { useTranslation } from "react-i18next";
 import "./Navbar.css";
 
 // regular icons
-import ChatIcon from "../assets/ChatPage.svg";
-import MapIcon from "../assets/MapPage.svg";
-import ListIcon from "../assets/ListPage.svg";
-// filled/selected icons
-import ChatFilled from "../assets/chat-filled.svg";
-import MapFilled from "../assets/map-filled.svg";
-import ListFilled from "../assets/list-filled.svg";
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import MapOutlinedIcon from '@mui/icons-material/MapOutlined';
+import ListAltOutlinedIcon from '@mui/icons-material/ListAltOutlined';
 import { useSocialNotificationsContext } from '../contexts/SocialNotificationsContext';
 
 export default function Navbar({ disableSpacer = false }) {
@@ -48,11 +44,7 @@ export default function Navbar({ disableSpacer = false }) {
         >
           {({ isActive }) => (
             <>
-              <img
-                src={isActive ? ChatFilled : ChatIcon}
-                alt={chatLabel}
-                className="nav-icon"
-              />
+              <ChatBubbleOutlineIcon className="nav-icon-svg" fontSize="large" />
               {showDmBadge ? (
                 <span className="nav-item-badge" aria-hidden="true">
                   {formattedDmCount}
@@ -68,11 +60,7 @@ export default function Navbar({ disableSpacer = false }) {
         >
           {({ isActive }) => (
             <>
-              <img
-                src={isActive ? MapFilled : MapIcon}
-                alt={mapLabel}
-                className="nav-icon"
-              />
+              <MapOutlinedIcon className="nav-icon-svg" fontSize="large" />
               <span>{mapLabel}</span>
             </>
           )}
@@ -85,11 +73,7 @@ export default function Navbar({ disableSpacer = false }) {
         >
           {({ isActive }) => (
             <>
-              <img
-                src={isActive ? ListFilled : ListIcon}
-                alt={listLabel}
-                className="nav-icon"
-              />
+              <ListAltOutlinedIcon className="nav-icon-svg" fontSize="large" />
               {showFriendBadge ? (
                 <span className="nav-item-badge" aria-hidden="true">
                   {formattedFriendCount}

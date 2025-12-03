@@ -3,8 +3,7 @@ import Checkbox from '@mui/material/Checkbox';
 import Pagination from '@mui/material/Pagination';
 import PaginationItem from '@mui/material/PaginationItem';
 import SortToggle from '../SortToggle';
-import settingsIcon from '../../assets/GearIcon.svg';
-import addIcon from '../../assets/AddIcon.svg';
+import FilterListIcon from '@mui/icons-material/FilterList';
 
 export default function ListTopbar({
   hasActiveFilters,
@@ -24,25 +23,24 @@ export default function ListTopbar({
   onPageChange,
   pageSize,
   paginationSx,
-  onCreatePin,
   isOffline
 }) {
   const showTopPagination = totalResults > pageSize;
 
   return (
     <div className="topbar">
-      <div className="top-left">
-        <button
-          className={`icon-btn ${hasActiveFilters ? 'active' : ''} ${filtersDialogOpen ? 'open' : ''}`.trim()}
-          type="button"
-          aria-label="Filter pins"
-          aria-pressed={filtersDialogOpen}
-          onClick={onOpenFilters}
-          title={hasActiveFilters ? 'Filters applied. Click to adjust filters.' : 'Filter pins'}
-        >
-          <img src={settingsIcon} alt="Filters" />
-        </button>
+      <button
+        className={`icon-btn ${hasActiveFilters ? 'active' : ''} ${filtersDialogOpen ? 'open' : ''}`.trim()}
+        type="button"
+        aria-label="Filter pins"
+        aria-pressed={filtersDialogOpen}
+        onClick={onOpenFilters}
+        title={hasActiveFilters ? 'Filters applied. Click to adjust filters.' : 'Filter pins'}
+      >
+        <FilterListIcon aria-hidden="true" />
+      </button>
 
+      <div className="topbar-controls-group">
         <SortToggle sortByExpiration={sortByExpiration} onToggle={onToggleSort} />
 
         <FormControlLabel
@@ -54,14 +52,14 @@ export default function ListTopbar({
               onChange={(event) => onToggleHideOwnPins(event.target.checked)}
               disableRipple
               sx={{
-                color: '#666',
+                color: 'var(--color-text-secondary)',
                 '& .MuiSvgIcon-root': {
-                  stroke: '#666',
+                  stroke: 'var(--color-text-secondary)',
                   strokeWidth: 1.4,
                   borderRadius: '4px'
                 },
                 '&.Mui-checked': {
-                  color: '#5d3889'
+                  color: 'var(--accent-strong)'
                 }
               }}
             />
@@ -79,14 +77,14 @@ export default function ListTopbar({
               disabled={isSavingHideFullPreference}
               disableRipple
               sx={{
-                color: '#666',
+                color: 'var(--color-text-secondary)',
                 '& .MuiSvgIcon-root': {
-                  stroke: '#666',
+                  stroke: 'var(--color-text-secondary)',
                   strokeWidth: 1.4,
                   borderRadius: '4px'
                 },
                 '&.Mui-checked': {
-                  color: '#5d3889'
+                  color: 'var(--accent-strong)'
                 }
               }}
             />
@@ -95,31 +93,20 @@ export default function ListTopbar({
           className="topbar-hide-own"
           title={hideFullPreferenceError || undefined}
         />
-        {showTopPagination ? (
-          <div className="top-pagination">
-            <Pagination
-              count={totalPages}
-              page={currentPage}
-              size="small"
-              shape="rounded"
-              onChange={onPageChange}
-              renderItem={(item) => <PaginationItem disableRipple {...item} />}
-              sx={paginationSx}
-            />
-          </div>
-        ) : null}
       </div>
-
-      <button
-        className="add-btn"
-        type="button"
-        aria-label="Create pin"
-        onClick={onCreatePin}
-        disabled={isOffline}
-        title={isOffline ? 'Reconnect to create a pin' : undefined}
-      >
-        <img src={addIcon} alt="Add" />
-      </button>
+      {showTopPagination ? (
+        <div className="top-pagination">
+          <Pagination
+            count={totalPages}
+            page={currentPage}
+            size="small"
+            shape="rounded"
+            onChange={onPageChange}
+            renderItem={(item) => <PaginationItem disableRipple {...item} />}
+            sx={paginationSx}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

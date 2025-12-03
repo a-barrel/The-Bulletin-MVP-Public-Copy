@@ -19,8 +19,10 @@ export function applyPinFilters(meta, controls) {
     showFeaturedPins = true
   } = controls;
 
-  // If Bookmarked is on, allow bookmarked pins to bypass type gating but still honor highlight toggles.
-  if (meta.isBookmarked && !showBookmarkedPins) {
+  const isPersonal = meta.isPersonal || meta.isSelf;
+
+  // If bookmarked is off, still allow personal pins to show.
+  if (meta.isBookmarked && !showBookmarkedPins && !isPersonal) {
     return false;
   }
 
@@ -37,7 +39,7 @@ export function applyPinFilters(meta, controls) {
 
   if (meta.isEvent && !showEvents) return false;
   if (meta.isDiscussion && !showDiscussions) return false;
-  if (meta.isSelf && !showPersonalPins) return false;
+  if (isPersonal && !showPersonalPins) return false;
   if (meta.isFriend && !showFriendPins) return false;
   if (meta.isFull && !showFullEvents && !(meta.isFriend && showFriendPins)) return false;
   if (meta.discussionExpiresSoon && !showExpiringDiscussions) return false;

@@ -24,7 +24,7 @@ export const PIN_DENSITY_LIMITS = PIN_DENSITY_LEVELS.reduce((acc, level) => {
   return acc;
 }, {});
 
-export const DEFAULT_PIN_DENSITY_KEY = 'balanced';
+export const DEFAULT_PIN_DENSITY_KEY = 'compact';
 
 export const resolvePinDensityKey = (input) => {
   const extractKey = (value) => {

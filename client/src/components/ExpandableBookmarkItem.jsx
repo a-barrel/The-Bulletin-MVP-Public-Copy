@@ -9,14 +9,12 @@ import {
   Stack,
   Typography
 } from '@mui/material';
-
-import PlusIcon from '../assets/Plus.svg';
-import MinusIcon from '../assets/Minus.svg';
-import DiscussionBookmarkIcon from '../assets/Discussion_Bookmarks.svg';
-import EventBookmarkIcon from '../assets/Event_Bookmarks.svg';
-import AttendingBookmarksIcon from '../assets/Attending_Bookmarks.svg';
-import BookmarkedIcon from '../assets/Bookmarked.svg';
-import BookmarkedOwnerIcon from '../assets/BookmarkedOwner.svg';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import GroupsIcon from '@mui/icons-material/Groups';
+import BookmarkRemoveIcon from '@mui/icons-material/BookmarkRemove';
 import resolveAssetUrl from '../utils/media';
 import { fetchPinById } from '../api';
 import toIdString from '../utils/ids';
@@ -114,12 +112,12 @@ function ExpandableBookmarkItem({
       ? displayPin.participantCount
       : 0;
 
-  const iconSrc =
+  const iconElement =
     pinType === 'discussion'
-      ? DiscussionBookmarkIcon
+      ? <ForumOutlinedIcon sx={{ width: 28, height: 28, color: 'var(--accent-strong)' }} />
       : pinType === 'event'
-        ? EventBookmarkIcon
-        : null;
+        ? <EventAvailableIcon sx={{ width: 28, height: 28, color: 'var(--accent-strong)' }} />
+        : <GroupsIcon sx={{ width: 28, height: 28, color: 'var(--accent-strong)' }} />;
 
   const mediaAssets = useMemo(() => {
     const list = [];
@@ -203,12 +201,13 @@ function ExpandableBookmarkItem({
     : 'Remove bookmark';
 
   const tagChipStyles = {
-    backgroundColor: '#4b208c',
-    color: '#ffffff',
+    backgroundColor: 'var(--accent-strong)',
+    color: 'var(--color-text-on-accent)',
     fontFamily: '"Urbanist", sans-serif'
   };
 
-  const cardBackground = pinType === 'discussion' ? '#E6F1FF' : '#F5EFFD';
+  const cardBackground =
+    pinType === 'discussion' ? 'var(--color-surface-wash-strong)' : 'var(--color-surface-wash)';
 
   const handleViewClick = useCallback(
     (event) => {
@@ -247,10 +246,10 @@ function ExpandableBookmarkItem({
       sx={{
         p: '12px',
         m: 0,
-        border: '1px solid black',
+        border: '1px solid var(--color-border-strong)',
         borderRadius: 5,
         backgroundColor: cardBackground,
-        color: '#5D3889',
+        color: 'var(--color-text-primary)',
         fontFamily: '"Urbanist", sans-serif',
         width: '100%',
         height: '100%',
@@ -275,16 +274,19 @@ function ExpandableBookmarkItem({
         }}
       >
         <Box sx={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {iconSrc ? <Box component="img" src={iconSrc} alt={`${pinType} bookmark icon`} sx={{ width: 28, height: 28 }} /> : null}
+          {iconElement}
         </Box>
-        <Typography variant="subtitle1" fontWeight={600} sx={{ color: '#5D3889', textAlign: 'center', fontFamily: '"Urbanist", sans-serif' }}>
+        <Typography
+          variant="subtitle1"
+          fontWeight={600}
+          sx={{ color: 'var(--color-text-strong)', textAlign: 'center', fontFamily: '"Urbanist", sans-serif' }}
+        >
           {pinTitle}
         </Typography>
         <Box
-          component="img"
-          src={expanded ? MinusIcon : PlusIcon}
-          alt={expanded ? 'Collapse' : 'Expand'}
-          sx={{ width: 20, height: 20, justifySelf: 'end' }}
+          component={expanded ? RemoveCircleOutlineIcon : AddCircleOutlineIcon}
+          sx={{ width: 20, height: 20, justifySelf: 'end', color: 'var(--accent-strong)' }}
+          aria-hidden
         />
       </ListItemButton>
 
@@ -299,7 +301,11 @@ function ExpandableBookmarkItem({
                     size="small"
                     label="Attending"
                     color="success"
-                    sx={{ fontFamily: '"Urbanist", sans-serif', backgroundColor: '#3eb8f0', color: '#ffffff' }}
+                    sx={{
+                      fontFamily: '"Urbanist", sans-serif',
+                      backgroundColor: 'var(--accent-blue)',
+                      color: 'var(--color-text-on-accent)'
+                    }}
                   />
                 ) : null}
                 {ownsPin ? (
@@ -307,27 +313,31 @@ function ExpandableBookmarkItem({
                     size="small"
                     label="My pin"
                     color="secondary"
-                    sx={{ fontFamily: '"Urbanist", sans-serif', backgroundColor: '#f15bb5', color: '#ffffff' }}
+                    sx={{
+                      fontFamily: '"Urbanist", sans-serif',
+                      backgroundColor: 'var(--accent-pink)',
+                      color: 'var(--color-text-on-accent)'
+                    }}
                   />
                 ) : null}
               </Stack>
               <Box
                 sx={{
-                  backgroundColor: '#4b208c',
-                  color: '#ffffff',
+                  backgroundColor: 'var(--accent-strong)',
+                  color: 'var(--color-text-on-accent)',
                   borderRadius: '999px',
                   px: 1.5,
                   py: 0.25
                 }}
               >
-                <Typography variant="body2" sx={{ fontFamily: '"Urbanist", sans-serif', color: '#ffffff' }}>
+                <Typography variant="body2" sx={{ fontFamily: '"Urbanist", sans-serif', color: 'var(--color-text-on-accent)' }}>
                   Saved {savedAt}
                 </Typography>
               </Box>
             </Stack>
 
             {isLoadingPin ? (
-              <Typography variant="body2" sx={{ color: '#5D3889', fontFamily: '"Urbanist", sans-serif' }}>
+              <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontFamily: '"Urbanist", sans-serif' }}>
                 Loading...
               </Typography>
             ) : null}
@@ -337,13 +347,13 @@ function ExpandableBookmarkItem({
             {!isLoadingPin && description ? (
               <Typography
                 variant="body2"
-                sx={{ color: '#5D3889', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: '"Urbanist", sans-serif' }}
+                sx={{ color: 'var(--color-text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: '"Urbanist", sans-serif' }}
               >
                 {description}
               </Typography>
             ) : null}
 
-            <Typography variant="body2" sx={{ color: '#5D3889', fontFamily: '"Urbanist", sans-serif' }}>
+            <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontFamily: '"Urbanist", sans-serif' }}>
               Created by {creatorName}
             </Typography>
 
@@ -361,14 +371,17 @@ function ExpandableBookmarkItem({
               ) : (
                 <>
                   <Box sx={{ flex: '1 1 0', display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 0.5 }}>
-                    {pinType === 'event' ? (
-                      <>
-                        <Box component="img" src={AttendingBookmarksIcon} alt="" sx={{ width: 20, height: 20 }} />
-                        <Typography variant="body2" sx={{ color: '#5D3889', fontWeight: 500, fontFamily: '"Urbanist", sans-serif' }}>
-                          {participantCount}
-                        </Typography>
-                      </>
-                    ) : null}
+                {pinType === 'event' ? (
+                  <>
+                    <GroupsIcon sx={{ width: 20, height: 20, color: 'var(--accent-strong)' }} />
+                    <Typography
+                      variant="body2"
+                      sx={{ color: 'var(--color-text-primary)', fontWeight: 500, fontFamily: '"Urbanist", sans-serif' }}
+                    >
+                      {participantCount}
+                    </Typography>
+                  </>
+                ) : null}
                   </Box>
 
                   <Box sx={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', justifyContent: 'center' }}>
@@ -378,17 +391,17 @@ function ExpandableBookmarkItem({
                       onClick={handleViewClick}
                       disableRipple
                       sx={{
-                        color: 'black',
-                        backgroundColor: '#CDAEF2',
-                        border: '1px solid black',
+                        color: 'var(--accent-strong)',
+                        backgroundColor: 'var(--color-surface-wash-strong)',
+                        border: '1px solid var(--color-border-strong)',
                         fontFamily: '"Urbanist", sans-serif',
                         '&:hover': {
-                          backgroundColor: '#CDAEF2',
-                          border: '1px solid black',
-                          color: 'black'
+                          backgroundColor: 'var(--color-surface-wash-strong)',
+                          border: '1px solid var(--color-border-strong)',
+                          color: 'var(--accent-strong)'
                         },
                         '&.MuiButton-outlined': {
-                          borderColor: 'black'
+                          borderColor: 'var(--color-border-strong)'
                         }
                       }}
                     >
@@ -404,12 +417,14 @@ function ExpandableBookmarkItem({
                       disabled={Boolean(isOffline || isTogglingAttendance)}
                       disableRipple
                       sx={{
-                        color: attending ? '#ffffff' : '#4b208c',
-                        backgroundColor: attending ? '#4b208c' : '#ffffff',
-                        borderColor: '#4b208c',
+                        color: attending ? 'var(--color-text-on-accent)' : 'var(--accent-strong)',
+                        backgroundColor: attending ? 'var(--accent-strong)' : 'var(--color-surface)',
+                        borderColor: 'var(--accent-strong)',
                         fontFamily: '"Urbanist", sans-serif',
                         '&:hover': {
-                          backgroundColor: attending ? '#38176c' : '#f5edff'
+                          backgroundColor: attending
+                            ? 'color-mix(in srgb, var(--accent-strong) 90%, transparent)'
+                            : 'var(--color-surface-wash)'
                         }
                       }}
                     >
@@ -427,13 +442,9 @@ function ExpandableBookmarkItem({
                       aria-label={removeButtonTitle}
                       className="bookmark-remove-btn"
                     >
-                      <img
-                        src={ownsPin ? BookmarkedOwnerIcon : BookmarkedIcon}
-                        alt={
-                          removalGuardMessage
-                            ? removalGuardMessage
-                            : 'Remove bookmark'
-                        }
+                      <BookmarkRemoveIcon
+                        sx={{ color: 'var(--accent-strong)', width: 22, height: 22 }}
+                        aria-hidden
                       />
                     </button>
                   </Box>

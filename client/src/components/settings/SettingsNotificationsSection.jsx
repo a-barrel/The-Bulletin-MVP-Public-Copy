@@ -27,7 +27,7 @@ export default function SettingsNotificationsSection({
       sx={{
         p: { xs: 2, md: 3 },
         borderRadius: 4,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: 'var(--color-surface)',
         border: `1px solid ${settingsPalette.borderSubtle}`,
         boxShadow: '0 12px 30px rgba(93, 56, 137, 0.1)'
       }}

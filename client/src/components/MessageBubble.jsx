@@ -1,7 +1,7 @@
 import React, { memo, useCallback, useMemo, useState } from 'react';
 import { Box, Typography, IconButton, Tooltip } from '@mui/material';
 import { NavLink, useNavigate } from 'react-router-dom';
-import AvatarIcon from '../assets/AvatarIcon.svg';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import './MessageBubble.css';
 import { formatFriendlyTimestamp, formatAbsoluteDateTime, formatRelativeTime } from '../utils/dates';
 import GavelIcon from '@mui/icons-material/Gavel';
@@ -234,23 +234,30 @@ function MessageBubble({
         ? `/profile/${authorId}`
         : '/profile/me';
 
-  const resolvedAvatarSrc = ensureImageSrc(resolveAvatarSrc(msg?.author) || AvatarIcon);
+  const resolvedAvatarSrc = ensureImageSrc(resolveAvatarSrc(msg?.author));
   const messageId = msg?._id || msg?.id || msg?.messageId;
 
   return (
     <Box className={`chat-message ${isSelf ? 'self' : ''}`}>
       <Box className="chat-avatar">
         <NavLink to={profileHref} className="nav-item">
-          <img
-            src={resolvedAvatarSrc}
-            alt={
-              msg?.author?.displayName
-                ? `${msg.author.displayName}'s avatar`
-                : 'Chat avatar'
-            }
-            className="profile-icon"
-            onError={withFallbackOnError}
-          />
+          {resolvedAvatarSrc ? (
+            <img
+              src={resolvedAvatarSrc}
+              alt={
+                msg?.author?.displayName
+                  ? `${msg.author.displayName}'s avatar`
+                  : 'Chat avatar'
+              }
+              className="profile-icon"
+              onError={withFallbackOnError}
+            />
+          ) : (
+            <AccountCircleIcon
+              className="profile-icon"
+              sx={{ width: 48, height: 48, color: 'var(--color-text-secondary)' }}
+            />
+          )}
         </NavLink>
       </Box>
 
@@ -277,13 +284,13 @@ function MessageBubble({
                 disableRipple
                 sx={{
                   ml: 0.5,
-                  color: '#d84315',
-                  backgroundColor: 'rgba(216, 67, 21, 0.12)',
+                  color: 'var(--danger)',
+                  backgroundColor: 'color-mix(in srgb, var(--danger) 12%, transparent)',
                   borderRadius: '8px',
                   transition: 'color 120ms ease, background-color 120ms ease',
                   '&:hover, &:focus-visible': {
-                    color: '#ef6c00',
-                    backgroundColor: 'rgba(239, 108, 0, 0.16)'
+                    color: 'color-mix(in srgb, var(--danger) 85%, var(--danger))',
+                    backgroundColor: 'color-mix(in srgb, var(--danger) 16%, transparent)'
                   }
                 }}
               >
@@ -297,19 +304,19 @@ function MessageBubble({
                     className="chat-reaction-btn"
                     size="small"
                     aria-label="React to this message"
-                    onClick={() => setReactionPickerOpen((prev) => !prev)}
-                    sx={{
-                      ml: 0.5,
-                      color: '#5d3889',
-                      backgroundColor: 'rgba(93, 56, 137, 0.12)',
-                      borderRadius: '8px',
-                      transition: 'color 120ms ease, background-color 120ms ease',
-                      '&:hover, &:focus-visible': {
-                        color: '#7c4dff',
-                        backgroundColor: 'rgba(124, 77, 255, 0.16)'
-                      }
-                    }}
-                  >
+                  onClick={() => setReactionPickerOpen((prev) => !prev)}
+                  sx={{
+                    ml: 0.5,
+                    color: 'var(--accent-strong)',
+                    backgroundColor: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)',
+                    borderRadius: '8px',
+                    transition: 'color 120ms ease, background-color 120ms ease',
+                    '&:hover, &:focus-visible': {
+                      color: 'color-mix(in srgb, var(--accent-strong) 90%, transparent)',
+                      backgroundColor: 'color-mix(in srgb, var(--accent-strong) 18%, transparent)'
+                    }
+                  }}
+                >
                     <EmojiEmotionsIcon fontSize="inherit" />
                   </IconButton>
                 </span>
@@ -325,13 +332,13 @@ function MessageBubble({
                 disableRipple
                 sx={{
                   ml: 0.5,
-                  color: '#1e6ef5',
-                  backgroundColor: 'rgba(30, 110, 245, 0.12)',
+                  color: 'var(--accent-primary)',
+                  backgroundColor: 'color-mix(in srgb, var(--accent-primary) 12%, transparent)',
                   borderRadius: '8px',
                   transition: 'color 120ms ease, background-color 120ms ease',
                   '&:hover, &:focus-visible': {
-                    color: '#7c4dff',
-                    backgroundColor: 'rgba(124, 77, 255, 0.16)'
+                    color: 'var(--accent-strong)',
+                    backgroundColor: 'color-mix(in srgb, var(--accent-strong) 16%, transparent)'
                   }
                 }}
               >
@@ -389,6 +396,7 @@ function MessageBubble({
               const handleClick = () => {
                 if (typeof onToggleReaction === 'function' && messageId) {
                   onToggleReaction(messageId, option.key);
+                  setReactionPickerOpen(false);
                 }
               };
               return (

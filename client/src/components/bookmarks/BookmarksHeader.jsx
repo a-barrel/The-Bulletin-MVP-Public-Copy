@@ -48,7 +48,7 @@ function BookmarksHeader({
         alignItems={{ xs: 'flex-start', sm: 'center' }}
         justifyContent="space-between"
       >
-        <Typography variant="body2" sx={{ flexGrow: 1, color: '#111' }}>
+        <Typography variant="body2" sx={{ flexGrow: 1, color: 'var(--color-text-primary)' }}>
           {t('bookmarks.subtitle')}
         </Typography>
         <Stack direction="row" spacing={1} sx={{ alignSelf: { xs: 'flex-start', sm: 'flex-end' } }}>

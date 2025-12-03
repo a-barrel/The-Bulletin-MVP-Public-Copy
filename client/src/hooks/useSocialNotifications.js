@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import useFriendGraph from './useFriendGraph';
 import useDirectMessages from './useDirectMessages';
 
-const SOCIAL_POLL_INTERVAL_MS = 30 * 1000;
+const SOCIAL_POLL_INTERVAL_MS = 5 * 1000;
 
 const useSocialNotifications = ({ enabled = true, autoLoad = true, authUser = null } = {}) => {
   const effectiveEnabled = enabled && !!authUser;

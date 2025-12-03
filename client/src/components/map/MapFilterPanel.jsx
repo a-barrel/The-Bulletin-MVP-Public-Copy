@@ -1,9 +1,14 @@
 import { memo, useEffect, useRef, useState } from 'react';
+import PropTypes from 'prop-types';
 
 const MapFilterPanel = memo(function MapFilterPanel({
   collapsed,
   onToggleCollapse,
-  filterGroups = []
+  filterGroups = [],
+  onResetFilters,
+  onToggleAdvanced,
+  advancedVisible,
+  hasAdvancedFilters
 }) {
   const groups =
     Array.isArray(filterGroups) && filterGroups.length > 0
@@ -119,22 +124,29 @@ const MapFilterPanel = memo(function MapFilterPanel({
               {Array.isArray(group.filters)
                 ? group.filters.map((filter) => (
                   <label className="map-filter-toggle" key={filter.key}>
-                    <img
-                      src={filter.iconUrl}
-                      alt=""
-                      className={`map-filter-icon ${filter.iconClassName || ''}`.trim()}
-                      aria-hidden="true"
-                    />
-                      <span className="map-filter-label">{filter.label}</span>
-                      <input
-                        type="checkbox"
-                        checked={filter.checked}
-                        onChange={filter.onChange}
-                        aria-label={filter.ariaLabel}
-                        disabled={filter.disabled}
+                    {filter.iconClassName ? (
+                      <span
+                        className={`map-filter-icon-dot ${filter.iconClassName}`.trim()}
+                        aria-hidden="true"
                       />
-                      <span className="map-filter-slider" aria-hidden="true" />
-                    </label>
+                    ) : (
+                      <img
+                        src={filter.iconUrl}
+                        alt=""
+                        className={`map-filter-icon ${filter.iconClassName || ''}`.trim()}
+                        aria-hidden="true"
+                      />
+                    )}
+                    <span className="map-filter-label">{filter.label}</span>
+                    <input
+                      type="checkbox"
+                      checked={filter.checked}
+                      onChange={filter.onChange}
+                      aria-label={filter.ariaLabel}
+                      disabled={filter.disabled}
+                    />
+                    <span className="map-filter-slider" aria-hidden="true" />
+                  </label>
                   ))
                 : null}
             </div>
@@ -147,8 +159,44 @@ const MapFilterPanel = memo(function MapFilterPanel({
           <div className="map-filter-scroll-hint map-filter-scroll-hint--bottom">vvv</div>
         ) : null}
       </div>
+      {!collapsed ? (
+        <div className="map-filters-footer">
+          {typeof onResetFilters === 'function' ? (
+            <button type="button" className="map-filter-action map-filter-action--reset" onClick={onResetFilters}>
+              Reset filters
+            </button>
+          ) : null}
+          {hasAdvancedFilters && typeof onToggleAdvanced === 'function' ? (
+            <button
+              type="button"
+              className="map-filter-action map-filter-action--advanced"
+              onClick={onToggleAdvanced}
+            >
+              {advancedVisible ? 'Hide advanced' : 'Show advanced'}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 });
 
 export default MapFilterPanel;
+
+MapFilterPanel.propTypes = {
+  collapsed: PropTypes.bool.isRequired,
+  onToggleCollapse: PropTypes.func.isRequired,
+  filterGroups: PropTypes.array,
+  onResetFilters: PropTypes.func,
+  onToggleAdvanced: PropTypes.func,
+  advancedVisible: PropTypes.bool,
+  hasAdvancedFilters: PropTypes.bool
+};
+
+MapFilterPanel.defaultProps = {
+  filterGroups: [],
+  onResetFilters: undefined,
+  onToggleAdvanced: undefined,
+  advancedVisible: false,
+  hasAdvancedFilters: false
+};

@@ -34,14 +34,14 @@ function FeedbackDialog({
       PaperProps={{
         sx: {
           borderRadius: 4,
-          backgroundColor: '#F5EFFD',
-          border: '1px solid rgba(93, 56, 137, 0.25)',
+          backgroundColor: 'var(--color-surface)',
+          border: '1px solid var(--color-border-strong)',
           boxShadow: '0 30px 90px rgba(0, 0, 0, 0.35)'
         }
       }}
       BackdropProps={{
         sx: {
-          backgroundColor: '#00000080',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
           backdropFilter: 'blur(4px)'
         }
       }}
@@ -49,7 +49,7 @@ function FeedbackDialog({
       <DialogTitle sx={{ color: settingsPalette.accent, fontWeight: 700, pb: 1.5 }}>
         Send anonymous feedback
       </DialogTitle>
-      <DialogContent sx={{ backgroundColor: '#FFFFFF', borderRadius: 3, m: 2, mt: 0 }}>
+      <DialogContent sx={{ backgroundColor: 'var(--color-surface)', borderRadius: 3, m: 2, mt: 0 }}>
         <Stack spacing={2.5}>
           <Typography variant="body2" sx={mutedTextSx}>
             We read every message. Please avoid sharing personal details unless you want us to reach out.

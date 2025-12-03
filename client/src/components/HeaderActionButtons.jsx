@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import './HeaderActionButtons.css';
-import updatesIcon from '../assets/UpdateIcon.svg';
-import addIconPurple from '../assets/AddIconPurple.svg';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 
 function HeaderActionButtons({
   isOffline,
@@ -26,21 +26,21 @@ function HeaderActionButtons({
         className="map-icon-btn map-header-create"
         onClick={onCreatePin}
         disabled={isOffline}
-      aria-label={createLabel}
-      title={isOffline ? 'Reconnect to create pins' : undefined}
-    >
-      <img src={addIconPurple} alt="" className="map-icon map-icon--create" aria-hidden="true" />
-    </button>
-    {children}
-    <button
-      className="map-icon-btn"
-      type="button"
-      aria-label={notificationsLabel}
-      onClick={onOpenUpdates}
-      disabled={isOffline}
+        aria-label={createLabel}
+        title={isOffline ? 'Reconnect to create pins' : undefined}
+      >
+        <AddCircleOutlineIcon className="map-icon map-icon--create" aria-hidden="true" />
+      </button>
+      {children}
+      <button
+        className="map-icon-btn"
+        type="button"
+        aria-label={notificationsLabel}
+        onClick={onOpenUpdates}
+        disabled={isOffline}
         title={isOffline ? 'Reconnect to view updates' : undefined}
       >
-        <img src={updatesIcon} alt="" className="map-icon" aria-hidden="true" />
+        <NotificationsNoneIcon className="map-icon" aria-hidden="true" />
         {badge ? (
           <span className="map-icon-badge" aria-hidden="true">
             {badge}

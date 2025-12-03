@@ -10,7 +10,7 @@
   height: 72px;
   min-height: 72px;
   padding: 0 1rem;
-  background: linear-gradient(135deg, #cdaef2 0%, #f5effd 100%);
+  background: var(--header-bg);
   width: 100%;
   box-sizing: border-box;
 }
@@ -27,7 +27,7 @@
   transform: translateX(-50%);
   font-size: clamp(1.3rem, 4vw, 1.8rem);
   font-weight: 700;
-  color: #4b208c;
+  color: var(--color-text-secondary);
   margin: 0;
   pointer-events: none;
 }
@@ -48,7 +48,7 @@
 
 .page-nav-header__back:hover,
 .page-nav-header__back:focus-visible {
-  background: rgba(75, 32, 140, 0.12);
+  background: color-mix(in srgb, var(--accent-strong) 12%, transparent);
   outline: none;
   transform: translateY(-1px);
 }
@@ -68,7 +68,7 @@
 
 .gnm-trigger-btn:hover,
 .gnm-trigger-btn:focus-visible {
-  background: rgba(75, 32, 140, 0.12);
+  background: color-mix(in srgb, var(--accent-strong) 12%, transparent);
   outline: none;
   transform: translateY(-1px);
 }
@@ -76,7 +76,7 @@
 .gnm-trigger-btn__icon {
   width: 28px;
   height: 28px;
-  color: #4b208c;
+  color: var(--color-text-secondary);
 }
 
 .page-nav-header__right {

@@ -11,6 +11,7 @@ import { installStyleWarningFilter } from './utils/styleWarningFilter.js';
 import { I18nextProvider } from 'react-i18next';
 import i18n from './i18n/config.js';
 import LanguageHotkeys from './i18n/LanguageHotkeys.jsx';
+import { ThemePreferenceProvider } from './contexts/ThemePreferenceContext.jsx';
 
 installTelemetryGuards();
 installClientErrorListeners();
@@ -41,8 +42,10 @@ createRoot(document.getElementById('root')).render(
       <BrowserRouter>
         <AppErrorBoundary>
           <NetworkStatusProvider>
-            <LanguageHotkeys />
-            <App />
+            <ThemePreferenceProvider>
+              <LanguageHotkeys />
+              <App />
+            </ThemePreferenceProvider>
           </NetworkStatusProvider>
         </AppErrorBoundary>
       </BrowserRouter>

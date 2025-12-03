@@ -13,10 +13,10 @@
   transition: filter 300ms;
 }
 .logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+  filter: drop-shadow(0 0 2em color-mix(in srgb, var(--accent-primary) 67%, transparent));
 }
 .logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+  filter: drop-shadow(0 0 2em color-mix(in srgb, var(--accent-primary) 67%, transparent));
 }
 
 body {
@@ -45,5 +45,5 @@ body {
 }
 
 .read-the-docs {
-  color: #888;
+  color: var(--color-text-secondary);
 }

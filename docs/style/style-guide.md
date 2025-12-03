@@ -7,25 +7,23 @@ Last updated: 2025‑11‑10
 - **Adjectives:** Playful · Casual · Social.
 - **Inspiration:** Discord (feature depth) + Telegram (light, friendly visuals).
 
-## 2. Color System
+## 2. Color System (tighter palette for theming)
 | Role | HEX | Usage |
 | --- | --- | --- |
-| Primary Purple | `#9B5DE5` | **Events:** primary accent for event pins/cards, headers, and CTAs |
-| Primary Pink | `#F15BB5` | UI box backgrounds, celebratory moments |
-| Primary Blue | `#3EB8F0` | **Discussions:** primary accent for discussion pins/cards, links, and secondary accents |
-| Dark Purple | `#5D3889` | Headers, button backgrounds, info frames |
-| Wash Pink | `#CDAEF2` | Text-heavy surfaces, offset blue areas |
-| Wash Blue | `#ECF8FE` | Surfaces that offset purple content |
-| Soft Lavender | `#F5EFFD` | Card backgrounds, hero washes |
-| Brand White | `#FFFFFF` | General surfaces, cards |
+| Primary Purple | `#9B5DE5` | Primary accent for events, CTAs, selected tabs |
+| Accent Blue | `#3EB8F0` | Accent for discussions, links, secondary CTAs |
+| Accent Pink | `#F15BB5` | Celebratory accents, badges, occasional CTA contrast |
+| Dark Purple | `#5D3889` | Limited use for strong accents or elevated surfaces (e.g., top bars) |
+| Soft Lavender | `#F5EFFD` | Default card/background wash |
+| Wash Purple | `#CDAEF2` | Inputs, chips, light panels |
+| Wash Blue | `#ECF8FE` | Alternate wash for contrast against purple shells |
+| Brand White | `#FFFFFF` | Base surfaces and cards |
 
-- **Neutrals:** `#000000` (primary text), `#1E1E1E` (body copy variant), `#757575` (secondary copy), `#B3B3B3` (dividers), `#00000080` (overlays/focus scrims).
-- **Rule:** Avoid pure black UI fills—reserve `#000000` for text; lean on washes or dark purple for backgrounds.
-- **Reverse text rule:** Default text color is black (`#000000`) on washes and white backgrounds, but flip to Brand White when it sits on dark fills like Dark Purple (`#5D3889`), destructive banners, or other saturated blocks called out in this guide. Always verify contrast ≥ 4.5:1 when you invert colors.
-- **Pastel text rule:** If the background is a wash (Soft Lavender, Wash Pink, Brand White, etc.), **never** use white text. Stick to Dark Purple `#5D3889` or pure black for primary copy so the pastel blocks stay readable. When you recolor a parent container, double-check **every child element** (buttons, chips, icons, accordion headers, etc.) so they inherit the compliant colors—white-on-pastel slips happen when only the shell is updated.
-- **Alert colors:** Use `#FF3B30` **only** for destructive/error states. Prefer Blue (`#3EB8F0`) or Dark Purple (`#5D3889`) for info/warning to avoid heavy red. Avoid introducing new reds beyond this token.
-- **Event/Discussion accents:** Default event surfaces/indicators to Purple (`#9B5DE5` / `#5D3889` accents). Default discussion surfaces/indicators to Blue (`#3EB8F0`). Use these consistently across cards, tabs, badges, and chips.
-- **Washes:** Wash Pink `#CDAEF2`, Wash Blue `#ECF8FE`, and Soft Lavender `#F5EFFD` are meant to be visibly distinct from white—pair them with subtle borders/shadows if needed rather than drifting to pure white. If a wash reads too faint, deepen via border/shadow before changing the fill hue.
+- **Neutrals:** `#0E0E0E` (primary text), `#1E1E1E` (body copy variant), `#757575` (secondary copy), `#B3B3B3` (dividers), `#00000080` (overlays/focus scrims).
+- **Text tokens & contrast:** Default to dark text (`#0E0E0E` / `#1E1E1E`) on washes and white surfaces. Avoid introducing new white text; the only exception is the `text-on-accent` token for clearly dark accent fills (e.g., a Dark Purple CTA). No ad-hoc white-on-wash or white-on-mid-tone usage—if a surface needs light text, darken the surface or swap to the accent token so themes can flip safely.
+- **Alerts:** Keep errors on `#FF3B30`; prefer Accent Blue or Dark Purple for info/warning. Don’t add new reds.
+- **Event/Discussion accents:** Events lean on Primary Purple (with Dark Purple for depth). Discussions lean on Accent Blue. Be consistent across cards, tabs, badges, and chips.
+- **Washes:** Soft Lavender / Wash Purple / Wash Blue should stay visibly distinct from white; use borders/shadows before darkening fills. White text on washes is not allowed—stick to the default dark text.
 
 ## 3. Typography
 - **Primary font:** Urbanist (Regular 400 for body, Bold 700 for emphasis). Inter appears in certain mockups but Urbanist should be the UI default.

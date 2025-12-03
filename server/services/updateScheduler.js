@@ -3,7 +3,7 @@ const { broadcastEventStartingSoon, broadcastDiscussionExpiringSoon } = require(
 const { logIntegration } = require('../utils/devLogger');
 const { deletePinRoomByPinId } = require('./proximityChatService');
 
-const INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+const INTERVAL_MS = 30 * 1000; // accelerated for demo
 const DISCUSSION_LEAD_MS = 24 * 60 * 60 * 1000;
 const EVENT_REMINDER_WINDOWS = [
   { windowHours: 24, offsetMs: 24 * 60 * 60 * 1000 },

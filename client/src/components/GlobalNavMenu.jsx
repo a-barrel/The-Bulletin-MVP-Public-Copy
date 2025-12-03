@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import MenuIcon from '../assets/MenuIcon.svg';
+import MenuIcon from '@mui/icons-material/Menu';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import SettingsIcon from '@mui/icons-material/Settings';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
@@ -595,7 +595,7 @@ export default memo(function GlobalNavMenu({
         aria-label={resolvedTriggerAriaLabel}
         onClick={handleOpen}
       >
-        <img src={MenuIcon} alt="" className={iconClassName} />
+        <MenuIcon className={iconClassName} aria-hidden="true" />
       </button>
 
       {open && (

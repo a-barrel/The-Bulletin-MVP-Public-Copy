@@ -12,37 +12,48 @@ jest.mock('../../GlobalNavMenu', () => {
 });
 
 describe('ChatThreadHeader', () => {
-  it('renders channel label and triggers callbacks', () => {
-    const handleOpen = jest.fn();
-    const handleNotifications = jest.fn();
+  it('renders title and triggers back navigation', () => {
+    const handleBack = jest.fn();
 
     render(
       <ChatThreadHeader
-        channelLabel="Direct messages"
-        isChannelDialogOpen
-        notificationsLabel="Notifications"
-        onNotifications={handleNotifications}
-        onOpenChannelDialog={handleOpen}
-        updatesIconSrc="icon.svg"
+        pageTitle="Chat"
+        backAriaLabel="Back"
+        onBack={handleBack}
+        onCreatePin={jest.fn()}
+        onNotifications={jest.fn()}
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /direct messages/i }));
-    expect(handleOpen).toHaveBeenCalledTimes(1);
-
-    fireEvent.click(screen.getByRole('button', { name: /notifications/i }));
-    expect(handleNotifications).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Chat')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText(/back/i));
+    expect(handleBack).toHaveBeenCalledTimes(1);
   });
 
-  it('disables notifications button when offline', () => {
+  it('renders the global navigation trigger', () => {
     render(
       <ChatThreadHeader
-        channelLabel="Rooms"
-        notificationsLabel="Notifications"
+        pageTitle="Chat"
+        backAriaLabel="Back"
+        onBack={jest.fn()}
+        onCreatePin={jest.fn()}
         onNotifications={jest.fn()}
-        onOpenChannelDialog={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('global-nav')).toBeInTheDocument();
+  });
+
+  it('disables notifications when offline', () => {
+    render(
+      <ChatThreadHeader
+        pageTitle="Chat"
+        backAriaLabel="Back"
+        onBack={jest.fn()}
+        onCreatePin={jest.fn()}
+        onNotifications={jest.fn()}
+        notificationsLabel="Notifications"
         isOffline
-        updatesIconSrc="icon.svg"
       />
     );
 
