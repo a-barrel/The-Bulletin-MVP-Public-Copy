@@ -742,15 +742,22 @@ router.post('/', verifyToken, async (req, res) => {
   try {
     const input = CreatePinSchema.parse(req.body);
 
-    const now = Date.now();
-    const maxEventTimestamp = now + EVENT_MAX_LEAD_TIME_MS;
-    const maxDiscussionTimestamp = now + DISCUSSION_MAX_DURATION_MS;
-
     if (input.type === 'event' && input.endDate < input.startDate) {
       return res.status(400).json({ message: 'endDate must be after startDate' });
     }
 
-    if (input.type === 'event') {
+    const viewer = await resolveViewerUser(req);
+    if (!viewer) {
+      return res.status(403).json({ message: 'Unable to resolve authenticated user for pin creation' });
+    }
+    const viewerIsPrivileged = viewerHasDeveloperAccess(viewer);
+
+    const now = Date.now();
+    const maxEventTimestamp = now + EVENT_MAX_LEAD_TIME_MS;
+    const maxDiscussionTimestamp = now + DISCUSSION_MAX_DURATION_MS;
+    const enforceDateBounds = !viewerIsPrivileged;
+
+    if (enforceDateBounds && input.type === 'event') {
       if (input.startDate.getTime() < now - PAST_TOLERANCE_MS) {
         return res.status(400).json({ message: 'Start date cannot be in the past.' });
       }
@@ -762,7 +769,7 @@ router.post('/', verifyToken, async (req, res) => {
           .status(400)
           .json({ message: 'Events can only be scheduled up to 14 days in advance.' });
       }
-    } else if (input.type === 'discussion') {
+    } else if (enforceDateBounds && input.type === 'discussion') {
       if (input.expiresAt.getTime() < now - PAST_TOLERANCE_MS) {
         return res.status(400).json({ message: 'Expiration date cannot be in the past.' });
       }
@@ -773,11 +780,6 @@ router.post('/', verifyToken, async (req, res) => {
       }
     }
 
-    const viewer = await resolveViewerUser(req);
-    if (!viewer) {
-      return res.status(403).json({ message: 'Unable to resolve authenticated user for pin creation' });
-    }
-
     let creatorObjectId = viewer._id;
     let creatorUserDoc = viewer;
     if (input.creatorId) {
@@ -786,7 +788,6 @@ router.post('/', verifyToken, async (req, res) => {
       }
 
       const requestedCreatorId = new mongoose.Types.ObjectId(input.creatorId);
-      const viewerIsPrivileged = viewerHasDeveloperAccess(viewer);
 
       if (!requestedCreatorId.equals(viewer._id) && !viewerIsPrivileged) {
         return res.status(403).json({ message: 'You are not allowed to create pins for other users' });

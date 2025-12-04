@@ -73,7 +73,8 @@ export default function useCreatePinForm({
   isOffline,
   viewerLocation,
   announceBadgeEarned = noop,
-  onPinCreated = noop
+  onPinCreated = noop,
+  canBypassLimits = false
 } = {}) {
   const geocodeCache = useGeocodeCache();
   const [pinType, setPinType] = useState('discussion');
@@ -84,6 +85,8 @@ export default function useCreatePinForm({
   const [createdPin, setCreatedPin] = useState(null);
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [locationStatus, setLocationStatus] = useState(null);
+  const enforceLocationRadius = !canBypassLimits;
+  const enforceDateWindows = !canBypassLimits;
 
   const {
     photoAssets,
@@ -223,12 +226,12 @@ export default function useCreatePinForm({
     [nowReference]
   );
   const eventStartMinInput = useMemo(
-    () => formatDateTimeLocalInput(nowReference),
-    [nowReference]
+    () => (enforceDateWindows ? formatDateTimeLocalInput(nowReference) : undefined),
+    [enforceDateWindows, nowReference]
   );
   const eventStartMaxInput = useMemo(
-    () => formatDateTimeLocalInput(eventMaxDateRef),
-    [eventMaxDateRef]
+    () => (enforceDateWindows ? formatDateTimeLocalInput(eventMaxDateRef) : undefined),
+    [enforceDateWindows, eventMaxDateRef]
   );
   const eventEndMinDate = useMemo(() => {
     if (!formState.startDate) {
@@ -246,8 +249,8 @@ export default function useCreatePinForm({
   );
   const discussionMinInput = eventStartMinInput;
   const discussionMaxInput = useMemo(
-    () => formatDateTimeLocalInput(discussionMaxDateRef),
-    [discussionMaxDateRef]
+    () => (enforceDateWindows ? formatDateTimeLocalInput(discussionMaxDateRef) : undefined),
+    [discussionMaxDateRef, enforceDateWindows]
   );
 
   const handleTypeChange = useCallback((event, nextType) => {
@@ -412,32 +415,36 @@ export default function useCreatePinForm({
 
   const handleMapLocationSelect = useCallback(
     ({ lat, lng }) => {
-      if (!viewerCoordinates) {
+      if (!viewerCoordinates && enforceLocationRadius) {
         setLocationStatus({
           type: 'warning',
           message: 'We need your current location to place an event. Enable location services and try again.'
         });
         return;
       }
-      const distanceMeters = haversineDistanceMeters(viewerCoordinates, {
-        latitude: lat,
-        longitude: lng
-      });
-      if (!Number.isFinite(distanceMeters)) {
-        setLocationStatus({
-          type: 'error',
-          message: 'Unable to validate the selected spot. Please try a different location.'
-        });
-        return;
-      }
-      if (distanceMeters > MAX_PIN_DISTANCE_METERS) {
-        const miles = metersToMiles(distanceMeters);
-        const milesLabel = miles === null ? 'farther' : `${miles.toFixed(1)} miles`;
-        setLocationStatus({
-          type: 'error',
-          message: `Pins must be within ${MAX_PIN_DISTANCE_MILES} miles of you. This spot is about ${milesLabel} away.`
-        });
-        return;
+      const distanceMeters = viewerCoordinates
+        ? haversineDistanceMeters(viewerCoordinates, {
+            latitude: lat,
+            longitude: lng
+          })
+        : null;
+      if (enforceLocationRadius) {
+        if (!Number.isFinite(distanceMeters)) {
+          setLocationStatus({
+            type: 'error',
+            message: 'Unable to validate the selected spot. Please try a different location.'
+          });
+          return;
+        }
+        if (distanceMeters > MAX_PIN_DISTANCE_METERS) {
+          const miles = metersToMiles(distanceMeters);
+          const milesLabel = miles === null ? 'farther' : `${miles.toFixed(1)} miles`;
+          setLocationStatus({
+            type: 'error',
+            message: `Pins must be within ${MAX_PIN_DISTANCE_MILES} miles of you. This spot is about ${milesLabel} away.`
+          });
+          return;
+        }
       }
 
       const formattedLat = lat.toFixed(6);
@@ -448,12 +455,14 @@ export default function useCreatePinForm({
         longitude: formattedLng
       }));
       setLocationStatus({
-        type: 'info',
-        message: 'Latitude and longitude updated from map selection.'
+        type: enforceLocationRadius ? 'info' : 'success',
+        message: enforceLocationRadius
+          ? 'Latitude and longitude updated from map selection.'
+          : 'Location set. Admin override applied (no distance limit).'
       });
       void reverseGeocodeCoordinates(lat, lng, { force: true });
     },
-    [reverseGeocodeCoordinates, viewerCoordinates]
+    [enforceLocationRadius, reverseGeocodeCoordinates, viewerCoordinates]
   );
 
   useEffect(() => {
@@ -485,6 +494,7 @@ export default function useCreatePinForm({
     photoAssets,
     coverPhotoId,
     isOffline,
+    canBypassLimits,
     announceBadgeEarned,
     clearDraft,
     clearDraftStatus,

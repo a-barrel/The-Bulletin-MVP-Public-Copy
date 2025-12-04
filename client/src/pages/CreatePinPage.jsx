@@ -19,6 +19,8 @@ import resolveAssetUrl from '../utils/media';
 import { haversineDistanceMeters, formatDistanceMiles, formatDistanceMetersLabel } from '../utils/geo';
 import SelectableLocationMap from '../components/create-pin/SelectableLocationMap';
 import useViewerProfile from '../hooks/useViewerProfile';
+import { viewerHasDeveloperAccess } from '../utils/roles';
+import runtimeConfig from '../config/runtime';
 import PinPreviewCard from '../components/PinPreviewCard';
 import CREATE_PIN_TEMPLATE from '../constants/createPinTemplate';
 
@@ -68,6 +70,13 @@ function CreatePinPage() {
   const { announceBadgeEarned } = useBadgeSound();
   const { handleBack: overlayBack, previousNavPath, previousNavPage } = useNavOverlay();
   const { viewer: viewerProfile } = useViewerProfile({ enabled: !isOffline, skip: isOffline });
+  const canBypassCreationLimits = useMemo(
+    () =>
+      viewerHasDeveloperAccess(viewerProfile, {
+        offlineOverride: runtimeConfig.isOffline || isOffline
+      }),
+    [isOffline, viewerProfile]
+  );
 
   const viewerDisplayName = useMemo(() => {
     if (viewerProfile?.displayName) {
@@ -140,7 +149,8 @@ function CreatePinPage() {
     isOffline,
     viewerLocation,
     announceBadgeEarned,
-    onPinCreated: handlePinCreated
+    onPinCreated: handlePinCreated,
+    canBypassLimits: canBypassCreationLimits
   });
 
   const pinDistanceMeters = useMemo(() => {
@@ -170,6 +180,13 @@ function CreatePinPage() {
     }
     return milesLabel || metersLabel || null;
   }, [pinDistanceMeters]);
+
+  const eventDateHint = canBypassCreationLimits
+    ? 'Admin/developer/moderator override: no scheduling window enforced.'
+    : 'Must be within the next 14 days.';
+  const discussionDateHint = canBypassCreationLimits
+    ? 'Admin/developer/moderator override: no expiration window enforced.'
+    : 'Discussions expire within 3 days.';
 
   const backButtonLabel = previousNavPage?.label ? `Back to ${previousNavPage.label}` : 'Back';
   const handleHeaderBack = useCallback(() => {
@@ -328,7 +345,7 @@ function CreatePinPage() {
                       min={eventStartMinInput}
                       max={eventStartMaxInput}
                     />
-                    <small className="field-hint">Must be within the next 14 days.</small>
+                    <small className="field-hint">{eventDateHint}</small>
                   </div>
                   <div>
                     <label htmlFor={`create-pin-end-date-${endDateInputId}`}>End date</label>
@@ -441,7 +458,7 @@ function CreatePinPage() {
                       min={discussionMinInput}
                       max={discussionMaxInput}
                     />
-                    <small className="field-hint">Discussions expire within 3 days.</small>
+                    <small className="field-hint">{discussionDateHint}</small>
                   </div>
                   <div className="toggle-inline">
                     <label htmlFor={`create-pin-auto-delete-${autoDeleteInputId}`}>Auto delete when expired?</label>
