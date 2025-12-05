@@ -19,6 +19,7 @@ import useHideFullEventsPreference from '../hooks/useHideFullEventsPreference';
 import { useTranslation } from 'react-i18next';
 import runtimeConfig from '../config/runtime';
 import { viewerHasDeveloperAccess } from '../utils/roles';
+import { hasValidCoordinates } from '../utils/mapLocation';
 import { enableListPerfLogs, logListPerf } from '../utils/listPerfLogger';
 import { resolvePinFetchLimit } from '../utils/pinDensity';
 import ListTopbar from '../components/list/ListTopbar';
@@ -30,6 +31,9 @@ import PageNavHeader from '../components/PageNavHeader';
 import Navbar from '../components/Navbar';
 import useAutoRefreshGeolocation from '../hooks/useAutoRefreshGeolocation';
 import HeaderActionButtons from '../components/HeaderActionButtons';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../firebase';
+import { isTeleportLockedForUser, clearTeleportLockForUser } from '../utils/mapTeleportSession';
 
 export const pageConfig = {
   id: 'list',
@@ -123,7 +127,8 @@ function ListPage() {
     loading,
     error,
     locationNotice,
-    isUsingFallbackLocation
+    isUsingFallbackLocation,
+    refresh: refreshNearbyPins
   } = useNearbyPinsFeed({
     sharedLocation,
     isOffline,
@@ -182,13 +187,42 @@ function ListPage() {
     },
     [setLocationRequestError, t]
   );
-  const shouldAutoRefreshLocation = !isOffline && !isAdminViewer && !isLoadingViewerProfile;
+  const [authUser] = useAuthState(auth);
+  const teleportLockUid = authUser?.uid || null;
+  const lastAuthUidRef = useRef();
+
+  useEffect(() => {
+    const prevUid = lastAuthUidRef.current;
+    if (prevUid && teleportLockUid !== prevUid) {
+      clearTeleportLockForUser(prevUid);
+    }
+    if (teleportLockUid && prevUid && teleportLockUid !== prevUid) {
+      clearTeleportLockForUser(teleportLockUid);
+    }
+    lastAuthUidRef.current = teleportLockUid;
+  }, [teleportLockUid]);
+
+  const teleportLocked = isTeleportLockedForUser(teleportLockUid);
+
+  const shouldAutoRefreshLocation =
+    !isOffline && !isAdminViewer && !isLoadingViewerProfile && !teleportLocked;
   useAutoRefreshGeolocation({
     enabled: shouldAutoRefreshLocation,
     setSharedLocation,
     source: 'list-page-auto-refresh',
     onError: handleAutoLocationError
   });
+
+  useEffect(() => {
+    if (!teleportLocked || isOffline) {
+      return;
+    }
+    if (!hasValidCoordinates(sharedLocation)) {
+      return;
+    }
+    // Auto geo refresh is paused when teleport lock is active; still fetch fresh pins at the spoofed location.
+    refreshNearbyPins(sharedLocation);
+  }, [isOffline, refreshNearbyPins, sharedLocation, teleportLocked]);
   const handleRequestLocation = useCallback(() => {
     if (isAdminViewer || isOffline) {
       return;
