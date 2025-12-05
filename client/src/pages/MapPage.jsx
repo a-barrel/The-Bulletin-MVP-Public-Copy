@@ -11,6 +11,8 @@ import { routes } from '../routes';
 import { useLocationContext } from '../contexts/LocationContext';
 import { useNetworkStatusContext } from '../contexts/NetworkStatusContext.jsx';
 import { useUpdates } from '../contexts/UpdatesContext';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../firebase';
 import useMapExplorer from '../hooks/useMapExplorer';
 import useViewerProfile from '../hooks/useViewerProfile';
 import useHideFullEventsPreference from '../hooks/useHideFullEventsPreference';
@@ -22,6 +24,7 @@ import useOfflineAction from '../hooks/useOfflineAction';
 import toIdString from '../utils/ids';
 import { buildPinMeta } from '../utils/mapPinMeta';
 import { viewerHasDeveloperAccess } from '../utils/roles';
+import { isTeleportLockedForUser, clearTeleportLockForUser } from '../utils/mapTeleportSession';
 import runtimeConfig from '../config/runtime';
 import { usePinCache } from '../contexts/PinCacheContext';
 import { useTranslation } from 'react-i18next';
@@ -57,6 +60,7 @@ function MapPage() {
   const navigate = useNavigate();
   const { isOffline } = useNetworkStatusContext();
   const { unreadCount, refreshUnreadCount } = useUpdates();
+  const [authUser] = useAuthState(auth);
   const { location: sharedLocation, setLocation: setSharedLocation } = useLocationContext();
   const offlineAction = useOfflineAction(isOffline);
   const { viewer: preferenceProfile, isLoading: isLoadingViewerProfile } = useViewerProfile({
@@ -70,7 +74,16 @@ function MapPage() {
       }),
     [isOffline, preferenceProfile]
   );
-  const shouldAutoRefreshLocation = !isOffline && !isLoadingViewerProfile && !adminOverride;
+  const teleportLockUid = authUser?.uid || null;
+  const teleportLocked = isTeleportLockedForUser(teleportLockUid);
+
+  useEffect(() => {
+    // Clear any prior lock whenever the auth user changes (re-login resets auto-refresh)
+    clearTeleportLockForUser(teleportLockUid);
+  }, [teleportLockUid]);
+
+  const shouldAutoRefreshLocation =
+    !isOffline && !isLoadingViewerProfile && !adminOverride && !teleportLocked;
 
   useAutoRefreshGeolocation({
     enabled: shouldAutoRefreshLocation,
