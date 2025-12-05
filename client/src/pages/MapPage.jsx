@@ -98,17 +98,6 @@ function MapPage() {
   const shouldAutoRefreshLocation =
     !isOffline && !isLoadingViewerProfile && !adminOverride && !teleportLocked;
 
-  useEffect(() => {
-    if (!teleportLocked || isOffline) {
-      return;
-    }
-    if (!hasValidCoordinates(sharedLocation)) {
-      return;
-    }
-    // Auto geo refresh is paused while teleport lock is active; still fetch fresh pins at the spoofed location.
-    refreshPins(sharedLocation);
-  }, [isOffline, refreshPins, sharedLocation, teleportLocked]);
-
   useAutoRefreshGeolocation({
     enabled: shouldAutoRefreshLocation,
     setSharedLocation,
@@ -204,6 +193,17 @@ function MapPage() {
   } = useMapFilters();
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const showFullEvents = !hideFullEvents;
+
+  useEffect(() => {
+    if (!teleportLocked || isOffline) {
+      return;
+    }
+    if (!hasValidCoordinates(sharedLocation)) {
+      return;
+    }
+    // Auto geo refresh is paused while teleport lock is active; still fetch fresh pins at the spoofed location.
+    refreshPins(sharedLocation);
+  }, [isOffline, refreshPins, sharedLocation, teleportLocked]);
 
   const viewerId = useMemo(
     () => toIdString(viewerProfile?._id) ?? toIdString(viewerProfile?.id) ?? null,
