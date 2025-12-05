@@ -274,6 +274,35 @@
 .edit-pin-dialog__button--destructive:hover:not(:disabled) {
     filter: brightness(0.95);
 }
+.pin-details .delete-button-wrapper {
+    display: flex;
+}
+
+.pin-details .delete-pin-button {
+    border: 1px solid var(--color-danger);
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    font-weight: 700;
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--color-danger) 18%, var(--color-surface) 82%),
+        color-mix(in srgb, var(--color-danger) 12%, var(--color-surface))
+    );
+    color: var(--color-danger);
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.pin-details .delete-pin-button:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-danger) 22%, var(--color-surface));
+    transform: translateY(-1px);
+}
+
+.pin-details .delete-pin-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
 .pin-details .flag-button-wrapper {
     display: flex;
 }

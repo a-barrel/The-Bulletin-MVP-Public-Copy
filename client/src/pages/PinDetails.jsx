@@ -255,6 +255,7 @@ function PinDetails() {
     editStatus,
     setEditStatus,
     editDialogBusy,
+    isDeletingPin,
     handleOpenEditDialog,
     handleCloseEditDialog,
     handleSubmitEdit,
@@ -352,6 +353,22 @@ function PinDetails() {
     [viewerProfile]
   );
 
+  const canDeletePin = useMemo(() => {
+    if (!pin) {
+      return false;
+    }
+    const hasAdminAccess = canAccessModerationTools(viewerProfile);
+    const viewerIsModerator =
+      Boolean(pin?.viewerIsModerator) ||
+      (Array.isArray(viewerProfile?.roles)
+        ? viewerProfile.roles.some(
+            (role) => typeof role === 'string' && role.trim().toLowerCase() === 'moderator'
+          )
+        : false);
+
+    return hasAdminAccess || viewerIsModerator;
+  }, [pin, viewerProfile]);
+
   return (
     <div className={`pin-details ${themeClass}`}>
       {interactionOverlay ? (
@@ -374,7 +391,10 @@ function PinDetails() {
         pin={pin}
         isLoading={isLoading}
         editDialogBusy={editDialogBusy}
+        canDeletePin={canDeletePin}
+        deletePending={isDeletingPin}
         handleOpenEditDialog={handleOpenEditDialog}
+        onDeletePin={handleDeletePin}
         pinFlagProps={
           pin?.viewerIsModerator && !isOwnPin
             ? {

@@ -12,7 +12,9 @@ function HeaderActions({
   pin,
   isLoading,
   editDialogBusy,
+  canDeletePin,
   handleOpenEditDialog,
+  onDeletePin,
   pinFlagProps,
   onShare,
   onReportPin,
@@ -22,7 +24,8 @@ function HeaderActions({
   isInteractionLocked,
   attending,
   onToggleBookmark,
-  bookmarkError
+  bookmarkError,
+  deletePending
 }) {
   return (
     <header className="header">
@@ -49,6 +52,26 @@ function HeaderActions({
                 title={isOffline ? 'Reconnect to edit your pin' : 'Edit this pin'}
               >
                 Edit
+              </button>
+            </div>
+          ) : null}
+          {canDeletePin ? (
+            <div className="delete-button-wrapper">
+              <button
+                className="delete-pin-button"
+                type="button"
+                onClick={onDeletePin}
+                disabled={
+                  isOffline ||
+                  !pin ||
+                  deletePending ||
+                  isLoading ||
+                  editDialogBusy
+                }
+                title={isOffline ? 'Reconnect to delete pins' : 'Delete this pin'}
+                aria-label="Delete pin"
+              >
+                {deletePending ? 'Deleting…' : 'DEL'}
               </button>
             </div>
           ) : null}
@@ -116,7 +139,9 @@ HeaderActions.propTypes = {
   pin: PropTypes.object,
   isLoading: PropTypes.bool,
   editDialogBusy: PropTypes.bool,
+  canDeletePin: PropTypes.bool,
   handleOpenEditDialog: PropTypes.func.isRequired,
+  onDeletePin: PropTypes.func,
   pinFlagProps: PropTypes.shape({
     allowFlag: PropTypes.bool,
     isFlagged: PropTypes.bool,
@@ -134,7 +159,8 @@ HeaderActions.propTypes = {
   isInteractionLocked: PropTypes.bool,
   attending: PropTypes.bool,
   onToggleBookmark: PropTypes.func.isRequired,
-  bookmarkError: PropTypes.string
+  bookmarkError: PropTypes.string,
+  deletePending: PropTypes.bool
 };
 
 HeaderActions.defaultProps = {
@@ -143,6 +169,7 @@ HeaderActions.defaultProps = {
   pin: null,
   isLoading: false,
   editDialogBusy: false,
+  canDeletePin: false,
   pinFlagProps: null,
   onReportPin: undefined,
   shareBusy: false,
@@ -150,7 +177,9 @@ HeaderActions.defaultProps = {
   bookmarkPending: false,
   isInteractionLocked: false,
   attending: false,
-  bookmarkError: null
+  bookmarkError: null,
+  onDeletePin: undefined,
+  deletePending: false
 };
 
 export default memo(HeaderActions);
