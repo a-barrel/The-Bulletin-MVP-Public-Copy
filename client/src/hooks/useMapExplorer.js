@@ -128,7 +128,7 @@ export default function useMapExplorer({
     selectedChatRoomDistanceLabel,
     selectedChatRoomRadiusLabel,
     handleMapPinSelect
-  } = useMapChatRooms({ userLocation, isOffline, adminView: adminChatView });
+  } = useMapChatRooms({ userLocation, isOffline, adminView: adminChatView, authUser });
 
   useEffect(() => {
     if (!Number.isFinite(sharedLatitude) || !Number.isFinite(sharedLongitude)) {
