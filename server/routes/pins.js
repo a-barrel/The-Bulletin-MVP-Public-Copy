@@ -2476,7 +2476,9 @@ router.delete('/:pinId', verifyToken, async (req, res) => {
 
     const viewerId = toIdString(viewer._id);
     const pinCreatorId = toIdString(pin.creatorId);
-    if (!viewerId || viewerId !== pinCreatorId) {
+    const viewerIsPrivileged = canViewerModeratePins(viewer);
+    const viewerOwnsPin = viewerId && viewerId === pinCreatorId;
+    if (!viewerOwnsPin && !viewerIsPrivileged) {
       return res.status(403).json({ message: 'You do not have permission to delete this pin.' });
     }
 
