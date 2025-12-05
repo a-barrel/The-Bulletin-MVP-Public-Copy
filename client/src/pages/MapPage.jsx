@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, memo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
 import '../pages/MapPage.css';
 import { useNavigate } from 'react-router-dom';
 import MapIcon from '@mui/icons-material/Map';
@@ -23,6 +23,7 @@ import { applyPinFilters } from '../utils/pinFilters';
 import useOfflineAction from '../hooks/useOfflineAction';
 import toIdString from '../utils/ids';
 import { buildPinMeta } from '../utils/mapPinMeta';
+import { hasValidCoordinates } from '../utils/mapLocation';
 import { viewerHasDeveloperAccess } from '../utils/roles';
 import { isTeleportLockedForUser, clearTeleportLockForUser } from '../utils/mapTeleportSession';
 import runtimeConfig from '../config/runtime';
@@ -77,13 +78,36 @@ function MapPage() {
   const teleportLockUid = authUser?.uid || null;
   const teleportLocked = isTeleportLockedForUser(teleportLockUid);
 
+  const lastAuthUidRef = useRef();
   useEffect(() => {
-    // Clear any prior lock whenever the auth user changes (re-login resets auto-refresh)
-    clearTeleportLockForUser(teleportLockUid);
+    const prevUid = lastAuthUidRef.current;
+
+    // On auth change, clear lock for the old user.
+    if (prevUid && teleportLockUid !== prevUid) {
+      clearTeleportLockForUser(prevUid);
+    }
+
+    // If switching to a new user (not initial mount), clear any stale lock for the new uid.
+    if (teleportLockUid && prevUid && teleportLockUid !== prevUid) {
+      clearTeleportLockForUser(teleportLockUid);
+    }
+
+    lastAuthUidRef.current = teleportLockUid;
   }, [teleportLockUid]);
 
   const shouldAutoRefreshLocation =
     !isOffline && !isLoadingViewerProfile && !adminOverride && !teleportLocked;
+
+  useEffect(() => {
+    if (!teleportLocked || isOffline) {
+      return;
+    }
+    if (!hasValidCoordinates(sharedLocation)) {
+      return;
+    }
+    // Auto geo refresh is paused while teleport lock is active; still fetch fresh pins at the spoofed location.
+    refreshPins(sharedLocation);
+  }, [isOffline, refreshPins, sharedLocation, teleportLocked]);
 
   useAutoRefreshGeolocation({
     enabled: shouldAutoRefreshLocation,
@@ -119,7 +143,8 @@ function MapPage() {
     handleStartSharing,
     error,
     setError,
-    isSharing
+    isSharing,
+    refreshPins
   } = useMapExplorer({
     sharedLocation,
     setSharedLocation,
