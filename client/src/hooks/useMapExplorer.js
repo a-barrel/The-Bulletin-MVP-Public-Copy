@@ -28,6 +28,7 @@ import useMapViewerProfile from './useMapViewerProfile';
 import useMapNearbyData from './useMapNearbyData';
 import useMapChatRooms from './useMapChatRooms';
 import { usePinCache } from '../contexts/PinCacheContext';
+import { setTeleportLockForUser } from '../utils/mapTeleportSession';
 
 const requestBrowserLocation = () =>
   new Promise((resolve, reject) => {
@@ -93,9 +94,17 @@ export default function useMapExplorer({
     authUser,
     isOffline
   });
+  const authUid = authUser?.uid || null;
   const pinCache = usePinCache();
 
   const [adminChatView, setAdminChatView] = useState(false);
+
+  const markTeleportLock = useCallback(() => {
+    if (!isAdminExempt || !authUid) {
+      return;
+    }
+    setTeleportLockForUser(authUid);
+  }, [authUid, isAdminExempt]);
 
   const {
     nearbyUsers,
@@ -435,7 +444,7 @@ export default function useMapExplorer({
         return;
       }
 
-      updateGlobalLocation(
+      const updated = updateGlobalLocation(
         {
           latitude: clampedLatitude,
           longitude: normalizedLongitude,
@@ -443,8 +452,11 @@ export default function useMapExplorer({
         },
         { source: 'map-spoof' }
       );
+      if (updated && isAdminExempt) {
+        markTeleportLock();
+      }
     },
-    [sharedAccuracy, sharedLatitude, sharedLongitude, spoofStepMiles, updateGlobalLocation, userLocation]
+    [isAdminExempt, markTeleportLock, sharedAccuracy, sharedLatitude, sharedLongitude, spoofStepMiles, updateGlobalLocation, userLocation]
   );
 
   const handleSpoofMove = useCallback(
@@ -495,9 +507,12 @@ export default function useMapExplorer({
             });
           }
         }
+        if (isAdminExempt) {
+          markTeleportLock();
+        }
       }
     },
-    [isOffline, pushLocationUpdate, refreshNearby, refreshPins, updateGlobalLocation]
+    [isAdminExempt, isOffline, markTeleportLock, pushLocationUpdate, refreshNearby, refreshPins, updateGlobalLocation]
   );
 
   const combinedPins = useMemo(() => {
