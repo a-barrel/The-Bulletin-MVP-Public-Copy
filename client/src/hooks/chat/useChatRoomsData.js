@@ -3,6 +3,7 @@ import { fetchChatRooms, createChatRoom } from '../../api';
 import { buildPinRoomPayload } from '../../utils/chatRoomContract';
 import { normalizeId } from '../../utils/mapLocation';
 import { useChatRoomCache } from '../../contexts/ChatRoomCacheContext';
+import { loadStoredLastRoomId, pickNearestEligibleRoom, storeLastRoomId } from '../../utils/chatRoomSelection';
 
 const DEFAULT_COORDINATES = {
   latitude: 33.7838,
@@ -26,6 +27,7 @@ export default function useChatRoomsData({
   const pinRoomAttemptedRef = useRef(false);
   const lastLoadKeyRef = useRef(null);
   const isLoadingRef = useRef(false);
+  const lastVisitedRoomIdRef = useRef(null);
 
   const resolvedLatitude = Number.isFinite(viewerLatitude)
     ? viewerLatitude
@@ -37,6 +39,29 @@ export default function useChatRoomsData({
     latitude: resolvedLatitude,
     longitude: resolvedLongitude
   }), [resolvedLatitude, resolvedLongitude]);
+
+  const loadStoredRoomId = useCallback(() => {
+    const stored = loadStoredLastRoomId(authUser?.uid);
+    lastVisitedRoomIdRef.current = stored;
+    return stored;
+  }, [authUser?.uid]);
+
+  useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+    const stored = loadStoredRoomId();
+    if (!pinId && !selectedRoomId && stored) {
+      setSelectedRoomId(stored);
+    }
+  }, [authLoading, loadStoredRoomId, pinId, selectedRoomId]);
+
+  useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+    storeLastRoomId(authUser?.uid, selectedRoomId);
+  }, [authLoading, authUser?.uid, selectedRoomId]);
 
   useEffect(() => {
     pinRoomAttemptedRef.current = false;
@@ -66,7 +91,7 @@ export default function useChatRoomsData({
           pinId: pinId || undefined,
           latitude: locationParams.latitude,
           longitude: locationParams.longitude,
-          includeBookmarked: !pinId
+          includeBookmarked: true
         });
         nextRooms = Array.isArray(data) ? data : [];
       }
@@ -103,17 +128,40 @@ export default function useChatRoomsData({
       setRooms(resolvedRooms);
       chatRoomCache.setRooms(cacheKey, { rooms: resolvedRooms, ts: Date.now() });
       if (resolvedRooms.length > 0) {
-        const nextSelectedId = existingPinRoom?._id || resolvedRooms[0]._id;
-        const desiredId = normalizeId(selectedRoomId);
-        const desiredRoom = desiredId
-          ? resolvedRooms.find((room) => normalizeId(room._id) === desiredId)
-          : null;
-        const finalSelectedId = desiredRoom ? desiredRoom._id : nextSelectedId;
-        setSelectedRoomId(finalSelectedId);
-        const match =
-          resolvedRooms.find((room) => normalizeId(room._id) === normalizeId(finalSelectedId)) ||
-          resolvedRooms[0];
-        setSelectedRoom(match);
+        const findRoomById = (roomId) => {
+          const normalized = normalizeId(roomId);
+          if (!normalized) {
+            return null;
+          }
+          return (
+            resolvedRooms.find(
+              (room) =>
+                normalizeId(room?._id) === normalized || normalizeId(room?.pinId) === normalized
+            ) || null
+          );
+        };
+
+        const storedRoomId = lastVisitedRoomIdRef.current ?? loadStoredRoomId();
+        const desiredRoom = findRoomById(selectedRoomId);
+        const pinRoomSelection = existingPinRoom || findRoomById(pinId);
+        const storedRoom = storedRoomId ? findRoomById(storedRoomId) : null;
+        const nearestEligibleRoom =
+          pickNearestEligibleRoom(resolvedRooms, locationParams) || null;
+        const autoRoom = nearestEligibleRoom || resolvedRooms[0];
+
+        const nextRoom =
+          desiredRoom ||
+          pinRoomSelection ||
+          storedRoom ||
+          autoRoom ||
+          null;
+
+        const nextSelectedId = nextRoom?._id || null;
+        setSelectedRoomId(nextSelectedId);
+        setSelectedRoom(nextRoom);
+      } else {
+        setSelectedRoomId(null);
+        setSelectedRoom(null);
       }
     } catch (error) {
       setRooms([]);
@@ -128,7 +176,7 @@ export default function useChatRoomsData({
       isLoadingRef.current = false;
       setIsLoadingRooms(false);
     }
-  }, [authUser, locationParams.latitude, locationParams.longitude, pinId]);
+  }, [authUser, chatRoomCache, loadStoredRoomId, locationParams.latitude, locationParams.longitude, pinId, selectedRoomId]);
 
   useEffect(() => {
     if (!authUser && !authLoading) {
@@ -175,6 +223,45 @@ export default function useChatRoomsData({
       setSelectedRoom(match);
     }
   }, [rooms, selectedRoomId]);
+
+  useEffect(() => {
+    if (!Array.isArray(rooms) || rooms.length === 0) {
+      return;
+    }
+    const normalizedSelected = normalizeId(selectedRoomId);
+    const hasSelected = normalizedSelected
+      ? rooms.some((room) => normalizeId(room._id) === normalizedSelected)
+      : false;
+    if (hasSelected) {
+      return;
+    }
+
+    const findRoomById = (roomId) => {
+      const normalized = normalizeId(roomId);
+      if (!normalized) {
+        return null;
+      }
+      return (
+        rooms.find(
+          (room) =>
+            normalizeId(room?._id) === normalized || normalizeId(room?.pinId) === normalized
+        ) || null
+      );
+    };
+
+    const storedRoomId = lastVisitedRoomIdRef.current ?? loadStoredRoomId();
+    const pinRoomSelection = findRoomById(pinId);
+    const storedRoom = storedRoomId ? findRoomById(storedRoomId) : null;
+    const nearestEligibleRoom = pickNearestEligibleRoom(rooms, locationParams) || null;
+    const autoRoom = nearestEligibleRoom || rooms[0];
+
+    const nextRoom = pinRoomSelection || storedRoom || autoRoom || null;
+    const nextSelectedId = nextRoom?._id || null;
+    if (nextSelectedId !== selectedRoomId) {
+      setSelectedRoomId(nextSelectedId);
+    }
+    setSelectedRoom(nextRoom);
+  }, [loadStoredRoomId, locationParams, pinId, rooms, selectedRoomId]);
 
   return {
     debugMode,

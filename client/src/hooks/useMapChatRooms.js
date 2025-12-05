@@ -1,15 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchChatRooms } from '../api';
 import reportClientError from '../utils/reportClientError';
 import { haversineDistanceMeters, formatDistanceMiles } from '../utils/geo';
 import { hasValidCoordinates } from '../utils/mapLocation';
+import {
+  isEligibleRoom,
+  loadStoredLastRoomId,
+  pickNearestEligibleRoom,
+  storeLastRoomId
+} from '../utils/chatRoomSelection';
 
-export default function useMapChatRooms({ userLocation, isOffline, adminView = false }) {
+export default function useMapChatRooms({ userLocation, isOffline, adminView = false, authUser }) {
   const [showChatRooms, setShowChatRooms] = useState(false);
   const [chatRooms, setChatRooms] = useState([]);
   const [isLoadingChatRooms, setIsLoadingChatRooms] = useState(false);
   const [chatRoomsError, setChatRoomsError] = useState(null);
   const [selectedChatRoomId, setSelectedChatRoomId] = useState(null);
+  const lastVisitedRoomIdRef = useRef(null);
 
   useEffect(() => {
     if (!showChatRooms) {
@@ -101,6 +108,23 @@ export default function useMapChatRooms({ userLocation, isOffline, adminView = f
   }, [chatRooms, showChatRooms, userLocation]);
 
   useEffect(() => {
+    if (!showChatRooms) {
+      return;
+    }
+    lastVisitedRoomIdRef.current = loadStoredLastRoomId(authUser?.uid);
+    if (!selectedChatRoomId && lastVisitedRoomIdRef.current) {
+      setSelectedChatRoomId(lastVisitedRoomIdRef.current);
+    }
+  }, [authUser?.uid, selectedChatRoomId, showChatRooms]);
+
+  useEffect(() => {
+    if (!showChatRooms) {
+      return;
+    }
+    storeLastRoomId(authUser?.uid, selectedChatRoomId);
+  }, [authUser?.uid, selectedChatRoomId, showChatRooms]);
+
+  useEffect(() => {
     if (!selectedChatRoomId) {
       return;
     }
@@ -114,10 +138,21 @@ export default function useMapChatRooms({ userLocation, isOffline, adminView = f
       return;
     }
     if (!selectedChatRoomId) {
-      const first = chatRoomPins[0];
-      setSelectedChatRoomId(first._id ?? null);
+      const nearestEligible = pickNearestEligibleRoom(
+        chatRoomPins.map((pin) => pin.metadata || pin),
+        userLocation
+      );
+      const fallbackPin =
+        nearestEligible &&
+        chatRoomPins.find((pin) => pin.metadata === nearestEligible || pin === nearestEligible);
+      const firstEligible =
+        chatRoomPins.find((pin) => isEligibleRoom(pin.metadata || pin)) || chatRoomPins[0];
+      const next = fallbackPin || firstEligible;
+      if (next) {
+        setSelectedChatRoomId(next._id ?? null);
+      }
     }
-  }, [chatRoomPins, selectedChatRoomId, showChatRooms]);
+  }, [chatRoomPins, selectedChatRoomId, showChatRooms, userLocation]);
 
   const selectedChatRoom = useMemo(() => {
     if (!selectedChatRoomId) {
@@ -148,7 +183,12 @@ export default function useMapChatRooms({ userLocation, isOffline, adminView = f
     if (!distances.length) {
       return;
     }
-    let currentMatch = distances.find((entry) => entry.pin._id === selectedChatRoomId);
+    const eligibleDistances = distances.filter((entry) =>
+      isEligibleRoom(entry.pin.metadata || entry.pin)
+    );
+    const distancePool = eligibleDistances.length ? eligibleDistances : distances;
+
+    let currentMatch = distancePool.find((entry) => entry.pin._id === selectedChatRoomId);
     const currentRadius = Number.isFinite(currentMatch?.pin?.proximityRadiusMeters)
       ? currentMatch.pin.proximityRadiusMeters
       : null;
@@ -157,8 +197,8 @@ export default function useMapChatRooms({ userLocation, isOffline, adminView = f
     if (currentWithin) {
       return;
     }
-    distances.sort((a, b) => a.distance - b.distance);
-    const nextPin = distances[0]?.pin;
+    distancePool.sort((a, b) => a.distance - b.distance);
+    const nextPin = distancePool[0]?.pin;
     if (nextPin && nextPin._id !== selectedChatRoomId) {
       setSelectedChatRoomId(nextPin._id);
     }

@@ -21,6 +21,7 @@ export function useChatManager({
     isLoadingRooms,
     loadRooms,
     selectedRoomId,
+    setSelectedRoomId,
     handleSelectRoom,
     selectedRoom,
     locationParams
@@ -49,7 +50,11 @@ export function useChatManager({
     authUser,
     selectedRoomId,
     locationParams,
-    announceBadgeEarned
+    announceBadgeEarned,
+    onRoomMissing: useCallback(() => {
+      setSelectedRoomId(null);
+      loadRooms();
+    }, [loadRooms, setSelectedRoomId])
   });
 
   const {

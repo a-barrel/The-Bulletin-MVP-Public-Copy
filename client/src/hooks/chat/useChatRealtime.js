@@ -55,7 +55,8 @@ export default function useChatRealtime({
   authUser,
   selectedRoomId,
   locationParams,
-  announceBadgeEarned
+  announceBadgeEarned,
+  onRoomMissing
 }) {
   const [messages, setMessages] = useState([]);
   const [messagesError, setMessagesError] = useState(null);
@@ -85,13 +86,21 @@ export default function useChatRealtime({
       setMessages(data);
     } catch (error) {
       setMessages([]);
-      setMessagesError(error?.message || 'Failed to load messages.');
+      const status = error?.status;
+      if (status === 404 || status === 410) {
+        setMessagesError('Chat room not found.');
+        if (typeof onRoomMissing === 'function') {
+          onRoomMissing(roomId);
+        }
+      } else {
+        setMessagesError(error?.message || 'Failed to load messages.');
+      }
     } finally {
       if (!silent) {
         setIsLoadingMessages(false);
       }
     }
-  }, [locationPayload]);
+  }, [locationPayload, onRoomMissing]);
 
   const loadPresence = useCallback(async (roomId) => {
     if (!roomId) return;
@@ -101,9 +110,17 @@ export default function useChatRealtime({
       setPresenceError(null);
     } catch (error) {
       setPresence([]);
-      setPresenceError(error?.message || 'Failed to load room presence.');
+      const status = error?.status;
+      if (status === 404 || status === 410) {
+        setPresenceError('Chat room not found.');
+        if (typeof onRoomMissing === 'function') {
+          onRoomMissing(roomId);
+        }
+      } else {
+        setPresenceError(error?.message || 'Failed to load room presence.');
+      }
     }
-  }, [locationPayload]);
+  }, [locationPayload, onRoomMissing]);
 
   useEffect(() => {
     if (!selectedRoomId) {
