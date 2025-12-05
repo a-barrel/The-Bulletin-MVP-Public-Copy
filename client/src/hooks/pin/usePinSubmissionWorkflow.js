@@ -27,6 +27,7 @@ export default function usePinSubmissionWorkflow({
   photoAssets,
   coverPhotoId,
   isOffline,
+  canBypassLimits = false,
   announceBadgeEarned,
   clearDraft,
   clearDraftStatus,
@@ -46,6 +47,9 @@ export default function usePinSubmissionWorkflow({
       }
 
       try {
+        const enforceLocationRadius = !canBypassLimits;
+        const enforceDateWindows = !canBypassLimits;
+
         const latitude = sanitizeNumberField(formState.latitude);
         const longitude = sanitizeNumberField(formState.longitude);
 
@@ -56,25 +60,27 @@ export default function usePinSubmissionWorkflow({
           throw new Error('Longitude must be between -180 and 180.');
         }
 
-        if (!viewerCoordinates) {
+        if (enforceLocationRadius && !viewerCoordinates) {
           throw new Error(
             'We need your current location to confirm this pin. Enable location services and try again.'
           );
         }
-        const distanceMeters = haversineDistanceMeters(viewerCoordinates, {
-          latitude,
-          longitude
-        });
-        if (!Number.isFinite(distanceMeters)) {
-          throw new Error('Unable to validate the selected location. Please try again.');
-        }
-        if (distanceMeters > MAX_PIN_DISTANCE_METERS) {
-          const miles = metersToMiles(distanceMeters);
-          const distanceLabel =
-            miles === null ? 'farther than allowed' : `${miles.toFixed(1)} miles away`;
-          throw new Error(
-            `Pins must be within ${MAX_PIN_DISTANCE_MILES} miles of you. This spot is about ${distanceLabel}.`
-          );
+        if (enforceLocationRadius) {
+          const distanceMeters = haversineDistanceMeters(viewerCoordinates, {
+            latitude,
+            longitude
+          });
+          if (!Number.isFinite(distanceMeters)) {
+            throw new Error('Unable to validate the selected location. Please try again.');
+          }
+          if (distanceMeters > MAX_PIN_DISTANCE_METERS) {
+            const miles = metersToMiles(distanceMeters);
+            const distanceLabel =
+              miles === null ? 'farther than allowed' : `${miles.toFixed(1)} miles away`;
+            throw new Error(
+              `Pins must be within ${MAX_PIN_DISTANCE_MILES} miles of you. This spot is about ${distanceLabel}.`
+            );
+          }
         }
 
         const title = formState.title.trim();
@@ -92,10 +98,12 @@ export default function usePinSubmissionWorkflow({
         }
 
         const submissionNow = new Date();
-        const eventMaxDate = new Date(submissionNow.getTime() + EVENT_MAX_LEAD_TIME_MS);
-        const discussionMaxDate = new Date(
-          submissionNow.getTime() + DISCUSSION_MAX_DURATION_MS
-        );
+        const eventMaxDate = enforceDateWindows
+          ? new Date(submissionNow.getTime() + EVENT_MAX_LEAD_TIME_MS)
+          : null;
+        const discussionMaxDate = enforceDateWindows
+          ? new Date(submissionNow.getTime() + DISCUSSION_MAX_DURATION_MS)
+          : null;
 
         const payload = {
           type: pinType,
@@ -111,14 +119,24 @@ export default function usePinSubmissionWorkflow({
 
         if (pinType === 'event') {
           const startDate = sanitizeDateField(formState.startDate, 'Start date', {
-            max: eventMaxDate,
-            maxMessage: 'Events can only be scheduled up to 14 days in advance.'
+            allowPast: canBypassLimits,
+            ...(enforceDateWindows
+              ? {
+                  max: eventMaxDate,
+                  maxMessage: 'Events can only be scheduled up to 14 days in advance.'
+                }
+              : {})
           });
           const endDate = sanitizeDateField(formState.endDate, 'End date', {
             min: startDate,
             minMessage: 'End date must be on or after the start date.',
-            max: eventMaxDate,
-            maxMessage: 'Events can only be scheduled up to 14 days in advance.'
+            allowPast: canBypassLimits,
+            ...(enforceDateWindows
+              ? {
+                  max: eventMaxDate,
+                  maxMessage: 'Events can only be scheduled up to 14 days in advance.'
+                }
+              : {})
           });
           payload.startDate = startDate.toISOString();
           payload.endDate = endDate.toISOString();
@@ -157,8 +175,13 @@ export default function usePinSubmissionWorkflow({
           payload.participantLimit = normalizedAttendeeLimit;
         } else {
           const expiresAt = sanitizeDateField(formState.expiresAt, 'Expiration date', {
-            max: discussionMaxDate,
-            maxMessage: 'Discussions can only stay active for up to 3 days.'
+            allowPast: canBypassLimits,
+            ...(enforceDateWindows
+              ? {
+                  max: discussionMaxDate,
+                  maxMessage: 'Discussions can only stay active for up to 3 days.'
+                }
+              : {})
           });
           payload.expiresAt = expiresAt.toISOString();
           payload.autoDelete = autoDelete;
@@ -240,6 +263,7 @@ export default function usePinSubmissionWorkflow({
       onPinCreated,
       photoAssets,
       pinType,
+      canBypassLimits,
       setCreatedPin,
       setIsSubmitting,
       setStatus,
