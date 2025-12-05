@@ -1,6 +1,7 @@
+const PREFIX = 'pinpoint:map-teleport-lock:';
 const memoryLocks = new Set();
 
-const buildKey = (uid) => `pinpoint:map-teleport-lock:${uid || 'anonymous'}`;
+const buildKey = (uid) => `${PREFIX}${uid || 'anonymous'}`;
 
 const setMemoryLock = (key) => {
   if (!key) return;
@@ -65,8 +66,32 @@ export const isTeleportLockedForUser = (uid) => {
   return hasMemoryLock(key);
 };
 
+export const isAnyTeleportLocked = () => {
+  const storage = safeSessionStorage();
+  if (storage) {
+    try {
+      for (let i = 0; i < storage.length; i += 1) {
+        const key = storage.key(i);
+        if (key && key.startsWith(PREFIX) && storage.getItem(key)) {
+          setMemoryLock(key);
+          return true;
+        }
+      }
+    } catch {
+      // fall back to memory lock inspection
+    }
+  }
+  for (const key of memoryLocks) {
+    if (key.startsWith(PREFIX)) {
+      return true;
+    }
+  }
+  return false;
+};
+
 export default {
   setTeleportLockForUser,
   clearTeleportLockForUser,
-  isTeleportLockedForUser
+  isTeleportLockedForUser,
+  isAnyTeleportLocked
 };

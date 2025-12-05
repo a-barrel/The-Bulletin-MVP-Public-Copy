@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { isAnyTeleportLocked } from '../utils/mapTeleportSession';
 
 const GEOLOCATION_OPTIONS = {
   enableHighAccuracy: true,
@@ -20,6 +21,9 @@ export default function useAutoRefreshGeolocation({
 
   useEffect(() => {
     if (!enabled || requestedRef.current) {
+      return;
+    }
+    if (isAnyTeleportLocked()) {
       return;
     }
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
