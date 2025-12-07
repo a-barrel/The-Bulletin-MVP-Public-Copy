@@ -1,5 +1,5 @@
 /* NOTE: Page exports configuration alongside the component. */
-import { useCallback, useId, useMemo } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
@@ -23,6 +23,7 @@ import { viewerHasDeveloperAccess } from '../utils/roles';
 import runtimeConfig from '../config/runtime';
 import PinPreviewCard from '../components/PinPreviewCard';
 import CREATE_PIN_TEMPLATE from '../constants/createPinTemplate';
+import { MAX_PIN_TAGS } from '../hooks/pin/pinFormConstants';
 
 export const pageConfig = {
   id: 'create-pin',
@@ -138,6 +139,8 @@ function CreatePinPage() {
     discussionMaxInput,
     handleTypeChange,
     handleFieldChange,
+    handleAddTag,
+    handleRemoveTag,
     handleMapLocationSelect,
     handleImageSelection,
     handleRemovePhoto,
@@ -205,6 +208,7 @@ function CreatePinPage() {
   const latitudeInputId = useId();
   const longitudeInputId = useId();
   const radiusInputId = useId();
+  const tagInputId = useId();
   const participantLimitInputId = useId();
   const addressPreciseInputId = useId();
   const addressCityInputId = useId();
@@ -218,6 +222,30 @@ function CreatePinPage() {
   const autoDeleteInputId = useId();
   const replyLimitInputId = useId();
   const headerTitle = PIN_TYPE_LABELS[pinType] ?? FIGMA_TEMPLATE.header.title;
+  const [tagDraft, setTagDraft] = useState('');
+  const tagsAtLimit = Array.isArray(formState.tags) && formState.tags.length >= MAX_PIN_TAGS;
+
+  const handleTagDraftChange = useCallback((event) => {
+    setTagDraft(event.target.value);
+  }, []);
+
+  const handleAddTagDraft = useCallback(() => {
+    if (!tagDraft.trim() || tagsAtLimit) {
+      return;
+    }
+    handleAddTag(tagDraft);
+    setTagDraft('');
+  }, [handleAddTag, tagDraft, tagsAtLimit]);
+
+  const handleTagKeyDown = useCallback(
+    (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        handleAddTagDraft();
+      }
+    },
+    [handleAddTagDraft]
+  );
 
   return (
     <div className="create-pin-page">
@@ -301,6 +329,54 @@ function CreatePinPage() {
               }
               required
             ></textarea>
+          </div>
+        </div>
+
+        {/* Categories/Tags */}
+        <div className="form-section">
+          <div className="input-group">
+            <label htmlFor={`create-pin-tags-${tagInputId}`}>Categories</label>
+            <div className="tags-input-row">
+              <input
+                type="text"
+                id={`create-pin-tags-${tagInputId}`}
+                value={tagDraft}
+                onChange={handleTagDraftChange}
+                onKeyDown={handleTagKeyDown}
+                placeholder="Add a category (e.g., music, food, meetup)"
+                disabled={tagsAtLimit}
+              />
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={handleAddTagDraft}
+                disabled={!tagDraft.trim() || tagsAtLimit}
+              >
+                Add
+              </button>
+            </div>
+            <small className="field-hint">
+              Add up to {MAX_PIN_TAGS} categories; they power the Discover filters.
+            </small>
+          </div>
+          <div className="tags-chip-row">
+            {Array.isArray(formState.tags) && formState.tags.length > 0 ? (
+              formState.tags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  className="tag-chip"
+                  onClick={() => handleRemoveTag(tag)}
+                >
+                  {tag}
+                  <span className="tag-chip__remove" aria-hidden="true">
+                    ×
+                  </span>
+                </button>
+              ))
+            ) : (
+              <p className="hint-text">No categories yet.</p>
+            )}
           </div>
         </div>
 

@@ -7,7 +7,8 @@ import {
   MAX_PIN_DISTANCE_MILES,
   MAX_PIN_DISTANCE_METERS,
   EVENT_MAX_LEAD_TIME_MS,
-  DISCUSSION_MAX_DURATION_MS
+  DISCUSSION_MAX_DURATION_MS,
+  MAX_PIN_TAGS
 } from './pinFormConstants';
 
 const EVENT_ATTENDEE_LIMITS = {
@@ -116,6 +117,26 @@ export default function usePinSubmissionWorkflow({
           proximityRadiusMeters:
             proximityMiles !== null ? Math.round(proximityMiles * METERS_PER_MILE) : undefined
         };
+
+        const normalizedTags = [];
+        if (Array.isArray(formState.tags)) {
+          formState.tags.forEach((tag) => {
+            const normalized = String(tag || '').trim().toLowerCase();
+            if (!normalized) {
+              return;
+            }
+            if (normalizedTags.includes(normalized)) {
+              return;
+            }
+            if (normalizedTags.length >= MAX_PIN_TAGS) {
+              return;
+            }
+            normalizedTags.push(normalized);
+          });
+        }
+        if (normalizedTags.length) {
+          payload.tags = normalizedTags;
+        }
 
         if (pinType === 'event') {
           const startDate = sanitizeDateField(formState.startDate, 'Start date', {

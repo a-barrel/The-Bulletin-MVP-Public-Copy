@@ -97,6 +97,7 @@ function ListPage() {
     error: categoriesError,
     refresh: refreshCategories
   } = usePinCategories({ isOffline });
+  const hasRequestedCategoriesRef = useRef(false);
 
   const [sortByExpiration, setSortByExpiration] = useState(false);
   const [hideOwnPins, setHideOwnPins] = useState(true);
@@ -248,9 +249,14 @@ function ListPage() {
   }, [isAdminViewer, isOffline, setSharedLocation, t]);
   useEffect(() => {
     if (!filtersDialogOpen) {
+      hasRequestedCategoriesRef.current = false;
+      return;
+    }
+    if (hasRequestedCategoriesRef.current) {
       return;
     }
     if (categoryOptions.length === 0 && !isLoadingCategories) {
+      hasRequestedCategoriesRef.current = true;
       refreshCategories();
     }
   }, [filtersDialogOpen, categoryOptions.length, isLoadingCategories, refreshCategories]);

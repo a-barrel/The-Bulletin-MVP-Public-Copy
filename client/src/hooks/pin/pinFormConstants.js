@@ -7,3 +7,4 @@ export const EVENT_MAX_LEAD_TIME_MS = 14 * MILLISECONDS_PER_DAY;
 export const DISCUSSION_MAX_DURATION_MS = 3 * MILLISECONDS_PER_DAY;
 export const FUTURE_TOLERANCE_MS = 60 * 1000;
 export const DEFAULT_APPROX_MESSAGE = 'Near your current location';
+export const MAX_PIN_TAGS = 5;

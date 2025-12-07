@@ -116,6 +116,7 @@ const EVENT_MAX_LEAD_TIME_MS = 14 * MILLISECONDS_PER_DAY;
 const DISCUSSION_MAX_DURATION_MS = 3 * MILLISECONDS_PER_DAY;
 const PAST_TOLERANCE_MS = 60 * 1000;
 const CHECK_IN_WINDOW_MS = 2 * 60 * 60 * 1000;
+const MAX_PIN_TAGS = 5;
 
 const EVENT_ATTENDEE_LIMITS = {
   min: 5,
@@ -126,6 +127,24 @@ const EVENT_ATTENDEE_LIMITS = {
 const DISCUSSION_REPLY_LIMIT_OPTIONS = [50, 75, 100, 150, 200];
 const DEFAULT_DISCUSSION_REPLY_LIMIT = 100;
 const VIEW_HISTORY_MAX = 20;
+
+const normalizeTagsInput = (value) => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const normalized = [];
+  value.forEach((entry) => {
+    const tag = typeof entry === 'string' ? entry.trim().toLowerCase() : '';
+    if (!tag || normalized.includes(tag)) {
+      return;
+    }
+    if (normalized.length >= MAX_PIN_TAGS) {
+      return;
+    }
+    normalized.push(tag);
+  });
+  return normalized;
+};
 
 const getCheckInWindowState = (startDate) => {
   if (!startDate) {
@@ -674,7 +693,8 @@ const BaseCreatePinSchema = z.object({
   creatorId: z.string().optional(),
   photos: z.array(MediaAssetInputSchema).max(3).optional(), // NOTE: This is the only place the photo limit is enforced
   coverPhoto: MediaAssetInputSchema.optional(),
-  options: PinOptionsInputSchema.optional()
+  options: PinOptionsInputSchema.optional(),
+  tags: z.array(z.string().trim().min(1).max(32)).max(MAX_PIN_TAGS).default([])
 });
 
 const EventAddressComponentsSchema = z
@@ -816,7 +836,8 @@ router.post('/', verifyToken, async (req, res) => {
       coordinates,
       proximityRadiusMeters: input.proximityRadiusMeters ?? 1609,
       visibility: 'public',
-      options: input.options ?? undefined
+      options: input.options ?? undefined,
+      tags: normalizeTagsInput(input.tags)
     };
 
     if (input.type === 'event') {
@@ -2395,6 +2416,7 @@ router.put('/:pinId', verifyToken, async (req, res) => {
     pin.description = input.description;
     pin.coordinates = coordinates;
     pin.proximityRadiusMeters = input.proximityRadiusMeters ?? pin.proximityRadiusMeters ?? 1609;
+    pin.tags = normalizeTagsInput(input.tags);
 
     if (input.type === 'event') {
       pin.startDate = input.startDate;

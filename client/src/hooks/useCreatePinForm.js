@@ -15,7 +15,8 @@ import {
   MILLISECONDS_PER_DAY,
   EVENT_MAX_LEAD_TIME_MS,
   DISCUSSION_MAX_DURATION_MS,
-  DEFAULT_APPROX_MESSAGE
+  DEFAULT_APPROX_MESSAGE,
+  MAX_PIN_TAGS
 } from './pin/pinFormConstants';
 const MAX_PHOTO_UPLOADS = 3;
 
@@ -45,7 +46,8 @@ export const INITIAL_FORM_STATE = {
   approxFormatted: '',
   approxCity: '',
   approxState: '',
-  approxCountry: ''
+  approxCountry: '',
+  tags: []
 };
 
 const PIN_TYPE_THEMES = {
@@ -260,6 +262,8 @@ export default function useCreatePinForm({
     }
   }, []);
 
+  const normalizeTag = useCallback((value) => value.trim().toLowerCase(), []);
+
   const handleFieldChange = useCallback((field) => {
     return (event) => {
       const { value } = event.target;
@@ -269,6 +273,43 @@ export default function useCreatePinForm({
       }));
     };
   }, []);
+
+  const handleAddTag = useCallback(
+    (tagValue) => {
+      setFormState((prev) => {
+        const normalized = normalizeTag(String(tagValue || ''));
+        if (!normalized) {
+          return prev;
+        }
+        const current = Array.isArray(prev.tags) ? prev.tags : [];
+        const normalizedExisting = current.map((entry) => normalizeTag(String(entry || '')));
+        if (normalizedExisting.includes(normalized)) {
+          return prev;
+        }
+        if (current.length >= MAX_PIN_TAGS) {
+          return prev;
+        }
+        return {
+          ...prev,
+          tags: [...current, normalized]
+        };
+      });
+    },
+    [normalizeTag]
+  );
+
+  const handleRemoveTag = useCallback(
+    (tagValue) => {
+      const normalized = normalizeTag(String(tagValue || ''));
+      setFormState((prev) => ({
+        ...prev,
+        tags: (Array.isArray(prev.tags) ? prev.tags : []).filter(
+          (entry) => normalizeTag(String(entry || '')) !== normalized
+        )
+      }));
+    },
+    [normalizeTag]
+  );
 
   // Seed geocode cache when we already have address data for the current coordinates (e.g., drafts).
   useEffect(() => {
@@ -545,6 +586,8 @@ export default function useCreatePinForm({
     discussionMaxInput,
     handleTypeChange,
     handleFieldChange,
+    handleAddTag,
+    handleRemoveTag,
     handleMapLocationSelect,
     handleImageSelection,
     handleRemovePhoto,
