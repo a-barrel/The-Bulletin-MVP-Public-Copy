@@ -1,6 +1,7 @@
-# The Bulletin – Location-Based Social Media MVP :V
+# The Bulletin – Location-Based Social Media MVP
 
 The Bulletin is a cost-effective social platform that uses GPS features so people can share their locations and connect with others nearby.
+Worked on in a team for our senior year at CSULB
 
 Video Demo - https://www.youtube.com/watch?v=s538CDPU35k
 
