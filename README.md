@@ -2,6 +2,8 @@
 
 The Bulletin is a cost-effective social platform that uses GPS features so people can share their locations and connect with others nearby.
 
+Video Demo - https://www.youtube.com/watch?v=s538CDPU35k
+
 ## Tech Stack
 - React (Vite) frontend
 - Node.js / Express backend
@@ -34,7 +36,7 @@ PINPOINT_RUNTIME_MODE=offline
 
 # MongoDB connection URIs
 MONGODB_URI=
-MONGODB_URI_OFFLINE=mongodb://127.0.0.1:27017/pinpoint
+MONGODB_URI_OFFLINE=
 
 # Firebase service account JSON (required for Render/production deployments)
 FIREBASE_SERVICE_ACCOUNT_JSON=
@@ -44,9 +46,9 @@ PINPOINT_OFFLINE_DEMO_TOKEN=demo-token
 
 # Firebase emulator defaults (used automatically in offline mode)
 USE_FIREBASE_EMULATOR=true
-#FIREBASE_PROJECT_ID=bulletin-offline
-FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
-FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+#FIREBASE_PROJECT_ID=
+FIREBASE_AUTH_EMULATOR_HOST=
+FIRESTORE_EMULATOR_HOST=
 
 FIREBASE_PROJECT_ID=bulletin-app-6548a
 
@@ -68,10 +70,10 @@ VITE_API_BASE_URL_OFFLINE=http://localhost:8000
 # VITE_API_ACCESS_TOKEN_OFFLINE=demo-token
 
 # Firebase configuration (public)
-VITE_FIREBASE_CONFIG={"apiKey":"AIzaSyAkVlj0uQu2Xdc1Y99lAd1bPbFlawEM6pA","authDomain":"bulletin app-6548a.firebaseapp.com","projectId":"bulletin-app-6548a","storageBucket":"bulletin-app-6548a.firebasestorage.app","messagingSenderId":"772158261487","appId":"1:772158261487:web:a9eef2f733426ded44331a","measurementId":"G-H3PW6CFB6L"}
+VITE_FIREBASE_CONFIG=
 
 # Optional offline Firebase overrides
-# VITE_FIREBASE_CONFIG_OFFLINE={"projectId":"pinpoint-offline"}
+# VITE_FIREBASE_CONFIG_OFFLINE=
 VITE_FIREBASE_AUTH_EMULATOR_URL=http://localhost:9099
 ```
 
